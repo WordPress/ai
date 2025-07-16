@@ -33,4 +33,5 @@
 * **Test:** Try features as they're released and report feedback.
 
 ## License
-GPL-3
+
+[GPL-2.0-or-later](https://spdx.org/licenses/GPL-2.0-or-later.html)
