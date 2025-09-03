@@ -42,7 +42,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 
 ## How to Get Involved
 
-* **Discuss:** []`#core-ai` channel](https://wordpress.slack.com/archives/C08TJ8BPULS) on WordPress Slack.
+* **Discuss:** [`#core-ai` channel](https://wordpress.slack.com/archives/C08TJ8BPULS) on WordPress Slack.
 * **Design:** [Share feedback](https://github.com/WordPress/ai/issues) on UX flows and accessibility.
 * **Test:** Try features as they're [released](https://github.com/WordPress/ai/releases) and [report feedback](https://github.com/WordPress/ai/issues).
 
