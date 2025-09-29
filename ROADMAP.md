@@ -16,7 +16,7 @@ This roadmap outlines the planned development of the AI Experiments plugin from 
 
 ### Features
 
-- [ ] Implement Title Rewriting using Abilities API, MCP Adapter, and the PHP AI Client (#10)
+- [ ] Implement Title Rewriting using Abilities API, MCP Adapter, and the PHP AI Client ([#10](https://github.com/WordPress/ai/issues/10))
 - [ ] Add UI controls in the post editor for rewriting titles
 - [ ] Ensure graceful fallback behavior when no provider is configured
 
@@ -33,9 +33,9 @@ This roadmap outlines the planned development of the AI Experiments plugin from 
 
 ### Features
 
-- [ ] Add Excerpt Generation with inline controls in the editor (#11)
+- [ ] Add Excerpt Generation with inline controls in the editor ([#11](https://github.com/WordPress/ai/issues/11))
 - [ ] Add Alt Text Generation for newly uploaded media in the Media Library
-- [ ] Add Image Generation with prompt entry in the Block Editor sidebar (#13)
+- [ ] Add Image Generation with prompt entry in the Block Editor sidebar ([#13](https://github.com/WordPress/ai/issues/13))
 
 ## Milestone 0.3.0 - Experimental Tools and Developer Options
 
@@ -49,7 +49,7 @@ This roadmap outlines the planned development of the AI Experiments plugin from 
 
 ### Features
 
-- [ ] Add Content Summarization, either inline or through a sidebar panel (#12)
+- [ ] Add Content Summarization, either inline or through a sidebar panel ([#12](https://github.com/WordPress/ai/issues/12))
 - [ ] Add Contextual Tagging (also known as Content Classification)
 - [ ] Introduce an optional "AI Playground" section (enabled via settings) with:
   - [ ] Prompt testing interface
