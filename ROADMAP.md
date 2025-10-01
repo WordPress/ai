@@ -10,7 +10,7 @@ This roadmap outlines the planned development of the AI Experiments plugin from 
 
 - [ ] Scaffold the initial plugin structure in the `WordPress/ai` GitHub repository
 - [ ] Create a basic admin settings screen with a toggle for enabling experimental features
-- [ ] Integrate the PHP AI Client SDK (or alternatively WP AI Client SDK) with a simple service provider setup
+- [ ] Integrate the WP AI Client SDK (and underlying PHP AI Client SDK) with a simple service provider setup
 - [ ] Add developer support for pre-configured AI providers so hosts, agencies, and developers can offer out-of-the-box providers to power plugin features
 - [ ] Plugin submission to WordPress.org and public availability via WPORG SVN repo
 
