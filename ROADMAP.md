@@ -8,17 +8,17 @@ This roadmap outlines the planned development of the AI Experiments plugin from 
 
 ### Goals
 
-- [ ] Scaffold the initial plugin structure in the `WordPress/ai` GitHub repository
-- [ ] Create a basic admin settings screen with a toggle for enabling experimental features
-- [ ] Integrate the WP AI Client SDK (and underlying PHP AI Client SDK) with a simple service provider setup
-- [ ] Add developer support for pre-configured AI providers so hosts, agencies, and developers can offer out-of-the-box providers to power plugin features
-- [ ] Plugin submission to WordPress.org and public availability via WPORG SVN repo
+- [ ] Scaffold the initial plugin structure in the `WordPress/ai` GitHub repository ([#24](https://github.com/WordPress/ai/issues/24))
+- [ ] Create a basic admin settings screen with a toggle for enabling experimental features ([#25](https://github.com/WordPress/ai/issues/25))
+- [ ] Integrate the WP AI Client SDK (and underlying PHP AI Client SDK) with a simple service provider setup ([#26](https://github.com/WordPress/ai/issues/26))
+- [ ] Add developer support for pre-configured AI providers so hosts, agencies, and developers can offer out-of-the-box providers to power plugin features ([#27](https://github.com/WordPress/ai/issues/27))
+- [ ] Plugin submission to WordPress.org and public availability via WPORG SVN repo ([#28](https://github.com/WordPress/ai/issues/28))
 
 ### Features
 
 - [ ] Implement Title Rewriting using Abilities API, MCP Adapter, and the PHP AI Client ([#10](https://github.com/WordPress/ai/issues/10))
-- [ ] Add UI controls in the post editor for rewriting titles
-- [ ] Ensure graceful fallback behavior when no provider is configured
+- [ ] Add UI controls in the post editor for rewriting titles ([#29](https://github.com/WordPress/ai/issues/29))
+- [ ] Ensure graceful fallback behavior when no provider is configured ([#30](https://github.com/WordPress/ai/issues/30))
 
 ## Milestone 0.2.0 - Core Feature Expansion
 
@@ -26,10 +26,10 @@ This roadmap outlines the planned development of the AI Experiments plugin from 
 
 ### Goals
 
-- [ ] Deliver a set of widely expected, foundational AI features
-- [ ] Validate integration patterns across multiple AI Abilities
-- [ ] Expand usage of MCP and the PHP/WP AI Client
-- [ ] Refine consistency in UI elements, loading states, and language across features
+- [ ] Deliver a set of widely expected, foundational AI features ([#35](https://github.com/WordPress/ai/issues/35))
+- [ ] Validate integration patterns across multiple AI Abilities ([#36](https://github.com/WordPress/ai/issues/36))
+- [ ] Expand usage of MCP and the PHP/WP AI Client ([#37](https://github.com/WordPress/ai/issues/37))
+- [ ] Refine consistency in UI elements, loading states, and language across features ([#35](https://github.com/WordPress/ai/issues/35))
 
 ### Features
 
@@ -43,23 +43,23 @@ This roadmap outlines the planned development of the AI Experiments plugin from 
 
 ### Goals
 
-- [ ] Finalize all core UX flows and editorial experiences for future v1 launch alongside WordPress 6.9
-- [ ] Document how developers can hook into or customize the plugin
-- [ ] Add tools and configuration options for more advanced users
+- [ ] Finalize all core UX flows and editorial experiences for future v1 launch alongside WordPress 6.9 ([#31](https://github.com/WordPress/ai/issues/31))
+- [ ] Document how developers can hook into or customize the plugin ([#34](https://github.com/WordPress/ai/issues/34))
+- [ ] Add tools and configuration options for more advanced users ([#33](https://github.com/WordPress/ai/issues/33))
 
 ### Features
 
 - [ ] Add Content Summarization, either inline or through a sidebar panel ([#12](https://github.com/WordPress/ai/issues/12))
 - [ ] Add Contextual Tagging (also known as Content Classification)
-- [ ] Introduce an optional "AI Playground" section (enabled via settings) with:
-  - [ ] Prompt testing interface
-  - [ ] Model configuration settings like temperature and max tokens
-  - [ ] Response inspection and debugging tools
+- [ ] Introduce an optional "AI Playground" section (enabled via settings) with: ([#32](https://github.com/WordPress/ai/issues/32))
+  - [ ] Prompt testing interface ([#32](https://github.com/WordPress/ai/issues/32))
+  - [ ] Model configuration settings like temperature and max tokens ([#32](https://github.com/WordPress/ai/issues/32))
+  - [ ] Response inspection and debugging tools ([#32](https://github.com/WordPress/ai/issues/32))
 
 ### Developer Experience
 
-- [ ] Add filters and documentation for customizing provider setup
-- [ ] Documentation on how to override default behaviors with custom handlers
+- [ ] Add filters and documentation for customizing provider setup ([#34](https://github.com/WordPress/ai/issues/34))
+- [ ] Documentation on how to override default behaviors with custom handlers ([#34](https://github.com/WordPress/ai/issues/34))0.3
 
 ## Milestone 1.0.0 - WordPress 6.9 Stable Release Candidate
 
