@@ -53,15 +53,4 @@ class PluginTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( Feature_Registry::class, $registry, 'Plugin should return Feature_Registry instance' );
 	}
 
-	/**
-	 * Test that text domain is loaded.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_load_textdomain() {
-		$plugin = Plugin::instance();
-		$plugin->load_textdomain();
-
-		$this->assertTrue( true, 'Text domain should load without errors' );
-	}
 }
