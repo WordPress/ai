@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<phpunit
+	bootstrap="tests/bootstrap.php"
+	backupGlobals="false"
+	colors="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	processIsolation="false"
+	stopOnFailure="false"
+>
+	<testsuites>
+		<testsuite name="AI Plugin Test Suite">
+			<directory suffix="Test.php">./tests/phpunit/</directory>
+		</testsuite>
+	</testsuites>
+	<coverage>
+		<include>
+			<directory suffix=".php">./includes</directory>
+			<directory suffix=".php">./features</directory>
+		</include>
+		<exclude>
+			<directory suffix=".php">./vendor</directory>
+		</exclude>
+	</coverage>
+	<php>
+		<const name="WP_TESTS_PHPUNIT_POLYFILLS_PATH" value="./vendor/yoast/phpunit-polyfills"/>
+	</php>
+</phpunit>

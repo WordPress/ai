@@ -1,0 +1,30 @@
+# Composer
+/vendor/
+composer.lock
+
+# Node
+node_modules/
+package-lock.json
+
+# WordPress
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# Build
+/build/
+/dist/
+
+# Testing
+/tests/wordpress/
+/tmp/
+
+# Logs
+*.log
