@@ -71,7 +71,7 @@ ai/
 │   ├── Interfaces/             # Feature contracts
 │   └── Abstracts/              # Base implementations
 ├── features/                   # Feature implementations
-│   └── example-feature/        # Each feature in own directory
+│   └── Example_Feature/        # Each feature in own directory
 ├── admin/                      # Admin interface (Issue #25)
 ├── assets/                     # CSS, JS, images
 ├── languages/                  # Translation files
@@ -443,7 +443,7 @@ All contributions go through code review:
 ### Documentation
 
 - [Implementation Plan](IMPLEMENTATION_PLAN.md) - Detailed architecture documentation
-- [Example Feature](features/example-feature/README.md) - Reference implementation
+- [Example Feature](features/Example_Feature/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [WordPress AI Team](https://make.wordpress.org/ai/)
 

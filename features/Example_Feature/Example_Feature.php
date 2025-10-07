@@ -1,0 +1,136 @@
+<?php
+/**
+ * Example feature implementation.
+ *
+ * @package WordPress\AI\Features\Example_Feature
+ */
+
+namespace WordPress\AI\Features\Example_Feature;
+
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Interfaces\Conditional_Feature;
+
+/**
+ * Reference feature demonstrating hooks, REST endpoints, and requirement checks.
+ *
+ * @since 0.1.0
+ */
+class Example_Feature extends Abstract_Feature implements Conditional_Feature {
+	/**
+	 * Sets up metadata for the example feature.
+	 *
+	 * @since 0.1.0
+	 */
+	public function __construct() {
+		$this->id          = 'example-feature';
+		$this->label       = __( 'Example Feature', 'ai' );
+		$this->description = __( 'Demonstrates the AI feature system with example hooks and functionality.', 'ai' );
+		$this->enabled     = true;
+	}
+
+	/**
+	 * Checks if feature requirements are met.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return bool
+	 */
+	public function meets_requirements(): bool {
+		return true;
+	}
+
+	/**
+	 * Gets requirements message.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return string
+	 */
+	public function get_requirements_message(): string {
+		return __( 'This feature has no special requirements.', 'ai' );
+	}
+
+	/**
+	 * Registers the feature hooks.
+	 *
+	 * @since 0.1.0
+	 */
+	public function register(): void {
+		$this->add_action( 'wp_footer', array( $this, 'add_footer_content' ), 20 );
+		$this->add_filter( 'document_title_parts', array( $this, 'modify_title' ), 10, 1 );
+		$this->add_action( 'rest_api_init', array( $this, 'register_rest_route' ) );
+	}
+
+	/**
+	 * Adds example content to the footer for logged-in users.
+	 *
+	 * @since 0.1.0
+	 */
+	public function add_footer_content(): void {
+		if ( ! is_user_logged_in() ) {
+			return;
+		}
+
+		echo '<!-- Example Feature: AI Plugin Active -->';
+	}
+
+	/**
+	 * Modifies the document title parts when debugging.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param array $title Title parts.
+	 * @return array
+	 */
+	public function modify_title( array $title ): array {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			$title['site'] = $title['site'] . ' [AI]';
+		}
+		return $title;
+	}
+
+	/**
+	 * Registers the example REST API route.
+	 *
+	 * @since 0.1.0
+	 */
+	public function register_rest_route(): void {
+		register_rest_route(
+			'ai/v1',
+			'/example',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'rest_endpoint_callback' ),
+				'permission_callback' => array( $this, 'rest_permission_callback' ),
+			)
+		);
+	}
+
+	/**
+	 * Callback for the example REST endpoint.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array
+	 */
+	public function rest_endpoint_callback(): array {
+		return array(
+			'feature_id'  => $this->get_id(),
+			'label'       => $this->get_label(),
+			'description' => $this->get_description(),
+			'enabled'     => $this->is_enabled(),
+			'message'     => __( 'Example feature is active!', 'ai' ),
+		);
+	}
+
+	/**
+	 * Permission check for the REST endpoint.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return bool
+	 */
+	public function rest_permission_callback(): bool {
+		return current_user_can( 'manage_options' );
+	}
+}

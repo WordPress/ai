@@ -167,7 +167,7 @@ final class Feature_Registry {
 	 */
 	private function register_default_features(): void {
 		// Register example feature (demonstrates the system).
-		$class_name = 'WordPress\AI\Features\Example_Feature';
+		$class_name = 'WordPress\AI\Features\Example_Feature\Example_Feature';
 
 		if ( class_exists( $class_name ) ) {
 			$this->register_feature( new $class_name() );
