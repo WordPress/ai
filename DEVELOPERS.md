@@ -442,7 +442,6 @@ All contributions go through code review:
 
 ### Documentation
 
-- [Implementation Plan](IMPLEMENTATION_PLAN.md) - Detailed architecture documentation
 - [Example Feature](features/Example_Feature/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [WordPress AI Team](https://make.wordpress.org/ai/)
