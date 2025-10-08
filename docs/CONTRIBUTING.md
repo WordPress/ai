@@ -10,6 +10,7 @@ Welcome to the WordPress AI plugin development guide. This document provides eve
 - [Plugin API](#plugin-api)
 - [Development Workflow](#development-workflow)
 - [Testing](#testing)
+- [Testing Strategy documentation](./TESTING.md)
 - [Coding Standards](#coding-standards)
 - [Contributing](#contributing)
 
@@ -279,11 +280,11 @@ Follow WordPress coding standards and ensure proper documentation.
 
 ### 3. Write Tests
 
-Create unit tests in `tests/phpunit/features/`:
+Create integration tests in `tests/Integration/Features/`:
 
 ```php
 <?php
-namespace WordPress\AI\Tests\Features;
+namespace WordPress\AI\Tests\Integration\Features\My_Feature;
 
 use WordPress\AI\Features\My_Feature\My_Feature;
 use WP_UnitTestCase;
@@ -301,6 +302,9 @@ class My_Feature_Test extends WP_UnitTestCase {
 ```bash
 # Check coding standards
 composer lint
+
+# Run static analysis
+composer stan
 
 # Auto-fix coding standards
 composer format
@@ -324,51 +328,9 @@ Push your branch and create a pull request on GitHub.
 
 ## Testing
 
-### Running Unit Tests
+We follow a comprehensive testing strategy to ensure the quality and reliability of the AI Plugin. Our approach is based on the \"pyramid of testing\" model, incorporating Unit, Integration, and End-to-End tests.
 
-```bash
-composer test
-```
-
-### Setting Up WordPress Test Library
-
-The plugin uses the WordPress PHPUnit test library. Set it up:
-
-```bash
-# Install WordPress tests
-bash bin/install-wp-tests.sh wordpress_test root password localhost latest
-
-# Run tests
-composer test
-```
-
-### Writing Tests
-
-Tests should cover:
-- Feature registration
-- Hook registration
-- Core functionality
-- Edge cases and error handling
-
-Example test structure:
-
-```php
-class My_Feature_Test extends WP_UnitTestCase {
-	public function setUp(): void {
-		parent::setUp();
-		// Setup code
-	}
-
-	public function test_feature_initializes() {
-		// Test code
-		$this->assertTrue( true );
-	}
-
-	public function tearDown(): void {
-		// Cleanup code
-		parent::tearDown();
-	}
-}
+For a detailed overview of our testing philosophy, categories, execution strategy, and coverage targets, please refer to the [Testing Strategy documentation](docs/TESTING.md).
 ```
 
 ---

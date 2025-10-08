@@ -5,7 +5,7 @@
  * @package WordPress\AI\Tests\Includes
  */
 
-namespace WordPress\AI\Tests\Includes;
+namespace WordPress\AI\Tests\Integration\Includes;
 
 use WordPress\AI\Feature_Registry;
 use WordPress\AI\Abstracts\Abstract_Feature;

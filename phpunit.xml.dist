@@ -10,8 +10,11 @@
 	stopOnFailure="false"
 >
 	<testsuites>
-		<testsuite name="AI Plugin Test Suite">
-			<directory suffix="Test.php">./tests/phpunit/includes</directory>
+		<testsuite name="AI Plugin Unit Tests">
+			<directory suffix="Test.php">./tests/Unit/Includes</directory>
+		</testsuite>
+		<testsuite name="AI Plugin Integration Tests">
+			<directory suffix="Test.php">./tests/Integration</directory>
 		</testsuite>
 	</testsuites>
 	<coverage>
