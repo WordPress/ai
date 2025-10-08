@@ -8,6 +8,24 @@ Reference implementation showing how to build features for the AI plugin.
 - Modifies the document title while `WP_DEBUG` is true
 - Registers a REST endpoint at `/wp-json/ai/v1/example`
 
+## REST Endpoint
+The feature registers a REST endpoint to demonstrate how to expose feature data.
+
+**Endpoint:** `GET /wp-json/ai/v1/example`
+
+**Permission:** `manage_options`
+
+**Example Response:**
+```json
+{
+  "feature_id": "example-feature",
+  "label": "Example Feature",
+  "description": "Demonstrates the AI feature system with example hooks and functionality.",
+  "enabled": true,
+  "message": "Example feature is active!"
+}
+```
+
 ## Disable The Feature
 Filter the `ai_feature_enabled` value:
 
@@ -28,4 +46,4 @@ add_filter(
 3. Register hooks in `register()`.
 4. Optionally implement `Conditional_Feature` for requirement checks.
 
-See `Example_Feature.php` for a complete reference.
+See `Example_Feature.php` for a complete reference. For a more detailed guide, see the [Developer Guide](../../CONTRIBUTING.md).

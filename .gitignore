@@ -25,6 +25,9 @@ wp-content/cache/
 # Testing
 /tests/wordpress/
 /tmp/
+/.phpunit.result.cache
+IMPLEMENTATION_PLAN.md
+AGENTS.md
 
 # Logs
 *.log

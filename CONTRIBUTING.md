@@ -7,6 +7,7 @@ Welcome to the WordPress AI plugin development guide. This document provides eve
 - [Getting Started](#getting-started)
 - [Architecture Overview](#architecture-overview)
 - [Creating a New Feature](#creating-a-new-feature)
+- [Plugin API](#plugin-api)
 - [Development Workflow](#development-workflow)
 - [Testing](#testing)
 - [Coding Standards](#coding-standards)
@@ -228,6 +229,42 @@ class My_Feature extends Abstract_Feature implements Conditional_Feature {
 
 ---
 
+## Plugin API
+
+The plugin provides a set of hooks and filters to allow third-party developers to extend its functionality.
+
+### Registering a Custom Feature
+
+Developers can register their own features using the `ai_register_features` action. This is the primary way to add new functionality to the plugin.
+
+```php
+add_action( 'ai_register_features', function( $registry ) {
+	$registry->register_feature( new My_Custom_Feature() );
+} );
+```
+
+### Disabling a Feature
+
+Features can be disabled using the `ai_feature_enabled` filter. This is useful for site administrators who want to turn off specific features.
+
+```php
+add_filter( 'ai_feature_enabled', function( $enabled, $feature_id ) {
+	if ( 'example-feature' === $feature_id ) {
+		return false;
+	}
+	return $enabled;
+}, 10, 2 );
+```
+
+### Other Hooks and Filters
+
+The plugin also includes the following hooks:
+
+- `ai_plugin_initialized`: Fires after the main plugin class has been initialized.
+- `ai_features_initialized`: Fires after all registered features have been initialized.
+
+---
+
 ## Development Workflow
 
 ### 1. Create a Feature Branch
@@ -445,29 +482,6 @@ All contributions go through code review:
 - [Example Feature](features/Example_Feature/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [WordPress AI Team](https://make.wordpress.org/ai/)
-
-### Third-Party Feature Registration
-
-Developers can register custom features via the `ai_register_features` action:
-
-```php
-add_action( 'ai_register_features', function( $registry ) {
-	$registry->register_feature( new My_Custom_Feature() );
-} );
-```
-
-### Disabling Features
-
-Features can be disabled via the `ai_feature_enabled` filter:
-
-```php
-add_filter( 'ai_feature_enabled', function( $enabled, $feature_id ) {
-	if ( 'example-feature' === $feature_id ) {
-		return false;
-	}
-	return $enabled;
-}, 10, 2 );
-```
 
 ---
 

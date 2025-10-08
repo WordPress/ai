@@ -2,10 +2,10 @@
 /**
  * Tests for the Feature_Registry class.
  *
- * @package WordPress\AI\Tests
+ * @package WordPress\AI\Tests\Includes
  */
 
-namespace WordPress\AI\Tests;
+namespace WordPress\AI\Tests\Includes;
 
 use WordPress\AI\Feature_Registry;
 use WordPress\AI\Abstracts\Abstract_Feature;
@@ -119,6 +119,19 @@ class Feature_Registry_Test extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		$this->registry = Feature_Registry::instance();
+	}
+
+	/**
+	 * Tear down test case.
+	 *
+	 * @since 0.1.0
+	 */
+	public function tearDown(): void {
+		parent::tearDown();
+		$reflection = new \ReflectionClass( $this->registry );
+		$instance = $reflection->getProperty( 'instance' );
+		$instance->setAccessible( true );
+		$instance->setValue( null, null );
 	}
 
 	/**

@@ -11,7 +11,7 @@
 >
 	<testsuites>
 		<testsuite name="AI Plugin Test Suite">
-			<directory suffix="Test.php">./tests/phpunit/</directory>
+			<directory suffix="Test.php">./tests/phpunit/includes</directory>
 		</testsuite>
 	</testsuites>
 	<coverage>
