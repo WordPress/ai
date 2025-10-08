@@ -24,12 +24,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AI_VERSION', '0.1.0' );
-define( 'AI_PLUGIN_FILE', __FILE__ );
-define( 'AI_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'AI_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'AI_MIN_PHP_VERSION', '7.4' );
-define( 'AI_MIN_WP_VERSION', '6.7' );
+if ( ! defined( 'AI_VERSION' ) ) {
+	define( 'AI_VERSION', '0.1.0' );
+}
+if ( ! defined( 'AI_PLUGIN_FILE' ) ) {
+	define( 'AI_PLUGIN_FILE', __FILE__ );
+}
+if ( ! defined( 'AI_PLUGIN_DIR' ) ) {
+	define( 'AI_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+}
+if ( ! defined( 'AI_PLUGIN_URL' ) ) {
+	define( 'AI_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+}
+if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
+	define( 'AI_MIN_PHP_VERSION', '7.4' );
+}
+if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
+	define( 'AI_MIN_WP_VERSION', '6.7' );
+}
 
 /**
  * Displays an admin notice for version requirement failures.

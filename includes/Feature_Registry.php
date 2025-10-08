@@ -9,6 +9,7 @@ namespace WordPress\AI;
 
 use WordPress\AI\Interfaces\Feature;
 use WordPress\AI\Interfaces\Conditional_Feature;
+use WordPress\AI\Feature_Collection;
 
 /**
  * Central registry for managing feature registration and initialization.
@@ -20,12 +21,12 @@ use WordPress\AI\Interfaces\Conditional_Feature;
  */
 final class Feature_Registry {
 	/**
-	 * Registered features.
+	 * Feature collection instance.
 	 *
 	 * @since 0.1.0
-	 * @var Feature[]
+	 * @var Feature_Collection
 	 */
-	private $features = array();
+	private $feature_collection;
 
 	/**
 	 * Whether features have been initialized.
@@ -63,6 +64,7 @@ final class Feature_Registry {
 	 * @since 0.1.0
 	 */
 	private function __construct() {
+		$this->feature_collection = new Feature_Collection();
 		$this->register_default_features();
 	}
 
@@ -75,14 +77,7 @@ final class Feature_Registry {
 	 * @return bool True if registered successfully, false if already exists.
 	 */
 	public function register_feature( Feature $feature ): bool {
-		$id = $feature->get_id();
-
-		if ( isset( $this->features[ $id ] ) ) {
-			return false;
-		}
-
-		$this->features[ $id ] = $feature;
-		return true;
+		return $this->feature_collection->register_feature( $feature );
 	}
 
 	/**
@@ -94,7 +89,7 @@ final class Feature_Registry {
 	 * @return Feature|null Feature instance or null if not found.
 	 */
 	public function get_feature( string $id ): ?Feature {
-		return $this->features[ $id ] ?? null;
+		return $this->feature_collection->get_feature( $id );
 	}
 
 	/**
@@ -105,7 +100,7 @@ final class Feature_Registry {
 	 * @return Feature[] Array of feature instances keyed by feature ID.
 	 */
 	public function get_all_features(): array {
-		return $this->features;
+		return $this->feature_collection->get_all_features();
 	}
 
 	/**
@@ -121,7 +116,7 @@ final class Feature_Registry {
 			return;
 		}
 
-		foreach ( $this->features as $feature ) {
+		foreach ( $this->feature_collection->get_all_features() as $feature ) {
 			// Skip if feature is disabled.
 			if ( ! $feature->is_enabled() ) {
 				continue;
