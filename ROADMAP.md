@@ -27,7 +27,7 @@ This roadmap outlines the planned development of the AI Experiments plugin from 
 ### Goals
 
 - [ ] Deliver a set of widely expected, foundational AI features ([#35](https://github.com/WordPress/ai/issues/35))
-- [ ] Validate integration patterns across multiple AI Abilities ([#36](https://github.com/WordPress/ai/issues/36))
+- [ ] Validate integration patterns across multiple AI Abilities ([#36](https://github.com/WordPress/ai/issues/36), [#40](https://github.com/WordPress/ai/issues/40))
 - [ ] Expand usage of MCP and the PHP/WP AI Client ([#37](https://github.com/WordPress/ai/issues/37))
 - [ ] Refine consistency in UI elements, loading states, and language across features ([#35](https://github.com/WordPress/ai/issues/35))
 
