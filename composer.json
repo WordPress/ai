@@ -12,7 +12,8 @@
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
     "phpcompatibility/php-compatibility": "dev-develop",
     "wp-phpunit/wp-phpunit": "^6.3",
-    "yoast/phpunit-polyfills": "^4.0.0"
+    "yoast/phpunit-polyfills": "^4.0.0",
+    "phpstan/phpstan": "^2.1"
   },
   "autoload": {
     "psr-4": {
@@ -22,7 +23,7 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "WordPress\\AI\\Tests\\": "tests/phpunit/"
+      "WordPress\\AI\\Tests\\": "tests/"
     }
   },
   "config": {
@@ -36,11 +37,13 @@
   "scripts": {
     "format": "phpcbf --standard=phpcs.xml.dist",
     "lint": "phpcs --standard=phpcs.xml.dist",
-    "test": "phpunit"
+    "test": "phpunit",
+    "stan": "PHPSTAN_DISABLE_PARALLEL=1 phpstan analyse --configuration=phpstan.neon.dist"
   },
   "scripts-descriptions": {
     "format": "Automatically fix coding standards issues",
     "lint": "Check coding standards compliance",
-    "test": "Run PHPUnit tests"
+    "test": "Run PHPUnit tests",
+    "stan": "Run static analysis with PHPStan"
   }
 }
