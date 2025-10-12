@@ -131,9 +131,13 @@ if ( file_exists( AI_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
  * @since 0.1.0
  */
 function ai_init() {
-	// Initialize the main plugin instance.
-	$plugin = Plugin::instance();
-	$plugin->init();
+	// Get the feature registry and loader.
+	$registry = wp_ai_feature_registry();
+	$loader   = new Feature_Loader( $registry );
+
+	// Register and initialize features.
+	$loader->register_default_features();
+	$loader->initialize_features();
 }
 
 // Hook into plugins_loaded to initialize the plugin.
