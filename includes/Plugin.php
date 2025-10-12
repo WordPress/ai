@@ -52,7 +52,7 @@ final class Plugin {
 	 * @since 0.1.0
 	 */
 	private function __construct() {
-		$this->feature_registry = Feature_Registry::instance();
+		$this->feature_registry = wp_ai_feature_registry();
 	}
 
 	/**

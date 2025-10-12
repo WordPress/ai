@@ -84,12 +84,12 @@ class Feature_Collection {
 /**
  * Central registry for managing feature registration and initialization.
  *
- * Provides a singleton instance that manages all registered features,
- * handles initialization, and allows third-party feature registration.
+ * Manages all registered features, handles initialization, and allows
+ * third-party feature registration.
  *
  * @since 0.1.0
  */
-final class Feature_Registry {
+class Feature_Registry {
 	/**
 	 * Feature collection instance.
 	 *
@@ -107,33 +107,11 @@ final class Feature_Registry {
 	private $initialized = false;
 
 	/**
-	 * Singleton instance.
-	 *
-	 * @since 0.1.0
-	 * @var Feature_Registry|null
-	 */
-	private static $instance = null;
-
-	/**
-	 * Gets the singleton instance.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return Feature_Registry The singleton instance.
-	 */
-	public static function instance(): Feature_Registry {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	/**
-	 * Private constructor to enforce singleton pattern.
+	 * Constructor.
 	 *
 	 * @since 0.1.0
 	 */
-	private function __construct() {
+	public function __construct() {
 		$this->feature_collection = new Feature_Collection();
 		$this->register_default_features();
 	}
@@ -256,4 +234,21 @@ final class Feature_Registry {
 		 */
 		do_action( 'ai_register_features', $this );
 	}
+}
+
+/**
+ * Gets the global Feature_Registry instance.
+ *
+ * @since 0.1.0
+ *
+ * @return Feature_Registry The Feature_Registry instance.
+ */
+function wp_ai_feature_registry(): Feature_Registry {
+	static $instance = null;
+
+	if ( null === $instance ) {
+		$instance = new Feature_Registry();
+	}
+
+	return $instance;
 }
