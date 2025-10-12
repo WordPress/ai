@@ -118,33 +118,61 @@ function ai_check_wp_version() {
 	return true;
 }
 
-// Check version requirements before proceeding.
-if ( ! ai_check_php_version() || ! ai_check_wp_version() ) {
-	return;
-}
-
-// Load Composer autoloader.
-if ( file_exists( AI_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
-	require_once AI_PLUGIN_DIR . 'vendor/autoload.php';
-}
-
-// Load the wp_ai_feature_registry() function.
-require_once AI_PLUGIN_DIR . 'includes/Feature_Loader.php';
-
 /**
- * Initializes the plugin.
+ * Loads the plugin after checking requirements.
  *
  * @since 0.1.0
  */
-function ai_init() {
-	// Get the feature registry and loader.
+function ai_load() {
+	static $loaded = false;
+
+	// Check version requirements.
+	if ( ! ai_check_php_version() || ! ai_check_wp_version() ) {
+		return;
+	}
+
+	// Load Composer autoloader.
+	if ( ! file_exists( AI_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
+		add_action( 'admin_notices', __NAMESPACE__ . '\ai_display_composer_notice' );
+		return;
+	}
+	require_once AI_PLUGIN_DIR . 'vendor/autoload.php';
+
+	// Prevent loading twice.
+	if ( $loaded ) {
+		return;
+	}
+	$loaded = true;
+
+	// Load global functions.
+	require_once AI_PLUGIN_DIR . 'includes/Functions.php';
+
+	// Initialize plugin.
 	$registry = wp_ai_feature_registry();
 	$loader   = new Feature_Loader( $registry );
-
-	// Register and initialize features.
 	$loader->register_default_features();
 	$loader->initialize_features();
 }
 
-// Hook into plugins_loaded to initialize the plugin.
-add_action( 'plugins_loaded', __NAMESPACE__ . '\ai_init' );
+/**
+ * Displays admin notice about missing Composer autoload files.
+ *
+ * @since 0.1.0
+ */
+function ai_display_composer_notice() {
+	?>
+	<div class="notice notice-error">
+		<p>
+			<?php
+			printf(
+				/* translators: %s: composer install command */
+				esc_html__( 'Your installation of the AI plugin is incomplete. Please run %s.', 'ai' ),
+				'<code>composer install</code>'
+			);
+			?>
+		</p>
+	</div>
+	<?php
+}
+
+add_action( 'plugins_loaded', __NAMESPACE__ . '\ai_load' );
