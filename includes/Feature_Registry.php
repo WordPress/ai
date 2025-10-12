@@ -7,8 +7,7 @@
 
 namespace WordPress\AI;
 
-use WordPress\AI\Interfaces\Feature;
-use WordPress\AI\Interfaces\Conditional_Feature;
+use WordPress\AI\Contracts\Feature;
 
 /**
  * Manages a collection of features.

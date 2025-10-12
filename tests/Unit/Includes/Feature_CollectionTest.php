@@ -9,7 +9,7 @@ namespace WordPress\AI\Tests\Unit\Includes;
 
 use PHPUnit\Framework\TestCase;
 use WordPress\AI\Feature_Collection;
-use WordPress\AI\Interfaces\Feature;
+use WordPress\AI\Contracts\Feature;
 
 /**
  * Mock Feature class for testing Feature_Collection.

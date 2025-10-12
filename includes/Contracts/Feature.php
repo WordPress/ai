@@ -2,10 +2,10 @@
 /**
  * Feature interface.
  *
- * @package WordPress\AI\Interfaces
+ * @package WordPress\AI\Contracts
  */
 
-namespace WordPress\AI\Interfaces;
+namespace WordPress\AI\Contracts;
 
 /**
  * Interface for all features.

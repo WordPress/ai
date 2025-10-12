@@ -7,8 +7,7 @@
 
 namespace WordPress\AI;
 
-use WordPress\AI\Interfaces\Feature;
-use WordPress\AI\Interfaces\Conditional_Feature;
+use WordPress\AI\Contracts\Feature;
 
 /**
  * Orchestrates feature initialization and registration.
@@ -85,7 +84,7 @@ class Feature_Loader {
 	 * Initializes all enabled features.
 	 *
 	 * Loops through all registered features and calls their register() method
-	 * if they are enabled and meet requirements (for conditional features).
+	 * if they are enabled.
 	 *
 	 * @since 0.1.0
 	 */
@@ -97,11 +96,6 @@ class Feature_Loader {
 		foreach ( $this->registry->get_all_features() as $feature ) {
 			// Skip if feature is disabled.
 			if ( ! $feature->is_enabled() ) {
-				continue;
-			}
-
-			// Check conditional requirements.
-			if ( $feature instanceof Conditional_Feature && ! $feature->meets_requirements() ) {
 				continue;
 			}
 

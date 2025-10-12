@@ -8,14 +8,13 @@
 namespace WordPress\AI\Features\Example_Feature;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Interfaces\Conditional_Feature;
 
 /**
- * Reference feature demonstrating hooks, REST endpoints, and requirement checks.
+ * Reference feature demonstrating hooks and REST endpoints.
  *
  * @since 0.1.0
  */
-class Example_Feature extends Abstract_Feature implements Conditional_Feature {
+class Example_Feature extends Abstract_Feature {
 	/**
 	 * Sets up metadata for the example feature.
 	 *
@@ -26,28 +25,6 @@ class Example_Feature extends Abstract_Feature implements Conditional_Feature {
 		$this->label       = __( 'Example Feature', 'ai' );
 		$this->description = __( 'Demonstrates the AI feature system with example hooks and functionality.', 'ai' );
 		$this->enabled     = true;
-	}
-
-	/**
-	 * Checks if feature requirements are met.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return bool
-	 */
-	public function meets_requirements(): bool {
-		return true;
-	}
-
-	/**
-	 * Gets requirements message.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string
-	 */
-	public function get_requirements_message(): string {
-		return __( 'This feature has no special requirements.', 'ai' );
 	}
 
 	/**

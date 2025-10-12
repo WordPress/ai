@@ -10,7 +10,6 @@ namespace WordPress\AI\Tests\Integration\Includes;
 use WordPress\AI\Feature_Registry;
 use WordPress\AI\Feature_Loader;
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Interfaces\Conditional_Feature;
 use WP_UnitTestCase;
 
 /**
@@ -28,65 +27,6 @@ class Test_Feature extends Abstract_Feature {
 		$this->id          = 'test-feature';
 		$this->label       = 'Test Feature';
 		$this->description = 'A test feature for unit testing';
-	}
-
-	/**
-	 * Registers the feature.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
-}
-
-/**
- * Conditional test feature for registry tests.
- *
- * @since 0.1.0
- */
-class Test_Conditional_Feature extends Abstract_Feature implements Conditional_Feature {
-	/**
-	 * Whether requirements are met.
-	 *
-	 * @var bool
-	 */
-	private $requirements_met = true;
-
-	/**
-	 * Constructor.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param bool $requirements_met Whether requirements should be met.
-	 */
-	public function __construct( $requirements_met = true ) {
-		$this->id               = 'test-conditional-feature';
-		$this->label            = 'Test Conditional Feature';
-		$this->description      = 'A conditional test feature';
-		$this->requirements_met = $requirements_met;
-	}
-
-	/**
-	 * Checks if requirements are met.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return bool True if requirements met.
-	 */
-	public function meets_requirements(): bool {
-		return $this->requirements_met;
-	}
-
-	/**
-	 * Gets requirements message.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string Requirements message.
-	 */
-	public function get_requirements_message(): string {
-		return 'Test requirements not met';
 	}
 
 	/**
@@ -225,29 +165,5 @@ class Feature_Registry_Test extends WP_UnitTestCase {
 		$loader->initialize_features();
 
 		$this->assertFalse( $feature->is_enabled(), 'Feature should be disabled' );
-	}
-
-	/**
-	 * Test that conditional features with unmet requirements are not initialized.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_conditional_features_with_unmet_requirements_not_initialized() {
-		$feature = new Test_Conditional_Feature( false );
-		$this->registry->register_feature( $feature );
-
-		$this->assertFalse( $feature->meets_requirements(), 'Feature requirements should not be met' );
-	}
-
-	/**
-	 * Test that conditional features with met requirements are initialized.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_conditional_features_with_met_requirements_initialized() {
-		$feature = new Test_Conditional_Feature( true );
-		$this->registry->register_feature( $feature );
-
-		$this->assertTrue( $feature->meets_requirements(), 'Feature requirements should be met' );
 	}
 }

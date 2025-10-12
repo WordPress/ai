@@ -7,7 +7,7 @@
 
 namespace WordPress\AI\Abstracts;
 
-use WordPress\AI\Interfaces\Feature;
+use WordPress\AI\Contracts\Feature;
 
 /**
  * Base implementation for features.
