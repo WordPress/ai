@@ -51,6 +51,9 @@ if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
  * @param string $message The error message to display.
  */
 function ai_version_notice( $message ) {
+	if ( ! is_admin() ) {
+		return;
+	}
 	?>
 	<div class="notice notice-error">
 		<p><?php echo esc_html( $message ); ?></p>

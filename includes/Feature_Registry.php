@@ -31,12 +31,17 @@ class Feature_Collection {
 	 * @since 0.1.0
 	 *
 	 * @param Feature $feature Feature instance to register.
-	 * @return bool True if registered successfully, false if already exists.
+	 * @return bool True if registered successfully, false if already exists or invalid.
 	 */
 	public function register_feature( Feature $feature ): bool {
 		$id = $feature->get_id();
 
-		if ( isset( $this->features[ $id ] ) ) {
+		// Validate feature ID is not empty.
+		if ( empty( $id ) ) {
+			return false;
+		}
+
+		if ( $this->has_feature( $id ) ) {
 			return false;
 		}
 
