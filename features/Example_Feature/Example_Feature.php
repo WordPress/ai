@@ -56,9 +56,9 @@ class Example_Feature extends Abstract_Feature implements Conditional_Feature {
 	 * @since 0.1.0
 	 */
 	public function register(): void {
-		$this->add_action( 'wp_footer', array( $this, 'add_footer_content' ), 20 );
-		$this->add_filter( 'document_title_parts', array( $this, 'modify_title' ), 10, 1 );
-		$this->add_action( 'rest_api_init', array( $this, 'register_rest_route' ) );
+		add_action( 'wp_footer', array( $this, 'add_footer_content' ), 20 );
+		add_filter( 'document_title_parts', array( $this, 'modify_title' ), 10, 1 );
+		add_action( 'rest_api_init', array( $this, 'register_rest_route' ) );
 	}
 
 	/**
