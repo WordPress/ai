@@ -22,6 +22,8 @@
 	<!-- Rules: WordPress Coding Standards -->
 	<rule ref="WordPress-Core">
 		<exclude name="WordPress.Files.FileName"/>
+		<exclude name="Generic.Files.OneObjectStructurePerFile"/>
+		<exclude name="Universal.Files.SeparateFunctionsFromOO"/>
 	</rule>
 	<rule ref="WordPress-Docs"/>
 	<rule ref="WordPress-Extra">
