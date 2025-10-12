@@ -128,6 +128,9 @@ if ( file_exists( AI_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 	require_once AI_PLUGIN_DIR . 'vendor/autoload.php';
 }
 
+// Load the wp_ai_feature_registry() function.
+require_once AI_PLUGIN_DIR . 'includes/Feature_Loader.php';
+
 /**
  * Initializes the plugin.
  *
