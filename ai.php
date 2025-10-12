@@ -144,6 +144,9 @@ function ai_load() {
 	}
 	$loaded = true;
 
+	// Load Feature_Loader.
+	require_once AI_PLUGIN_DIR . 'includes/Feature_Loader.php';
+
 	// Initialize plugin.
 	$registry = wp_ai_feature_registry();
 	$loader   = new Feature_Loader( $registry );
