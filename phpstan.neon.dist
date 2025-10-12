@@ -7,8 +7,4 @@ parameters:
 		maximumNumberOfProcesses: 1
 	bootstrapFiles:
 		- tests/phpstan-bootstrap.php
-	ignoreErrors:
-		-
-			message: '#^Call to undefined function [A-Za-z0-9_\\\\]+\(.*\)$#'
-			path: .*
 	reportUnmatchedIgnoredErrors: false
