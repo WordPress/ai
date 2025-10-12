@@ -118,32 +118,7 @@ class Feature_Registry_Test extends WP_UnitTestCase {
 	 */
 	public function setUp(): void {
 		parent::setUp();
-		$this->registry = Feature_Registry::instance();
-	}
-
-	/**
-	 * Tear down test case.
-	 *
-	 * @since 0.1.0
-	 */
-	public function tearDown(): void {
-		parent::tearDown();
-		$reflection = new \ReflectionClass( $this->registry );
-		$instance = $reflection->getProperty( 'instance' );
-		$instance->setAccessible( true );
-		$instance->setValue( null, null );
-	}
-
-	/**
-	 * Test that registry returns singleton.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_instance_returns_singleton() {
-		$instance1 = Feature_Registry::instance();
-		$instance2 = Feature_Registry::instance();
-
-		$this->assertSame( $instance1, $instance2, 'Feature_Registry should return the same singleton instance' );
+		$this->registry = new Feature_Registry();
 	}
 
 	/**
