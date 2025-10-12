@@ -82,10 +82,10 @@ class Feature_Collection {
 }
 
 /**
- * Central registry for managing feature registration and initialization.
+ * Central registry for managing feature storage and retrieval.
  *
- * Manages all registered features, handles initialization, and allows
- * third-party feature registration.
+ * Provides a simple storage mechanism for registered features.
+ * Feature initialization is handled by the Feature_Loader class.
  *
  * @since 0.1.0
  */
@@ -99,21 +99,12 @@ class Feature_Registry {
 	private $feature_collection;
 
 	/**
-	 * Whether features have been initialized.
-	 *
-	 * @since 0.1.0
-	 * @var bool
-	 */
-	private $initialized = false;
-
-	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
 	 */
 	public function __construct() {
 		$this->feature_collection = new Feature_Collection();
-		$this->register_default_features();
 	}
 
 	/**
@@ -149,90 +140,6 @@ class Feature_Registry {
 	 */
 	public function get_all_features(): array {
 		return $this->feature_collection->get_all_features();
-	}
-
-	/**
-	 * Initializes all enabled features.
-	 *
-	 * Loops through all registered features and calls their register() method
-	 * if they are enabled and meet requirements (for conditional features).
-	 *
-	 * @since 0.1.0
-	 */
-	public function initialize_features(): void {
-		if ( $this->initialized ) {
-			return;
-		}
-
-		foreach ( $this->feature_collection->get_all_features() as $feature ) {
-			// Skip if feature is disabled.
-			if ( ! $feature->is_enabled() ) {
-				continue;
-			}
-
-			// Check conditional requirements.
-			if ( $feature instanceof Conditional_Feature && ! $feature->meets_requirements() ) {
-				continue;
-			}
-
-			// Register the feature.
-			$feature->register();
-		}
-
-		$this->initialized = true;
-
-		/**
-		 * Fires after all features have been initialized.
-		 *
-		 * @since 0.1.0
-		 */
-		do_action( 'ai_features_initialized' );
-	}
-
-	/**
-	 * Checks if features have been initialized.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return bool True if initialized, false otherwise.
-	 */
-	public function is_initialized(): bool {
-		return $this->initialized;
-	}
-
-	/**
-	 * Registers default features.
-	 *
-	 * This is where built-in features are registered. Third-party features
-	 * should use the 'ai_register_features' action hook.
-	 *
-	 * @since 0.1.0
-	 */
-	private function register_default_features(): void {
-		// Register example feature (demonstrates the system).
-		$class_name = 'WordPress\AI\Features\Example_Feature\Example_Feature';
-
-		if ( class_exists( $class_name ) ) {
-			$this->register_feature( new $class_name() );
-		}
-
-		/**
-		 * Allows registration of custom features.
-		 *
-		 * Third-party developers can use this action to register their own features.
-		 *
-		 * Example:
-		 * ```php
-		 * add_action( 'ai_register_features', function( $registry ) {
-		 *     $registry->register_feature( new My_Custom_Feature() );
-		 * } );
-		 * ```
-		 *
-		 * @since 0.1.0
-		 *
-		 * @param Feature_Registry $registry The feature registry instance.
-		 */
-		do_action( 'ai_register_features', $this );
 	}
 }
 

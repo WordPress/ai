@@ -10,7 +10,7 @@ namespace WordPress\AI;
 /**
  * Main plugin class.
  *
- * Coordinates all plugin components including feature registry.
+ * Coordinates all plugin components including feature registry and loader.
  * Implements singleton pattern to ensure only one instance exists.
  *
  * @since 0.1.0
@@ -33,6 +33,14 @@ final class Plugin {
 	private $feature_registry;
 
 	/**
+	 * Feature loader instance.
+	 *
+	 * @since 0.1.0
+	 * @var Feature_Loader
+	 */
+	private $feature_loader;
+
+	/**
 	 * Gets the singleton instance.
 	 *
 	 * @since 0.1.0
@@ -53,6 +61,7 @@ final class Plugin {
 	 */
 	private function __construct() {
 		$this->feature_registry = wp_ai_feature_registry();
+		$this->feature_loader   = new Feature_Loader( $this->feature_registry );
 	}
 
 	/**
@@ -66,8 +75,11 @@ final class Plugin {
 		// Register hooks.
 		$this->register_hooks();
 
+		// Register default features.
+		$this->feature_loader->register_default_features();
+
 		// Initialize features.
-		$this->feature_registry->initialize_features();
+		$this->feature_loader->initialize_features();
 	}
 
 	/**

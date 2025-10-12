@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes;
 
 use WordPress\AI\Feature_Registry;
+use WordPress\AI\Feature_Loader;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Interfaces\Conditional_Feature;
 use WP_UnitTestCase;
@@ -192,9 +193,11 @@ class Feature_Registry_Test extends WP_UnitTestCase {
 	public function test_initialize_features() {
 		$feature = new Test_Feature();
 		$this->registry->register_feature( $feature );
-		$this->registry->initialize_features();
 
-		$this->assertTrue( $this->registry->is_initialized(), 'Registry should be marked as initialized' );
+		$loader = new Feature_Loader( $this->registry );
+		$loader->initialize_features();
+
+		$this->assertTrue( $loader->is_initialized(), 'Loader should be marked as initialized' );
 	}
 
 	/**
@@ -217,7 +220,9 @@ class Feature_Registry_Test extends WP_UnitTestCase {
 
 		$feature = new Test_Feature();
 		$this->registry->register_feature( $feature );
-		$this->registry->initialize_features();
+
+		$loader = new Feature_Loader( $this->registry );
+		$loader->initialize_features();
 
 		$this->assertFalse( $feature->is_enabled(), 'Feature should be disabled' );
 	}
