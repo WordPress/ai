@@ -13,8 +13,7 @@ use WordPress\AI\Interfaces\Conditional_Feature;
 /**
  * Manages a collection of features.
  *
- * This class is responsible for storing and retrieving feature instances
- * in a WordPress-independent manner.
+ * This class is responsible for storing and retrieving feature instances.
  *
  * @since 0.1.0
  */
