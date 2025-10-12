@@ -3,7 +3,7 @@
 Reference implementation showing how to build features for the AI plugin.
 
 ## Summary
-- Extends `Abstract_Feature` and implements `Conditional_Feature`
+- Extends `Abstract_Feature`
 - Adds footer markup for logged-in users
 - Modifies the document title while `WP_DEBUG` is true
 - Registers a REST endpoint at `/wp-json/ai/v1/example`
@@ -27,7 +27,13 @@ The feature registers a REST endpoint to demonstrate how to expose feature data.
 ```
 
 ## Disable The Feature
-Filter the `ai_feature_enabled` value:
+Use the feature-specific filter:
+
+```php
+add_filter( 'ai_feature_example-feature_enabled', '__return_false' );
+```
+
+Or use the generic filter:
 
 ```php
 add_filter(
@@ -43,7 +49,7 @@ add_filter(
 ## Create Your Own Feature
 1. Duplicate this folder and rename the namespace/class.
 2. Extend `WordPress\AI\Abstracts\Abstract_Feature`.
-3. Register hooks in `register()`.
-4. Optionally implement `Conditional_Feature` for requirement checks.
+3. Set feature properties (`$id`, `$label`, `$description`) in the constructor.
+4. Register hooks in the `register()` method.
 
-See `Example_Feature.php` for a complete reference. For a more detailed guide, see the [Developer Guide](../../CONTRIBUTING.md).
+See `Example_Feature.php` for a complete reference.
