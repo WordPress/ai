@@ -99,15 +99,28 @@ abstract class Abstract_Feature implements Feature {
 	 * @return bool True if enabled, false otherwise.
 	 */
 	public function is_enabled(): bool {
+		$enabled = $this->enabled;
+
 		/**
-		 * Filters whether a specific feature is enabled.
+		 * Filters the enabled status for a specific feature.
+		 *
+		 * The dynamic portion of the hook name, `$this->id`, refers to the feature ID.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param bool $enabled Whether the feature is enabled.
+		 */
+		$enabled = apply_filters( "ai_feature_{$this->id}_enabled", $enabled );
+
+		/**
+		 * Filters the enabled status across all features.
 		 *
 		 * @since 0.1.0
 		 *
 		 * @param bool   $enabled    Whether the feature is enabled.
 		 * @param string $feature_id The feature identifier.
 		 */
-		return apply_filters( 'ai_feature_enabled', $this->enabled, $this->id );
+		return apply_filters( 'ai_feature_enabled', $enabled, $this->id );
 	}
 
 	/**
