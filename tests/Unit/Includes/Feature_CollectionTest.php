@@ -53,7 +53,7 @@ class Mock_Feature implements Feature {
  *
  * @since 0.1.0
  */
-class FeatureCollectionTest extends TestCase {
+class Feature_CollectionTest extends TestCase {
 	/**
 	 * Test that a feature can be registered.
 	 */
