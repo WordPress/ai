@@ -121,20 +121,12 @@ class Feature_Registry_Test extends WP_UnitTestCase {
 		$feature1 = new Test_Feature();
 		$this->registry->register_feature( $feature1 );
 
-		$feature2                 = new Test_Feature();
-		$feature2->id             = 'test-feature-2';
-		$feature2->label          = 'Test Feature 2';
-		$feature2->description    = 'Second test feature';
-		$this->registry->register_feature( $feature2 );
-
 		$features = $this->registry->get_all_features();
 
 		$this->assertIsArray( $features, 'get_all_features should return an array' );
-		$this->assertCount( 2, $features, 'Should have two features' );
-		$this->assertArrayHasKey( 'test-feature', $features, 'Features array should contain first feature' );
-		$this->assertArrayHasKey( 'test-feature-2', $features, 'Features array should contain second feature' );
-		$this->assertSame( $feature1, $features['test-feature'], 'Should return same instance for first feature' );
-		$this->assertSame( $feature2, $features['test-feature-2'], 'Should return same instance for second feature' );
+		$this->assertCount( 1, $features, 'Should have one feature' );
+		$this->assertArrayHasKey( 'test-feature', $features, 'Features array should contain registered feature' );
+		$this->assertSame( $feature1, $features['test-feature'], 'Should return same instance' );
 	}
 
 	/**

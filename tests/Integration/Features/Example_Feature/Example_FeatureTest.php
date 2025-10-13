@@ -98,10 +98,7 @@ class Example_FeatureTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_modify_title_with_debug_true() {
-		// Temporarily define WP_DEBUG as true.
-		if ( ! defined( 'WP_DEBUG' ) ) {
-			define( 'WP_DEBUG', true );
-		}
+		$this->assertTrue( defined( 'WP_DEBUG' ) && WP_DEBUG, 'WP_DEBUG should be true in test environment' );
 
 		$title_parts = array(
 			'title' => 'My Post',

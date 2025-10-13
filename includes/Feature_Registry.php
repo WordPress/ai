@@ -145,4 +145,16 @@ class Feature_Registry {
 	public function get_all_features(): array {
 		return $this->feature_collection->get_all_features();
 	}
+
+	/**
+	 * Checks if a feature is registered.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $id Feature identifier.
+	 * @return bool True if registered, false otherwise.
+	 */
+	public function has_feature( string $id ): bool {
+		return $this->feature_collection->has_feature( $id );
+	}
 }
