@@ -5,8 +5,6 @@ parameters:
 		- features
 	parallel:
 		maximumNumberOfProcesses: 1
-	bootstrapFiles:
-		- tests/phpstan-bootstrap.php
 	scanFiles:
 		- vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
 	reportUnmatchedIgnoredErrors: false
