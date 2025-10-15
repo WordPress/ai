@@ -4,9 +4,9 @@
  * Plugin URI: https://github.com/WordPress/ai
  * Description: Experimental AI features for WordPress
  * Version: 0.1.0
- * Requires at least: 6.7
+ * Requires at least: 6.9
  * Requires PHP: 7.4
- * Author: WordPress Contributors
+ * Author: WordPress.org Contributors
  * Author URI: https://make.wordpress.org/ai/
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -40,7 +40,7 @@ if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
 	define( 'AI_MIN_PHP_VERSION', '7.4' );
 }
 if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
-	define( 'AI_MIN_WP_VERSION', '6.7' );
+	define( 'AI_MIN_WP_VERSION', '6.9' );
 }
 
 /**
