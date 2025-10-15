@@ -1,0 +1,49 @@
+{
+  "name": "wordpress/ai",
+  "description": "Experimental AI features for WordPress",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=7.4",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "wp-coding-standards/wpcs": "^3.2.0",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
+    "phpcompatibility/php-compatibility": "dev-develop",
+    "wp-phpunit/wp-phpunit": "^6.3",
+    "yoast/phpunit-polyfills": "^4.0.0",
+    "phpstan/phpstan": "^2.1",
+    "php-stubs/wordpress-stubs": "^6.8"
+  },
+  "autoload": {
+    "psr-4": {
+      "WordPress\\AI\\": "includes/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "WordPress\\AI\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "platform": {
+      "php": "7.4"
+    }
+  },
+  "scripts": {
+    "format": "phpcbf --standard=phpcs.xml.dist",
+    "lint": "phpcs --standard=phpcs.xml.dist",
+    "test": "phpunit",
+    "stan": "phpstan analyse --configuration=phpstan.neon.dist --memory-limit=512M"
+  },
+  "scripts-descriptions": {
+    "format": "Automatically fix coding standards issues",
+    "lint": "Check coding standards compliance",
+    "test": "Run PHPUnit tests",
+    "stan": "Run static analysis with PHPStan"
+  }
+}
