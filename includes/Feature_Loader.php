@@ -103,14 +103,14 @@ class Feature_Loader {
 			$feature->register();
 		}
 
-		$this->initialized = true;
-
 		/**
 		 * Fires after all features have been initialized.
 		 *
 		 * @since 0.1.0
 		 */
 		do_action( 'ai_features_initialized' );
+
+		$this->initialized = true;
 	}
 
 	/**
