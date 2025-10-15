@@ -26,7 +26,7 @@ class Example_FeatureTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$registry = \WordPress\AI\feature_registry();
+		$registry = new Feature_Registry();
 		$loader   = new Feature_Loader( $registry );
 		$loader->register_default_features();
 		$loader->initialize_features();

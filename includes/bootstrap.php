@@ -157,27 +157,10 @@ function load() {
 	$loaded = true;
 
 	// Initialize plugin.
-	$registry = feature_registry();
+	$registry = new Feature_Registry();
 	$loader   = new Feature_Loader( $registry );
 	$loader->register_default_features();
 	$loader->initialize_features();
-}
-
-/**
- * Gets the global Feature_Registry instance.
- *
- * @since 0.1.0
- *
- * @return Feature_Registry The Feature_Registry instance.
- */
-function feature_registry(): Feature_Registry {
-	static $instance = null;
-
-	if ( null === $instance ) {
-		$instance = new Feature_Registry();
-	}
-
-	return $instance;
 }
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
