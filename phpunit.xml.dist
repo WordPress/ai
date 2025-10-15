@@ -24,7 +24,6 @@
 	<coverage processUncoveredFiles="false">
 		<include>
 			<directory suffix=".php">includes</directory>
-			<directory suffix=".php">features</directory>
 			<file>ai.php</file>
 		</include>
 		<report>

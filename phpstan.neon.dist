@@ -2,7 +2,6 @@ parameters:
 	level: 5
 	paths:
 		- includes
-		- features
 	parallel:
 		maximumNumberOfProcesses: 1
 	scanFiles:

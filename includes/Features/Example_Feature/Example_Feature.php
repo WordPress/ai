@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-namespace WordPress\AI;
+namespace WordPress\AI\Features\Example_Feature;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 
