@@ -41,7 +41,7 @@ if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
  *
  * @param string $message The error message to display.
  */
-function version_notice( $message ) {
+function version_notice( string $message ): void {
 	if ( ! is_admin() ) {
 		return;
 	}
@@ -114,7 +114,7 @@ function check_wp_version(): bool {
  *
  * @since 0.1.0
  */
-function display_composer_notice() {
+function display_composer_notice(): void {
 	?>
 	<div class="notice notice-error">
 		<p>
