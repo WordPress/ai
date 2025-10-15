@@ -132,7 +132,7 @@ jobs:
             [Test this pull request with WordPress Playground](${blueprintUrl}).`;
 
             // Append the comment to the existing PR body.
-            const updatedBody = pr.body + playgroundComment;
+            const updatedBody = pr.body + '\n\n' + playgroundComment;
 
             // Update the PR body.
             await github.rest.pulls.update({
