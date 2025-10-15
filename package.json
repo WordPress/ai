@@ -4,7 +4,8 @@
   "description": "WordPress AI Experiments",
   "license": "GPL-2.0-or-later",
   "scripts": {
-	"build": "echo 'Building...'",
+    "plugin-zip": "wp-scripts plugin-zip",
+    "build": "echo 'Building...'",
     "wp-env": "wp-env",
     "lint:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script lint",
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",
@@ -12,7 +13,8 @@
     "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit"
   },
   "devDependencies": {
-    "@wordpress/env": "^10.31.0"
+    "@wordpress/env": "^10.31.0",
+    "@wordpress/scripts": "^30.25.0"
   },
   "engines": {
     "node": ">=20.10.0",
