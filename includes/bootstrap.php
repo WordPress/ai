@@ -135,8 +135,13 @@ function display_composer_notice(): void {
  *
  * @since 0.1.0
  */
-function load() {
+function load(): void {
 	static $loaded = false;
+
+	// Prevent loading twice.
+	if ( $loaded ) {
+		return;
+	}
 
 	// Check version requirements.
 	if ( ! check_php_version() || ! check_wp_version() ) {
@@ -150,10 +155,6 @@ function load() {
 	}
 	require_once AI_PLUGIN_DIR . 'vendor/autoload.php';
 
-	// Prevent loading twice.
-	if ( $loaded ) {
-		return;
-	}
 	$loaded = true;
 
 	// Initialize plugin.
