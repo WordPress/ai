@@ -1,0 +1,64 @@
+name: Build Plugin Zip
+
+on:
+    pull_request:
+
+# Cancels all previous workflow runs for pull requests that have not completed.
+concurrency:
+    # The concurrency group contains the workflow name and the branch name for pull requests
+    # or the commit hash for any other events.
+    group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+    cancel-in-progress: true
+
+# Disable permissions for all available scopes by default.
+# Any needed permissions should be configured at the job level.
+permissions: {}
+
+jobs:
+    build:
+        name: Build Release Artifact
+        runs-on: 'ubuntu-24.04'
+        permissions:
+            contents: read
+        outputs:
+            job_status: ${{ job.status }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+              with:
+                  ref: ${{ github.ref }}
+                  show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
+                  persist-credentials: false
+
+            - name: Set up PHP
+              uses: shivammathur/setup-php@ec406be512d7077f68eed36e63f4d91bc006edc4 # v2.35.4
+              with:
+                  php-version: '7.4'
+                  coverage: none
+                  tools: composer:v2
+
+            - name: Use desired version of Node.js
+              uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+              with:
+                  node-version-file: '.nvmrc'
+                  check-latest: true
+
+            - name: Install NPM dependencies
+              run: npm ci
+
+            - name: Install Composer dependencies
+              uses: ramsey/composer-install@3cf229dc2919194e9e36783941438d17239e8520 # v3.1.1
+
+            - name: Build plugin
+              run: npm run build
+
+            - name: Create artifact
+              run: |
+                  npm run plugin-zip
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: ai
+                  path: ai.zip
