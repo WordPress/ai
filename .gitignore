@@ -1,15 +1,9 @@
 # Composer
 /vendor/
-composer.lock
 
 # Node
 node_modules/
-package-lock.json
 
-# WordPress
-wp-config.php
-wp-content/uploads/
-wp-content/cache/
 
 # IDE
 .idea/

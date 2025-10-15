@@ -47,7 +47,7 @@ The AI Experiments plugin is meant to be studied, forked, and extended.  If you�
 
 If you’re a plugin developer, you’ll be able to:
 
-*   Read the [Contributing Guide](docs/CONTRIBUTING.md) for detailed development information.
+*   Read the [Contributing Guide](CONTRIBUTING.md) for detailed development information.
 *   Register new AI abilities
 *   Override default behavior with custom filters
 *   Reuse the same building blocks in your own plugins

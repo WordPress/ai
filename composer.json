@@ -18,8 +18,7 @@
   },
   "autoload": {
     "psr-4": {
-      "WordPress\\AI\\": "includes/",
-      "WordPress\\AI\\Features\\": "features/"
+      "WordPress\\AI\\": "includes/"
     }
   },
   "autoload-dev": {

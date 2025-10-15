@@ -2,10 +2,10 @@
 /**
  * Example feature implementation.
  *
- * @package WordPress\AI\Features\Example_Feature
+ * @package WordPress\AI
  */
 
-namespace WordPress\AI\Features\Example_Feature;
+namespace WordPress\AI;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 
