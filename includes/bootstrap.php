@@ -41,7 +41,7 @@ if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
  *
  * @param string $message The error message to display.
  */
-function ai_version_notice( $message ) {
+function version_notice( $message ) {
 	if ( ! is_admin() ) {
 		return;
 	}
@@ -59,12 +59,12 @@ function ai_version_notice( $message ) {
  *
  * @return bool True if PHP version is sufficient, false otherwise.
  */
-function ai_check_php_version(): bool {
+function check_php_version(): bool {
 	if ( version_compare( phpversion(), AI_MIN_PHP_VERSION, '<' ) ) {
 		add_action(
 			'admin_notices',
 			function () {
-				ai_version_notice(
+				version_notice(
 					sprintf(
 						/* translators: 1: Required PHP version, 2: Current PHP version */
 						__( 'AI plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
@@ -86,7 +86,7 @@ function ai_check_php_version(): bool {
  *
  * @return bool True if WordPress version is sufficient, false otherwise.
  */
-function ai_check_wp_version() {
+function check_wp_version(): bool {
 	global $wp_version;
 
 	if ( version_compare( $wp_version, AI_MIN_WP_VERSION, '<' ) ) {
@@ -94,7 +94,7 @@ function ai_check_wp_version() {
 			'admin_notices',
 			function () {
 				global $wp_version;
-				ai_version_notice(
+				version_notice(
 					sprintf(
 						/* translators: 1: Required WordPress version, 2: Current WordPress version */
 						__( 'AI plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
@@ -114,7 +114,7 @@ function ai_check_wp_version() {
  *
  * @since 0.1.0
  */
-function ai_display_composer_notice() {
+function display_composer_notice() {
 	?>
 	<div class="notice notice-error">
 		<p>
@@ -135,17 +135,17 @@ function ai_display_composer_notice() {
  *
  * @since 0.1.0
  */
-function ai_load() {
+function load() {
 	static $loaded = false;
 
 	// Check version requirements.
-	if ( ! ai_check_php_version() || ! ai_check_wp_version() ) {
+	if ( ! check_php_version() || ! check_wp_version() ) {
 		return;
 	}
 
 	// Load Composer autoloader.
 	if ( ! file_exists( AI_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
-		add_action( 'admin_notices', __NAMESPACE__ . '\ai_display_composer_notice' );
+		add_action( 'admin_notices', __NAMESPACE__ . '\display_composer_notice' );
 		return;
 	}
 	require_once AI_PLUGIN_DIR . 'vendor/autoload.php';
@@ -163,4 +163,4 @@ function ai_load() {
 	$loader->initialize_features();
 }
 
-add_action( 'plugins_loaded', __NAMESPACE__ . '\ai_load' );
+add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
