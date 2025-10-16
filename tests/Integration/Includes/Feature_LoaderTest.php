@@ -26,15 +26,18 @@ class Mock_Feature extends Abstract_Feature {
 	public $register_called = false;
 
 	/**
-	 * Constructor.
+	 * Loads feature metadata.
 	 *
 	 * @since 0.1.0
+	 *
+	 * @return array{id: string, label: string, description: string} Feature metadata.
 	 */
-	public function __construct() {
-		$this->id          = 'mock-feature';
-		$this->label       = 'Mock Feature';
-		$this->description = 'A mock feature for testing';
-		$this->enabled     = true;
+	protected function load_feature_metadata(): array {
+		return array(
+			'id'          => 'mock-feature',
+			'label'       => 'Mock Feature',
+			'description' => 'A mock feature for testing',
+		);
 	}
 
 	/**

@@ -158,10 +158,22 @@ function load(): void {
 	$loaded = true;
 
 	// Initialize plugin.
-	$registry = new Feature_Registry();
-	$loader   = new Feature_Loader( $registry );
-	$loader->register_default_features();
-	$loader->initialize_features();
+	try {
+		$registry = new Feature_Registry();
+		$loader   = new Feature_Loader( $registry );
+		$loader->register_default_features();
+		$loader->initialize_features();
+	} catch ( \Exception $e ) {
+		_doing_it_wrong(
+			__NAMESPACE__ . '\load',
+			sprintf(
+				/* translators: %s: Error message. */
+				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
+				esc_html( $e->getMessage() )
+			),
+			'0.1.0'
+		);
+	}
 }
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );

@@ -16,15 +16,18 @@ use WordPress\AI\Abstracts\Abstract_Feature;
  */
 class Example_Feature extends Abstract_Feature {
 	/**
-	 * Sets up metadata for the example feature.
+	 * Loads feature metadata.
 	 *
 	 * @since 0.1.0
+	 *
+	 * @return array{id: string, label: string, description: string} Feature metadata.
 	 */
-	public function __construct() {
-		$this->id          = 'example-feature';
-		$this->label       = __( 'Example Feature', 'ai' );
-		$this->description = __( 'Demonstrates the AI feature system with example hooks and functionality.', 'ai' );
-		$this->enabled     = true;
+	protected function load_feature_metadata(): array {
+		return array(
+			'id'          => 'example-feature',
+			'label'       => __( 'Example Feature', 'ai' ),
+			'description' => __( 'Demonstrates the AI feature system with example hooks and functionality.', 'ai' ),
+		);
 	}
 
 	/**

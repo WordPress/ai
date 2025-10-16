@@ -19,14 +19,18 @@ use WP_UnitTestCase;
  */
 class Test_Feature extends Abstract_Feature {
 	/**
-	 * Constructor.
+	 * Loads feature metadata.
 	 *
 	 * @since 0.1.0
+	 *
+	 * @return array{id: string, label: string, description: string} Feature metadata.
 	 */
-	public function __construct() {
-		$this->id          = 'test-feature';
-		$this->label       = 'Test Feature';
-		$this->description = 'A test feature for unit testing';
+	protected function load_feature_metadata(): array {
+		return array(
+			'id'          => 'test-feature',
+			'label'       => 'Test Feature',
+			'description' => 'A test feature for unit testing',
+		);
 	}
 
 	/**
