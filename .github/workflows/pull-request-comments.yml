@@ -116,20 +116,9 @@ jobs:
 
             // Create the comment to append.
             const playgroundComment = `## Test using WordPress Playground
-            The changes in this pull request can be previewed and tested using a [WordPress Playground](https://wordpress.github.io/wordpress-playground/) instance.
+            The changes in this pull request can be previewed and tested using this [WordPress Playground](https://wordpress.github.io/wordpress-playground/) instance:
 
-            [WordPress Playground](https://wordpress.github.io/wordpress-playground/) is an experimental project that creates a full WordPress instance entirely within the browser.
-
-            ### Some things to be aware of
-            - The Plugin and Theme Directories cannot be accessed within Playground.
-            - All changes will be lost when closing a tab with a Playground instance.
-            - All changes will be lost when refreshing the page.
-            - A fresh instance is created each time the link below is clicked.
-            - Every time this pull request is updated, a new ZIP file containing all changes is created. If changes are not reflected in the Playground instance, it's possible that the most recent build failed, or has not completed.
-
-            For more details about these limitations and more, check out the [Limitations page](https://wordpress.github.io/wordpress-playground/developers/limitations/) in the WordPress Playground documentation.
-
-            [Test this pull request with WordPress Playground](${blueprintUrl}).`;
+            [Click here to test this pull request](${blueprintUrl}).`;
 
             // Append the comment to the existing PR body.
             const updatedBody = pr.body + '\n\n' + playgroundComment;
