@@ -19,7 +19,7 @@ jobs:
   # Builds the plugin ZIP file.
   build-plugin-zip:
     name: Build plugin zip
-    uses: WordPress/ai/.github/workflows/build-plugin-zip.yml@dev/wordpress-playground-workflow #./.github/workflows/build-plugin-zip.yml
+    uses: ./.github/workflows/build-plugin-zip.yml
     permissions:
       contents: read
 
