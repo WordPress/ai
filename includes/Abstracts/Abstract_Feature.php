@@ -150,15 +150,7 @@ abstract class Abstract_Feature implements Feature {
 		 */
 		$enabled = apply_filters( "ai_feature_{$this->id}_enabled", $enabled );
 
-		/**
-		 * Filters the enabled status across all features.
-		 *
-		 * @since 0.1.0
-		 *
-		 * @param bool   $enabled    Whether the feature is enabled.
-		 * @param string $feature_id The feature identifier.
-		 */
-		return apply_filters( 'ai_feature_enabled', $enabled, $this->id );
+		return $enabled;
 	}
 
 	/**

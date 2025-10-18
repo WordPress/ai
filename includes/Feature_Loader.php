@@ -182,6 +182,20 @@ class Feature_Loader {
 			return;
 		}
 
+		/**
+		 * Filters whether to enable AI features.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param bool $enabled Whether to enable AI features.
+		 */
+		$features_enabled = apply_filters( 'ai_features_enabled', true );
+
+		if ( ! $features_enabled ) {
+			$this->initialized = true;
+			return;
+		}
+
 		foreach ( $this->registry->get_all_features() as $feature ) {
 			// Skip if feature is disabled.
 			if ( ! $feature->is_enabled() ) {
