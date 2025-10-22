@@ -68,7 +68,7 @@ class Feature_Loader {
 		// Register all features with type validation.
 		foreach ( $features as $feature ) {
 			// Skip invalid feature instances.
-			if ( ! is_a( $feature, Feature::class ) ) {
+			if ( ! $feature instanceof Feature ) {
 				throw new Invalid_Feature_Exception(
 					esc_html__( 'Attempted to register invalid feature. Must implement Feature interface.', 'ai' )
 				);
