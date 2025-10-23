@@ -157,7 +157,16 @@ function load(): void {
 
 	$loaded = true;
 
-	// Initialize plugin.
+	// Hook feature initialization to init.
+	add_action( 'init', __NAMESPACE__ . '\initialize_features' );
+}
+
+/**
+ * Initializes plugin features.
+ *
+ * @since 0.1.0
+ */
+function initialize_features(): void {
 	try {
 		$registry = new Feature_Registry();
 		$loader   = new Feature_Loader( $registry );
@@ -165,7 +174,7 @@ function load(): void {
 		$loader->initialize_features();
 	} catch ( \Exception $e ) {
 		_doing_it_wrong(
-			__NAMESPACE__ . '\load',
+			__NAMESPACE__ . '\initialize_features',
 			sprintf(
 				/* translators: %s: Error message. */
 				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
