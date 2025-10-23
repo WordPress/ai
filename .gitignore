@@ -18,7 +18,8 @@ node_modules/
 
 # Testing
 /tests/wordpress/
-/tests/_output/
+/tests/_output/*
+!/tests/_output/.gitkeep
 /tests/.phpunit.result.cache
 /tmp/
 AGENTS.md
