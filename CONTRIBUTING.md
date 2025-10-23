@@ -1,303 +1,100 @@
-# Developer Guide
+# Contributing to the WordPress AI Plugin
 
-Welcome to the WordPress AI plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered features.
+Thank you for your interest in contributing to the WordPress AI Plugin! Here you find some information on how to get started.
 
-## Table of Contents
+## Coding standards
 
-- [Getting Started](#getting-started)
-- [Architecture Overview](#architecture-overview)
-- [Creating a New Feature](#creating-a-new-feature)
-- [Plugin API](#plugin-api)
-- [Development Workflow](#development-workflow)
-- [Testing](#testing)
-- [Testing Strategy documentation](./TESTING.md)
-- [Coding Standards](#coding-standards)
-- [Contributing](#contributing)
+All code must follow the [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/). This ensures consistency across the WordPress ecosystem and makes the codebase maintainable.
 
----
+All parameters, return values, and properties should use explicit type hints where possible, following WordPress best practices for PHP 7.4+ compatibility.
 
-## Getting Started
+## Naming conventions
 
-### Prerequisites
+The following naming conventions must be followed for consistency and autoloading:
 
-- PHP 7.4 or higher
-- WordPress 6.7 or higher
-- Composer
-- Node.js and npm (for asset building)
+- Interfaces are suffixed with `_Interface` (e.g., `Feature_Interface`).
+- Traits are suffixed with `_Trait` (e.g., `Validation_Trait`).
+- File names are the same as the class, trait, and interface name for PSR-4 autoloading.
+- Classes use WordPress naming conventions with underscores (e.g., `Feature_Loader`).
+- Namespaces follow the pattern `WordPress\AI\{Component}`.
 
-### Local Development Setup
+## Documentation standards
 
-1. **Clone the repository:**
+All code must be properly documented with PHPDoc blocks following these standards:
 
-```bash
-git clone https://github.com/WordPress/ai.git
-cd ai
-```
+### General rules
 
-2. **Install dependencies:**
+- All descriptions must end with a period.
+- Use `@since 0.1.0` for new code (version will be updated on release).
+- Place `@since` tags below the description and above `@param` tags, with blank comment lines around it.
 
-```bash
-composer install
-```
+### Method documentation
 
-> **Note:** The `wordpress/wp-ai-client` package will be added to `composer.json` once it's officially released. For now, the plugin scaffolding is ready for integration.
+- Method descriptions must start with a third-person verb (e.g., "Creates", "Returns", "Checks").
+- Exceptions: Constructors and magic methods may use different phrasing.
+- All `@return` annotations must include a description.
 
-3. **Link to WordPress:**
+### Interface implementations
 
-Symlink the plugin directory into your WordPress installation:
+- Use `{@inheritDoc}` instead of duplicating descriptions when implementing interface methods.
+- Only provide a unique description if it adds value beyond the interface documentation.
 
-```bash
-ln -s /path/to/ai /path/to/wordpress/wp-content/plugins/ai
-```
-
-4. **Activate the plugin:**
-
-Through WordPress admin or via WP-CLI:
-
-```bash
-wp plugin activate ai
-```
-
----
-
-## Architecture Overview
-
-The plugin follows a modular, feature-based architecture:
-
-```
-ai/
-├── ai.php                      # Plugin bootstrap
-├── includes/                   # Core plugin code
-│   ├── Plugin.php              # Main plugin coordinator
-│   ├── Feature_Registry.php   # Feature registration system
-│   ├── Interfaces/             # Feature contracts
-│   └── Abstracts/              # Base implementations
-├── features/                   # Feature implementations
-│   └── Example_Feature/        # Each feature in own directory
-├── admin/                      # Admin interface (Issue #25)
-├── assets/                     # CSS, JS, images
-├── languages/                  # Translation files
-└── tests/                      # PHPUnit tests
-```
-
-### Key Design Principles
-
-1. **Encapsulation**: Each feature is self-contained and can be reviewed independently
-2. **Modularity**: Features can be added/removed without affecting core functionality
-3. **Extensibility**: Third-party developers can register custom features via hooks
-4. **Standards Compliance**: All code follows WordPress coding standards
-
----
-
-## Creating a New Feature
-
-Features are the core building blocks of the AI plugin. Each feature represents a distinct AI capability.
-
-### Step 1: Create Feature Directory
-
-Create a new directory in `features/` for your feature:
-
-```bash
-mkdir -p features/my-feature
-```
-
-### Step 2: Create Feature Class
-
-Create your feature class by extending `Abstract_Feature`:
+### Example
 
 ```php
-<?php
 /**
- * My Feature implementation.
- *
- * @package WordPress\AI\Features
- */
-
-namespace WordPress\AI\Features\My_Feature;
-
-use WordPress\AI\Abstracts\Abstract_Feature;
-
-/**
- * My Feature class.
+ * Class for handling feature registration.
  *
  * @since 0.1.0
  */
-class My_Feature extends Abstract_Feature {
+class Feature_Registry {
 	/**
-	 * Constructor.
-	 *
-	 * @since 0.1.0
-	 */
-	public function __construct() {
-		$this->id          = 'my-feature';
-		$this->label       = __( 'My Feature', 'ai' );
-		$this->description = __( 'Description of what my feature does.', 'ai' );
-	}
-
-	/**
-	 * Registers the feature's hooks and functionality.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// Register your hooks here
-		$this->add_action( 'init', array( $this, 'initialize' ) );
-		$this->add_filter( 'the_content', array( $this, 'filter_content' ) );
-	}
-
-	/**
-	 * Initialize the feature.
-	 *
-	 * @since 0.1.0
-	 */
-	public function initialize(): void {
-		// Feature initialization logic
-	}
-
-	/**
-	 * Filter content.
+	 * Registers a new feature with the plugin.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $content Post content.
-	 * @return string Modified content.
+	 * @param Feature $feature The feature instance to register.
+	 * @return bool True if registered successfully, false otherwise.
 	 */
-	public function filter_content( string $content ): string {
-		// Feature logic here
-		return $content;
+	public function register_feature( Feature $feature ): bool {
+		// Implementation
 	}
 }
 ```
 
-### Step 3: Register the Feature
+### Array Lists
 
-Register your feature in `includes/Feature_Registry.php`:
+When an array is a list — that is, an array where the keys are sequential, starting at 0 — use the `list` generic type within the docblock. For example, a parameter that is a list of strings would be documented as `@param list<string> $variable`.
 
-```php
-private function register_default_features(): void {
-	// Register your feature
-	if ( class_exists( 'WordPress\AI\Features\My_Feature\My_Feature' ) ) {
-		$this->register_feature( new \WordPress\AI\Features\My_Feature\My_Feature() );
-	}
+Note that `list<string>` and `string[]` _are not_ the same. The latter is an alias for `array<int, string>` which does not enforce that the keys are sequential.
 
-	// Allow third-party registration
-	do_action( 'ai_register_features', $this );
-}
-```
+## PHP Compatibility
 
-### Step 4: Add Feature Documentation
+All code must be backward compatible with PHP 7.4, which is the minimum required PHP version for this project.
 
-Create a `README.md` in your feature directory:
+## WordPress Compatibility
 
-```markdown
-# My Feature
+The plugin requires WordPress 6.8 or higher. Ensure all WordPress functions and hooks used are available in this version.
 
-Brief description of the feature.
+## Branch naming conventions
 
-## Functionality
+There are a few protected branch naming conventions:
 
-- What the feature does
-- How it works
-- Any requirements
+* `trunk`: The main development branch.
+* `release/*`: A branch for a specific release, useful e.g. for applying a hotfix.
+* `feature/*`: A branch for a larger feature that takes multiple iterative PRs towards completion.
 
-## Usage
+These special branches are protected and are configured more strictly in regards to GitHub workflow configuration.
 
-Examples of how to use the feature.
+Branches that you use for implementing a pull request or experimenting can use any naming convention you prefer, _except_ the above. Additionally, please do not use branch names that would easily cause confusion, such as other common main branch names like `main` or `develop`.
 
-## Configuration
+Ideally, the branch name is in some form or shape descriptive of what it is for.
 
-Any settings or filters available.
-```
+## Development workflow
 
-### Conditional Features
+### Quality checks
 
-If your feature has requirements (PHP extensions, other plugins, etc.), implement the `Conditional_Feature` interface:
-
-```php
-use WordPress\AI\Interfaces\Conditional_Feature;
-
-class My_Feature extends Abstract_Feature implements Conditional_Feature {
-	public function meets_requirements(): bool {
-		// Check if requirements are met
-		return extension_loaded( 'gd' );
-	}
-
-	public function get_requirements_message(): string {
-		return __( 'This feature requires the GD extension.', 'ai' );
-	}
-}
-```
-
----
-
-## Plugin API
-
-The plugin provides a set of hooks and filters to allow third-party developers to extend its functionality.
-
-### Registering a Custom Feature
-
-Developers can register their own features using the `ai_register_features` action. This is the primary way to add new functionality to the plugin.
-
-```php
-add_action( 'ai_register_features', function( $registry ) {
-	$registry->register_feature( new My_Custom_Feature() );
-} );
-```
-
-### Disabling a Feature
-
-Features can be disabled using the `ai_feature_enabled` filter. This is useful for site administrators who want to turn off specific features.
-
-```php
-add_filter( 'ai_feature_enabled', function( $enabled, $feature_id ) {
-	if ( 'example-feature' === $feature_id ) {
-		return false;
-	}
-	return $enabled;
-}, 10, 2 );
-```
-
-### Other Hooks and Filters
-
-The plugin also includes the following hooks:
-
-- `ai_plugin_initialized`: Fires after the main plugin class has been initialized.
-- `ai_features_initialized`: Fires after all registered features have been initialized.
-
----
-
-## Development Workflow
-
-### 1. Create a Feature Branch
-
-```bash
-git checkout -b feature/my-feature-name
-```
-
-### 2. Write Your Code
-
-Follow WordPress coding standards and ensure proper documentation.
-
-### 3. Write Tests
-
-Create integration tests in `tests/Integration/Features/`:
-
-```php
-<?php
-namespace WordPress\AI\Tests\Integration\Features\My_Feature;
-
-use WordPress\AI\Features\My_Feature\My_Feature;
-use WP_UnitTestCase;
-
-class My_Feature_Test extends WP_UnitTestCase {
-	public function test_feature_registration() {
-		$feature = new My_Feature();
-		$this->assertEquals( 'my-feature', $feature->get_id() );
-	}
-}
-```
-
-### 4. Run Tests and Linting
+Before submitting a pull request, run the following commands:
 
 ```bash
 # Check coding standards
@@ -306,69 +103,16 @@ composer lint
 # Run static analysis
 composer stan
 
-# Auto-fix coding standards
+# Auto-fix coding standards issues
 composer format
 
 # Run tests
 composer test
 ```
 
-### 5. Commit Your Changes
-
-```bash
-git add .
-git commit -m "Add My Feature for AI-powered content generation"
-```
-
-### 6. Create Pull Request
-
-Push your branch and create a pull request on GitHub.
-
----
-
-## Testing
-
-We follow a comprehensive testing strategy to ensure the quality and reliability of the AI Plugin. Our approach is based on the \"pyramid of testing\" model, incorporating Unit, Integration, and End-to-End tests.
-
-For a detailed overview of our testing philosophy, categories, execution strategy, and coverage targets, please refer to the [Testing Strategy documentation](docs/TESTING.md).
-```
-
----
-
-## Coding Standards
-
-### WordPress Coding Standards
-
-All code must follow [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/).
-
-**Check standards:**
-```bash
-composer lint
-```
-
-**Auto-fix issues:**
-```bash
-composer format
-```
-
-### PHP Version Compatibility
-
-The plugin supports PHP 7.4+. Ensure your code is compatible:
-
-```bash
-composer lint  # Includes PHPCompatibility checks
-```
-
-### Documentation Standards
-
-- All classes and methods must have PHPDoc blocks
-- Use `@since` tags for versioning
-- Document parameters and return types
-- Add inline comments for complex logic
-
 ### Internationalization
 
-All user-facing strings must be translatable:
+All user-facing strings must be translatable using WordPress i18n functions:
 
 ```php
 // Good
@@ -380,85 +124,15 @@ esc_html__( 'Hello World', 'ai' );
 echo 'Hello World';
 ```
 
----
+## Guidelines
 
-## Contributing
+- As with all WordPress projects, we want to ensure a welcoming environment for everyone. With that in mind, all contributors are expected to follow our [Code of Conduct](https://make.wordpress.org/handbook/community-code-of-conduct/).
+- All WordPress projects are licensed under the GPLv2+, and all contributions to the WordPress AI Plugin will be released under the GPLv2+ license. You maintain copyright over any contribution you make, and by submitting a pull request, you are agreeing to release that contribution under the GPLv2+ license.
 
-### Contribution Workflow
+## Additional resources
 
-1. **Find or create an issue** on GitHub
-2. **Fork the repository** and create a feature branch
-3. **Write your code** following the standards above
-4. **Write tests** for your changes
-5. **Run linting and tests** to ensure quality
-6. **Create a pull request** with a clear description
-7. **Respond to review feedback**
+For more detailed information on plugin architecture, creating features, and development workflows, see:
 
-### Pull Request Guidelines
-
-**Title Format:**
-```
-Add: Brief description of feature
-Fix: Brief description of bug fix
-Update: Brief description of improvement
-```
-
-**Description Should Include:**
-- What the change does
-- Why the change is needed
-- How to test the change
-- Screenshots (if UI changes)
-- Related issues
-
-**Example:**
-```markdown
-## Description
-Adds AI-powered alt text generation for images
-
-## Why
-Improves accessibility by automatically generating descriptive alt text
-
-## Testing
-1. Upload an image
-2. Verify alt text is generated
-3. Check quality of generated text
-
-Closes #123
-```
-
-### Code Review Process
-
-All contributions go through code review:
-1. Automated checks (linting, tests)
-2. Architecture review
-3. Code quality review
-4. Documentation review
-5. Testing verification
-
----
-
-## Additional Resources
-
-### Documentation
-
-- [Example Feature](features/Example_Feature/README.md) - Reference implementation
-- [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
-- [WordPress AI Team](https://make.wordpress.org/ai/)
-
----
-
-## Getting Help
-
-- **GitHub Issues**: Report bugs or request features
-- **WordPress Slack**: Join #core-ai channel
-- **Make WordPress AI**: https://make.wordpress.org/ai/
-
----
-
-## License
-
-GPL-2.0-or-later
-
----
-
-**Happy coding! 🚀**
+- [Developer Guide](DEVELOPER_GUIDE.md) - Comprehensive guide to plugin architecture and feature development
+- [Testing Strategy](TESTING.md) - Testing philosophy and guidelines
+- [WordPress AI Team](https://make.wordpress.org/ai/) - Community and discussion
