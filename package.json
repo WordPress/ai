@@ -13,8 +13,8 @@
     "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit"
   },
   "devDependencies": {
-    "@wordpress/env": "^10.31.0",
-    "@wordpress/scripts": "^30.25.0"
+    "@wordpress/env": "^10.33.0",
+    "@wordpress/scripts": "^30.26.0"
   },
   "engines": {
     "node": ">=20.10.0",
