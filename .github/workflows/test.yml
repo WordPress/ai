@@ -137,3 +137,40 @@ jobs:
               with:
                   path: tests/_output
                   key: 'phpstan-result-cache-${{ runner.os }}-date-${{ steps.get-date.outputs.date }}'
+
+    # Runs JavaScript code quality checks.
+    #
+    # Performs the following steps:
+    # - Checks out the repository.
+    # - Sets up Node.js.
+    # - Installs NPM dependencies.
+    # - Runs Prettier formatting check.
+    # - Runs JavaScript linting.
+    jslint:
+        name: Run JavaScript code quality checks
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: read
+        timeout-minutes: 20
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+              with:
+                  show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
+                  persist-credentials: false
+
+            - name: Setup Node.js
+              uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+              with:
+                  cache: 'npm'
+                  node-version-file: '.nvmrc'
+
+            - name: Install NPM dependencies
+              run: npm ci
+
+            - name: Run Prettier format check
+              run: npm run format
+
+            - name: Run JavaScript linting
+              run: npm run lint:js
