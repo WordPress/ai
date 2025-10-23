@@ -97,7 +97,7 @@ class Feature_Loader {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return \WordPress\AI\Contracts\Feature[] Array of default feature instances.
+	 * @return array<\WordPress\AI\Contracts\Feature> Array of default feature instances.
 	 * @throws \WordPress\AI\Exception\Invalid_Feature_Exception If a feature class does not exist (caught internally).
 	 */
 	private function get_default_features(): array {
@@ -122,6 +122,7 @@ class Feature_Loader {
 			try {
 				// Support both class names and pre-instantiated instances.
 				if ( is_string( $item ) && class_exists( $item ) ) {
+					/** @var class-string<\WordPress\AI\Contracts\Feature> $item */
 					$features[] = new $item();
 				} elseif ( $item instanceof Feature ) {
 					$features[] = $item;
@@ -142,7 +143,7 @@ class Feature_Loader {
 					sprintf(
 						/* translators: 1: Feature class name, 2: Error message. */
 						esc_html__( 'Failed to instantiate feature "%1$s": %2$s', 'ai' ),
-						is_string( $item ) ? esc_html( $item ) : esc_html( get_class( $item ) ),
+						is_string( $item ) ? esc_html( $item ) : esc_html( (string) get_class( $item ) ),
 						esc_html( $e->getMessage() )
 					),
 					'0.1.0'
@@ -154,7 +155,7 @@ class Feature_Loader {
 					sprintf(
 						/* translators: 1: Feature class name, 2: Error message. */
 						esc_html__( 'Feature instantiation error for "%1$s": %2$s', 'ai' ),
-						is_string( $item ) ? esc_html( $item ) : esc_html( get_class( $item ) ),
+						is_string( $item ) ? esc_html( $item ) : esc_html( (string) get_class( $item ) ),
 						esc_html( $t->getMessage() )
 					),
 					'0.1.0'
