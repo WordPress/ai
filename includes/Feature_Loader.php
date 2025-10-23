@@ -56,14 +56,10 @@ class Feature_Loader {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param array<mixed> $features Optional. Array of feature instances to register. Defaults to built-in features.
 	 * @throws Invalid_Feature_Exception If a feature does not implement the Feature interface.
 	 */
-	public function register_default_features( array $features = array() ): void {
-		// Use provided features or load defaults.
-		if ( empty( $features ) ) {
-			$features = $this->get_default_features();
-		}
+	public function register_default_features(): void {
+		$features = $this->get_default_features();
 
 		// Register all features with type validation.
 		foreach ( $features as $feature ) {
