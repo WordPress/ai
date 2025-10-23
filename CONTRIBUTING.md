@@ -1,6 +1,6 @@
 # Contributing to the WordPress AI Plugin
 
-Thank you for your interest in contributing to the WordPress AI Plugin! Here you find some information on how to get started.
+Welcome to the WordPress AI Plugin! Here you find some information on how to get started.
 
 ## Coding standards
 
@@ -133,6 +133,6 @@ echo 'Hello World';
 
 For more detailed information on plugin architecture, creating features, and development workflows, see:
 
-- [Developer Guide](DEVELOPER_GUIDE.md) - Comprehensive guide to plugin architecture and feature development
-- [Testing Strategy](TESTING.md) - Testing philosophy and guidelines
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Comprehensive guide to plugin architecture and feature development
+- [Testing Strategy](docs/TESTING.md) - Testing philosophy and guidelines
 - [WordPress AI Team](https://make.wordpress.org/ai/) - Community and discussion

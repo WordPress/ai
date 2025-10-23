@@ -306,55 +306,44 @@ The plugin also includes the following action hooks:
 git checkout -b feature/my-feature-name
 ```
 
-### 2. Write Your Code
+### 2. Implement Your Feature
 
-Follow WordPress coding standards and ensure proper documentation.
+Follow the steps in [Creating a New Feature](#creating-a-new-feature) above to build your feature.
 
 ### 3. Write Tests
 
-Create integration tests in `tests/Integration/Features/`:
+Create unit tests in `tests/Unit/` for your feature:
 
 ```php
 <?php
-namespace WordPress\AI\Tests\Integration\Features\My_Feature;
+namespace WordPress\AI\Tests\Unit\Features\My_Feature;
 
 use WordPress\AI\Features\My_Feature\My_Feature;
-use WP_UnitTestCase;
+use PHPUnit\Framework\TestCase;
 
-class My_Feature_Test extends WP_UnitTestCase {
-	public function test_feature_registration() {
+class My_Feature_Test extends TestCase {
+	public function test_feature_metadata() {
 		$feature = new My_Feature();
 		$this->assertEquals( 'my-feature', $feature->get_id() );
+		$this->assertNotEmpty( $feature->get_label() );
 	}
 }
 ```
 
-### 4. Run Tests and Linting
+### 4. Quality Checks & Testing
 
-```bash
-# Check coding standards
-composer lint
+Before submitting, ensure all quality checks pass. See [CONTRIBUTING.md](../CONTRIBUTING.md) for the complete list of required checks including:
+- Coding standards validation
+- Static analysis
+- Unit tests
 
-# Run static analysis
-composer stan
+### 5. Submit Pull Request
 
-# Auto-fix coding standards
-composer format
-
-# Run tests
-composer test
-```
-
-### 5. Commit Your Changes
-
-```bash
-git add .
-git commit -m "Add My Feature for AI-powered content generation"
-```
-
-### 6. Create Pull Request
-
-Push your branch and create a pull request on GitHub. See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed contribution guidelines.
+Push your branch and create a pull request. Follow the contribution guidelines in [CONTRIBUTING.md](../CONTRIBUTING.md) for:
+- Branch naming conventions
+- Commit message format
+- Pull request requirements
+- Code review process
 
 ---
 
