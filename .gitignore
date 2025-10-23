@@ -1,0 +1,27 @@
+# Composer
+/vendor/
+
+# Node
+node_modules/
+
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# Build
+/build/
+/dist/
+
+# Testing
+/tests/wordpress/
+/tests/_output/
+/tests/.phpunit.result.cache
+/tmp/
+AGENTS.md
+
+# Logs
+*.log

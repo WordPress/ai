@@ -1,0 +1,10 @@
+parameters:
+	level: 5
+	paths:
+		- includes
+	parallel:
+		maximumNumberOfProcesses: 1
+	scanFiles:
+		- vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+	reportUnmatchedIgnoredErrors: false
+	phpVersion: 70400
