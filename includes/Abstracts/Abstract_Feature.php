@@ -57,7 +57,7 @@ abstract class Abstract_Feature implements Feature {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @throws Invalid_Feature_Metadata_Exception If feature metadata is invalid.
+	 * @throws \WordPress\AI\Exception\Invalid_Feature_Metadata_Exception If feature metadata is invalid.
 	 */
 	final public function __construct() {
 		$metadata = $this->load_feature_metadata();

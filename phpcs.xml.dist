@@ -159,7 +159,6 @@
 			</property>
 		</properties>
 	</rule>
-	<rule ref="SlevomatCodingStandard.Namespaces.FullyQualifiedExceptions" />
 	<rule ref="SlevomatCodingStandard.Namespaces.UnusedUses" />
 	<rule ref="SlevomatCodingStandard.Namespaces.UseDoesNotStartWithBackslash" />
 	<rule ref="SlevomatCodingStandard.Namespaces.UseFromSameNamespace" />

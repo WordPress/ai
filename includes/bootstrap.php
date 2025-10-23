@@ -63,7 +63,7 @@ function check_php_version(): bool {
 	if ( version_compare( phpversion(), AI_MIN_PHP_VERSION, '<' ) ) {
 		add_action(
 			'admin_notices',
-			function () {
+			static function () {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required PHP version, 2: Current PHP version */
@@ -92,7 +92,7 @@ function check_wp_version(): bool {
 	if ( version_compare( $wp_version, AI_MIN_WP_VERSION, '<' ) ) {
 		add_action(
 			'admin_notices',
-			function () {
+			static function () {
 				global $wp_version;
 				version_notice(
 					sprintf(
@@ -172,13 +172,13 @@ function initialize_features(): void {
 		$loader   = new Feature_Loader( $registry );
 		$loader->register_default_features();
 		$loader->initialize_features();
-	} catch ( \Exception $e ) {
+	} catch ( \Throwable $t ) {
 		_doing_it_wrong(
 			__NAMESPACE__ . '\initialize_features',
 			sprintf(
 				/* translators: %s: Error message. */
 				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
-				esc_html( $e->getMessage() )
+				esc_html( $t->getMessage() )
 			),
 			'0.1.0'
 		);
