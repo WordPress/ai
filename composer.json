@@ -12,9 +12,12 @@
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
     "phpcompatibility/php-compatibility": "10.x-dev as 9.99.99",
     "phpcompatibility/phpcompatibility-wp": "^2.1",
-    "phpstan/phpstan": "^2.1",
-    "php-stubs/wordpress-stubs": "^6.8",
+    "phpstan/extension-installer": "^1.3",
+    "phpstan/phpstan-deprecation-rules": "^2.0.3",
+    "phpstan/phpstan-phpunit": "^2.0.3",
+    "phpstan/phpstan": "^2.1.22",
     "slevomat/coding-standard": "^8.0",
+    "szepeviktor/phpstan-wordpress": "^2.0.2",
     "wp-coding-standards/wpcs": "^3.2.0",
     "wp-phpunit/wp-phpunit": "^6.3",
     "wpackagist-plugin/plugin-check": "^1.6",
@@ -33,6 +36,7 @@
   "config": {
     "allow-plugins": {
       "dealerdirect/phpcodesniffer-composer-installer": true,
+      "phpstan/extension-installer": true,
       "composer/installers": true
     },
     "platform": {
@@ -59,8 +63,8 @@
   "scripts": {
     "format": "phpcbf --standard=phpcs.xml.dist",
     "lint": "phpcs --standard=phpcs.xml.dist",
-    "test": "phpunit",
-    "stan": "phpstan analyse --configuration=phpstan.neon.dist --memory-limit=512M"
+    "phpstan": "phpstan analyse --memory-limit=1G",
+    "test": "phpunit"
   },
   "scripts-descriptions": {
     "format": "Automatically fix coding standards issues",
