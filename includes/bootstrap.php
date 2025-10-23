@@ -31,7 +31,7 @@ if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
 	define( 'AI_MIN_PHP_VERSION', '7.4' );
 }
 if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
-	define( 'AI_MIN_WP_VERSION', '6.9' );
+	define( 'AI_MIN_WP_VERSION', '6.8' );
 }
 
 /**
