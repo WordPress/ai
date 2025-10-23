@@ -63,7 +63,7 @@ class Example_Feature extends Abstract_Feature {
 	 * @return array
 	 */
 	public function modify_title( array $title ): array {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && isset( $title['site'] ) ) {
 			$title['site'] = $title['site'] . ' [AI]';
 		}
 		return $title;
