@@ -39,15 +39,7 @@ composer install
 
 > **Note:** The `wordpress/wp-ai-client` package will be added to `composer.json` once it's officially released. For now, the plugin scaffolding is ready for integration.
 
-3. **Link to WordPress:**
-
-Symlink the plugin directory into your WordPress installation:
-
-```bash
-ln -s /path/to/ai /path/to/wordpress/wp-content/plugins/ai
-```
-
-4. **Activate the plugin:**
+3. **Activate the plugin:**
 
 Through WordPress admin or via WP-CLI:
 
@@ -63,19 +55,30 @@ The plugin follows a modular, feature-based architecture:
 
 ```
 ai/
-├── ai.php                      # Plugin bootstrap
-├── includes/                   # Core plugin code
-│   ├── bootstrap.php           # Plugin initialization
-│   ├── Feature_Registry.php   # Feature registration system
-│   ├── Feature_Loader.php      # Feature loading and initialization
-│   ├── Contracts/              # Feature interfaces
-│   └── Abstracts/              # Base implementations
-├── includes/Features/          # Feature implementations
-│   └── Example_Feature/        # Each feature in own directory
-├── admin/                      # Admin interface (planned)
-├── assets/                     # CSS, JS, images
-├── languages/                  # Translation files
-└── tests/                      # PHPUnit tests
+├── ai.php                            # Plugin bootstrap
+├── includes/                         # Core plugin code
+│   ├── bootstrap.php                 # Plugin initialization
+│   ├── Feature_Registry.php         # Feature registration system
+│   ├── Feature_Loader.php            # Feature loading and initialization
+│   ├── Abstracts/                    # Base implementations
+│   │   └── Abstract_Feature.php      # Base feature class
+│   ├── Contracts/                    # Feature interfaces
+│   │   └── Feature.php               # Feature contract
+│   ├── Exception/                    # Custom exceptions
+│   │   ├── Invalid_Feature_Exception.php
+│   │   └── Invalid_Feature_Metadata_Exception.php
+│   └── Features/                     # Feature implementations
+│       └── Example_Feature/          # Each feature in own directory
+│           ├── Example_Feature.php
+│           └── README.md
+├── admin/                            # Admin interface (planned)
+├── assets/                           # CSS, JS, images
+├── docs/                             # Documentation
+│   ├── DEVELOPER_GUIDE.md            # This guide
+│   └── TESTING.md                    # Testing strategy
+├── languages/                        # Translation files
+└── tests/                            # PHPUnit tests
+    └── Unit/                         # Unit tests
 ```
 
 ### Key Design Principles
