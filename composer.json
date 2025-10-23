@@ -8,14 +8,17 @@
     "ext-json": "*"
   },
   "require-dev": {
-    "wp-coding-standards/wpcs": "^3.2.0",
+    "automattic/vipwpcs": "^3.0",
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
     "phpcompatibility/php-compatibility": "10.x-dev as 9.99.99",
     "phpcompatibility/phpcompatibility-wp": "^2.1",
-    "wp-phpunit/wp-phpunit": "^6.3",
-    "yoast/phpunit-polyfills": "^4.0.0",
     "phpstan/phpstan": "^2.1",
-    "php-stubs/wordpress-stubs": "^6.8"
+    "php-stubs/wordpress-stubs": "^6.8",
+    "slevomat/coding-standard": "^8.0",
+    "wp-coding-standards/wpcs": "^3.2.0",
+    "wp-phpunit/wp-phpunit": "^6.3",
+    "wpackagist-plugin/plugin-check": "^1.6",
+    "yoast/phpunit-polyfills": "^4.0.0"
   },
   "autoload": {
     "psr-4": {
@@ -29,10 +32,28 @@
   },
   "config": {
     "allow-plugins": {
-      "dealerdirect/phpcodesniffer-composer-installer": true
+      "dealerdirect/phpcodesniffer-composer-installer": true,
+      "composer/installers": true
     },
     "platform": {
       "php": "7.4"
+    }
+  },
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://wpackagist.org",
+      "only": [
+        "wpackagist-plugin/*",
+        "wpackagist-theme/*"
+      ]
+    }
+  ],
+  "extra": {
+    "installer-paths": {
+      "vendor/{$vendor}/{$name}/": [
+        "wpackagist-plugin/plugin-check"
+      ]
     }
   },
   "scripts": {

@@ -11,7 +11,7 @@
  * Plugin Name:       AI
  * Plugin URI:        https://github.com/WordPress/ai
  * Description:       Experimental AI features for WordPress
- * Requires at least: 6.9
+ * Requires at least: 6.8
  * Version:           0.1.0
  * Requires PHP:      7.4
  * Author:            WordPress.org Contributors
