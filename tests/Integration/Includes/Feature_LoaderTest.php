@@ -249,17 +249,7 @@ class Feature_LoaderTest extends WP_UnitTestCase {
 		$this->registry->register_feature( $feature );
 
 		// Disable the feature.
-		add_filter(
-			'ai_feature_enabled',
-			function ( $enabled, $feature_id ) {
-				if ( 'mock-feature' === $feature_id ) {
-					return false;
-				}
-				return $enabled;
-			},
-			10,
-			2
-		);
+		add_filter( 'ai_feature_mock-feature_enabled', '__return_false' );
 
 		$this->loader->initialize_features();
 

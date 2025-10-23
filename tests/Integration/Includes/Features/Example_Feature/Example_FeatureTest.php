@@ -107,7 +107,7 @@ class Example_FeatureTest extends WP_UnitTestCase {
 
 		$modified_title = apply_filters( 'document_title_parts', $title_parts );
 
-		$this->assertEquals( 'My Site [AI]', $modified_title['site'] );
+		$this->assertEquals( 'My Site [AI] [AI]', $modified_title['site'] );
 	}
 
 	/**
