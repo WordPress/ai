@@ -4,8 +4,9 @@
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
-    "php": ">=7.4",
+    "automattic/jetpack-autoloader": "^5.0",
     "ext-json": "*",
+    "php": ">=7.4",
     "wordpress/abilities-api": "^0.3.0",
     "wordpress/mcp-adapter": "dev-trunk"
   },
@@ -30,6 +31,7 @@
   },
   "config": {
     "allow-plugins": {
+      "automattic/jetpack-autoloader": true,
       "dealerdirect/phpcodesniffer-composer-installer": true
     },
     "platform": {
