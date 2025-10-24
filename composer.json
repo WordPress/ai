@@ -5,7 +5,8 @@
   "license": "GPL-2.0-or-later",
   "require": {
     "php": ">=7.4",
-    "ext-json": "*"
+    "ext-json": "*",
+    "wordpress/abilities-api": "^0.3.0"
   },
   "require-dev": {
     "wp-coding-standards/wpcs": "^3.2.0",
