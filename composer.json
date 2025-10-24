@@ -6,7 +6,8 @@
   "require": {
     "php": ">=7.4",
     "ext-json": "*",
-    "wordpress/abilities-api": "^0.3.0"
+    "wordpress/abilities-api": "^0.3.0",
+    "wordpress/mcp-adapter": "dev-trunk"
   },
   "require-dev": {
     "wp-coding-standards/wpcs": "^3.2.0",
