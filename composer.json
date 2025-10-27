@@ -4,8 +4,12 @@
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
+    "automattic/jetpack-autoloader": "^5.0",
+    "ext-json": "*",
     "php": ">=7.4",
-    "ext-json": "*"
+    "wordpress/abilities-api": "^0.4.0-rc",
+    "wordpress/mcp-adapter": "dev-trunk",
+    "wordpress/wp-ai-client": "dev-trunk"
   },
   "require-dev": {
     "wp-coding-standards/wpcs": "^3.2.0",
@@ -26,14 +30,24 @@
       "WordPress\\AI\\Tests\\": "tests/"
     }
   },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "config": {
     "allow-plugins": {
-      "dealerdirect/phpcodesniffer-composer-installer": true
+      "automattic/jetpack-autoloader": true,
+      "dealerdirect/phpcodesniffer-composer-installer": true,
+      "php-http/discovery": true
     },
     "platform": {
       "php": "7.4"
     }
   },
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/WordPress/wp-ai-client"
+    }
+  ],
   "scripts": {
     "format": "phpcbf --standard=phpcs.xml.dist",
     "lint": "phpcs --standard=phpcs.xml.dist",

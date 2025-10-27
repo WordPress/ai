@@ -4,8 +4,765 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "052f8645f0d468d83d9b827677864485",
-    "packages": [],
+    "content-hash": "c7dce85d344a12e0cdd05fb94c89cc8c",
+    "packages": [
+        {
+            "name": "automattic/jetpack-autoloader",
+            "version": "v5.0.11",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Automattic/jetpack-autoloader.git",
+                "reference": "90bf7b3bc29cb7be74105ac99afab4c21bc47e29"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Automattic/jetpack-autoloader/zipball/90bf7b3bc29cb7be74105ac99afab4c21bc47e29",
+                "reference": "90bf7b3bc29cb7be74105ac99afab4c21bc47e29",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^2.2",
+                "php": ">=7.2"
+            },
+            "require-dev": {
+                "automattic/jetpack-changelogger": "^6.0.7",
+                "automattic/phpunit-select-config": "^1.0.3",
+                "composer/composer": "^2.2",
+                "yoast/phpunit-polyfills": "^4.0.0"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Automattic\\Jetpack\\Autoloader\\CustomAutoloaderPlugin",
+                "autotagger": true,
+                "mirror-repo": "Automattic/jetpack-autoloader",
+                "branch-alias": {
+                    "dev-trunk": "5.0.x-dev"
+                },
+                "changelogger": {
+                    "link-template": "https://github.com/Automattic/jetpack-autoloader/compare/v${old}...v${new}"
+                },
+                "version-constants": {
+                    "::VERSION": "src/AutoloadGenerator.php"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Automattic\\Jetpack\\Autoloader\\": "src"
+                },
+                "classmap": [
+                    "src/AutoloadGenerator.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "description": "Creates a custom autoloader for a plugin or theme.",
+            "keywords": [
+                "autoload",
+                "autoloader",
+                "composer",
+                "jetpack",
+                "plugin",
+                "wordpress"
+            ],
+            "support": {
+                "source": "https://github.com/Automattic/jetpack-autoloader/tree/v5.0.11"
+            },
+            "time": "2025-10-06T10:32:52+00:00"
+        },
+        {
+            "name": "php-http/discovery",
+            "version": "1.20.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-http/discovery.git",
+                "reference": "82fe4c73ef3363caed49ff8dd1539ba06044910d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-http/discovery/zipball/82fe4c73ef3363caed49ff8dd1539ba06044910d",
+                "reference": "82fe4c73ef3363caed49ff8dd1539ba06044910d",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^1.0|^2.0",
+                "php": "^7.1 || ^8.0"
+            },
+            "conflict": {
+                "nyholm/psr7": "<1.0",
+                "zendframework/zend-diactoros": "*"
+            },
+            "provide": {
+                "php-http/async-client-implementation": "*",
+                "php-http/client-implementation": "*",
+                "psr/http-client-implementation": "*",
+                "psr/http-factory-implementation": "*",
+                "psr/http-message-implementation": "*"
+            },
+            "require-dev": {
+                "composer/composer": "^1.0.2|^2.0",
+                "graham-campbell/phpspec-skip-example-extension": "^5.0",
+                "php-http/httplug": "^1.0 || ^2.0",
+                "php-http/message-factory": "^1.0",
+                "phpspec/phpspec": "^5.1 || ^6.1 || ^7.3",
+                "sebastian/comparator": "^3.0.5 || ^4.0.8",
+                "symfony/phpunit-bridge": "^6.4.4 || ^7.0.1"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Http\\Discovery\\Composer\\Plugin",
+                "plugin-optional": true
+            },
+            "autoload": {
+                "psr-4": {
+                    "Http\\Discovery\\": "src/"
+                },
+                "exclude-from-classmap": [
+                    "src/Composer/Plugin.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Márk Sági-Kazár",
+                    "email": "mark.sagikazar@gmail.com"
+                }
+            ],
+            "description": "Finds and installs PSR-7, PSR-17, PSR-18 and HTTPlug implementations",
+            "homepage": "http://php-http.org",
+            "keywords": [
+                "adapter",
+                "client",
+                "discovery",
+                "factory",
+                "http",
+                "message",
+                "psr17",
+                "psr7"
+            ],
+            "support": {
+                "issues": "https://github.com/php-http/discovery/issues",
+                "source": "https://github.com/php-http/discovery/tree/1.20.0"
+            },
+            "time": "2024-10-02T11:20:13+00:00"
+        },
+        {
+            "name": "php-http/httplug",
+            "version": "2.4.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-http/httplug.git",
+                "reference": "5cad731844891a4c282f3f3e1b582c46839d22f4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-http/httplug/zipball/5cad731844891a4c282f3f3e1b582c46839d22f4",
+                "reference": "5cad731844891a4c282f3f3e1b582c46839d22f4",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.1 || ^8.0",
+                "php-http/promise": "^1.1",
+                "psr/http-client": "^1.0",
+                "psr/http-message": "^1.0 || ^2.0"
+            },
+            "require-dev": {
+                "friends-of-phpspec/phpspec-code-coverage": "^4.1 || ^5.0 || ^6.0",
+                "phpspec/phpspec": "^5.1 || ^6.0 || ^7.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Http\\Client\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Eric GELOEN",
+                    "email": "geloen.eric@gmail.com"
+                },
+                {
+                    "name": "Márk Sági-Kazár",
+                    "email": "mark.sagikazar@gmail.com",
+                    "homepage": "https://sagikazarmark.hu"
+                }
+            ],
+            "description": "HTTPlug, the HTTP client abstraction for PHP",
+            "homepage": "http://httplug.io",
+            "keywords": [
+                "client",
+                "http"
+            ],
+            "support": {
+                "issues": "https://github.com/php-http/httplug/issues",
+                "source": "https://github.com/php-http/httplug/tree/2.4.1"
+            },
+            "time": "2024-09-23T11:39:58+00:00"
+        },
+        {
+            "name": "php-http/message-factory",
+            "version": "1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-http/message-factory.git",
+                "reference": "4d8778e1c7d405cbb471574821c1ff5b68cc8f57"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-http/message-factory/zipball/4d8778e1c7d405cbb471574821c1ff5b68cc8f57",
+                "reference": "4d8778e1c7d405cbb471574821c1ff5b68cc8f57",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.4",
+                "psr/http-message": "^1.0 || ^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Http\\Message\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Márk Sági-Kazár",
+                    "email": "mark.sagikazar@gmail.com"
+                }
+            ],
+            "description": "Factory interfaces for PSR-7 HTTP Message",
+            "homepage": "http://php-http.org",
+            "keywords": [
+                "factory",
+                "http",
+                "message",
+                "stream",
+                "uri"
+            ],
+            "support": {
+                "issues": "https://github.com/php-http/message-factory/issues",
+                "source": "https://github.com/php-http/message-factory/tree/1.1.0"
+            },
+            "abandoned": "psr/http-factory",
+            "time": "2023-04-14T14:16:17+00:00"
+        },
+        {
+            "name": "php-http/promise",
+            "version": "1.3.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-http/promise.git",
+                "reference": "fc85b1fba37c169a69a07ef0d5a8075770cc1f83"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-http/promise/zipball/fc85b1fba37c169a69a07ef0d5a8075770cc1f83",
+                "reference": "fc85b1fba37c169a69a07ef0d5a8075770cc1f83",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.1 || ^8.0"
+            },
+            "require-dev": {
+                "friends-of-phpspec/phpspec-code-coverage": "^4.3.2 || ^6.3",
+                "phpspec/phpspec": "^5.1.2 || ^6.2 || ^7.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Http\\Promise\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Joel Wurtz",
+                    "email": "joel.wurtz@gmail.com"
+                },
+                {
+                    "name": "Márk Sági-Kazár",
+                    "email": "mark.sagikazar@gmail.com"
+                }
+            ],
+            "description": "Promise used for asynchronous HTTP requests",
+            "homepage": "http://httplug.io",
+            "keywords": [
+                "promise"
+            ],
+            "support": {
+                "issues": "https://github.com/php-http/promise/issues",
+                "source": "https://github.com/php-http/promise/tree/1.3.1"
+            },
+            "time": "2024-03-15T13:55:21+00:00"
+        },
+        {
+            "name": "psr/http-client",
+            "version": "1.0.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-client.git",
+                "reference": "bb5906edc1c324c9a05aa0873d40117941e5fa90"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-client/zipball/bb5906edc1c324c9a05aa0873d40117941e5fa90",
+                "reference": "bb5906edc1c324c9a05aa0873d40117941e5fa90",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.0 || ^8.0",
+                "psr/http-message": "^1.0 || ^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Client\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for HTTP clients",
+            "homepage": "https://github.com/php-fig/http-client",
+            "keywords": [
+                "http",
+                "http-client",
+                "psr",
+                "psr-18"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/http-client"
+            },
+            "time": "2023-09-23T14:17:50+00:00"
+        },
+        {
+            "name": "psr/http-factory",
+            "version": "1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-factory.git",
+                "reference": "2b4765fddfe3b508ac62f829e852b1501d3f6e8a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-factory/zipball/2b4765fddfe3b508ac62f829e852b1501d3f6e8a",
+                "reference": "2b4765fddfe3b508ac62f829e852b1501d3f6e8a",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.1",
+                "psr/http-message": "^1.0 || ^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Message\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "PSR-17: Common interfaces for PSR-7 HTTP message factories",
+            "keywords": [
+                "factory",
+                "http",
+                "message",
+                "psr",
+                "psr-17",
+                "psr-7",
+                "request",
+                "response"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/http-factory"
+            },
+            "time": "2024-04-15T12:06:14+00:00"
+        },
+        {
+            "name": "psr/http-message",
+            "version": "2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-message.git",
+                "reference": "402d35bcb92c70c026d1a6a9883f06b2ead23d71"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-message/zipball/402d35bcb92c70c026d1a6a9883f06b2ead23d71",
+                "reference": "402d35bcb92c70c026d1a6a9883f06b2ead23d71",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.2 || ^8.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Message\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for HTTP messages",
+            "homepage": "https://github.com/php-fig/http-message",
+            "keywords": [
+                "http",
+                "http-message",
+                "psr",
+                "psr-7",
+                "request",
+                "response"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/http-message/tree/2.0"
+            },
+            "time": "2023-04-04T09:54:51+00:00"
+        },
+        {
+            "name": "wordpress/abilities-api",
+            "version": "v0.4.0-rc",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/WordPress/abilities-api.git",
+                "reference": "c5b5b1b900c5748ba4a5e615d448b2b6c2a756da"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/WordPress/abilities-api/zipball/c5b5b1b900c5748ba4a5e615d448b2b6c2a756da",
+                "reference": "c5b5b1b900c5748ba4a5e615d448b2b6c2a756da",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 | ^8"
+            },
+            "require-dev": {
+                "automattic/vipwpcs": "^3.0",
+                "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+                "phpcompatibility/php-compatibility": "10.x-dev as 9.99.99",
+                "phpcompatibility/phpcompatibility-wp": "^2.1",
+                "phpstan/extension-installer": "^1.3",
+                "phpstan/phpstan": "^2.1.22",
+                "phpstan/phpstan-deprecation-rules": "^2.0.3",
+                "phpstan/phpstan-phpunit": "^2.0.3",
+                "phpunit/phpunit": "^8.5|^9.6",
+                "slevomat/coding-standard": "^8.0",
+                "squizlabs/php_codesniffer": "^3.9",
+                "szepeviktor/phpstan-wordpress": "^2.0.2",
+                "wp-coding-standards/wpcs": "^3.1",
+                "wp-phpunit/wp-phpunit": "^6.5",
+                "wpackagist-plugin/plugin-check": "^1.6",
+                "yoast/phpunit-polyfills": "^4.0"
+            },
+            "type": "library",
+            "extra": {
+                "installer-paths": {
+                    "vendor/{$vendor}/{$name}/": [
+                        "wpackagist-plugin/plugin-check"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "includes/bootstrap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "WordPress AI Team",
+                    "homepage": "https://make.wordpress.org/ai/"
+                }
+            ],
+            "description": "AI Abilities for WordPress.",
+            "homepage": "https://github.com/WordPress/abilities-api",
+            "keywords": [
+                "abilities",
+                "ai",
+                "api",
+                "llm",
+                "wordpress"
+            ],
+            "support": {
+                "issues": "https://github.com/WordPress/abilities-api/issues",
+                "source": "https://github.com/WordPress/abilities-api"
+            },
+            "time": "2025-10-27T17:04:11+00:00"
+        },
+        {
+            "name": "wordpress/mcp-adapter",
+            "version": "dev-trunk",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/WordPress/mcp-adapter.git",
+                "reference": "0e2910780a95ac855931a4df7b0a9de7ca7b05eb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/WordPress/mcp-adapter/zipball/0e2910780a95ac855931a4df7b0a9de7ca7b05eb",
+                "reference": "0e2910780a95ac855931a4df7b0a9de7ca7b05eb",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 || ^8.0"
+            },
+            "require-dev": {
+                "automattic/vipwpcs": "^3.0",
+                "php-stubs/wp-cli-stubs": "^2.12",
+                "phpcompatibility/php-compatibility": "10.x-dev as 9.99.99",
+                "phpcompatibility/phpcompatibility-wp": "^2.1",
+                "phpstan/extension-installer": "^1.3",
+                "phpstan/php-8-stubs": "^0.4.24",
+                "phpstan/phpstan": "^2.1.22",
+                "phpstan/phpstan-deprecation-rules": "^2.0.3",
+                "phpunit/phpunit": "^9.6",
+                "slevomat/coding-standard": "^8.0",
+                "szepeviktor/phpstan-wordpress": "^2.0",
+                "wp-phpunit/wp-phpunit": "^6.5",
+                "wpackagist-plugin/plugin-check": "^1.6",
+                "yoast/phpunit-polyfills": "^4.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "installer-paths": {
+                    "vendor/{$vendor}/{$name}/": [
+                        "wpackagist-plugin/plugin-check"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "WP\\MCP\\": "includes/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "WordPress AI Team",
+                    "homepage": "https://make.wordpress.org/ai/"
+                }
+            ],
+            "description": "Adapter for Abilities API, letting WordPress abilities to be used as MCP tools, resources or prompts",
+            "homepage": "https://github.com/wordpress/mcp-adapter",
+            "keywords": [
+                "abilities-api",
+                "adapter",
+                "ai",
+                "api",
+                "integration",
+                "mcp",
+                "model-context-protocol",
+                "wordpress"
+            ],
+            "support": {
+                "issues": "https://github.com/wordpress/mcp-adapter/issues",
+                "source": "https://github.com/wordpress/mcp-adapter"
+            },
+            "time": "2025-10-23T05:56:26+00:00"
+        },
+        {
+            "name": "wordpress/php-ai-client",
+            "version": "0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/WordPress/php-ai-client.git",
+                "reference": "9ec56e70e692791493a3eaff1b69f25f4daeded7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/WordPress/php-ai-client/zipball/9ec56e70e692791493a3eaff1b69f25f4daeded7",
+                "reference": "9ec56e70e692791493a3eaff1b69f25f4daeded7",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "php": ">=7.4",
+                "php-http/discovery": "^1.0",
+                "php-http/httplug": "^2.0",
+                "php-http/message-factory": "^1.0",
+                "psr/http-client": "^1.0",
+                "psr/http-factory": "^1.0",
+                "psr/http-message": "^1.0 || ^2.0"
+            },
+            "require-dev": {
+                "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+                "guzzlehttp/psr7": "^1.0 || ^2.0",
+                "php-http/curl-client": "^2.0",
+                "php-http/mock-client": "^1.0",
+                "phpcompatibility/php-compatibility": "dev-develop",
+                "phpstan/phpstan": "~2.1",
+                "phpunit/phpunit": "^9.5 || ^10.0",
+                "slevomat/coding-standard": "^8.20",
+                "squizlabs/php_codesniffer": "^3.7"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/polyfills.php"
+                ],
+                "psr-4": {
+                    "WordPress\\AiClient\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "WordPress AI Team",
+                    "homepage": "https://make.wordpress.org/ai/"
+                }
+            ],
+            "description": "A provider agnostic PHP AI client SDK to communicate with any generative AI models of various capabilities using a uniform API.",
+            "homepage": "https://github.com/WordPress/php-ai-client",
+            "keywords": [
+                "ai",
+                "api",
+                "llm"
+            ],
+            "support": {
+                "issues": "https://github.com/WordPress/php-ai-client/issues",
+                "source": "https://github.com/WordPress/php-ai-client"
+            },
+            "time": "2025-08-29T22:46:54+00:00"
+        },
+        {
+            "name": "wordpress/wp-ai-client",
+            "version": "dev-trunk",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/WordPress/wp-ai-client.git",
+                "reference": "3d8a386ad2988fba88fa6f44dd1045a58e0c8f30"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/3d8a386ad2988fba88fa6f44dd1045a58e0c8f30",
+                "reference": "3d8a386ad2988fba88fa6f44dd1045a58e0c8f30",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "php": ">=7.4",
+                "wordpress/php-ai-client": "^0.1"
+            },
+            "require-dev": {
+                "automattic/vipwpcs": "^3.0",
+                "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+                "phpcompatibility/phpcompatibility-wp": "^2.1",
+                "phpstan/phpstan": "~2.1",
+                "slevomat/coding-standard": "^8.0",
+                "squizlabs/php_codesniffer": "^3.7",
+                "wp-coding-standards/wpcs": "^3.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "WordPress\\AI_Client\\": "includes/"
+                }
+            },
+            "scripts": {
+                "lint": [
+                    "@phpcs",
+                    "@phpstan"
+                ],
+                "phpcs": [
+                    "phpcs"
+                ],
+                "phpcbf": [
+                    "phpcbf"
+                ],
+                "phpstan": [
+                    "phpstan analyze --memory-limit=256M"
+                ]
+            },
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "WordPress AI Team",
+                    "homepage": "https://make.wordpress.org/ai/"
+                }
+            ],
+            "description": "An AI client and API for WordPress to communicate with any generative AI models of various capabilities using a uniform API.",
+            "homepage": "https://github.com/WordPress/wp-ai-client",
+            "keywords": [
+                "ai",
+                "api",
+                "llm",
+                "wordpress"
+            ],
+            "support": {
+                "issues": "https://github.com/WordPress/wp-ai-client/issues",
+                "source": "https://github.com/WordPress/wp-ai-client"
+            },
+            "time": "2025-09-08T16:26:36+00:00"
+        }
+    ],
     "packages-dev": [
         {
             "name": "dealerdirect/phpcodesniffer-composer-installer",
@@ -235,16 +992,16 @@
         },
         {
             "name": "nikic/php-parser",
-            "version": "v5.6.1",
+            "version": "v5.6.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nikic/PHP-Parser.git",
-                "reference": "f103601b29efebd7ff4a1ca7b3eeea9e3336a2a2"
+                "reference": "3a454ca033b9e06b63282ce19562e892747449bb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nikic/PHP-Parser/zipball/f103601b29efebd7ff4a1ca7b3eeea9e3336a2a2",
-                "reference": "f103601b29efebd7ff4a1ca7b3eeea9e3336a2a2",
+                "url": "https://api.github.com/repos/nikic/PHP-Parser/zipball/3a454ca033b9e06b63282ce19562e892747449bb",
+                "reference": "3a454ca033b9e06b63282ce19562e892747449bb",
                 "shasum": ""
             },
             "require": {
@@ -287,9 +1044,9 @@
             ],
             "support": {
                 "issues": "https://github.com/nikic/PHP-Parser/issues",
-                "source": "https://github.com/nikic/PHP-Parser/tree/v5.6.1"
+                "source": "https://github.com/nikic/PHP-Parser/tree/v5.6.2"
             },
-            "time": "2025-08-13T20:13:15+00:00"
+            "time": "2025-10-21T19:32:17+00:00"
         },
         {
             "name": "phar-io/manifest",
@@ -466,12 +1223,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCompatibility/PHPCompatibility.git",
-                "reference": "8daeec54772a592ad369be23ae02ed593c71e7f1"
+                "reference": "c55d775037d854842a6f98daeb7e88ed40f80b4f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibility/zipball/8daeec54772a592ad369be23ae02ed593c71e7f1",
-                "reference": "8daeec54772a592ad369be23ae02ed593c71e7f1",
+                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibility/zipball/c55d775037d854842a6f98daeb7e88ed40f80b4f",
+                "reference": "c55d775037d854842a6f98daeb7e88ed40f80b4f",
                 "shasum": ""
             },
             "require": {
@@ -552,7 +1309,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-09-19T19:40:19+00:00"
+            "time": "2025-10-22T21:37:50+00:00"
         },
         {
             "name": "phpcsstandards/phpcsextra",
@@ -638,16 +1395,16 @@
         },
         {
             "name": "phpcsstandards/phpcsutils",
-            "version": "1.1.2",
+            "version": "1.1.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCSStandards/PHPCSUtils.git",
-                "reference": "b22b59e3d9ec8fe4953e42c7d59117c6eae70eae"
+                "reference": "8b8e17615d04f2fc2cd46fc1d2fd888fa21b3cf9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCSStandards/PHPCSUtils/zipball/b22b59e3d9ec8fe4953e42c7d59117c6eae70eae",
-                "reference": "b22b59e3d9ec8fe4953e42c7d59117c6eae70eae",
+                "url": "https://api.github.com/repos/PHPCSStandards/PHPCSUtils/zipball/8b8e17615d04f2fc2cd46fc1d2fd888fa21b3cf9",
+                "reference": "8b8e17615d04f2fc2cd46fc1d2fd888fa21b3cf9",
                 "shasum": ""
             },
             "require": {
@@ -727,7 +1484,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-09-05T00:00:03+00:00"
+            "time": "2025-10-16T16:39:32+00:00"
         },
         {
             "name": "phpstan/phpstan",
@@ -2536,15 +3293,17 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "stability-flags": {
-        "phpcompatibility/php-compatibility": 20
+        "phpcompatibility/php-compatibility": 20,
+        "wordpress/mcp-adapter": 20,
+        "wordpress/wp-ai-client": 20
     },
-    "prefer-stable": false,
+    "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=7.4",
-        "ext-json": "*"
+        "ext-json": "*",
+        "php": ">=7.4"
     },
     "platform-dev": {},
     "platform-overrides": {
