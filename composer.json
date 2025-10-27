@@ -4,8 +4,12 @@
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
+    "automattic/jetpack-autoloader": "^5.0",
+    "ext-json": "*",
     "php": ">=7.4",
-    "ext-json": "*"
+    "wordpress/abilities-api": "^0.4.0-rc",
+    "wordpress/mcp-adapter": "dev-trunk",
+    "wordpress/wp-ai-client": "dev-trunk"
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",
@@ -34,11 +38,16 @@
       "WordPress\\AI\\Tests\\": "tests/"
     }
   },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "config": {
     "allow-plugins": {
+      "automattic/jetpack-autoloader": true,
+      "composer/installers": true,
       "dealerdirect/phpcodesniffer-composer-installer": true,
-      "phpstan/extension-installer": true,
-      "composer/installers": true
+      "php-http/discovery": true,
+      "phpstan/extension-installer": true
+
     },
     "platform": {
       "php": "7.4"
@@ -52,6 +61,10 @@
         "wpackagist-plugin/*",
         "wpackagist-theme/*"
       ]
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/WordPress/wp-ai-client"
     }
   ],
   "extra": {

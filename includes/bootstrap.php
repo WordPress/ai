@@ -148,12 +148,12 @@ function load(): void {
 		return;
 	}
 
-	// Load Composer autoloader.
-	if ( ! file_exists( AI_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
+	// Load the Jetpack autoloader.
+	if ( ! file_exists( AI_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
 		add_action( 'admin_notices', __NAMESPACE__ . '\display_composer_notice' );
 		return;
 	}
-	require_once AI_PLUGIN_DIR . 'vendor/autoload.php';
+	require_once AI_PLUGIN_DIR . 'vendor/autoload_packages.php';
 
 	$loaded = true;
 
