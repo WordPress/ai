@@ -175,17 +175,7 @@ class Feature_Registry_Test extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_disabled_features_not_initialized() {
-		add_filter(
-			'ai_feature_enabled',
-			function ( $enabled, $feature_id ) {
-				if ( 'test-feature' === $feature_id ) {
-					return false;
-				}
-				return $enabled;
-			},
-			10,
-			2
-		);
+		add_filter( 'ai_feature_test-feature_enabled', '__return_false' );
 
 		$feature = new Test_Feature();
 		$this->registry->register_feature( $feature );

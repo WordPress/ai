@@ -33,17 +33,10 @@ Use the feature-specific filter:
 add_filter( 'ai_feature_example-feature_enabled', '__return_false' );
 ```
 
-Or use the generic filter:
+Or use the generic filter to disable all features:
 
 ```php
-add_filter(
-	'ai_feature_enabled',
-	static function( $enabled, $feature_id ) {
-		return 'example-feature' === $feature_id ? false : $enabled;
-	},
-	10,
-	2
-);
+add_filter( 'ai_features_enabled', '__return_false' );
 ```
 
 ## Create Your Own Feature

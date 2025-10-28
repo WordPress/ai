@@ -10,10 +10,14 @@
     "lint:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script lint",
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",
     "lint:php:stan": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script stan",
-    "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit"
+    "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit -c phpunit.xml.dist",
+    "format": "wp-scripts format",
+    "lint:js": "wp-scripts lint-js"
   },
   "devDependencies": {
     "@wordpress/env": "^10.33.0",
+    "@wordpress/eslint-plugin": "^22.17.0",
+    "@wordpress/prettier-config": "^4.31.0",
     "@wordpress/scripts": "^30.26.0"
   },
   "engines": {

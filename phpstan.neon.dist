@@ -1,10 +1,30 @@
 parameters:
-	level: 5
-	paths:
-		- includes
-	parallel:
-		maximumNumberOfProcesses: 1
-	scanFiles:
-		- vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
-	reportUnmatchedIgnoredErrors: false
-	phpVersion: 70400
+		# Rules
+		treatPhpDocTypesAsCertain: false
+		inferPrivatePropertyTypeFromConstructor: true
+		checkExplicitMixedMissingReturn: true
+		checkFunctionNameCase: true
+		checkInternalClassCaseSensitivity: true
+		checkTooWideReturnTypesInProtectedAndPublicMethods: true
+		polluteScopeWithAlwaysIterableForeach: false
+		polluteScopeWithLoopInitialAssignments: false
+		reportAlwaysTrueInLastCondition: true
+		reportStaticMethodSignatures: true
+		reportWrongPhpDocTypeInVarTag: true
+
+		# Configuration
+		level: 8
+		phpVersion:
+			min: 70400
+			max: 80400
+		bootstrapFiles:
+				- ai.php
+		paths:
+				- ai.php
+				- includes/
+		excludePaths:
+			analyse:
+				- tests/
+				- vendor/
+			analyseAndScan:
+				- node_modules (?)

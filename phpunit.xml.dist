@@ -14,11 +14,8 @@
 	cacheResultFile="./tests/.phpunit.result.cache"
 >
 	<testsuites>
-		<testsuite name="unit">
-			<directory suffix="Test.php">tests/Unit</directory>
-		</testsuite>
 		<testsuite name="integration">
-			<directory suffix="Test.php">tests/Integration</directory>
+			<directory suffix=".php">tests/Integration</directory>
 		</testsuite>
 	</testsuites>
 	<coverage processUncoveredFiles="false">

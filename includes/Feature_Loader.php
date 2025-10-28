@@ -7,10 +7,10 @@
 
 namespace WordPress\AI;
 
+use Throwable;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Exception\Invalid_Feature_Exception;
 use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
-use Exception;
 
 /**
  * Orchestrates feature initialization and registration.
@@ -25,7 +25,7 @@ class Feature_Loader {
 	 * Feature registry instance.
 	 *
 	 * @since 0.1.0
-	 * @var Feature_Registry
+	 * @var \WordPress\AI\Feature_Registry
 	 */
 	private $registry;
 
@@ -42,7 +42,7 @@ class Feature_Loader {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param Feature_Registry $registry The feature registry instance.
+	 * @param \WordPress\AI\Feature_Registry $registry The feature registry instance.
 	 */
 	public function __construct( Feature_Registry $registry ) {
 		$this->registry = $registry;
@@ -56,7 +56,7 @@ class Feature_Loader {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @throws Invalid_Feature_Exception If a feature does not implement the Feature interface.
+	 * @throws \WordPress\AI\Exception\Invalid_Feature_Exception If a feature does not implement the Feature interface.
 	 */
 	public function register_default_features(): void {
 		$features = $this->get_default_features();
@@ -87,7 +87,7 @@ class Feature_Loader {
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param Feature_Registry $registry The feature registry instance.
+		 * @param \WordPress\AI\Feature_Registry $registry The feature registry instance.
 		 */
 		do_action( 'ai_register_features', $this->registry );
 	}
@@ -97,8 +97,8 @@ class Feature_Loader {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return Feature[] Array of default feature instances.
-	 * @throws Invalid_Feature_Exception If a feature class does not exist (caught internally).
+	 * @return array<\WordPress\AI\Contracts\Feature> Array of default feature instances.
+	 * @throws \WordPress\AI\Exception\Invalid_Feature_Exception If a feature class does not exist (caught internally).
 	 */
 	private function get_default_features(): array {
 		$feature_classes = array(
@@ -122,6 +122,7 @@ class Feature_Loader {
 			try {
 				// Support both class names and pre-instantiated instances.
 				if ( is_string( $item ) && class_exists( $item ) ) {
+					/** @var class-string<\WordPress\AI\Contracts\Feature> $item */
 					$features[] = new $item();
 				} elseif ( $item instanceof Feature ) {
 					$features[] = $item;
@@ -142,20 +143,20 @@ class Feature_Loader {
 					sprintf(
 						/* translators: 1: Feature class name, 2: Error message. */
 						esc_html__( 'Failed to instantiate feature "%1$s": %2$s', 'ai' ),
-						is_string( $item ) ? esc_html( $item ) : esc_html( get_class( $item ) ),
+						is_string( $item ) ? esc_html( $item ) : esc_html( (string) get_class( $item ) ),
 						esc_html( $e->getMessage() )
 					),
 					'0.1.0'
 				);
-			} catch ( Exception $e ) {
+			} catch ( Throwable $t ) {
 				// Skip features that fail to instantiate.
 				_doing_it_wrong(
 					__METHOD__,
 					sprintf(
 						/* translators: 1: Feature class name, 2: Error message. */
 						esc_html__( 'Feature instantiation error for "%1$s": %2$s', 'ai' ),
-						is_string( $item ) ? esc_html( $item ) : esc_html( get_class( $item ) ),
-						esc_html( $e->getMessage() )
+						is_string( $item ) ? esc_html( $item ) : esc_html( (string) get_class( $item ) ),
+						esc_html( $t->getMessage() )
 					),
 					'0.1.0'
 				);

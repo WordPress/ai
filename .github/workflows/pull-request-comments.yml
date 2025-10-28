@@ -87,7 +87,7 @@ jobs:
                   path: '/tmp/pr/pr.zip',
                   data: {
                     resource: 'url',
-                    url: `/plugin-proxy.php?org=WordPress&repo=ai&workflow=Build%20Plugin%20Zip&artifact=ai&pr=${prNumber}`,
+                    url: `/plugin-proxy.php?org=WordPress&repo=ai&workflow=Pull%20Request%20Comments&artifact=ai&pr=${prNumber}`,
                     caption: `Downloading AI Experiments PR ${prNumber}`,
                   },
                 },

@@ -12,13 +12,21 @@
     "wordpress/wp-ai-client": "dev-trunk"
   },
   "require-dev": {
-    "wp-coding-standards/wpcs": "^3.2.0",
+    "automattic/vipwpcs": "^3.0",
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
-    "phpcompatibility/php-compatibility": "dev-develop",
-    "wp-phpunit/wp-phpunit": "^6.3",
-    "yoast/phpunit-polyfills": "^4.0.0",
-    "phpstan/phpstan": "^2.1",
-    "php-stubs/wordpress-stubs": "^6.8"
+    "phpcompatibility/php-compatibility": "10.x-dev as 9.99.99",
+    "phpcompatibility/phpcompatibility-wp": "^2.1",
+    "phpstan/extension-installer": "^1.3",
+    "phpstan/phpstan-deprecation-rules": "^2.0.3",
+    "phpstan/phpstan-phpunit": "^2.0.3",
+    "phpstan/phpstan": "^2.1.22",
+    "phpunit/phpunit": "^8.5|^9.6",
+    "slevomat/coding-standard": "^8.0",
+    "szepeviktor/phpstan-wordpress": "^2.0.2",
+    "wp-coding-standards/wpcs": "^3.2.0",
+    "wp-phpunit/wp-phpunit": "^6.5",
+    "wpackagist-plugin/plugin-check": "^1.6",
+    "yoast/phpunit-polyfills": "^4.0"
   },
   "autoload": {
     "psr-4": {
@@ -35,8 +43,11 @@
   "config": {
     "allow-plugins": {
       "automattic/jetpack-autoloader": true,
+      "composer/installers": true,
       "dealerdirect/phpcodesniffer-composer-installer": true,
-      "php-http/discovery": true
+      "php-http/discovery": true,
+      "phpstan/extension-installer": true
+
     },
     "platform": {
       "php": "7.4"
@@ -44,15 +55,30 @@
   },
   "repositories": [
     {
+      "type": "composer",
+      "url": "https://wpackagist.org",
+      "only": [
+        "wpackagist-plugin/*",
+        "wpackagist-theme/*"
+      ]
+    },
+    {
       "type": "vcs",
       "url": "https://github.com/WordPress/wp-ai-client"
     }
   ],
+  "extra": {
+    "installer-paths": {
+      "vendor/{$vendor}/{$name}/": [
+        "wpackagist-plugin/plugin-check"
+      ]
+    }
+  },
   "scripts": {
     "format": "phpcbf --standard=phpcs.xml.dist",
     "lint": "phpcs --standard=phpcs.xml.dist",
-    "test": "phpunit",
-    "stan": "phpstan analyse --configuration=phpstan.neon.dist --memory-limit=512M"
+    "phpstan": "phpstan analyse --memory-limit=1G",
+    "test": "phpunit --strict-coverage"
   },
   "scripts-descriptions": {
     "format": "Automatically fix coding standards issues",

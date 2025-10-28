@@ -59,8 +59,8 @@ class Example_Feature extends Abstract_Feature {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param array $title Title parts.
-	 * @return array
+	 * @param array<string, string> $title Title parts.
+	 * @return array<string, string>
 	 */
 	public function modify_title( array $title ): array {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && isset( $title['site'] ) ) {
@@ -91,7 +91,7 @@ class Example_Feature extends Abstract_Feature {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array
+	 * @return array<string, mixed>
 	 */
 	public function rest_endpoint_callback(): array {
 		return array(

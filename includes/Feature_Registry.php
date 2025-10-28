@@ -22,7 +22,7 @@ class Feature_Registry {
 	 * Registered features.
 	 *
 	 * @since 0.1.0
-	 * @var Feature[]
+	 * @var \WordPress\AI\Contracts\Feature[]
 	 */
 	private $features = array();
 
@@ -31,7 +31,7 @@ class Feature_Registry {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param Feature $feature Feature instance to register.
+	 * @param \WordPress\AI\Contracts\Feature $feature Feature instance to register.
 	 * @return bool True if registered successfully, false if already exists or invalid.
 	 */
 	public function register_feature( Feature $feature ): bool {
@@ -56,7 +56,7 @@ class Feature_Registry {
 	 * @since 0.1.0
 	 *
 	 * @param string $id Feature identifier.
-	 * @return Feature|null Feature instance or null if not found.
+	 * @return \WordPress\AI\Contracts\Feature|null Feature instance or null if not found.
 	 */
 	public function get_feature( string $id ): ?Feature {
 		return $this->features[ $id ] ?? null;
@@ -67,7 +67,7 @@ class Feature_Registry {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return Feature[] Array of feature instances keyed by feature ID.
+	 * @return \WordPress\AI\Contracts\Feature[] Array of feature instances keyed by feature ID.
 	 */
 	public function get_all_features(): array {
 		return $this->features;
