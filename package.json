@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "description": "WordPress AI Experiments",
   "license": "GPL-2.0-or-later",
+  "files": [
+    "includes",
+    "vendor",
+    "README.md",
+    "readme.txt",
+    "ai.php"
+  ],
   "scripts": {
     "plugin-zip": "wp-scripts plugin-zip",
     "build": "echo 'Building...'",
