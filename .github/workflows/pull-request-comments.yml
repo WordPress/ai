@@ -8,7 +8,7 @@ on:
 concurrency:
   # The concurrency group contains the workflow name and the branch name for pull requests
   # or the commit hash for any other events.
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request_target' && github.head_ref || github.sha }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
 
 # Disable permissions for all available scopes by default.
 # Any needed permissions should be configured at the job level.
@@ -22,6 +22,7 @@ jobs:
     uses: ./.github/workflows/build-plugin-zip.yml
     permissions:
       contents: read
+      pull-requests: read
 
   # Leaves a comment on a pull request with a link to test the changes in a WordPress Playground instance.
   playground-details:
