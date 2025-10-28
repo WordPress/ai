@@ -2,7 +2,7 @@
 
 Welcome to the AI plugin, a WordPress project. We hope you join us in exploring AI capabilities within WordPress; all are welcome here.
 
-* Please see the [Contributing Guidelines](https://github.com/WordPress/ai/blob/HEAD/CONTRIBUTING.md) for additional information on how to contribute.
+* Please see the [Contributing Guidelines](https://github.com/WordPress/ai/blob/trunk/CONTRIBUTING.md) for additional information on how to contribute.
 
 * As with all WordPress projects, we want to ensure a welcoming environment for everyone. With that in mind, all contributors are expected to follow our [Code of Conduct](https://make.wordpress.org/handbook/community-code-of-conduct/).
 

@@ -1,5 +1,5 @@
-<!-- Thanks for contributing to the AI plugin! Please follow the AI Plugin Contributing Guidelines:
-https://github.com/WordPress/ai/blob/HEAD/CONTRIBUTING.md -->
+<!-- Thanks for contributing to the AI plugin! Please follow the AI Experiments Plugin Contributing Guidelines:
+https://github.com/WordPress/ai/blob/trunk/CONTRIBUTING.md -->
 
 ## What?
 <!-- Link this PR to its associated issue with an appropriate keyword: Closes, See, Follow up to, etc. -->
