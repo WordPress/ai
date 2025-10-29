@@ -360,7 +360,7 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 ### Getting Help
 
 - **GitHub Issues**: Report bugs or request features
-- **WordPress Slack**: Join #core-ai channel
+- **WordPress Slack**: Join the `#core-ai` channel in Slack, see the [WordPress Slack page](https://make.wordpress.org/chat/) for signup information; it is free to join.
 - **Make WordPress AI**: https://make.wordpress.org/ai/
 
 ---
@@ -371,4 +371,4 @@ GPL-2.0-or-later
 
 ---
 
-**Happy coding! 🚀**
+<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
