@@ -1,6 +1,6 @@
-# Testing Strategy for the AI Plugin
+# Testing Strategy
 
-This document outlines the testing philosophy and strategy for the AI Plugin, adhering to the "pyramid way of testing" to ensure comprehensive coverage and maintainability.
+This document outlines the testing philosophy and strategy for the AI Experiments plugin, adhering to the "pyramid way of testing" to ensure comprehensive coverage and maintainability.
 
 ---
 

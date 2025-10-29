@@ -1,6 +1,6 @@
-# Contributing to the WordPress AI Plugin
+# Contributing Guidelines
 
-Welcome to the WordPress AI Plugin! Here you find some information on how to get started.
+Welcome to the WordPress AI Experiments Plugin! Here you find some information on how to get started contributing to the plugin.
 
 ## Coding standards
 
