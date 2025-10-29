@@ -3,13 +3,6 @@ name: Build Plugin Zip
 on:
   workflow_call:
 
-# Cancels all previous workflow runs for pull requests that have not completed.
-concurrency:
-  # The concurrency group contains the workflow name and the branch name for pull requests
-  # or the commit hash for any other events.
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
-  cancel-in-progress: true
-
 # Disable permissions for all available scopes by default.
 # Any needed permissions should be configured at the job level.
 permissions: {}
@@ -48,6 +41,8 @@ jobs:
 
       - name: Install Composer dependencies
         uses: ramsey/composer-install@3cf229dc2919194e9e36783941438d17239e8520 # v3.1.1
+        with:
+          composer-options: '--no-dev'
 
       - name: Build plugin
         run: npm run build
