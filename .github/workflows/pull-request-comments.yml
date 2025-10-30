@@ -23,7 +23,7 @@ jobs:
     uses: ./.github/workflows/build-plugin-zip.yml
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
 
   # Leaves a comment on a pull request with a link to test the changes in a WordPress Playground instance.
   playground-details:
