@@ -31,8 +31,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: build-plugin-zip
     permissions:
-      contents: write
       pull-requests: write
+      contents: read
 
     steps:
       - name: Download artifact
