@@ -25,7 +25,7 @@ class Title_Generation extends Abstract_Ability {
 	 * @return string The category of the ability.
 	 */
 	protected function category(): string {
-		return 'ai-experiments'; // TODO: add a method to get the category slug?
+		return 'ai-experiments'; // TODO: add a reusable way to get the category slug?
 	}
 
 	/**

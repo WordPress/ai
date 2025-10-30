@@ -38,27 +38,7 @@ class Title_Generation extends Abstract_Feature {
 	 * @since 0.1.0
 	 */
 	public function register(): void {
-		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_categories' ) );
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-	}
-
-	/**
-	 * Registers needed ability categories.
-	 *
-	 * TODO: If we want to use the same category for all abilities
-	 * in this plugin, this should be moved out of this class into
-	 * it's own category registration class.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register_categories(): void {
-		wp_register_ability_category(
-			'ai-experiments',
-			array(
-				'label'       => __( 'AI Experiments', 'ai' ),
-				'description' => __( 'Various AI experiment features.', 'ai' ),
-			),
-		);
 	}
 
 	/**
