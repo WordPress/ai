@@ -22,13 +22,11 @@ parameters:
 		paths:
 				- ai.php
 				- includes/
+				- vendor/wordpress/abilities-api/includes/
 		excludePaths:
 			analyse:
 				- tests/
-				- vendor/
+				- vendor/**/*
+				- '!vendor/wordpress/abilities-api/**'
 			analyseAndScan:
 				- node_modules (?)
-		ignoreErrors:
-			# These functions exist in the WordPress Abilities API plugin, but are not yet defined in the WordPress core.
-			- '#Function wp_register_ability_category not found.#'
-			- '#Function wp_register_ability not found.#'

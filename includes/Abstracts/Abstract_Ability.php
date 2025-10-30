@@ -7,7 +7,6 @@
 
 namespace WordPress\AI\Abstracts;
 
-use WordPress\AI\Abstracts\Abstract_Feature;
 use WP_Ability;
 
 /**
@@ -21,7 +20,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * The Feature class that the ability belongs to.
 	 *
 	 * @since 0.1.0
-	 * @var Abstract_Feature
+	 * @var \WordPress\AI\Abstracts\Abstract_Feature
 	 */
 	protected $feature;
 
@@ -106,7 +105,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
-	 * @return mixed|WP_Error The result of the ability execution, or a WP_Error on failure.
+	 * @return mixed|\WP_Error The result of the ability execution, or a WP_Error on failure.
 	 */
 	abstract protected function execute_callback( $input );
 
@@ -116,7 +115,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
-	 * @return bool|WP_Error True if the user has permission, WP_Error otherwise.
+	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	abstract protected function permission_callback( $input );
 

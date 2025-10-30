@@ -7,8 +7,8 @@
 
 namespace WordPress\AI\Abilities;
 
-use WordPress\AI\Abstracts\Abstract_Ability;
 use WP_Error;
+use WordPress\AI\Abstracts\Abstract_Ability;
 
 /**
  * Title generation WordPress Ability.
@@ -75,10 +75,10 @@ class Title_Generation extends Abstract_Ability {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param mixed $args The input arguments to the ability.
-	 * @return mixed|WP_Error The result of the ability execution, or a WP_Error on failure.
+	 * @param mixed $input The input arguments to the ability.
+	 * @return mixed|\WP_Error The result of the ability execution, or a WP_Error on failure.
 	 */
-	protected function execute_callback( mixed $input ) {
+	protected function execute_callback( $input ) {
 		$args = wp_parse_args(
 			$input,
 			array(
@@ -104,7 +104,7 @@ class Title_Generation extends Abstract_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param mixed $args The input arguments to the ability.
-	 * @return bool|WP_Error True if the user has permission, WP_Error otherwise.
+	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	protected function permission_callback( $args ) {
 		if ( ! current_user_can( 'edit_posts' ) ) {
