@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ce5ebe43c6d811e5f62e93a397a25621",
+    "content-hash": "f275018de0bc539ae98c534ab9e40c5a",
     "packages": [
         {
             "name": "automattic/jetpack-autoloader",
@@ -476,16 +476,16 @@
         },
         {
             "name": "wordpress/abilities-api",
-            "version": "v0.4.0-rc",
+            "version": "v0.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/abilities-api.git",
-                "reference": "c5b5b1b900c5748ba4a5e615d448b2b6c2a756da"
+                "reference": "0759075aed37c4247adbf273bdebec096d52e825"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/abilities-api/zipball/c5b5b1b900c5748ba4a5e615d448b2b6c2a756da",
-                "reference": "c5b5b1b900c5748ba4a5e615d448b2b6c2a756da",
+                "url": "https://api.github.com/repos/WordPress/abilities-api/zipball/0759075aed37c4247adbf273bdebec096d52e825",
+                "reference": "0759075aed37c4247adbf273bdebec096d52e825",
                 "shasum": ""
             },
             "require": {
@@ -545,7 +545,7 @@
                 "issues": "https://github.com/WordPress/abilities-api/issues",
                 "source": "https://github.com/WordPress/abilities-api"
             },
-            "time": "2025-10-27T17:04:11+00:00"
+            "time": "2025-10-29T05:35:31+00:00"
         },
         {
             "name": "wordpress/mcp-adapter",
