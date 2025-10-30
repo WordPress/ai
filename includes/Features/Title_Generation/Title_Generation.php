@@ -40,7 +40,6 @@ class Title_Generation extends Abstract_Feature {
 	public function register(): void {
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_categories' ) );
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'rest_api_init', array( $this, 'register_rest_route' ) );
 	}
 
 	/**
@@ -105,32 +104,6 @@ class Title_Generation extends Abstract_Feature {
 					'show_in_rest' => true,
 				),
 			),
-		);
-	}
-
-	/**
-	 * Registers the title generation REST API route.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register_rest_route(): void {
-		register_rest_route(
-			'ai/v1',
-			'title-generation',
-			array(
-				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => array( $this, 'title_generation_callback' ),
-				'permission_callback' => array( $this, 'title_generation_permission_callback' ),
-				'args'                => [
-					'content' => [
-						'required'          => true,
-						'type'              => 'string',
-						'sanitize_callback' => 'sanitize_text_field',
-						'validate_callback' => 'rest_validate_request_arg',
-						'description'       => esc_html__( 'Content to generate title suggestions for.', 'ai' ),
-					],
-				],
-			)
 		);
 	}
 
