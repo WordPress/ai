@@ -48,7 +48,7 @@ class Title_Generation extends Abstract_Feature {
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
-			'ai/title-generation', // TODO: add a method to build this slug from the feature ID.
+			$this->get_ability_slug(),
 			array(
 				'label'         => $this->get_label(),
 				'feature'       => $this,
