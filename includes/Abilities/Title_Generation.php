@@ -42,7 +42,19 @@ class Title_Generation extends Abstract_Ability {
 				'content' => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => __( 'Content to generate title suggestions for.', 'ai' ),
+					'description'       => esc_html__( 'Content to generate title suggestions for.', 'ai' ),
+				),
+				'post_id' => array(
+					'type'              => 'integer',
+					'sanitize_callback' => 'absint',
+					'description'       => esc_html__( 'Content from this post will be used to generate title suggestions. This overrides the content parameter if both are provided.', 'ai' ),
+				),
+				'n'       => array(
+					'type'              => 'integer',
+					'minimum'           => 1,
+					'maximum'           => 10,
+					'sanitize_callback' => 'absint',
+					'description'       => esc_html__( 'Number of titles to generate', 'ai' ),
 				),
 			),
 		);
@@ -61,7 +73,7 @@ class Title_Generation extends Abstract_Ability {
 			'properties' => array(
 				'titles' => array(
 					'type'        => 'array',
-					'description' => __( 'Generated title suggestions.', 'ai' ),
+					'description' => esc_html__( 'Generated title suggestions.', 'ai' ),
 					'items'       => array(
 						'type' => 'string',
 					),
@@ -79,12 +91,30 @@ class Title_Generation extends Abstract_Ability {
 	 * @return mixed|\WP_Error The result of the ability execution, or a WP_Error on failure.
 	 */
 	protected function execute_callback( $input ) {
+		// Default arguments.
 		$args = wp_parse_args(
 			$input,
 			array(
 				'content' => null,
+				'post_id' => null,
+				'n'       => 1,
 			),
 		);
+
+		// If a post ID is provided, ensure the post exists before using it's content.
+		if ( $args['post_id'] ) {
+			$post = get_post( $args['post_id'] );
+
+			if ( ! $post ) {
+				return new WP_Error(
+					'post_not_found',
+					/* translators: %d: Post ID. */
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+				);
+			}
+
+			$args['content'] = $post->post_content;
+		}
 
 		// TODO: Implement the title generation logic.
 
@@ -93,8 +123,10 @@ class Title_Generation extends Abstract_Ability {
 			'label'       => $this->feature->get_label(),
 			'description' => $this->feature->get_description(),
 			'enabled'     => $this->feature->is_enabled(),
-			'content'     => $args['content'],
-			'message'     => __( 'Title generation feature is active', 'ai' ),
+			'content'     => wp_kses_post( $args['content'] ),
+			'post_id'     => absint( $args['post_id'] ) ?? esc_html__( 'Not provided', 'ai' ),
+			'n'           => absint( $args['n'] ),
+			'message'     => esc_html__( 'Title generation feature is active', 'ai' ),
 		);
 	}
 
