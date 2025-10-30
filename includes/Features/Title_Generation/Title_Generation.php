@@ -8,7 +8,6 @@
 namespace WordPress\AI\Features\Title_Generation;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WP_REST_Server;
 
 /**
  * Title generation feature.
@@ -18,7 +17,7 @@ use WP_REST_Server;
 class Title_Generation extends Abstract_Feature {
 
 	/**
-	 * Loads feature metadata.
+	 * Load feature metadata.
 	 *
 	 * @since 0.1.0
 	 *
@@ -33,7 +32,7 @@ class Title_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the feature hooks.
+	 * Register any needed hooks.
 	 *
 	 * @since 0.1.0
 	 */
@@ -43,7 +42,7 @@ class Title_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the categories.
+	 * Registers needed ability categories.
 	 *
 	 * TODO: If we want to use the same category for all abilities
 	 * in this plugin, this should be moved out of this class into
@@ -82,9 +81,9 @@ class Title_Generation extends Abstract_Feature {
 							'description'       => __( 'Content to generate title suggestions for.', 'ai' ),
 						),
 					),
-					'required'   => [
+					'required'   => array(
 						'content',
-					],
+					),
 				),
 				'output_schema'       => array(
 					'type'       => 'object',
@@ -108,7 +107,7 @@ class Title_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Callback for the title generation REST endpoint.
+	 * Callback for the title generation abilities endpoint.
 	 *
 	 * @since 0.1.0
 	 *
@@ -118,10 +117,12 @@ class Title_Generation extends Abstract_Feature {
 	public function title_generation_callback( array $input ): array {
 		$args = wp_parse_args(
 			$input,
-			[
+			array(
 				'content' => null,
-			]
+			),
 		);
+
+		// TODO: Implement the title generation logic.
 
 		return array(
 			'feature_id'  => $this->get_id(),
@@ -134,13 +135,13 @@ class Title_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Permission check for the REST endpoint.
+	 * Permission check for the title generation abilities endpoint.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @return bool
 	 */
 	public function title_generation_permission_callback(): bool {
-		return current_user_can( 'manage_options' );
+		return current_user_can( 'manage_options' ); // TODO: this may be a tad aggressive, probably needs opened up to any user that has content creation permissions.
 	}
 }
