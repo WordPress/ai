@@ -1,0 +1,388 @@
+/**
+ * Ability Explorer Admin Styles
+ * Uses WordPress native colors and design system
+ *
+ * @package WordPress\AI\Features\Abilities_Explorer
+ * @since 0.1.0
+ */
+
+/* Statistics Dashboard */
+.ability-explorer-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 16px;
+	margin: 16px 0 24px;
+}
+
+.ability-stat-card {
+	background: var(--wp--preset--color--white, #fff);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+	border-radius: 4px;
+	padding: 16px;
+	text-align: center;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ability-stat-number {
+	font-size: 32px;
+	font-weight: 600;
+	color: var(--wp-admin-theme-color, #2271b1);
+	line-height: 1.2;
+	margin-bottom: 8px;
+}
+
+.ability-stat-label {
+	font-size: 13px;
+	color: var(--wp--preset--color--foreground, #1e1e1e);
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+/* Table Styles */
+.ability-explorer-wrap .wp-list-table {
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ability-explorer-wrap .wp-list-table th {
+	font-weight: 600;
+}
+
+.ability-explorer-wrap .wp-list-table td code {
+	background: var(--wp--preset--color--background, #f6f7f7);
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+}
+
+/* Provider Badges - Using WordPress notice colors */
+.ability-provider {
+	display: inline-block;
+	padding: 4px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.ability-provider-core {
+	background: #f0f6fc;
+	color: #0a4b78;
+	border: 1px solid #c5d9ed;
+}
+
+.ability-provider-plugin {
+	background: #f0f6fc;
+	color: var(--wp--preset--color--foreground, #1e1e1e);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+}
+
+.ability-provider-theme {
+	background: #f0f6fc;
+	color: var(--wp--preset--color--foreground, #1e1e1e);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+}
+
+/* Detail View */
+.ability-explorer-detail {
+	max-width: 1200px;
+}
+
+.ability-detail-header {
+	margin-bottom: 16px;
+	display: flex;
+	gap: 8px;
+}
+
+.ability-detail-slug {
+	font-size: 14px;
+	margin: 8px 0 16px;
+	color: var(--wp--preset--color--foreground, #646970);
+}
+
+.ability-detail-section {
+	background: var(--wp--preset--color--white, #fff);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+	border-radius: 4px;
+	padding: 16px;
+	margin-bottom: 16px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ability-detail-section h3 {
+	margin-top: 0;
+	margin-bottom: 12px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	color: var(--wp--preset--color--foreground, #1d2327);
+	font-size: 16px;
+}
+
+.ability-detail-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.ability-detail-table th,
+.ability-detail-table td {
+	padding: 12px;
+	text-align: left;
+	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #f0f0f1);
+}
+
+.ability-detail-table th {
+	width: 200px;
+	font-weight: 600;
+	color: var(--wp--preset--color--foreground, #1d2327);
+}
+
+.ability-detail-table tr:last-child th,
+.ability-detail-table tr:last-child td {
+	border-bottom: none;
+}
+
+/* Schema Display */
+.ability-schema-display {
+	background: var(--wp--preset--color--background, #f6f7f7);
+	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	border-radius: 3px;
+	padding: 12px;
+	overflow-x: auto;
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--wp--preset--color--foreground, #1d2327);
+	max-height: 500px;
+	overflow-y: auto;
+	position: relative;
+}
+
+.ability-copy-btn {
+	float: right;
+	margin-top: -5px;
+}
+
+/* Test Runner */
+.ability-explorer-test-runner {
+	max-width: 1200px;
+}
+
+.ability-test-editor {
+	background: var(--wp--preset--color--white, #fff);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+	border-radius: 4px;
+	padding: 16px;
+	margin-bottom: 16px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ability-test-editor h3 {
+	margin-top: 0;
+	margin-bottom: 8px;
+	color: var(--wp--preset--color--foreground, #1d2327);
+}
+
+.ability-test-editor textarea {
+	width: 100%;
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+	font-size: 13px;
+	line-height: 1.6;
+	padding: 12px;
+	border: 1px solid var(--wp-admin-border-color, #8c8f94);
+	border-radius: 3px;
+	background: var(--wp--preset--color--white, #fff);
+	color: var(--wp--preset--color--foreground, #1d2327);
+	resize: vertical;
+}
+
+.ability-test-editor textarea:focus {
+	outline: none;
+	border-color: var(--wp-admin-theme-color, #2271b1);
+	box-shadow: 0 0 0 1px var(--wp-admin-theme-color, #2271b1);
+}
+
+/* JSON Validation Visual Feedback */
+.ability-test-editor textarea.json-valid {
+	border-color: #00a32a;
+}
+
+.ability-test-editor textarea.json-invalid {
+	border-color: #d63638;
+}
+
+.ability-test-actions {
+	margin-top: 12px;
+	display: flex;
+	gap: 8px;
+}
+
+.ability-test-validation {
+	margin-top: 12px;
+	padding: 12px;
+	border-radius: 3px;
+	border-left: 4px solid;
+}
+
+.ability-test-validation.validation-success {
+	background: #edfaef; /* WP green-50 */
+	border-color: #00a32a; /* WP green-600 */
+	color: #00761e; /* WP green-700 */
+}
+
+.ability-test-validation.validation-error {
+	background: #fcf0f1; /* WP red-50 */
+	border-color: #d63638; /* WP red-600 */
+	color: #b32d2e; /* WP red-700 */
+}
+
+.ability-test-validation h4 {
+	margin: 0 0 8px;
+	font-size: 14px;
+}
+
+.ability-test-validation ul {
+	margin: 0;
+	padding-left: 20px;
+}
+
+.ability-test-validation li {
+	margin-bottom: 4px;
+}
+
+/* Test Result */
+.ability-test-result-container {
+	background: var(--wp--preset--color--white, #fff);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+	border-radius: 4px;
+	padding: 16px;
+	margin-bottom: 16px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ability-test-result-container h3 {
+	margin-top: 0;
+	margin-bottom: 12px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	color: var(--wp--preset--color--foreground, #1d2327);
+}
+
+#ability-test-result {
+	background: var(--wp--preset--color--background, #f6f7f7);
+	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	border-radius: 3px;
+	padding: 12px;
+	max-height: 500px;
+	overflow: auto;
+}
+
+#ability-test-result pre {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--wp--preset--color--foreground, #1d2327);
+	white-space: pre-wrap;
+	word-wrap: break-word;
+}
+
+.ability-test-result-success {
+	border-left: 4px solid #00a32a;
+}
+
+.ability-test-result-error {
+	border-left: 4px solid #d63638;
+}
+
+.ability-test-result-success h4 {
+	color: #00761e;
+	margin: 0 0 8px;
+}
+
+.ability-test-result-error h4 {
+	color: #b32d2e;
+	margin: 0 0 8px;
+}
+
+/* Test Schema Reference */
+.ability-test-schema {
+	background: var(--wp--preset--color--white, #fff);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+	border-radius: 4px;
+	padding: 16px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ability-test-schema h3 {
+	margin-top: 0;
+	margin-bottom: 12px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	color: var(--wp--preset--color--foreground, #1d2327);
+}
+
+.ability-test-schema pre {
+	background: var(--wp--preset--color--background, #f6f7f7);
+	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	border-radius: 3px;
+	padding: 12px;
+	overflow-x: auto;
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--wp--preset--color--foreground, #1d2327);
+	margin: 0;
+}
+
+/* Loading State */
+.ability-loading {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--wp-admin-border-color-lighter, #f3f4f5);
+	border-top: 2px solid var(--wp-admin-theme-color, #2271b1);
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+	margin-left: 8px;
+	vertical-align: middle;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+	.ability-explorer-stats {
+		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+		gap: 12px;
+	}
+
+	.ability-stat-card {
+		padding: 12px;
+	}
+
+	.ability-stat-number {
+		font-size: 24px;
+	}
+
+	.ability-detail-table th {
+		width: 150px;
+	}
+
+	.ability-test-actions {
+		flex-direction: column;
+	}
+
+	.ability-test-actions button {
+		width: 100%;
+	}
+}
+
+/* Utility Classes */
+.ability-explorer-wrap .notice {
+	margin: 16px 0;
+}
+
+.ability-explorer-wrap .description {
+	color: var(--wp--preset--color--foreground, #646970);
+	font-size: 13px;
+}
