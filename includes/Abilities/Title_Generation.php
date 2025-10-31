@@ -18,17 +18,6 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 class Title_Generation extends Abstract_Ability {
 
 	/**
-	 * Returns the category of the ability.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The category of the ability.
-	 */
-	protected function category(): string {
-		return 'ai-experiments'; // TODO: add a reusable way to get the category slug?
-	}
-
-	/**
 	 * Returns the input schema of the ability.
 	 *
 	 * @since 0.1.0

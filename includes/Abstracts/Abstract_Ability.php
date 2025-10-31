@@ -79,7 +79,9 @@ abstract class Abstract_Ability extends WP_Ability {
 	 *
 	 * @return string The category of the ability.
 	 */
-	abstract protected function category(): string;
+	protected function category(): string {
+		return 'ai-experiments';
+	}
 
 	/**
 	 * Returns the input schema of the ability.
