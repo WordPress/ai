@@ -101,7 +101,7 @@ class Title_Generation extends Abstract_Ability {
 			),
 		);
 
-		// If a post ID is provided, ensure the post exists before using it's content.
+		// If a post ID is provided, ensure the post exists before using its' content.
 		if ( $args['post_id'] ) {
 			$post = get_post( $args['post_id'] );
 
@@ -114,6 +114,14 @@ class Title_Generation extends Abstract_Ability {
 			}
 
 			$args['content'] = $post->post_content;
+		}
+
+		// If we have no content, return an error.
+		if ( ! $args['content'] ) {
+			return new WP_Error(
+				'content_not_provided',
+				esc_html__( 'Content is required to generate title suggestions.', 'ai' )
+			);
 		}
 
 		// TODO: Implement the title generation logic.
