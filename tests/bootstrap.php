@@ -8,7 +8,8 @@
 define( 'TESTS_REPO_ROOT_DIR', dirname( __DIR__ ) );
 
 // Load Abilities API classes before autoloader to ensure WP_Ability class is available.
-if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/abilities-api/class-wp-ability.php' ) ) {
+// Only load if not already present (e.g., when running against WordPress trunk with Abilities API merged).
+if ( ! class_exists( 'WP_Ability' ) && file_exists( TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/abilities-api/class-wp-ability.php' ) ) {
 	require_once TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/abilities-api/class-wp-ability.php';
 }
 
@@ -18,7 +19,8 @@ if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/autoload.php' ) ) {
 }
 
 // Load Abilities API bootstrap for functions.
-if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/bootstrap.php' ) ) {
+// Only load if WP_Ability is not already available (e.g., when running against WordPress trunk).
+if ( ! class_exists( 'WP_Ability' ) && file_exists( TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/bootstrap.php' ) ) {
 	require_once TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/bootstrap.php';
 }
 
