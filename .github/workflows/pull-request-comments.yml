@@ -17,19 +17,10 @@ permissions: {}
 
 jobs:
 
-  # Builds the plugin ZIP file.
-  build-plugin-zip:
-    name: Build plugin zip
-    uses: ./.github/workflows/build-plugin-zip.yml
-    permissions:
-      contents: read
-      pull-requests: read
-
   # Leaves a comment on a pull request with a link to test the changes in a WordPress Playground instance.
   playground-details:
     name: Comment on a pull request with Playground details
     runs-on: ubuntu-24.04
-    needs: build-plugin-zip
     permissions:
       pull-requests: write
       contents: read
