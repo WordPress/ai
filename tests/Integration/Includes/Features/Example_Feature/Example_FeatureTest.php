@@ -58,6 +58,20 @@ class Example_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that get_ability_slug() returns the correct slug format.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_ability_slug_returns_correct_format() {
+		$feature = new Example_Feature();
+
+		$slug = $feature->get_ability_slug();
+
+		$this->assertEquals( 'ai/example-feature', $slug, 'Ability slug should be prefixed with ai/' );
+		$this->assertStringStartsWith( 'ai/', $slug, 'Ability slug should start with ai/' );
+	}
+
+	/**
 	 * Test that footer content is added for logged-in users.
 	 *
 	 * @since 0.1.0

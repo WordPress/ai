@@ -7,9 +7,19 @@
 
 define( 'TESTS_REPO_ROOT_DIR', dirname( __DIR__ ) );
 
+// Load Abilities API classes before autoloader to ensure WP_Ability class is available.
+if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/abilities-api/class-wp-ability.php' ) ) {
+	require_once TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/abilities-api/class-wp-ability.php';
+}
+
 // Load Composer dependencies if applicable.
 if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/autoload.php' ) ) {
 	require_once TESTS_REPO_ROOT_DIR . '/vendor/autoload.php';
+}
+
+// Load Abilities API bootstrap for functions.
+if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/bootstrap.php' ) ) {
+	require_once TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/bootstrap.php';
 }
 
 // Detect where to load the WordPress tests environment from.
