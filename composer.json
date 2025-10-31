@@ -6,10 +6,11 @@
   "require": {
     "automattic/jetpack-autoloader": "^5.0",
     "ext-json": "*",
+    "guzzlehttp/guzzle": "^7.10",
     "php": ">=7.4",
     "wordpress/abilities-api": "^0.4.0",
     "wordpress/mcp-adapter": "dev-trunk",
-    "wordpress/wp-ai-client": "dev-trunk"
+    "wordpress/wp-ai-client": "dev-trunk",
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",
@@ -47,7 +48,6 @@
       "dealerdirect/phpcodesniffer-composer-installer": true,
       "php-http/discovery": true,
       "phpstan/extension-installer": true
-
     },
     "platform": {
       "php": "7.4"
