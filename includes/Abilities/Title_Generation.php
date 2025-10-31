@@ -18,6 +18,14 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 class Title_Generation extends Abstract_Ability {
 
 	/**
+	 * The Feature class that the ability belongs to.
+	 *
+	 * @since 0.1.0
+	 * @var \WordPress\AI\Features\Title_Generation\Title_Generation
+	 */
+	protected $feature;
+
+	/**
 	 * Returns the input schema of the ability.
 	 *
 	 * @since 0.1.0
@@ -113,18 +121,16 @@ class Title_Generation extends Abstract_Ability {
 			);
 		}
 
-		// TODO: Implement the title generation logic.
+		// Generate the titles.
+		$result = $this->feature->generate_titles( $args['content'], $args['n'] );
 
-		return array(
-			'feature_id'  => $this->feature->get_id(),
-			'label'       => $this->feature->get_label(),
-			'description' => $this->feature->get_description(),
-			'enabled'     => $this->feature->is_enabled(),
-			'content'     => wp_kses_post( $args['content'] ),
-			'post_id'     => absint( $args['post_id'] ) ?? esc_html__( 'Not provided', 'ai' ),
-			'n'           => absint( $args['n'] ),
-			'message'     => esc_html__( 'Title generation feature is active', 'ai' ),
-		);
+		// If we have an error, return it.
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		// Return the titles in the format the Ability expects.
+		return [ 'titles' => $result ];
 	}
 
 	/**

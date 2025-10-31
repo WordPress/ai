@@ -9,6 +9,7 @@ namespace WordPress\AI\Features\Title_Generation;
 
 use WordPress\AI\Abilities\Title_Generation as Title_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\API_Request;
 
 /**
  * Title generation feature.
@@ -55,5 +56,40 @@ class Title_Generation extends Abstract_Feature {
 				'ability_class' => Title_Generation_Ability::class,
 			),
 		);
+	}
+
+	/**
+	 * Generates title suggestions from the given content.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $content The content to generate a title from.
+	 * @param int|null $post_id The post ID to generate a title from.
+	 * @param int $n The number of titles to generate.
+	 * @return array|\WP_Error The generated titles, or a WP_Error if there was an error.
+	 */
+	public function generate_titles( string $content, int $n = 1 ) {
+		$prompt = sprintf(
+			__( 'Generate %d title suggestions for the following content:', 'ai' ), // TODO: add method to get this. And update this default prompt.
+			$n
+		);
+		$prompt .= "\n\n" . $content;
+
+		// Make our request.
+		$request  = new API_Request();
+		$response = $request->request(
+			$prompt,
+			array(
+				'candidateCount' => (int) $n,
+				'temperature'    => 0.7,
+			)
+		);
+
+		// If we have an error, return it.
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		return $response;
 	}
 }
