@@ -204,6 +204,73 @@ class Example_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that register() calls add_action for settings sections.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_register_calls_add_action_for_settings_sections() {
+		$feature = new Example_Feature();
+		$feature->register();
+
+		$this->assertTrue( has_action( 'ai_register_settings_sections' ) !== false );
+	}
+
+	/**
+	 * Test that register() skips functional hooks when feature is disabled.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_register_skips_functional_hooks_when_disabled() {
+		add_filter( 'ai_feature_example-feature_enabled', '__return_false' );
+
+		$feature = new Example_Feature();
+		$feature->register();
+
+		$this->assertFalse( has_action( 'wp_footer', array( $feature, 'add_footer_content' ) ) );
+		$this->assertFalse( has_filter( 'document_title_parts', array( $feature, 'modify_title' ) ) );
+		$this->assertFalse( has_action( 'rest_api_init', array( $feature, 'register_rest_route' ) ) );
+
+		remove_filter( 'ai_feature_example-feature_enabled', '__return_false' );
+	}
+
+	/**
+	 * Test register_settings_sections() early return when section exists.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_register_settings_sections_early_return() {
+		$registry = $this->createMock( \WordPress\AI\Admin\Settings\Settings_Registry::class );
+		$registry->expects( $this->once() )
+			->method( 'has_section' )
+			->with( 'example-feature' )
+			->willReturn( true );
+
+		$registry->expects( $this->never() )
+			->method( 'register_section' );
+
+		$feature = new Example_Feature();
+		$feature->register_settings_sections( $registry );
+	}
+
+	/**
+	 * Test render_settings_section() outputs expected content.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_render_settings_section() {
+		$toggle  = $this->createMock( \WordPress\AI\Admin\Settings\Settings_Toggle::class );
+		$section = $this->createMock( \WordPress\AI\Admin\Settings\Settings_Section::class );
+
+		$feature = new Example_Feature();
+
+		ob_start();
+		$feature->render_settings_section( $toggle, $section );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'Example Feature does not expose additional controls yet', $output );
+	}
+
+	/**
 	 * Logs in a user with administrator privileges.
 	 *
 	 * @since 0.1.0
