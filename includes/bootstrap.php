@@ -31,10 +31,20 @@ if ( ! defined( 'AI_PLUGIN_FILE' ) ) {
 	define( 'AI_PLUGIN_FILE', defined( 'WP_AI_DIR' ) ? WP_AI_DIR . 'ai.php' : '' );
 }
 if ( ! defined( 'AI_PLUGIN_DIR' ) ) {
-	define( 'AI_PLUGIN_DIR', defined( 'WP_AI_DIR' ) ? WP_AI_DIR : '' );
+	if ( defined( 'AI_PLUGIN_FILE' ) && AI_PLUGIN_FILE ) {
+		define( 'AI_PLUGIN_DIR', plugin_dir_path( AI_PLUGIN_FILE ) );
+	} elseif ( defined( 'WP_AI_DIR' ) ) {
+		define( 'AI_PLUGIN_DIR', WP_AI_DIR );
+	} else {
+		define( 'AI_PLUGIN_DIR', '' );
+	}
 }
 if ( ! defined( 'AI_PLUGIN_URL' ) ) {
-	define( 'AI_PLUGIN_URL', plugin_dir_url( AI_PLUGIN_FILE ) );
+	if ( defined( 'AI_PLUGIN_FILE' ) && AI_PLUGIN_FILE ) {
+		define( 'AI_PLUGIN_URL', plugin_dir_url( AI_PLUGIN_FILE ) );
+	} else {
+		define( 'AI_PLUGIN_URL', '' );
+	}
 }
 if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
 	define( 'AI_MIN_PHP_VERSION', '7.4' );
