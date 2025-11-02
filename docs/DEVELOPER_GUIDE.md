@@ -71,7 +71,7 @@ ai/
 │       └── Example_Feature/          # Each feature in own directory
 │           ├── Example_Feature.php
 │           └── README.md
-├── admin/                            # Admin interface (planned)
+├── admin/                            # Admin settings services, controllers, assets
 ├── assets/                           # CSS, JS, images
 ├── docs/                             # Documentation
 │   ├── DEVELOPER_GUIDE.md            # This guide
@@ -213,6 +213,81 @@ Examples of how to use the feature.
 Any settings or filters available.
 ```
 
+## Admin Settings Architecture
+
+The admin settings screen allows site administrators to manage AI Experiments globally and per feature. The PHP services live under `includes/Admin/` and the React application under `src/`.
+
+```
+includes/
+├── Admin/
+│   ├── Admin_Settings_Page.php         # Registers the options page and fallback markup
+│   ├── Settings_Page_Assets.php        # Enqueues the React bundle when viewing the page
+│   ├── Settings_Payload_Builder.php    # Builds the data passed to the React app
+│   └── Settings/
+│       ├── Feature_Toggles.php         # Persists per-feature enable/disable state
+│       ├── Settings_Renderer.php       # Renders the fallback UI for the toggle section
+│       ├── Settings_Registry.php       # Registry of settings sections registered by features
+│       ├── Settings_Section.php        # Immutable value object describing a section
+│       ├── Settings_Service.php        # Coordinates registration of toggles, sections, and page
+│       └── Settings_Toggle.php         # Manages the global experiments option
+└── Features/
+    └── Traits/
+        └── Provides_Settings_Section.php # Helper trait for feature-owned sections
+
+src/
+├── index.tsx                          # React entry point mounted on the admin page
+├── components/
+│   ├── App.tsx                        # Top-level application component
+│   ├── FeatureSection.tsx             # Card UI for per-feature toggles
+│   └── ToggleSection.tsx              # Card UI for the global toggle
+├── types.ts                           # Shared payload types
+├── style.scss                         # Styles for the settings screen
+└── global.d.ts                        # Ambient declaration for the payload on window
+```
+
+`includes/bootstrap.php` wires the settings services on the `init` hook via `initialize_admin_settings()`. That function:
+
+1. Instantiates the toggle, registry, renderer, payload builder, page assets handler, and admin page controller.
+2. Registers the shared `Feature_Toggles` service on the `ai_feature_toggles_service` filter so features can receive it through dependency injection.
+3. Calls `Settings_Service::register()` to hook the global toggle option, expose REST fields, register the admin menu, and trigger section registration with `ai_register_settings_sections`.
+
+Feature settings panels should be registered inside the `ai_register_settings_sections` hook. The `Provides_Settings_Section` trait streamlines the process:
+
+```php
+class Example_Feature extends Abstract_Feature {
+	use Provides_Settings_Section;
+
+	public function register(): void {
+		add_action( 'ai_register_settings_sections', array( $this, 'register_settings_sections' ) );
+
+		if ( ! $this->is_enabled() ) {
+			return;
+		}
+
+		// Register functional hooks only when enabled.
+	}
+
+	public function register_settings_sections( Settings_Registry $registry ): void {
+		$this->register_feature_settings_section(
+			$registry,
+			'example-feature',
+			__( 'Example Feature', 'ai' ),
+			array( $this, 'render_settings_section' ),
+			array(
+				'description' => __( 'Demonstration controls for the example feature.', 'ai' ),
+				'priority'    => 20,
+			)
+		);
+	}
+
+	public function render_settings_section( Settings_Toggle $toggle, Settings_Section $section ): void {
+		// Output fallback markup when JavaScript is unavailable.
+	}
+}
+```
+
+`Settings_Payload_Builder` serializes the registry into a payload consumed by the React app. Each section’s `enabled` state reflects persisted data from `Feature_Toggles`, ensuring the UI mirrors stored values immediately.
+
 ### Conditional Features
 
 If your feature has requirements (PHP extensions, other plugins, etc.), implement validation in your constructor:
@@ -251,21 +326,21 @@ add_action( 'ai_register_features', function( $registry ) {
 
 ### Filtering Default Features
 
-Modify the list of default feature classes before they are instantiated:
+Modify the list of default feature instances before they are registered:
 
 ```php
-add_filter( 'ai_default_feature_classes', function( $feature_classes ) {
+add_filter( 'ai_default_features', function( $features, $feature_toggles ) {
 	// Add a custom feature
-	$feature_classes[] = 'My_Namespace\My_Custom_Feature';
+	$features[] = new My_Namespace\My_Custom_Feature( $feature_toggles );
 
-	// Remove a default feature
-	$key = array_search( 'WordPress\AI\Features\Example_Feature\Example_Feature', $feature_classes );
-	if ( false !== $key ) {
-		unset( $feature_classes[ $key ] );
-	}
-
-	return $feature_classes;
-} );
+	// Remove the bundled Example Feature
+	return array_filter(
+		$features,
+		static function ( $feature ) {
+			return ! $feature instanceof WordPress\AI\Features\Example_Feature\Example_Feature;
+		}
+	);
+}, 10, 2 );
 ```
 
 ### Disabling a Feature
