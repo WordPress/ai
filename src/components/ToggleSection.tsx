@@ -4,7 +4,13 @@
  * @package WordPress\AI
  */
 
-import { Card, CardBody, CardDivider, Spinner, ToggleControl } from '@wordpress/components';
+import {
+	Card,
+	CardBody,
+	CardDivider,
+	Spinner,
+	ToggleControl,
+} from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 import type { SectionPayload } from '../types';
@@ -13,45 +19,39 @@ type ToggleSectionProps = {
 	section: SectionPayload;
 	enabled: boolean;
 	isSaving: boolean;
-	onChange: ( value: boolean ) => void;
+	onChange: (value: boolean) => void;
 };
 
-const ToggleSection = ( {
+const ToggleSection = ({
 	section,
 	enabled,
 	isSaving,
 	onChange,
-}: ToggleSectionProps ) => {
+}: ToggleSectionProps) => {
 	return (
 		<Card className="ai-experiments-settings-app__card">
 			<CardBody>
 				<div className="ai-experiments-settings-app__card-header">
 					<div>
 						<h2 className="ai-experiments-settings-app__card-title">
-							{ section.title || __(
-								'Experimental Features',
-								'ai'
-							) }
+							{section.title || __('Experimental Features', 'ai')}
 						</h2>
-						{ section.description ? (
+						{section.description ? (
 							<p className="ai-experiments-settings-app__card-description">
-								{ section.description }
+								{section.description}
 							</p>
-						) : null }
+						) : null}
 					</div>
 					<div className="ai-experiments-settings-app__card-action">
-						{ isSaving && <Spinner /> }
+						{isSaving && <Spinner />}
 					</div>
 				</div>
 			</CardBody>
 			<CardDivider />
 			<CardBody>
 				<ToggleControl
-					label={ __(
-						'Enable Experimental Features',
-						'ai'
-					) }
-					checked={ enabled }
+					label={__('Enable Experimental Features', 'ai')}
+					checked={enabled}
 					help={
 						section.description ||
 						__(
@@ -59,15 +59,15 @@ const ToggleSection = ( {
 							'ai'
 						)
 					}
-					onChange={ onChange }
-					disabled={ isSaving }
+					onChange={onChange}
+					disabled={isSaving}
 					__nextHasNoMarginBottom
 				/>
 				<p className="ai-experiments-settings-app__helper">
-					{ __(
+					{__(
 						'Toggling this switch enables or disables all experimental AI capabilities provided by this plugin.',
 						'ai'
-					) }
+					)}
 				</p>
 			</CardBody>
 		</Card>

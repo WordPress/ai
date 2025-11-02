@@ -1,21 +1,21 @@
 {
-  "$schema": "https://schemas.wp.org/trunk/wp-env.json",
-  "core": null,
-  "plugins": [ "." ],
-  "env": {
-    "development": {
-      "config": {
-        "WP_DEVELOPMENT_MODE": "plugin"
-      }
-    },
-    "tests": {
-      "config": {
-        "FS_METHOD": "direct",
-        "WP_DEBUG": true
-      },
-      "mappings": {
-        "/wp-content/plugins/ai": "."
-      }
-    }
-  }
+	"$schema": "https://schemas.wp.org/trunk/wp-env.json",
+	"core": null,
+	"plugins": ["."],
+	"env": {
+		"development": {
+			"config": {
+				"WP_DEVELOPMENT_MODE": "plugin"
+			}
+		},
+		"tests": {
+			"config": {
+				"FS_METHOD": "direct",
+				"WP_DEBUG": true
+			},
+			"mappings": {
+				"/wp-content/plugins/ai": "."
+			}
+		}
+	}
 }
