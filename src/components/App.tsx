@@ -1,7 +1,5 @@
 /**
  * Main application component.
- *
- * @package WordPress\AI
  */
 
 import { useState, useMemo, useCallback, Fragment } from '@wordpress/element';
@@ -28,137 +26,125 @@ type AppProps = {
 	settings: SettingsPayload;
 };
 
-const App = ( { settings }: AppProps ) => {
-	const [ enabled, setEnabled ] = useState( settings.toggle.enabled );
-	const [ featureToggles, setFeatureToggles ] = useState(
+const App = ({ settings }: AppProps) => {
+	const [enabled, setEnabled] = useState(settings.toggle.enabled);
+	const [featureToggles, setFeatureToggles] = useState(
 		settings.featureToggles.toggles
 	);
-	const [ isSaving, setIsSaving ] = useState( false );
-	const [ notice, setNotice ] = useState< NoticeState | null >( null );
+	const [isSaving, setIsSaving] = useState(false);
+	const [notice, setNotice] = useState<NoticeState | null>(null);
 
 	const toggleSection = useMemo(
 		() =>
 			settings.sections.find(
-				( section ) => section.id === TOGGLE_SECTION_ID
-			) ?? settings.sections[ 0 ],
-		[ settings.sections ]
+				(section) => section.id === TOGGLE_SECTION_ID
+			) ?? settings.sections[0],
+		[settings.sections]
 	);
 
 	const otherSections = useMemo(
 		() =>
 			settings.sections
-				.filter( ( section ) => section.id !== toggleSection?.id )
-				.map( ( section ) => {
-					const enabled =
+				.filter((section) => section.id !== toggleSection?.id)
+				.map((section) => {
+					const sectionEnabled =
 						section.featureId && section.featureId in featureToggles
-							? featureToggles[ section.featureId ]
+							? featureToggles[section.featureId]
 							: section.enabled;
 
 					return {
 						...section,
-						enabled,
+						enabled: sectionEnabled,
 					};
-				} ),
-		[ settings.sections, toggleSection, featureToggles ]
+				}),
+		[settings.sections, toggleSection, featureToggles]
 	);
 
 	const handleToggleChange = useCallback(
-		( value: boolean ) => {
-			if ( value === enabled ) {
+		(value: boolean) => {
+			if (value === enabled) {
 				return;
 			}
 
 			const previous = enabled;
-			setEnabled( value );
-			setIsSaving( true );
-			setNotice( null );
+			setEnabled(value);
+			setIsSaving(true);
+			setNotice(null);
 
-			apiFetch( {
+			apiFetch({
 				path: '/wp/v2/settings',
 				method: 'POST',
 				data: {
-					[ settings.toggle.restField ]: value,
+					[settings.toggle.restField]: value,
 				},
-			} )
-				.then( () => {
-					setNotice( {
+			})
+				.then(() => {
+					setNotice({
 						status: 'success',
 						message: __(
 							'Experimental features setting updated.',
 							'ai'
 						),
-					} );
-				} )
-				.catch( () => {
-					setEnabled( previous );
-					setNotice( {
+					});
+				})
+				.catch(() => {
+					setEnabled(previous);
+					setNotice({
 						status: 'error',
-						message: __(
-							'Saving failed. Please try again.',
-							'ai'
-						),
-					} );
-				} )
-				.finally( () => {
-					setIsSaving( false );
-				} );
+						message: __('Saving failed. Please try again.', 'ai'),
+					});
+				})
+				.finally(() => {
+					setIsSaving(false);
+				});
 		},
-		[ enabled, settings.toggle.restField ]
+		[enabled, settings.toggle.restField]
 	);
 
 	const handleFeatureToggle = useCallback(
-		( featureId: string, value: boolean ) => {
-			const previous = featureToggles[ featureId ];
-			const updated = { ...featureToggles, [ featureId ]: value };
+		(featureId: string, value: boolean) => {
+			const previous = featureToggles[featureId];
+			const updated = { ...featureToggles, [featureId]: value };
 
-			setFeatureToggles( updated );
-			setIsSaving( true );
-			setNotice( null );
+			setFeatureToggles(updated);
+			setIsSaving(true);
+			setNotice(null);
 
-			apiFetch( {
+			apiFetch({
 				path: '/wp/v2/settings',
 				method: 'POST',
 				data: {
-					[ settings.featureToggles.restField ]: updated,
+					[settings.featureToggles.restField]: updated,
 				},
-			} )
-				.then( () => {
-					setNotice( {
+			})
+				.then(() => {
+					setNotice({
 						status: 'success',
-						message: __(
-							'Feature setting updated.',
-							'ai'
-						),
-					} );
-				} )
-				.catch( () => {
-					setFeatureToggles( {
+						message: __('Feature setting updated.', 'ai'),
+					});
+				})
+				.catch(() => {
+					setFeatureToggles({
 						...featureToggles,
-						[ featureId ]: previous !== undefined ? previous : true,
-					} );
-					setNotice( {
+						[featureId]: previous !== undefined ? previous : true,
+					});
+					setNotice({
 						status: 'error',
-						message: __(
-							'Saving failed. Please try again.',
-							'ai'
-						),
-					} );
-				} )
-				.finally( () => {
-					setIsSaving( false );
-				} );
+						message: __('Saving failed. Please try again.', 'ai'),
+					});
+				})
+				.finally(() => {
+					setIsSaving(false);
+				});
 		},
-		[ featureToggles, settings.featureToggles.restField ]
+		[featureToggles, settings.featureToggles.restField]
 	);
 
-	if ( ! toggleSection ) {
+	if (!toggleSection) {
 		return (
 			<div className="ai-experiments-settings-app">
-				<Notice status="warning" isDismissible={ false }>
-					{ __(
-						'No settings sections are currently registered.',
-						'ai'
-					) }
+				<Notice status="warning" isDismissible={false}>
+					{__('No settings sections are currently registered.', 'ai')}
 				</Notice>
 			</div>
 		);
@@ -166,44 +152,44 @@ const App = ( { settings }: AppProps ) => {
 
 	return (
 		<div className="ai-experiments-settings-app">
-			{ notice ? (
+			{notice ? (
 				<Notice
-					status={ notice.status }
+					status={notice.status}
 					isDismissible
-					onRemove={ () => setNotice( null ) }
+					onRemove={() => setNotice(null)}
 				>
-					{ notice.message }
+					{notice.message}
 				</Notice>
-			) : null }
+			) : null}
 			<ToggleSection
-				section={ toggleSection }
-				enabled={ enabled }
-				isSaving={ isSaving }
-				onChange={ handleToggleChange }
+				section={toggleSection}
+				enabled={enabled}
+				isSaving={isSaving}
+				onChange={handleToggleChange}
 			/>
-			{ otherSections.length > 0 ? (
+			{otherSections.length > 0 ? (
 				<Fragment>
 					<div className="ai-experiments-settings-app__divider" />
 					<div className="ai-experiments-settings-app__sections">
-						{ otherSections.map( ( section ) => (
+						{otherSections.map((section) => (
 							<FeatureSection
-								key={ section.id }
-								section={ section }
-								masterEnabled={ enabled }
-								isSaving={ isSaving }
-								onToggle={ handleFeatureToggle }
+								key={section.id}
+								section={section}
+								masterEnabled={enabled}
+								isSaving={isSaving}
+								onToggle={handleFeatureToggle}
 							/>
-						) ) }
+						))}
 					</div>
 				</Fragment>
 			) : (
 				<p className="ai-experiments-settings-app__empty">
-					{ __(
+					{__(
 						'Additional experimental features will surface their configuration here.',
 						'ai'
-					) }
+					)}
 				</p>
-			) }
+			)}
 		</div>
 	);
 };
