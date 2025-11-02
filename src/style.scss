@@ -1,0 +1,67 @@
+.ai-experiments-settings {
+	&.is-app-ready {
+		.ai-experiments-settings__fallback {
+			display: none;
+		}
+	}
+}
+
+.ai-experiments-settings-app {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	max-width: 720px;
+
+	.components-notice {
+		margin: 0;
+	}
+
+	&__card {
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+	}
+
+	&__card-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 12px;
+	}
+
+	&__card-title {
+		margin: 0 0 4px 0;
+		font-size: 1.25rem;
+	}
+
+	&__card-description {
+		margin: 0;
+		color: #50575e;
+	}
+
+	&__card-action {
+		min-width: 24px;
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	&__helper {
+		margin-top: 12px;
+		margin-bottom: 0;
+		color: #50575e;
+	}
+
+	&__divider {
+		height: 1px;
+		background: #dcdcde;
+		margin: 8px 0 0;
+	}
+
+	&__sections {
+		display: grid;
+		gap: 16px;
+	}
+
+	&__empty {
+		margin: 0;
+		color: #50575e;
+	}
+}

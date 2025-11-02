@@ -7,10 +7,8 @@
 
 namespace WordPress\AI;
 
-use Throwable;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Exception\Invalid_Feature_Exception;
-use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
 
 /**
  * Orchestrates feature initialization and registration.
@@ -95,82 +93,45 @@ class Feature_Loader {
 	/**
 	 * Gets default built-in features.
 	 *
+	 * Feature toggles service is injected via filter if needed.
+	 *
 	 * @since 0.1.0
 	 *
 	 * @return array<\WordPress\AI\Contracts\Feature> Array of default feature instances.
-	 * @throws \WordPress\AI\Exception\Invalid_Feature_Exception If a feature class does not exist (caught internally).
 	 */
 	private function get_default_features(): array {
-		$feature_classes = array(
-			'WordPress\AI\Features\Example_Feature\Example_Feature',
-		);
-
 		/**
-		 * Filters the list of default feature classes or instances.
-		 *
-		 * Allows developers to add, remove, or replace default features.
-		 * Can accept both class names (strings) and feature instances.
+		 * Filters the feature toggles service for dependency injection.
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param array $feature_classes Array of feature class names or instances.
+		 * @param \WordPress\AI\Admin\Settings\Feature_Toggles|null $feature_toggles Feature toggles service or null.
 		 */
-		$items = apply_filters( 'ai_default_feature_classes', $feature_classes );
+		$feature_toggles = apply_filters( 'ai_feature_toggles_service', null );
 
-		$features = array();
-		foreach ( $items as $item ) {
-			try {
-				// Support both class names and pre-instantiated instances.
-				if ( is_string( $item ) && class_exists( $item ) ) {
-					/** @var class-string<\WordPress\AI\Contracts\Feature> $item */
-					$features[] = new $item();
-				} elseif ( $item instanceof Feature ) {
-					$features[] = $item;
-				} elseif ( is_string( $item ) ) {
-					// Class doesn't exist - throw exception.
-					throw new Invalid_Feature_Exception(
-						sprintf(
-							/* translators: %s: Feature class name. */
-							esc_html__( 'Feature class "%s" does not exist.', 'ai' ),
-							esc_html( $item )
-						)
-					);
-				}
-			} catch ( Invalid_Feature_Metadata_Exception $e ) {
-				// Skip features with invalid metadata.
-				_doing_it_wrong(
-					__METHOD__,
-					sprintf(
-						/* translators: 1: Feature class name, 2: Error message. */
-						esc_html__( 'Failed to instantiate feature "%1$s": %2$s', 'ai' ),
-						is_string( $item ) ? esc_html( $item ) : esc_html( (string) get_class( $item ) ),
-						esc_html( $e->getMessage() )
-					),
-					'0.1.0'
-				);
-			} catch ( Throwable $t ) {
-				// Skip features that fail to instantiate.
-				_doing_it_wrong(
-					__METHOD__,
-					sprintf(
-						/* translators: 1: Feature class name, 2: Error message. */
-						esc_html__( 'Feature instantiation error for "%1$s": %2$s', 'ai' ),
-						is_string( $item ) ? esc_html( $item ) : esc_html( (string) get_class( $item ) ),
-						esc_html( $t->getMessage() )
-					),
-					'0.1.0'
-				);
-			}
-		}
+		// Instantiate default features directly.
+		$features = array(
+			new \WordPress\AI\Features\Example_Feature\Example_Feature( $feature_toggles ),
+		);
 
-		return $features;
+		/**
+		 * Filters the list of default features.
+		 *
+		 * Allows developers to add, remove, or replace default features.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param array<\WordPress\AI\Contracts\Feature> $features Array of feature instances.
+		 */
+		return apply_filters( 'ai_default_features', $features );
 	}
 
 	/**
 	 * Initializes all enabled features.
 	 *
 	 * Loops through all registered features and calls their register() method
-	 * if they are enabled.
+	 * if they are enabled. Always calls register() for settings section registration,
+	 * but features should internally check is_enabled() before registering functional hooks.
 	 *
 	 * @since 0.1.0
 	 */
@@ -194,12 +155,8 @@ class Feature_Loader {
 		}
 
 		foreach ( $this->registry->get_all_features() as $feature ) {
-			// Skip if feature is disabled.
-			if ( ! $feature->is_enabled() ) {
-				continue;
-			}
-
-			// Register the feature.
+			// Always register features so they can register settings sections.
+			// Features should internally check is_enabled() for functional hooks.
 			$feature->register();
 		}
 

@@ -240,22 +240,30 @@ class Feature_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test disabled features are skipped during initialization.
+	 * Test disabled features still have register() called.
+	 * Features are always registered so they can register settings sections,
+	 * but should internally check is_enabled() before registering functional hooks.
 	 *
 	 * @since 0.1.0
 	 */
 	public function test_disabled_features_are_skipped() {
 		$feature = new Mock_Feature();
 		$this->registry->register_feature( $feature );
-
 		// Disable the feature.
 		add_filter( 'ai_feature_mock-feature_enabled', '__return_false' );
 
 		$this->loader->initialize_features();
 
-		$this->assertFalse(
+		// register() is always called so features can register settings sections
+		$this->assertTrue(
 			$feature->register_called,
-			'Disabled feature register() should not be called'
+			'Feature register() should be called even when disabled'
+		);
+
+		// But the feature should check is_enabled() internally to skip functional hooks
+		$this->assertFalse(
+			$feature->is_enabled(),
+			'Feature should report as disabled'
 		);
 	}
 }

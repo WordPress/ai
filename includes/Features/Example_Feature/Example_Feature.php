@@ -8,6 +8,10 @@
 namespace WordPress\AI\Features\Example_Feature;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Admin\Settings\Settings_Registry;
+use WordPress\AI\Admin\Settings\Settings_Section;
+use WordPress\AI\Admin\Settings\Settings_Toggle;
+use WordPress\AI\Features\Traits\Provides_Settings_Section;
 
 /**
  * Reference feature demonstrating hooks and REST endpoints.
@@ -15,6 +19,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
  * @since 0.1.0
  */
 class Example_Feature extends Abstract_Feature {
+	use Provides_Settings_Section;
+
 	/**
 	 * Loads feature metadata.
 	 *
@@ -36,9 +42,61 @@ class Example_Feature extends Abstract_Feature {
 	 * @since 0.1.0
 	 */
 	public function register(): void {
+		// Always register settings sections so the feature appears in admin.
+		add_action(
+			'ai_register_settings_sections',
+			array( $this, 'register_settings_sections' )
+		);
+
+		// Only register functional hooks if the feature is enabled.
+		if ( ! $this->is_enabled() ) {
+			return;
+		}
+
 		add_action( 'wp_footer', array( $this, 'add_footer_content' ), 20 );
 		add_filter( 'document_title_parts', array( $this, 'modify_title' ), 10, 1 );
 		add_action( 'rest_api_init', array( $this, 'register_rest_route' ) );
+	}
+
+	/**
+	 * Registers the example settings section with the admin registry.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param \WordPress\AI\Admin\Settings\Settings_Registry $registry Registry instance.
+	 */
+	public function register_settings_sections( Settings_Registry $registry ): void {
+		if ( $registry->has_section( 'example-feature' ) ) {
+			return;
+		}
+
+		$this->register_feature_settings_section(
+			$registry,
+			'example-feature',
+			__( 'Example Feature', 'ai' ),
+			array( $this, 'render_settings_section' ),
+			array(
+				'description' => __( 'Demonstration controls rendered by the Example Feature.', 'ai' ),
+				'priority'    => 20,
+			)
+		);
+	}
+
+	/**
+	 * Renders the example settings panel.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param \WordPress\AI\Admin\Settings\Settings_Toggle  $toggle  Toggle service.
+	 * @param \WordPress\AI\Admin\Settings\Settings_Section $section Section metadata.
+	 */
+	public function render_settings_section( Settings_Toggle $toggle, Settings_Section $section ): void {
+		unset( $toggle, $section );
+		?>
+		<p>
+			<?php esc_html_e( 'Example Feature does not expose additional controls yet. This section demonstrates registration via the Provides_Settings_Section trait.', 'ai' ); ?>
+		</p>
+		<?php
 	}
 
 	/**

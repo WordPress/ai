@@ -1,0 +1,9 @@
+{
+	"extends": "@wordpress/scripts/config/tsconfig.json",
+	"compilerOptions": {
+		"baseUrl": "."
+	},
+	"include": [
+		"src/**/*"
+	]
+}
