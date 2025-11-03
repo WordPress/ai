@@ -75,6 +75,7 @@ class Settings_Page_Assets {
 
 		if ( file_exists( $asset_path ) ) {
 			// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable -- Local build manifest.
+			// @phpstan-ignore-next-line Path is generated during build; guarded by file_exists above.
 			$asset = require $asset_path;
 
 			wp_enqueue_script(
