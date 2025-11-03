@@ -121,9 +121,10 @@ class Feature_Loader {
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param array<\WordPress\AI\Contracts\Feature> $features Array of feature instances.
+		 * @param array<\WordPress\AI\Contracts\Feature>                 $features        Array of feature instances.
+		 * @param \WordPress\AI\Admin\Settings\Feature_Toggles|null $feature_toggles Feature toggles service instance when available.
 		 */
-		return apply_filters( 'ai_default_features', $features );
+		return apply_filters( 'ai_default_features', $features, $feature_toggles );
 	}
 
 	/**
