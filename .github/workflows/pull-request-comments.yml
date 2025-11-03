@@ -79,7 +79,7 @@ jobs:
             console.log(`Search string "${searchString}" found: ${foundString}`);
 
       - name: Update PR body with a comment about testing with Playground
-        if: steps.check-pr-contents.outputs.string_found == 'false'
+        if: steps.check-pr-contents.outputs.string_found == 'false' && github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
