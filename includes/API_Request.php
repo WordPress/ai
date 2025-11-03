@@ -50,15 +50,16 @@ class API_Request {
 	}
 
 	/**
-	 * Make a request using the AI SDK Client.
+	 * Make a text generation request using the AI SDK Client.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @param string|null $prompt The prompt to send.
+	 * @param string|null $system_instruction The system instruction to send.
 	 * @param array $options The options to send.
 	 * @return array|\WP_Error The result of the request.
 	 */
-	public function request( $prompt = null, array $options = [] ) {
+	public function generate_text( $prompt = null, $system_instruction = null, array $options = [] ) {
 		if ( ! $this->is_client_available() ) {
 			return new WP_Error( 'ai_client_not_available', __( 'AI Client is not available', 'ai' ) );
 		}
@@ -67,6 +68,10 @@ class API_Request {
 			$model_config   = $this->process_model_config( $options );
 			$prompt_builder = AiClient::prompt( $prompt );
 			$prompt_builder = $prompt_builder->usingModelConfig( $model_config );
+
+			if ( ! empty( $system_instruction ) ) {
+				$prompt_builder = $prompt_builder->usingSystemInstruction( $system_instruction );
+			}
 
 			if ( ! empty( $this->provider ) ) {
 				$prompt_builder = $prompt_builder->usingProvider( $this->provider );
@@ -79,7 +84,7 @@ class API_Request {
 				}
 			}
 
-			return $this->get_result( $prompt_builder->generateTexts(), 'text' );
+			return $this->get_result( $prompt_builder->generateTexts() );
 		} catch ( \Exception $e ) {
 			return new WP_Error( 'ai_client_error', $e->getMessage() );
 		}

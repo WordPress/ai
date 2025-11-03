@@ -19,6 +19,14 @@ use WordPress\AI\API_Request;
 class Title_Generation extends Abstract_Feature {
 
 	/**
+	 * System instruction the feature uses.
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	protected $system_instruction = 'Generate an SEO-friendly title for the provided content, staying within a range of 40 to 60 characters and maintaining the original meaning and context. The content you will be provided is delimited by triple quotes.'; // TODO: tune this prompt.
+
+	/**
 	 * Load feature metadata.
 	 *
 	 * @since 0.1.0
@@ -69,16 +77,11 @@ class Title_Generation extends Abstract_Feature {
 	 * @return array|\WP_Error The generated titles, or a WP_Error if there was an error.
 	 */
 	public function generate_titles( string $content, int $n = 1 ) {
-		$prompt = sprintf(
-			__( 'Generate %d title suggestions for the following content:', 'ai' ), // TODO: add method to get this. And update this default prompt.
-			$n
-		);
-		$prompt .= "\n\n" . $content;
-
 		// Make our request.
 		$request  = new API_Request();
-		$response = $request->request(
-			$prompt,
+		$response = $request->generate_text(
+			'"""'. $content . '"""',
+			$this->get_system_instruction(),
 			array(
 				'candidateCount' => (int) $n,
 				'temperature'    => 0.7,

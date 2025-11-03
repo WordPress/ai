@@ -51,6 +51,14 @@ abstract class Abstract_Feature implements Feature {
 	private $enabled = true;
 
 	/**
+	 * System instruction to send to the LLM.
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	protected $system_instruction = '';
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -138,6 +146,17 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	public function get_ability_slug(): string {
 		return 'ai/' . $this->id;
+	}
+
+	/**
+	 * Gets the system instruction for the feature.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return string The system instruction for the feature.
+	 */
+	public function get_system_instruction(): string {
+		return $this->system_instruction;
 	}
 
 	/**
