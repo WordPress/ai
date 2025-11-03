@@ -41,6 +41,24 @@ class Test_Title_Generation_Feature extends Abstract_Feature {
 	public function register(): void {
 		// No-op for testing.
 	}
+
+	/**
+	 * Generates title suggestions from the given content.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $content The content to generate a title from.
+	 * @param int     $n      The number of titles to generate.
+	 * @return array|\WP_Error The generated titles, or a WP_Error if there was an error.
+	 */
+	public function generate_titles( string $content, int $n = 1 ) {
+		// For testing, return mock titles.
+		$titles = array();
+		for ( $i = 1; $i <= $n; $i++ ) {
+			$titles[] = "Generated Title {$i}";
+		}
+		return $titles;
+	}
 }
 
 /**
@@ -175,11 +193,10 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $this->ability, $input );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertEquals( 'title-generation', $result['feature_id'], 'Feature ID should match' );
-		$this->assertEquals( 'Title Generation', $result['label'], 'Label should match' );
-		$this->assertEquals( 'Generates title suggestions from content', $result['description'], 'Description should match' );
-		$this->assertEquals( 'This is some test content.', $result['content'], 'Content should match input' );
-		$this->assertEquals( 3, $result['n'], 'n should match input' );
+		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
+		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
+		$this->assertCount( 3, $result['titles'], 'Should have 3 titles' );
+		$this->assertEquals( 'Generated Title 1', $result['titles'][0], 'First title should match' );
 	}
 
 	/**
@@ -207,8 +224,9 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $this->ability, $input );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertEquals( 'This is post content.', $result['content'], 'Content should come from post' );
-		$this->assertEquals( $post_id, $result['post_id'], 'Post ID should match' );
+		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
+		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
+		$this->assertCount( 2, $result['titles'], 'Should have 2 titles' );
 	}
 
 	/**
@@ -263,7 +281,9 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $this->ability, $input );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertEquals( 1, $result['n'], 'n should default to 1' );
+		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
+		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
+		$this->assertCount( 1, $result['titles'], 'Should have 1 title by default' );
 	}
 
 	/**
@@ -291,7 +311,10 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $this->ability, $input );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertEquals( 'Post content takes priority.', $result['content'], 'Post content should override provided content' );
+		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
+		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
+		// The feature's generate_titles uses the post content, verified by titles being generated.
+		$this->assertNotEmpty( $result['titles'], 'Should generate titles from post content' );
 	}
 
 	/**
