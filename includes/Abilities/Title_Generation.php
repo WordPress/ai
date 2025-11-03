@@ -130,7 +130,7 @@ class Title_Generation extends Abstract_Ability {
 		}
 
 		// Return the titles in the format the Ability expects.
-		return [ 'titles' => $result ];
+		return array( 'titles' => $result );
 	}
 
 	/**

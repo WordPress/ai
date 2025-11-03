@@ -7,9 +7,9 @@
 
 namespace WordPress\AI\Features\Title_Generation;
 
+use WordPress\AI\API_Request;
 use WordPress\AI\Abilities\Title_Generation as Title_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\API_Request;
 
 /**
  * Title generation feature.
@@ -80,7 +80,7 @@ class Title_Generation extends Abstract_Feature {
 		// Make our request.
 		$request  = new API_Request();
 		$response = $request->generate_text(
-			'"""'. $content . '"""',
+			'"""' . $content . '"""',
 			$this->get_system_instruction(),
 			array(
 				'candidateCount' => (int) $n,

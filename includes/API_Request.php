@@ -7,9 +7,10 @@
 
 namespace WordPress\AI;
 
+use Throwable;
+use WP_Error;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
-use WP_Error;
 
 /**
  * Handles API requests to various AI services.
@@ -59,7 +60,7 @@ class API_Request {
 	 * @param array $options The options to send.
 	 * @return array|\WP_Error The result of the request.
 	 */
-	public function generate_text( $prompt = null, $system_instruction = null, array $options = [] ) {
+	public function generate_text( $prompt = null, $system_instruction = null, array $options = array() ) {
 		if ( ! $this->is_client_available() ) {
 			return new WP_Error( 'ai_client_not_available', __( 'AI Client is not available', 'ai' ) );
 		}
@@ -83,7 +84,7 @@ class API_Request {
 	 * @param array $options The options to send.
 	 * @return \WordPress\AiClient\PromptBuilder|\WP_Error The prompt builder or a WP_Error.
 	 */
-	protected function prompt_builder( $prompt = null, $system_instruction = null, array $options = [] ) {
+	protected function prompt_builder( $prompt = null, $system_instruction = null, array $options = array() ) {
 		try {
 			$model_config   = $this->process_model_config( $options );
 			$prompt_builder = AiClient::prompt( $prompt );
@@ -105,8 +106,8 @@ class API_Request {
 			}
 
 			return $prompt_builder;
-		} catch ( \Exception $e ) {
-			return new WP_Error( 'ai_client_error', $e->getMessage() );
+		} catch ( Throwable $t ) {
+			return new WP_Error( 'ai_client_error', $t->getMessage() );
 		}
 	}
 
@@ -123,7 +124,7 @@ class API_Request {
 			return new WP_Error( 'no_choices', __( 'No choices were returned from the AI provider', 'ai' ) );
 		}
 
-		$results = [];
+		$results = array();
 		foreach ( $response as $choice ) {
 			$results[] = $this->sanitize_choice( $choice );
 		}
@@ -149,11 +150,11 @@ class API_Request {
 	 * @since 0.1.0
 	 *
 	 * @param array $options The options to add to the model config.
-	 * @return ModelConfig
+	 * @return \WordPress\AiClient\Providers\Models\DTO\ModelConfig
 	 */
 	protected function process_model_config( array $options ): ModelConfig {
 		$schema       = ModelConfig::getJsonSchema()['properties'];
-		$model_config = [];
+		$model_config = array();
 
 		foreach ( $options as $key => $value ) {
 			if ( ! isset( $schema[ $key ] ) ) {
