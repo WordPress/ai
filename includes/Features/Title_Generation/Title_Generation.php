@@ -72,9 +72,8 @@ class Title_Generation extends Abstract_Feature {
 	 * @since 0.1.0
 	 *
 	 * @param string $content The content to generate a title from.
-	 * @param int|null $post_id The post ID to generate a title from.
 	 * @param int $n The number of titles to generate.
-	 * @return array|\WP_Error The generated titles, or a WP_Error if there was an error.
+	 * @return array<string>|\WP_Error The generated titles, or a WP_Error if there was an error.
 	 */
 	public function generate_titles( string $content, int $n = 1 ) {
 		// Make our request.

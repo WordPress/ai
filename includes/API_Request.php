@@ -149,7 +149,7 @@ class API_Request {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param array $options The options to add to the model config.
+	 * @param array<string, mixed> $options The options to add to the model config.
 	 * @return \WordPress\AiClient\Providers\Models\DTO\ModelConfig
 	 */
 	protected function process_model_config( array $options ): ModelConfig {
@@ -183,6 +183,7 @@ class API_Request {
 			$model_config[ $key ] = $processed_value;
 		}
 
+		// @phpstan-ignore-next-line - fromArray() validates the array shape at runtime.
 		return ModelConfig::fromArray( $model_config );
 	}
 
