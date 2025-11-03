@@ -6,6 +6,7 @@
   "files": [
     "includes",
     "vendor",
+    "build",
     "README.md",
     "readme.txt",
     "ai.php"
