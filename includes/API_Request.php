@@ -64,6 +64,26 @@ class API_Request {
 			return new WP_Error( 'ai_client_not_available', __( 'AI Client is not available', 'ai' ) );
 		}
 
+		$prompt_builder = $this->prompt_builder( $prompt, $system_instruction, $options );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
+		return $this->get_result( $prompt_builder->generateTexts() );
+	}
+
+	/**
+	 * Build the prompt builder for the request.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string|null $prompt The prompt to send.
+	 * @param string|null $system_instruction The system instruction to send.
+	 * @param array $options The options to send.
+	 * @return \WordPress\AiClient\PromptBuilder|\WP_Error The prompt builder or a WP_Error.
+	 */
+	protected function prompt_builder( $prompt = null, $system_instruction = null, array $options = [] ) {
 		try {
 			$model_config   = $this->process_model_config( $options );
 			$prompt_builder = AiClient::prompt( $prompt );
@@ -84,7 +104,7 @@ class API_Request {
 				}
 			}
 
-			return $this->get_result( $prompt_builder->generateTexts() );
+			return $prompt_builder;
 		} catch ( \Exception $e ) {
 			return new WP_Error( 'ai_client_error', $e->getMessage() );
 		}
