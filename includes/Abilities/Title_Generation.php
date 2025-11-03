@@ -85,7 +85,7 @@ class Title_Generation extends Abstract_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
-	 * @return mixed|\WP_Error The result of the ability execution, or a WP_Error on failure.
+	 * @return array{titles: array{string}}|\WP_Error The result of the ability execution, or a WP_Error on failure.
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.

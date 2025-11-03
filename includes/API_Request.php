@@ -45,7 +45,7 @@ class API_Request {
 	 * @param string $provider The desired AI provider.
 	 * @param string $model The desired AI model.
 	 */
-	public function __construct( string $provider = '', string $model = '' ) {
+	public function __construct( ?string $provider = null, ?string $model = null ) {
 		$this->provider = $provider ?? null;
 		$this->model    = $model ?? null;
 	}
@@ -57,8 +57,8 @@ class API_Request {
 	 *
 	 * @param string|null $prompt The prompt to send.
 	 * @param string|null $system_instruction The system instruction to send.
-	 * @param array $options The options to send.
-	 * @return array|\WP_Error The result of the request.
+	 * @param array<string, mixed> $options The options to send.
+	 * @return array<string>|\WP_Error The result of the request.
 	 */
 	public function generate_text( $prompt = null, $system_instruction = null, array $options = array() ) {
 		if ( ! $this->is_client_available() ) {
@@ -81,8 +81,8 @@ class API_Request {
 	 *
 	 * @param string|null $prompt The prompt to send.
 	 * @param string|null $system_instruction The system instruction to send.
-	 * @param array $options The options to send.
-	 * @return \WordPress\AiClient\PromptBuilder|\WP_Error The prompt builder or a WP_Error.
+	 * @param array<string, mixed> $options The options to send.
+	 * @return \WordPress\AiClient\Builders\PromptBuilder|\WP_Error The prompt builder or a WP_Error.
 	 */
 	protected function prompt_builder( $prompt = null, $system_instruction = null, array $options = array() ) {
 		try {
@@ -116,8 +116,8 @@ class API_Request {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param array $response The response from the AI SDK Client.
-	 * @return array|\WP_Error
+	 * @param array<string> $response The response from the AI SDK Client.
+	 * @return array<string>|\WP_Error
 	 */
 	protected function get_result( array $response ) {
 		if ( empty( $response ) ) {
