@@ -12,6 +12,7 @@
     "ai.php"
   ],
   "scripts": {
+    "preplugin-zip": "npm run build",
     "plugin-zip": "wp-scripts plugin-zip",
     "build": "wp-scripts build",
     "start": "wp-scripts start",
