@@ -9,6 +9,8 @@
 
 namespace WordPress\AI;
 
+use WordPress\AI_Client\API_Credentials\API_Credentials_Manager;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -172,6 +174,9 @@ function initialize_features(): void {
 		$loader   = new Feature_Loader( $registry );
 		$loader->register_default_features();
 		$loader->initialize_features();
+
+		$api_credentials_manager = new API_Credentials_Manager();
+		$api_credentials_manager->initialize();
 
 		add_action(
 			'wp_abilities_api_categories_init',

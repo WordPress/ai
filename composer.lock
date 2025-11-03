@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "58ac7ac3edf61480d11831a160ce5aee",
+    "content-hash": "5530fc4f50dc724598613d2e677d5a5e",
     "packages": [
         {
             "name": "automattic/jetpack-autoloader",
@@ -989,12 +989,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/mcp-adapter.git",
-                "reference": "0e2910780a95ac855931a4df7b0a9de7ca7b05eb"
+                "reference": "b55221f9d31307ae69943a094394a126579017f6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/mcp-adapter/zipball/0e2910780a95ac855931a4df7b0a9de7ca7b05eb",
-                "reference": "0e2910780a95ac855931a4df7b0a9de7ca7b05eb",
+                "url": "https://api.github.com/repos/WordPress/mcp-adapter/zipball/b55221f9d31307ae69943a094394a126579017f6",
+                "reference": "b55221f9d31307ae69943a094394a126579017f6",
                 "shasum": ""
             },
             "require": {
@@ -1056,20 +1056,20 @@
                 "issues": "https://github.com/wordpress/mcp-adapter/issues",
                 "source": "https://github.com/wordpress/mcp-adapter"
             },
-            "time": "2025-10-23T05:56:26+00:00"
+            "time": "2025-11-03T17:53:17+00:00"
         },
         {
             "name": "wordpress/php-ai-client",
-            "version": "0.1.0",
+            "version": "0.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/php-ai-client.git",
-                "reference": "9ec56e70e692791493a3eaff1b69f25f4daeded7"
+                "reference": "81a104a9bc5f887e3fbecea6e0d9cd8eab3be0b2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/php-ai-client/zipball/9ec56e70e692791493a3eaff1b69f25f4daeded7",
-                "reference": "9ec56e70e692791493a3eaff1b69f25f4daeded7",
+                "url": "https://api.github.com/repos/WordPress/php-ai-client/zipball/81a104a9bc5f887e3fbecea6e0d9cd8eab3be0b2",
+                "reference": "81a104a9bc5f887e3fbecea6e0d9cd8eab3be0b2",
                 "shasum": ""
             },
             "require": {
@@ -1123,37 +1123,37 @@
                 "issues": "https://github.com/WordPress/php-ai-client/issues",
                 "source": "https://github.com/WordPress/php-ai-client"
             },
-            "time": "2025-08-29T22:46:54+00:00"
+            "time": "2025-10-21T00:05:14+00:00"
         },
         {
             "name": "wordpress/wp-ai-client",
-            "version": "dev-trunk",
+            "version": "dev-add/api-credentials-management",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/wp-ai-client.git",
-                "reference": "3d8a386ad2988fba88fa6f44dd1045a58e0c8f30"
+                "reference": "0b05a0717edb68402c60fd51ecec3d622e8d8000"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/3d8a386ad2988fba88fa6f44dd1045a58e0c8f30",
-                "reference": "3d8a386ad2988fba88fa6f44dd1045a58e0c8f30",
+                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/0b05a0717edb68402c60fd51ecec3d622e8d8000",
+                "reference": "0b05a0717edb68402c60fd51ecec3d622e8d8000",
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
                 "php": ">=7.4",
-                "wordpress/php-ai-client": "^0.1"
+                "wordpress/php-ai-client": "^0.2"
             },
             "require-dev": {
                 "automattic/vipwpcs": "^3.0",
                 "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
                 "phpcompatibility/phpcompatibility-wp": "^2.1",
-                "phpstan/phpstan": "~2.1",
+                "phpstan/phpstan": "^1.10 | ^2.1",
                 "slevomat/coding-standard": "^8.0",
                 "squizlabs/php_codesniffer": "^3.7",
+                "szepeviktor/phpstan-wordpress": "^1.3",
                 "wp-coding-standards/wpcs": "^3.0"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -1172,7 +1172,7 @@
                     "phpcbf"
                 ],
                 "phpstan": [
-                    "phpstan analyze --memory-limit=256M"
+                    "phpstan analyze --memory-limit=1024M"
                 ]
             },
             "license": [
@@ -1196,7 +1196,7 @@
                 "issues": "https://github.com/WordPress/wp-ai-client/issues",
                 "source": "https://github.com/WordPress/wp-ai-client"
             },
-            "time": "2025-09-08T16:26:36+00:00"
+            "time": "2025-10-29T22:56:39+00:00"
         }
     ],
     "packages-dev": [
@@ -1804,16 +1804,16 @@
         },
         {
             "name": "php-stubs/wordpress-stubs",
-            "version": "v6.8.2",
+            "version": "v6.8.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-stubs/wordpress-stubs.git",
-                "reference": "9c8e22e437463197c1ec0d5eaa9ddd4a0eb6d7f8"
+                "reference": "abeb5a8b58fda7ac21f15ee596f302f2959a7114"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-stubs/wordpress-stubs/zipball/9c8e22e437463197c1ec0d5eaa9ddd4a0eb6d7f8",
-                "reference": "9c8e22e437463197c1ec0d5eaa9ddd4a0eb6d7f8",
+                "url": "https://api.github.com/repos/php-stubs/wordpress-stubs/zipball/abeb5a8b58fda7ac21f15ee596f302f2959a7114",
+                "reference": "abeb5a8b58fda7ac21f15ee596f302f2959a7114",
                 "shasum": ""
             },
             "conflict": {
@@ -1849,9 +1849,9 @@
             ],
             "support": {
                 "issues": "https://github.com/php-stubs/wordpress-stubs/issues",
-                "source": "https://github.com/php-stubs/wordpress-stubs/tree/v6.8.2"
+                "source": "https://github.com/php-stubs/wordpress-stubs/tree/v6.8.3"
             },
-            "time": "2025-07-16T06:41:00+00:00"
+            "time": "2025-09-30T20:58:47+00:00"
         },
         {
             "name": "phpcompatibility/php-compatibility",
@@ -1859,12 +1859,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCompatibility/PHPCompatibility.git",
-                "reference": "4423c33f26c907cad43582df7ec02706c523856d"
+                "reference": "ff4efdd80e094a81fd6329b570c9a632f21d42b4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibility/zipball/4423c33f26c907cad43582df7ec02706c523856d",
-                "reference": "4423c33f26c907cad43582df7ec02706c523856d",
+                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibility/zipball/ff4efdd80e094a81fd6329b570c9a632f21d42b4",
+                "reference": "ff4efdd80e094a81fd6329b570c9a632f21d42b4",
                 "shasum": ""
             },
             "require": {
@@ -1945,7 +1945,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-10-27T20:28:17+00:00"
+            "time": "2025-10-30T20:24:19+00:00"
         },
         {
             "name": "phpcompatibility/phpcompatibility-paragonie",
@@ -2100,16 +2100,16 @@
         },
         {
             "name": "phpcsstandards/phpcsextra",
-            "version": "1.4.1",
+            "version": "1.4.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCSStandards/PHPCSExtra.git",
-                "reference": "882b8c947ada27eb002870fe77fee9ce0a454cdb"
+                "reference": "8e89a01c7b8fed84a12a2a7f5a23a44cdbe4f62e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCSStandards/PHPCSExtra/zipball/882b8c947ada27eb002870fe77fee9ce0a454cdb",
-                "reference": "882b8c947ada27eb002870fe77fee9ce0a454cdb",
+                "url": "https://api.github.com/repos/PHPCSStandards/PHPCSExtra/zipball/8e89a01c7b8fed84a12a2a7f5a23a44cdbe4f62e",
+                "reference": "8e89a01c7b8fed84a12a2a7f5a23a44cdbe4f62e",
                 "shasum": ""
             },
             "require": {
@@ -2178,7 +2178,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2025-09-05T06:54:52+00:00"
+            "time": "2025-10-28T17:00:02+00:00"
         },
         {
             "name": "phpcsstandards/phpcsutils",
