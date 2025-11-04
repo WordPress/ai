@@ -50,7 +50,7 @@ jobs:
             let foundString = false;
 
             // Check PR body.
-            if (pr.body.includes(searchString)) {
+            if (pr.body && pr.body.includes(searchString)) {
               foundString = true;
             }
 
@@ -115,7 +115,7 @@ jobs:
             [Click here to test this pull request](${blueprintUrl}).`;
 
             // Append the comment to the existing PR body.
-            const updatedBody = pr.body + '\n\n' + playgroundComment;
+            const updatedBody = `${pr.body ?? ''}\n\n${playgroundComment}`.trim();
 
             // Update the PR body.
             await github.rest.pulls.update({
