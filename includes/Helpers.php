@@ -26,16 +26,16 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered Post content.
 	 */
-	$content = apply_filters( 'ai_pre_normalize_content', $content );
+	$content = (string) apply_filters( 'ai_pre_normalize_content', $content );
 
 	// Strip HTML entities.
 	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content );
 
 	// Replace HTML linebreaks with newlines.
-	$content = preg_replace( '#<br\s?/?>#', "\n\n", $content );
+	$content = preg_replace( '#<br\s?/?>#', "\n\n", (string) $content );
 
 	// Strip all HTML tags.
-	$content = wp_strip_all_tags( $content );
+	$content = wp_strip_all_tags( (string) $content );
 
 	// Remove unrendered shortcode tags.
 	$content = preg_replace( '#\[.+\](.+)\[/.+\]#', '$1', $content );
@@ -50,7 +50,7 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered normalized content.
 	 */
-	$content = apply_filters( 'ai_normalize_content', trim( $content ) );
+	$content = apply_filters( 'ai_normalize_content', $content );
 
-	return $content;
+	return trim( (string) $content );
 }

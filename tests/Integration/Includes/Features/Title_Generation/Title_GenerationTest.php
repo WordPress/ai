@@ -83,7 +83,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
 		$this->assertNotEmpty( $system_instruction, 'System instruction should not be empty' );
-		$this->assertStringContainsString( 'SEO-friendly', $system_instruction, 'System instruction should contain expected content' );
+		$this->assertStringContainsString( 'You are an editorial assistant', $system_instruction, 'System instruction should contain expected content' );
 	}
 
 	/**

@@ -216,12 +216,12 @@ class Title_Generation extends Abstract_Ability {
 		}
 
 		$categories = get_the_terms( $post_id, 'category' );
-		if ( $categories ) {
+		if ( $categories && ! is_wp_error( $categories ) ) {
 			$context .= 'Categories: ' . implode( ', ', wp_list_pluck( $categories, 'name' ) ) . "\n";
 		}
 
 		$tags = get_the_terms( $post_id, 'post_tag' );
-		if ( $tags ) {
+		if ( $tags && ! is_wp_error( $tags ) ) {
 			$context .= 'Tags: ' . implode( ', ', wp_list_pluck( $tags, 'name' ) ) . "\n";
 		}
 

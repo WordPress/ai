@@ -283,7 +283,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
 		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		$this->assertCount( 1, $result['titles'], 'Should have 1 title by default' );
+		$this->assertCount( 3, $result['titles'], 'Should have 3 titles by default' );
 	}
 
 	/**

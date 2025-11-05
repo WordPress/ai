@@ -181,8 +181,14 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	protected function load_system_instruction_from_file( ?string $filename = null ): string {
 		// Get the feature's directory using reflection.
-		$reflection  = new ReflectionClass( $this );
-		$feature_dir = dirname( $reflection->getFileName() );
+		$reflection = new ReflectionClass( $this );
+		$file_name  = $reflection->getFileName();
+
+		if ( ! $file_name ) {
+			return '';
+		}
+
+		$feature_dir = dirname( $file_name );
 
 		// If explicit filename provided, use it.
 		if ( null !== $filename ) {
