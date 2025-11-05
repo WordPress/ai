@@ -24,7 +24,7 @@ class Title_Generation extends Abstract_Feature {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	protected $system_instruction = 'You are an editorial assistant that generates title suggestions for online articles and pages. You will be provided some content and some optional additional context and the goal is to generate a concise, engaging, and accurate title that reflects the content and context. This title should be optimized for clarity, engagement, and SEO - while maintaining an appropriate tone for the author\'s intent and audience. The title suggestion should be no more than 80 characters; should not contain any markdown, bullets, numbering, or formatting - plain text only; should be distinct in tone or focus; must reflect the actual content and context, not generic clickbait. The content you will be provided is delimited by triple quotes.';
+	protected $system_instruction = 'You are an editorial assistant that generates title suggestions for online articles and pages. You will be provided some context and the goal is to generate a concise, engaging, and accurate title that reflects that context. This title should be optimized for clarity, engagement, and SEO - while maintaining an appropriate tone for the author\'s intent and audience. The title suggestion should be no more than 80 characters; should not contain any markdown, bullets, numbering, or formatting - plain text only; should be distinct in tone or focus; must reflect the actual content and context, not generic clickbait. The context you will be provided is delimited by triple quotes.';
 
 	/**
 	 * Load feature metadata.
@@ -71,15 +71,16 @@ class Title_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $content The content to generate a title from.
+	 * @param string $context The context to generate a title from.
 	 * @param int $n The number of titles to generate.
 	 * @return array<string>|\WP_Error The generated titles, or a WP_Error if there was an error.
 	 */
-	public function generate_titles( string $content, int $n = 1 ) {
+	public function generate_titles( string $context, int $n = 1 ) {
+		var_dump( $context ); die;
 		// Make our request.
 		$request  = new API_Request();
 		$response = $request->generate_text(
-			'"""' . $content . '"""',
+			'"""' . $context . '"""',
 			$this->get_system_instruction(),
 			array(
 				'candidateCount' => (int) $n,
