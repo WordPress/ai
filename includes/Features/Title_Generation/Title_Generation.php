@@ -24,7 +24,7 @@ class Title_Generation extends Abstract_Feature {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	protected $system_instruction = 'Generate an SEO-friendly title for the provided content, staying within a range of 40 to 60 characters and maintaining the original meaning and context. The content you will be provided is delimited by triple quotes.'; // TODO: tune this prompt.
+	protected $system_instruction = 'You are an editorial assistant that generates title suggestions for online articles and pages. You will be provided some content and some optional additional context and the goal is to generate a concise, engaging, and accurate title that reflects the content and context. This title should be optimized for clarity, engagement, and SEO - while maintaining an appropriate tone for the author\'s intent and audience. The title suggestion should be no more than 80 characters; should not contain any markdown, bullets, numbering, or formatting - plain text only; should be distinct in tone or focus; must reflect the actual content and context, not generic clickbait. The content you will be provided is delimited by triple quotes.';
 
 	/**
 	 * Load feature metadata.
