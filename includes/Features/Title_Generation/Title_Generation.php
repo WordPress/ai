@@ -76,7 +76,6 @@ class Title_Generation extends Abstract_Feature {
 	 * @return array<string>|\WP_Error The generated titles, or a WP_Error if there was an error.
 	 */
 	public function generate_titles( string $context, int $n = 1 ) {
-		var_dump( $context ); die;
 		// Make our request.
 		$request  = new API_Request();
 		$response = $request->generate_text(

@@ -32,7 +32,10 @@
   "autoload": {
     "psr-4": {
       "WordPress\\AI\\": "includes/"
-    }
+    },
+    "files": [
+      "includes/Helpers.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {
