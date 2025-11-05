@@ -50,6 +50,7 @@ class Title_Generation extends Abstract_Ability {
 					'type'              => 'integer',
 					'minimum'           => 1,
 					'maximum'           => 10,
+					'default'           => 3,
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Number of titles to generate', 'ai' ),
 				),
@@ -94,7 +95,7 @@ class Title_Generation extends Abstract_Ability {
 			array(
 				'content' => null,
 				'post_id' => null,
-				'n'       => 1,
+				'n'       => 3,
 			),
 		);
 
