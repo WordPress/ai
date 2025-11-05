@@ -50,7 +50,7 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered normalized content.
 	 */
-	$content = apply_filters( 'ai_normalize_content', $content );
+	$content = (string) apply_filters( 'ai_normalize_content', (string) $content );
 
-	return trim( (string) $content );
+	return trim( $content );
 }
