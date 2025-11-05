@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Abstracts;
 
+use ReflectionClass;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
 
@@ -91,6 +92,12 @@ abstract class Abstract_Feature implements Feature {
 		$this->id          = $metadata['id'];
 		$this->label       = $metadata['label'];
 		$this->description = $metadata['description'];
+
+		// Try to load system instruction from file.
+		$loaded_instruction = $this->load_system_instruction_from_file();
+		if ( ! empty( $loaded_instruction ) ) { // phpcs:ignore SlevomatCodingStandard.ControlStructures.EarlyExit.EarlyExitNotUsed
+			$this->system_instruction = $loaded_instruction;
+		}
 	}
 
 	/**
@@ -157,6 +164,50 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	public function get_system_instruction(): string {
 		return $this->system_instruction;
+	}
+
+	/**
+	 * Loads system instruction from a markdown file in the feature's directory.
+	 *
+	 * Supports both automatic detection (looks for `system-instruction.md` or `prompt.md`)
+	 * and explicit file paths. Returns empty string if file is not found, maintaining
+	 * backward compatibility with hardcoded system instructions.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
+	 *                              attempts to load `system-instruction.md` or `prompt.md`.
+	 * @return string The contents of the file, or empty string if file not found.
+	 */
+	protected function load_system_instruction_from_file( ?string $filename = null ): string {
+		// Get the feature's directory using reflection.
+		$reflection  = new ReflectionClass( $this );
+		$feature_dir = dirname( $reflection->getFileName() );
+
+		// If explicit filename provided, use it.
+		if ( null !== $filename ) {
+			$file_path = trailingslashit( $feature_dir ) . $filename;
+
+			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
+				$content = file_get_contents( $file_path ); // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+				return false !== $content ? trim( wp_strip_all_tags( $content ) ) : '';
+			}
+
+			return '';
+		}
+
+		// Automatic detection: first `system-instruction.md`, then `prompt.md`.
+		$possible_files = array( 'system-instruction.md', 'prompt.md' );
+		foreach ( $possible_files as $possible_file ) {
+			$file_path = trailingslashit( $feature_dir ) . $possible_file;
+
+			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
+				$content = file_get_contents( $file_path ); // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+				return false !== $content ? trim( wp_strip_all_tags( $content ) ) : '';
+			}
+		}
+
+		return '';
 	}
 
 	/**
