@@ -102,7 +102,9 @@ class Title_Generation extends Abstract_Ability {
 		);
 
 		// Setup the context we want to pass to the AI.
-		$context = 'Content: ' . normalize_content( $args['content'] ?? '' ) . "\n";
+		$context = array(
+			'content' => normalize_content( $args['content'] ?? '' ),
+		);
 
 		// If a post ID is provided, ensure the post exists before using its' content.
 		if ( $args['post_id'] ) {
@@ -119,10 +121,12 @@ class Title_Generation extends Abstract_Ability {
 			// Default to the passed in content but fallback to the post content otherwise.
 			if ( ! $args['content'] ) {
 				$args['content'] = apply_filters( 'the_content', $post->post_content );
-				$context         = 'Content: ' . normalize_content( $args['content'] ) . "\n";
+				$context         = array(
+					'content' => normalize_content( $args['content'] ),
+				);
 			}
 
-			$context .= $this->get_context( $args['post_id'] );
+			$context = array_merge( $context, $this->get_context( $args['post_id'] ) );
 		}
 
 		// If we have no content, return an error.
@@ -183,46 +187,46 @@ class Title_Generation extends Abstract_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param int $post_id The ID of the post to get the context for.
-	 * @return string The context for the given post ID.
+	 * @return array<string, string> The context for the given post ID.
 	 */
-	protected function get_context( int $post_id ): string {
+	protected function get_context( int $post_id ): array {
 		$post    = get_post( $post_id );
-		$context = '';
+		$context = array();
 
-		// If the post doesn't exist, return an empty string.
+		// If the post doesn't exist, return early.
 		if ( ! $post ) {
 			return $context;
 		}
 
 		if ( $post->post_title ) {
-			$context .= 'Current Title: ' . $post->post_title . "\n";
+			$context['current_title'] = $post->post_title;
 		}
 
 		if ( $post->post_name ) {
-			$context .= 'Slug: ' . $post->post_name . "\n";
+			$context['slug'] = $post->post_name;
 		}
 
 		$author = get_user_by( 'ID', $post->post_author );
 		if ( $author ) {
-			$context .= 'Author: ' . $author->display_name . "\n";
+			$context['author'] = $author->display_name;
 		}
 
 		if ( $post->post_type ) {
-			$context .= 'Content Type: ' . $post->post_type . "\n";
+			$context['content_type'] = $post->post_type;
 		}
 
 		if ( $post->post_excerpt ) {
-			$context .= 'Excerpt: ' . $post->post_excerpt . "\n";
+			$context['excerpt'] = $post->post_excerpt;
 		}
 
 		$categories = get_the_terms( $post_id, 'category' );
 		if ( $categories && ! is_wp_error( $categories ) ) {
-			$context .= 'Categories: ' . implode( ', ', wp_list_pluck( $categories, 'name' ) ) . "\n";
+			$context['categories'] = implode( ', ', wp_list_pluck( $categories, 'name' ) );
 		}
 
 		$tags = get_the_terms( $post_id, 'post_tag' );
 		if ( $tags && ! is_wp_error( $tags ) ) {
-			$context .= 'Tags: ' . implode( ', ', wp_list_pluck( $tags, 'name' ) ) . "\n";
+			$context['tags'] = implode( ', ', wp_list_pluck( $tags, 'name' ) );
 		}
 
 		return $context;
