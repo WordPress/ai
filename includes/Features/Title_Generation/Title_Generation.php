@@ -7,7 +7,7 @@
 
 namespace WordPress\AI\Features\Title_Generation;
 
-use WordPress\AI\AssetLoader;
+use WordPress\AI\Asset_Loader;
 use WordPress\AI\API_Request;
 use WordPress\AI\Abilities\Title_Generation as Title_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
@@ -130,8 +130,8 @@ class Title_Generation extends Abstract_Feature {
 			return;
 		}
 
-		AssetLoader::enqueue_script( 'title_generation', 'features/title-generation' );
-		AssetLoader::localize_script(
+		Asset_Loader::enqueue_script( 'title_generation', 'features/title-generation' );
+		Asset_Loader::localize_script(
 			'title_generation',
 			'title_generation_data',
 			array(
