@@ -270,15 +270,17 @@ add_filter( 'ai_default_feature_classes', function( $feature_classes ) {
 
 ### Disabling a Feature
 
-Features can be disabled using the `ai_feature_enabled` filter:
+Features can be disabled using the dynamic `ai_feature_{$feature_id}_enabled` filter:
 
 ```php
-add_filter( 'ai_feature_enabled', function( $enabled, $feature_id ) {
-	if ( 'example-feature' === $feature_id ) {
-		return false;
-	}
-	return $enabled;
-}, 10, 2 );
+// Disable a specific feature by its ID
+add_filter( 'ai_feature_example-feature_enabled', '__return_false' );
+
+// Or with a custom callback
+add_filter( 'ai_feature_example-feature_enabled', function( $enabled ) {
+	// Your custom logic here
+	return false;
+} );
 ```
 
 ### Disabling All Features
