@@ -5,7 +5,7 @@ const webpackConfig = {
 	...defaultConfig,
 	entry: {
 		...defaultConfig.entry(),
-		'features/title-generation': './src/features/title-generation/index.js'
+		'features/title-generation': './src/features/title-generation/index.tsx'
 	},
 };
 
