@@ -71,7 +71,11 @@ class API_Request {
 			return $prompt_builder;
 		}
 
-		return $this->get_result( $prompt_builder->generateTexts() );
+		try {
+			return $this->get_result( $prompt_builder->generateTexts() );
+		} catch ( Throwable $t ) {
+			return new WP_Error( 'ai_client_error', $t->getMessage() );
+		}
 	}
 
 	/**
