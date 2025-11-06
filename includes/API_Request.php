@@ -42,7 +42,7 @@ class API_Request {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @var array<string>
+	 * @var array<int, array<string>>
 	 */
 	protected $model_preferences = array(
 		array(

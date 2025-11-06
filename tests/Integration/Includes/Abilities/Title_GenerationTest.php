@@ -47,11 +47,11 @@ class Test_Title_Generation_Feature extends Abstract_Feature {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $content The content to generate a title from.
+	 * @param string|array<string, string> $content The content to generate a title from.
 	 * @param int     $n      The number of titles to generate.
 	 * @return array|\WP_Error The generated titles, or a WP_Error if there was an error.
 	 */
-	public function generate_titles( string $content, int $n = 1 ) {
+	public function generate_titles( $content, int $n = 1 ) {
 		// For testing, return mock titles.
 		$titles = array();
 		for ( $i = 1; $i <= $n; $i++ ) {
