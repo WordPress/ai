@@ -38,6 +38,32 @@ class API_Request {
 	protected $model = null;
 
 	/**
+	 * The preferred models to use.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @var array<string>
+	 */
+	protected $model_preferences = array(
+		array(
+			'anthropic',
+			'claude-haiku-4-5',
+		),
+		array(
+			'google',
+			'gemini-2.5-flash',
+		),
+		array(
+			'openai',
+			'gpt-4o-mini',
+		),
+		array(
+			'openai',
+			'gpt-4.1',
+		),
+	);
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
@@ -107,6 +133,11 @@ class API_Request {
 					$provider_class_name = $registry->getProviderClassName( $this->provider );
 					$prompt_builder      = $prompt_builder->usingModel( $provider_class_name::model( $this->model ) );
 				}
+			}
+
+			// Set our preferred models if no model is specified.
+			if ( empty( $this->model ) ) {
+				$prompt_builder = $prompt_builder->usingModelPreference( ...$this->model_preferences );
 			}
 
 			return $prompt_builder;
