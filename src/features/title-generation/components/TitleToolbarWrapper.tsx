@@ -33,10 +33,6 @@ function TitleToolbarWrapper(): JSX.Element {
 		let titleInput: HTMLElement | null = null;
 		let toolbarContainer: HTMLElement | null = null;
 		let wrapperContainer: HTMLElement | null = null;
-		let focusHandler: ( ( e: Event ) => void ) | null = null;
-		let blurHandler: ( ( e: FocusEvent ) => void ) | null = null;
-		let toolbarFocusHandler: ( ( e: Event ) => void ) | null = null;
-		let toolbarBlurHandler: ( ( e: Event ) => void ) | null = null;
 
 		// Find the editor iframe
 		const getEditorDocument = (): Document | null => {
@@ -80,13 +76,6 @@ function TitleToolbarWrapper(): JSX.Element {
 			const start = () => {
 				if ( ! timeoutId ) {
 					retry();
-				}
-			};
-
-			const cancel = () => {
-				if ( timeoutId ) {
-					clearTimeout( timeoutId );
-					timeoutId = null;
 				}
 			};
 
@@ -151,7 +140,9 @@ function TitleToolbarWrapper(): JSX.Element {
 				toolbarContainer &&
 				( activeElement === toolbarContainer ||
 					toolbarContainer.contains( activeElement ) ||
-					toolbarContainer.querySelector( '.components-dropdown-menu .is-opened' ) )
+					toolbarContainer.querySelector(
+						'.components-dropdown-menu .is-opened'
+					) )
 			) {
 				return true;
 			}
@@ -227,7 +218,9 @@ function TitleToolbarWrapper(): JSX.Element {
 						if ( ! doc ) {
 							return false;
 						}
-						return !! doc.querySelector( '.editor-post-title__input' );
+						return !! doc.querySelector(
+							'.editor-post-title__input'
+						);
 					},
 					findAndAttachToolbar,
 					10
@@ -283,8 +276,6 @@ function TitleToolbarWrapper(): JSX.Element {
 				showToolbar,
 				updateToolbarVisibility
 			);
-			focusHandler = titleHandlers.focus;
-			blurHandler = titleHandlers.blur;
 			removeTitleListeners = setupEventListeners(
 				titleInput,
 				titleHandlers
@@ -295,8 +286,6 @@ function TitleToolbarWrapper(): JSX.Element {
 				showToolbar,
 				updateToolbarVisibility
 			);
-			toolbarFocusHandler = toolbarHandlers.focus;
-			toolbarBlurHandler = toolbarHandlers.blur;
 			removeToolbarListeners = setupEventListeners(
 				toolbarContainer,
 				toolbarHandlers,

@@ -133,7 +133,7 @@ class Title_Generation extends Abstract_Feature {
 		Asset_Loader::enqueue_script( 'title_generation', 'features/title-generation' );
 		Asset_Loader::localize_script(
 			'title_generation',
-			'title_generation_data',
+			'TitleGenerationData',
 			array(
 				'enabled' => $this->is_enabled(),
 				'path'    => Title_Generation_Ability::path( $this->get_id() ),

@@ -101,7 +101,7 @@ class Asset_Loader {
 	public static function localize_script( string $handle, string $object_name, array $data ): void {
 		wp_localize_script(
 			'ai_' . $handle,
-			'ai_' . $object_name,
+			'ai' . $object_name,
 			$data
 		);
 	}
