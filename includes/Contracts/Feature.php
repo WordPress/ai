@@ -5,6 +5,8 @@
  * @package WordPress\AI\Contracts
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Contracts;
 
 /**
