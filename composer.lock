@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5530fc4f50dc724598613d2e677d5a5e",
+    "content-hash": "6a1adadf48ea6cbf55a51e64e9e46de2",
     "packages": [
         {
             "name": "automattic/jetpack-autoloader",
@@ -1127,16 +1127,16 @@
         },
         {
             "name": "wordpress/wp-ai-client",
-            "version": "dev-add/api-credentials-management",
+            "version": "dev-trunk",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/wp-ai-client.git",
-                "reference": "0b05a0717edb68402c60fd51ecec3d622e8d8000"
+                "reference": "bfa9e48872ae20925f96606b02a802f466a94dd1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/0b05a0717edb68402c60fd51ecec3d622e8d8000",
-                "reference": "0b05a0717edb68402c60fd51ecec3d622e8d8000",
+                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/bfa9e48872ae20925f96606b02a802f466a94dd1",
+                "reference": "bfa9e48872ae20925f96606b02a802f466a94dd1",
                 "shasum": ""
             },
             "require": {
@@ -1154,6 +1154,7 @@
                 "szepeviktor/phpstan-wordpress": "^1.3",
                 "wp-coding-standards/wpcs": "^3.0"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -1196,7 +1197,7 @@
                 "issues": "https://github.com/WordPress/wp-ai-client/issues",
                 "source": "https://github.com/WordPress/wp-ai-client"
             },
-            "time": "2025-10-29T22:56:39+00:00"
+            "time": "2025-11-07T16:28:15+00:00"
         }
     ],
     "packages-dev": [
