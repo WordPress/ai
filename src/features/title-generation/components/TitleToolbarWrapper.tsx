@@ -3,11 +3,9 @@
  *
  * This component uses DOM manipulation to attach the toolbar to the title field
  * in normal editing mode (non-template mode).
- *
- * @package WordPress\AI
  */
 
-import * as React from 'react';
+import React from 'react';
 import { useEffect } from '@wordpress/element';
 import { createRoot } from 'react-dom/client';
 import TitleToolbar from './TitleToolbar';
@@ -19,7 +17,7 @@ import TitleToolbar from './TitleToolbar';
  *
  * @return {JSX.Element} The wrapper component.
  */
-export default function TitleToolbarWrapper(): JSX.Element {
+function TitleToolbarWrapper(): JSX.Element {
 	useEffect( () => {
 		let isAttached = false;
 		let retryTimeout: NodeJS.Timeout | null = null;
@@ -27,8 +25,11 @@ export default function TitleToolbarWrapper(): JSX.Element {
 		let observer: MutationObserver | null = null;
 		let titleInput: HTMLElement | null = null;
 		let toolbarContainer: HTMLElement | null = null;
+		let wrapperContainer: HTMLElement | null = null;
 		let focusHandler: ( ( e: Event ) => void ) | null = null;
-		let blurHandler: ( ( e: Event ) => void ) | null = null;
+		let blurHandler: ( ( e: FocusEvent ) => void ) | null = null;
+		let toolbarFocusHandler: ( ( e: Event ) => void ) | null = null;
+		let toolbarBlurHandler: ( ( e: Event ) => void ) | null = null;
 
 		// Find the editor iframe
 		const getEditorDocument = (): Document | null => {
@@ -44,6 +45,38 @@ export default function TitleToolbarWrapper(): JSX.Element {
 			return null;
 		};
 
+		// Check if focus is on title input or toolbar
+		const isFocusedOnTitleOrToolbar = (): boolean => {
+			const editorDoc = getEditorDocument();
+			if ( ! editorDoc ) {
+				return false;
+			}
+
+			const activeElement = editorDoc.activeElement as HTMLElement | null;
+			if ( ! activeElement ) {
+				return false;
+			}
+
+			// Check if focus is on title input
+			if (
+				activeElement === titleInput ||
+				titleInput?.contains( activeElement )
+			) {
+				return true;
+			}
+
+			// Check if focus is on toolbar or any element within it
+			if (
+				toolbarContainer &&
+				( activeElement === toolbarContainer ||
+					toolbarContainer.contains( activeElement ) )
+			) {
+				return true;
+			}
+
+			return false;
+		};
+
 		// Show/hide toolbar based on focus
 		const showToolbar = () => {
 			if ( toolbarContainer ) {
@@ -54,6 +87,15 @@ export default function TitleToolbarWrapper(): JSX.Element {
 		const hideToolbar = () => {
 			if ( toolbarContainer ) {
 				toolbarContainer.style.display = 'none';
+			}
+		};
+
+		// Check focus state and show/hide toolbar accordingly
+		const updateToolbarVisibility = () => {
+			if ( isFocusedOnTitleOrToolbar() ) {
+				showToolbar();
+			} else {
+				hideToolbar();
 			}
 		};
 
@@ -87,20 +129,20 @@ export default function TitleToolbarWrapper(): JSX.Element {
 				return;
 			}
 
-			// Check if toolbar already exists in the editor document
-			if ( editorDoc.querySelector( '.ai-title-toolbar-container' ) ) {
+			// Check if toolbar wrapper already exists in the editor document
+			if ( editorDoc.querySelector( '.ai-title-toolbar-wrapper' ) ) {
 				isAttached = true;
 				return;
 			}
 
 			// Find the title field container in normal editing mode
-			const selectors = [
-				'.editor-post-title__input',
-			];
+			const selectors = [ '.editor-post-title__input' ];
 
 			let foundTitleInput: HTMLElement | null = null;
 			for ( const selector of selectors ) {
-				foundTitleInput = editorDoc.querySelector( selector ) as HTMLElement;
+				foundTitleInput = editorDoc.querySelector(
+					selector
+				) as HTMLElement;
 				if ( foundTitleInput ) {
 					break;
 				}
@@ -131,7 +173,7 @@ export default function TitleToolbarWrapper(): JSX.Element {
 			titleInput = foundTitleInput;
 
 			// Check if we've already attached the toolbar to this element
-			if ( titleInput.parentElement?.querySelector( '.ai-title-toolbar-container' ) ) {
+			if ( titleInput.closest( '.ai-title-toolbar-wrapper' ) ) {
 				isAttached = true;
 				return;
 			}
@@ -143,25 +185,68 @@ export default function TitleToolbarWrapper(): JSX.Element {
 				return;
 			}
 
+			// Store the next sibling before we move the title input
+			const nextSibling = titleInput.nextSibling;
+
+			// Create a wrapper container that will hold both the toolbar and the title input
+			wrapperContainer = editorDoc.createElement( 'div' );
+			wrapperContainer.className = 'ai-title-toolbar-wrapper';
+			wrapperContainer.style.cssText = 'position: relative;';
+
 			// Create a container for our toolbar
 			toolbarContainer = editorDoc.createElement( 'div' );
 			toolbarContainer.className = 'ai-title-toolbar-container';
 			toolbarContainer.style.cssText =
-				'display: none; position: relative; background: #fff; z-index: 1000;';
+				'display: none; position: absolute; z-index: 1000; top: -60px;';
 
-			// Insert into the title container (before the input)
-			titleContainer.insertBefore( toolbarContainer, titleInput );
+			// Append the toolbar container to the wrapper
+			wrapperContainer.appendChild( toolbarContainer );
+
+			// Move the title input into the wrapper container
+			wrapperContainer.appendChild( titleInput );
+
+			// Insert the wrapper container where the title input was
+			titleContainer.insertBefore( wrapperContainer, nextSibling );
 
 			// Render the toolbar into the container
 			root = createRoot( toolbarContainer );
 			root.render( <TitleToolbar /> );
 
-			// Add focus/blur handlers
-			focusHandler = () => showToolbar();
-			blurHandler = () => hideToolbar();
+			// Add focus/blur handlers for title input
+			focusHandler = () => {
+				showToolbar();
+			};
+
+			blurHandler = () => {
+				// Use a small delay to check where focus moved to
+				// This allows focus to move to toolbar elements before we check
+				setTimeout( () => {
+					updateToolbarVisibility();
+				}, 10 );
+			};
 
 			titleInput.addEventListener( 'focus', focusHandler );
 			titleInput.addEventListener( 'blur', blurHandler );
+
+			// Add focus/blur handlers for toolbar container
+			toolbarFocusHandler = () => {
+				showToolbar();
+			};
+
+			toolbarBlurHandler = () => {
+				// Use a small delay to check where focus moved to
+				setTimeout( () => {
+					updateToolbarVisibility();
+				}, 10 );
+			};
+
+			toolbarContainer.addEventListener( 'focusin', toolbarFocusHandler );
+			toolbarContainer.addEventListener( 'focusout', toolbarBlurHandler );
+
+			// Check initial focus state
+			if ( editorDoc.activeElement === titleInput ) {
+				showToolbar();
+			}
 
 			isAttached = true;
 		};
@@ -177,7 +262,10 @@ export default function TitleToolbarWrapper(): JSX.Element {
 			const editorDoc = getEditorDocument();
 			if ( editorDoc && ! observer ) {
 				observer = new MutationObserver( () => {
-					if ( ! isAttached && ! editorDoc.querySelector( '.ai-title-toolbar-container' ) ) {
+					if (
+						! isAttached &&
+						! editorDoc.querySelector( '.ai-title-toolbar-wrapper' )
+					) {
 						findAndAttachToolbar();
 					}
 				} );
@@ -208,10 +296,29 @@ export default function TitleToolbarWrapper(): JSX.Element {
 				titleInput.removeEventListener( 'focus', focusHandler );
 				titleInput.removeEventListener( 'blur', blurHandler );
 			}
+			if (
+				toolbarContainer &&
+				toolbarFocusHandler &&
+				toolbarBlurHandler
+			) {
+				toolbarContainer.removeEventListener(
+					'focusin',
+					toolbarFocusHandler
+				);
+				toolbarContainer.removeEventListener(
+					'focusout',
+					toolbarBlurHandler
+				);
+			}
 
-			// Clean up toolbar
-			if ( toolbarContainer && root ) {
+			// Clean up toolbar and wrapper
+			if ( root ) {
 				root.unmount();
+			}
+			if ( wrapperContainer ) {
+				wrapperContainer.remove();
+			} else if ( toolbarContainer ) {
+				// Fallback: if wrapper wasn't created, just remove toolbar
 				toolbarContainer.remove();
 			}
 		};
@@ -222,3 +329,4 @@ export default function TitleToolbarWrapper(): JSX.Element {
 	return <></>;
 }
 
+export { TitleToolbarWrapper };

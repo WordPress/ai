@@ -1,10 +1,8 @@
 /**
  * Title toolbar component for generating and transforming post titles.
- *
- * @package WordPress\AI
  */
 
-import * as React from 'react';
+import React from 'react';
 import { useSelect, useDispatch } from '@wordpress/data';
 import {
 	ToolbarGroup,
@@ -20,10 +18,9 @@ import { toSentenceCase, toTitleCase } from '../utils/casing';
 /**
  * Placeholder function for title generation API call.
  *
- * @param {string} content - The post content to generate title from.
  * @return {Promise<string>} A promise that resolves to the generated title.
  */
-async function generateTitle( content: string ): Promise< string > {
+async function generateTitle(): Promise< string > {
 	// TODO: Connect to actual API endpoint
 	// For now, return a placeholder
 	return Promise.resolve( 'Generated Title' );
@@ -62,7 +59,7 @@ export default function TitleToolbar(): JSX.Element {
 			editPost( { title: generatedTitle } );
 		} catch ( error ) {
 			// TODO: Handle error appropriately
-			console.error( 'Error generating title:', error );
+			console.error( 'Error generating title:', error ); // eslint-disable-line no-console
 		} finally {
 			setIsGenerating( false );
 		}
@@ -138,4 +135,3 @@ export default function TitleToolbar(): JSX.Element {
 		</ToolbarGroup>
 	);
 }
-

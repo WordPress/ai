@@ -1,7 +1,5 @@
 /**
  * Casing transformation utilities for title generation.
- *
- * @package WordPress\AI
  */
 
 /**

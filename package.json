@@ -36,6 +36,8 @@
     "@wordpress/plugins": "^7.34.0",
     "@wordpress/prettier-config": "^4.31.0",
     "@wordpress/scripts": "^30.26.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.4.5"
   },
   "engines": {
