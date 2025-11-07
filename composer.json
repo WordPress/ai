@@ -10,7 +10,7 @@
     "php": ">=7.4",
     "wordpress/abilities-api": "^0.4.0",
     "wordpress/mcp-adapter": "dev-trunk",
-    "wordpress/wp-ai-client": "dev-add/api-credentials-management"
+    "wordpress/wp-ai-client": "dev-trunk"
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",
