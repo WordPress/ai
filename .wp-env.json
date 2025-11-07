@@ -13,6 +13,7 @@
     },
     "tests": {
       "config": {
+        "WP_DEBUG": true,
         "FS_METHOD": "direct"
       },
       "mappings": {
