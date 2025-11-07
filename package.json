@@ -33,11 +33,11 @@
     "@wordpress/env": "^10.33.0",
     "@wordpress/eslint-plugin": "^22.17.0",
     "@wordpress/hooks": "^4.34.0",
+    "@wordpress/i18n": "^6.7.0",
     "@wordpress/plugins": "^7.34.0",
     "@wordpress/prettier-config": "^4.31.0",
     "@wordpress/scripts": "^30.26.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "typescript": "^5.4.5"
   },
   "engines": {

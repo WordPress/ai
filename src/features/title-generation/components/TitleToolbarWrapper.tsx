@@ -6,8 +6,7 @@
  */
 
 import React from 'react';
-import { useEffect } from '@wordpress/element';
-import { createRoot } from 'react-dom/client';
+import { createRoot, useEffect } from '@wordpress/element';
 import TitleToolbar from './TitleToolbar';
 
 /**

@@ -13,6 +13,7 @@ import {
 } from '@wordpress/components';
 import { update, chevronDown } from '@wordpress/icons';
 import { useState } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 import { toSentenceCase, toTitleCase } from '../utils/casing';
 
 /**
@@ -47,7 +48,7 @@ export default function TitleToolbar(): JSX.Element {
 	const [ isGenerating, setIsGenerating ] = useState( false );
 
 	const hasTitle = title.trim().length > 0;
-	const buttonLabel = hasTitle ? 'Re-generate' : 'Generate';
+	const buttonLabel = hasTitle ? __( 'Re-generate', 'ai' ) : __( 'Generate', 'ai' );
 
 	/**
 	 * Handles the generate/re-generate button click.
@@ -110,14 +111,14 @@ export default function TitleToolbar(): JSX.Element {
 				>
 					{ ( { onClose } ) => (
 						<>
-							<MenuGroup label="OPTIONS">
+							<MenuGroup label={ __( 'Options', 'ai' ) }>
 								<MenuItem
 									onClick={ () => {
 										handleCasingChange( 'sentence' );
 										onClose();
 									} }
 								>
-									Sentence Case
+									{ __( 'Sentence Case', 'ai' ) }
 								</MenuItem>
 								<MenuItem
 									onClick={ () => {
@@ -125,7 +126,7 @@ export default function TitleToolbar(): JSX.Element {
 										onClose();
 									} }
 								>
-									Title Case
+									{ __( 'Title Case', 'ai' ) }
 								</MenuItem>
 							</MenuGroup>
 						</>
