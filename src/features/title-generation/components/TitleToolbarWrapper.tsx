@@ -66,10 +66,12 @@ function TitleToolbarWrapper(): JSX.Element {
 			}
 
 			// Check if focus is on toolbar or any element within it
+			// Also check if dropdown menu is open (button with is-opened class)
 			if (
 				toolbarContainer &&
 				( activeElement === toolbarContainer ||
-					toolbarContainer.contains( activeElement ) )
+					toolbarContainer.contains( activeElement ) ||
+					toolbarContainer.querySelector( '.components-dropdown-menu .is-opened' ) )
 			) {
 				return true;
 			}
