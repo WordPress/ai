@@ -136,6 +136,7 @@ class Title_Generation extends Abstract_Feature {
 			'title_generation_data',
 			array(
 				'enabled' => $this->is_enabled(),
+				'path'    => 'wp-abilities/v1/abilities/ai/title-generation/run',
 			)
 		);
 	}

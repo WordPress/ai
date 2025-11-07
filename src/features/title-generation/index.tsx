@@ -2,11 +2,18 @@
  * Title generation feature plugin registration.
  */
 
+/**
+ * External Dependencies.
+ */
 import React from 'react';
-import { registerPlugin } from '@wordpress/plugins';
-import { addFilter } from '@wordpress/hooks';
-import { createHigherOrderComponent } from '@wordpress/compose';
 import { BlockControls } from '@wordpress/block-editor';
+import { createHigherOrderComponent } from '@wordpress/compose';
+import { addFilter } from '@wordpress/hooks';
+import { registerPlugin } from '@wordpress/plugins';
+
+/**
+ * Internal Dependencies.
+ */
 import TitleToolbar from './components/TitleToolbar';
 import { TitleToolbarWrapper } from './components/TitleToolbarWrapper';
 

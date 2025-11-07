@@ -2,8 +2,11 @@
  * Title toolbar component for generating and transforming post titles.
  */
 
+/**
+ * External Dependencies.
+ */
 import React from 'react';
-import { useSelect, useDispatch } from '@wordpress/data';
+import apiFetch from '@wordpress/api-fetch';
 import {
 	ToolbarGroup,
 	ToolbarButton,
@@ -11,20 +14,40 @@ import {
 	MenuGroup,
 	MenuItem,
 } from '@wordpress/components';
-import { update, chevronDown } from '@wordpress/icons';
+import { dispatch, useSelect, useDispatch } from '@wordpress/data';
+import { PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
+import { update, chevronDown } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
-import { toSentenceCase, toTitleCase } from '../utils/casing';
 
 /**
- * Placeholder function for title generation API call.
+ * Internal Dependencies.
+ */
+import { toSentenceCase, toTitleCase } from '../utils/casing';
+
+const { ai_title_generation_data } = window as any;
+
+/**
+ * Generates a title for the given post ID and content.
  *
+ * @param {number} postId - The ID of the post to generate a title for.
+ * @param {string} content - The content of the post to generate a title for.
  * @return {Promise<string>} A promise that resolves to the generated title.
  */
-async function generateTitle(): Promise< string > {
-	// TODO: Connect to actual API endpoint
-	// For now, return a placeholder
-	return Promise.resolve( 'Generated Title' );
+async function generateTitle( postId: number, content: string ): Promise< string > {
+	return apiFetch( {
+		path: ai_title_generation_data?.path,
+		method: 'POST',
+		data: { input: { post_id: postId, content, n: 1 } },
+	} ).then( ( response ) => {
+		if ( response && typeof response === 'object' && 'titles' in response ) {
+			return ( response.titles as string[] )[0];
+		}
+
+		return '';
+	} ).catch( ( error ) => {
+		throw new Error( `Error generating title: ${error.message}` );
+	} );
 }
 
 /**
@@ -34,13 +57,22 @@ async function generateTitle(): Promise< string > {
  *
  * @return {JSX.Element} The toolbar component.
  */
-export default function TitleToolbar(): JSX.Element {
+export default function TitleToolbar(): JSX.Element | null {
+	// Ensure the feature is enabled.
+	if ( ! ai_title_generation_data?.enabled ) {
+		return null;
+	}
+
+	const postId = useSelect( ( select ) => {
+		return ( select( 'core/editor' ) as any ).getCurrentPostId() ?? 0;
+	}, [] );
+
 	const title = useSelect( ( select ) => {
-		return select( 'core/editor' ).getEditedPostAttribute( 'title' ) || '';
+		return ( select( 'core/editor' ) as any ).getEditedPostAttribute( 'title' ) || '';
 	}, [] );
 
 	const content = useSelect( ( select ) => {
-		return select( 'core/editor' ).getEditedPostContent() || '';
+		return ( select( 'core/editor' ) as any ).getEditedPostContent() || '';
 	}, [] );
 
 	const { editPost } = useDispatch( 'core/editor' );
@@ -55,12 +87,19 @@ export default function TitleToolbar(): JSX.Element {
 	 */
 	const handleGenerate = async () => {
 		setIsGenerating( true );
+		( dispatch( 'core/notices' ) as any ).removeNotice( 'ai_title_generation_error' );
+
 		try {
-			const generatedTitle = await generateTitle( content );
+			const generatedTitle = await generateTitle( postId, content );
 			editPost( { title: generatedTitle } );
 		} catch ( error ) {
-			// TODO: Handle error appropriately
-			console.error( 'Error generating title:', error ); // eslint-disable-line no-console
+			( dispatch( 'core/notices' ) as any ).createErrorNotice(
+				error,
+				{
+					id: 'ai_title_generation_error',
+					isDismissible: true
+				}
+			);
 		} finally {
 			setIsGenerating( false );
 		}
@@ -89,50 +128,52 @@ export default function TitleToolbar(): JSX.Element {
 	};
 
 	return (
-		<ToolbarGroup>
-			<ToolbarButton
-				icon={ update }
-				label={ buttonLabel }
-				onClick={ handleGenerate }
-				disabled={ isGenerating }
-			>
-				{ buttonLabel }
-			</ToolbarButton>
-			{ hasTitle && (
-				<DropdownMenu
-					icon={ chevronDown }
-					label="Options"
-					toggleProps={ {
-						as: ToolbarButton,
-					} }
-					popoverProps={ {
-						placement: 'bottom-start',
-					} }
+		<PostTypeSupportCheck supportKeys="title">
+			<ToolbarGroup>
+				<ToolbarButton
+					icon={ update }
+					label={ buttonLabel }
+					onClick={ handleGenerate }
+					disabled={ isGenerating }
 				>
-					{ ( { onClose } ) => (
-						<>
-							<MenuGroup label={ __( 'Options', 'ai' ) }>
-								<MenuItem
-									onClick={ () => {
-										handleCasingChange( 'sentence' );
-										onClose();
-									} }
-								>
-									{ __( 'Sentence Case', 'ai' ) }
-								</MenuItem>
-								<MenuItem
-									onClick={ () => {
-										handleCasingChange( 'title' );
-										onClose();
-									} }
-								>
-									{ __( 'Title Case', 'ai' ) }
-								</MenuItem>
-							</MenuGroup>
-						</>
-					) }
-				</DropdownMenu>
-			) }
-		</ToolbarGroup>
+					{ buttonLabel }
+				</ToolbarButton>
+				{ hasTitle && (
+					<DropdownMenu
+						icon={ chevronDown }
+						label="Options"
+						toggleProps={ {
+							as: ToolbarButton,
+						} }
+						popoverProps={ {
+							placement: 'bottom-start',
+						} }
+					>
+						{ ( { onClose } ) => (
+							<>
+								<MenuGroup label={ __( 'Options', 'ai' ) }>
+									<MenuItem
+										onClick={ () => {
+											handleCasingChange( 'sentence' );
+											onClose();
+										} }
+									>
+										{ __( 'Sentence Case', 'ai' ) }
+									</MenuItem>
+									<MenuItem
+										onClick={ () => {
+											handleCasingChange( 'title' );
+											onClose();
+										} }
+									>
+										{ __( 'Title Case', 'ai' ) }
+									</MenuItem>
+								</MenuGroup>
+							</>
+						) }
+					</DropdownMenu>
+				) }
+			</ToolbarGroup>
+		</PostTypeSupportCheck>
 	);
 }

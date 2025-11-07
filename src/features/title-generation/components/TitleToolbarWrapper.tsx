@@ -5,8 +5,15 @@
  * in normal editing mode (non-template mode).
  */
 
+/**
+ * External Dependencies.
+ */
 import React from 'react';
 import { createRoot, useEffect } from '@wordpress/element';
+
+/**
+ * Internal Dependencies.
+ */
 import TitleToolbar from './TitleToolbar';
 
 /**
@@ -19,8 +26,9 @@ import TitleToolbar from './TitleToolbar';
 function TitleToolbarWrapper(): JSX.Element {
 	useEffect( () => {
 		let isAttached = false;
-		let retryTimeout: NodeJS.Timeout | null = null;
 		let root: ReturnType< typeof createRoot > | null = null;
+		let removeTitleListeners: ( () => void ) | null = null;
+		let removeToolbarListeners: ( () => void ) | null = null;
 		let observer: MutationObserver | null = null;
 		let titleInput: HTMLElement | null = null;
 		let toolbarContainer: HTMLElement | null = null;
@@ -42,6 +50,79 @@ function TitleToolbarWrapper(): JSX.Element {
 			}
 
 			return null;
+		};
+
+		// Create a reusable retry function
+		const createRetry = (
+			checkFn: () => boolean,
+			callback: () => void,
+			maxRetries: number,
+			delay: number = 200
+		): ( () => void ) => {
+			let retryCount = 0;
+			let timeoutId: NodeJS.Timeout | null = null;
+
+			const retry = () => {
+				if ( retryCount < maxRetries && ! isAttached ) {
+					retryCount++;
+					timeoutId = setTimeout( () => {
+						timeoutId = null;
+						if ( checkFn() ) {
+							callback();
+						} else {
+							retry();
+						}
+					}, delay );
+				}
+			};
+
+			// Store timeout ID for cleanup
+			const start = () => {
+				if ( ! timeoutId ) {
+					retry();
+				}
+			};
+
+			const cancel = () => {
+				if ( timeoutId ) {
+					clearTimeout( timeoutId );
+					timeoutId = null;
+				}
+			};
+
+			return start;
+		};
+
+		// Create reusable focus/blur handlers
+		const createFocusBlurHandlers = (
+			onFocus: () => void,
+			onBlur: () => void,
+			blurDelay: number = 10
+		) => {
+			return {
+				focus: onFocus,
+				blur: () => {
+					setTimeout( onBlur, blurDelay );
+				},
+			};
+		};
+
+		// Setup event listeners on an element
+		const setupEventListeners = (
+			element: HTMLElement,
+			handlers: { focus: () => void; blur: () => void },
+			useFocusIn: boolean = false
+		) => {
+			const focusEvent = useFocusIn ? 'focusin' : 'focus';
+			const blurEvent = useFocusIn ? 'focusout' : 'blur';
+
+			element.addEventListener( focusEvent, handlers.focus );
+			element.addEventListener( blurEvent, handlers.blur );
+
+			return () => {
+				element.removeEventListener( focusEvent, handlers.focus );
+				element.removeEventListener( blurEvent, handlers.blur );
+			};
 		};
 
 		// Check if focus is on title input or toolbar
@@ -109,24 +190,13 @@ function TitleToolbarWrapper(): JSX.Element {
 
 			const editorDoc = getEditorDocument();
 			if ( ! editorDoc ) {
-				// Editor iframe not found yet, try again after a short delay
-				if ( ! retryTimeout ) {
-					let retryCount = 0;
-					const maxRetries = 20;
-					const retry = () => {
-						if ( retryCount < maxRetries && ! isAttached ) {
-							retryCount++;
-							retryTimeout = setTimeout( () => {
-								retryTimeout = null;
-								findAndAttachToolbar();
-								if ( ! isAttached && retryCount < maxRetries ) {
-									retry();
-								}
-							}, 200 );
-						}
-					};
-					retry();
-				}
+				// Editor iframe not found yet, retry
+				const retryEditor = createRetry(
+					() => getEditorDocument() !== null,
+					findAndAttachToolbar,
+					20
+				);
+				retryEditor();
 				return;
 			}
 
@@ -150,24 +220,19 @@ function TitleToolbarWrapper(): JSX.Element {
 			}
 
 			if ( ! foundTitleInput ) {
-				// Title field not found yet, try again after a short delay
-				if ( ! retryTimeout ) {
-					let retryCount = 0;
-					const maxRetries = 10;
-					const retry = () => {
-						if ( retryCount < maxRetries && ! isAttached ) {
-							retryCount++;
-							retryTimeout = setTimeout( () => {
-								retryTimeout = null;
-								findAndAttachToolbar();
-								if ( ! isAttached && retryCount < maxRetries ) {
-									retry();
-								}
-							}, 200 );
+				// Title field not found yet, retry
+				const retryTitle = createRetry(
+					() => {
+						const doc = getEditorDocument();
+						if ( ! doc ) {
+							return false;
 						}
-					};
-					retry();
-				}
+						return !! doc.querySelector( '.editor-post-title__input' );
+					},
+					findAndAttachToolbar,
+					10
+				);
+				retryTitle();
 				return;
 			}
 
@@ -213,36 +278,30 @@ function TitleToolbarWrapper(): JSX.Element {
 			root = createRoot( toolbarContainer );
 			root.render( <TitleToolbar /> );
 
-			// Add focus/blur handlers for title input
-			focusHandler = () => {
-				showToolbar();
-			};
+			// Create and attach focus/blur handlers for title input
+			const titleHandlers = createFocusBlurHandlers(
+				showToolbar,
+				updateToolbarVisibility
+			);
+			focusHandler = titleHandlers.focus;
+			blurHandler = titleHandlers.blur;
+			removeTitleListeners = setupEventListeners(
+				titleInput,
+				titleHandlers
+			);
 
-			blurHandler = () => {
-				// Use a small delay to check where focus moved to
-				// This allows focus to move to toolbar elements before we check
-				setTimeout( () => {
-					updateToolbarVisibility();
-				}, 10 );
-			};
-
-			titleInput.addEventListener( 'focus', focusHandler );
-			titleInput.addEventListener( 'blur', blurHandler );
-
-			// Add focus/blur handlers for toolbar container
-			toolbarFocusHandler = () => {
-				showToolbar();
-			};
-
-			toolbarBlurHandler = () => {
-				// Use a small delay to check where focus moved to
-				setTimeout( () => {
-					updateToolbarVisibility();
-				}, 10 );
-			};
-
-			toolbarContainer.addEventListener( 'focusin', toolbarFocusHandler );
-			toolbarContainer.addEventListener( 'focusout', toolbarBlurHandler );
+			// Create and attach focus/blur handlers for toolbar container
+			const toolbarHandlers = createFocusBlurHandlers(
+				showToolbar,
+				updateToolbarVisibility
+			);
+			toolbarFocusHandler = toolbarHandlers.focus;
+			toolbarBlurHandler = toolbarHandlers.blur;
+			removeToolbarListeners = setupEventListeners(
+				toolbarContainer,
+				toolbarHandlers,
+				true // Use focusin/focusout for toolbar
+			);
 
 			// Check initial focus state
 			if ( editorDoc.activeElement === titleInput ) {
@@ -286,30 +345,15 @@ function TitleToolbarWrapper(): JSX.Element {
 			if ( observer ) {
 				observer.disconnect();
 			}
-			if ( retryTimeout ) {
-				clearTimeout( retryTimeout );
-			}
 			clearTimeout( initialTimeout );
 			clearTimeout( observerTimeout );
 
 			// Remove event listeners
-			if ( titleInput && focusHandler && blurHandler ) {
-				titleInput.removeEventListener( 'focus', focusHandler );
-				titleInput.removeEventListener( 'blur', blurHandler );
+			if ( removeTitleListeners ) {
+				removeTitleListeners();
 			}
-			if (
-				toolbarContainer &&
-				toolbarFocusHandler &&
-				toolbarBlurHandler
-			) {
-				toolbarContainer.removeEventListener(
-					'focusin',
-					toolbarFocusHandler
-				);
-				toolbarContainer.removeEventListener(
-					'focusout',
-					toolbarBlurHandler
-				);
+			if ( removeToolbarListeners ) {
+				removeToolbarListeners();
 			}
 
 			// Clean up toolbar and wrapper
