@@ -40,9 +40,9 @@ trait Provides_Settings_Section {
 		callable $render_callback,
 		array $args = array()
 	): bool {
-		$description    = isset( $args['description'] ) ? (string) $args['description'] : '';
-		$priority       = isset( $args['priority'] ) ? (int) $args['priority'] : 10;
-		$supports       = $this->prepare_section_supports(
+		$description = isset( $args['description'] ) ? (string) $args['description'] : '';
+		$priority    = isset( $args['priority'] ) ? (int) $args['priority'] : 10;
+		$supports    = $this->prepare_section_supports(
 			isset( $args['supports'] ) && is_array( $args['supports'] ) ? $args['supports'] : array()
 		);
 
