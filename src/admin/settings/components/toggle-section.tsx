@@ -55,12 +55,6 @@ const ToggleSection = ({
 			</CardBody>
 			<CardDivider />
 			<CardBody>
-				<p className="ai-experiments-settings-app__helper">
-					{__(
-						'Toggling this switch enables or disables all experimental AI capabilities provided by this plugin.',
-						'ai'
-					)}
-				</p>
 			</CardBody>
 		</Card>
 	);
