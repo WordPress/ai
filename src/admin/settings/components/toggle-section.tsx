@@ -27,7 +27,7 @@ const ToggleSection = ({
 	onChange,
 }: ToggleSectionProps) => {
 	return (
-		<Card className="ai-experiments-settings-app__card">
+        <Card className="ai-experiments-settings-app__card ai-experiments-settings-app__card--primary">
 			<CardBody>
 				<div className="ai-experiments-settings-app__card-header">
 					<div>
