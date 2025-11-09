@@ -256,7 +256,7 @@ abstract class Abstract_Feature implements Feature {
 		}
 
 		$resolved = call_user_func( $this->feature_toggles_factory );
-		if ( $resolved instanceof \WordPress\AI\Admin\Settings\Feature_Toggles ) {
+			if ( $resolved instanceof \WordPress\AI\Admin\Settings\Feature_Toggles ) {
 				$this->feature_toggles         = $resolved;
 			$this->feature_toggles_factory = null;
 		}
