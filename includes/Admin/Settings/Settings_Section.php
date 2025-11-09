@@ -63,6 +63,13 @@ class Settings_Section {
 	private $supports;
 
 	/**
+	 * Default enabled state for the owning feature.
+	 *
+	 * @var bool
+	 */
+	private $default_enabled;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
@@ -74,6 +81,7 @@ class Settings_Section {
 	 * @param int                  $priority        Priority for ordering.
 	 * @param string|null          $feature_id      Owning feature identifier.
 	 * @param array<string, mixed> $supports        Additional metadata.
+	 * @param bool                 $default_enabled Default enabled state.
 	 */
 	public function __construct(
 		string $id,
@@ -82,15 +90,17 @@ class Settings_Section {
 		callable $render_callback,
 		int $priority = 10,
 		?string $feature_id = null,
-		array $supports = array()
+		array $supports = array(),
+		bool $default_enabled = true
 	) {
-		$this->id              = $id;
-		$this->title           = $title;
-		$this->description     = $description;
-		$this->render_callback = $render_callback;
-		$this->priority        = $priority;
-		$this->feature_id      = $feature_id;
-		$this->supports        = $supports;
+		$this->id               = $id;
+		$this->title            = $title;
+		$this->description      = $description;
+		$this->render_callback  = $render_callback;
+		$this->priority         = $priority;
+		$this->feature_id       = $feature_id;
+		$this->supports         = $supports;
+		$this->default_enabled  = $default_enabled;
 	}
 
 	/**
@@ -171,6 +181,17 @@ class Settings_Section {
 	}
 
 	/**
+	 * Returns the default enabled flag.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return bool
+	 */
+	public function get_default_enabled(): bool {
+		return $this->default_enabled;
+	}
+
+	/**
 	 * Serializes the section to an array for JavaScript hydration.
 	 *
 	 * @since 0.1.0
@@ -187,6 +208,7 @@ class Settings_Section {
 			'priority'    => $this->priority,
 			'supports'    => $this->supports,
 			'enabled'     => $feature_enabled,
+			'defaultEnabled' => $this->default_enabled,
 		);
 	}
 }

@@ -230,8 +230,8 @@ function initialize_admin_settings(): void {
 
 	add_filter(
 		'ai_feature_toggles_service',
-		static function () use ( $feature_toggles ) {
-			return $feature_toggles;
+		static function () {
+			return Feature_Toggles::class;
 		}
 	);
 

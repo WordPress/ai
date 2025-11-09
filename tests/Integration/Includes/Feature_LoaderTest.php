@@ -19,11 +19,18 @@ use WP_UnitTestCase;
  */
 class Mock_Feature extends Abstract_Feature {
 	/**
-	 * Tracks if register was called.
+	 * Tracks if shared hooks were registered.
 	 *
 	 * @var bool
 	 */
-	public $register_called = false;
+	public $shared_hooks_registered = false;
+
+	/**
+	 * Tracks if enabled hooks were registered.
+	 *
+	 * @var bool
+	 */
+	public $enabled_hooks_registered = false;
 
 	/**
 	 * Loads feature metadata.
@@ -40,13 +47,32 @@ class Mock_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the feature.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		$this->register_called = true;
+	protected function register_shared_hooks(): void {
+		$this->shared_hooks_registered = true;
+	}
+
+	protected function register_enabled_hooks(): void {
+		$this->enabled_hooks_registered = true;
+	}
+}
+
+/**
+ * Feature with a disabled-by-default state for testing.
+ */
+class Default_Disabled_Feature extends Abstract_Feature {
+	protected function load_feature_metadata(): array {
+		return array(
+			'id'          => 'disabled-feature',
+			'label'       => 'Disabled Feature',
+			'description' => 'Defaults to disabled for testing.',
+		);
+	}
+
+	protected function is_enabled_by_default(): bool {
+		return false;
+	}
+
+	protected function register_enabled_hooks(): void {
 	}
 }
 
@@ -160,9 +186,26 @@ class Feature_LoaderTest extends WP_UnitTestCase {
 		$this->loader->initialize_features();
 
 		$this->assertTrue(
-			$feature->register_called,
-			'Feature register() should be called'
+			$feature->enabled_hooks_registered,
+			'Enabled hooks should be registered when feature initializes.'
 		);
+	}
+
+	/**
+	 * Test shared hooks register even when the feature is disabled.
+	 */
+	public function test_shared_hooks_register_when_feature_disabled(): void {
+		add_filter( 'ai_feature_mock-feature_enabled', '__return_false' );
+
+		$feature = new Mock_Feature();
+		$this->registry->register_feature( $feature );
+
+		$this->loader->initialize_features();
+
+		$this->assertTrue( $feature->shared_hooks_registered, 'Shared hooks should always register.' );
+		$this->assertFalse( $feature->enabled_hooks_registered, 'Enabled hooks should be skipped when disabled.' );
+
+		remove_filter( 'ai_feature_mock-feature_enabled', '__return_false' );
 	}
 
 	/**
@@ -178,14 +221,26 @@ class Feature_LoaderTest extends WP_UnitTestCase {
 		$this->assertTrue( $this->loader->is_initialized(), 'Should be initialized' );
 
 		// Reset the flag to track second call.
-		$feature->register_called = false;
+		$feature->enabled_hooks_registered = false;
 
 		// Try to initialize again.
 		$this->loader->initialize_features();
 
 		$this->assertFalse(
-			$feature->register_called,
+			$feature->enabled_hooks_registered,
 			'Feature register() should not be called twice'
+		);
+	}
+
+	/**
+	 * Test features can override their default enabled state.
+	 */
+	public function test_feature_respects_default_enabled_state(): void {
+		$feature = new Default_Disabled_Feature();
+
+		$this->assertFalse(
+			$feature->is_enabled(),
+			'Feature should reflect overridden default enabled state when no toggle exists.'
 		);
 	}
 
@@ -254,13 +309,15 @@ class Feature_LoaderTest extends WP_UnitTestCase {
 
 		$this->loader->initialize_features();
 
-		// register() is always called so features can register settings sections
 		$this->assertTrue(
-			$feature->register_called,
-			'Feature register() should be called even when disabled'
+			$feature->shared_hooks_registered,
+			'Shared hooks should register even when disabled.'
+		);
+		$this->assertFalse(
+			$feature->enabled_hooks_registered,
+			'Enabled hooks should be skipped when feature is disabled.'
 		);
 
-		// But the feature should check is_enabled() internally to skip functional hooks
 		$this->assertFalse(
 			$feature->is_enabled(),
 			'Feature should report as disabled'

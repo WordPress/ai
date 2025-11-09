@@ -13,8 +13,8 @@ node_modules/
 .DS_Store
 
 # Build
-/dist/
 /build/
+/dist/
 
 # Testing
 /tests/wordpress/

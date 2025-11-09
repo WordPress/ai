@@ -69,8 +69,11 @@ class Settings_Payload_Builder {
 		$feature_toggles = $this->feature_toggles;
 		$sections        = array_map(
 			static function ( Settings_Section $section ) use ( $feature_toggles ): array {
-				$feature_id = $section->get_feature_id();
-				$enabled    = $feature_id ? $feature_toggles->is_feature_enabled( $feature_id ) : true;
+				$feature_id      = $section->get_feature_id();
+				$default_enabled = $section->get_default_enabled();
+				$enabled         = $feature_id
+					? $feature_toggles->is_feature_enabled( $feature_id, $default_enabled )
+					: $default_enabled;
 
 				return $section->to_array( $enabled );
 			},

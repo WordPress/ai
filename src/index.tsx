@@ -5,7 +5,7 @@
 import domReady from '@wordpress/dom-ready';
 import { createRoot, render } from '@wordpress/element';
 
-import App from './components/App';
+import App from './admin/settings/app';
 import type { SettingsPayload } from './types';
 import './style.scss';
 

@@ -19,11 +19,11 @@ use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
  *
  * 1. **Implement load_feature_metadata()**: Return an array with 'id', 'label', and 'description'.
  *
- * 2. **Always register settings sections**: In register(), hook into 'ai_register_settings_sections'
- *    so your feature appears in the admin UI even when disabled.
+ * 2. **Always register settings sections**: Use register_shared_hooks() to hook into
+ *    'ai_register_settings_sections' so your feature appears in the admin UI even when disabled.
  *
- * 3. **Check is_enabled() before functional hooks**: Only register functional hooks (like actions,
- *    filters, REST routes) if is_enabled() returns true. This allows users to disable features.
+ * 3. **Keep functional hooks behind the enablement check**: Put actions, filters, REST routes,
+ *    etc. inside register_enabled_hooks() so they only run when the feature is enabled.
  *
  * 4. **Pass services as parameters**: Don't use global singletons or service locators. Accept
  *    services as method parameters (e.g., Settings_Registry passed to register_settings_sections()).
@@ -45,15 +45,11 @@ use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
  *         );
  *     }
  *
- *     public function register(): void {
- *         // Always register settings sections.
+ *     protected function register_shared_hooks(): void {
  *         add_action( 'ai_register_settings_sections', array( $this, 'register_settings_sections' ) );
+ *     }
  *
- *         // Only register functional hooks if enabled.
- *         if ( ! $this->is_enabled() ) {
- *             return;
- *         }
- *
+ *     protected function register_enabled_hooks(): void {
  *         add_action( 'init', array( $this, 'my_hook' ) );
  *     }
  *
@@ -100,20 +96,20 @@ abstract class Abstract_Feature implements Feature {
 	protected $description;
 
 	/**
-	 * Whether the feature is enabled.
-	 *
-	 * @since 0.1.0
-	 * @var bool
-	 */
-	private $enabled = true;
-
-	/**
 	 * Feature toggles service.
 	 *
 	 * @since 0.1.0
 	 * @var \WordPress\AI\Admin\Settings\Feature_Toggles|null
 	 */
 	private $feature_toggles = null;
+
+	/**
+	 * Lazy factory for the feature toggles service.
+	 *
+	 * @since 0.1.0
+	 * @var callable|null
+	 */
+	private $feature_toggles_factory = null;
 
 	/**
 	 * Constructor.
@@ -123,11 +119,13 @@ abstract class Abstract_Feature implements Feature {
 	 * @since 0.1.0
 	 *
 	 * @param \WordPress\AI\Admin\Settings\Feature_Toggles|null $feature_toggles Optional. Feature toggles service for checking enabled state.
+	 * @param callable|null                                     $feature_toggles_factory Optional. Factory that resolves a feature toggles service on demand.
 	 *
 	 * @throws \WordPress\AI\Exception\Invalid_Feature_Metadata_Exception If feature metadata is invalid.
 	 */
-	final public function __construct( ?\WordPress\AI\Admin\Settings\Feature_Toggles $feature_toggles = null ) {
+	final public function __construct( ?\WordPress\AI\Admin\Settings\Feature_Toggles $feature_toggles = null, ?callable $feature_toggles_factory = null ) {
 		$this->feature_toggles = $feature_toggles;
+		$this->feature_toggles_factory = $feature_toggles_factory;
 		$metadata              = $this->load_feature_metadata();
 
 		if ( empty( $metadata['id'] ) ) {
@@ -196,22 +194,23 @@ abstract class Abstract_Feature implements Feature {
 	public function get_description(): string {
 		return $this->description;
 	}
-
 	/**
 	 * Checks if feature is enabled.
 	 *
 	 * Uses injected Feature_Toggles service to check persisted toggle state.
-	 * Falls back to default enabled state if service not available.
+	 * Falls back to the feature's default enabled state when no service exists.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @return bool True if enabled, false otherwise.
 	 */
 	final public function is_enabled(): bool {
-		if ( null !== $this->feature_toggles ) {
-			$enabled = $this->feature_toggles->is_feature_enabled( $this->id );
-		} else {
-			$enabled = $this->enabled;
+		$enabled = $this->is_enabled_by_default();
+
+		$feature_toggles = $this->get_feature_toggles();
+
+		if ( null !== $feature_toggles ) {
+			$enabled = $feature_toggles->is_feature_enabled( $this->id, $enabled );
 		}
 
 		/**
@@ -227,11 +226,83 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * Registers the feature.
+	 * Provides the default enabled state for the feature.
 	 *
-	 * Must be implemented by child classes to set up hooks and functionality.
+	 * Child classes can override this method to opt-out by default while still
+	 * allowing the toggle service and filters to re-enable them.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return bool True when the feature should default to enabled.
+	 */
+	protected function is_enabled_by_default(): bool {
+		return true;
+	}
+
+	/**
+	 * Resolves the feature toggles service, instantiating it on demand when provided as a factory.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return \WordPress\AI\Admin\Settings\Feature_Toggles|null
+	 */
+	private function get_feature_toggles(): ?\WordPress\AI\Admin\Settings\Feature_Toggles {
+		if ( null !== $this->feature_toggles ) {
+			return $this->feature_toggles;
+		}
+
+		if ( null === $this->feature_toggles_factory ) {
+			return null;
+		}
+
+		$resolved = call_user_func( $this->feature_toggles_factory );
+		if ( $resolved instanceof \WordPress\AI\Admin\Settings\Feature_Toggles ) {
+			$this->feature_toggles        = $resolved;
+			$this->feature_toggles_factory = null;
+		}
+
+		return $this->feature_toggles;
+	}
+
+	/**
+	 * Registers the feature lifecycle.
+	 *
+	 * This method runs shared setup first, then conditionally registers functional hooks
+	 * only when the feature is enabled.
+	 *
+	 * Child classes should override {@see Abstract_Feature::register_shared_hooks()}
+	 * and {@see Abstract_Feature::register_enabled_hooks()} instead of this method.
 	 *
 	 * @since 0.1.0
 	 */
-	abstract public function register(): void;
+	final public function register(): void {
+		$this->register_shared_hooks();
+
+		if ( ! $this->is_enabled() ) {
+			return;
+		}
+
+		$this->register_enabled_hooks();
+	}
+
+	/**
+	 * Registers hooks that must always run regardless of enablement.
+	 *
+	 * Use this for admin settings sections or dependency checks that should execute
+	 * even when the feature's functional hooks are disabled.
+	 *
+	 * @since 0.1.0
+	 */
+	protected function register_shared_hooks(): void {
+		// Default no-op.
+	}
+
+	/**
+	 * Registers hooks that should only run when the feature is enabled.
+	 *
+	 * Child classes must implement this to wire their functional behavior.
+	 *
+	 * @since 0.1.0
+	 */
+	abstract protected function register_enabled_hooks(): void;
 }

@@ -105,13 +105,22 @@ class Feature_Loader {
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param \WordPress\AI\Admin\Settings\Feature_Toggles|null $feature_toggles Feature toggles service or null.
+		 * @param \WordPress\AI\Admin\Settings\Feature_Toggles|callable|string|null $feature_toggles Feature toggles service, factory, class-string, or null.
 		 */
-		$feature_toggles = apply_filters( 'ai_feature_toggles_service', null );
+		$feature_toggles_provider = apply_filters( 'ai_feature_toggles_service', null );
+
+		$feature_toggles_instance = $feature_toggles_provider instanceof \WordPress\AI\Admin\Settings\Feature_Toggles
+			? $feature_toggles_provider
+			: null;
+
+		$feature_toggles_factory = $this->resolve_feature_toggles_factory( $feature_toggles_provider );
 
 		// Instantiate default features directly.
 		$features = array(
-			new \WordPress\AI\Features\Example_Feature\Example_Feature( $feature_toggles ),
+			new \WordPress\AI\Features\Example_Feature\Example_Feature(
+				$feature_toggles_instance,
+				$feature_toggles_factory
+			),
 		);
 
 		/**
@@ -121,10 +130,45 @@ class Feature_Loader {
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param array<\WordPress\AI\Contracts\Feature>                 $features        Array of feature instances.
-		 * @param \WordPress\AI\Admin\Settings\Feature_Toggles|null $feature_toggles Feature toggles service instance when available.
+		 * @param array<\WordPress\AI\Contracts\Feature>                        $features                Array of feature instances.
+		 * @param \WordPress\AI\Admin\Settings\Feature_Toggles|null             $feature_toggles         Concrete feature toggles instance when available.
+		 * @param callable|null                                                 $feature_toggles_factory Lazy factory returning a feature toggles instance.
 		 */
-		return apply_filters( 'ai_default_features', $features, $feature_toggles );
+		return apply_filters( 'ai_default_features', $features, $feature_toggles_instance, $feature_toggles_factory );
+	}
+
+	/**
+	 * Normalizes the feature toggles provider into a lazy factory.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param mixed $provider Provider value from the filter.
+	 * @return callable|null
+	 */
+	private function resolve_feature_toggles_factory( $provider ): ?callable {
+		if ( $provider instanceof \WordPress\AI\Admin\Settings\Feature_Toggles ) {
+			return static function () use ( $provider ) {
+				return $provider;
+			};
+		}
+
+		if ( is_string( $provider ) && class_exists( $provider ) ) {
+			return static function () use ( $provider ) {
+				static $instance = null;
+
+				if ( null === $instance ) {
+					$instance = new $provider();
+				}
+
+				return $instance;
+			};
+		}
+
+		if ( is_callable( $provider ) ) {
+			return $provider;
+		}
+
+		return null;
 	}
 
 	/**

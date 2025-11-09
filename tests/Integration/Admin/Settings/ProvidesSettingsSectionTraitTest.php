@@ -67,7 +67,8 @@ class ProvidesSettingsSectionTraitTest extends WP_UnitTestCase {
 					'scripts' => array(),
 					'styles'  => array(),
 				),
-			)
+			),
+			true
 		);
 
 		$this->registry->register_section( $section );

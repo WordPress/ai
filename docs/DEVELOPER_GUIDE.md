@@ -140,12 +140,20 @@ class My_Feature extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the feature's hooks and functionality.
+	 * Registers hooks that should always run.
 	 *
 	 * @since 0.1.0
 	 */
-	public function register(): void {
-		// Register your hooks here
+	protected function register_shared_hooks(): void {
+		// Admin settings or dependency checks go here.
+	}
+
+	/**
+	 * Registers hooks that only run when the feature is enabled.
+	 *
+	 * @since 0.1.0
+	 */
+	protected function register_enabled_hooks(): void {
 		add_action( 'init', array( $this, 'initialize' ) );
 		add_filter( 'the_content', array( $this, 'filter_content' ) );
 	}
@@ -248,7 +256,7 @@ src/
 `includes/bootstrap.php` wires the settings services on the `init` hook via `initialize_admin_settings()`. That function:
 
 1. Instantiates the toggle, registry, renderer, payload builder, page assets handler, and admin page controller.
-2. Registers the shared `Feature_Toggles` service on the `ai_feature_toggles_service` filter so features can receive it through dependency injection.
+2. Registers the shared `Feature_Toggles` service on the `ai_feature_toggles_service` filter. The filter may return an instantiated service, a callable factory, or a `class-string<Feature_Toggles>`, allowing features to resolve the dependency only when they actually need it.
 3. Calls `Settings_Service::register()` to hook the global toggle option, expose REST fields, register the admin menu, and trigger section registration with `ai_register_settings_sections`.
 
 Feature settings panels should be registered inside the `ai_register_settings_sections` hook. The `Provides_Settings_Section` trait streamlines the process:
@@ -257,13 +265,11 @@ Feature settings panels should be registered inside the `ai_register_settings_se
 class Example_Feature extends Abstract_Feature {
 	use Provides_Settings_Section;
 
-	public function register(): void {
+	protected function register_shared_hooks(): void {
 		add_action( 'ai_register_settings_sections', array( $this, 'register_settings_sections' ) );
+	}
 
-		if ( ! $this->is_enabled() ) {
-			return;
-		}
-
+	protected function register_enabled_hooks(): void {
 		// Register functional hooks only when enabled.
 	}
 
@@ -329,9 +335,12 @@ add_action( 'ai_register_features', function( $registry ) {
 Modify the list of default feature instances before they are registered:
 
 ```php
-add_filter( 'ai_default_features', function( $features, $feature_toggles ) {
+add_filter( 'ai_default_features', function( $features, $feature_toggles, $feature_toggles_factory ) {
 	// Add a custom feature
-	$features[] = new My_Namespace\My_Custom_Feature( $feature_toggles );
+	$features[] = new My_Namespace\My_Custom_Feature(
+		$feature_toggles,
+		$feature_toggles_factory
+	);
 
 	// Remove the bundled Example Feature
 	return array_filter(
@@ -340,7 +349,7 @@ add_filter( 'ai_default_features', function( $features, $feature_toggles ) {
 			return ! $feature instanceof WordPress\AI\Features\Example_Feature\Example_Feature;
 		}
 	);
-}, 10, 2 );
+}, 10, 3 );
 ```
 
 ### Disabling a Feature

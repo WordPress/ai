@@ -37,22 +37,24 @@ class Example_Feature extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the feature hooks.
+	 * Registers hooks that must always run.
 	 *
 	 * @since 0.1.0
 	 */
-	public function register(): void {
+	protected function register_shared_hooks(): void {
 		// Always register settings sections so the feature appears in admin.
 		add_action(
 			'ai_register_settings_sections',
 			array( $this, 'register_settings_sections' )
 		);
+	}
 
-		// Only register functional hooks if the feature is enabled.
-		if ( ! $this->is_enabled() ) {
-			return;
-		}
-
+	/**
+	 * Registers hooks that run only when the feature is enabled.
+	 *
+	 * @since 0.1.0
+	 */
+	protected function register_enabled_hooks(): void {
 		add_action( 'wp_footer', array( $this, 'add_footer_content' ), 20 );
 		add_filter( 'document_title_parts', array( $this, 'modify_title' ), 10, 1 );
 		add_action( 'rest_api_init', array( $this, 'register_rest_route' ) );

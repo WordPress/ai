@@ -7,9 +7,9 @@ import { Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
 
-import ToggleSection from './ToggleSection';
-import FeatureSection from './FeatureSection';
-import type { SettingsPayload } from '../types';
+import ToggleSection from './components/toggle-section';
+import FeatureSection from './components/feature-section';
+import type { SettingsPayload } from '../../types';
 
 /**
  * Section ID for the global experiments toggle.

@@ -19,6 +19,20 @@ use WP_UnitTestCase;
  */
 class Test_Feature extends Abstract_Feature {
 	/**
+	 * Tracks whether shared hooks were registered.
+	 *
+	 * @var bool
+	 */
+	public $shared_registered = false;
+
+	/**
+	 * Tracks whether enabled hooks were registered.
+	 *
+	 * @var bool
+	 */
+	public $enabled_registered = false;
+
+	/**
 	 * Loads feature metadata.
 	 *
 	 * @since 0.1.0
@@ -33,13 +47,12 @@ class Test_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the feature.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// No-op for testing.
+	protected function register_shared_hooks(): void {
+		$this->shared_registered = true;
+	}
+
+	protected function register_enabled_hooks(): void {
+		$this->enabled_registered = true;
 	}
 }
 

@@ -30,6 +30,7 @@ trait Provides_Settings_Section {
 	 *                                  - priority (int)
 	 *                                  - supports (array)
 	 *                                  - feature_id (string)
+	 *                                  - default_enabled (bool)
 	 * @return bool True when registration succeeds.
 	 */
 	protected function register_feature_settings_section(
@@ -50,6 +51,10 @@ trait Provides_Settings_Section {
 			$feature_id = $this->get_id();
 		}
 
+		$default_enabled = array_key_exists( 'default_enabled', $args )
+			? (bool) $args['default_enabled']
+			: ( method_exists( $this, 'is_enabled_by_default' ) ? $this->is_enabled_by_default() : true );
+
 		$section = new Settings_Section(
 			$section_id,
 			$title,
@@ -57,7 +62,8 @@ trait Provides_Settings_Section {
 			$render_callback,
 			$priority,
 			$feature_id,
-			$supports
+			$supports,
+			$default_enabled
 		);
 
 		return $registry->register_section( $section );

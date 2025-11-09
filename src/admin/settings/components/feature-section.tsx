@@ -4,7 +4,7 @@
 
 import { Card, CardBody, ToggleControl } from '@wordpress/components';
 
-import type { SectionPayload } from '../types';
+import type { SectionPayload } from '../../../types';
 
 type FeatureSectionProps = {
 	section: SectionPayload;

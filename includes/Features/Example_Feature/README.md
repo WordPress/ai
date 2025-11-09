@@ -52,19 +52,16 @@ use WordPress\AI\Features\Traits\Provides_Settings_Section;
 class Example_Feature extends Abstract_Feature {
     use Provides_Settings_Section;
 
-    public function register(): void {
-        // Always register settings sections so feature appears in admin.
+    protected function register_shared_hooks(): void {
+        // Always register settings sections so the feature appears in admin.
         add_action(
             'ai_register_settings_sections',
             array( $this, 'register_settings_sections' )
         );
+    }
 
-        // Only register functional hooks if feature is enabled.
-        if ( ! $this->is_enabled() ) {
-            return;
-        }
-
-        // Add your feature's functional hooks here.
+    protected function register_enabled_hooks(): void {
+        // Add your feature's functional hooks here. These only run when enabled.
     }
 
     public function register_settings_sections( Settings_Registry $registry ): void {
@@ -96,8 +93,8 @@ class Example_Feature extends Abstract_Feature {
 1. Duplicate this folder and rename the namespace/class.
 2. Extend `WordPress\AI\Abstracts\Abstract_Feature`.
 3. Implement `load_feature_metadata()` to return `id`, `label`, and `description`.
-4. Register hooks in the `register()` method.
-5. Always call `is_enabled()` before registering functional hooks.
+4. Register shared hooks in `register_shared_hooks()` and enabled-only hooks in `register_enabled_hooks()`.
+5. Let `Abstract_Feature` handle the enablement check for you.
 6. To add a settings section, use the `Provides_Settings_Section` trait.
 
 See `Example_Feature.php` for a complete reference.

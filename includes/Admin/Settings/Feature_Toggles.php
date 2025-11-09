@@ -84,12 +84,17 @@ class Feature_Toggles {
 	 * @since 0.1.0
 	 *
 	 * @param string $feature_id Feature identifier.
+	 * @param bool   $default    Default value when no stored toggle exists.
 	 * @return bool True when enabled.
 	 */
-	public function is_feature_enabled( string $feature_id ): bool {
+	public function is_feature_enabled( string $feature_id, bool $default = true ): bool {
 		$toggles = $this->get_all();
 
-		return isset( $toggles[ $feature_id ] ) ? (bool) $toggles[ $feature_id ] : true;
+		if ( array_key_exists( $feature_id, $toggles ) ) {
+			return (bool) $toggles[ $feature_id ];
+		}
+
+		return $default;
 	}
 
 	/**

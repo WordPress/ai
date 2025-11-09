@@ -20,6 +20,7 @@ export type SectionPayload = {
 	priority: number;
 	supports?: Record<string, unknown>;
 	enabled: boolean;
+	defaultEnabled: boolean;
 };
 
 export type SettingsPayload = {
