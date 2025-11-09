@@ -69,7 +69,6 @@ const App = ({ settings }: AppProps) => {
 			const previous = enabled;
 			setEnabled(value);
 			setIsSaving(true);
-			setNotice(null);
 
 			apiFetch({
 				path: '/wp/v2/settings',
@@ -108,7 +107,6 @@ const App = ({ settings }: AppProps) => {
 
 			setFeatureToggles(updated);
 			setIsSaving(true);
-			setNotice(null);
 
 			apiFetch({
 				path: '/wp/v2/settings',
