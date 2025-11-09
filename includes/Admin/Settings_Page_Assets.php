@@ -7,6 +7,8 @@
 
 namespace WordPress\AI\Admin;
 
+use WordPress\AI\Asset_Loader;
+
 /**
  * Manages scripts and styles for the admin settings page.
  *
