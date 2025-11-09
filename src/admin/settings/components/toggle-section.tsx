@@ -2,13 +2,7 @@
  * Toggle section component for global experiments toggle.
  */
 
-import {
-	Card,
-	CardBody,
-	CardDivider,
-	Spinner,
-	ToggleControl,
-} from '@wordpress/components';
+import { Card, CardBody, Spinner, ToggleControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 import type { SectionPayload } from '../../../types';
