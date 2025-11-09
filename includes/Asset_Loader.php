@@ -7,104 +7,88 @@
 
 namespace WordPress\AI;
 
-/**
- * Utility for enqueuing plugin assets using generated metadata.
- *
- * @since 0.1.0
- */
 class Asset_Loader {
+
 	/**
-	 * Enqueues a script and its dependencies.
+	 * Enqueue a script using a script path and its asset metadata.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $handle    Script handle (without internal prefix).
-	 * @param string $file_name Basename within build/ without extension (e.g. 'index').
+	 * @param string $handle The handle for the script.
+	 * @param string $file_name The script file name.
 	 */
 	public static function enqueue_script( string $handle, string $file_name ): void {
-		$script_path = WP_AI_DIR . 'build/' . $file_name . '.js';
-		$script_url  = AI_PLUGIN_URL . 'build/' . $file_name . '.js';
-		$asset_path  = $script_path . '.asset.php';
+		$script_path       = WP_AI_DIR . 'build/' . $file_name . '.js';
+		$script_url        = AI_PLUGIN_URL . 'build/' . $file_name . '.js';
+		$script_asset_path = $script_path . '.asset.php';
 
-		$asset = array(
-			'dependencies' => array(),
-			'version'      => file_exists( $script_path ) ? filemtime( $script_path ) : null,
-		);
-
-		if ( file_exists( $asset_path ) ) {
-			$loaded = include $asset_path;
-			if ( is_array( $loaded ) ) {
-				$asset = array_merge( $asset, $loaded );
-			}
+		if ( file_exists( $script_asset_path ) ) {
+			// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+			$asset_data = require $script_asset_path;
+		} else {
+			$asset_data = array(
+				'dependencies' => array(),
+				'version'      => file_exists( $script_path ) ? filemtime( $script_path ) : null,
+			);
 		}
 
 		wp_enqueue_script(
-			self::prefix_handle( $handle ),
+			'ai_' . $handle,
 			$script_url,
-			$asset['dependencies'] ?? array(),
-			$asset['version'] ?? null,
+			$asset_data['dependencies'],
+			$asset_data['version'],
 			true
 		);
 	}
 
 	/**
-	 * Enqueues a stylesheet.
+	 * Enqueue a style using a style path and its asset metadata.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $handle    Style handle (without internal prefix).
-	 * @param string $file_name Basename within build/ without extension (e.g. 'style-index').
-	 * @param array<string> $deps Optional style dependencies.
+	 * @param string $handle The handle for the style.
+	 * @param string $file_name The script file name.
 	 */
-	public static function enqueue_style( string $handle, string $file_name, array $deps = array() ): void {
-		$style_path = WP_AI_DIR . 'build/' . $file_name . '.css';
-		$style_url  = AI_PLUGIN_URL . 'build/' . $file_name . '.css';
+	public static function enqueue_style( string $handle, string $file_name ): void {
+		$style_path       = WP_AI_DIR . 'build/' . $file_name . '.css';
+		$style_url        = AI_PLUGIN_URL . 'build/' . $file_name . '.css';
+		$style_asset_path = $style_path . '.asset.php';
 
-		if ( ! file_exists( $style_path ) ) {
-			return;
-		}
-
-		$version    = filemtime( $style_path );
-		$asset_path = $style_path . '.asset.php';
-		if ( file_exists( $asset_path ) ) {
-			$loaded = include $asset_path;
-			if ( is_array( $loaded ) && isset( $loaded['version'] ) ) {
-				$version = $loaded['version'];
-			}
+		if ( file_exists( $style_asset_path ) ) {
+			// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+			$asset_data = require $style_asset_path;
+		} else {
+			$asset_data = array(
+				'dependencies' => array(),
+				'version'      => file_exists( $style_path ) ? filemtime( $style_path ) : null,
+			);
 		}
 
 		wp_enqueue_style(
-			self::prefix_handle( $handle ),
+			'ai_' . $handle,
 			$style_url,
-			$deps,
-			$version
+			$asset_data['dependencies'],
+			$asset_data['version']
 		);
 	}
 
 	/**
-	 * Localizes arbitrary data to an enqueued script.
+	 * Localize data for an enqueued script.
+	 *
+	 * This method allows passing PHP data to JavaScript using `wp_localize_script()`.
+	 * It must be called after the script has been enqueued using `enqueue_script()`.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string               $handle      Script handle used in enqueue_script.
-	 * @param string               $object_name JS object name.
-	 * @param array<string, mixed> $data        Data to localize.
+	 * @param string $handle The script handle used in `enqueue_script()` (without prefix).
+	 * @param string $object_name The name of the JavaScript object to contain the data.
+	 * @param array<string, mixed> $data The data to localize.
 	 */
 	public static function localize_script( string $handle, string $object_name, array $data ): void {
 		wp_localize_script(
-			self::prefix_handle( $handle ),
-			$object_name,
+			'ai_' . $handle,
+			'wpAi' . $object_name,
 			$data
 		);
-	}
-
-	/**
-	 * Internal helper for consistent handle prefixes.
-	 *
-	 * @param string $handle Handle name.
-	 * @return string Prefixed handle.
-	 */
-	public static function prefix_handle( string $handle ): string {
-		return 'wp-ai-' . $handle;
 	}
 }

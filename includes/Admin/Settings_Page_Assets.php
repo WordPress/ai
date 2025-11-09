@@ -74,7 +74,7 @@ class Settings_Page_Assets {
 		\WordPress\AI\Asset_Loader::enqueue_script( self::SCRIPT_HANDLE, 'index' );
 
 		wp_add_inline_script(
-			\WordPress\AI\Asset_Loader::prefix_handle( self::SCRIPT_HANDLE ),
+			'ai_' . self::SCRIPT_HANDLE,
 			sprintf(
 				'window.wpAiExperimentsSettings = %s;',
 				wp_json_encode( $this->payload_builder->build() )
@@ -82,6 +82,7 @@ class Settings_Page_Assets {
 			'before'
 		);
 
-		\WordPress\AI\Asset_Loader::enqueue_style( self::STYLE_HANDLE, 'style-index', array( 'wp-components' ) );
+		wp_enqueue_style( 'wp-components' );
+		\WordPress\AI\Asset_Loader::enqueue_style( self::STYLE_HANDLE, 'style-index' );
 	}
 }
