@@ -26,12 +26,17 @@ class Asset_Loader {
 		$script_url  = AI_PLUGIN_URL . 'build/' . $file_name . '.js';
 		$asset_path  = $script_path . '.asset.php';
 
-		$asset = file_exists( $asset_path )
-			? require $asset_path
-			: array(
-				'dependencies' => array(),
-				'version'      => file_exists( $script_path ) ? filemtime( $script_path ) : null,
-			);
+		$asset = array(
+			'dependencies' => array(),
+			'version'      => file_exists( $script_path ) ? filemtime( $script_path ) : null,
+		);
+
+		if ( file_exists( $asset_path ) ) {
+			$loaded = include $asset_path;
+			if ( is_array( $loaded ) ) {
+				$asset = array_merge( $asset, $loaded );
+			}
+		}
 
 		wp_enqueue_script(
 			self::prefix_handle( $handle ),
@@ -59,10 +64,14 @@ class Asset_Loader {
 			return;
 		}
 
+		$version    = filemtime( $style_path );
 		$asset_path = $style_path . '.asset.php';
-		$version    = file_exists( $asset_path )
-			? ( require $asset_path )['version'] ?? null
-			: filemtime( $style_path );
+		if ( file_exists( $asset_path ) ) {
+			$loaded = include $asset_path;
+			if ( is_array( $loaded ) && isset( $loaded['version'] ) ) {
+				$version = $loaded['version'];
+			}
+		}
 
 		wp_enqueue_style(
 			self::prefix_handle( $handle ),
