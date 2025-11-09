@@ -33,6 +33,12 @@ const App = ({ settings }: AppProps) => {
 	);
 	const [isSaving, setIsSaving] = useState(false);
 	const [notice, setNotice] = useState<NoticeState | null>(null);
+	const [isNoticePinned, setIsNoticePinned] = useState(false);
+
+	const showNotice = useCallback((nextNotice: NoticeState) => {
+		setNotice(nextNotice);
+		setIsNoticePinned(false);
+	}, []);
 
 	const toggleSection = useMemo(
 		() =>
@@ -69,6 +75,7 @@ const App = ({ settings }: AppProps) => {
 			const previous = enabled;
 			setEnabled(value);
 			setIsSaving(true);
+			setIsNoticePinned(true);
 
 			apiFetch({
 				path: '/wp/v2/settings',
@@ -78,7 +85,7 @@ const App = ({ settings }: AppProps) => {
 				},
 			})
 				.then(() => {
-					setNotice({
+					showNotice({
 						status: 'success',
 						message: __(
 							'Experimental features setting updated.',
@@ -88,7 +95,7 @@ const App = ({ settings }: AppProps) => {
 				})
 				.catch(() => {
 					setEnabled(previous);
-					setNotice({
+					showNotice({
 						status: 'error',
 						message: __('Saving failed. Please try again.', 'ai'),
 					});
@@ -107,6 +114,7 @@ const App = ({ settings }: AppProps) => {
 
 			setFeatureToggles(updated);
 			setIsSaving(true);
+			setIsNoticePinned(true);
 
 			apiFetch({
 				path: '/wp/v2/settings',
@@ -116,7 +124,7 @@ const App = ({ settings }: AppProps) => {
 				},
 			})
 				.then(() => {
-					setNotice({
+					showNotice({
 						status: 'success',
 						message: __('Feature setting updated.', 'ai'),
 					});
@@ -126,7 +134,7 @@ const App = ({ settings }: AppProps) => {
 						...featureToggles,
 						[featureId]: previous !== undefined ? previous : true,
 					});
-					setNotice({
+					showNotice({
 						status: 'error',
 						message: __('Saving failed. Please try again.', 'ai'),
 					});
@@ -150,13 +158,13 @@ const App = ({ settings }: AppProps) => {
 
 	return (
 		<div className="ai-experiments-settings-app">
-			{notice ? (
+			{notice || isNoticePinned ? (
 				<Notice
-					status={notice.status}
-					isDismissible
+					status={notice?.status ?? 'success'}
+					isDismissible={Boolean(notice)}
 					onRemove={() => setNotice(null)}
 				>
-					{notice.message}
+					{notice?.message ?? '\u00A0'}
 				</Notice>
 			) : null}
 			<ToggleSection
