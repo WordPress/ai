@@ -41,26 +41,20 @@ const ToggleSection = ({
 						) : null}
 					</div>
 					<div className="ai-experiments-settings-app__card-action">
+						<ToggleControl
+							label=""
+							aria-label={__('Enable Experimental Features', 'ai')}
+							checked={enabled}
+							onChange={onChange}
+							disabled={isSaving}
+							__nextHasNoMarginBottom
+						/>
 						{isSaving && <Spinner />}
 					</div>
 				</div>
 			</CardBody>
 			<CardDivider />
 			<CardBody>
-				<ToggleControl
-					label={__('Enable Experimental Features', 'ai')}
-					checked={enabled}
-					help={
-						section.description ||
-						__(
-							'Allow experimental AI features to run on this site.',
-							'ai'
-						)
-					}
-					onChange={onChange}
-					disabled={isSaving}
-					__nextHasNoMarginBottom
-				/>
 				<p className="ai-experiments-settings-app__helper">
 					{__(
 						'Toggling this switch enables or disables all experimental AI capabilities provided by this plugin.',

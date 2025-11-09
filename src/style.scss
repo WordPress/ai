@@ -42,6 +42,12 @@
 		min-width: 24px;
 		display: flex;
 		justify-content: flex-end;
+		align-items: center;
+		gap: 12px;
+
+		.components-toggle-control {
+			margin: 0;
+		}
 	}
 
 	&__helper {
