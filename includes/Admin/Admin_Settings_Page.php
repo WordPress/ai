@@ -23,11 +23,6 @@ class Admin_Settings_Page {
 	private const MENU_SLUG = 'ai-experiments';
 
 	/**
-	 * Shared page/menu title.
-	 */
-	private const PAGE_TITLE = 'AI Experiments';
-
-	/**
 	 * Toggle service.
 	 *
 	 * @var \WordPress\AI\Admin\Settings\Settings_Toggle
@@ -91,8 +86,8 @@ class Admin_Settings_Page {
 	 */
 	public function register_menu(): void {
 		$this->hook_suffix = add_options_page(
-			__( self::PAGE_TITLE, 'ai' ),
-			__( self::PAGE_TITLE, 'ai' ),
+			$this->get_page_title(),
+			$this->get_page_title(),
 			'manage_options',
 			self::MENU_SLUG,
 			array( $this, 'render' )
@@ -124,7 +119,7 @@ class Admin_Settings_Page {
 		$payload = $this->payload_builder->build();
 		?>
 		<div class="wrap ai-experiments-settings">
-			<h1><?php esc_html_e( self::PAGE_TITLE, 'ai' ); ?></h1>
+			<h1><?php echo esc_html( $this->get_page_title() ); ?></h1>
 			<p class="description">
 				<?php esc_html_e( 'Manage access to experimental AI functionality and review feature-specific settings.', 'ai' ); ?>
 			</p>
@@ -170,5 +165,16 @@ class Admin_Settings_Page {
 			</div>
 		</section>
 		<?php
+	}
+
+	/**
+	 * Returns the translated page title.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return string
+	 */
+	private function get_page_title(): string {
+		return __( 'AI Experiments', 'ai' );
 	}
 }
