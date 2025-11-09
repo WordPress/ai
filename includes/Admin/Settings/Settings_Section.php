@@ -93,14 +93,14 @@ class Settings_Section {
 		array $supports = array(),
 		bool $default_enabled = true
 	) {
-		$this->id               = $id;
-		$this->title            = $title;
-		$this->description      = $description;
-		$this->render_callback  = $render_callback;
-		$this->priority         = $priority;
-		$this->feature_id       = $feature_id;
-		$this->supports         = $supports;
-		$this->default_enabled  = $default_enabled;
+		$this->id              = $id;
+		$this->title           = $title;
+		$this->description     = $description;
+		$this->render_callback = $render_callback;
+		$this->priority        = $priority;
+		$this->feature_id      = $feature_id;
+		$this->supports        = $supports;
+		$this->default_enabled = $default_enabled;
 	}
 
 	/**
@@ -201,13 +201,13 @@ class Settings_Section {
 	 */
 	public function to_array( bool $feature_enabled = true ): array {
 		return array(
-			'id'          => $this->id,
-			'title'       => $this->title,
-			'description' => $this->description,
-			'featureId'   => $this->feature_id,
-			'priority'    => $this->priority,
-			'supports'    => $this->supports,
-			'enabled'     => $feature_enabled,
+			'id'             => $this->id,
+			'title'          => $this->title,
+			'description'    => $this->description,
+			'featureId'      => $this->feature_id,
+			'priority'       => $this->priority,
+			'supports'       => $this->supports,
+			'enabled'        => $feature_enabled,
 			'defaultEnabled' => $this->default_enabled,
 		);
 	}
