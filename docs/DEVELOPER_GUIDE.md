@@ -71,7 +71,14 @@ ai/
 │       └── Example_Feature/          # Each feature in own directory
 │           ├── Example_Feature.php
 │           └── README.md
-├── admin/                            # Admin settings services, controllers, assets
+├── includes/Admin/                   # Admin settings services, controllers, assets
+│   ├── Admin_Settings_Page.php       # Registers WP admin menu/page
+│   ├── Settings_Page_Assets.php      # Enqueues scripts/styles
+│   ├── Settings_Payload_Builder.php  # Serializes registry data
+│   └── Settings/                     # Admin settings sub-namespace
+│       ├── Feature_Toggles.php
+│       ├── Settings_Service.php
+│       └── …
 ├── assets/                           # CSS, JS, images
 ├── docs/                             # Documentation
 │   ├── DEVELOPER_GUIDE.md            # This guide
