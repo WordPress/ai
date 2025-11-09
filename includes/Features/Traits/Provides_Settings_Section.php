@@ -53,7 +53,7 @@ trait Provides_Settings_Section {
 
 		$default_enabled = array_key_exists( 'default_enabled', $args )
 			? (bool) $args['default_enabled']
-			: ( method_exists( $this, 'is_enabled_by_default' ) ? $this->is_enabled_by_default() : true );
+			: $this->is_enabled_by_default();
 
 		$section = new Settings_Section(
 			$section_id,
