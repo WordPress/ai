@@ -31,7 +31,8 @@ const App = ({ settings }: AppProps) => {
 	const [featureToggles, setFeatureToggles] = useState(
 		settings.featureToggles.toggles
 	);
-	const [isSaving, setIsSaving] = useState(false);
+	const [isGlobalSaving, setIsGlobalSaving] = useState(false);
+	const [savingFeatureId, setSavingFeatureId] = useState<string | null>(null);
 	const [notice, setNotice] = useState<NoticeState | null>(null);
 	const [isNoticePinned, setIsNoticePinned] = useState(false);
 
@@ -74,7 +75,7 @@ const App = ({ settings }: AppProps) => {
 
 			const previous = enabled;
 			setEnabled(value);
-			setIsSaving(true);
+			setIsGlobalSaving(true);
 			setIsNoticePinned(true);
 
 			apiFetch({
@@ -101,10 +102,10 @@ const App = ({ settings }: AppProps) => {
 					});
 				})
 				.finally(() => {
-					setIsSaving(false);
+					setIsGlobalSaving(false);
 				});
 		},
-		[enabled, settings.toggle.restField]
+		[enabled, settings.toggle.restField, showNotice]
 	);
 
 	const handleFeatureToggle = useCallback(
@@ -113,7 +114,7 @@ const App = ({ settings }: AppProps) => {
 			const updated = { ...featureToggles, [featureId]: value };
 
 			setFeatureToggles(updated);
-			setIsSaving(true);
+			setSavingFeatureId(featureId);
 			setIsNoticePinned(true);
 
 			apiFetch({
@@ -140,10 +141,10 @@ const App = ({ settings }: AppProps) => {
 					});
 				})
 				.finally(() => {
-					setIsSaving(false);
+					setSavingFeatureId(null);
 				});
 		},
-		[featureToggles, settings.featureToggles.restField]
+		[featureToggles, settings.featureToggles.restField, showNotice]
 	);
 
 	if (!toggleSection) {
@@ -170,7 +171,7 @@ const App = ({ settings }: AppProps) => {
 			<ToggleSection
 				section={toggleSection}
 				enabled={enabled}
-				isSaving={isSaving}
+				isSaving={isGlobalSaving}
 				onChange={handleToggleChange}
 			/>
 			{otherSections.length > 0 ? (
@@ -182,7 +183,10 @@ const App = ({ settings }: AppProps) => {
 								key={section.id}
 								section={section}
 								masterEnabled={enabled}
-								isSaving={isSaving}
+								isSaving={
+									savingFeatureId !== null &&
+									savingFeatureId === section.featureId
+								}
 								onToggle={handleFeatureToggle}
 							/>
 						))}
