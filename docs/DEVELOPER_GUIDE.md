@@ -184,18 +184,24 @@ class My_Feature extends Abstract_Feature {
 
 ### Step 3: Register the Feature
 
-Add your feature class name to the default features list in `Feature_Loader::get_default_features()`:
+Add your feature to the default list returned by `Feature_Loader::get_default_features()`:
 
 ```php
 private function get_default_features(): array {
-	$feature_classes = array(
-		'WordPress\AI\Features\Example_Feature\Example_Feature',
-		'WordPress\AI\Features\My_Feature\My_Feature', // Add your feature
+	$feature_toggles_provider = apply_filters( 'ai_feature_toggles_service', null );
+	$feature_toggles          = $feature_toggles_provider instanceof Feature_Toggles ? $feature_toggles_provider : null;
+	$feature_toggles_factory  = $this->resolve_feature_toggles_factory( $feature_toggles_provider );
+
+	$features = array(
+		new \WordPress\AI\Features\Example_Feature\Example_Feature( $feature_toggles, $feature_toggles_factory ),
+		new \WordPress\AI\Features\My_Feature\My_Feature( $feature_toggles, $feature_toggles_factory ),
 	);
 
-	// ... rest of the method
+	return apply_filters( 'ai_default_features', $features, $feature_toggles, $feature_toggles_factory );
 }
 ```
+
+Third-party developers should prefer the `ai_register_features` or `ai_default_features` hooks described later in this guide so core files don’t need to be modified.
 
 ### Step 4: Add Feature Documentation
 
@@ -228,29 +234,31 @@ The admin settings screen allows site administrators to manage AI Experiments gl
 ```
 includes/
 ├── Admin/
-│   ├── Admin_Settings_Page.php         # Registers the options page and fallback markup
-│   ├── Settings_Page_Assets.php        # Enqueues the React bundle when viewing the page
-│   ├── Settings_Payload_Builder.php    # Builds the data passed to the React app
+│   ├── Admin_Settings_Page.php          # Registers the options page and fallback markup
+│   ├── Settings_Page_Assets.php         # Enqueues the React bundle when viewing the page
+│   ├── Settings_Payload_Builder.php     # Builds the data passed to the React app
 │   └── Settings/
-│       ├── Feature_Toggles.php         # Persists per-feature enable/disable state
-│       ├── Settings_Renderer.php       # Renders the fallback UI for the toggle section
-│       ├── Settings_Registry.php       # Registry of settings sections registered by features
-│       ├── Settings_Section.php        # Immutable value object describing a section
-│       ├── Settings_Service.php        # Coordinates registration of toggles, sections, and page
-│       └── Settings_Toggle.php         # Manages the global experiments option
+│       ├── Feature_Toggles.php          # Persists per-feature enable/disable state
+│       ├── Settings_Renderer.php        # Renders the fallback UI for the toggle section
+│       ├── Settings_Registry.php        # Registry of settings sections registered by features
+│       ├── Settings_Section.php         # Immutable value object describing a section
+│       ├── Settings_Service.php         # Coordinates registration of toggles, sections, and page
+│       └── Settings_Toggle.php          # Manages the global experiments option
 └── Features/
     └── Traits/
         └── Provides_Settings_Section.php # Helper trait for feature-owned sections
 
 src/
-├── index.tsx                          # React entry point mounted on the admin page
-├── components/
-│   ├── App.tsx                        # Top-level application component
-│   ├── FeatureSection.tsx             # Card UI for per-feature toggles
-│   └── ToggleSection.tsx              # Card UI for the global toggle
-├── types.ts                           # Shared payload types
-├── style.scss                         # Styles for the settings screen
-└── global.d.ts                        # Ambient declaration for the payload on window
+├── admin/
+│   └── settings/
+│       ├── app.tsx                      # Top-level settings UI
+│       └── components/
+│           ├── feature-section.tsx      # Card UI for per-feature toggles
+│           └── toggle-section.tsx       # Card UI for the global toggle
+├── global.d.ts                          # Ambient declaration for the payload on window
+├── index.tsx                            # React entry point mounted on the admin page
+├── style.scss                           # Styles for the settings screen
+└── types.ts                             # Shared payload types
 ```
 
 `includes/bootstrap.php` wires the settings services on the `init` hook via `initialize_admin_settings()`. That function:
