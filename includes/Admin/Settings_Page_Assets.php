@@ -7,8 +7,6 @@
 
 namespace WordPress\AI\Admin;
 
-use WordPress\AI\Asset_Loader;
-
 /**
  * Manages scripts and styles for the admin settings page.
  *
@@ -73,10 +71,10 @@ class Settings_Page_Assets {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( self::SCRIPT_HANDLE, 'index' );
+		\WordPress\AI\Asset_Loader::enqueue_script( self::SCRIPT_HANDLE, 'index' );
 
 		wp_add_inline_script(
-			Asset_Loader::prefix_handle( self::SCRIPT_HANDLE ),
+			\WordPress\AI\Asset_Loader::prefix_handle( self::SCRIPT_HANDLE ),
 			sprintf(
 				'window.wpAiExperimentsSettings = %s;',
 				wp_json_encode( $this->payload_builder->build() )
@@ -84,6 +82,6 @@ class Settings_Page_Assets {
 			'before'
 		);
 
-		Asset_Loader::enqueue_style( self::STYLE_HANDLE, 'style-index', array( 'wp-components' ) );
+		\WordPress\AI\Asset_Loader::enqueue_style( self::STYLE_HANDLE, 'style-index', array( 'wp-components' ) );
 	}
 }
