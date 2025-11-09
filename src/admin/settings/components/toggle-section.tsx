@@ -34,17 +34,19 @@ const ToggleSection = ({
 							</p>
 						) : null}
 					</div>
-					<div className="ai-experiments-settings-app__card-action">
-						<ToggleControl
-							label=""
-							aria-label={__('Enable Experimental Features', 'ai')}
-							checked={enabled}
-							onChange={onChange}
-							disabled={isSaving}
-							__nextHasNoMarginBottom
-						/>
-						{isSaving && <Spinner />}
-					</div>
+		<div className="ai-experiments-settings-app__card-action">
+			<ToggleControl
+				label=""
+				aria-label={__('Enable Experimental Features', 'ai')}
+				checked={enabled}
+				onChange={onChange}
+				disabled={isSaving}
+				__nextHasNoMarginBottom
+			/>
+			<span className="ai-experiments-settings-app__spinner">
+				{isSaving && <Spinner />}
+			</span>
+		</div>
 				</div>
 			</CardBody>
 		</Card>
