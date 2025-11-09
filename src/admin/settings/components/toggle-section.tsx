@@ -53,9 +53,6 @@ const ToggleSection = ({
 					</div>
 				</div>
 			</CardBody>
-			<CardDivider />
-			<CardBody>
-			</CardBody>
 		</Card>
 	);
 };
