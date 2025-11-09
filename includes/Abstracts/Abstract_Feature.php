@@ -124,9 +124,9 @@ abstract class Abstract_Feature implements Feature {
 	 * @throws \WordPress\AI\Exception\Invalid_Feature_Metadata_Exception If feature metadata is invalid.
 	 */
 	final public function __construct( ?\WordPress\AI\Admin\Settings\Feature_Toggles $feature_toggles = null, ?callable $feature_toggles_factory = null ) {
-		$this->feature_toggles = $feature_toggles;
+		$this->feature_toggles         = $feature_toggles;
 		$this->feature_toggles_factory = $feature_toggles_factory;
-		$metadata              = $this->load_feature_metadata();
+		$metadata                      = $this->load_feature_metadata();
 
 		if ( empty( $metadata['id'] ) ) {
 			throw new Invalid_Feature_Metadata_Exception(
@@ -257,7 +257,7 @@ abstract class Abstract_Feature implements Feature {
 
 		$resolved = call_user_func( $this->feature_toggles_factory );
 		if ( $resolved instanceof \WordPress\AI\Admin\Settings\Feature_Toggles ) {
-			$this->feature_toggles        = $resolved;
+				$this->feature_toggles         = $resolved;
 			$this->feature_toggles_factory = null;
 		}
 

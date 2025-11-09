@@ -41,8 +41,8 @@ trait Provides_Settings_Section {
 		array $args = array()
 	): bool {
 		$description = isset( $args['description'] ) ? (string) $args['description'] : '';
-		$priority = isset( $args['priority'] ) ? (int) $args['priority'] : 10;
-		$supports = $this->prepare_section_supports(
+		$priority    = isset( $args['priority'] ) ? (int) $args['priority'] : 10;
+		$supports    = $this->prepare_section_supports(
 			isset( $args['supports'] ) && is_array( $args['supports'] ) ? $args['supports'] : array()
 		);
 
@@ -93,7 +93,7 @@ trait Provides_Settings_Section {
 				'scripts' => isset( $supports['assets']['scripts'] ) && is_array( $supports['assets']['scripts'] )
 					? array_values( $supports['assets']['scripts'] )
 					: array(),
-				'styles' => isset( $supports['assets']['styles'] ) && is_array( $supports['assets']['styles'] )
+				'styles'  => isset( $supports['assets']['styles'] ) && is_array( $supports['assets']['styles'] )
 					? array_values( $supports['assets']['styles'] )
 					: array(),
 			);
