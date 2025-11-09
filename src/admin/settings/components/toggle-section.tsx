@@ -2,7 +2,7 @@
  * Toggle section component for global experiments toggle.
  */
 
-import { Card, CardBody, Spinner, ToggleControl } from '@wordpress/components';
+import { Card, CardBody, ToggleControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 import type { SectionPayload } from '../../../types';
@@ -43,9 +43,6 @@ const ToggleSection = ({
 				disabled={isSaving}
 				__nextHasNoMarginBottom
 			/>
-			<span className="ai-experiments-settings-app__spinner">
-				{isSaving && <Spinner />}
-			</span>
 		</div>
 				</div>
 			</CardBody>
