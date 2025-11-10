@@ -56,18 +56,4 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Title Generation', $feature->get_label() );
 		$this->assertTrue( $feature->is_enabled() );
 	}
-
-	/**
-	 * Test that get_ability_slug() returns the correct slug format.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_get_ability_slug_returns_correct_format() {
-		$feature = new Title_Generation();
-
-		$slug = $feature->get_ability_slug();
-
-		$this->assertEquals( 'ai/title-generation', $slug, 'Ability slug should be prefixed with ai/' );
-		$this->assertStringStartsWith( 'ai/', $slug, 'Ability slug should start with ai/' );
-	}
 }

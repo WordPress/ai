@@ -130,17 +130,6 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * Gets the ability slug for the feature.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The ability slug for the feature.
-	 */
-	public function get_ability_slug(): string {
-		return 'ai/' . $this->id;
-	}
-
-	/**
 	 * Checks if feature is enabled.
 	 *
 	 * @since 0.1.0

@@ -48,7 +48,7 @@ class Title_Generation extends Abstract_Feature {
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
-			$this->get_ability_slug(),
+			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),
 				'feature'       => $this,
