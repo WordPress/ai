@@ -98,17 +98,6 @@ class Test_Ability extends Abstract_Ability {
 	protected function meta(): array {
 		return array( 'test' => 'meta' );
 	}
-
-	/**
-	 * Get feature for testing.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return Abstract_Feature|null Feature instance.
-	 */
-	public function get_feature() {
-		return $this->feature;
-	}
 }
 
 /**
@@ -158,10 +147,13 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$feature = new Test_Ability_Feature();
 		$ability = new Test_Ability(
 			'test-ability',
-			array( 'feature' => $feature )
+			array(
+				'label'       => $feature->get_label(),
+				'description' => $feature->get_description(),
+			)
 		);
 
-		$this->assertSame( $feature, $ability->get_feature(), 'Feature should be stored in ability' );
+		$this->assertSame( $feature->get_label(), $ability->get_label(), 'Label should be stored in ability' );
 	}
 
 	/**
@@ -173,7 +165,10 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$feature = new Test_Ability_Feature();
 		$ability = new Test_Ability(
 			'test-ability',
-			array( 'feature' => $feature )
+			array(
+				'label'       => $feature->get_label(),
+				'description' => $feature->get_description(),
+			)
 		);
 
 		// Verify the ability was registered with WordPress Abilities API.
@@ -190,12 +185,15 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$feature = new Test_Ability_Feature();
 		$ability = new Test_Ability(
 			'test-ability',
-			array( 'feature' => $feature )
+			array(
+				'label'       => $feature->get_label(),
+				'description' => $feature->get_description(),
+			)
 		);
 
 		// Use reflection to test protected method.
 		$reflection = new \ReflectionClass( $ability );
-		$method     = $reflection->getMethod( 'label' );
+		$method     = $reflection->getMethod( 'get_label' );
 		$method->setAccessible( true );
 
 		$result = $method->invoke( $ability );
@@ -213,12 +211,15 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$feature = new Test_Ability_Feature();
 		$ability = new Test_Ability(
 			'test-ability',
-			array( 'feature' => $feature )
+			array(
+				'label'       => $feature->get_label(),
+				'description' => $feature->get_description(),
+			)
 		);
 
 		// Use reflection to test protected method.
 		$reflection = new \ReflectionClass( $ability );
-		$method     = $reflection->getMethod( 'description' );
+		$method     = $reflection->getMethod( 'get_description' );
 		$method->setAccessible( true );
 
 		$result = $method->invoke( $ability );
@@ -228,16 +229,15 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that constructor requires feature (feature is required for label/description).
+	 * Test that constructor requires label.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_constructor_requires_feature() {
-		$this->expectException( \Error::class );
-		$this->expectExceptionMessage( 'Call to a member function get_label() on null' );
+	public function test_constructor_requires_label() {
+		$this->expectException( \InvalidArgumentException::class );
+		$this->expectExceptionMessage( 'The ability properties must contain a `label` string.' );
 
-		// Attempting to construct without a feature should fail because
-		// label() and description() methods require the feature.
+		// Attempting to construct without a label should fail because.
 		new Test_Ability( 'test-ability', array() );
 	}
 }

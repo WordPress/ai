@@ -127,14 +127,12 @@ class Title_Generation extends Abstract_Ability {
 		// TODO: Implement the title generation logic.
 
 		return array(
-			'feature_id'  => $this->feature->get_id(),
-			'label'       => $this->feature->get_label(),
-			'description' => $this->feature->get_description(),
-			'enabled'     => $this->feature->is_enabled(),
+			'name'        => $this->get_name(),
+			'label'       => $this->get_label(),
+			'description' => $this->get_description(),
 			'content'     => wp_kses_post( $args['content'] ),
 			'post_id'     => absint( $args['post_id'] ) ?? esc_html__( 'Not provided', 'ai' ),
 			'n'           => absint( $args['n'] ),
-			'message'     => esc_html__( 'Title generation feature is active', 'ai' ),
 		);
 	}
 

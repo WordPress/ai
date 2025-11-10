@@ -75,7 +75,10 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->feature = new Test_Title_Generation_Feature();
 		$this->ability = new Title_Generation(
 			'ai/title-generation',
-			array( 'feature' => $this->feature )
+			array(
+				'label'       => $this->feature->get_label(),
+				'description' => $this->feature->get_description(),
+			)
 		);
 	}
 
@@ -175,7 +178,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $this->ability, $input );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertEquals( 'title-generation', $result['feature_id'], 'Feature ID should match' );
+		$this->assertEquals( 'ai/title-generation', $result['name'], 'Feature name should match' );
 		$this->assertEquals( 'Title Generation', $result['label'], 'Label should match' );
 		$this->assertEquals( 'Generates title suggestions from content', $result['description'], 'Description should match' );
 		$this->assertEquals( 'This is some test content.', $result['content'], 'Content should match input' );
