@@ -5,6 +5,8 @@
  * @package WordPress\AI\Abstracts
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Abstracts;
 
 use WP_Ability;

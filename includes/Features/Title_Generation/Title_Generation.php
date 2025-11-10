@@ -5,6 +5,8 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Features\Title_Generation;
 
 use WordPress\AI\Abilities\Title_Generation as Title_Generation_Ability;
@@ -18,7 +20,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 class Title_Generation extends Abstract_Feature {
 
 	/**
-	 * Load feature metadata.
+	 * {@inheritDoc}
 	 *
 	 * @since 0.1.0
 	 *
@@ -33,7 +35,7 @@ class Title_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Register any needed hooks.
+	 * {@inheritDoc}
 	 *
 	 * @since 0.1.0
 	 */
