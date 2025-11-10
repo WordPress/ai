@@ -102,8 +102,8 @@ class Feature_Loader {
 	 */
 	private function get_default_features(): array {
 		$feature_classes = array(
-			'WordPress\AI\Features\Example_Feature\Example_Feature',
-			'WordPress\AI\Features\Title_Generation\Title_Generation',
+			\WordPress\AI\Features\Example_Feature\Example_Feature::class,
+			\WordPress\AI\Features\Title_Generation\Title_Generation::class,
 		);
 
 		/**
