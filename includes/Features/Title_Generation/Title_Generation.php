@@ -51,7 +51,7 @@ class Title_Generation extends Abstract_Feature {
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),
-				'feature'       => $this,
+				'description'   => $this->get_description(),
 				'ability_class' => Title_Generation_Ability::class,
 			),
 		);

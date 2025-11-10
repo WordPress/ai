@@ -17,14 +17,6 @@ use WP_Ability;
 abstract class Abstract_Ability extends WP_Ability {
 
 	/**
-	 * The Feature class that the ability belongs to.
-	 *
-	 * @since 0.1.0
-	 * @var \WordPress\AI\Abstracts\Abstract_Feature
-	 */
-	protected $feature;
-
-	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
@@ -33,13 +25,11 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @param array<string,mixed> $properties The properties of the ability. Must include `label`.
 	 */
 	public function __construct( string $name, array $properties = array() ) {
-		$this->feature = $properties['feature'] ?? null;
-
 		parent::__construct(
 			$name,
 			array(
-				'label'               => $this->label(),
-				'description'         => $this->description(),
+				'label'               => $properties['label'] ?? '',
+				'description'         => $properties['description'] ?? '',
 				'category'            => $this->category(),
 				'input_schema'        => $this->input_schema(),
 				'output_schema'       => $this->output_schema(),
@@ -48,28 +38,6 @@ abstract class Abstract_Ability extends WP_Ability {
 				'meta'                => $this->meta(),
 			)
 		);
-	}
-
-	/**
-	 * Returns the label of the ability.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The label of the ability.
-	 */
-	protected function label(): string {
-		return $this->feature->get_label();
-	}
-
-	/**
-	 * Returns the description of the ability.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The description of the ability.
-	 */
-	protected function description(): string {
-		return $this->feature->get_description();
 	}
 
 	/**
