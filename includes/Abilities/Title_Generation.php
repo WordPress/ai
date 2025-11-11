@@ -133,7 +133,7 @@ class Title_Generation extends Abstract_Ability {
 			'label'       => $this->get_label(),
 			'description' => $this->get_description(),
 			'content'     => wp_kses_post( $args['content'] ),
-			'post_id'     => absint( $args['post_id'] ) ?? esc_html__( 'Not provided', 'ai' ),
+			'post_id'     => $args['post_id'] ? absint( $args['post_id'] ) : esc_html__( 'Not provided', 'ai' ),
 			'n'           => absint( $args['n'] ),
 		);
 	}
@@ -147,7 +147,42 @@ class Title_Generation extends Abstract_Ability {
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	protected function permission_callback( $args ) {
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
+
+		if ( $post_id ) {
+			$post = get_post( $args['post_id'] );
+
+			// Ensure the post exists.
+			if ( ! $post ) {
+				return new WP_Error(
+					'post_not_found',
+					/* translators: %d: Post ID. */
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+				);
+			}
+
+			// Ensure the user has permission to edit this particular post.
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
+				return new WP_Error(
+					'insufficient_capabilities',
+					esc_html__( 'You do not have permission to generate titles for this post.', 'ai' )
+				);
+			}
+
+			// Ensure the post type is allowed in REST endpoints.
+			$post_type = get_post_type( $post_id );
+
+			if ( ! $post_type ) {
+				return false;
+			}
+
+			$post_type_obj = get_post_type_object( $post_type );
+
+			if ( ! $post_type_obj || empty( $post_type_obj->show_in_rest ) ) {
+				return false;
+			}
+		} elseif ( ! current_user_can( 'edit_posts' ) ) {
+			// Ensure the user has permission to edit posts in general.
 			return new WP_Error(
 				'insufficient_capabilities',
 				esc_html__( 'You do not have permission to generate titles.', 'ai' )
