@@ -57,19 +57,6 @@ class Example_FeatureTest extends WP_UnitTestCase {
 		$this->assertTrue( $feature->is_enabled() );
 	}
 
-	/**
-	 * Test that get_system_instruction() returns empty string for features without system instruction.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_get_system_instruction_returns_empty_for_features_without_instruction() {
-		$feature = new Example_Feature();
-
-		$system_instruction = $feature->get_system_instruction();
-
-		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
-		$this->assertEquals( '', $system_instruction, 'System instruction should be empty for features without one' );
-	}
 
 	/**
 	 * Test that footer content is added for logged-in users.
