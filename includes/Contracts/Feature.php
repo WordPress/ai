@@ -49,15 +49,6 @@ interface Feature {
 	public function get_description(): string;
 
 	/**
-	 * Gets the system instruction for the feature.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The system instruction for the feature.
-	 */
-	public function get_system_instruction(): string;
-
-	/**
 	 * Registers the feature's hooks and functionality.
 	 *
 	 * This method is called when the feature is initialized.
