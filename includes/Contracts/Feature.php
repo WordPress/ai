@@ -49,15 +49,6 @@ interface Feature {
 	public function get_description(): string;
 
 	/**
-	 * Gets the ability slug for the feature.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The ability slug for the feature.
-	 */
-	public function get_ability_slug(): string;
-
-	/**
 	 * Gets the system instruction for the feature.
 	 *
 	 * @since 0.1.0

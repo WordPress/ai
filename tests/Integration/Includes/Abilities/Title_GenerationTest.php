@@ -93,7 +93,10 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->feature = new Test_Title_Generation_Feature();
 		$this->ability = new Title_Generation(
 			'ai/title-generation',
-			array( 'feature' => $this->feature )
+			array(
+				'label'       => $this->feature->get_label(),
+				'description' => $this->feature->get_description(),
+			)
 		);
 	}
 

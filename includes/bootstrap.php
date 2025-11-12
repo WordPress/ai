@@ -181,6 +181,11 @@ function initialize_features(): void {
 		add_action(
 			'wp_abilities_api_categories_init',
 			static function () {
+				/**
+				 * Register a generic catch-all category that all
+				 * Abilities we register can use. Can re-evaluate this
+				 * in the future if we need/want more specific categories.
+				 */
 				wp_register_ability_category(
 					'ai-experiments',
 					array(
