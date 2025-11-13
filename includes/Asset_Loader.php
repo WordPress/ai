@@ -13,13 +13,15 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
 /**
  * Class Asset_Loader
  *
  * A utility class for registering and enqueuing assets (scripts and styles)
- * in a WordPress plugin or theme, with support for asset metadata files.
+ * with support for asset metadata files.
  *
  * @since 0.1.0
  */
