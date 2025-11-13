@@ -11,9 +11,10 @@ namespace WordPress\AI\Abilities\Title_Generation;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_prompt_builder;
+use function WordPress\AI\get_preferred_models;
 use function WordPress\AI\normalize_content;
 
 /**
@@ -252,15 +253,12 @@ class Title_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Get our prompt builder.
-		$prompt_builder = get_prompt_builder(
-			'"""' . $context . '"""',
-			array(
-				'candidateCount'    => (int) $candidates,
-				'systemInstruction' => $this->get_system_instruction(),
-				'temperature'       => 0.7,
-			)
-		);
+		// Get the prompt builder.
+		$prompt_builder = AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_temperature( 0.7 )
+			->using_candidate_count( (int) $candidates )
+			->using_model_preference( ...get_preferred_models() );
 
 		// Make the request.
 		return $prompt_builder->generate_texts();

@@ -9,10 +9,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
-use WordPress\AI_Client\AI_Client;
-use WordPress\AiClient\AiClient;
-use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
-
 /**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
  *
@@ -161,91 +157,4 @@ function get_preferred_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
 	return (array) apply_filters( 'ai_preferred_models', $preferred_models );
-}
-
-/**
- * Get a prompt builder.
- *
- * @since 0.1.0
- *
- * @param string|null $prompt The prompt to send.
- * @param array<string, mixed> $options The options to send.
- * @return \WordPress\AI_Client\Builders\Prompt_Builder The prompt builder.
- */
-function get_prompt_builder( $prompt = null, array $options = array() ) {
-	// Default arguments.
-	$args = wp_parse_args(
-		$options,
-		array(
-			'model'    => null,
-			'provider' => null,
-		),
-	);
-
-	unset( $options['model'], $options['provider'] );
-
-	$model_config   = process_model_config( $options );
-	$prompt_builder = AI_Client::prompt_with_wp_error( $prompt );
-	$prompt_builder = $prompt_builder->using_model_config( $model_config );
-
-	if ( ! empty( $args['provider'] ) ) {
-		$prompt_builder = $prompt_builder->using_provider( $args['provider'] );
-
-		// Set the model.
-		if ( ! empty( $args['model'] ) ) {
-			$registry            = AiClient::defaultRegistry();
-			$provider_class_name = $registry->getProviderClassName( $args['provider'] );
-			$prompt_builder      = $prompt_builder->using_model( $provider_class_name::model( $args['model'] ) );
-		}
-	}
-
-	// Set our preferred models if no model is specified.
-	if ( empty( $args['model'] ) ) {
-		$prompt_builder = $prompt_builder->using_model_preference( ...get_preferred_models() );
-	}
-
-	return $prompt_builder;
-}
-
-/**
- * Process the model config.
- *
- * @since 0.1.0
- *
- * @param array<string, mixed> $options The options to add to the model config.
- * @return \WordPress\AiClient\Providers\Models\DTO\ModelConfig
- */
-function process_model_config( array $options = array() ): ModelConfig {
-	$schema       = ModelConfig::getJsonSchema()['properties'];
-	$model_config = array();
-
-	foreach ( $options as $key => $value ) {
-		if ( ! isset( $schema[ $key ] ) ) {
-			continue;
-		}
-
-		$property_schema = $schema[ $key ];
-		$type            = $property_schema['type'] ?? null;
-
-		$processed_value = (string) $value;
-
-		if ( 'array' === $type || 'object' === $type ) {
-			$processed_value = (array) $value;
-		} elseif ( 'integer' === $type ) {
-			$processed_value = (int) $value;
-		} elseif ( 'number' === $type ) {
-			$processed_value = (float) $value;
-		} elseif ( 'boolean' === $type ) {
-			$processed_value = filter_var( $value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
-
-			if ( null === $processed_value ) {
-				continue;
-			}
-		}
-
-		$model_config[ $key ] = $processed_value;
-	}
-
-	// @phpstan-ignore-next-line - fromArray() validates the array shape at runtime.
-	return ModelConfig::fromArray( $model_config );
 }
