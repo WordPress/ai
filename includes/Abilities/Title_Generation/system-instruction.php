@@ -2,9 +2,6 @@
 /**
  * System instruction for the Title Generation ability.
  *
- * This file returns the system instruction as a string, which allows it to be
- * cached by PHP's opcache for better performance.
- *
  * @package WordPress\AI\Abilities\Title_Generation
  */
 

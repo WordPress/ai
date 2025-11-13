@@ -74,6 +74,14 @@ function get_post_context( int $post_id ): array {
 		return $context;
 	}
 
+	/**
+	 * TODO: Might be interesting to add simple Abilities for the following,
+	 * just as a way to demonstrate a different approach to registering Abilities,
+	 * how to call Abilities via PHP and how multiple Abilities can be used together.
+	 *
+	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
+	 */
+
 	if ( $post->post_content ) {
 		$context['content'] = normalize_content( (string) apply_filters( 'the_content', $post->post_content ) );
 	}
