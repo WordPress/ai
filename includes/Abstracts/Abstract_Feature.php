@@ -5,9 +5,10 @@
  * @package WordPress\AI\Abstracts
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Abstracts;
 
-use ReflectionClass;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
 
@@ -25,7 +26,7 @@ abstract class Abstract_Feature implements Feature {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	protected $id;
+	protected string $id;
 
 	/**
 	 * Feature label.
@@ -33,7 +34,7 @@ abstract class Abstract_Feature implements Feature {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	protected $label;
+	protected string $label;
 
 	/**
 	 * Feature description.
@@ -41,7 +42,7 @@ abstract class Abstract_Feature implements Feature {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	protected $description;
+	protected string $description;
 
 	/**
 	 * Whether the feature is enabled.
@@ -49,15 +50,7 @@ abstract class Abstract_Feature implements Feature {
 	 * @since 0.1.0
 	 * @var bool
 	 */
-	private $enabled = true;
-
-	/**
-	 * System instruction to send to the LLM.
-	 *
-	 * @since 0.1.0
-	 * @var string
-	 */
-	protected $system_instruction = '';
+	private bool $enabled = true;
 
 	/**
 	 * Constructor.
@@ -92,12 +85,6 @@ abstract class Abstract_Feature implements Feature {
 		$this->id          = $metadata['id'];
 		$this->label       = $metadata['label'];
 		$this->description = $metadata['description'];
-
-		// Try to load system instruction from file.
-		$loaded_instruction = $this->load_system_instruction_from_file();
-		if ( ! empty( $loaded_instruction ) ) { // phpcs:ignore SlevomatCodingStandard.ControlStructures.EarlyExit.EarlyExitNotUsed
-			$this->system_instruction = $loaded_instruction;
-		}
 	}
 
 	/**
@@ -142,78 +129,6 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	public function get_description(): string {
 		return $this->description;
-	}
-
-	/**
-	 * Gets the ability slug for the feature.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The ability slug for the feature.
-	 */
-	public function get_ability_slug(): string {
-		return 'ai/' . $this->id;
-	}
-
-	/**
-	 * Gets the system instruction for the feature.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The system instruction for the feature.
-	 */
-	public function get_system_instruction(): string {
-		return $this->system_instruction;
-	}
-
-	/**
-	 * Loads system instruction from a markdown file in the feature's directory.
-	 *
-	 * Supports both automatic detection (looks for `system-instruction.md` or `prompt.md`)
-	 * and explicit file paths. Returns empty string if file is not found, maintaining
-	 * backward compatibility with hardcoded system instructions.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
-	 *                              attempts to load `system-instruction.md` or `prompt.md`.
-	 * @return string The contents of the file, or empty string if file not found.
-	 */
-	protected function load_system_instruction_from_file( ?string $filename = null ): string {
-		// Get the feature's directory using reflection.
-		$reflection = new ReflectionClass( $this );
-		$file_name  = $reflection->getFileName();
-
-		if ( ! $file_name ) {
-			return '';
-		}
-
-		$feature_dir = dirname( $file_name );
-
-		// If explicit filename provided, use it.
-		if ( null !== $filename ) {
-			$file_path = trailingslashit( $feature_dir ) . $filename;
-
-			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
-				$content = file_get_contents( $file_path ); // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
-				return false !== $content ? trim( wp_strip_all_tags( $content ) ) : '';
-			}
-
-			return '';
-		}
-
-		// Automatic detection: first `system-instruction.md`, then `prompt.md`.
-		$possible_files = array( 'system-instruction.md', 'prompt.md' );
-		foreach ( $possible_files as $possible_file ) {
-			$file_path = trailingslashit( $feature_dir ) . $possible_file;
-
-			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
-				$content = file_get_contents( $file_path ); // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
-				return false !== $content ? trim( wp_strip_all_tags( $content ) ) : '';
-			}
-		}
-
-		return '';
 	}
 
 	/**

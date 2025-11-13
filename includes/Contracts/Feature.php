@@ -5,6 +5,8 @@
  * @package WordPress\AI\Contracts
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Contracts;
 
 /**
@@ -47,24 +49,6 @@ interface Feature {
 	 * @return string Translated feature description.
 	 */
 	public function get_description(): string;
-
-	/**
-	 * Gets the ability slug for the feature.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The ability slug for the feature.
-	 */
-	public function get_ability_slug(): string;
-
-	/**
-	 * Gets the system instruction for the feature.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The system instruction for the feature.
-	 */
-	public function get_system_instruction(): string;
 
 	/**
 	 * Registers the feature's hooks and functionality.

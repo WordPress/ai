@@ -5,8 +5,11 @@
  * @package WordPress\AI\Abstracts
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Abstracts;
 
+use ReflectionClass;
 use WP_Ability;
 
 /**
@@ -17,14 +20,6 @@ use WP_Ability;
 abstract class Abstract_Ability extends WP_Ability {
 
 	/**
-	 * The Feature class that the ability belongs to.
-	 *
-	 * @since 0.1.0
-	 * @var \WordPress\AI\Abstracts\Abstract_Feature
-	 */
-	protected $feature;
-
-	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
@@ -33,13 +28,11 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @param array<string,mixed> $properties The properties of the ability. Must include `label`.
 	 */
 	public function __construct( string $name, array $properties = array() ) {
-		$this->feature = $properties['feature'] ?? null;
-
 		parent::__construct(
 			$name,
 			array(
-				'label'               => $this->label(),
-				'description'         => $this->description(),
+				'label'               => $properties['label'] ?? '',
+				'description'         => $properties['description'] ?? '',
 				'category'            => $this->category(),
 				'input_schema'        => $this->input_schema(),
 				'output_schema'       => $this->output_schema(),
@@ -48,28 +41,6 @@ abstract class Abstract_Ability extends WP_Ability {
 				'meta'                => $this->meta(),
 			)
 		);
-	}
-
-	/**
-	 * Returns the label of the ability.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The label of the ability.
-	 */
-	protected function label(): string {
-		return $this->feature->get_label();
-	}
-
-	/**
-	 * Returns the description of the ability.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string The description of the ability.
-	 */
-	protected function description(): string {
-		return $this->feature->get_description();
 	}
 
 	/**
@@ -141,4 +112,81 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return array<string, mixed> The meta of the ability.
 	 */
 	abstract protected function meta(): array;
+
+	/**
+	 * Gets the system instruction for the feature.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
+	 *                              attempts to load `system-instruction.php` or `prompt.php`.
+	 * @return string The system instruction for the feature.
+	 */
+	public function get_system_instruction( ?string $filename = null ): string {
+		return $this->load_system_instruction_from_file( $filename );
+	}
+
+	/**
+	 * Loads system instruction from a PHP file in the feature's directory.
+	 *
+	 * Automatic detection order:
+	 * 1. `system-instruction.php`
+	 * 2. `prompt.php`
+	 *
+	 * PHP files should return a string directly, e.g.:
+	 * ```php
+	 * <?php
+	 * return 'Your system instruction text here...';
+	 * ```
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
+	 *                              attempts to load `system-instruction.php` or `prompt.php`.
+	 * @return string The contents of the file, or empty string if file not found.
+	 */
+	protected function load_system_instruction_from_file( ?string $filename = null ): string {
+		// Get the feature's directory using reflection.
+		$reflection = new ReflectionClass( $this );
+		$file_name  = $reflection->getFileName();
+
+		if ( ! $file_name ) {
+			return '';
+		}
+
+		$feature_dir = dirname( $file_name );
+
+		// If explicit filename provided, use it.
+		if ( null !== $filename ) {
+			$file_path = trailingslashit( $feature_dir ) . $filename;
+
+			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
+				// PHP files should return a string directly.
+				$content = require_once $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+
+				return is_string( $content ) ? wp_strip_all_tags( $content ) : '';
+			}
+
+			return '';
+		}
+
+		// Automatic detection if no filename provided.
+		$possible_files = array(
+			'system-instruction.php',
+			'prompt.php',
+		);
+
+		foreach ( $possible_files as $possible_file ) {
+			$file_path = trailingslashit( $feature_dir ) . $possible_file;
+
+			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
+				// PHP files should return a string directly.
+				$content = require $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+
+				return is_string( $content ) ? wp_strip_all_tags( $content ) : '';
+			}
+		}
+
+		return '';
+	}
 }

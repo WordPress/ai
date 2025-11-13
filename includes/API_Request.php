@@ -5,10 +5,13 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
 use Throwable;
 use WP_Error;
+use WordPress\AI_Client\AI_Client;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 
@@ -26,7 +29,7 @@ class API_Request {
 	 *
 	 * @var string|null
 	 */
-	protected $provider = null;
+	protected ?string $provider = null;
 
 	/**
 	 * The desired AI model.
@@ -35,7 +38,7 @@ class API_Request {
 	 *
 	 * @var string|null
 	 */
-	protected $model = null;
+	protected ?string $model = null;
 
 	/**
 	 * The preferred models to use.
@@ -44,7 +47,7 @@ class API_Request {
 	 *
 	 * @var array<int, array{string, string}>
 	 */
-	protected $model_preferences = array(
+	protected array $model_preferences = array(
 		array(
 			'anthropic',
 			'claude-haiku-4-5',
@@ -98,7 +101,7 @@ class API_Request {
 		}
 
 		try {
-			return $this->get_result( $prompt_builder->generateTexts() );
+			return $this->get_result( $prompt_builder->generate_texts() );
 		} catch ( Throwable $t ) {
 			return new WP_Error( 'ai_client_error', $t->getMessage() );
 		}
@@ -112,32 +115,32 @@ class API_Request {
 	 * @param string|null $prompt The prompt to send.
 	 * @param string|null $system_instruction The system instruction to send.
 	 * @param array<string, mixed> $options The options to send.
-	 * @return \WordPress\AiClient\Builders\PromptBuilder|\WP_Error The prompt builder or a WP_Error.
+	 * @return \WordPress\AI_Client\Builders\Prompt_Builder|\WP_Error The prompt builder or a WP_Error.
 	 */
 	protected function prompt_builder( $prompt = null, $system_instruction = null, array $options = array() ) {
 		try {
 			$model_config   = $this->process_model_config( $options );
-			$prompt_builder = AiClient::prompt( $prompt );
-			$prompt_builder = $prompt_builder->usingModelConfig( $model_config );
+			$prompt_builder = AI_Client::prompt( $prompt );
+			$prompt_builder = $prompt_builder->using_model_config( $model_config );
 
 			if ( ! empty( $system_instruction ) ) {
-				$prompt_builder = $prompt_builder->usingSystemInstruction( $system_instruction );
+				$prompt_builder = $prompt_builder->using_system_instruction( $system_instruction );
 			}
 
 			if ( ! empty( $this->provider ) ) {
-				$prompt_builder = $prompt_builder->usingProvider( $this->provider );
+				$prompt_builder = $prompt_builder->using_provider( $this->provider );
 
 				// Set the model.
 				if ( ! empty( $this->model ) ) {
 					$registry            = AiClient::defaultRegistry();
 					$provider_class_name = $registry->getProviderClassName( $this->provider );
-					$prompt_builder      = $prompt_builder->usingModel( $provider_class_name::model( $this->model ) );
+					$prompt_builder      = $prompt_builder->using_model( $provider_class_name::model( $this->model ) );
 				}
 			}
 
 			// Set our preferred models if no model is specified.
 			if ( empty( $this->model ) ) {
-				$prompt_builder = $prompt_builder->usingModelPreference( ...$this->model_preferences );
+				$prompt_builder = $prompt_builder->using_model_preference( ...$this->model_preferences );
 			}
 
 			return $prompt_builder;
@@ -187,7 +190,7 @@ class API_Request {
 	 * @param array<string, mixed> $options The options to add to the model config.
 	 * @return \WordPress\AiClient\Providers\Models\DTO\ModelConfig
 	 */
-	protected function process_model_config( array $options ): ModelConfig {
+	protected function process_model_config( array $options = array() ): ModelConfig {
 		$schema       = ModelConfig::getJsonSchema()['properties'];
 		$model_config = array();
 
@@ -230,6 +233,6 @@ class API_Request {
 	 * @return bool True if the client is available, false otherwise.
 	 */
 	protected function is_client_available(): bool {
-		return class_exists( AiClient::class );
+		return class_exists( AI_Client::class );
 	}
 }

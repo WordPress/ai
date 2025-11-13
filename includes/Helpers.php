@@ -5,6 +5,8 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
 /**
@@ -53,4 +55,67 @@ function normalize_content( string $content ): string {
 	$content = (string) apply_filters( 'ai_normalize_content', (string) $content );
 
 	return trim( $content );
+}
+
+/**
+ * Returns the context for the given post ID.
+ *
+ * @since 0.1.0
+ *
+ * @param int $post_id The ID of the post to get the context for.
+ * @return array<string, string> The context for the given post ID.
+ */
+function get_post_context( int $post_id ): array {
+	$post    = get_post( $post_id );
+	$context = array();
+
+	// If the post doesn't exist, return early.
+	if ( ! $post ) {
+		return $context;
+	}
+
+	/**
+	 * TODO: Might be interesting to add simple Abilities for the following,
+	 * just as a way to demonstrate a different approach to registering Abilities,
+	 * how to call Abilities via PHP and how multiple Abilities can be used together.
+	 *
+	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
+	 */
+
+	if ( $post->post_content ) {
+		$context['content'] = normalize_content( (string) apply_filters( 'the_content', $post->post_content ) );
+	}
+
+	if ( $post->post_title ) {
+		$context['current_title'] = $post->post_title;
+	}
+
+	if ( $post->post_name ) {
+		$context['slug'] = $post->post_name;
+	}
+
+	$author = get_user_by( 'ID', $post->post_author );
+	if ( $author ) {
+		$context['author'] = $author->display_name;
+	}
+
+	if ( $post->post_type ) {
+		$context['content_type'] = $post->post_type;
+	}
+
+	if ( $post->post_excerpt ) {
+		$context['excerpt'] = $post->post_excerpt;
+	}
+
+	$categories = get_the_terms( $post_id, 'category' );
+	if ( $categories && ! is_wp_error( $categories ) ) {
+		$context['categories'] = implode( ', ', wp_list_pluck( $categories, 'name' ) );
+	}
+
+	$tags = get_the_terms( $post_id, 'post_tag' );
+	if ( $tags && ! is_wp_error( $tags ) ) {
+		$context['tags'] = implode( ', ', wp_list_pluck( $tags, 'name' ) );
+	}
+
+	return $context;
 }

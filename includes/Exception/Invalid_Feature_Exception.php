@@ -5,6 +5,8 @@
  * @package WordPress\AI\Exception
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Exception;
 
 use InvalidArgumentException;

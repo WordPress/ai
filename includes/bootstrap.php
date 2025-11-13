@@ -7,9 +7,11 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
-use WordPress\AI_Client\API_Credentials\API_Credentials_Manager;
+use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -175,12 +177,17 @@ function initialize_features(): void {
 		$loader->register_default_features();
 		$loader->initialize_features();
 
-		$api_credentials_manager = new API_Credentials_Manager();
-		$api_credentials_manager->initialize();
+		// Initialize the WP AI Client.
+		AI_Client::init();
 
 		add_action(
 			'wp_abilities_api_categories_init',
 			static function () {
+				/**
+				 * Register a generic catch-all category that all
+				 * Abilities we register can use. Can re-evaluate this
+				 * in the future if we need/want more specific categories.
+				 */
 				wp_register_ability_category(
 					'ai-experiments',
 					array(
