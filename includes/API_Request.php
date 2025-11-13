@@ -101,7 +101,7 @@ class API_Request {
 		}
 
 		try {
-			return $this->get_result( $prompt_builder->generateTexts() );
+			return $this->get_result( $prompt_builder->generate_texts() );
 		} catch ( Throwable $t ) {
 			return new WP_Error( 'ai_client_error', $t->getMessage() );
 		}
@@ -121,26 +121,26 @@ class API_Request {
 		try {
 			$model_config   = $this->process_model_config( $options );
 			$prompt_builder = AI_Client::prompt( $prompt );
-			$prompt_builder = $prompt_builder->usingModelConfig( $model_config );
+			$prompt_builder = $prompt_builder->using_model_config( $model_config );
 
 			if ( ! empty( $system_instruction ) ) {
-				$prompt_builder = $prompt_builder->usingSystemInstruction( $system_instruction );
+				$prompt_builder = $prompt_builder->using_system_instruction( $system_instruction );
 			}
 
 			if ( ! empty( $this->provider ) ) {
-				$prompt_builder = $prompt_builder->usingProvider( $this->provider );
+				$prompt_builder = $prompt_builder->using_provider( $this->provider );
 
 				// Set the model.
 				if ( ! empty( $this->model ) ) {
 					$registry            = AiClient::defaultRegistry();
 					$provider_class_name = $registry->getProviderClassName( $this->provider );
-					$prompt_builder      = $prompt_builder->usingModel( $provider_class_name::model( $this->model ) );
+					$prompt_builder      = $prompt_builder->using_model( $provider_class_name::model( $this->model ) );
 				}
 			}
 
 			// Set our preferred models if no model is specified.
 			if ( empty( $this->model ) ) {
-				$prompt_builder = $prompt_builder->usingModelPreference( ...$this->model_preferences );
+				$prompt_builder = $prompt_builder->using_model_preference( ...$this->model_preferences );
 			}
 
 			return $prompt_builder;

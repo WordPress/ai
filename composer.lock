@@ -1209,12 +1209,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/wp-ai-client.git",
-                "reference": "d5a025153bfe027de385d8e526c7d2c967f7e7c7"
+                "reference": "a41ef6075c1cbb56dfc380fe5c13a347b265d193"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/d5a025153bfe027de385d8e526c7d2c967f7e7c7",
-                "reference": "d5a025153bfe027de385d8e526c7d2c967f7e7c7",
+                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/a41ef6075c1cbb56dfc380fe5c13a347b265d193",
+                "reference": "a41ef6075c1cbb56dfc380fe5c13a347b265d193",
                 "shasum": ""
             },
             "require": {
@@ -1283,7 +1283,7 @@
                 "issues": "https://github.com/WordPress/wp-ai-client/issues",
                 "source": "https://github.com/WordPress/wp-ai-client"
             },
-            "time": "2025-11-12T15:36:29+00:00"
+            "time": "2025-11-13T00:12:21+00:00"
         }
     ],
     "packages-dev": [
