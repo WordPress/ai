@@ -8,24 +8,24 @@
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
 use WordPress\AI\Abilities\Title_Generation;
-use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
 
 /**
- * Test feature for Title_Generation Ability tests.
+ * Test experiment for Title_Generation Ability tests.
  *
  * @since 0.1.0
  */
-class Test_Title_Generation_Feature extends Abstract_Feature {
+class Test_Title_Generation_Experiment extends Abstract_Experiment {
 	/**
-	 * Loads feature metadata.
+	 * Loads experiment metadata.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array{id: string, label: string, description: string} Feature metadata.
+	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
-	protected function load_feature_metadata(): array {
+	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'title-generation',
 			'label'       => 'Title Generation',
@@ -34,7 +34,7 @@ class Test_Title_Generation_Feature extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the feature.
+	 * Registers the experiment.
 	 *
 	 * @since 0.1.0
 	 */
@@ -58,11 +58,11 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	private $ability;
 
 	/**
-	 * Test feature instance.
+	 * Test experiment instance.
 	 *
-	 * @var Test_Title_Generation_Feature
+	 * @var Test_Title_Generation_Experiment
 	 */
-	private $feature;
+	private $experiment;
 
 	/**
 	 * Set up test case.
@@ -72,12 +72,12 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$this->feature = new Test_Title_Generation_Feature();
+		$this->experiment = new Test_Title_Generation_Experiment();
 		$this->ability = new Title_Generation(
 			'ai/title-generation',
 			array(
-				'label'       => $this->feature->get_label(),
-				'description' => $this->feature->get_description(),
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
 			)
 		);
 	}
@@ -178,7 +178,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $this->ability, $input );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertEquals( 'ai/title-generation', $result['name'], 'Feature name should match' );
+		$this->assertEquals( 'ai/title-generation', $result['name'], 'Experiment name should match' );
 		$this->assertEquals( 'Title Generation', $result['label'], 'Label should match' );
 		$this->assertEquals( 'Generates title suggestions from content', $result['description'], 'Description should match' );
 		$this->assertEquals( 'This is some test content.', $result['content'], 'Content should match input' );

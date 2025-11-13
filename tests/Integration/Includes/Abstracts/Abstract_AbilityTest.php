@@ -8,7 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
 
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_UnitTestCase;
 
 /**
@@ -101,28 +101,28 @@ class Test_Ability extends Abstract_Ability {
 }
 
 /**
- * Test feature for Abstract_Ability tests.
+ * Test experiment for Abstract_Ability tests.
  *
  * @since 0.1.0
  */
-class Test_Ability_Feature extends Abstract_Feature {
+class Test_Ability_Experiment extends Abstract_Experiment {
 	/**
-	 * Loads feature metadata.
+	 * Loads experiment metadata.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array{id: string, label: string, description: string} Feature metadata.
+	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
-	protected function load_feature_metadata(): array {
+	protected function load_experiment_metadata(): array {
 		return array(
-			'id'          => 'test-ability-feature',
-			'label'       => 'Test Ability Feature',
-			'description' => 'A test feature for ability testing',
+			'id'          => 'test-ability-experiment',
+			'label'       => 'Test Ability Experiment',
+			'description' => 'A test experiment for ability testing',
 		);
 	}
 
 	/**
-	 * Registers the feature.
+	 * Registers the experiment.
 	 *
 	 * @since 0.1.0
 	 */
@@ -144,16 +144,16 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_constructor_sets_up_ability() {
-		$feature = new Test_Ability_Feature();
+		$experiment = new Test_Ability_Experiment();
 		$ability = new Test_Ability(
 			'test-ability',
 			array(
-				'label'       => $feature->get_label(),
-				'description' => $feature->get_description(),
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
 			)
 		);
 
-		$this->assertSame( $feature->get_label(), $ability->get_label(), 'Label should be stored in ability' );
+		$this->assertSame( $experiment->get_label(), $ability->get_label(), 'Label should be stored in ability' );
 	}
 
 	/**
@@ -162,12 +162,12 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_constructor_calls_parent_with_properties() {
-		$feature = new Test_Ability_Feature();
+		$experiment = new Test_Ability_Experiment();
 		$ability = new Test_Ability(
 			'test-ability',
 			array(
-				'label'       => $feature->get_label(),
-				'description' => $feature->get_description(),
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
 			)
 		);
 
@@ -177,17 +177,17 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that label() delegates to feature's get_label().
+	 * Test that label() delegates to experiment's get_label().
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_label_delegates_to_feature() {
-		$feature = new Test_Ability_Feature();
+	public function test_label_delegates_to_experiment() {
+		$experiment = new Test_Ability_Experiment();
 		$ability = new Test_Ability(
 			'test-ability',
 			array(
-				'label'       => $feature->get_label(),
-				'description' => $feature->get_description(),
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
 			)
 		);
 
@@ -198,22 +198,22 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $ability );
 
-		$this->assertEquals( $feature->get_label(), $result, 'Label should match feature label' );
-		$this->assertEquals( 'Test Ability Feature', $result, 'Label should be correct' );
+		$this->assertEquals( $experiment->get_label(), $result, 'Label should match experiment label' );
+		$this->assertEquals( 'Test Ability Experiment', $result, 'Label should be correct' );
 	}
 
 	/**
-	 * Test that description() delegates to feature's get_description().
+	 * Test that description() delegates to experiment's get_description().
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_description_delegates_to_feature() {
-		$feature = new Test_Ability_Feature();
+	public function test_description_delegates_to_experiment() {
+		$experiment = new Test_Ability_Experiment();
 		$ability = new Test_Ability(
 			'test-ability',
 			array(
-				'label'       => $feature->get_label(),
-				'description' => $feature->get_description(),
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
 			)
 		);
 
@@ -224,8 +224,8 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $ability );
 
-		$this->assertEquals( $feature->get_description(), $result, 'Description should match feature description' );
-		$this->assertEquals( 'A test feature for ability testing', $result, 'Description should be correct' );
+		$this->assertEquals( $experiment->get_description(), $result, 'Description should match experiment description' );
+		$this->assertEquals( 'A test experiment for ability testing', $result, 'Description should be correct' );
 	}
 
 	/**
