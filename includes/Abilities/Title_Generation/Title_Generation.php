@@ -10,10 +10,10 @@ declare( strict_types=1 );
 namespace WordPress\AI\Abilities\Title_Generation;
 
 use WP_Error;
-use WordPress\AI\API_Request;
 use WordPress\AI\Abstracts\Abstract_Ability;
 
 use function WordPress\AI\get_post_context;
+use function WordPress\AI\get_prompt_builder;
 use function WordPress\AI\normalize_content;
 
 /**
@@ -138,8 +138,23 @@ class Title_Generation extends Abstract_Ability {
 			return $result;
 		}
 
+		// If we have no results, return an error.
+		if ( empty( $result ) ) {
+			return new WP_Error(
+				'no_results',
+				esc_html__( 'No title suggestions were generated.', 'ai' )
+			);
+		}
+
 		// Return the titles in the format the Ability expects.
-		return array( 'titles' => $result );
+		return array(
+			'titles' => array_map(
+				static function ( $title ) {
+					return sanitize_text_field( trim( $title, ' "\'' ) );
+				},
+				$result
+			),
+		);
 	}
 
 	/**
@@ -237,22 +252,17 @@ class Title_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Make our request.
-		$request  = new API_Request();
-		$response = $request->generate_text(
+		// Get our prompt builder.
+		$prompt_builder = get_prompt_builder(
 			'"""' . $context . '"""',
-			$this->get_system_instruction(),
 			array(
-				'candidateCount' => (int) $candidates,
-				'temperature'    => 0.7,
+				'candidateCount'    => (int) $candidates,
+				'systemInstruction' => $this->get_system_instruction(),
+				'temperature'       => 0.7,
 			)
 		);
 
-		// If we have an error, return it.
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		return $response;
+		// Make the request.
+		return $prompt_builder->generate_texts();
 	}
 }
