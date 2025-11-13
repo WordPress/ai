@@ -142,7 +142,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
 		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
-		$this->assertArrayHasKey( 'n', $schema['properties'], 'Schema should have n property' );
+		$this->assertArrayHasKey( 'candidates', $schema['properties'], 'Schema should have candidates property' );
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
@@ -153,9 +153,9 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'absint', $schema['properties']['post_id']['sanitize_callback'], 'Post ID should use absint' );
 
 		// Verify n property.
-		$this->assertEquals( 'integer', $schema['properties']['n']['type'], 'n should be integer type' );
-		$this->assertEquals( 1, $schema['properties']['n']['minimum'], 'n minimum should be 1' );
-		$this->assertEquals( 10, $schema['properties']['n']['maximum'], 'n maximum should be 10' );
+		$this->assertEquals( 'integer', $schema['properties']['candidates']['type'], 'candidates should be integer type' );
+		$this->assertEquals( 1, $schema['properties']['candidates']['minimum'], 'candidates minimum should be 1' );
+		$this->assertEquals( 10, $schema['properties']['candidates']['maximum'], 'candidates maximum should be 10' );
 	}
 
 	/**

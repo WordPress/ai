@@ -34,17 +34,17 @@ class Title_Generation extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'content' => array(
+				'content'    => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'Content to generate title suggestions for.', 'ai' ),
 				),
-				'post_id' => array(
+				'post_id'    => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Content from this post will be used to generate title suggestions. This overrides the content parameter if both are provided.', 'ai' ),
 				),
-				'n'       => array(
+				'candidates' => array(
 					'type'              => 'integer',
 					'minimum'           => 1,
 					'maximum'           => 10,
@@ -91,9 +91,9 @@ class Title_Generation extends Abstract_Ability {
 		$args = wp_parse_args(
 			$input,
 			array(
-				'content' => null,
-				'post_id' => null,
-				'n'       => 3,
+				'content'    => null,
+				'post_id'    => null,
+				'candidates' => 3,
 			),
 		);
 
@@ -131,7 +131,7 @@ class Title_Generation extends Abstract_Ability {
 		}
 
 		// Generate the titles.
-		$result = $this->generate_titles( $context, $args['n'] );
+		$result = $this->generate_titles( $context, $args['candidates'] );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -215,10 +215,10 @@ class Title_Generation extends Abstract_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param string|array<string, string> $context The context to generate a title from.
-	 * @param int $n The number of titles to generate.
+	 * @param int $candidates The number of titles to generate.
 	 * @return array<string>|\WP_Error The generated titles, or a WP_Error if there was an error.
 	 */
-	protected function generate_titles( $context, int $n = 1 ) {
+	protected function generate_titles( $context, int $candidates = 1 ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -243,7 +243,7 @@ class Title_Generation extends Abstract_Ability {
 			'"""' . $context . '"""',
 			$this->get_system_instruction(),
 			array(
-				'candidateCount' => (int) $n,
+				'candidateCount' => (int) $candidates,
 				'temperature'    => 0.7,
 			)
 		);

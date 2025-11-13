@@ -5,6 +5,7 @@
  * @package WordPress\AI\Abilities\Title_Generation
  */
 
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 return <<<'INSTRUCTION'
 You are an editorial assistant that generates title suggestions for online articles and pages.
 
