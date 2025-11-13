@@ -92,6 +92,12 @@ Ideally, the branch name is in some form or shape descriptive of what it is for.
 
 ## Development workflow
 
+### Local setup and testing
+
+Run `composer install` so that you can install and activate the plugin.
+
+Soon we'll start having other assets (like JS and CSS files) and at that point you'll also need to run `npm i && npm run build`. You can run those commands now but the build command won't actually do anything yet as we don't have any files to build. If you're wanting to run tests locally though, you will need to at least run `npm i` to bring in those dependencies.
+
 ### Quality checks
 
 Before submitting a pull request, run the following commands:

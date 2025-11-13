@@ -5,6 +5,8 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
 use WordPress\AI\Contracts\Feature;
@@ -17,14 +19,14 @@ use WordPress\AI\Contracts\Feature;
  *
  * @since 0.1.0
  */
-class Feature_Registry {
+final class Feature_Registry {
 	/**
 	 * Registered features.
 	 *
 	 * @since 0.1.0
 	 * @var \WordPress\AI\Contracts\Feature[]
 	 */
-	private $features = array();
+	private array $features = array();
 
 	/**
 	 * Registers a feature.
