@@ -1,23 +1,23 @@
 <?php
 /**
- * Integration tests for the Example_Feature class.
+ * Integration tests for the Example_Experiment class.
  *
- * @package WordPress\AI\Tests\Integration\Features
+ * @package WordPress\AI\Tests\Integration\Experiments
  */
 
-namespace WordPress\AI\Tests\Integration\Features\Example_Feature;
+namespace WordPress\AI\Tests\Integration\Experiments\Example_Experiment;
 
-use WordPress\AI\Feature_Registry;
-use WordPress\AI\Feature_Loader;
-use WordPress\AI\Features\Example_Feature\Example_Feature;
+use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiments\Example_Experiment\Example_Experiment;
 use WP_UnitTestCase;
 
 /**
- * Example_Feature test case.
+ * Example_Experiment test case.
  *
  * @since 0.1.0
  */
-class Example_FeatureTest extends WP_UnitTestCase {
+class Example_ExperimentTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
@@ -26,12 +26,12 @@ class Example_FeatureTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$registry = new Feature_Registry();
-		$loader   = new Feature_Loader( $registry );
-		$loader->register_default_features();
+		$registry = new Experiment_Registry();
+		$loader   = new Experiment_Loader( $registry );
+		$loader->register_default_experiments();
 
-		$feature = $registry->get_feature( 'example-feature' );
-		$this->assertInstanceOf( Example_Feature::class, $feature, 'Example feature should be registered in the registry.' );
+		$experiment = $registry->get_experiment( 'example-experiment' );
+		$this->assertInstanceOf( Example_Experiment::class, $experiment, 'Example experiment should be registered in the registry.' );
 	}
 
 	/**
@@ -45,16 +45,16 @@ class Example_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the feature is registered correctly.
+	 * Test that the experiment is registered correctly.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_feature_registration() {
-		$feature = new Example_Feature();
+	public function test_experiment_registration() {
+		$experiment = new Example_Experiment();
 
-		$this->assertEquals( 'example-feature', $feature->get_id() );
-		$this->assertEquals( 'Example Feature', $feature->get_label() );
-		$this->assertTrue( $feature->is_enabled() );
+		$this->assertEquals( 'example-experiment', $experiment->get_id() );
+		$this->assertEquals( 'Example Experiment', $experiment->get_label() );
+		$this->assertTrue( $experiment->is_enabled() );
 	}
 
 	/**
@@ -71,7 +71,7 @@ class Example_FeatureTest extends WP_UnitTestCase {
 		do_action( 'wp_footer' );
 		$footer_content = ob_get_clean();
 
-		$this->assertStringContainsString( '<!-- Example Feature: AI Plugin Active -->', $footer_content );
+		$this->assertStringContainsString( '<!-- Example Experiment: AI Plugin Active -->', $footer_content );
 	}
 
 	/**
@@ -88,7 +88,7 @@ class Example_FeatureTest extends WP_UnitTestCase {
 		do_action( 'wp_footer' );
 		$footer_content = ob_get_clean();
 
-		$this->assertStringNotContainsString( '<!-- Example Feature: AI Plugin Active -->', $footer_content );
+		$this->assertStringNotContainsString( '<!-- Example Experiment: AI Plugin Active -->', $footer_content );
 	}
 
 	/**
@@ -168,9 +168,9 @@ class Example_FeatureTest extends WP_UnitTestCase {
 		$data = $response->get_data();
 
 		$this->assertEquals( 200, $response->get_status() );
-		$this->assertEquals( 'example-feature', $data['feature_id'] );
-		$this->assertEquals( 'Example Feature', $data['label'] );
-		$this->assertEquals( 'Example feature is active!', $data['message'] );
+		$this->assertEquals( 'example-experiment', $data['experiment_id'] );
+		$this->assertEquals( 'Example Experiment', $data['label'] );
+		$this->assertEquals( 'Example experiment is active!', $data['message'] );
 	}
 
 	/**

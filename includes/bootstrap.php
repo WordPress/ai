@@ -159,21 +159,21 @@ function load(): void {
 
 	$loaded = true;
 
-	// Hook feature initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_features' );
+	// Hook experiment initialization to init.
+	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
 }
 
 /**
- * Initializes plugin features.
+ * Initializes plugin experiments.
  *
  * @since 0.1.0
  */
-function initialize_features(): void {
+function initialize_experiments(): void {
 	try {
-		$registry = new Feature_Registry();
-		$loader   = new Feature_Loader( $registry );
-		$loader->register_default_features();
-		$loader->initialize_features();
+		$registry = new Experiment_Registry();
+		$loader   = new Experiment_Loader( $registry );
+		$loader->register_default_experiments();
+		$loader->initialize_experiments();
 
 		add_action(
 			'wp_abilities_api_categories_init',
@@ -187,14 +187,14 @@ function initialize_features(): void {
 					'ai-experiments',
 					array(
 						'label'       => __( 'AI Experiments', 'ai' ),
-						'description' => __( 'Various AI experiment features.', 'ai' ),
+						'description' => __( 'Various AI experiments.', 'ai' ),
 					),
 				);
 			}
 		);
 	} catch ( \Throwable $t ) {
 		_doing_it_wrong(
-			__NAMESPACE__ . '\initialize_features',
+			__NAMESPACE__ . '\initialize_experiments',
 			sprintf(
 				/* translators: %s: Error message. */
 				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
