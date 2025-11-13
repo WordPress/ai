@@ -5,6 +5,8 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
 use Throwable;
@@ -20,14 +22,14 @@ use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
  *
  * @since 0.1.0
  */
-class Feature_Loader {
+final class Feature_Loader {
 	/**
 	 * Feature registry instance.
 	 *
 	 * @since 0.1.0
 	 * @var \WordPress\AI\Feature_Registry
 	 */
-	private $registry;
+	private \WordPress\AI\Feature_Registry $registry;
 
 	/**
 	 * Whether features have been initialized.
@@ -35,7 +37,7 @@ class Feature_Loader {
 	 * @since 0.1.0
 	 * @var bool
 	 */
-	private $initialized = false;
+	private bool $initialized = false;
 
 	/**
 	 * Constructor.

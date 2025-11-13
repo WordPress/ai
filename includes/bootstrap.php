@@ -7,6 +7,8 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
 use WordPress\AI_Client\AI_Client;

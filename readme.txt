@@ -1,7 +1,7 @@
 === WordPress AI Experiments ===
 Contributors: wordpressorg
 Tags: ai, artificial intelligence, experiments, features
-Requires at least: 6.7
+Requires at least: 6.8
 Tested up to: 6.8
 Stable tag: 0.1.0
 Requires PHP: 7.4

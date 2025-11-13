@@ -5,6 +5,8 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Features\Example_Feature;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
@@ -16,11 +18,9 @@ use WordPress\AI\Abstracts\Abstract_Feature;
  */
 class Example_Feature extends Abstract_Feature {
 	/**
-	 * Loads feature metadata.
+	 * {@inheritDoc}
 	 *
 	 * @since 0.1.0
-	 *
-	 * @return array{id: string, label: string, description: string} Feature metadata.
 	 */
 	protected function load_feature_metadata(): array {
 		return array(
@@ -31,7 +31,7 @@ class Example_Feature extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the feature hooks.
+	 * {@inheritDoc}
 	 *
 	 * @since 0.1.0
 	 */
