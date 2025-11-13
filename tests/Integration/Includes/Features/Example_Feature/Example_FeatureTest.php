@@ -57,7 +57,6 @@ class Example_FeatureTest extends WP_UnitTestCase {
 		$this->assertTrue( $feature->is_enabled() );
 	}
 
-
 	/**
 	 * Test that footer content is added for logged-in users.
 	 *

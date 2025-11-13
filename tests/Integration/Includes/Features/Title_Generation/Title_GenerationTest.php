@@ -56,5 +56,4 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Title Generation', $feature->get_label() );
 		$this->assertTrue( $feature->is_enabled() );
 	}
-
 }
