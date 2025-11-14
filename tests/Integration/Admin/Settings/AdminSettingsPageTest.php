@@ -8,8 +8,8 @@
 namespace WordPress\AI\Tests\Integration\Admin\Settings;
 
 use WordPress\AI\Admin\Admin_Settings_Page;
+use WordPress\AI\Admin\Settings\Feature_Toggles;
 use WordPress\AI\Admin\Settings\Settings_Registry;
-use WordPress\AI\Admin\Settings\Settings_Service;
 use WordPress\AI\Admin\Settings\Settings_Toggle;
 use WP_UnitTestCase;
 
@@ -19,10 +19,29 @@ use WP_UnitTestCase;
  * @since 0.1.0
  *
  * @covers \WordPress\AI\Admin\Admin_Settings_Page
- * @covers \WordPress\AI\Admin\Settings\Settings_Service
+ * @covers \WordPress\AI\Admin\Admin_Settings_Page::register_default_sections
+ * @covers \WordPress\AI\Admin\Admin_Settings_Page::render_toggle_section
  */
 class Admin_Settings_Page_Test extends WP_UnitTestCase {
-	use Settings_Test_Helper_Trait;
+	/**
+	 * @var Admin_Settings_Page
+	 */
+	private $page;
+
+	/**
+	 * @var Settings_Toggle
+	 */
+	private $toggle;
+
+	/**
+	 * @var Feature_Toggles
+	 */
+	private $feature_toggles;
+
+	/**
+	 * @var Settings_Registry
+	 */
+	private $registry;
 
 	/**
 	 * Sets up the test case.
@@ -30,9 +49,13 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$this->setup_settings_infrastructure();
+		$this->toggle          = new Settings_Toggle();
+		$this->feature_toggles = new Feature_Toggles();
+		$this->registry        = new Settings_Registry();
+		$this->page            = new Admin_Settings_Page( $this->toggle, $this->feature_toggles, $this->registry );
+
 		$this->toggle->register();
-		$this->service->register_default_sections();
+		$this->page->register_default_sections( $this->registry );
 	}
 
 	/**
@@ -40,7 +63,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		$this->teardown_settings_infrastructure();
+		delete_option( Settings_Toggle::OPTION_KEY );
+		delete_option( Feature_Toggles::OPTION_KEY );
 
 		parent::tearDown();
 	}
@@ -49,12 +73,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * Tests that the fallback markup renders the default toggle section.
 	 */
 	public function test_render_outputs_toggle_section(): void {
-		$user_id = self::factory()->user->create(
-			array(
-				'role' => 'administrator',
-			)
-		);
-		wp_set_current_user( $user_id );
+		$this->set_current_user_as_admin();
 
 		ob_start();
 		$this->page->render();
@@ -71,32 +90,14 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the hydration payload matches the registered sections.
+	 * Sets the current user to an administrator for rendering tests.
 	 */
-	public function test_render_outputs_payload_with_toggle_metadata(): void {
+	private function set_current_user_as_admin(): void {
 		$user_id = self::factory()->user->create(
 			array(
 				'role' => 'administrator',
 			)
 		);
 		wp_set_current_user( $user_id );
-
-		update_option( Settings_Toggle::OPTION_KEY, true );
-
-		ob_start();
-		$this->page->render();
-		$output = ob_get_clean();
-
-		preg_match( '/data-settings="([^"]+)"/', $output, $matches );
-
-		$this->assertNotEmpty( $matches, 'Expected data-settings attribute to exist.' );
-
-		$payload_json = html_entity_decode( $matches[1], ENT_QUOTES, 'UTF-8' );
-		$payload      = json_decode( $payload_json, true );
-
-		$this->assertIsArray( $payload );
-		$this->assertTrue( $payload['toggle']['enabled'] );
-		$this->assertSame( Settings_Toggle::OPTION_KEY, $payload['toggle']['optionKey'] );
-		$this->assertSame( 'ai-experiments-toggle', $payload['sections'][0]['id'] );
 	}
 }

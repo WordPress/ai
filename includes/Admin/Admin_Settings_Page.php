@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Admin;
 
+use WordPress\AI\Admin\Settings\Feature_Toggles;
 use WordPress\AI\Admin\Settings\Settings_Registry;
 use WordPress\AI\Admin\Settings\Settings_Section;
 use WordPress\AI\Admin\Settings\Settings_Toggle;
@@ -23,6 +24,26 @@ class Admin_Settings_Page {
 	private const MENU_SLUG = 'ai-experiments';
 
 	/**
+	 * Section ID for the global experiments toggle.
+	 */
+	public const TOGGLE_SECTION_ID = 'ai-experiments-toggle';
+
+	/**
+	 * Default priority for the toggle section.
+	 */
+	private const TOGGLE_SECTION_PRIORITY = 5;
+
+	/**
+	 * Script handle for the settings page.
+	 */
+	private const SCRIPT_HANDLE = 'admin-settings';
+
+	/**
+	 * Style handle for the settings page.
+	 */
+	private const STYLE_HANDLE = 'admin-settings';
+
+	/**
 	 * Toggle service.
 	 *
 	 * @var \WordPress\AI\Admin\Settings\Settings_Toggle
@@ -30,25 +51,18 @@ class Admin_Settings_Page {
 	private $toggle;
 
 	/**
+	 * Feature toggles service.
+	 *
+	 * @var \WordPress\AI\Admin\Settings\Feature_Toggles
+	 */
+	private $feature_toggles;
+
+	/**
 	 * Settings registry.
 	 *
 	 * @var \WordPress\AI\Admin\Settings\Settings_Registry
 	 */
 	private $registry;
-
-	/**
-	 * Settings page assets handler.
-	 *
-	 * @var \WordPress\AI\Admin\Settings_Page_Assets
-	 */
-	private $assets;
-
-	/**
-	 * Settings payload builder.
-	 *
-	 * @var \WordPress\AI\Admin\Settings_Payload_Builder
-	 */
-	private $payload_builder;
 
 	/**
 	 * Hook suffix returned by add_options_page.
@@ -62,21 +76,18 @@ class Admin_Settings_Page {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param \WordPress\AI\Admin\Settings\Settings_Toggle           $toggle          Toggle service.
-	 * @param \WordPress\AI\Admin\Settings\Settings_Registry         $registry        Settings registry.
-	 * @param \WordPress\AI\Admin\Settings_Page_Assets               $assets          Assets handler.
-	 * @param \WordPress\AI\Admin\Settings_Payload_Builder           $payload_builder Payload builder.
+	 * @param \WordPress\AI\Admin\Settings\Settings_Toggle   $toggle          Toggle service.
+	 * @param \WordPress\AI\Admin\Settings\Feature_Toggles   $feature_toggles Feature toggles service.
+	 * @param \WordPress\AI\Admin\Settings\Settings_Registry $registry        Settings registry.
 	 */
 	public function __construct(
 		Settings_Toggle $toggle,
-		Settings_Registry $registry,
-		Settings_Page_Assets $assets,
-		Settings_Payload_Builder $payload_builder
+		Feature_Toggles $feature_toggles,
+		Settings_Registry $registry
 	) {
 		$this->toggle          = $toggle;
+		$this->feature_toggles = $feature_toggles;
 		$this->registry        = $registry;
-		$this->assets          = $assets;
-		$this->payload_builder = $payload_builder;
 	}
 
 	/**
@@ -97,12 +108,9 @@ class Admin_Settings_Page {
 			return;
 		}
 
-		// Pass hook suffix to assets handler for conditional enqueueing.
-		$this->assets->set_hook_suffix( $this->hook_suffix );
-
 		add_action(
 			'admin_enqueue_scripts',
-			array( $this->assets, 'enqueue_assets' )
+			array( $this, 'enqueue_assets' )
 		);
 	}
 
@@ -116,7 +124,7 @@ class Admin_Settings_Page {
 			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'ai' ) );
 		}
 
-		$payload = $this->payload_builder->build();
+		$payload = $this->build_payload();
 		?>
 		<div class="wrap ai-experiments-settings">
 			<h1><?php echo esc_html( $this->get_page_title() ); ?></h1>
@@ -129,6 +137,59 @@ class Admin_Settings_Page {
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Enqueues the React application assets for the settings page.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $current_hook Current admin page hook.
+	 */
+	public function enqueue_assets( string $current_hook ): void {
+		if ( $current_hook !== $this->hook_suffix ) {
+			return;
+		}
+
+		\WordPress\AI\Asset_Loader::enqueue_script( self::SCRIPT_HANDLE, 'index' );
+
+		wp_add_inline_script(
+			'ai_' . self::SCRIPT_HANDLE,
+			sprintf(
+				'window.wpAiExperimentsSettings = %s;',
+				wp_json_encode( $this->build_payload() )
+			),
+			'before'
+		);
+
+		wp_enqueue_style( 'wp-components' );
+		\WordPress\AI\Asset_Loader::enqueue_style( self::STYLE_HANDLE, 'style-index' );
+	}
+
+	/**
+	 * Registers the default sections owned by the core plugin.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param \WordPress\AI\Admin\Settings\Settings_Registry $registry Settings registry.
+	 */
+	public function register_default_sections( Settings_Registry $registry ): void {
+		if ( $registry->has_section( self::TOGGLE_SECTION_ID ) ) {
+			return;
+		}
+
+		$registry->register_section(
+			new Settings_Section(
+				self::TOGGLE_SECTION_ID,
+				__( 'Experimental Features', 'ai' ),
+				__(
+					'Enable or disable all experimental AI features globally. Individual features may expose additional controls when enabled.',
+					'ai'
+				),
+				array( $this, 'render_toggle_section' ),
+				self::TOGGLE_SECTION_PRIORITY
+			)
+		);
 	}
 
 	/**
@@ -168,6 +229,48 @@ class Admin_Settings_Page {
 	}
 
 	/**
+	 * Renders the global experiments toggle for the fallback UI.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param \WordPress\AI\Admin\Settings\Settings_Toggle  $toggle  Toggle service.
+	 * @param \WordPress\AI\Admin\Settings\Settings_Section $section Section metadata.
+	 */
+	public function render_toggle_section( Settings_Toggle $toggle, Settings_Section $section ): void {
+		unset( $section );
+
+		$option_name = Settings_Toggle::OPTION_KEY;
+		?>
+		<form method="post" action="options.php">
+			<?php settings_fields( Settings_Toggle::SETTINGS_GROUP ); ?>
+			<input type="hidden" name="<?php echo esc_attr( $option_name ); ?>" value="0" />
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row">
+						<label for="<?php echo esc_attr( $option_name ); ?>">
+							<?php esc_html_e( 'Enable Experimental Features', 'ai' ); ?>
+						</label>
+					</th>
+					<td>
+						<label for="<?php echo esc_attr( $option_name ); ?>">
+							<input
+								type="checkbox"
+								name="<?php echo esc_attr( $option_name ); ?>"
+								id="<?php echo esc_attr( $option_name ); ?>"
+								value="1"
+								<?php checked( $toggle->is_enabled() ); ?>
+							/>
+							<?php esc_html_e( 'Allow experimental AI features to run on this site.', 'ai' ); ?>
+						</label>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button(); ?>
+		</form>
+		<?php
+	}
+
+	/**
 	 * Returns the translated page title.
 	 *
 	 * @since 0.1.0
@@ -176,5 +279,34 @@ class Admin_Settings_Page {
 	 */
 	private function get_page_title(): string {
 		return __( 'AI Experiments', 'ai' );
+	}
+
+	/**
+	 * Builds the settings payload shared with the React application.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array<string, mixed> Settings payload.
+	 */
+	private function build_payload(): array {
+		$feature_toggles = $this->feature_toggles;
+		$sections        = array_map(
+			static function ( Settings_Section $section ) use ( $feature_toggles ): array {
+				$feature_id      = $section->get_feature_id();
+				$default_enabled = $section->get_default_enabled();
+				$enabled         = $feature_id
+					? $feature_toggles->is_feature_enabled( $feature_id, $default_enabled )
+					: $default_enabled;
+
+				return $section->to_array( $enabled );
+			},
+			$this->registry->get_sections()
+		);
+
+		return array(
+			'toggle'         => $this->toggle->to_array(),
+			'featureToggles' => $this->feature_toggles->to_array(),
+			'sections'       => array_values( $sections ),
+		);
 	}
 }

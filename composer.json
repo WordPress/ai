@@ -77,13 +77,13 @@
   "scripts": {
     "format": "phpcbf --standard=phpcs.xml.dist",
     "lint": "phpcs --standard=phpcs.xml.dist",
-    "stan": "phpstan analyse --memory-limit=1G",
+    "phpstan": "phpstan analyse --memory-limit=1G",
     "test": "phpunit --strict-coverage"
   },
   "scripts-descriptions": {
     "format": "Automatically fix coding standards issues",
     "lint": "Check coding standards compliance",
     "test": "Run PHPUnit tests",
-    "stan": "Run static analysis with PHPStan"
+    "phpstan": "Run static analysis with PHPStan"
   }
 }

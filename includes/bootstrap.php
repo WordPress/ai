@@ -12,11 +12,7 @@ namespace WordPress\AI;
 use WordPress\AI\Admin\Admin_Settings_Page;
 use WordPress\AI\Admin\Settings\Feature_Toggles;
 use WordPress\AI\Admin\Settings\Settings_Registry;
-use WordPress\AI\Admin\Settings\Settings_Renderer;
-use WordPress\AI\Admin\Settings\Settings_Service;
 use WordPress\AI\Admin\Settings\Settings_Toggle;
-use WordPress\AI\Admin\Settings_Page_Assets;
-use WordPress\AI\Admin\Settings_Payload_Builder;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -222,11 +218,7 @@ function initialize_admin_settings(): void {
 	$toggle          = new Settings_Toggle();
 	$feature_toggles = new Feature_Toggles();
 	$registry        = new Settings_Registry();
-	$renderer        = new Settings_Renderer();
-	$payload_builder = new Settings_Payload_Builder( $toggle, $feature_toggles, $registry );
-	$assets          = new Settings_Page_Assets( $payload_builder );
-	$page            = new Admin_Settings_Page( $toggle, $registry, $assets, $payload_builder );
-	$service         = new Settings_Service( $toggle, $feature_toggles, $registry, $page, $renderer );
+	$page            = new Admin_Settings_Page( $toggle, $feature_toggles, $registry );
 
 	add_filter(
 		'ai_feature_toggles_service',
@@ -235,7 +227,38 @@ function initialize_admin_settings(): void {
 		}
 	);
 
-	$service->register();
+	add_filter(
+		'ai_features_enabled',
+		array( $toggle, 'filter_features_enabled' )
+	);
+
+	$register_settings = static function () use ( $toggle, $feature_toggles, $registry ): void {
+		static $sections_initialized = false;
+
+		$toggle->register();
+		$feature_toggles->register();
+
+		if ( $sections_initialized ) {
+			return;
+		}
+
+		/**
+		 * Allows features to register their settings sections.
+		 *
+		 * @since 0.1.0
+		 *
+		 * @param \WordPress\AI\Admin\Settings\Settings_Registry $registry Settings registry.
+		 */
+		do_action( 'ai_register_settings_sections', $registry );
+
+		$sections_initialized = true;
+	};
+
+	add_action( 'admin_init', $register_settings );
+	add_action( 'rest_api_init', $register_settings );
+
+	add_action( 'admin_menu', array( $page, 'register_menu' ) );
+	add_action( 'ai_register_settings_sections', array( $page, 'register_default_sections' ), 0 );
 
 	$initialized = true;
 }

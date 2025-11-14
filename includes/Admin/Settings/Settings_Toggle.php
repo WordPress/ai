@@ -71,24 +71,26 @@ class Settings_Toggle {
 	 */
 	public function sanitize( $value ): bool {
 		if ( is_string( $value ) ) {
-			$value = strtolower( $value );
+			$normalized = strtolower( $value );
 
-			if ( in_array( $value, array( '1', 'true', 'on', 'yes' ), true ) ) {
+			if ( in_array( $normalized, array( '1', 'true', 'on', 'yes' ), true ) ) {
 				return true;
 			}
 
-			if ( in_array( $value, array( '0', 'false', 'off', 'no', '' ), true ) ) {
+			if ( in_array( $normalized, array( '0', 'false', 'off', 'no', '' ), true ) ) {
 				return false;
 			}
 		}
 
 		if ( function_exists( 'rest_sanitize_boolean' ) ) {
-			$sanitized = rest_sanitize_boolean( $value );
-
-			return (bool) $sanitized;
+			return (bool) rest_sanitize_boolean( $value );
 		}
 
-		return (bool) $value;
+		if ( function_exists( 'wp_validate_boolean' ) ) {
+			return wp_validate_boolean( $value );
+		}
+
+		return filter_var( $value, FILTER_VALIDATE_BOOLEAN );
 	}
 
 	/**

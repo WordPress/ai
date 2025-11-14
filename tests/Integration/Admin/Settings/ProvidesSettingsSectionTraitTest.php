@@ -7,90 +7,55 @@
 
 namespace WordPress\AI\Tests\Integration\Admin\Settings;
 
-use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Admin\Admin_Settings_Page;
-use WordPress\AI\Admin\Settings\Feature_Toggles;
 use WordPress\AI\Admin\Settings\Settings_Registry;
-use WordPress\AI\Admin\Settings\Settings_Section;
-use WordPress\AI\Admin\Settings\Settings_Service;
-use WordPress\AI\Admin\Settings\Settings_Toggle;
 use WordPress\AI\Features\Traits\Provides_Settings_Section;
 use WP_UnitTestCase;
 
 /**
- * @since 0.1.0
- *
  * @covers \WordPress\AI\Features\Traits\Provides_Settings_Section
  */
 class ProvidesSettingsSectionTraitTest extends WP_UnitTestCase {
-	use Settings_Test_Helper_Trait;
-
 	/**
-	 * Sets up the test environment.
+	 * Ensures a feature using the trait gets normalized supports metadata.
 	 */
-	protected function setUp(): void {
-		parent::setUp();
+	public function test_registers_section_with_default_badge(): void {
+		$registry = new Settings_Registry();
 
-		$this->setup_settings_infrastructure();
-	}
+		$feature = new class() {
+			use Provides_Settings_Section;
 
-	/**
-	 * Cleans up after tests.
-	 */
-	protected function tearDown(): void {
-		$this->teardown_settings_infrastructure();
+			public function get_id(): string {
+				return 'trait-test';
+			}
 
-		parent::tearDown();
-	}
+			public function is_enabled_by_default(): bool {
+				return true;
+			}
 
-	/**
-	 * Tests that the trait registers sections with default supports.
-	 */
-	public function test_registers_section_with_default_supports(): void {
-		$section = new Settings_Section(
-			'test-section',
-			'Test Section',
-			'Section description',
-			static function (): void {
-				echo '<p>Test content</p>';
-			},
-			10,
-			'trait-test',
-			array(
-				'badges' => array(
+			public function register( Settings_Registry $registry ): bool {
+				return $this->register_feature_settings_section(
+					$registry,
+					'trait-section',
+					'Trait Section',
+					static function (): void {
+					},
 					array(
-						'label'   => 'Experimental',
-						'context' => 'status',
-					),
-				),
-				'assets' => array(
-					'scripts' => array(),
-					'styles'  => array(),
-				),
-			),
-			true
-		);
+						'supports' => array(
+							'badges' => array(),
+						),
+					)
+				);
+			}
+		};
 
-		$this->registry->register_section( $section );
+		$this->assertTrue( $feature->register( $registry ) );
 
-		$retrieved = $this->registry->get_section( 'test-section' );
-		$this->assertInstanceOf( Settings_Section::class, $retrieved );
-		$this->assertSame( 'trait-test', $retrieved->get_feature_id() );
+		$section = $registry->get_section( 'trait-section' );
+		$this->assertNotNull( $section );
+		$this->assertSame( 'trait-test', $section->get_feature_id() );
 
-		$supports = $retrieved->get_supports();
-
-		$this->assertArrayHasKey( 'badges', $supports );
+		$supports = $section->get_supports();
 		$this->assertNotEmpty( $supports['badges'] );
 		$this->assertSame( 'Experimental', $supports['badges'][0]['label'] );
-		$this->assertSame( 'status', $supports['badges'][0]['context'] );
-
-		$this->assertArrayHasKey( 'assets', $supports );
-		$this->assertSame(
-			array(
-				'scripts' => array(),
-				'styles'  => array(),
-			),
-			$supports['assets']
-		);
 	}
 }

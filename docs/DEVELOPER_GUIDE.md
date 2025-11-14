@@ -51,42 +51,12 @@ wp plugin activate ai
 
 ## Architecture Overview
 
-The plugin follows a modular, feature-based architecture:
+The codebase is intentionally small and predictable:
 
-```
-ai/
-├── ai.php                            # Plugin bootstrap
-├── includes/                         # Core plugin code
-│   ├── bootstrap.php                 # Plugin initialization
-│   ├── Feature_Registry.php         # Feature registration system
-│   ├── Feature_Loader.php            # Feature loading and initialization
-│   ├── Abstracts/                    # Base implementations
-│   │   └── Abstract_Feature.php      # Base feature class
-│   ├── Contracts/                    # Feature interfaces
-│   │   └── Feature.php               # Feature contract
-│   ├── Exception/                    # Custom exceptions
-│   │   ├── Invalid_Feature_Exception.php
-│   │   └── Invalid_Feature_Metadata_Exception.php
-│   └── Features/                     # Feature implementations
-│       └── Example_Feature/          # Each feature in own directory
-│           ├── Example_Feature.php
-│           └── README.md
-├── includes/Admin/                   # Admin settings services, controllers, assets
-│   ├── Admin_Settings_Page.php       # Registers WP admin menu/page
-│   ├── Settings_Page_Assets.php      # Enqueues scripts/styles
-│   ├── Settings_Payload_Builder.php  # Serializes registry data
-│   └── Settings/                     # Admin settings sub-namespace
-│       ├── Feature_Toggles.php
-│       ├── Settings_Service.php
-│       └── …
-├── assets/                           # CSS, JS, images
-├── docs/                             # Documentation
-│   ├── DEVELOPER_GUIDE.md            # This guide
-│   └── TESTING.md                    # Testing strategy
-├── languages/                        # Translation files
-└── tests/                            # PHPUnit tests
-    └── Unit/                         # Unit tests
-```
+- `ai.php` bootstraps the plugin and defers to `includes/bootstrap.php`.
+- `includes/` contains runtime PHP, with `Features/` housing feature classes and `Admin/` holding the settings page plus shared services such as `Feature_Toggles`.
+- `src/` bundles the React settings UI; its compiled output lives under `build/`.
+- `tests/` mirrors the PHP namespaces for integration coverage, while `docs/` captures the authoring notes you’re reading now.
 
 ### Key Design Principles
 
@@ -99,301 +69,53 @@ ai/
 
 ## Creating a New Feature
 
-Features are the core building blocks of the AI plugin. Each feature represents a distinct AI capability.
+Keep it lean:
 
-### Step 1: Create Feature Directory
+1. `mkdir -p includes/Features/My_Feature` and add `My_Feature.php`.
+2. Extend `Abstract_Feature`, implement `load_feature_metadata()`, and register hooks inside `register_shared_hooks()` / `register_enabled_hooks()`.
+3. Use `Provides_Settings_Section` if you need controls on the admin screen—see the Example Feature for a working pattern.
 
-Create a new directory in `includes/Features/` for your feature:
-
-```bash
-mkdir -p includes/Features/My_Feature
-```
-
-### Step 2: Create Feature Class
-
-Create your feature class by extending `Abstract_Feature`:
+Minimal scaffold:
 
 ```php
-<?php
-/**
- * My Feature implementation.
- *
- * @package WordPress\AI\Features
- */
-
 namespace WordPress\AI\Features\My_Feature;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Admin\Settings\Settings_Registry;
 
-/**
- * My Feature class.
- *
- * @since 0.1.0
- */
 class My_Feature extends Abstract_Feature {
-	/**
-	 * Loads feature metadata.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array{id: string, label: string, description: string} Feature metadata.
-	 */
 	protected function load_feature_metadata(): array {
 		return array(
 			'id'          => 'my-feature',
 			'label'       => __( 'My Feature', 'ai' ),
-			'description' => __( 'Description of what my feature does.', 'ai' ),
+			'description' => __( 'What it does.', 'ai' ),
 		);
 	}
-
-	/**
-	 * Registers hooks that should always run.
-	 *
-	 * @since 0.1.0
-	 */
-	protected function register_shared_hooks(): void {
-		// Admin settings or dependency checks go here.
-	}
-
-	/**
-	 * Registers hooks that only run when the feature is enabled.
-	 *
-	 * @since 0.1.0
-	 */
-	protected function register_enabled_hooks(): void {
-		add_action( 'init', array( $this, 'initialize' ) );
-		add_filter( 'the_content', array( $this, 'filter_content' ) );
-	}
-
-	/**
-	 * Initializes the feature.
-	 *
-	 * @since 0.1.0
-	 */
-	public function initialize(): void {
-		// Feature initialization logic
-	}
-
-	/**
-	 * Filters content.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $content Post content.
-	 * @return string Modified content.
-	 */
-	public function filter_content( string $content ): string {
-		// Feature logic here
-		return $content;
-	}
-}
-```
-
-### Step 3: Register the Feature
-
-Add your feature to the default list returned by `Feature_Loader::get_default_features()`:
-
-```php
-private function get_default_features(): array {
-	$feature_toggles_provider = apply_filters( 'ai_feature_toggles_service', null );
-	$feature_toggles          = $feature_toggles_provider instanceof Feature_Toggles ? $feature_toggles_provider : null;
-	$feature_toggles_factory  = $this->resolve_feature_toggles_factory( $feature_toggles_provider );
-
-	$features = array(
-		new \WordPress\AI\Features\Example_Feature\Example_Feature( $feature_toggles, $feature_toggles_factory ),
-		new \WordPress\AI\Features\My_Feature\My_Feature( $feature_toggles, $feature_toggles_factory ),
-	);
-
-	return apply_filters( 'ai_default_features', $features, $feature_toggles, $feature_toggles_factory );
-}
-```
-
-Third-party developers should prefer the `ai_register_features` or `ai_default_features` hooks described later in this guide so core files don’t need to be modified.
-
-### Step 4: Add Feature Documentation
-
-Create a `README.md` in your feature directory:
-
-```markdown
-# My Feature
-
-Brief description of the feature.
-
-## Functionality
-
-- What the feature does
-- How it works
-- Any requirements
-
-## Usage
-
-Examples of how to use the feature.
-
-## Configuration
-
-Any settings or filters available.
-```
-
-## Admin Settings Architecture
-
-The admin settings screen allows site administrators to manage AI Experiments globally and per feature. The PHP services live under `includes/Admin/` and the React application under `src/`.
-
-```
-includes/
-├── Admin/
-│   ├── Admin_Settings_Page.php          # Registers the options page and fallback markup
-│   ├── Settings_Page_Assets.php         # Enqueues the React bundle when viewing the page
-│   ├── Settings_Payload_Builder.php     # Builds the data passed to the React app
-│   └── Settings/
-│       ├── Feature_Toggles.php          # Persists per-feature enable/disable state
-│       ├── Settings_Renderer.php        # Renders the fallback UI for the toggle section
-│       ├── Settings_Registry.php        # Registry of settings sections registered by features
-│       ├── Settings_Section.php         # Immutable value object describing a section
-│       ├── Settings_Service.php         # Coordinates registration of toggles, sections, and page
-│       └── Settings_Toggle.php          # Manages the global experiments option
-└── Features/
-    └── Traits/
-        └── Provides_Settings_Section.php # Helper trait for feature-owned sections
-
-src/
-├── admin/
-│   └── settings/
-│       ├── app.tsx                      # Top-level settings UI
-│       └── components/
-│           ├── feature-section.tsx      # Card UI for per-feature toggles
-│           └── toggle-section.tsx       # Card UI for the global toggle
-├── global.d.ts                          # Ambient declaration for the payload on window
-├── index.tsx                            # React entry point mounted on the admin page
-├── style.scss                           # Styles for the settings screen
-└── types.ts                             # Shared payload types
-```
-
-`includes/bootstrap.php` wires the settings services on the `init` hook via `initialize_admin_settings()`. That function:
-
-1. Instantiates the toggle, registry, renderer, payload builder, page assets handler, and admin page controller.
-2. Registers the shared `Feature_Toggles` service on the `ai_feature_toggles_service` filter. The filter may return an instantiated service, a callable factory, or a `class-string<Feature_Toggles>`, allowing features to resolve the dependency only when they actually need it.
-3. Calls `Settings_Service::register()` to hook the global toggle option, expose REST fields, register the admin menu, and trigger section registration with `ai_register_settings_sections`.
-
-Feature settings panels should be registered inside the `ai_register_settings_sections` hook. The `Provides_Settings_Section` trait streamlines the process:
-
-```php
-class Example_Feature extends Abstract_Feature {
-	use Provides_Settings_Section;
 
 	protected function register_shared_hooks(): void {
 		add_action( 'ai_register_settings_sections', array( $this, 'register_settings_sections' ) );
 	}
 
-	protected function register_enabled_hooks(): void {
-		// Register functional hooks only when enabled.
-	}
-
 	public function register_settings_sections( Settings_Registry $registry ): void {
 		$this->register_feature_settings_section(
 			$registry,
-			'example-feature',
-			__( 'Example Feature', 'ai' ),
-			array( $this, 'render_settings_section' ),
-			array(
-				'description' => __( 'Demonstration controls for the example feature.', 'ai' ),
-				'priority'    => 20,
-			)
+			'my-feature',
+			__( 'My Feature', 'ai' ),
+			array( $this, 'render_settings_section' )
 		);
 	}
-
-	public function render_settings_section( Settings_Toggle $toggle, Settings_Section $section ): void {
-		// Output fallback markup when JavaScript is unavailable.
-	}
 }
 ```
 
-`Settings_Payload_Builder` serializes the registry into a payload consumed by the React app. Each section’s `enabled` state reflects persisted data from `Feature_Toggles`, ensuring the UI mirrors stored values immediately.
+Register the feature via the existing hooks (`ai_default_features`, `ai_register_features`) instead of editing core files, and keep a short `README.md` next to the class so reviewers understand its purpose.
 
-### Conditional Features
+## Admin Settings In Short
 
-If your feature has requirements (PHP extensions, other plugins, etc.), implement validation in your constructor:
+- `initialize_admin_settings()` instantiates the toggle, feature toggles, registry, and `Admin_Settings_Page`, then wires a handful of hooks (`ai_feature_toggles_service`, `ai_features_enabled`, `admin_init`, `rest_api_init`, `admin_menu`, and `ai_register_settings_sections`).
+- Features expose settings panels inside the `ai_register_settings_sections` action. Most implementations should reuse the `Provides_Settings_Section` trait so they get consistent badges, assets metadata, and default-state handling.
+- The settings page controller handles everything else: registering the submenu, hydrating the React app, rendering the fallback form, and enqueueing assets only on its screen.
 
-```php
-use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
-
-class My_Feature extends Abstract_Feature {
-	public function __construct() {
-		if ( ! extension_loaded( 'gd' ) ) {
-			throw new Invalid_Feature_Metadata_Exception(
-				__( 'This feature requires the GD extension.', 'ai' )
-			);
-		}
-
-		parent::__construct();
-	}
-}
-```
-
----
-
-## Plugin API
-
-The plugin provides a set of hooks and filters to allow third-party developers to extend its functionality.
-
-### Registering a Custom Feature
-
-Developers can register their own features using the `ai_register_features` action. This is the primary way to add new functionality to the plugin.
-
-```php
-add_action( 'ai_register_features', function( $registry ) {
-	$registry->register_feature( new My_Custom_Feature() );
-} );
-```
-
-### Filtering Default Features
-
-Modify the list of default feature instances before they are registered:
-
-```php
-add_filter( 'ai_default_features', function( $features, $feature_toggles, $feature_toggles_factory ) {
-	// Add a custom feature
-	$features[] = new My_Namespace\My_Custom_Feature(
-		$feature_toggles,
-		$feature_toggles_factory
-	);
-
-	// Remove the bundled Example Feature
-	return array_filter(
-		$features,
-		static function ( $feature ) {
-			return ! $feature instanceof WordPress\AI\Features\Example_Feature\Example_Feature;
-		}
-	);
-}, 10, 3 );
-```
-
-### Disabling a Feature
-
-Features can be disabled using the `ai_feature_enabled` filter:
-
-```php
-add_filter( 'ai_feature_enabled', function( $enabled, $feature_id ) {
-	if ( 'example-feature' === $feature_id ) {
-		return false;
-	}
-	return $enabled;
-}, 10, 2 );
-```
-
-### Disabling All Features
-
-Disable all features at once:
-
-```php
-add_filter( 'ai_features_enabled', '__return_false' );
-```
-
-### Other Hooks
-
-The plugin also includes the following action hooks:
-
-- `ai_register_features`: Fires after default features are registered, receives `$registry` parameter
-- `ai_features_initialized`: Fires after all registered features have been initialized
+Need more depth? The Example Feature README in `includes/Features/Example_Feature/README.md` covers conditional feature guards, hook usage (`ai_register_features`, `ai_default_features`, `ai_feature_enabled`, etc.), and REST helpers. Refer to it (or keep your own feature README) instead of duplicating long-form docs here.
 
 ---
 
