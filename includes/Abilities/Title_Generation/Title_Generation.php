@@ -25,6 +25,15 @@ use function WordPress\AI\normalize_content;
 class Title_Generation extends Abstract_Ability {
 
 	/**
+	 * The default number of candidates to generate.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @var int
+	 */
+	const CANDIDATES_DEFAULT = 3;
+
+	/**
 	 * Returns the input schema of the ability.
 	 *
 	 * @since 0.1.0
@@ -49,7 +58,7 @@ class Title_Generation extends Abstract_Ability {
 					'type'              => 'integer',
 					'minimum'           => 1,
 					'maximum'           => 10,
-					'default'           => 3,
+					'default'           => self::CANDIDATES_DEFAULT,
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Number of titles to generate', 'ai' ),
 				),
@@ -94,7 +103,7 @@ class Title_Generation extends Abstract_Ability {
 			array(
 				'content'    => null,
 				'post_id'    => null,
-				'candidates' => 3,
+				'candidates' => self::CANDIDATES_DEFAULT,
 			),
 		);
 
