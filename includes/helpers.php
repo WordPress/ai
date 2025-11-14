@@ -100,6 +100,14 @@ function get_post_context( int $post_id ): array {
 		$context['author'] = $author;
 	}
 
+	// Get the post type using the get-type ability.
+	$type_ability = wp_get_ability( 'ai/get-type' );
+	$type         = $type_ability->execute( array( 'post_id' => $post_id ) );
+
+	if ( $type && ! is_wp_error( $type ) ) {
+		$context['content_type'] = $type;
+	}
+
 	/**
 	 * TODO: Might be interesting to add simple Abilities for the following,
 	 * just as a way to demonstrate a different approach to registering Abilities,
@@ -107,10 +115,6 @@ function get_post_context( int $post_id ): array {
 	 *
 	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
 	 */
-
-	if ( $post->post_type ) {
-		$context['content_type'] = $post->post_type;
-	}
 
 	if ( $post->post_excerpt ) {
 		$context['excerpt'] = $post->post_excerpt;
