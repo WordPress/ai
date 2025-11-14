@@ -123,9 +123,11 @@ class Settings_Page {
 			);
 
 			// Allow experiments to register their own custom settings.
-			if ( method_exists( $experiment, 'register_settings' ) ) {
-				$experiment->register_settings();
+			if ( ! method_exists( $experiment, 'register_settings' ) ) {
+				continue;
 			}
+
+			$experiment->register_settings();
 		}
 	}
 
@@ -144,6 +146,14 @@ class Settings_Page {
 
 		// Enqueue WordPress components styles for block editor UI.
 		wp_enqueue_style( 'wp-components' );
+
+		// Enqueue settings page styles.
+		wp_enqueue_style(
+			'ai-experiments-settings',
+			AI_PLUGIN_URL . 'assets/css/settings-page.css',
+			array( 'wp-components' ),
+			AI_VERSION
+		);
 	}
 
 	/**
@@ -168,25 +178,24 @@ class Settings_Page {
 				settings_fields( 'ai_experiments' );
 				?>
 
-				<div style="max-width: 800px;">
+				<div class="ai-experiments">
 					<!-- Global Toggle Section -->
-					<div class="components-card" style="margin-bottom: 20px; padding: 20px; background: #fff; border: 1px solid #ddd; border-radius: 2px;">
-						<h2 style="margin-top: 0;"><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
-						<p class="description" style="margin-bottom: 20px;">
+					<div class="ai-experiments__card ai-experiments__card--global">
+						<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
+						<p class="description">
 							<?php esc_html_e( 'Control whether AI experiments are enabled for your site. When disabled, all experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
 						</p>
 
-						<div style="display: flex; align-items: center; gap: 12px;">
-							<label class="components-toggle-control" style="display: flex; align-items: center; margin: 0;">
+						<div class="ai-experiments__toggle">
+							<label class="components-toggle-control">
 								<input
 									type="checkbox"
 									name="<?php echo esc_attr( self::GLOBAL_OPTION ); ?>"
 									id="<?php echo esc_attr( self::GLOBAL_OPTION ); ?>"
 									value="1"
 									<?php checked( $global_enabled ); ?>
-									style="margin: 0;"
 								/>
-								<span style="margin-left: 8px; font-weight: 500;">
+								<span class="ai-experiments__toggle-label">
 									<?php esc_html_e( 'Enable Experiments', 'ai' ); ?>
 								</span>
 							</label>
@@ -195,25 +204,26 @@ class Settings_Page {
 
 					<!-- Individual Experiments Section -->
 					<?php if ( ! empty( $this->registry->get_all_experiments() ) ) : ?>
-						<div class="components-card" style="padding: 20px; background: #fff; border: 1px solid #ddd; border-radius: 2px;">
-							<h2 style="margin-top: 0;"><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
+						<div class="ai-experiments__card">
+							<h2><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
 
 							<?php if ( ! $global_enabled ) : ?>
-								<div class="notice notice-info inline" style="margin: 16px 0;">
+								<div class="notice notice-info inline ai-experiments__notice">
 									<p><?php esc_html_e( 'Enable experiments above to configure individual experiment settings.', 'ai' ); ?></p>
 								</div>
 							<?php endif; ?>
 
-							<div style="display: flex; flex-direction: column; gap: 24px; margin-top: 20px;">
+							<div class="ai-experiments__list">
 								<?php foreach ( $this->registry->get_all_experiments() as $experiment ) : ?>
 									<?php
 									$experiment_id      = $experiment->get_id();
 									$experiment_option  = "ai_experiment_{$experiment_id}_enabled";
 									$experiment_enabled = (bool) get_option( $experiment_option, false );
+									$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
 									?>
-									<div style="padding: 16px; border: 1px solid #e0e0e0; border-radius: 2px; <?php echo ! $global_enabled ? 'opacity: 0.5;' : ''; ?>">
-										<div style="display: flex; align-items: flex-start; gap: 12px;">
-											<label class="components-toggle-control" style="display: flex; align-items: center; margin: 0;">
+									<div class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
+										<div class="ai-experiments__item-header">
+											<label class="components-toggle-control">
 												<input
 													type="checkbox"
 													name="<?php echo esc_attr( $experiment_option ); ?>"
@@ -221,15 +231,14 @@ class Settings_Page {
 													value="1"
 													<?php checked( $experiment_enabled ); ?>
 													<?php disabled( ! $global_enabled ); ?>
-													style="margin: 0;"
 												/>
-												<span style="margin-left: 8px;">
+												<span>
 													<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
 												</span>
 											</label>
 										</div>
 										<?php if ( $experiment->get_description() ) : ?>
-											<p class="description" style="margin: 8px 0 0 32px;">
+											<p class="description">
 												<?php echo esc_html( $experiment->get_description() ); ?>
 											</p>
 										<?php endif; ?>

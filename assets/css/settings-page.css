@@ -1,0 +1,110 @@
+/**
+ * AI Experiments Settings Page Styles
+ *
+ * Uses BEM (Block Element Modifier) naming convention.
+ *
+ * @package WordPress\AI
+ * @since 0.1.0
+ */
+
+/* Block: ai-experiments */
+.ai-experiments {
+	max-width: 50rem;
+}
+
+/* Element: card */
+.ai-experiments__card {
+	padding: 1.25rem;
+	background: #fff;
+	border: 0.0625rem solid #ddd;
+	border-radius: 0.125rem;
+}
+
+/* Modifier: global card */
+.ai-experiments__card--global {
+	margin-bottom: 1.25rem;
+}
+
+.ai-experiments__card h2 {
+	margin-top: 0;
+}
+
+.ai-experiments__card .description {
+	margin-bottom: 1.25rem;
+}
+
+/* Element: toggle */
+.ai-experiments__toggle {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.ai-experiments__toggle .components-toggle-control {
+	display: flex;
+	align-items: center;
+	margin: 0;
+}
+
+.ai-experiments__toggle input[type="checkbox"] {
+	margin: 0;
+}
+
+.ai-experiments__toggle .components-toggle-control span {
+	margin-left: 0.5rem;
+}
+
+/* Element: toggle label */
+.ai-experiments__toggle-label {
+	font-weight: 500;
+}
+
+/* Element: notice */
+.ai-experiments__notice {
+	margin: 1rem 0;
+}
+
+/* Element: list */
+.ai-experiments__list {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	margin-top: 1.25rem;
+}
+
+/* Element: item */
+.ai-experiments__item {
+	padding: 1rem;
+	border: 0.0625rem solid #e0e0e0;
+	border-radius: 0.125rem;
+}
+
+/* Modifier: disabled item */
+.ai-experiments__item--disabled {
+	opacity: 0.5;
+}
+
+/* Element: item header */
+.ai-experiments__item-header {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+}
+
+.ai-experiments__item-header .components-toggle-control {
+	display: flex;
+	align-items: center;
+	margin: 0;
+}
+
+.ai-experiments__item-header input[type="checkbox"] {
+	margin: 0;
+}
+
+.ai-experiments__item-header .components-toggle-control span {
+	margin-left: 0.5rem;
+}
+
+.ai-experiments__item .description {
+	margin: 0.5rem 0 0 2rem;
+}
