@@ -30,30 +30,6 @@ class Abilities_Explorer extends Abstract_Feature {
 	const VERSION = '1.0.0';
 
 	/**
-	 * Minimum WordPress version required.
-	 *
-	 * @since 0.1.0
-	 * @var string
-	 */
-	const MIN_WP_VERSION = '6.9';
-
-	/**
-	 * Feature directory path.
-	 *
-	 * @since 0.1.0
-	 * @var string
-	 */
-	private $feature_dir;
-
-	/**
-	 * Feature directory URL.
-	 *
-	 * @since 0.1.0
-	 * @var string
-	 */
-	private $feature_url;
-
-	/**
 	 * Load feature metadata.
 	 *
 	 * @since 0.1.0
@@ -76,24 +52,11 @@ class Abilities_Explorer extends Abstract_Feature {
 	 * @since 0.1.0
 	 */
 	public function register(): void {
-		// Set feature paths
-		$this->feature_dir = __DIR__;
-		$this->feature_url = plugins_url( '', __FILE__ );
-
-		// Check WordPress version
-		if ( ! $this->check_wp_version() ) {
-			add_action( 'admin_notices', array( $this, 'version_notice' ) );
-			return;
-		}
-
 		// Check if Abilities API is available
 		if ( ! $this->check_abilities_api() ) {
 			add_action( 'admin_notices', array( $this, 'abilities_api_notice' ) );
 			return;
 		}
-
-		// Load dependencies
-		$this->load_dependencies();
 
 		// Initialize admin interface
 		if ( is_admin() ) {
@@ -101,22 +64,6 @@ class Abilities_Explorer extends Abstract_Feature {
 		}
 	}
 
-	/**
-	 * Check WordPress version.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return bool True if version meets requirements, false otherwise.
-	 */
-	private function check_wp_version(): bool {
-		global $wp_version;
-
-		// Strip beta/RC/alpha suffixes for version comparison
-		// This allows the feature to run on 6.9-beta1, 6.9-RC1, etc.
-		$clean_version = preg_replace( '/-(?:beta|rc|alpha).*$/i', '', $wp_version );
-
-		return version_compare( $clean_version, self::MIN_WP_VERSION, '>=' );
-	}
 
 	/**
 	 * Check if Abilities API is available.
@@ -144,24 +91,6 @@ class Abilities_Explorer extends Abstract_Feature {
 		return false;
 	}
 
-	/**
-	 * Display WordPress version notice.
-	 *
-	 * @since 0.1.0
-	 */
-	public function version_notice(): void {
-		$message = sprintf(
-			/* translators: 1: Required WordPress version, 2: Current WordPress version */
-			__( 'Abilities Explorer requires WordPress %1$s or higher. You are running version %2$s.', 'ai' ),
-			self::MIN_WP_VERSION,
-			$GLOBALS['wp_version']
-		);
-
-		printf(
-			'<div class="notice notice-error"><p>%s</p></div>',
-			esc_html( $message )
-		);
-	}
 
 	/**
 	 * Display Abilities API notice.
@@ -218,11 +147,7 @@ class Abilities_Explorer extends Abstract_Feature {
 		}
 
 		$help_text  = '<strong>' . esc_html__( 'The Abilities API is not available in your WordPress installation.', 'ai' ) . '</strong><br><br>';
-		$help_text .= esc_html__( 'The Abilities API is included in WordPress 6.9 and higher. To use this feature:', 'ai' ) . '<br><br>';
-		$help_text .= '<strong>1. Upgrade to WordPress 6.9+</strong><br>';
-		$help_text .= esc_html__( 'Make sure you are running WordPress 6.9 or higher. Check your WordPress version in Dashboard → Updates.', 'ai' ) . '<br><br>';
-		$help_text .= '<strong>2. Verify Installation</strong><br>';
-		$help_text .= esc_html__( 'After upgrading, return to this page. The feature will automatically detect the Abilities API.', 'ai' ) . '<br><br>';
+		$help_text .= esc_html__( 'To use this feature, the Abilities API must be available in your WordPress installation.', 'ai' ) . '<br><br>';
 		$help_text .= '<em>' . sprintf(
 			/* translators: %s: constant name */
 			esc_html__( 'For development/testing: add %s to wp-config.php to bypass this check', 'ai' ),
@@ -239,46 +164,14 @@ class Abilities_Explorer extends Abstract_Feature {
 	}
 
 	/**
-	 * Load feature dependencies.
-	 *
-	 * @since 0.1.0
-	 */
-	private function load_dependencies(): void {
-		require_once $this->feature_dir . '/Ability_Handler.php';
-		require_once $this->feature_dir . '/Ability_Table.php';
-	}
-
-	/**
 	 * Initialize admin functionality.
 	 *
 	 * @since 0.1.0
 	 */
 	private function init_admin(): void {
-		require_once $this->feature_dir . '/Admin_Page.php';
+		require_once __DIR__ . '/Admin_Page.php';
 
-		$admin_page = new Admin_Page( $this->feature_dir, $this->feature_url );
+		$admin_page = new Admin_Page();
 		$admin_page->init();
-	}
-
-	/**
-	 * Get feature directory path.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string Feature directory path.
-	 */
-	public function get_feature_dir(): string {
-		return $this->feature_dir;
-	}
-
-	/**
-	 * Get feature directory URL.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return string Feature directory URL.
-	 */
-	public function get_feature_url(): string {
-		return $this->feature_url;
 	}
 }

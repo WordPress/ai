@@ -23,34 +23,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Admin_Page {
 
-	/**
-	 * Feature directory path.
-	 *
-	 * @since 0.1.0
-	 * @var string
-	 */
-	private $feature_dir;
-
-	/**
-	 * Feature directory URL.
-	 *
-	 * @since 0.1.0
-	 * @var string
-	 */
-	private $feature_url;
-
-	/**
-	 * Constructor.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $feature_dir Feature directory path.
-	 * @param string $feature_url Feature directory URL.
-	 */
-	public function __construct( $feature_dir, $feature_url ) {
-		$this->feature_dir = $feature_dir;
-		$this->feature_url = $feature_url;
-	}
 
 	/**
 	 * Initialize admin functionality.
@@ -97,7 +69,7 @@ class Admin_Page {
 		// Enqueue styles
 		wp_enqueue_style(
 			'ai-ability-explorer-admin',
-			$this->feature_url . '/assets/css/abilities-explorer.css',
+			plugins_url( 'assets/css/abilities-explorer.css', __FILE__ ),
 			array(),
 			Abilities_Explorer::VERSION
 		);
@@ -105,8 +77,8 @@ class Admin_Page {
 		// Enqueue scripts
 		wp_enqueue_script(
 			'ai-ability-explorer-admin',
-			$this->feature_url . '/assets/js/abilities-explorer.js',
-			array( 'jquery' ),
+			plugins_url( 'assets/js/abilities-explorer.js', __FILE__ ),
+			array(),
 			Abilities_Explorer::VERSION,
 			true
 		);

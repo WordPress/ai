@@ -30,7 +30,7 @@ class Ability_Handler {
 	 *
 	 * @return array Array of abilities.
 	 */
-	public static function get_all_abilities() {
+	public static function get_all_abilities(): array {
 		if ( ! function_exists( 'wp_get_abilities' ) ) {
 			return array();
 		}
@@ -53,7 +53,7 @@ class Ability_Handler {
 	 * @param string $slug Ability slug (name).
 	 * @return array|null Ability data or null if not found.
 	 */
-	public static function get_ability( $slug ) {
+	public static function get_ability( $slug ): ?array {
 		if ( ! function_exists( 'wp_get_ability' ) ) {
 			return null;
 		}
@@ -80,7 +80,7 @@ class Ability_Handler {
 	 * @param array $abilities Raw abilities array (WP_Ability objects).
 	 * @return array Formatted abilities.
 	 */
-	private static function format_abilities( $abilities ) {
+	private static function format_abilities( $abilities ): array {
 		if ( empty( $abilities ) || ! is_array( $abilities ) ) {
 			return array();
 		}
@@ -102,7 +102,7 @@ class Ability_Handler {
 	 * @param \WP_Ability $ability Ability object.
 	 * @return array Formatted ability data.
 	 */
-	private static function format_single_ability( $ability ) {
+	private static function format_single_ability( $ability ) : array {
 		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_name' ) ) {
 			return array();
 		}
@@ -137,7 +137,7 @@ class Ability_Handler {
 	 * @param array  $meta Ability metadata.
 	 * @return string Provider type.
 	 */
-	private static function detect_provider( $name, $meta ) {
+	private static function detect_provider( $name, $meta ): string {
 		// Check if provider is explicitly set in meta
 		if ( isset( $meta['provider'] ) ) {
 			return $meta['provider'];
@@ -172,7 +172,7 @@ class Ability_Handler {
 	 * @param array  $input Input data.
 	 * @return array Result with success status and data/error.
 	 */
-	public static function invoke_ability( $slug, $input = array() ) {
+	public static function invoke_ability( $slug, $input = array() ): string {
 		if ( ! function_exists( 'wp_get_ability' ) ) {
 			return array(
 				'success' => false,
@@ -230,7 +230,7 @@ class Ability_Handler {
 	 * @param array $input  Input data to validate.
 	 * @return array Validation result.
 	 */
-	public static function validate_input( $schema, $input ) {
+	public static function validate_input( $schema, $input ): array {
 		$errors = array();
 
 		if ( empty( $schema ) ) {
@@ -280,7 +280,7 @@ class Ability_Handler {
 	 * @param string $expected_type Expected type.
 	 * @return bool Whether the value matches the expected type.
 	 */
-	private static function validate_type( $value, $expected_type ) {
+	private static function validate_type( $value, $expected_type ): bool {
 		switch ( $expected_type ) {
 			case 'string':
 				return is_string( $value );
@@ -305,7 +305,7 @@ class Ability_Handler {
 	 *
 	 * @return array Statistics about registered abilities.
 	 */
-	public static function get_statistics() {
+	public static function get_statistics(): array {
 		$abilities = self::get_all_abilities();
 
 		$stats = array(

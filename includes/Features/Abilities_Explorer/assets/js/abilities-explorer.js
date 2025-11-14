@@ -1,17 +1,23 @@
 /**
  * Ability Explorer Admin JavaScript
  *
- * @package WordPress\AI\Features\Abilities_Explorer
+ * @package
  * @since 0.1.0
  */
 
-(function($) {
+/* global aiAbilityExplorer, navigator */
+
+(function () {
 	'use strict';
 
 	// Initialize on document ready
-	$(document).ready(function() {
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', function () {
+			AiAbilityExplorer.init();
+		});
+	} else {
 		AiAbilityExplorer.init();
-	});
+	}
 
 	/**
 	 * Main AI Ability Explorer object
@@ -20,7 +26,7 @@
 		/**
 		 * Initialize
 		 */
-		init: function() {
+		init() {
 			this.initTestRunner();
 			this.initCopyButtons();
 			this.initValidation();
@@ -29,152 +35,212 @@
 		/**
 		 * Initialize Test Runner
 		 */
-		initTestRunner: function() {
+		initTestRunner() {
 			const self = this;
 
 			// Invoke ability button
-			$('#ability-test-invoke').on('click', function() {
-				const abilitySlug = $(this).data('ability');
-				const input = $('#ability-test-payload').val();
+			const invokeButton = document.getElementById('ability-test-invoke');
+			if (invokeButton) {
+				invokeButton.addEventListener('click', function () {
+					const abilitySlug = this.dataset.ability;
+					const payload = document.getElementById(
+						'ability-test-payload'
+					);
+					const input = payload ? payload.value : '';
 
-				self.invokeAbility(abilitySlug, input);
-			});
+					self.invokeAbility(abilitySlug, input);
+				});
+			}
 
 			// Validate button
-			$('#ability-test-validate').on('click', function() {
-				self.validateInput();
-			});
+			const validateButton = document.getElementById(
+				'ability-test-validate'
+			);
+			if (validateButton) {
+				validateButton.addEventListener('click', function () {
+					self.validateInput();
+				});
+			}
 
 			// Clear result button
-			$('#ability-test-clear').on('click', function() {
-				$('#ability-test-result-container').hide();
-				$('#ability-test-result').html('');
-				$('#ability-test-validation').hide();
-			});
+			const clearButton = document.getElementById('ability-test-clear');
+			if (clearButton) {
+				clearButton.addEventListener('click', function () {
+					const resultContainer = document.getElementById(
+						'ability-test-result-container'
+					);
+					const result = document.getElementById(
+						'ability-test-result'
+					);
+					const validation = document.getElementById(
+						'ability-test-validation'
+					);
+
+					if (resultContainer) {
+						resultContainer.style.display = 'none';
+					}
+					if (result) {
+						result.innerHTML = '';
+					}
+					if (validation) {
+						validation.style.display = 'none';
+					}
+				});
+			}
 
 			// Auto-format JSON on blur
-			$('#ability-test-payload').on('blur', function() {
-				self.formatJSON($(this));
-			});
+			const payload = document.getElementById('ability-test-payload');
+			if (payload) {
+				payload.addEventListener('blur', function () {
+					self.formatJSON(this);
+				});
+			}
 		},
 
 		/**
 		 * Initialize Copy Buttons
 		 */
-		initCopyButtons: function() {
+		initCopyButtons() {
 			const self = this;
+			const copyButtons = document.querySelectorAll('.ability-copy-btn');
 
-			$('.ability-copy-btn').on('click', function() {
-				const targetId = $(this).data('copy');
-				const $target = $('#' + targetId);
+			copyButtons.forEach(function (button) {
+				button.addEventListener('click', function () {
+					const targetId = this.dataset.copy;
+					const target = document.getElementById(targetId);
 
-				if ($target.length) {
-					self.copyToClipboard($target.text(), $(this));
-				}
+					if (target) {
+						self.copyToClipboard(target.textContent, this);
+					}
+				});
 			});
 		},
 
 		/**
 		 * Initialize Validation
 		 */
-		initValidation: function() {
+		initValidation() {
 			// Real-time JSON validation
-			$('#ability-test-payload').on('input', function() {
-				const $textarea = $(this);
-				const value = $textarea.val().trim();
+			const payload = document.getElementById('ability-test-payload');
+			if (payload) {
+				payload.addEventListener('input', function () {
+					const value = this.value.trim();
 
-				// Clear previous validation styling
-				$textarea.removeClass('json-valid json-invalid');
+					// Clear previous validation styling
+					this.classList.remove('json-valid', 'json-invalid');
 
-				if (value) {
-					try {
-						JSON.parse(value);
-						$textarea.addClass('json-valid');
-					} catch (e) {
-						$textarea.addClass('json-invalid');
+					if (value) {
+						try {
+							JSON.parse(value);
+							this.classList.add('json-valid');
+						} catch (e) {
+							this.classList.add('json-invalid');
+						}
 					}
-				}
-			});
+				});
+			}
 		},
 
 		/**
 		 * Invoke an ability via AJAX
+		 *
+		 * @param {string} abilitySlug - The ability slug to invoke.
+		 * @param {string} inputString - The input data as JSON string.
 		 */
-		invokeAbility: function(abilitySlug, inputString) {
+		invokeAbility(abilitySlug, inputString) {
 			const self = this;
-			const $button = $('#ability-test-invoke');
-			const $resultContainer = $('#ability-test-result-container');
-			const $result = $('#ability-test-result');
 
 			// Validate JSON
-			let input;
 			try {
-				input = JSON.parse(inputString);
+				JSON.parse(inputString);
 			} catch (e) {
-				self.showValidation(false, [aiAbilityExplorer.strings.invalidJson]);
+				self.showValidation(false, [
+					aiAbilityExplorer.strings.invalidJson,
+				]);
 				return;
 			}
 
 			// Show loading state
-			$button.prop('disabled', true);
-			$button.html(aiAbilityExplorer.strings.invoking + '<span class="ability-loading"></span>');
+			const button = document.getElementById('ability-test-invoke');
+			if (button) {
+				button.disabled = true;
+				const originalText =
+					button.dataset.originalText || button.textContent;
+				if (!button.dataset.originalText) {
+					button.dataset.originalText = originalText;
+				}
+				button.innerHTML =
+					aiAbilityExplorer.strings.invoking +
+					'<span class="ability-loading"></span>';
+			}
 
-			// Make AJAX request
-			$.ajax({
-				url: aiAbilityExplorer.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'ai_ability_explorer_invoke',
-					nonce: aiAbilityExplorer.nonce,
-					ability: abilitySlug,
-					input: inputString
-				},
-				success: function(response) {
+			// Make AJAX request using fetch
+			const formData = new FormData();
+			formData.append('action', 'ai_ability_explorer_invoke');
+			formData.append('nonce', aiAbilityExplorer.nonce);
+			formData.append('ability', abilitySlug);
+			formData.append('input', inputString);
+
+			fetch(aiAbilityExplorer.ajaxUrl, {
+				method: 'POST',
+				body: formData,
+				credentials: 'same-origin',
+			})
+				.then(function (response) {
+					return response.json();
+				})
+				.then(function (response) {
 					if (response.success) {
 						self.showResult(true, response.data);
 					} else {
 						self.showResult(false, response.data);
 					}
-				},
-				error: function(xhr, status, error) {
+				})
+				.catch(function (error) {
 					self.showResult(false, {
-						message: error,
-						error: 'AJAX request failed'
+						message: error.message,
+						error: 'AJAX request failed',
 					});
-				},
-				complete: function() {
+				})
+				.finally(function () {
 					// Reset button
-					$button.prop('disabled', false);
-					$button.html($button.data('original-text') || aiAbilityExplorer.strings.success);
-
-					// Store original text if not already stored
-					if (!$button.data('original-text')) {
-						$button.data('original-text', $button.text());
+					if (button) {
+						button.disabled = false;
+						button.textContent = button.dataset.originalText;
 					}
-				}
-			});
+				});
 
 			// Hide validation message
-			$('#ability-test-validation').hide();
+			const validation = document.getElementById(
+				'ability-test-validation'
+			);
+			if (validation) {
+				validation.style.display = 'none';
+			}
 		},
 
 		/**
 		 * Validate input against schema
 		 */
-		validateInput: function() {
-			const inputString = $('#ability-test-payload').val().trim();
-			const schemaElement = document.getElementById('ability-input-schema');
+		validateInput() {
+			const payload = document.getElementById('ability-test-payload');
+			const inputString = payload ? payload.value.trim() : '';
 
 			// Validate JSON syntax
 			let input;
 			try {
 				input = JSON.parse(inputString);
 			} catch (e) {
-				this.showValidation(false, [aiAbilityExplorer.strings.invalidJson + ': ' + e.message]);
+				this.showValidation(false, [
+					aiAbilityExplorer.strings.invalidJson + ': ' + e.message,
+				]);
 				return;
 			}
 
 			// If no schema, just validate JSON syntax
+			const schemaElement = document.getElementById(
+				'ability-input-schema'
+			);
 			if (!schemaElement) {
 				this.showValidation(true, ['JSON syntax is valid']);
 				return;
@@ -193,7 +259,9 @@
 			const errors = this.validateAgainstSchema(input, schema);
 
 			if (errors.length === 0) {
-				this.showValidation(true, ['Input is valid according to the schema']);
+				this.showValidation(true, [
+					'Input is valid according to the schema',
+				]);
 			} else {
 				this.showValidation(false, errors);
 			}
@@ -201,34 +269,51 @@
 
 		/**
 		 * Validate input against JSON schema
+		 *
+		 * @param {Object} input  - The input data to validate.
+		 * @param {Object} schema - The JSON schema to validate against.
+		 * @return {Array} Array of error messages.
 		 */
-		validateAgainstSchema: function(input, schema) {
+		validateAgainstSchema(input, schema) {
 			const errors = [];
 
 			// Check required fields
 			if (schema.required && Array.isArray(schema.required)) {
-				schema.required.forEach(function(field) {
+				schema.required.forEach(function (field) {
 					if (!(field in input)) {
-						errors.push('Required field "' + field + '" is missing');
+						errors.push(
+							'Required field "' + field + '" is missing'
+						);
 					}
 				});
 			}
 
 			// Check property types
 			if (schema.properties) {
-				Object.keys(schema.properties).forEach(function(propName) {
-					if (propName in input) {
-						const propSchema = schema.properties[propName];
-						const value = input[propName];
+				Object.keys(schema.properties).forEach(
+					function (propName) {
+						if (propName in input) {
+							const propSchema = schema.properties[propName];
+							const value = input[propName];
 
-						if (propSchema.type) {
-							const isValid = this.validateType(value, propSchema.type);
-							if (!isValid) {
-								errors.push('Field "' + propName + '" should be of type "' + propSchema.type + '"');
+							if (propSchema.type) {
+								const isValid = this.validateType(
+									value,
+									propSchema.type
+								);
+								if (!isValid) {
+									errors.push(
+										'Field "' +
+											propName +
+											'" should be of type "' +
+											propSchema.type +
+											'"'
+									);
+								}
 							}
 						}
-					}
-				}.bind(this));
+					}.bind(this)
+				);
 			}
 
 			return errors;
@@ -236,8 +321,12 @@
 
 		/**
 		 * Validate value type
+		 *
+		 * @param {*}      value        - The value to validate.
+		 * @param {string} expectedType - The expected type.
+		 * @return {boolean} True if valid, false otherwise.
 		 */
-		validateType: function(value, expectedType) {
+		validateType(value, expectedType) {
 			switch (expectedType) {
 				case 'string':
 					return typeof value === 'string';
@@ -257,60 +346,105 @@
 
 		/**
 		 * Show validation result
+		 *
+		 * @param {boolean} isValid  - Whether validation passed.
+		 * @param {Array}   messages - Array of validation messages.
 		 */
-		showValidation: function(isValid, messages) {
-			const $validation = $('#ability-test-validation');
+		showValidation(isValid, messages) {
+			const validation = document.getElementById(
+				'ability-test-validation'
+			);
+			if (!validation) {
+				return;
+			}
+
 			const iconHtml = isValid ? '✓' : '✗';
 			const titleText = isValid ? 'Valid' : 'Validation Errors';
-			const className = isValid ? 'validation-success' : 'validation-error';
+			const className = isValid
+				? 'validation-success'
+				: 'validation-error';
 
 			let html = '<h4>' + iconHtml + ' ' + titleText + '</h4>';
 
 			if (messages.length > 0) {
 				html += '<ul>';
-				messages.forEach(function(message) {
-					html += '<li>' + this.escapeHtml(message) + '</li>';
-				}.bind(this));
+				messages.forEach(
+					function (message) {
+						html += '<li>' + this.escapeHtml(message) + '</li>';
+					}.bind(this)
+				);
 				html += '</ul>';
 			}
 
-			$validation
-				.html(html)
-				.removeClass('validation-success validation-error')
-				.addClass(className)
-				.show();
+			validation.innerHTML = html;
+			validation.classList.remove(
+				'validation-success',
+				'validation-error'
+			);
+			validation.classList.add(className);
+			validation.style.display = 'block';
 		},
 
 		/**
 		 * Show result
+		 *
+		 * @param {boolean} isSuccess - Whether the request was successful.
+		 * @param {Object}  data      - The result data.
 		 */
-		showResult: function(isSuccess, data) {
-			const $resultContainer = $('#ability-test-result-container');
-			const $result = $('#ability-test-result');
-			const className = isSuccess ? 'ability-test-result-success' : 'ability-test-result-error';
-			const titleText = isSuccess ? aiAbilityExplorer.strings.success : aiAbilityExplorer.strings.error;
+		showResult(isSuccess, data) {
+			const resultContainer = document.getElementById(
+				'ability-test-result-container'
+			);
+			const result = document.getElementById('ability-test-result');
+
+			if (!resultContainer || !result) {
+				return;
+			}
+
+			const className = isSuccess
+				? 'ability-test-result-success'
+				: 'ability-test-result-error';
+			const titleText = isSuccess
+				? aiAbilityExplorer.strings.success
+				: aiAbilityExplorer.strings.error;
 
 			let html = '<h4>' + titleText + '</h4>';
-			html += '<pre>' + this.escapeHtml(JSON.stringify(data, null, 2)) + '</pre>';
+			html +=
+				'<pre>' +
+				this.escapeHtml(JSON.stringify(data, null, 2)) +
+				'</pre>';
 
-			$result
-				.html(html)
-				.removeClass('ability-test-result-success ability-test-result-error')
-				.addClass(className);
+			result.innerHTML = html;
+			result.classList.remove(
+				'ability-test-result-success',
+				'ability-test-result-error'
+			);
+			result.classList.add(className);
 
-			$resultContainer.show();
+			resultContainer.style.display = 'block';
 
 			// Scroll to result
-			$('html, body').animate({
-				scrollTop: $resultContainer.offset().top - 50
-			}, 500);
+			const rect = resultContainer.getBoundingClientRect();
+			const scrollTop =
+				window.pageYOffset ||
+				document.documentElement.scrollTop ||
+				document.body.scrollTop ||
+				0;
+			const targetPosition = rect.top + scrollTop - 50;
+
+			window.scrollTo({
+				top: targetPosition,
+				behavior: 'smooth',
+			});
 		},
 
 		/**
 		 * Format JSON in textarea
+		 *
+		 * @param {HTMLElement} textarea - The textarea element.
 		 */
-		formatJSON: function($textarea) {
-			const value = $textarea.val().trim();
+		formatJSON(textarea) {
+			const value = textarea.value.trim();
 
 			if (!value) {
 				return;
@@ -319,7 +453,7 @@
 			try {
 				const parsed = JSON.parse(value);
 				const formatted = JSON.stringify(parsed, null, 2);
-				$textarea.val(formatted);
+				textarea.value = formatted;
 			} catch (e) {
 				// Invalid JSON, don't format
 			}
@@ -327,62 +461,76 @@
 
 		/**
 		 * Copy text to clipboard
+		 *
+		 * @param {string}      text   - The text to copy.
+		 * @param {HTMLElement} button - The button element.
 		 */
-		copyToClipboard: function(text, $button) {
+		copyToClipboard(text, button) {
 			// Modern clipboard API
 			if (navigator.clipboard && window.isSecureContext) {
-				navigator.clipboard.writeText(text).then(function() {
-					this.showCopyFeedback($button, true);
-				}.bind(this), function() {
-					this.showCopyFeedback($button, false);
-				}.bind(this));
+				navigator.clipboard.writeText(text).then(
+					function () {
+						this.showCopyFeedback(button, true);
+					}.bind(this),
+					function () {
+						this.showCopyFeedback(button, false);
+					}.bind(this)
+				);
 			} else {
 				// Fallback for older browsers
-				const $temp = $('<textarea>');
-				$('body').append($temp);
-				$temp.val(text).select();
+				const temp = document.createElement('textarea');
+				document.body.appendChild(temp);
+				temp.value = text;
+				temp.select();
 
 				try {
 					const successful = document.execCommand('copy');
-					this.showCopyFeedback($button, successful);
+					this.showCopyFeedback(button, successful);
 				} catch (err) {
-					this.showCopyFeedback($button, false);
+					this.showCopyFeedback(button, false);
 				}
 
-				$temp.remove();
+				document.body.removeChild(temp);
 			}
 		},
 
 		/**
 		 * Show copy feedback
+		 *
+		 * @param {HTMLElement} button  - The button element.
+		 * @param {boolean}     success - Whether copy was successful.
 		 */
-		showCopyFeedback: function($button, success) {
-			const originalText = $button.text();
-			const feedbackText = success ? aiAbilityExplorer.strings.copySuccess : aiAbilityExplorer.strings.copyError;
+		showCopyFeedback(button, success) {
+			const originalText = button.textContent;
+			const feedbackText = success
+				? aiAbilityExplorer.strings.copySuccess
+				: aiAbilityExplorer.strings.copyError;
 
-			$button.text(feedbackText);
+			button.textContent = feedbackText;
 
-			setTimeout(function() {
-				$button.text(originalText);
+			setTimeout(function () {
+				button.textContent = originalText;
 			}, 2000);
 		},
 
 		/**
 		 * Escape HTML
+		 *
+		 * @param {string} text - The text to escape.
+		 * @return {string} The escaped text.
 		 */
-		escapeHtml: function(text) {
+		escapeHtml(text) {
 			const map = {
 				'&': '&amp;',
 				'<': '&lt;',
 				'>': '&gt;',
 				'"': '&quot;',
-				"'": '&#039;'
+				"'": '&#039;',
 			};
 
-			return text.replace(/[&<>"']/g, function(m) {
+			return text.replace(/[&<>"']/g, function (m) {
 				return map[m];
 			});
-		}
+		},
 	};
-
-})(jQuery);
+})();
