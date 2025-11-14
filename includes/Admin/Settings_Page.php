@@ -123,9 +123,11 @@ class Settings_Page {
 			);
 
 			// Allow experiments to register their own custom settings.
-			if ( method_exists( $experiment, 'register_settings' ) ) {
-				$experiment->register_settings();
+			if ( ! method_exists( $experiment, 'register_settings' ) ) {
+				continue;
 			}
+
+			$experiment->register_settings();
 		}
 	}
 

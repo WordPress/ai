@@ -186,6 +186,22 @@ abstract class Abstract_Experiment implements Experiment {
 	}
 
 	/**
+	 * Gets the option name for a custom experiment setting field.
+	 *
+	 * Generates a properly namespaced option name for experiment-specific settings.
+	 * Use this when registering and rendering custom settings fields to ensure
+	 * consistent naming across the plugin.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $option_name The base option name (e.g., 'api_key', 'temperature').
+	 * @return string The fully namespaced option name.
+	 */
+	protected function get_field_option_name( string $option_name ): string {
+		return "ai_experiment_{$this->id}_field_{$option_name}";
+	}
+
+	/**
 	 * Registers the experiment.
 	 *
 	 * Must be implemented by child classes to set up hooks and functionality.
