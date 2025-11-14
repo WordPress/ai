@@ -240,5 +240,28 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		// Attempting to construct without a label should fail because.
 		new Test_Ability( 'test-ability', array() );
 	}
+
+	/**
+	 * Test that get_system_instruction() returns empty string when no system instruction file exists.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_system_instruction_returns_empty_when_no_file() {
+		$feature = new Test_Ability_Feature();
+		$ability = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $feature->get_label(),
+				'description' => $feature->get_description(),
+				'feature'     => $feature,
+			)
+		);
+
+		$system_instruction = $ability->get_system_instruction();
+
+		// Test ability doesn't have a system instruction file, so should return empty string.
+		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
+		$this->assertEquals( '', $system_instruction, 'System instruction should be empty when no file exists' );
+	}
 }
 

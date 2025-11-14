@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI_Client\AI_Client;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -174,6 +176,9 @@ function initialize_features(): void {
 		$loader   = new Feature_Loader( $registry );
 		$loader->register_default_features();
 		$loader->initialize_features();
+
+		// Initialize the WP AI Client.
+		AI_Client::init();
 
 		add_action(
 			'wp_abilities_api_categories_init',

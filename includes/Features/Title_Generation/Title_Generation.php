@@ -9,7 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Features\Title_Generation;
 
-use WordPress\AI\Abilities\Title_Generation as Title_Generation_Ability;
+use WordPress\AI\Abilities\Title_Generation\Title_Generation as Title_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
