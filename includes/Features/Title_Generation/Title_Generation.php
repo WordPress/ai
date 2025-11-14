@@ -39,7 +39,7 @@ class Title_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.1.0
 	 */
-	public function register(): void {
+	protected function register_enabled_hooks(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 	}
 
