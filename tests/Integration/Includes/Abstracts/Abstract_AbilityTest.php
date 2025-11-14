@@ -121,14 +121,6 @@ class Test_Ability_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the feature.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -241,4 +233,3 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		new Test_Ability( 'test-ability', array() );
 	}
 }
-

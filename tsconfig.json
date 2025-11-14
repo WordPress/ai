@@ -1,9 +1,18 @@
 {
-	"extends": "@wordpress/scripts/config/tsconfig.json",
 	"compilerOptions": {
+		"target": "ES2020",
+		"module": "ESNext",
+		"lib": ["DOM", "DOM.Iterable", "ES2020"],
+		"jsx": "react-jsx",
+		"moduleResolution": "Node",
+		"resolveJsonModule": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"allowJs": true,
+		"checkJs": false,
+		"skipLibCheck": true,
+		"noEmit": true,
 		"baseUrl": "."
 	},
-	"include": [
-		"src/**/*"
-	]
+	"include": ["src/**/*"]
 }

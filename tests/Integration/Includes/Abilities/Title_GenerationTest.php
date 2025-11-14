@@ -33,14 +33,6 @@ class Test_Title_Generation_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the feature.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -372,4 +364,3 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
 }
-

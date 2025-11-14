@@ -175,7 +175,7 @@ const App = ({ settings }: AppProps) => {
 				isSaving={isGlobalSaving}
 				onChange={handleToggleChange}
 			/>
-	{otherSections.length > 0 ? (
+			{otherSections.length > 0 ? (
 				<Fragment>
 					<div className="ai-experiments-settings-app__divider" />
 					<div className="ai-experiments-settings-app__sections">
