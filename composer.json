@@ -33,7 +33,7 @@
       "WordPress\\AI\\": "includes/"
     },
     "files": [
-      "includes/Helpers.php"
+      "includes/helpers.php"
     ]
   },
   "autoload-dev": {
