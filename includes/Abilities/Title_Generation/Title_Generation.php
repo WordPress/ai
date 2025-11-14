@@ -262,14 +262,12 @@ class Title_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Get the prompt builder.
-		$prompt_builder = AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
+		// Generate the titles using the AI client.
+		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
 			->using_candidate_count( (int) $candidates )
-			->using_model_preference( ...get_preferred_models() );
-
-		// Make the request.
-		return $prompt_builder->generate_texts();
+			->using_model_preference( ...get_preferred_models() )
+			->generate_texts();
 	}
 }
