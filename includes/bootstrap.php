@@ -15,6 +15,7 @@ use WordPress\AI\Admin\Admin_Settings_Page;
 use WordPress\AI\Admin\Settings\Feature_Toggles;
 use WordPress\AI\Admin\Settings\Settings_Registry;
 use WordPress\AI\Admin\Settings\Settings_Toggle;
+use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -192,6 +193,9 @@ function initialize_features(): void {
 		$loader   = new Feature_Loader( $registry );
 		$loader->register_default_features();
 		$loader->initialize_features();
+
+		// Initialize the WP AI Client.
+		AI_Client::init();
 
 		add_action(
 			'wp_abilities_api_categories_init',
