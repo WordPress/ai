@@ -5,6 +5,8 @@
  * @package WordPress\AI\Abstracts
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI\Abstracts;
 
 use WordPress\AI\Contracts\Feature;
@@ -77,7 +79,7 @@ abstract class Abstract_Feature implements Feature {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	protected $id;
+	protected string $id;
 
 	/**
 	 * Feature label.
@@ -85,7 +87,7 @@ abstract class Abstract_Feature implements Feature {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	protected $label;
+	protected string $label;
 
 	/**
 	 * Feature description.
@@ -93,7 +95,7 @@ abstract class Abstract_Feature implements Feature {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	protected $description;
+	protected string $description;
 
 	/**
 	 * Feature toggles service.

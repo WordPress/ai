@@ -7,6 +7,8 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
 use WordPress\AI\Admin\Admin_Settings_Page;
@@ -190,6 +192,24 @@ function initialize_features(): void {
 		$loader   = new Feature_Loader( $registry );
 		$loader->register_default_features();
 		$loader->initialize_features();
+
+		add_action(
+			'wp_abilities_api_categories_init',
+			static function () {
+				/**
+				 * Register a generic catch-all category that all
+				 * Abilities we register can use. Can re-evaluate this
+				 * in the future if we need/want more specific categories.
+				 */
+				wp_register_ability_category(
+					'ai-experiments',
+					array(
+						'label'       => __( 'AI Experiments', 'ai' ),
+						'description' => __( 'Various AI experiment features.', 'ai' ),
+					),
+				);
+			}
+		);
 	} catch ( \Throwable $t ) {
 		_doing_it_wrong(
 			__NAMESPACE__ . '\initialize_features',

@@ -5,6 +5,8 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
 
 use WordPress\AI\Contracts\Feature;
@@ -18,14 +20,14 @@ use WordPress\AI\Exception\Invalid_Feature_Exception;
  *
  * @since 0.1.0
  */
-class Feature_Loader {
+final class Feature_Loader {
 	/**
 	 * Feature registry instance.
 	 *
 	 * @since 0.1.0
 	 * @var \WordPress\AI\Feature_Registry
 	 */
-	private $registry;
+	private \WordPress\AI\Feature_Registry $registry;
 
 	/**
 	 * Whether features have been initialized.
@@ -33,7 +35,7 @@ class Feature_Loader {
 	 * @since 0.1.0
 	 * @var bool
 	 */
-	private $initialized = false;
+	private bool $initialized = false;
 
 	/**
 	 * Constructor.
@@ -118,6 +120,10 @@ class Feature_Loader {
 		// Instantiate default features directly.
 		$features = array(
 			new \WordPress\AI\Features\Example_Feature\Example_Feature(
+				$feature_toggles_instance,
+				$feature_toggles_factory
+			),
+			new \WordPress\AI\Features\Title_Generation\Title_Generation(
 				$feature_toggles_instance,
 				$feature_toggles_factory
 			),
