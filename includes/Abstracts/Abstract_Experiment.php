@@ -45,14 +45,6 @@ abstract class Abstract_Experiment implements Experiment {
 	protected string $description;
 
 	/**
-	 * Whether the experiment is enabled.
-	 *
-	 * @since 0.1.0
-	 * @var bool
-	 */
-	private bool $enabled = true;
-
-	/**
 	 * Constructor.
 	 *
 	 * Loads experiment metadata and initializes properties.
@@ -134,12 +126,21 @@ abstract class Abstract_Experiment implements Experiment {
 	/**
 	 * Checks if experiment is enabled.
 	 *
+	 * Experiments require both the global toggle and individual experiment toggle to be enabled.
+	 *
 	 * @since 0.1.0
 	 *
 	 * @return bool True if enabled, false otherwise.
 	 */
 	final public function is_enabled(): bool {
-		$enabled = $this->enabled;
+		// Check global experiments toggle first.
+		$global_enabled = (bool) get_option( 'ai_experiments_enabled', false );
+		if ( ! $global_enabled ) {
+			return false;
+		}
+
+		// Check experiment-specific option.
+		$experiment_enabled = (bool) get_option( "ai_experiment_{$this->id}_enabled", false );
 
 		/**
 		 * Filters the enabled status for a specific experiment.
@@ -148,9 +149,24 @@ abstract class Abstract_Experiment implements Experiment {
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param bool $enabled Whether the experiment is enabled.
+		 * @param bool $experiment_enabled Whether the experiment is enabled.
 		 */
-		return (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $enabled );
+		return (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $experiment_enabled );
+	}
+
+	/**
+	 * Registers experiment-specific settings.
+	 *
+	 * Override this method in child classes to register custom settings sections or fields
+	 * using WordPress Settings API (register_setting, add_settings_section, add_settings_field).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	public function register_settings(): void {
+		// Default implementation does nothing.
+		// Child classes can override to register custom settings.
 	}
 
 	/**

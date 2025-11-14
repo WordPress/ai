@@ -11,6 +11,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI\Admin\Settings_Page;
 use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
@@ -176,6 +177,12 @@ function initialize_experiments(): void {
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
 		$loader->initialize_experiments();
+
+		// Initialize admin settings page.
+		if ( is_admin() ) {
+			$settings_page = new Settings_Page( $registry );
+			$settings_page->init();
+		}
 
 		// Initialize the WP AI Client.
 		AI_Client::init();
