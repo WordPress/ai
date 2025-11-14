@@ -56,15 +56,6 @@ wp plugin activate ai
 - `src/` bundles the React settings UI; its compiled output lives under `build/`.
 - `tests/` mirrors the PHP namespaces for integration coverage, while `docs/` captures the authoring notes you’re reading now.
 
-### Key Design Principles
-
-1. **Encapsulation**: Each feature is self-contained and can be reviewed independently
-2. **Modularity**: Features can be added/removed without affecting core functionality
-3. **Extensibility**: Third-party developers can register custom features via hooks
-4. **Standards Compliance**: All code follows WordPress coding standards
-
----
-
 ## Creating a New Feature
 
 - Scaffold a directory under `includes/Features/Your_Feature`.
