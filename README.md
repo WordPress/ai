@@ -61,8 +61,8 @@ If you’re a plugin developer, you’ll be able to:
 | Milestone | State |
 |-----------|-------|
 | Placeholder repository | **created** |
-| Feature roadmap | **created** |
-| Initial prototype | planned |
+| [Feature roadmap](https://github.com/WordPress/ai/blob/add/wporg-reqs/ROADMAP.md) | **created** |
+| Initial prototype | **in progress** |
 | Community testing | planned |
 
 ## How to Get Involved
