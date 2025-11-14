@@ -72,8 +72,8 @@ class Title_Generation extends Abstract_Feature {
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
 				'ability_class' => Title_Generation_Ability::class,
-				),
-			);
+			)
+		);
 	}
 
 	/**
