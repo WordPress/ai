@@ -242,6 +242,12 @@ class Settings_Page {
 												<?php echo esc_html( $experiment->get_description() ); ?>
 											</p>
 										<?php endif; ?>
+										<?php
+										// Allow experiments to render their own custom settings fields.
+										if ( method_exists( $experiment, 'render_settings_fields' ) ) {
+											$experiment->render_settings_fields();
+										}
+										?>
 									</div>
 								<?php endforeach; ?>
 							</div>

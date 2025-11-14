@@ -157,8 +157,8 @@ abstract class Abstract_Experiment implements Experiment {
 	/**
 	 * Registers experiment-specific settings.
 	 *
-	 * Override this method in child classes to register custom settings sections or fields
-	 * using WordPress Settings API (register_setting, add_settings_section, add_settings_field).
+	 * Override this method in child classes to register custom settings options
+	 * using WordPress Settings API (register_setting).
 	 *
 	 * @since 0.1.0
 	 *
@@ -167,6 +167,22 @@ abstract class Abstract_Experiment implements Experiment {
 	public function register_settings(): void {
 		// Default implementation does nothing.
 		// Child classes can override to register custom settings.
+	}
+
+	/**
+	 * Renders experiment-specific settings fields.
+	 *
+	 * Override this method in child classes to render custom settings UI
+	 * that will appear within the experiment's card on the settings page.
+	 * This is called after the experiment's main toggle control.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	public function render_settings_fields(): void {
+		// Default implementation does nothing.
+		// Child classes can override to render custom settings UI.
 	}
 
 	/**

@@ -106,5 +106,12 @@
 }
 
 .ai-experiments__item .description {
-	margin: 0.5rem 0 0 2rem;
+	margin: 0.5rem 0 0 1.5rem;
+}
+
+/* Element: item fields (custom experiment settings) */
+.ai-experiments__item-fields {
+	margin-top: 1rem;
+	padding-top: 1rem;
+	padding-left: 1.5rem;
 }
