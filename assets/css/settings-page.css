@@ -123,6 +123,16 @@
 /* Element: item fields (custom experiment settings) */
 .ai-experiments__item-fields {
 	padding-top: 0.75rem;
-	padding-left: 2rem;
+	padding-left: 1.5rem;
 	border-top: 0.0625rem solid #f0f0f0;
+}
+
+.ai-experiments__item-fields ul {
+	list-style: disc;
+	margin-left: 1.5rem;
+}
+
+.ai-experiments__item-fields ol {
+	list-style: decimal;
+	margin-left: 1.5rem;
 }
