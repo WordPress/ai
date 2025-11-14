@@ -159,9 +159,6 @@ function load(): void {
 	}
 	require_once AI_PLUGIN_DIR . 'vendor/autoload_packages.php';
 
-	// Load helper functions.
-	require_once AI_PLUGIN_DIR . 'includes/helpers.php';
-
 	$loaded = true;
 
 	// Hook experiment initialization to init.
