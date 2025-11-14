@@ -33,6 +33,15 @@ class Test_Title_Generation_Feature extends Abstract_Feature {
 		);
 	}
 
+	/**
+	 * No-op enabled hooks for testing.
+	 *
+	 * @since 0.1.0
+	 */
+	protected function register_enabled_hooks(): void {
+		// Intentionally left blank.
+	}
+
 }
 
 /**
