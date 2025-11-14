@@ -1,6 +1,6 @@
 <?php
 /**
- * Exception for invalid feature metadata.
+ * Exception for invalid experiment.
  *
  * @package WordPress\AI\Exception
  */
@@ -12,10 +12,10 @@ namespace WordPress\AI\Exception;
 use InvalidArgumentException;
 
 /**
- * Exception thrown when feature metadata is invalid.
+ * Exception thrown when an experiment is invalid.
  *
  * @since 0.1.0
  */
-class Invalid_Feature_Metadata_Exception extends InvalidArgumentException {
+class Invalid_Experiment_Exception extends InvalidArgumentException {
 
 }
