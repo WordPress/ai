@@ -42,23 +42,6 @@ class Test_Title_Generation_Feature extends Abstract_Feature {
 		// No-op for testing.
 	}
 
-	/**
-	 * Generates title suggestions from the given context.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string|array<string, string> $context The context to generate a title from.
-	 * @param int                           $n       The number of titles to generate.
-	 * @return array|\WP_Error The generated titles, or a WP_Error if there was an error.
-	 */
-	public function generate_titles( $context, int $n = 1 ) {
-		// For testing, return mock titles.
-		$titles = array();
-		for ( $i = 1; $i <= $n; $i++ ) {
-			$titles[] = "Generated Title {$i}";
-		}
-		return $titles;
-	}
 }
 
 /**
@@ -142,7 +125,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
 		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
-		$this->assertArrayHasKey( 'n', $schema['properties'], 'Schema should have n property' );
+		$this->assertArrayHasKey( 'candidates', $schema['properties'], 'Schema should have candidates property' );
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
@@ -152,10 +135,10 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'integer', $schema['properties']['post_id']['type'], 'Post ID should be integer type' );
 		$this->assertEquals( 'absint', $schema['properties']['post_id']['sanitize_callback'], 'Post ID should use absint' );
 
-		// Verify n property.
-		$this->assertEquals( 'integer', $schema['properties']['n']['type'], 'n should be integer type' );
-		$this->assertEquals( 1, $schema['properties']['n']['minimum'], 'n minimum should be 1' );
-		$this->assertEquals( 10, $schema['properties']['n']['maximum'], 'n maximum should be 10' );
+		// Verify candidates property.
+		$this->assertEquals( 'integer', $schema['properties']['candidates']['type'], 'candidates should be integer type' );
+		$this->assertEquals( 1, $schema['properties']['candidates']['minimum'], 'candidates minimum should be 1' );
+		$this->assertEquals( 10, $schema['properties']['candidates']['maximum'], 'candidates maximum should be 10' );
 	}
 
 	/**
@@ -203,10 +186,16 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$input  = array(
-			'content' => 'This is some test content.',
-			'n'       => 3,
+			'content'    => 'This is some test content.',
+			'candidates' => 3,
 		);
-		$result = $method->invoke( $this->ability, $input );
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
 
 		// Result may be array (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
@@ -239,10 +228,16 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		);
 
 		$input  = array(
-			'post_id' => $post_id,
-			'n'       => 2,
+			'post_id'    => $post_id,
+			'candidates' => 2,
 		);
-		$result = $method->invoke( $this->ability, $input );
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
 
 		// Result may be array (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
@@ -305,7 +300,13 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$input  = array(
 			'content' => 'Test content',
 		);
-		$result = $method->invoke( $this->ability, $input );
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
 
 		// Result may be array (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
@@ -316,7 +317,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
 		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		$this->assertCount( 1, $result['titles'], 'Should have 1 title by default' );
+		$this->assertCount( 3, $result['titles'], 'Should have 3 titles by default' );
 	}
 
 	/**
@@ -341,7 +342,13 @@ class Title_GenerationTest extends WP_UnitTestCase {
 			'content' => 'This content should be ignored.',
 			'post_id' => $post_id,
 		);
-		$result = $method->invoke( $this->ability, $input );
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
 
 		// Result may be array (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
@@ -412,6 +419,119 @@ class Title_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
+	}
+
+	/**
+	 * Test that permission_callback() returns true for user with read_post capability.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_permission_callback_with_post_id_and_read_capability() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		// Create a test post.
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_status'  => 'publish',
+			)
+		);
+
+		// Create a user with read capability.
+		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertTrue( $result, 'Permission should be granted for user with read_post capability' );
+	}
+
+	/**
+	 * Test that permission_callback() returns error for user without read_post capability.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_permission_callback_with_post_id_without_read_capability() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		// Create a private test post.
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_status'  => 'private',
+			)
+		);
+
+		// Create a user without read capability for this post.
+		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
+	}
+
+	/**
+	 * Test that permission_callback() returns error for non-existent post.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_permission_callback_with_nonexistent_post_id() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => 99999 ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'post_not_found', $result->get_error_code(), 'Error code should be post_not_found' );
+	}
+
+	/**
+	 * Test that permission_callback() returns false for post type without show_in_rest.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_permission_callback_with_post_type_without_show_in_rest() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		// Register a custom post type without show_in_rest.
+		register_post_type(
+			'test_no_rest',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+			)
+		);
+
+		// Create a test post with this post type.
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_type'    => 'test_no_rest',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertFalse( $result, 'Permission should be denied for post type without show_in_rest' );
+
+		// Clean up.
+		unregister_post_type( 'test_no_rest' );
 	}
 
 	/**

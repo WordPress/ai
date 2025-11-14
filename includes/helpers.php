@@ -119,3 +119,42 @@ function get_post_context( int $post_id ): array {
 
 	return $context;
 }
+
+/**
+ * Returns the preferred models.
+ *
+ * @since 0.1.0
+ *
+ * @return array<int, array{string, string}> The preferred models.
+ */
+function get_preferred_models(): array {
+	$preferred_models = array(
+		array(
+			'anthropic',
+			'claude-haiku-4-5',
+		),
+		array(
+			'google',
+			'gemini-2.5-flash',
+		),
+		array(
+			'openai',
+			'gpt-4o-mini',
+		),
+		array(
+			'openai',
+			'gpt-4.1',
+		),
+	);
+
+	/**
+	 * Filters the preferred models.
+	 *
+	 * @since 0.1.0
+	 * @hook ai_preferred_models
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred models.
+	 * @return array<int, array{string, string}> The filtered preferred models.
+	 */
+	return (array) apply_filters( 'ai_preferred_models', $preferred_models );
+}

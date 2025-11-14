@@ -129,10 +129,6 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Loads system instruction from a PHP file in the feature's directory.
 	 *
-	 * Automatic detection order:
-	 * 1. `system-instruction.php`
-	 * 2. `prompt.php`
-	 *
 	 * PHP files should return a string directly, e.g.:
 	 * ```php
 	 * <?php
@@ -142,7 +138,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
-	 *                              attempts to load `system-instruction.php` or `prompt.php`.
+	 *                              attempts to load `system-instruction.php`.
 	 * @return string The contents of the file, or empty string if file not found.
 	 */
 	protected function load_system_instruction_from_file( ?string $filename = null ): string {
@@ -171,20 +167,13 @@ abstract class Abstract_Ability extends WP_Ability {
 		}
 
 		// Automatic detection if no filename provided.
-		$possible_files = array(
-			'system-instruction.php',
-			'prompt.php',
-		);
+		$file_path = trailingslashit( $feature_dir ) . 'system-instruction.php';
 
-		foreach ( $possible_files as $possible_file ) {
-			$file_path = trailingslashit( $feature_dir ) . $possible_file;
+		if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
+			// PHP files should return a string directly.
+			$content = require $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 
-			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
-				// PHP files should return a string directly.
-				$content = require $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
-
-				return is_string( $content ) ? wp_strip_all_tags( $content ) : '';
-			}
+			return is_string( $content ) ? wp_strip_all_tags( $content ) : '';
 		}
 
 		return '';
