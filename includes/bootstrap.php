@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI_Client\AI_Client;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -157,6 +159,9 @@ function load(): void {
 	}
 	require_once AI_PLUGIN_DIR . 'vendor/autoload_packages.php';
 
+	// Load helper functions.
+	require_once AI_PLUGIN_DIR . 'includes/helpers.php';
+
 	$loaded = true;
 
 	// Hook experiment initialization to init.
@@ -174,6 +179,9 @@ function initialize_experiments(): void {
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
 		$loader->initialize_experiments();
+
+		// Initialize the WP AI Client.
+		AI_Client::init();
 
 		add_action(
 			'wp_abilities_api_categories_init',

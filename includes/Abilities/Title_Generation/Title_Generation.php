@@ -7,10 +7,15 @@
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities;
+namespace WordPress\AI\Abilities\Title_Generation;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI_Client\AI_Client;
+
+use function WordPress\AI\get_post_context;
+use function WordPress\AI\get_preferred_models;
+use function WordPress\AI\normalize_content;
 
 /**
  * Title generation WordPress Ability.
@@ -20,15 +25,13 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 class Title_Generation extends Abstract_Ability {
 
 	/**
-	 * Returns the category of the ability.
+	 * The default number of candidates to generate.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return string The category of the ability.
+	 * @var int
 	 */
-	protected function category(): string {
-		return 'ai-experiments'; // TODO: add a reusable way to get the category slug?
-	}
+	protected const CANDIDATES_DEFAULT = 3;
 
 	/**
 	 * Returns the input schema of the ability.
@@ -41,20 +44,21 @@ class Title_Generation extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'content' => array(
+				'content'    => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'Content to generate title suggestions for.', 'ai' ),
 				),
-				'post_id' => array(
+				'post_id'    => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Content from this post will be used to generate title suggestions. This overrides the content parameter if both are provided.', 'ai' ),
 				),
-				'n'       => array(
+				'candidates' => array(
 					'type'              => 'integer',
 					'minimum'           => 1,
 					'maximum'           => 10,
+					'default'           => self::CANDIDATES_DEFAULT,
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Number of titles to generate', 'ai' ),
 				),
@@ -90,16 +94,16 @@ class Title_Generation extends Abstract_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
-	 * @return mixed|\WP_Error The result of the ability execution, or a WP_Error on failure.
+	 * @return array{titles: array<string>}|\WP_Error The result of the ability execution, or a WP_Error on failure.
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
 		$args = wp_parse_args(
 			$input,
 			array(
-				'content' => null,
-				'post_id' => null,
-				'n'       => 1,
+				'content'    => null,
+				'post_id'    => null,
+				'candidates' => self::CANDIDATES_DEFAULT,
 			),
 		);
 
@@ -115,26 +119,51 @@ class Title_Generation extends Abstract_Ability {
 				);
 			}
 
-			$args['content'] = $post->post_content;
+			// Get the post context.
+			$context = get_post_context( $args['post_id'] );
+
+			// Default to the passed in content if it exists.
+			if ( $args['content'] ) {
+				$context['content'] = normalize_content( $args['content'] );
+			}
+		} else {
+			$context = array(
+				'content' => normalize_content( $args['content'] ?? '' ),
+			);
 		}
 
 		// If we have no content, return an error.
-		if ( ! $args['content'] ) {
+		if ( empty( $context['content'] ) ) {
 			return new WP_Error(
 				'content_not_provided',
 				esc_html__( 'Content is required to generate title suggestions.', 'ai' )
 			);
 		}
 
-		// TODO: Implement the title generation logic.
+		// Generate the titles.
+		$result = $this->generate_titles( $context, $args['candidates'] );
 
+		// If we have an error, return it.
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		// If we have no results, return an error.
+		if ( empty( $result ) ) {
+			return new WP_Error(
+				'no_results',
+				esc_html__( 'No title suggestions were generated.', 'ai' )
+			);
+		}
+
+		// Return the titles in the format the Ability expects.
 		return array(
-			'name'        => $this->get_name(),
-			'label'       => $this->get_label(),
-			'description' => $this->get_description(),
-			'content'     => wp_kses_post( $args['content'] ),
-			'post_id'     => $args['post_id'] ? absint( $args['post_id'] ) : esc_html__( 'Not provided', 'ai' ),
-			'n'           => absint( $args['n'] ),
+			'titles' => array_map(
+				static function ( $title ) {
+					return sanitize_text_field( trim( $title, ' "\'' ) );
+				},
+				$result
+			),
 		);
 	}
 
@@ -203,5 +232,42 @@ class Title_Generation extends Abstract_Ability {
 		return array(
 			'show_in_rest' => true,
 		);
+	}
+
+	/**
+	 * Generates title suggestions from the given content.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string|array<string, string> $context The context to generate a title from.
+	 * @param int $candidates The number of titles to generate.
+	 * @return array<string>|\WP_Error The generated titles, or a WP_Error if there was an error.
+	 */
+	protected function generate_titles( $context, int $candidates = 1 ) {
+		// Convert the context to a string if it's an array.
+		if ( is_array( $context ) ) {
+			$context = implode(
+				"\n",
+				array_map(
+					static function ( $key, $value ) {
+						return sprintf(
+							'%s: %s',
+							ucwords( str_replace( '_', ' ', $key ) ),
+							$value
+						);
+					},
+					array_keys( $context ),
+					$context
+				)
+			);
+		}
+
+		// Generate the titles using the AI client.
+		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_temperature( 0.7 )
+			->using_candidate_count( (int) $candidates )
+			->using_model_preference( ...get_preferred_models() )
+			->generate_texts();
 	}
 }
