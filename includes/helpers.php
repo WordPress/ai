@@ -84,6 +84,14 @@ function get_post_context( int $post_id ): array {
 		$context['current_title'] = $title;
 	}
 
+	// Get the post name using the get-name ability.
+	$name_ability = wp_get_ability( 'ai/get-name' );
+	$name         = $name_ability->execute( array( 'post_id' => $post_id ) );
+
+	if ( $name && ! is_wp_error( $name ) ) {
+		$context['slug'] = $name;
+	}
+
 	/**
 	 * TODO: Might be interesting to add simple Abilities for the following,
 	 * just as a way to demonstrate a different approach to registering Abilities,
@@ -91,10 +99,6 @@ function get_post_context( int $post_id ): array {
 	 *
 	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
 	 */
-
-	if ( $post->post_name ) {
-		$context['slug'] = $post->post_name;
-	}
 
 	$author = get_user_by( 'ID', $post->post_author );
 	if ( $author ) {
