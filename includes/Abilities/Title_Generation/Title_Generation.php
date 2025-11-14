@@ -31,7 +31,7 @@ class Title_Generation extends Abstract_Ability {
 	 *
 	 * @var int
 	 */
-	const CANDIDATES_DEFAULT = 3;
+	protected const CANDIDATES_DEFAULT = 3;
 
 	/**
 	 * Returns the input schema of the ability.
