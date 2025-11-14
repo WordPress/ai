@@ -6,7 +6,7 @@
  * External Dependencies.
  */
 import React from 'react';
-import apiFetch from '@wordpress/api-fetch';
+import { executeAbility } from '@wordpress/abilities';
 import {
 	ToolbarGroup,
 	ToolbarButton,
@@ -40,10 +40,10 @@ async function generateTitle(
 	postId: number,
 	content: string
 ): Promise< string > {
-	return apiFetch( {
-		path: aiTitleGenerationData?.path,
-		method: 'POST',
-		data: { input: { post_id: postId, content, n: 1 } },
+	return executeAbility( 'ai/title-generation', {
+		content,
+		post_id: postId,
+		candidates: 1,
 	} )
 		.then( ( response ) => {
 			if (
