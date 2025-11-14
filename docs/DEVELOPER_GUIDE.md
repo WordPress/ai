@@ -51,8 +51,6 @@ wp plugin activate ai
 
 ## Architecture Overview
 
-The codebase is intentionally small and predictable:
-
 - `ai.php` bootstraps the plugin and defers to `includes/bootstrap.php`.
 - `includes/` contains runtime PHP, with `Features/` housing feature classes and `Admin/` holding the settings page plus shared services such as `Feature_Toggles`.
 - `src/` bundles the React settings UI; its compiled output lives under `build/`.
@@ -69,45 +67,10 @@ The codebase is intentionally small and predictable:
 
 ## Creating a New Feature
 
-Keep it lean:
-
-1. `mkdir -p includes/Features/My_Feature` and add `My_Feature.php`.
-2. Extend `Abstract_Feature`, implement `load_feature_metadata()`, and register hooks inside `register_shared_hooks()` / `register_enabled_hooks()`.
-3. Use `Provides_Settings_Section` if you need controls on the admin screen—see the Example Feature for a working pattern.
-
-Minimal scaffold:
-
-```php
-namespace WordPress\AI\Features\My_Feature;
-
-use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Admin\Settings\Settings_Registry;
-
-class My_Feature extends Abstract_Feature {
-	protected function load_feature_metadata(): array {
-		return array(
-			'id'          => 'my-feature',
-			'label'       => __( 'My Feature', 'ai' ),
-			'description' => __( 'What it does.', 'ai' ),
-		);
-	}
-
-	protected function register_shared_hooks(): void {
-		add_action( 'ai_register_settings_sections', array( $this, 'register_settings_sections' ) );
-	}
-
-	public function register_settings_sections( Settings_Registry $registry ): void {
-		$this->register_feature_settings_section(
-			$registry,
-			'my-feature',
-			__( 'My Feature', 'ai' ),
-			array( $this, 'render_settings_section' )
-		);
-	}
-}
-```
-
-Register the feature via the existing hooks (`ai_default_features`, `ai_register_features`) instead of editing core files, and keep a short `README.md` next to the class so reviewers understand its purpose.
+- Scaffold a directory under `includes/Features/Your_Feature`.
+- Extend `Abstract_Feature`, add metadata via `load_feature_metadata()`, and set up hooks inside `register_shared_hooks()` / `register_enabled_hooks()`.
+- Call `register_feature_settings_section()` (from `Provides_Settings_Section`) if the feature needs admin controls.
+- Register through `ai_default_features` or `ai_register_features` filters and include a short README near the class so reviewers know what it does.
 
 ## Admin Settings In Short
 
