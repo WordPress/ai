@@ -92,6 +92,14 @@ function get_post_context( int $post_id ): array {
 		$context['slug'] = $name;
 	}
 
+	// Get the post author using the get-author ability.
+	$author_ability = wp_get_ability( 'ai/get-author' );
+	$author         = $author_ability->execute( array( 'post_id' => $post_id ) );
+
+	if ( $author && ! is_wp_error( $author ) ) {
+		$context['author'] = $author;
+	}
+
 	/**
 	 * TODO: Might be interesting to add simple Abilities for the following,
 	 * just as a way to demonstrate a different approach to registering Abilities,
@@ -99,11 +107,6 @@ function get_post_context( int $post_id ): array {
 	 *
 	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
 	 */
-
-	$author = get_user_by( 'ID', $post->post_author );
-	if ( $author ) {
-		$context['author'] = $author->display_name;
-	}
 
 	if ( $post->post_type ) {
 		$context['content_type'] = $post->post_type;

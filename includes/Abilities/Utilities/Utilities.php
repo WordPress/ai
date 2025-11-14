@@ -36,6 +36,7 @@ class Utilities {
 		$this->register_get_content_ability();
 		$this->register_get_title_ability();
 		$this->register_get_name_ability();
+		$this->register_get_author_ability();
 	}
 
 	/**
@@ -136,9 +137,6 @@ class Utilities {
 					// Return true if the user has permission to read the post.
 					return current_user_can( 'read_post', $post_id );
 				},
-				'meta' => array(
-					'show_in_rest' => true,
-				),
 			),
 		);
 	}
@@ -174,6 +172,58 @@ class Utilities {
 					$post    = get_post( $post_id );
 
 					return $post->post_name;
+				},
+				'permission_callback' => static function ( $args ) {
+					$post_id = absint( $args['post_id'] );
+					$post    = get_post( $post_id );
+
+					// If the post doesn't exist, return an error.
+					if ( ! $post ) {
+						return new WP_Error(
+							'post_not_found',
+							esc_html__( 'Post not found.', 'ai' )
+						);
+					}
+
+					// Return true if the user has permission to read the post.
+					return current_user_can( 'read_post', $post_id );
+				},
+			),
+		);
+	}
+
+	/**
+	 * Registers the get-author ability.
+	 *
+	 * @since 0.1.0
+	 */
+	private function register_get_author_ability(): void {
+		wp_register_ability(
+			'ai/get-author',
+			array(
+				'label'               => esc_html__( 'Get the post author', 'ai' ),
+				'description'         => esc_html__( 'Get the display name of the author of a post based on the post ID.', 'ai' ),
+				'category'            => 'ai-experiments',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => esc_html__( 'The ID of the post to get the author of.', 'ai' ),
+						),
+					),
+					'required'   => array( 'post_id' ),
+				),
+				'output_schema' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The display name of the author of the post.', 'ai' ),
+				),
+				'execute_callback'    => static function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+					$author  = get_user_by( 'ID', $post->post_author );
+
+					return $author ? $author->display_name : '';
 				},
 				'permission_callback' => static function ( $args ) {
 					$post_id = absint( $args['post_id'] );
