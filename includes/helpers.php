@@ -66,12 +66,14 @@ function normalize_content( string $content ): string {
  * @return array<string, string> The context for the given post ID.
  */
 function get_post_context( int $post_id ): array {
-	$post    = get_post( $post_id );
 	$context = array();
 
-	// If the post doesn't exist, return early.
-	if ( ! $post ) {
-		return $context;
+	// Get the post content using the get-content ability.
+	$content_ability = wp_get_ability( 'ai/get-content' );
+	$content         = $content_ability->execute( array( 'post_id' => $post_id ) );
+
+	if ( $content && ! is_wp_error( $content ) ) {
+		$context['content'] = normalize_content( (string) apply_filters( 'the_content', $content ) );
 	}
 
 	/**
@@ -81,10 +83,6 @@ function get_post_context( int $post_id ): array {
 	 *
 	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
 	 */
-
-	if ( $post->post_content ) {
-		$context['content'] = normalize_content( (string) apply_filters( 'the_content', $post->post_content ) );
-	}
 
 	if ( $post->post_title ) {
 		$context['current_title'] = $post->post_title;
