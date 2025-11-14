@@ -76,6 +76,14 @@ function get_post_context( int $post_id ): array {
 		$context['content'] = normalize_content( (string) apply_filters( 'the_content', $content ) );
 	}
 
+	// Get the post title using the get-title ability.
+	$title_ability = wp_get_ability( 'ai/get-title' );
+	$title         = $title_ability->execute( array( 'post_id' => $post_id ) );
+
+	if ( $title && ! is_wp_error( $title ) ) {
+		$context['current_title'] = $title;
+	}
+
 	/**
 	 * TODO: Might be interesting to add simple Abilities for the following,
 	 * just as a way to demonstrate a different approach to registering Abilities,
@@ -83,10 +91,6 @@ function get_post_context( int $post_id ): array {
 	 *
 	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
 	 */
-
-	if ( $post->post_title ) {
-		$context['current_title'] = $post->post_title;
-	}
 
 	if ( $post->post_name ) {
 		$context['slug'] = $post->post_name;
