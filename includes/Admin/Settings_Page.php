@@ -123,11 +123,9 @@ class Settings_Page {
 			);
 
 			// Allow experiments to register their own custom settings.
-			if ( ! method_exists( $experiment, 'register_settings' ) ) {
-				continue;
+			if ( method_exists( $experiment, 'register_settings' ) ) {
+				$experiment->register_settings();
 			}
-
-			$experiment->register_settings();
 		}
 	}
 
@@ -181,10 +179,12 @@ class Settings_Page {
 				<div class="ai-experiments">
 					<!-- Global Toggle Section -->
 					<div class="ai-experiments__card ai-experiments__card--global">
-						<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
-						<p class="description">
-							<?php esc_html_e( 'Control whether AI experiments are enabled for your site. When disabled, all experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
-						</p>
+						<div class="ai-experiments__card-heading">
+							<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
+							<p class="description">
+								<?php esc_html_e( 'Control whether AI experiments are enabled for your site. When disabled, all experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
+							</p>
+						</div>
 
 						<div class="ai-experiments__toggle">
 							<label class="components-toggle-control">
@@ -205,15 +205,20 @@ class Settings_Page {
 					<!-- Individual Experiments Section -->
 					<?php if ( ! empty( $this->registry->get_all_experiments() ) ) : ?>
 						<div class="ai-experiments__card">
-							<h2><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
+							<div class="ai-experiments__card-heading">
+								<h2><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
+								<p class="description">
+									<?php esc_html_e( 'Try out the following experiments to see how AI can help your site.', 'ai' ); ?>
+								</p>
 
-							<?php if ( ! $global_enabled ) : ?>
-								<div class="notice notice-info inline ai-experiments__notice">
-									<p><?php esc_html_e( 'Enable experiments above to configure individual experiment settings.', 'ai' ); ?></p>
-								</div>
-							<?php endif; ?>
+								<?php if ( ! $global_enabled ) : ?>
+									<div class="notice notice-info inline ai-experiments__notice">
+										<p><?php esc_html_e( 'Enable experiments above to configure individual experiment settings.', 'ai' ); ?></p>
+									</div>
+								<?php endif; ?>
+							</div>
 
-							<div class="ai-experiments__list">
+							<ul class="ai-experiments__list">
 								<?php foreach ( $this->registry->get_all_experiments() as $experiment ) : ?>
 									<?php
 									$experiment_id      = $experiment->get_id();
@@ -221,7 +226,7 @@ class Settings_Page {
 									$experiment_enabled = (bool) get_option( $experiment_option, false );
 									$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
 									?>
-									<div class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
+									<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
 										<div class="ai-experiments__item-header">
 											<label class="components-toggle-control">
 												<input
@@ -248,9 +253,9 @@ class Settings_Page {
 											$experiment->render_settings_fields();
 										}
 										?>
-									</div>
+									</li>
 								<?php endforeach; ?>
-							</div>
+							</ul>
 						</div>
 					<?php endif; ?>
 				</div>
