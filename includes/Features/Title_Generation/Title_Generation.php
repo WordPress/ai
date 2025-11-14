@@ -9,9 +9,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Features\Title_Generation;
 
-use WordPress\AI\Asset_Loader;
 use WordPress\AI\Abilities\Title_Generation\Title_Generation as Title_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Asset_Loader;
 
 /**
  * Title generation feature.
@@ -78,8 +78,9 @@ class Title_Generation extends Abstract_Feature {
 
 		// Load the assets only if the post type supports titles and is not an attachment.
 		if (
+			! $screen ||
 			! post_type_supports( $screen->post_type, 'title' ) ||
-			in_array( $screen->post_type, [ 'attachment' ], true )
+			in_array( $screen->post_type, array( 'attachment' ), true )
 		) {
 			return;
 		}

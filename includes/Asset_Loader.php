@@ -41,7 +41,7 @@ class Asset_Loader {
 		$script_asset_path = $script_path . '.asset.php';
 
 		if ( file_exists( $script_asset_path ) ) {
-			$asset_data = require $script_asset_path;
+			$asset_data = require $script_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 		} else {
 			$asset_data = array(
 				'dependencies' => array(),
@@ -72,7 +72,7 @@ class Asset_Loader {
 		$style_asset_path = $style_path . '.asset.php';
 
 		if ( file_exists( $style_asset_path ) ) {
-			$asset_data = require $style_asset_path;
+			$asset_data = require $style_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 		} else {
 			$asset_data = array(
 				'dependencies' => array(),
