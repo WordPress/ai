@@ -138,7 +138,7 @@ export default function TitleToolbar(): JSX.Element | null {
 		editPost( { title: transformedTitle } );
 	};
 
-	// Ensure the feature is enabled.
+	// Ensure the experiment is enabled.
 	if ( ! aiTitleGenerationData?.enabled ) {
 		return null;
 	}

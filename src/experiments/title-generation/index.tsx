@@ -1,5 +1,5 @@
 /**
- * Title generation feature plugin registration.
+ * Title generation experiment plugin registration.
  */
 
 /**

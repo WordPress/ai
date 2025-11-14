@@ -4,8 +4,8 @@ const webpackConfig = {
 	...defaultConfig,
 	entry: {
 		...defaultConfig.entry(),
-		'features/title-generation':
-			'./src/features/title-generation/index.tsx',
+		'experiments/title-generation':
+			'./src/experiments/title-generation/index.tsx',
 	},
 };
 

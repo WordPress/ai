@@ -1,32 +1,32 @@
 <?php
 /**
- * Example feature implementation.
+ * Example experiment implementation.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Features\Example_Feature;
+namespace WordPress\AI\Experiments\Example_Experiment;
 
-use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Abstracts\Abstract_Experiment;
 
 /**
- * Reference feature demonstrating hooks and REST endpoints.
+ * Reference experiment demonstrating hooks and REST endpoints.
  *
  * @since 0.1.0
  */
-class Example_Feature extends Abstract_Feature {
+class Example_Experiment extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
 	 * @since 0.1.0
 	 */
-	protected function load_feature_metadata(): array {
+	protected function load_experiment_metadata(): array {
 		return array(
-			'id'          => 'example-feature',
-			'label'       => __( 'Example Feature', 'ai' ),
-			'description' => __( 'Demonstrates the AI feature system with example hooks and functionality.', 'ai' ),
+			'id'          => 'example-experiment',
+			'label'       => __( 'Example Experiment', 'ai' ),
+			'description' => __( 'Demonstrates the AI experiment system with example hooks and functionality.', 'ai' ),
 		);
 	}
 
@@ -51,7 +51,7 @@ class Example_Feature extends Abstract_Feature {
 			return;
 		}
 
-		echo '<!-- Example Feature: AI Plugin Active -->';
+		echo '<!-- Example Experiment: AI Plugin Active -->';
 	}
 
 	/**
@@ -95,11 +95,11 @@ class Example_Feature extends Abstract_Feature {
 	 */
 	public function rest_endpoint_callback(): array {
 		return array(
-			'feature_id'  => $this->get_id(),
-			'label'       => $this->get_label(),
-			'description' => $this->get_description(),
-			'enabled'     => $this->is_enabled(),
-			'message'     => __( 'Example feature is active!', 'ai' ),
+			'experiment_id' => $this->get_id(),
+			'label'         => $this->get_label(),
+			'description'   => $this->get_description(),
+			'enabled'       => $this->is_enabled(),
+			'message'       => __( 'Example experiment is active!', 'ai' ),
 		);
 	}
 
