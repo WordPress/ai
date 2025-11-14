@@ -180,6 +180,10 @@ function initialize_experiments(): void {
 		// Initialize the WP AI Client.
 		AI_Client::init();
 
+		// Register our utility abilities.
+		$utilities = new \WordPress\AI\Abilities\Utilities\Utilities();
+		$utilities->register();
+
 		add_action(
 			'wp_abilities_api_categories_init',
 			static function () {
