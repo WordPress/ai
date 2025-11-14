@@ -5,6 +5,7 @@
   "description": "WordPress AI Experiments",
   "license": "GPL-2.0-or-later",
   "files": [
+    "build",
     "includes",
     "vendor",
     "README.md",
