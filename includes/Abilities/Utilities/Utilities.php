@@ -38,6 +38,7 @@ class Utilities {
 		$this->register_get_name_ability();
 		$this->register_get_author_ability();
 		$this->register_get_type_ability();
+		$this->register_get_excerpt_ability();
 	}
 
 	/**
@@ -276,6 +277,57 @@ class Utilities {
 					$post    = get_post( $post_id );
 
 					return $post->post_type;
+				},
+				'permission_callback' => static function ( $args ) {
+					$post_id = absint( $args['post_id'] );
+					$post    = get_post( $post_id );
+
+					// If the post doesn't exist, return an error.
+					if ( ! $post ) {
+						return new WP_Error(
+							'post_not_found',
+							esc_html__( 'Post not found.', 'ai' )
+						);
+					}
+
+					// Return true if the user has permission to read the post.
+					return current_user_can( 'read_post', $post_id );
+				},
+			),
+		);
+	}
+
+	/**
+	 * Registers the get-excerpt ability.
+	 *
+	 * @since 0.1.0
+	 */
+	private function register_get_excerpt_ability(): void {
+		wp_register_ability(
+			'ai/get-excerpt',
+			array(
+				'label'               => esc_html__( 'Get the post excerpt', 'ai' ),
+				'description'         => esc_html__( 'Get the excerpt of a post based on the post ID.', 'ai' ),
+				'category'            => 'ai-experiments',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => esc_html__( 'The ID of the post to get the excerpt of.', 'ai' ),
+						),
+					),
+					'required'   => array( 'post_id' ),
+				),
+				'output_schema' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The excerpt of the post.', 'ai' ),
+				),
+				'execute_callback'    => static function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+
+					return $post->post_excerpt;
 				},
 				'permission_callback' => static function ( $args ) {
 					$post_id = absint( $args['post_id'] );

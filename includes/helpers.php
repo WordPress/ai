@@ -108,6 +108,14 @@ function get_post_context( int $post_id ): array {
 		$context['content_type'] = $type;
 	}
 
+	// Get the post excerpt using the get-excerpt ability.
+	$excerpt_ability = wp_get_ability( 'ai/get-excerpt' );
+	$excerpt         = $excerpt_ability->execute( array( 'post_id' => $post_id ) );
+
+	if ( $excerpt && ! is_wp_error( $excerpt ) ) {
+		$context['excerpt'] = $excerpt;
+	}
+
 	/**
 	 * TODO: Might be interesting to add simple Abilities for the following,
 	 * just as a way to demonstrate a different approach to registering Abilities,
@@ -115,10 +123,6 @@ function get_post_context( int $post_id ): array {
 	 *
 	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
 	 */
-
-	if ( $post->post_excerpt ) {
-		$context['excerpt'] = $post->post_excerpt;
-	}
 
 	$categories = get_the_terms( $post_id, 'category' );
 	if ( $categories && ! is_wp_error( $categories ) ) {
