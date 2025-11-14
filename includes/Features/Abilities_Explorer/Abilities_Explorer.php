@@ -157,7 +157,7 @@ class Abilities_Explorer extends Abstract_Feature {
 		printf(
 			'<div class="notice notice-error"><p><strong>%s</strong></p><p>%s</p><details style="margin-top: 10px;"><summary style="cursor: pointer;">%s</summary><pre style="background: #f0f0f0; padding: 10px; margin-top: 10px; overflow-x: auto;">%s</pre></details></div>',
 			esc_html( $message ),
-			$help_text, // Already escaped above
+			$help_text, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Already escaped above
 			esc_html__( 'Debug Information', 'ai' ),
 			esc_html( implode( "\n", $debug_info ) )
 		);

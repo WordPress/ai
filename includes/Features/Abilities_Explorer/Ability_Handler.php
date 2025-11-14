@@ -35,14 +35,9 @@ class Ability_Handler {
 			return array();
 		}
 
-		try {
-			$all_abilities = wp_get_abilities();
+		$all_abilities = wp_get_abilities();
 
-			return self::format_abilities( $all_abilities );
-		} catch ( \Exception $e ) {
-			error_log( 'AI Abilities Explorer: Error fetching abilities - ' . $e->getMessage() );
-			return array();
-		}
+		return self::format_abilities( $all_abilities );
 	}
 
 	/**
@@ -58,18 +53,13 @@ class Ability_Handler {
 			return null;
 		}
 
-		try {
-			$ability = wp_get_ability( $slug );
+		$ability = wp_get_ability( $slug );
 
-			if ( ! $ability ) {
-				return null;
-			}
-
-			return self::format_single_ability( $ability );
-		} catch ( \Exception $e ) {
-			error_log( 'AI Abilities Explorer: Error fetching ability - ' . $e->getMessage() );
+		if ( ! $ability ) {
 			return null;
 		}
+
+		return self::format_single_ability( $ability );
 	}
 
 	/**
@@ -180,45 +170,37 @@ class Ability_Handler {
 			);
 		}
 
-		try {
-			$ability = wp_get_ability( $slug );
+		$ability = wp_get_ability( $slug );
 
-			if ( ! $ability ) {
-				return array(
-					'success' => false,
-					'error'   => sprintf( 'Ability "%s" not found', $slug ),
-				);
-			}
-
-			// If ability has no input schema, invoke without input
-			$input_schema = $ability->get_input_schema();
-			if ( empty( $input_schema ) ) {
-				$result = $ability->execute();
-			} else {
-				$result = $ability->execute( $input );
-			}
-
-			// Check if result is WP_Error
-			if ( is_wp_error( $result ) ) {
-				return array(
-					'success' => false,
-					'error'   => $result->get_error_message(),
-					'code'    => $result->get_error_code(),
-					'data'    => $result->get_error_data(),
-				);
-			}
-
-			return array(
-				'success' => true,
-				'data'    => $result,
-			);
-		} catch ( \Exception $e ) {
+		if ( ! $ability ) {
 			return array(
 				'success' => false,
-				'error'   => $e->getMessage(),
-				'trace'   => $e->getTraceAsString(),
+				'error'   => sprintf( 'Ability "%s" not found', $slug ),
 			);
 		}
+
+		// If ability has no input schema, invoke without input
+		$input_schema = $ability->get_input_schema();
+		if ( empty( $input_schema ) ) {
+			$result = $ability->execute();
+		} else {
+			$result = $ability->execute( $input );
+		}
+
+		// Check if result is WP_Error
+		if ( is_wp_error( $result ) ) {
+			return array(
+				'success' => false,
+				'error'   => $result->get_error_message(),
+				'code'    => $result->get_error_code(),
+				'data'    => $result->get_error_data(),
+			);
+		}
+
+		return array(
+			'success' => true,
+			'data'    => $result,
+		);
 	}
 
 	/**
