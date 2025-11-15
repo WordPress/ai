@@ -39,6 +39,7 @@ class Utilities {
 		$this->register_get_author_ability();
 		$this->register_get_type_ability();
 		$this->register_get_excerpt_ability();
+		$this->register_get_terms_ability();
 	}
 
 	/**
@@ -344,9 +345,83 @@ class Utilities {
 					// Return true if the user has permission to read the post.
 					return current_user_can( 'read_post', $post_id );
 				},
-				'meta' => array(
-					'show_in_rest' => true,
+			),
+		);
+	}
+
+	/**
+	 * Registers the get-terms ability.
+	 *
+	 * @since 0.1.0
+	 */
+	private function register_get_terms_ability(): void {
+		wp_register_ability(
+			'ai/get-terms',
+			array(
+				'label'               => esc_html__( 'Get the post terms', 'ai' ),
+				'description'         => esc_html__( 'Get the terms of a post based on the post ID and optionally filter by taxonomy.', 'ai' ),
+				'category'            => 'ai-experiments',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => esc_html__( 'The ID of the post to get the terms of.', 'ai' ),
+						),
+						'taxonomy' => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The taxonomy to filter the terms by.', 'ai' ),
+						),
+					),
+					'required'   => array( 'post_id' ),
 				),
+				'output_schema' => array(
+					'type'        => 'object',
+					'properties' => array(
+						'terms' => array(
+							'type'        => 'array',
+							'description' => esc_html__( 'An array of WP_Term objects assigned to the post.', 'ai' ),
+						),
+					),
+				),
+				'execute_callback'    => static function ( $input ) {
+					$post_id  = absint( $input['post_id'] );
+					$post     = get_post( $post_id );
+					$taxonomy = $input['taxonomy'] ?? '';
+
+					if ( $taxonomy ) {
+						$taxonomies = array( $taxonomy );
+					} else {
+						$taxonomies = get_object_taxonomies( $post->post_type );
+					}
+
+					$terms = wp_get_object_terms( $post_id, $taxonomies );
+
+					if ( is_wp_error( $terms ) ) {
+						return new WP_Error(
+							'get_terms_error',
+							/* translators: %s: Taxonomy. %s: Error message. */
+							sprintf( esc_html__( 'Error getting terms for taxonomy %s: %s', 'ai' ), $taxonomy, $terms->get_error_message() )
+						);
+					}
+
+					return $terms;
+				},
+				'permission_callback' => static function ( $args ) {
+					$post_id = absint( $args['post_id'] );
+					$post    = get_post( $post_id );
+
+					// If the post doesn't exist, return an error.
+					if ( ! $post ) {
+						return new WP_Error(
+							'post_not_found',
+							esc_html__( 'Post not found.', 'ai' )
+						);
+					}
+
+					// Return true if the user has permission to read the post.
+					return current_user_can( 'read_post', $post_id );
+				},
 			),
 		);
 	}

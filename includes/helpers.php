@@ -116,22 +116,24 @@ function get_post_context( int $post_id ): array {
 		$context['excerpt'] = $excerpt;
 	}
 
-	/**
-	 * TODO: Might be interesting to add simple Abilities for the following,
-	 * just as a way to demonstrate a different approach to registering Abilities,
-	 * how to call Abilities via PHP and how multiple Abilities can be used together.
-	 *
-	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
-	 */
+	// Get the post terms using the get-terms ability.
+	$terms_ability = wp_get_ability( 'ai/get-terms' );
+	$terms         = $terms_ability->execute( array( 'post_id' => $post_id ) );
 
-	$categories = get_the_terms( $post_id, 'category' );
-	if ( $categories && ! is_wp_error( $categories ) ) {
-		$context['categories'] = implode( ', ', wp_list_pluck( $categories, 'name' ) );
-	}
+	if ( $terms && ! is_wp_error( $terms ) ) {
+		$grouped_terms = array();
 
-	$tags = get_the_terms( $post_id, 'post_tag' );
-	if ( $tags && ! is_wp_error( $tags ) ) {
-		$context['tags'] = implode( ', ', wp_list_pluck( $tags, 'name' ) );
+		foreach ( $terms as $term ) {
+			$grouped_terms[ $term->taxonomy ][] = $term->name;
+		}
+
+		$context = array_merge(
+			$context,
+			array_map(
+				fn( array $term_names ): string => implode( ', ', $term_names ),
+				$grouped_terms
+			)
+		);
 	}
 
 	return $context;
