@@ -70,70 +70,84 @@ function get_post_context( int $post_id ): array {
 
 	// Get the post content using the get-content ability.
 	$content_ability = wp_get_ability( 'ai/get-content' );
-	$content         = $content_ability->execute( array( 'post_id' => $post_id ) );
+	if ( $content_ability ) {
+		$content = $content_ability->execute( array( 'post_id' => $post_id ) );
 
-	if ( $content && ! is_wp_error( $content ) ) {
-		$context['content'] = normalize_content( (string) apply_filters( 'the_content', $content ) );
+		if ( $content && ! is_wp_error( $content ) ) {
+			$context['content'] = normalize_content( (string) apply_filters( 'the_content', $content ) );
+		}
 	}
 
 	// Get the post title using the get-title ability.
 	$title_ability = wp_get_ability( 'ai/get-title' );
-	$title         = $title_ability->execute( array( 'post_id' => $post_id ) );
+	if ( $title_ability ) {
+		$title = $title_ability->execute( array( 'post_id' => $post_id ) );
 
-	if ( $title && ! is_wp_error( $title ) ) {
-		$context['current_title'] = $title;
+		if ( $title && ! is_wp_error( $title ) ) {
+			$context['current_title'] = $title;
+		}
 	}
 
 	// Get the post name using the get-name ability.
 	$name_ability = wp_get_ability( 'ai/get-name' );
-	$name         = $name_ability->execute( array( 'post_id' => $post_id ) );
+	if ( $name_ability ) {
+		$name = $name_ability->execute( array( 'post_id' => $post_id ) );
 
-	if ( $name && ! is_wp_error( $name ) ) {
-		$context['slug'] = $name;
+		if ( $name && ! is_wp_error( $name ) ) {
+			$context['slug'] = $name;
+		}
 	}
 
 	// Get the post author using the get-author ability.
 	$author_ability = wp_get_ability( 'ai/get-author' );
-	$author         = $author_ability->execute( array( 'post_id' => $post_id ) );
+	if ( $author_ability ) {
+		$author = $author_ability->execute( array( 'post_id' => $post_id ) );
 
-	if ( $author && ! is_wp_error( $author ) ) {
-		$context['author'] = $author;
+		if ( $author && ! is_wp_error( $author ) ) {
+			$context['author'] = $author;
+		}
 	}
 
 	// Get the post type using the get-type ability.
 	$type_ability = wp_get_ability( 'ai/get-type' );
-	$type         = $type_ability->execute( array( 'post_id' => $post_id ) );
+	if ( $type_ability ) {
+		$type = $type_ability->execute( array( 'post_id' => $post_id ) );
 
-	if ( $type && ! is_wp_error( $type ) ) {
-		$context['content_type'] = $type;
+		if ( $type && ! is_wp_error( $type ) ) {
+			$context['content_type'] = $type;
+		}
 	}
 
 	// Get the post excerpt using the get-excerpt ability.
 	$excerpt_ability = wp_get_ability( 'ai/get-excerpt' );
-	$excerpt         = $excerpt_ability->execute( array( 'post_id' => $post_id ) );
+	if ( $excerpt_ability ) {
+		$excerpt = $excerpt_ability->execute( array( 'post_id' => $post_id ) );
 
-	if ( $excerpt && ! is_wp_error( $excerpt ) ) {
-		$context['excerpt'] = $excerpt;
+		if ( $excerpt && ! is_wp_error( $excerpt ) ) {
+			$context['excerpt'] = $excerpt;
+		}
 	}
 
 	// Get the post terms using the get-terms ability.
 	$terms_ability = wp_get_ability( 'ai/get-terms' );
-	$terms         = $terms_ability->execute( array( 'post_id' => $post_id ) );
+	if ( $terms_ability ) {
+		$terms = $terms_ability->execute( array( 'post_id' => $post_id ) );
 
-	if ( $terms && ! is_wp_error( $terms ) ) {
-		$grouped_terms = array();
+		if ( $terms && ! is_wp_error( $terms ) ) {
+			$grouped_terms = array();
 
-		foreach ( $terms as $term ) {
-			$grouped_terms[ $term->taxonomy ][] = $term->name;
+			foreach ( $terms as $term ) {
+				$grouped_terms[ $term->taxonomy ][] = $term->name;
+			}
+
+			$context = array_merge(
+				$context,
+				array_map(
+					static fn( array $term_names ): string => implode( ', ', $term_names ),
+					$grouped_terms
+				)
+			);
 		}
-
-		$context = array_merge(
-			$context,
-			array_map(
-				fn( array $term_names ): string => implode( ', ', $term_names ),
-				$grouped_terms
-			)
-		);
 	}
 
 	return $context;

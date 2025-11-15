@@ -64,31 +64,21 @@ class Utilities {
 					),
 					'required'   => array( 'post_id' ),
 				),
-				'output_schema' => array(
+				'output_schema'       => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The content of the post.', 'ai' ),
 				),
 				'execute_callback'    => static function ( $input ) {
 					$post_id = absint( $input['post_id'] );
-					$post    = get_post( $post_id );
+					$post    = self::get_post_object( $post_id );
+
+					if ( is_wp_error( $post ) ) {
+						return $post;
+					}
 
 					return $post->post_content;
 				},
-				'permission_callback' => static function ( $args ) {
-					$post_id = absint( $args['post_id'] );
-					$post    = get_post( $post_id );
-
-					// If the post doesn't exist, return an error.
-					if ( ! $post ) {
-						return new WP_Error(
-							'post_not_found',
-							esc_html__( 'Post not found.', 'ai' )
-						);
-					}
-
-					// Return true if the user has permission to read the post.
-					return current_user_can( 'read_post', $post_id );
-				},
+				'permission_callback' => array( $this, 'permission_callback' ),
 			),
 		);
 	}
@@ -115,31 +105,21 @@ class Utilities {
 					),
 					'required'   => array( 'post_id' ),
 				),
-				'output_schema' => array(
+				'output_schema'       => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The title of the post.', 'ai' ),
 				),
 				'execute_callback'    => static function ( $input ) {
 					$post_id = absint( $input['post_id'] );
-					$post    = get_post( $post_id );
+					$post    = self::get_post_object( $post_id );
+
+					if ( is_wp_error( $post ) ) {
+						return $post;
+					}
 
 					return $post->post_title;
 				},
-				'permission_callback' => static function ( $args ) {
-					$post_id = absint( $args['post_id'] );
-					$post    = get_post( $post_id );
-
-					// If the post doesn't exist, return an error.
-					if ( ! $post ) {
-						return new WP_Error(
-							'post_not_found',
-							esc_html__( 'Post not found.', 'ai' )
-						);
-					}
-
-					// Return true if the user has permission to read the post.
-					return current_user_can( 'read_post', $post_id );
-				},
+				'permission_callback' => array( $this, 'permission_callback' ),
 			),
 		);
 	}
@@ -166,31 +146,21 @@ class Utilities {
 					),
 					'required'   => array( 'post_id' ),
 				),
-				'output_schema' => array(
+				'output_schema'       => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The name of the post.', 'ai' ),
 				),
 				'execute_callback'    => static function ( $input ) {
 					$post_id = absint( $input['post_id'] );
-					$post    = get_post( $post_id );
+					$post    = self::get_post_object( $post_id );
+
+					if ( is_wp_error( $post ) ) {
+						return $post;
+					}
 
 					return $post->post_name;
 				},
-				'permission_callback' => static function ( $args ) {
-					$post_id = absint( $args['post_id'] );
-					$post    = get_post( $post_id );
-
-					// If the post doesn't exist, return an error.
-					if ( ! $post ) {
-						return new WP_Error(
-							'post_not_found',
-							esc_html__( 'Post not found.', 'ai' )
-						);
-					}
-
-					// Return true if the user has permission to read the post.
-					return current_user_can( 'read_post', $post_id );
-				},
+				'permission_callback' => array( $this, 'permission_callback' ),
 			),
 		);
 	}
@@ -217,32 +187,23 @@ class Utilities {
 					),
 					'required'   => array( 'post_id' ),
 				),
-				'output_schema' => array(
+				'output_schema'       => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The display name of the author of the post.', 'ai' ),
 				),
 				'execute_callback'    => static function ( $input ) {
 					$post_id = absint( $input['post_id'] );
-					$post    = get_post( $post_id );
-					$author  = get_user_by( 'ID', $post->post_author );
+					$post    = self::get_post_object( $post_id );
+
+					if ( is_wp_error( $post ) ) {
+						return $post;
+					}
+
+					$author = get_user_by( 'ID', $post->post_author );
 
 					return $author ? $author->display_name : '';
 				},
-				'permission_callback' => static function ( $args ) {
-					$post_id = absint( $args['post_id'] );
-					$post    = get_post( $post_id );
-
-					// If the post doesn't exist, return an error.
-					if ( ! $post ) {
-						return new WP_Error(
-							'post_not_found',
-							esc_html__( 'Post not found.', 'ai' )
-						);
-					}
-
-					// Return true if the user has permission to read the post.
-					return current_user_can( 'read_post', $post_id );
-				},
+				'permission_callback' => array( $this, 'permission_callback' ),
 			),
 		);
 	}
@@ -269,31 +230,21 @@ class Utilities {
 					),
 					'required'   => array( 'post_id' ),
 				),
-				'output_schema' => array(
+				'output_schema'       => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The post type of the post.', 'ai' ),
 				),
 				'execute_callback'    => static function ( $input ) {
 					$post_id = absint( $input['post_id'] );
-					$post    = get_post( $post_id );
+					$post    = self::get_post_object( $post_id );
+
+					if ( is_wp_error( $post ) ) {
+						return $post;
+					}
 
 					return $post->post_type;
 				},
-				'permission_callback' => static function ( $args ) {
-					$post_id = absint( $args['post_id'] );
-					$post    = get_post( $post_id );
-
-					// If the post doesn't exist, return an error.
-					if ( ! $post ) {
-						return new WP_Error(
-							'post_not_found',
-							esc_html__( 'Post not found.', 'ai' )
-						);
-					}
-
-					// Return true if the user has permission to read the post.
-					return current_user_can( 'read_post', $post_id );
-				},
+				'permission_callback' => array( $this, 'permission_callback' ),
 			),
 		);
 	}
@@ -320,31 +271,21 @@ class Utilities {
 					),
 					'required'   => array( 'post_id' ),
 				),
-				'output_schema' => array(
+				'output_schema'       => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The excerpt of the post.', 'ai' ),
 				),
 				'execute_callback'    => static function ( $input ) {
 					$post_id = absint( $input['post_id'] );
-					$post    = get_post( $post_id );
+					$post    = self::get_post_object( $post_id );
+
+					if ( is_wp_error( $post ) ) {
+						return $post;
+					}
 
 					return $post->post_excerpt;
 				},
-				'permission_callback' => static function ( $args ) {
-					$post_id = absint( $args['post_id'] );
-					$post    = get_post( $post_id );
-
-					// If the post doesn't exist, return an error.
-					if ( ! $post ) {
-						return new WP_Error(
-							'post_not_found',
-							esc_html__( 'Post not found.', 'ai' )
-						);
-					}
-
-					// Return true if the user has permission to read the post.
-					return current_user_can( 'read_post', $post_id );
-				},
+				'permission_callback' => array( $this, 'permission_callback' ),
 			),
 		);
 	}
@@ -364,7 +305,7 @@ class Utilities {
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
-						'post_id' => array(
+						'post_id'  => array(
 							'type'        => 'integer',
 							'description' => esc_html__( 'The ID of the post to get the terms of.', 'ai' ),
 						),
@@ -375,8 +316,8 @@ class Utilities {
 					),
 					'required'   => array( 'post_id' ),
 				),
-				'output_schema' => array(
-					'type'        => 'object',
+				'output_schema'       => array(
+					'type'       => 'object',
 					'properties' => array(
 						'terms' => array(
 							'type'        => 'array',
@@ -386,7 +327,13 @@ class Utilities {
 				),
 				'execute_callback'    => static function ( $input ) {
 					$post_id  = absint( $input['post_id'] );
-					$post     = get_post( $post_id );
+					$post     = self::get_post_object( $post_id );
+
+					if ( is_wp_error( $post ) ) {
+						return $post;
+					}
+
+					// See if we have a specific taxonomy to get terms for.
 					$taxonomy = $input['taxonomy'] ?? '';
 
 					if ( $taxonomy ) {
@@ -400,29 +347,58 @@ class Utilities {
 					if ( is_wp_error( $terms ) ) {
 						return new WP_Error(
 							'get_terms_error',
-							/* translators: %s: Taxonomy. %s: Error message. */
-							sprintf( esc_html__( 'Error getting terms for taxonomy %s: %s', 'ai' ), $taxonomy, $terms->get_error_message() )
+							/* translators: %1$s: Taxonomy. %2$s: Error message. */
+							sprintf( esc_html__( 'Error getting terms for taxonomy %1$s: %2$s', 'ai' ), $taxonomy, $terms->get_error_message() )
 						);
 					}
 
 					return $terms;
 				},
-				'permission_callback' => static function ( $args ) {
-					$post_id = absint( $args['post_id'] );
-					$post    = get_post( $post_id );
-
-					// If the post doesn't exist, return an error.
-					if ( ! $post ) {
-						return new WP_Error(
-							'post_not_found',
-							esc_html__( 'Post not found.', 'ai' )
-						);
-					}
-
-					// Return true if the user has permission to read the post.
-					return current_user_can( 'read_post', $post_id );
-				},
+				'permission_callback' => array( $this, 'permission_callback' ),
 			),
 		);
+	}
+
+	/**
+	 * The default permission callback abilities can use.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param array<string, mixed> $args The input arguments to the ability.
+	 * @return bool|\WP_Error True or false depending on whether the user has permission; WP_Error if the post doesn't exist.
+	 */
+	public function permission_callback( array $args ) {
+		$post_id = absint( $args['post_id'] );
+		$post    = self::get_post_object( $post_id );
+
+		// Ensure the post exists.
+		if ( is_wp_error( $post ) ) {
+			return $post;
+		}
+
+		// Return true if the user has permission to read the post.
+		return current_user_can( 'read_post', $post_id );
+	}
+
+	/**
+	 * Gets the post object.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param int $post_id The ID of the post to get the object of.
+	 * @return \WP_Post|\WP_Error The post object or WP_Error if the post doesn't exist.
+	 */
+	private static function get_post_object( int $post_id ) {
+		$post = get_post( $post_id );
+
+		// If the post doesn't exist, return an error.
+		if ( ! $post ) {
+			return new WP_Error(
+				'post_not_found',
+				esc_html__( 'Post not found.', 'ai' )
+			);
+		}
+
+		return $post;
 	}
 }
