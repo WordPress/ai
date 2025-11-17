@@ -1,5 +1,7 @@
 # WordPress AI Experiments
 
+[![WordPress Playground Demo](https://img.shields.io/badge/Playground_Demo-8A2BE2?logo=wordpress&logoColor=FFFFFF&labelColor=3858E9&color=3858E9)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/WordPress/ai/trunk/.github/blueprints/blueprint.json)
+
 Experimental AI features for WordPress. Modular framework for testing AI capabilities.
 
 ## Description
