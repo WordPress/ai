@@ -192,19 +192,20 @@ class Settings_Page {
 					<div class="ai-experiments__card ai-experiments__card--global">
 						<div class="ai-experiments__card-heading">
 							<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
-							<p class="description">
+							<p class="description" id="ai-experiments-global-desc">
 								<?php esc_html_e( 'Control whether AI experiments are enabled for your site. When disabled, all experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
 							</p>
 						</div>
 
 						<div class="ai-experiments__toggle">
-							<label class="components-toggle-control">
+							<label class="components-toggle-control" for="<?php echo esc_attr( self::GLOBAL_OPTION ); ?>">
 								<input
 									type="checkbox"
 									name="<?php echo esc_attr( self::GLOBAL_OPTION ); ?>"
 									id="<?php echo esc_attr( self::GLOBAL_OPTION ); ?>"
 									value="1"
 									<?php checked( $global_enabled ); ?>
+									aria-describedby="ai-experiments-global-desc"
 								/>
 								<span class="ai-experiments__toggle-label">
 									<?php esc_html_e( 'Enable Experiments', 'ai' ); ?>
@@ -215,16 +216,16 @@ class Settings_Page {
 
 					<!-- Individual Experiments Section -->
 					<?php if ( ! empty( $this->registry->get_all_experiments() ) ) : ?>
-						<div class="ai-experiments__card">
+						<div class="ai-experiments__card" role="region" aria-labelledby="ai-experiments-list-heading">
 							<div class="ai-experiments__card-heading">
-								<h2><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
-								<p class="description">
+								<h2 id="ai-experiments-list-heading"><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
+								<p class="description" id="ai-experiments-list-desc">
 									<?php esc_html_e( 'Try out the following experiments to see how AI can help your site.', 'ai' ); ?>
 								</p>
 
 								<?php if ( ! $global_enabled ) : ?>
-									<div class="notice notice-info inline ai-experiments__notice">
-										<p><?php esc_html_e( 'Enable experiments above to configure individual experiment settings.', 'ai' ); ?></p>
+									<div class="notice notice-info inline ai-experiments__notice" role="status" aria-live="polite">
+										<p id="ai-experiments-disabled-notice"><?php esc_html_e( 'Enable experiments above to configure individual experiment settings.', 'ai' ); ?></p>
 									</div>
 								<?php endif; ?>
 							</div>
@@ -236,10 +237,11 @@ class Settings_Page {
 									$experiment_option  = "ai_experiment_{$experiment_id}_enabled";
 									$experiment_enabled = (bool) get_option( $experiment_option, false );
 									$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
+									$desc_id            = "ai-experiment-{$experiment_id}-desc";
 									?>
 									<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
 										<div class="ai-experiments__item-header">
-											<label class="components-toggle-control">
+											<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
 												<input
 													type="checkbox"
 													name="<?php echo esc_attr( $experiment_option ); ?>"
@@ -247,6 +249,9 @@ class Settings_Page {
 													value="1"
 													<?php checked( $experiment_enabled ); ?>
 													<?php disabled( ! $global_enabled ); ?>
+													<?php if ( $experiment->get_description() ) : ?>
+														aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
+													<?php endif; ?>
 												/>
 												<span>
 													<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
@@ -254,7 +259,7 @@ class Settings_Page {
 											</label>
 										</div>
 										<?php if ( $experiment->get_description() ) : ?>
-											<p class="description">
+											<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
 												<?php echo esc_html( $experiment->get_description() ); ?>
 											</p>
 										<?php endif; ?>
