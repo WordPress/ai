@@ -117,7 +117,7 @@ class Utilities {
 	 */
 	private function register_get_terms_ability(): void {
 		wp_register_ability(
-			'ai/get-terms',
+			'ai/get-post-terms',
 			array(
 				'label'               => esc_html__( 'Get the post terms', 'ai' ),
 				'description'         => esc_html__( 'Get the terms of a post based on the post ID and optionally filter by taxonomy.', 'ai' ),
