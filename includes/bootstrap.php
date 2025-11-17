@@ -11,6 +11,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI\Abilities\Utilities\Utilities;
 use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
@@ -181,7 +182,7 @@ function initialize_experiments(): void {
 		AI_Client::init();
 
 		// Register our utility abilities.
-		$utilities = new \WordPress\AI\Abilities\Utilities\Utilities();
+		$utilities = new Utilities();
 		$utilities->register();
 
 		add_action(
