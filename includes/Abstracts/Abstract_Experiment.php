@@ -45,6 +45,14 @@ abstract class Abstract_Experiment implements Experiment {
 	protected string $description;
 
 	/**
+	 * Cache for this experiment's enabled status.
+	 *
+	 * @since 0.1.0
+	 * @var bool|null
+	 */
+	private ?bool $enabled_cache = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads experiment metadata and initializes properties.
@@ -127,15 +135,22 @@ abstract class Abstract_Experiment implements Experiment {
 	 * Checks if experiment is enabled.
 	 *
 	 * Experiments require both the global toggle and individual experiment toggle to be enabled.
+	 * Results are cached per instance to avoid redundant option lookups and filter calls.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @return bool True if enabled, false otherwise.
 	 */
 	final public function is_enabled(): bool {
+		// Return cached result if available.
+		if ( null !== $this->enabled_cache ) {
+			return $this->enabled_cache;
+		}
+
 		// Check global experiments toggle first.
 		$global_enabled = (bool) get_option( 'ai_experiments_enabled', false );
 		if ( ! $global_enabled ) {
+			$this->enabled_cache = false;
 			return false;
 		}
 
@@ -151,7 +166,12 @@ abstract class Abstract_Experiment implements Experiment {
 		 *
 		 * @param bool $experiment_enabled Whether the experiment is enabled.
 		 */
-		return (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $experiment_enabled );
+		$is_enabled = (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $experiment_enabled );
+
+		// Cache the result.
+		$this->enabled_cache = $is_enabled;
+
+		return $is_enabled;
 	}
 
 	/**
