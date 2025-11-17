@@ -19,6 +19,14 @@ use WP_Error;
 class Utilities {
 
 	/**
+	 * The fields that we support.
+	 *
+	 * @since 0.1.0
+	 * @var array<string>
+	 */
+	private static array $post_details_fields = array( 'content', 'title', 'slug', 'author', 'type', 'excerpt' );
+
+	/**
 	 * Register any needed hooks.
 	 *
 	 * @since 0.1.0
@@ -58,9 +66,10 @@ class Utilities {
 						),
 						'fields' => array(
 							'type'        => 'array',
-							'description' => esc_html__( 'The fields to get the details of.', 'ai' ),
+							'description' => esc_html__( 'The fields to get the details of. Will default to all fields if not provided.', 'ai' ),
 							'items'       => array(
 								'type' => 'string',
+								'enum' => self::$post_details_fields,
 							),
 						),
 					),
@@ -84,23 +93,43 @@ class Utilities {
 						return $post;
 					}
 
-					// Get the author display name.
-					$author = get_user_by( 'ID', $post->post_author );
-					if ( $author ) {
-						$author_name = $author->display_name;
-					} else {
-						$author_name = '';
+					// See if we have specific fields to get or default to all fields.
+					$fields = isset( $input['fields'] ) && ! empty( $input['fields'] ) ? (array) $input['fields'] : self::$post_details_fields;
+
+					$details = array();
+
+					if ( in_array( 'content', $fields, true ) ) {
+						$details['content'] = $post->post_content;
+					}
+
+					if ( in_array( 'title', $fields, true ) ) {
+						$details['title'] = $post->post_title;
+					}
+
+					if ( in_array( 'slug', $fields, true ) ) {
+						$details['slug'] = $post->post_name;
+					}
+
+					if ( in_array( 'author', $fields, true ) ) {
+						// Get the author display name.
+						$author = get_user_by( 'ID', $post->post_author );
+						if ( $author ) {
+							$details['author'] = $author->display_name;
+						} else {
+							$details['author'] = '';
+						}
+					}
+
+					if ( in_array( 'type', $fields, true ) ) {
+						$details['type'] = $post->post_type;
+					}
+
+					if ( in_array( 'excerpt', $fields, true ) ) {
+						$details['excerpt'] = $post->post_excerpt;
 					}
 
 					// Return the post details.
-					return array(
-						'content' => $post->post_content,
-						'title'   => $post->post_title,
-						'slug'    => $post->post_name,
-						'author'  => $author_name,
-						'type'    => $post->post_type,
-						'excerpt' => $post->post_excerpt,
-					);
+					return $details;
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(
