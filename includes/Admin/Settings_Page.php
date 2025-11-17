@@ -260,7 +260,23 @@ class Settings_Page {
 										</div>
 										<?php if ( $experiment->get_description() ) : ?>
 											<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
-												<?php echo esc_html( $experiment->get_description() ); ?>
+												<?php
+												echo wp_kses(
+													$experiment->get_description(),
+													array(
+														'a'      => array(
+															'href'   => array(),
+															'title'  => array(),
+															'target' => array(),
+															'rel'    => array(),
+														),
+														'b'      => array(),
+														'strong' => array(),
+														'em'     => array(),
+														'i'      => array(),
+													)
+												);
+												?>
 											</p>
 										<?php endif; ?>
 										<?php
