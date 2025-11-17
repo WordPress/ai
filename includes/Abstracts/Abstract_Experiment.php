@@ -197,7 +197,7 @@ abstract class Abstract_Experiment implements Experiment {
 	 * @param string $option_name The base option name (e.g., 'api_key', 'temperature').
 	 * @return string The fully namespaced option name.
 	 */
-	protected function get_field_option_name( string $option_name ): string {
+	final protected function get_field_option_name( string $option_name ): string {
 		return "ai_experiment_{$this->id}_field_{$option_name}";
 	}
 
