@@ -38,6 +38,9 @@ if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
 if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
 	define( 'AI_MIN_WP_VERSION', '6.8' );
 }
+if ( ! defined( 'AI_DEFAULT_ABILITY_CATEGORY' ) ) {
+	define( 'AI_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
+}
 
 /**
  * Displays an admin notice for version requirement failures.
@@ -194,7 +197,7 @@ function initialize_experiments(): void {
 				 * in the future if we need/want more specific categories.
 				 */
 				wp_register_ability_category(
-					'ai-experiments',
+					AI_DEFAULT_ABILITY_CATEGORY,
 					array(
 						'label'       => __( 'AI Experiments', 'ai' ),
 						'description' => __( 'Various AI experiments.', 'ai' ),
