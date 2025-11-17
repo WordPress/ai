@@ -64,7 +64,7 @@ class Utilities {
 							'type'        => 'integer',
 							'description' => esc_html__( 'The ID of the post to get the details of.', 'ai' ),
 						),
-						'fields' => array(
+						'fields'  => array(
 							'type'        => 'array',
 							'description' => esc_html__( 'The fields to get the details of. Will default to all fields if not provided.', 'ai' ),
 							'items'       => array(
