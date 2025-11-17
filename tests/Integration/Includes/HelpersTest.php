@@ -15,6 +15,28 @@ use WP_UnitTestCase;
  * @since 0.1.0
  */
 class HelpersTest extends WP_UnitTestCase {
+	/**
+	 * Set up test case.
+	 *
+	 * @since 0.1.0
+	 */
+	public function setUp(): void {
+		parent::setUp();
+
+		// Create a user with proper permissions for reading posts.
+		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $user_id );
+	}
+
+	/**
+	 * Tear down test case.
+	 *
+	 * @since 0.1.0
+	 */
+	public function tearDown(): void {
+		wp_set_current_user( 0 );
+		parent::tearDown();
+	}
 
 	/**
 	 * Test that normalize_content() strips HTML entities.
@@ -106,6 +128,9 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_get_post_context_returns_empty_for_nonexistent_post() {
+		// Expect the incorrect usage notice when abilities are called with non-existent posts.
+		$this->setExpectedIncorrectUsage( 'WP_Ability::execute' );
+
 		$context = \WordPress\AI\get_post_context( 99999 );
 
 		$this->assertIsArray( $context, 'Should return an array' );
@@ -182,10 +207,11 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$context = \WordPress\AI\get_post_context( $post_id );
 
-		$this->assertArrayHasKey( 'categories', $context, 'Should have categories' );
-		$this->assertStringContainsString( 'Test Category', $context['categories'], 'Should include category name' );
-		$this->assertArrayHasKey( 'tags', $context, 'Should have tags' );
-		$this->assertStringContainsString( 'Test Tag', $context['tags'], 'Should include tag name' );
+		// The get-terms ability returns terms grouped by taxonomy name (e.g., 'category', 'post_tag').
+		$this->assertArrayHasKey( 'category', $context, 'Should have category key' );
+		$this->assertStringContainsString( 'Test Category', $context['category'], 'Should include category name' );
+		$this->assertArrayHasKey( 'post_tag', $context, 'Should have post_tag key' );
+		$this->assertStringContainsString( 'Test Tag', $context['post_tag'], 'Should include tag name' );
 	}
 
 	/**
