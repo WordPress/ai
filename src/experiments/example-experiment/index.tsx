@@ -1,4 +1,4 @@
-// Example only.
+// Placeholder used as an example.
 
 import React from 'react';
 import { __ } from '@wordpress/i18n';
