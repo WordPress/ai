@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-namespace WordPress\AI\Admin;
+namespace WordPress\AI\Settings;
 
 use WordPress\AI\Experiment_Registry;
 
@@ -28,15 +28,6 @@ class Settings_Page {
 	 * @var \WordPress\AI\Experiment_Registry
 	 */
 	private Experiment_Registry $registry;
-
-	/**
-	 * The option name for the global experiments toggle.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @var string
-	 */
-	private const GLOBAL_OPTION = 'ai_experiments_enabled';
 
 	/**
 	 * The settings page slug.
@@ -67,7 +58,6 @@ class Settings_Page {
 	 */
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
-		add_action( 'init', array( $this, 'register_settings' ) );
 	}
 
 	/**
@@ -106,49 +96,6 @@ class Settings_Page {
 	}
 
 	/**
-	 * Registers all settings for experiments.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function register_settings(): void {
-		// Register the global toggle.
-		register_setting(
-			'ai_experiments',
-			self::GLOBAL_OPTION,
-			array(
-				'type'              => 'boolean',
-				'default'           => false,
-				'sanitize_callback' => 'rest_sanitize_boolean',
-			)
-		);
-
-		// Register settings for each experiment.
-		foreach ( $this->registry->get_all_experiments() as $experiment ) {
-			$experiment_id     = $experiment->get_id();
-			$experiment_option = "ai_experiment_{$experiment_id}_enabled";
-
-			register_setting(
-				'ai_experiments',
-				$experiment_option,
-				array(
-					'type'              => 'boolean',
-					'default'           => false,
-					'sanitize_callback' => 'rest_sanitize_boolean',
-				)
-			);
-
-			// Allow experiments to register their own custom settings.
-			if ( ! method_exists( $experiment, 'register_settings' ) ) {
-				continue;
-			}
-
-			$experiment->register_settings();
-		}
-	}
-
-	/**
 	 * Enqueues styles for the settings page.
 	 *
 	 * @since 0.1.0
@@ -156,6 +103,9 @@ class Settings_Page {
 	 * @return void
 	 */
 	public function enqueue_styles(): void {
+		// Enqueue WordPress components styles for block editor UI.
+		wp_enqueue_style( 'wp-components' );
+
 		// Enqueue settings page styles.
 		wp_enqueue_style(
 			'ai-experiments-settings',
@@ -177,14 +127,14 @@ class Settings_Page {
 			return;
 		}
 
-		$global_enabled = (bool) get_option( self::GLOBAL_OPTION, false );
+		$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<form method="post" action="options.php">
 				<?php
-				settings_fields( 'ai_experiments' );
+				settings_fields( Settings_Registration::OPTION_GROUP );
 				?>
 
 				<div class="ai-experiments">
@@ -198,11 +148,11 @@ class Settings_Page {
 						</div>
 
 						<div class="ai-experiments__toggle">
-							<label class="components-toggle-control" for="<?php echo esc_attr( self::GLOBAL_OPTION ); ?>">
+							<label class="components-toggle-control" for="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>">
 								<input
 									type="checkbox"
-									name="<?php echo esc_attr( self::GLOBAL_OPTION ); ?>"
-									id="<?php echo esc_attr( self::GLOBAL_OPTION ); ?>"
+									name="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
+									id="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
 									value="1"
 									<?php checked( $global_enabled ); ?>
 									aria-describedby="ai-experiments-global-desc"

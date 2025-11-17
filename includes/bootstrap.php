@@ -11,7 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
-use WordPress\AI\Admin\Settings_Page;
+use WordPress\AI\Settings\Settings_Page;
+use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
@@ -177,6 +178,10 @@ function initialize_experiments(): void {
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
 		$loader->initialize_experiments();
+
+		// Initialize settings registration.
+		$settings_registration = new Settings_Registration( $registry );
+		$settings_registration->init();
 
 		// Initialize admin settings page.
 		if ( is_admin() ) {
