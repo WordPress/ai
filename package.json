@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "plugin-zip": "wp-scripts plugin-zip",
-    "build": "echo 'Building...'",
+    "build": "wp-scripts build",
     "wp-env": "wp-env",
     "lint:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script lint",
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",
