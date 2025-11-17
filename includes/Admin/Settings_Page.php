@@ -67,8 +67,7 @@ class Settings_Page {
 	 */
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
-		add_action( 'admin_init', array( $this, 'register_settings' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
+		add_action( 'init', array( $this, 'register_settings' ) );
 	}
 
 	/**
@@ -79,13 +78,31 @@ class Settings_Page {
 	 * @return void
 	 */
 	public function register_menu(): void {
-		add_options_page(
+		$page_hook = add_options_page(
 			__( 'AI Experiments', 'ai' ),
 			__( 'AI Experiments', 'ai' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			array( $this, 'render_page' )
 		);
+
+		// Hook into the specific page load to enqueue styles.
+		if ( ! $page_hook ) {
+			return;
+		}
+
+		add_action( "load-{$page_hook}", array( $this, 'on_page_load' ) );
+	}
+
+	/**
+	 * Handles the page load event for the settings page.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	public function on_page_load(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
 	}
 
 	/**
@@ -136,14 +153,9 @@ class Settings_Page {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $hook_suffix The current admin page hook suffix.
 	 * @return void
 	 */
-	public function enqueue_styles( string $hook_suffix ): void {
-		if ( 'settings_page_' . self::PAGE_SLUG !== $hook_suffix ) {
-			return;
-		}
-
+	public function enqueue_styles(): void {
 		// Enqueue WordPress components styles for block editor UI.
 		wp_enqueue_style( 'wp-components' );
 
