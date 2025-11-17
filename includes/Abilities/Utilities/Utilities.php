@@ -33,260 +33,80 @@ class Utilities {
 	 * @since 0.1.0
 	 */
 	public function register_abilities(): void {
-		$this->register_get_content_ability();
-		$this->register_get_title_ability();
-		$this->register_get_name_ability();
-		$this->register_get_author_ability();
-		$this->register_get_type_ability();
-		$this->register_get_excerpt_ability();
+		$this->register_get_post_details_ability();
 		$this->register_get_terms_ability();
 	}
 
 	/**
-	 * Registers the get-content ability.
+	 * Registers the get-post-details ability.
 	 *
 	 * @since 0.1.0
 	 */
-	private function register_get_content_ability(): void {
+	private function register_get_post_details_ability(): void {
 		wp_register_ability(
-			'ai/get-content',
+			'ai/get-post-details',
 			array(
-				'label'               => esc_html__( 'Get post content', 'ai' ),
-				'description'         => esc_html__( 'Get the content of a post based on the post ID.', 'ai' ),
+				'label'               => esc_html__( 'Get post details', 'ai' ),
+				'description'         => esc_html__( 'Get the details of a post based on the post ID. Optionally limit the details to specific fields.', 'ai' ),
 				'category'            => 'ai-experiments',
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
 						'post_id' => array(
 							'type'        => 'integer',
-							'description' => esc_html__( 'The ID of the post to get the content of.', 'ai' ),
+							'description' => esc_html__( 'The ID of the post to get the details of.', 'ai' ),
+						),
+						'fields' => array(
+							'type'        => 'array',
+							'description' => esc_html__( 'The fields to get the details of.', 'ai' ),
+							'items'       => array(
+								'type' => 'string',
+							),
 						),
 					),
 					'required'   => array( 'post_id' ),
 				),
 				'output_schema'       => array(
-					'type'        => 'string',
-					'description' => esc_html__( 'The content of the post.', 'ai' ),
-				),
-				'execute_callback'    => static function ( $input ) {
-					$post_id = absint( $input['post_id'] );
-					$post    = self::get_post_object( $post_id );
-
-					if ( is_wp_error( $post ) ) {
-						return $post;
-					}
-
-					return $post->post_content;
-				},
-				'permission_callback' => array( $this, 'permission_callback' ),
-			),
-		);
-	}
-
-	/**
-	 * Registers the get-title ability.
-	 *
-	 * @since 0.1.0
-	 */
-	private function register_get_title_ability(): void {
-		wp_register_ability(
-			'ai/get-title',
-			array(
-				'label'               => esc_html__( 'Get the post title', 'ai' ),
-				'description'         => esc_html__( 'Get the title of a post based on the post ID.', 'ai' ),
-				'category'            => 'ai-experiments',
-				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
-						'post_id' => array(
-							'type'        => 'integer',
-							'description' => esc_html__( 'The ID of the post to get the title of.', 'ai' ),
+						'details' => array(
+							'type'        => 'array',
+							'description' => esc_html__( 'An array of post details.', 'ai' ),
 						),
 					),
-					'required'   => array( 'post_id' ),
 				),
-				'output_schema'       => array(
-					'type'        => 'string',
-					'description' => esc_html__( 'The title of the post.', 'ai' ),
-				),
-				'execute_callback'    => static function ( $input ) {
+				'execute_callback'    => static function ( array $input ) {
 					$post_id = absint( $input['post_id'] );
 					$post    = self::get_post_object( $post_id );
 
+					// If the post doesn't exist, return an error.
 					if ( is_wp_error( $post ) ) {
 						return $post;
 					}
 
-					return $post->post_title;
-				},
-				'permission_callback' => array( $this, 'permission_callback' ),
-			),
-		);
-	}
-
-	/**
-	 * Registers the get-name ability.
-	 *
-	 * @since 0.1.0
-	 */
-	private function register_get_name_ability(): void {
-		wp_register_ability(
-			'ai/get-name',
-			array(
-				'label'               => esc_html__( 'Get the post name', 'ai' ),
-				'description'         => esc_html__( 'Get the name of a post based on the post ID.', 'ai' ),
-				'category'            => 'ai-experiments',
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'post_id' => array(
-							'type'        => 'integer',
-							'description' => esc_html__( 'The ID of the post to get the name of.', 'ai' ),
-						),
-					),
-					'required'   => array( 'post_id' ),
-				),
-				'output_schema'       => array(
-					'type'        => 'string',
-					'description' => esc_html__( 'The name of the post.', 'ai' ),
-				),
-				'execute_callback'    => static function ( $input ) {
-					$post_id = absint( $input['post_id'] );
-					$post    = self::get_post_object( $post_id );
-
-					if ( is_wp_error( $post ) ) {
-						return $post;
-					}
-
-					return $post->post_name;
-				},
-				'permission_callback' => array( $this, 'permission_callback' ),
-			),
-		);
-	}
-
-	/**
-	 * Registers the get-author ability.
-	 *
-	 * @since 0.1.0
-	 */
-	private function register_get_author_ability(): void {
-		wp_register_ability(
-			'ai/get-author',
-			array(
-				'label'               => esc_html__( 'Get the post author', 'ai' ),
-				'description'         => esc_html__( 'Get the display name of the author of a post based on the post ID.', 'ai' ),
-				'category'            => 'ai-experiments',
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'post_id' => array(
-							'type'        => 'integer',
-							'description' => esc_html__( 'The ID of the post to get the author of.', 'ai' ),
-						),
-					),
-					'required'   => array( 'post_id' ),
-				),
-				'output_schema'       => array(
-					'type'        => 'string',
-					'description' => esc_html__( 'The display name of the author of the post.', 'ai' ),
-				),
-				'execute_callback'    => static function ( $input ) {
-					$post_id = absint( $input['post_id'] );
-					$post    = self::get_post_object( $post_id );
-
-					if ( is_wp_error( $post ) ) {
-						return $post;
-					}
-
+					// Get the author display name.
 					$author = get_user_by( 'ID', $post->post_author );
-
-					return $author ? $author->display_name : '';
-				},
-				'permission_callback' => array( $this, 'permission_callback' ),
-			),
-		);
-	}
-
-	/**
-	 * Registers the get-type ability.
-	 *
-	 * @since 0.1.0
-	 */
-	private function register_get_type_ability(): void {
-		wp_register_ability(
-			'ai/get-type',
-			array(
-				'label'               => esc_html__( 'Get the post type', 'ai' ),
-				'description'         => esc_html__( 'Get the type of a post based on the post ID.', 'ai' ),
-				'category'            => 'ai-experiments',
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'post_id' => array(
-							'type'        => 'integer',
-							'description' => esc_html__( 'The ID of the post to get the type of.', 'ai' ),
-						),
-					),
-					'required'   => array( 'post_id' ),
-				),
-				'output_schema'       => array(
-					'type'        => 'string',
-					'description' => esc_html__( 'The post type of the post.', 'ai' ),
-				),
-				'execute_callback'    => static function ( $input ) {
-					$post_id = absint( $input['post_id'] );
-					$post    = self::get_post_object( $post_id );
-
-					if ( is_wp_error( $post ) ) {
-						return $post;
+					if ( $author ) {
+						$author_name = $author->display_name;
+					} else {
+						$author_name = '';
 					}
 
-					return $post->post_type;
+					// Return the post details.
+					return array(
+						'content' => $post->post_content,
+						'title'   => $post->post_title,
+						'slug'    => $post->post_name,
+						'author'  => $author_name,
+						'type'    => $post->post_type,
+						'excerpt' => $post->post_excerpt,
+					);
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
-			),
-		);
-	}
-
-	/**
-	 * Registers the get-excerpt ability.
-	 *
-	 * @since 0.1.0
-	 */
-	private function register_get_excerpt_ability(): void {
-		wp_register_ability(
-			'ai/get-excerpt',
-			array(
-				'label'               => esc_html__( 'Get the post excerpt', 'ai' ),
-				'description'         => esc_html__( 'Get the excerpt of a post based on the post ID.', 'ai' ),
-				'category'            => 'ai-experiments',
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'post_id' => array(
-							'type'        => 'integer',
-							'description' => esc_html__( 'The ID of the post to get the excerpt of.', 'ai' ),
-						),
-					),
-					'required'   => array( 'post_id' ),
+				'meta'                => array(
+					'show_in_rest' => true,
 				),
-				'output_schema'       => array(
-					'type'        => 'string',
-					'description' => esc_html__( 'The excerpt of the post.', 'ai' ),
-				),
-				'execute_callback'    => static function ( $input ) {
-					$post_id = absint( $input['post_id'] );
-					$post    = self::get_post_object( $post_id );
-
-					if ( is_wp_error( $post ) ) {
-						return $post;
-					}
-
-					return $post->post_excerpt;
-				},
-				'permission_callback' => array( $this, 'permission_callback' ),
-			),
+			)
 		);
 	}
 
@@ -325,7 +145,7 @@ class Utilities {
 						),
 					),
 				),
-				'execute_callback'    => static function ( $input ) {
+				'execute_callback'    => static function ( array $input ) {
 					$post_id  = absint( $input['post_id'] );
 					$post     = self::get_post_object( $post_id );
 
