@@ -156,9 +156,6 @@ class Settings_Page {
 	 * @return void
 	 */
 	public function enqueue_styles(): void {
-		// Enqueue WordPress components styles for block editor UI.
-		wp_enqueue_style( 'wp-components' );
-
 		// Enqueue settings page styles.
 		wp_enqueue_style(
 			'ai-experiments-settings',
