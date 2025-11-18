@@ -26,6 +26,10 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		// Enable experiments globally and individually.
+		update_option( 'ai_experiments_enabled', true );
+		update_option( 'ai_experiment_title-generation_enabled', true );
+
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
@@ -41,6 +45,8 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		delete_option( 'ai_experiments_enabled' );
+		delete_option( 'ai_experiment_title-generation_enabled' );
 		parent::tearDown();
 	}
 
