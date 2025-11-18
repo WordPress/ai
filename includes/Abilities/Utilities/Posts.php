@@ -153,6 +153,12 @@ class Posts {
 					return $details;
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
+				'meta'                => array(
+					'mcp' => array(
+						'public' => true,
+						'type'   => 'tool',
+					),
+				),
 			)
 		);
 	}
@@ -281,14 +287,20 @@ class Posts {
 					if ( is_wp_error( $terms ) ) {
 						return new WP_Error(
 							'get_terms_error',
-							/* translators: %1$s: Taxonomy. %2$s: Error message. */
-							sprintf( esc_html__( 'Error getting terms for taxonomy %1$s: %2$s', 'ai' ), $taxonomy, $terms->get_error_message() )
+							/* translators: %1$s: Error message. */
+							sprintf( esc_html__( 'Error getting terms: %1$s', 'ai' ), $terms->get_error_message() )
 						);
 					}
 
 					return $terms;
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
+				'meta'                => array(
+					'mcp' => array(
+						'public' => true,
+						'type'   => 'tool',
+					),
+				),
 			),
 		);
 	}
