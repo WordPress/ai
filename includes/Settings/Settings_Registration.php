@@ -66,7 +66,7 @@ class Settings_Registration {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'init', array( $this, 'register_settings' ) );
+		$this->register_settings();
 	}
 
 	/**
