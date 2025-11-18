@@ -31,10 +31,10 @@ git clone https://github.com/WordPress/ai.git
 cd ai
 ```
 
-2. **Install dependencies:**
+2. **Install dependencies and build assets:**
 
 ```bash
-composer install
+composer install && npm i && npm run build
 ```
 
 > **Note:** The `wordpress/wp-ai-client` package will be added to `composer.json` once it's officially released. For now, the plugin scaffolding is ready for integration.
@@ -56,7 +56,9 @@ The plugin follows a modular, experiment-based architecture:
 ```
 ai/
 ├── ai.php                            # Plugin bootstrap
+├── build/                            # Built assets
 ├── includes/                         # Core plugin code
+│   ├── Asset_Loader.php              # Asset loader utility class
 │   ├── bootstrap.php                 # Plugin initialization
 │   ├── Experiment_Registry.php      # Experiment registration system
 │   ├── Experiment_Loader.php         # Experiment loading and initialization
@@ -77,6 +79,7 @@ ai/
 │   ├── DEVELOPER_GUIDE.md            # This guide
 │   └── TESTING.md                    # Testing strategy
 ├── languages/                        # Translation files
+├── src/                              # Source asset files that will be built
 └── tests/                            # PHPUnit tests
     └── Unit/                         # Unit tests
 ```
@@ -117,6 +120,7 @@ Create your experiment class by extending `Abstract_Experiment`:
 namespace WordPress\AI\Experiments\My_Experiment;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Asset_Loader;
 
 /**
  * My Experiment class.
@@ -147,6 +151,7 @@ class My_Experiment extends Abstract_Experiment {
 	public function register(): void {
 		// Register your hooks here
 		add_action( 'init', array( $this, 'initialize' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_filter( 'the_content', array( $this, 'filter_content' ) );
 	}
 
@@ -157,6 +162,24 @@ class My_Experiment extends Abstract_Experiment {
 	 */
 	public function initialize(): void {
 		// Experiment initialization logic
+	}
+
+	/**
+	 * Enqueues and localizes the admin script.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
+	public function enqueue_assets( string $hook_suffix ): void {
+		Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
+		Asset_Loader::localize_script(
+			'my-experiment',
+			'MyExperimentData',
+			array(
+				'enabled' => $this->is_enabled(),
+			)
+		);
 	}
 
 	/**
@@ -290,6 +313,52 @@ The plugin also includes the following action hooks:
 
 - `ai_register_experiments`: Fires after default experiments are registered, receives `$registry` parameter
 - `ai_experiments_initialized`: Fires after all registered experiments have been initialized
+
+### Asset Loading
+
+The plugin provides a utility class for loading assets. This uses `wp-scripts` to build assets which are expected to live within the `src/` directory. They will then be built into the `build/` directory, where the asset loader will look for the files, pulling in the proper dependencies and versioning.
+
+```php
+use WordPress\AI\Asset_Loader;
+
+/**
+ * Enqueue a script.
+ *
+ * First argument is the script handle.
+ * The second argument is the script file name.
+ * This script file name should be in the build/ directory.
+ * The source script files should be in the src/ directory. If needed,
+ * you can add the entry point to the webpack.config.js file.
+ */
+Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
+
+/**
+ * Enqueue a style.
+ *
+ * First argument is the style handle.
+ * The second argument is the style file name.
+ * This style file name should be in the build/ directory.
+ * The source style files should be in the src/ directory. If needed,
+ * you can add the entry point to the webpack.config.js file.
+ */
+Asset_Loader::enqueue_style( 'my-experiment', 'experiments/my-experiment' );
+
+/**
+ * Localize a script.
+ *
+ * First argument is the script handle.
+ * The second argument is the data object name.
+ * The third argument is the data to localize.
+ * In this example, the data will be available in the script as `aiMyExperimentData`.
+ */
+Asset_Loader::localize_script(
+	'my-experiment',
+	'MyExperimentData',
+	array(
+		'my_data' => 'my data',
+	)
+);
+```
 
 ---
 
