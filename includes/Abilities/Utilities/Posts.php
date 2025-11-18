@@ -247,12 +247,36 @@ class Posts {
 					$taxonomy = $input['taxonomy'] ?? '';
 
 					if ( $taxonomy ) {
+						// If a taxonomy is provided, ensure it exists.
+						$taxonomy = get_taxonomy( $taxonomy );
+						if ( ! $taxonomy ) {
+							return new WP_Error(
+								'taxonomy_not_found',
+								esc_html__( 'Taxonomy not found.', 'ai' )
+							);
+						}
 						$taxonomies = array( $taxonomy );
 					} else {
-						$taxonomies = get_object_taxonomies( $post->post_type );
+						$taxonomies = get_object_taxonomies( $post->post_type, 'objects' );
 					}
 
-					$terms = wp_get_object_terms( $post_id, $taxonomies );
+					// Remove any taxonomies that are not allowed.
+					$allowed_taxonomies = array();
+					foreach ( $taxonomies as $taxonomy ) {
+						// If the taxonomy is not allowed in REST endpoints, skip it.
+						if ( empty( $taxonomy->show_in_rest ) ) {
+							continue;
+						}
+
+						// If the requested post isn't associated with this taxonomy, skip it.
+						if ( ! is_object_in_taxonomy( $post->post_type, $taxonomy->name ) ) {
+							continue;
+						}
+
+						$allowed_taxonomies[] = $taxonomy->name;
+					}
+
+					$terms = wp_get_object_terms( $post_id, $allowed_taxonomies );
 
 					if ( is_wp_error( $terms ) ) {
 						return new WP_Error(
