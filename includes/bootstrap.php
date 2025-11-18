@@ -11,7 +11,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
-use WordPress\AI\Abilities\Utilities\Utilities;
+use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
@@ -184,9 +184,9 @@ function initialize_experiments(): void {
 		// Initialize the WP AI Client.
 		AI_Client::init();
 
-		// Register our utility abilities.
-		$utilities = new Utilities();
-		$utilities->register();
+		// Register our post-related WordPress Abilities.
+		$post_abilities = new Posts();
+		$post_abilities->register();
 
 		add_action(
 			'wp_abilities_api_categories_init',

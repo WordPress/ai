@@ -1,6 +1,6 @@
 <?php
 /**
- * Utility WordPress Abilities implementation.
+ * Post-related WordPress Abilities.
  *
  * @package WordPress\AI
  */
@@ -12,11 +12,11 @@ namespace WordPress\AI\Abilities\Utilities;
 use WP_Error;
 
 /**
- * Utility WordPress Abilities.
+ * Post utility WordPress Abilities.
  *
  * @since 0.1.0
  */
-class Utilities {
+class Posts {
 
 	/**
 	 * The fields that we support.
