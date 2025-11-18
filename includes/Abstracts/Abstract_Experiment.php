@@ -45,12 +45,12 @@ abstract class Abstract_Experiment implements Experiment {
 	protected string $description;
 
 	/**
-	 * Whether the experiment is enabled.
+	 * Cache for this experiment's enabled status.
 	 *
 	 * @since 0.1.0
-	 * @var bool
+	 * @var bool|null
 	 */
-	private bool $enabled = true;
+	private ?bool $enabled_cache = null;
 
 	/**
 	 * Constructor.
@@ -134,12 +134,28 @@ abstract class Abstract_Experiment implements Experiment {
 	/**
 	 * Checks if experiment is enabled.
 	 *
+	 * Experiments require both the global toggle and individual experiment toggle to be enabled.
+	 * Results are cached per instance to avoid redundant option lookups and filter calls.
+	 *
 	 * @since 0.1.0
 	 *
 	 * @return bool True if enabled, false otherwise.
 	 */
 	final public function is_enabled(): bool {
-		$enabled = $this->enabled;
+		// Return cached result if available.
+		if ( null !== $this->enabled_cache ) {
+			return $this->enabled_cache;
+		}
+
+		// Check global experiments toggle first.
+		$global_enabled = (bool) get_option( 'ai_experiments_enabled', false );
+		if ( ! $global_enabled ) {
+			$this->enabled_cache = false;
+			return false;
+		}
+
+		// Check experiment-specific option.
+		$experiment_enabled = (bool) get_option( "ai_experiment_{$this->id}_enabled", false );
 
 		/**
 		 * Filters the enabled status for a specific experiment.
@@ -148,9 +164,61 @@ abstract class Abstract_Experiment implements Experiment {
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param bool $enabled Whether the experiment is enabled.
+		 * @param bool $experiment_enabled Whether the experiment is enabled.
 		 */
-		return (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $enabled );
+		$is_enabled = (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $experiment_enabled );
+
+		// Cache the result.
+		$this->enabled_cache = $is_enabled;
+
+		return $is_enabled;
+	}
+
+	/**
+	 * Registers experiment-specific settings.
+	 *
+	 * Override this method in child classes to register custom settings options
+	 * using WordPress Settings API (register_setting).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	public function register_settings(): void {
+		// Default implementation does nothing.
+		// Child classes can override to register custom settings.
+	}
+
+	/**
+	 * Renders experiment-specific settings fields.
+	 *
+	 * Override this method in child classes to render custom settings UI
+	 * that will appear within the experiment's card on the settings page.
+	 * This is called after the experiment's main toggle control.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	public function render_settings_fields(): void {
+		// Default implementation does nothing.
+		// Child classes can override to render custom settings UI.
+	}
+
+	/**
+	 * Gets the option name for a custom experiment setting field.
+	 *
+	 * Generates a properly namespaced option name for experiment-specific settings.
+	 * Use this when registering and rendering custom settings fields to ensure
+	 * consistent naming across the plugin.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $option_name The base option name (e.g., 'api_key', 'temperature').
+	 * @return string The fully namespaced option name.
+	 */
+	final protected function get_field_option_name( string $option_name ): string {
+		return "ai_experiment_{$this->id}_field_{$option_name}";
 	}
 
 	/**

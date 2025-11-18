@@ -163,6 +163,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_initialize_experiments_calls_register() {
+		// Enable experiments globally and individually.
+		update_option( 'ai_experiments_enabled', true );
+		update_option( 'ai_experiment_mock-experiment_enabled', true );
+
 		$experiment = new Mock_Experiment();
 		$this->registry->register_experiment( $experiment );
 
@@ -172,6 +176,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 			$experiment->register_called,
 			'Experiment register() should be called'
 		);
+
+		// Cleanup.
+		delete_option( 'ai_experiments_enabled' );
+		delete_option( 'ai_experiment_mock-experiment_enabled' );
 	}
 
 	/**
