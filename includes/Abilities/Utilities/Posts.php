@@ -55,7 +55,7 @@ class Posts {
 			'ai/get-post-details',
 			array(
 				'label'               => esc_html__( 'Get post details', 'ai' ),
-				'description'         => esc_html__( 'Get the details of a post based on the post ID. Optionally limit the details to specific fields.', 'ai' ),
+				'description'         => esc_html__( 'Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
 				'category'            => AI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -76,11 +76,32 @@ class Posts {
 					'required'   => array( 'post_id' ),
 				),
 				'output_schema'       => array(
-					'type'       => 'object',
-					'properties' => array(
-						'details' => array(
-							'type'        => 'array',
-							'description' => esc_html__( 'An array of post details.', 'ai' ),
+					'type'        => 'object',
+					'description' => esc_html__( 'The details of the post.', 'ai' ),
+					'properties'  => array(
+						'content' => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The content of the post.', 'ai' ),
+						),
+						'title'   => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The title of the post.', 'ai' ),
+						),
+						'slug'    => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The slug of the post.', 'ai' ),
+						),
+						'author'  => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The author of the post.', 'ai' ),
+						),
+						'type'    => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The type of the post.', 'ai' ),
+						),
+						'excerpt' => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The excerpt of the post.', 'ai' ),
 						),
 					),
 				),
