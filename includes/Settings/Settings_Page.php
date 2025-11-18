@@ -82,7 +82,7 @@ class Settings_Page {
 			return;
 		}
 
-		add_action( "load-{$page_hook}", array( $this, 'on_page_load' ) );
+		add_action( "load-{$page_hook}", array( $this, 'init_page' ) );
 	}
 
 	/**
@@ -92,7 +92,7 @@ class Settings_Page {
 	 *
 	 * @return void
 	 */
-	public function on_page_load(): void {
+	public function init_page(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
 	}
 
