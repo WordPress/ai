@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace WordPress\AI\Settings;
 
+use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiment_Registry;
 
 /**
@@ -103,16 +104,8 @@ class Settings_Page {
 	 * @return void
 	 */
 	public function enqueue_styles(): void {
-		// Enqueue WordPress components styles for block editor UI.
-		wp_enqueue_style( 'wp-components' );
-
 		// Enqueue settings page styles.
-		wp_enqueue_style(
-			'ai-experiments-settings',
-			AI_PLUGIN_URL . 'assets/css/settings-page.css',
-			array( 'wp-components' ),
-			AI_VERSION
-		);
+		Asset_Loader::enqueue_style( 'experiments-settings', 'admin/settings' );
 	}
 
 	/**
