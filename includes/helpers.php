@@ -66,55 +66,52 @@ function normalize_content( string $content ): string {
  * @return array<string, string> The context for the given post ID.
  */
 function get_post_context( int $post_id ): array {
-	$post    = get_post( $post_id );
 	$context = array();
 
-	// If the post doesn't exist, return early.
-	if ( ! $post ) {
-		return $context;
+	// Get the post details using the get-post-details ability.
+	$details_ability = wp_get_ability( 'ai/get-post-details' );
+	if ( $details_ability ) {
+		$details = $details_ability->execute( array( 'post_id' => $post_id ) );
+
+		if ( is_array( $details ) ) {
+			$context = array_merge( $context, $details );
+
+			if ( isset( $context['content'] ) ) {
+				$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
+			}
+
+			if ( isset( $context['title'] ) ) {
+				$context['current_title'] = $context['title'];
+				unset( $context['title'] );
+			}
+
+			if ( isset( $context['type'] ) ) {
+				$context['content_type'] = $context['type'];
+				unset( $context['type'] );
+			}
+		}
 	}
 
-	/**
-	 * TODO: Might be interesting to add simple Abilities for the following,
-	 * just as a way to demonstrate a different approach to registering Abilities,
-	 * how to call Abilities via PHP and how multiple Abilities can be used together.
-	 *
-	 * Example: Get post content Ability; get post author Ability; get post terms Ability.
-	 */
+	// Get the post terms using the get-terms ability.
+	$terms_ability = wp_get_ability( 'ai/get-post-terms' );
+	if ( $terms_ability ) {
+		$terms = $terms_ability->execute( array( 'post_id' => $post_id ) );
 
-	if ( $post->post_content ) {
-		$context['content'] = normalize_content( (string) apply_filters( 'the_content', $post->post_content ) );
-	}
+		if ( $terms && ! is_wp_error( $terms ) ) {
+			$grouped_terms = array();
 
-	if ( $post->post_title ) {
-		$context['current_title'] = $post->post_title;
-	}
+			foreach ( $terms as $term ) {
+				$grouped_terms[ $term->taxonomy ][] = $term->name;
+			}
 
-	if ( $post->post_name ) {
-		$context['slug'] = $post->post_name;
-	}
-
-	$author = get_user_by( 'ID', $post->post_author );
-	if ( $author ) {
-		$context['author'] = $author->display_name;
-	}
-
-	if ( $post->post_type ) {
-		$context['content_type'] = $post->post_type;
-	}
-
-	if ( $post->post_excerpt ) {
-		$context['excerpt'] = $post->post_excerpt;
-	}
-
-	$categories = get_the_terms( $post_id, 'category' );
-	if ( $categories && ! is_wp_error( $categories ) ) {
-		$context['categories'] = implode( ', ', wp_list_pluck( $categories, 'name' ) );
-	}
-
-	$tags = get_the_terms( $post_id, 'post_tag' );
-	if ( $tags && ! is_wp_error( $tags ) ) {
-		$context['tags'] = implode( ', ', wp_list_pluck( $tags, 'name' ) );
+			$context = array_merge(
+				$context,
+				array_map(
+					static fn( array $term_names ): string => implode( ', ', $term_names ),
+					$grouped_terms
+				)
+			);
+		}
 	}
 
 	return $context;

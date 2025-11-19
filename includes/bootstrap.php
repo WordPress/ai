@@ -11,6 +11,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
@@ -38,6 +39,9 @@ if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
 }
 if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
 	define( 'AI_MIN_WP_VERSION', '6.8' );
+}
+if ( ! defined( 'AI_DEFAULT_ABILITY_CATEGORY' ) ) {
+	define( 'AI_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
 }
 
 /**
@@ -192,6 +196,10 @@ function initialize_experiments(): void {
 		// Initialize the WP AI Client.
 		AI_Client::init();
 
+		// Register our post-related WordPress Abilities.
+		$post_abilities = new Posts();
+		$post_abilities->register();
+
 		add_action(
 			'wp_abilities_api_categories_init',
 			static function () {
@@ -201,7 +209,7 @@ function initialize_experiments(): void {
 				 * in the future if we need/want more specific categories.
 				 */
 				wp_register_ability_category(
-					'ai-experiments',
+					AI_DEFAULT_ABILITY_CATEGORY,
 					array(
 						'label'       => __( 'AI Experiments', 'ai' ),
 						'description' => __( 'Various AI experiments.', 'ai' ),

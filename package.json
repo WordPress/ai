@@ -2,8 +2,12 @@
   "name": "ai",
   "version": "0.1.0",
   "private": true,
-  "description": "WordPress AI Experiments",
+  "description": "AI experiments and capabilities for WordPress.",
   "license": "GPL-2.0-or-later",
+  "repository": {
+		"type": "git",
+		"url": "git+https://github.com/WordPress/ai.git"
+	},
   "files": [
     "build",
     "includes",
