@@ -7,23 +7,12 @@
  */
 import React from 'react';
 import { executeAbility } from '@wordpress/abilities';
-import {
-	ToolbarGroup,
-	ToolbarButton,
-	DropdownMenu,
-	MenuGroup,
-	MenuItem,
-} from '@wordpress/components';
+import { ToolbarGroup, ToolbarButton } from '@wordpress/components';
 import { dispatch, useSelect, useDispatch } from '@wordpress/data';
 import { PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
-import { update, chevronDown } from '@wordpress/icons';
+import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
-
-/**
- * Internal Dependencies.
- */
-import { toSentenceCase, toTitleCase } from '../utils/casing';
 
 const { aiTitleGenerationData } = window as any;
 
@@ -64,7 +53,7 @@ async function generateTitle(
 /**
  * TitleToolbar component.
  *
- * Provides Generate/Re-generate button and casing options dropdown.
+ * Provides Generate/Re-generate button.
  *
  * @return {JSX.Element} The toolbar component.
  */
@@ -116,28 +105,6 @@ export default function TitleToolbar(): JSX.Element | null {
 		}
 	};
 
-	/**
-	 * Handles casing option selection from dropdown.
-	 *
-	 * @param {string} casingType - The casing type to apply ('sentence' or 'title').
-	 */
-	const handleCasingChange = ( casingType: string ) => {
-		if ( ! hasTitle ) {
-			return;
-		}
-
-		let transformedTitle: string;
-		if ( casingType === 'sentence' ) {
-			transformedTitle = toSentenceCase( title );
-		} else if ( casingType === 'title' ) {
-			transformedTitle = toTitleCase( title );
-		} else {
-			return;
-		}
-
-		editPost( { title: transformedTitle } );
-	};
-
 	// Ensure the experiment is enabled.
 	if ( ! aiTitleGenerationData?.enabled ) {
 		return null;
@@ -155,41 +122,6 @@ export default function TitleToolbar(): JSX.Element | null {
 				>
 					{ buttonLabel }
 				</ToolbarButton>
-				{ hasTitle && ! isGenerating && (
-					<DropdownMenu
-						icon={ chevronDown }
-						label="Options"
-						toggleProps={ {
-							as: ToolbarButton,
-						} }
-						popoverProps={ {
-							placement: 'bottom-start',
-						} }
-					>
-						{ ( { onClose } ) => (
-							<>
-								<MenuGroup label={ __( 'Options', 'ai' ) }>
-									<MenuItem
-										onClick={ () => {
-											handleCasingChange( 'sentence' );
-											onClose();
-										} }
-									>
-										{ __( 'Sentence Case', 'ai' ) }
-									</MenuItem>
-									<MenuItem
-										onClick={ () => {
-											handleCasingChange( 'title' );
-											onClose();
-										} }
-									>
-										{ __( 'Title Case', 'ai' ) }
-									</MenuItem>
-								</MenuGroup>
-							</>
-						) }
-					</DropdownMenu>
-				) }
 			</ToolbarGroup>
 		</PostTypeSupportCheck>
 	);
