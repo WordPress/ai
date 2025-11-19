@@ -2,9 +2,14 @@
   "name": "ai",
   "version": "0.1.0",
   "private": true,
-  "description": "WordPress AI Experiments",
+  "description": "AI experiments and capabilities for WordPress.",
   "license": "GPL-2.0-or-later",
+  "repository": {
+		"type": "git",
+		"url": "git+https://github.com/WordPress/ai.git"
+	},
   "files": [
+    "build",
     "includes",
     "vendor",
     "README.md",
@@ -13,7 +18,7 @@
   ],
   "scripts": {
     "plugin-zip": "wp-scripts plugin-zip",
-    "build": "echo 'Building...'",
+    "build": "wp-scripts build",
     "wp-env": "wp-env",
     "lint:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script lint",
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",

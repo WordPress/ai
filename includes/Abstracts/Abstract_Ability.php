@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abstracts;
 
+use ReflectionClass;
 use WP_Ability;
 
 /**
@@ -49,7 +50,9 @@ abstract class Abstract_Ability extends WP_Ability {
 	 *
 	 * @return string The category of the ability.
 	 */
-	abstract protected function category(): string;
+	protected function category(): string {
+		return AI_DEFAULT_ABILITY_CATEGORY;
+	}
 
 	/**
 	 * Returns the input schema of the ability.
@@ -97,4 +100,70 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return array<string, mixed> The meta of the ability.
 	 */
 	abstract protected function meta(): array;
+
+	/**
+	 * Gets the system instruction for the feature.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
+	 *                              attempts to load `system-instruction.php` or `prompt.php`.
+	 * @return string The system instruction for the feature.
+	 */
+	public function get_system_instruction( ?string $filename = null ): string {
+		return $this->load_system_instruction_from_file( $filename );
+	}
+
+	/**
+	 * Loads system instruction from a PHP file in the feature's directory.
+	 *
+	 * PHP files should return a string directly, e.g.:
+	 * ```php
+	 * <?php
+	 * return 'Your system instruction text here...';
+	 * ```
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
+	 *                              attempts to load `system-instruction.php`.
+	 * @return string The contents of the file, or empty string if file not found.
+	 */
+	protected function load_system_instruction_from_file( ?string $filename = null ): string {
+		// Get the feature's directory using reflection.
+		$reflection = new ReflectionClass( $this );
+		$file_name  = $reflection->getFileName();
+
+		if ( ! $file_name ) {
+			return '';
+		}
+
+		$feature_dir = dirname( $file_name );
+
+		// If explicit filename provided, use it.
+		if ( null !== $filename ) {
+			$file_path = trailingslashit( $feature_dir ) . $filename;
+
+			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
+				// PHP files should return a string directly.
+				$content = require_once $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+
+				return is_string( $content ) ? wp_strip_all_tags( $content ) : '';
+			}
+
+			return '';
+		}
+
+		// Automatic detection if no filename provided.
+		$file_path = trailingslashit( $feature_dir ) . 'system-instruction.php';
+
+		if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
+			// PHP files should return a string directly.
+			$content = require $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+
+			return is_string( $content ) ? wp_strip_all_tags( $content ) : '';
+		}
+
+		return '';
+	}
 }
