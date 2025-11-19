@@ -1,5 +1,5 @@
 /**
- * Title toolbar component for generating and transforming post titles.
+ * Title toolbar component for generating post titles.
  */
 
 /**
@@ -14,9 +14,9 @@ import {
 	Modal,
 	TextareaControl,
 	ToolbarGroup,
-	ToolbarButton
+	ToolbarButton,
 } from '@wordpress/components';
-import { dispatch, select, useSelect, useDispatch } from '@wordpress/data';
+import { dispatch, select, useDispatch } from '@wordpress/data';
 import { PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
@@ -27,59 +27,54 @@ const { aiTitleGenerationData } = window as any;
 /**
  * Renders the generated title data with editable textareas.
  *
- * @param {Object} props - Component props.
- * @param {string[]} props.data - The array of titles to render.
- * @param {Function} props.onDataChange - Callback to update the data array.
- * @param {Function} props.onSelect - Callback when a title is selected.
+ * @param {Object}   props              Component props.
+ * @param {string[]} props.data         The array of titles to render.
+ * @param {Function} props.onDataChange Callback to update the data array.
+ * @param {Function} props.onSelect     Callback when a title is selected.
  * @return {JSX.Element | null} The rendered data.
  */
-function RenderData( {
+function RenderData({
 	data: dataToRender,
 	onDataChange,
-	onSelect
+	onSelect,
 }: {
 	data: string[];
-	onDataChange: ( newData: string[] ) => void;
-	onSelect: ( title: string, index: number ) => void;
-} ): JSX.Element | null {
-	if ( ! dataToRender || dataToRender.length === 0 ) {
+	onDataChange: (newData: string[]) => void;
+	onSelect: (title: string, index: number) => void;
+}): JSX.Element | null {
+	if (!dataToRender || dataToRender.length === 0) {
 		return null;
 	}
 
 	return (
-		<Flex
-			gap="5"
-			wrap
-			direction="column"
-		>
-			{ dataToRender.map( ( title: string, i: number ) => {
+		<Flex gap="5" wrap direction="column">
+			{dataToRender.map((title: string, i: number) => {
 				return (
-					<FlexItem
-						className="ai-title"
-						key={ `title-${ i }` }
-					>
+					<FlexItem className="ai-title" key={`title-${i}`}>
 						<TextareaControl
-							rows={ 2 }
-							label={ __( 'Generated title', 'ai' ) }
+							rows={2}
+							label={__('Generated title', 'ai')}
 							hideLabelFromVision
-							value={ title }
-							onChange={ ( value: string ) => {
-								onDataChange( dataToRender.map( ( item, index ) =>
-									index === i ? value : item
-								) );
-							} }
+							value={title}
+							onChange={(value: string) => {
+								onDataChange(
+									dataToRender.map((item, index) =>
+										index === i ? value : item
+									)
+								);
+							}}
 							__nextHasNoMarginBottom
 						/>
 						<Button
 							variant="secondary"
-							style={ { marginTop: '15px' } }
-							onClick={ () => onSelect( title, i ) }
+							style={{ marginTop: '15px' }}
+							onClick={() => onSelect(title, i)}
 						>
-							{ __( 'Select', 'ai' ) }
+							{__('Select', 'ai')}
 						</Button>
 					</FlexItem>
 				);
-			} ) }
+			})}
 		</Flex>
 	);
 }
@@ -87,19 +82,19 @@ function RenderData( {
 /**
  * Generates titles for the given post ID and content.
  *
- * @param {number} postId  - The ID of the post to generate a title for.
- * @param {string} content - The content of the post to generate a title for.
+ * @param {number} postId  The ID of the post to generate a title for.
+ * @param {string} content The content of the post to generate a title for.
  * @return {Promise<string[]>} A promise that resolves to the generated titles.
  */
 async function generateTitles(
 	postId: number,
 	content: string
-): Promise< string[] > {
-	return executeAbility( 'ai/title-generation', {
+): Promise<string[]> {
+	return executeAbility('ai/title-generation', {
 		content,
 		post_id: postId,
-	} )
-		.then( ( response ) => {
+	})
+		.then((response) => {
 			if (
 				response &&
 				typeof response === 'object' &&
@@ -109,10 +104,10 @@ async function generateTitles(
 			}
 
 			return [];
-		} )
-		.catch( ( error ) => {
-			throw new Error( `Error generating titles: ${ error.message }` );
-		} );
+		})
+		.catch((error) => {
+			throw new Error(`Error generating titles: ${error.message}`);
+		});
 }
 
 /**
@@ -123,81 +118,65 @@ async function generateTitles(
  * @return {JSX.Element} The toolbar component.
  */
 export default function TitleToolbar(): JSX.Element | null {
-	const postId = useSelect( ( select ) => {
-		return ( select( 'core/editor' ) as any ).getCurrentPostId() ?? 0;
-	}, [] );
+	const postId = select('core/editor').getCurrentPostId();
+	const postType = select('core/editor').getCurrentPostType();
+	const content = select('core/editor').getEditedPostContent();
+	const title = select('core/editor').getEditedPostAttribute('title');
 
-	const postType = useSelect( ( select ) => {
-		return ( select( 'core/editor' ) as any ).getCurrentPostType() || '';
-	}, [] );
+	const { editPost } = useDispatch('core/editor');
 
-	const title = useSelect( ( select ) => {
-		return (
-			( select( 'core/editor' ) as any ).getEditedPostAttribute(
-				'title'
-			) || ''
-		);
-	}, [] );
+	const [isGenerating, setIsGenerating] = useState(false);
+	const [isOpen, setOpen] = useState(false);
+	const [data, setData] = useState<string[]>([]);
 
-	const content = useSelect( ( select ) => {
-		return ( select( 'core/editor' ) as any ).getEditedPostContent() || '';
-	}, [] );
-
-	const { editPost } = useDispatch( 'core/editor' );
-
-	const [ isGenerating, setIsGenerating ] = useState( false );
-	const [ isOpen, setOpen ] = useState( false );
-	const [ data, setData ] = useState< string[] >( [] );
-
-	const openModal = () => setOpen( true );
+	const openModal = () => setOpen(true);
 	const closeModal = () => {
-		setOpen( false );
-		setData( [] );
+		setOpen(false);
+		setData([]);
 	};
 
 	const hasTitle = title.trim().length > 0;
 	const buttonLabel = hasTitle
-		? __( 'Re-generate', 'ai' )
-		: __( 'Generate', 'ai' );
+		? __('Re-generate', 'ai')
+		: __('Generate', 'ai');
 
 	/**
 	 * Handles the generate/re-generate button click.
 	 */
 	const handleGenerate = async () => {
-		setIsGenerating( true );
-		( dispatch( 'core/notices' ) as any ).removeNotice(
+		setIsGenerating(true);
+		(dispatch('core/notices') as any).removeNotice(
 			'ai_title_generation_error'
 		);
 
 		try {
-			const generatedTitles = await generateTitles( postId, content );
-			setData( generatedTitles );
+			const generatedTitles = await generateTitles(postId, content);
+			setData(generatedTitles);
 			openModal();
-		} catch ( error: any ) {
-			( dispatch( 'core/notices' ) as any ).createErrorNotice( error, {
+		} catch (error: any) {
+			(dispatch('core/notices') as any).createErrorNotice(error, {
 				id: 'ai_title_generation_error',
 				isDismissible: true,
-			} );
-			setData( [] );
+			});
+			setData([]);
 		} finally {
-			setIsGenerating( false );
+			setIsGenerating(false);
 		}
 	};
 
 	/**
 	 * Handles selecting a title.
 	 *
-	 * @param {string} selectedTitle - The selected title.
-	 * @param {number} index - The index of the selected title.
+	 * @param {string} selectedTitle The selected title.
 	 */
-	const handleSelectTitle = async ( selectedTitle: string, index: number ) => {
-		const isDirty = select( 'core/editor' ).isEditedPostDirty();
-		editPost( {
+	const handleSelectTitle = async (selectedTitle: string) => {
+		const isDirty = select('core/editor').isEditedPostDirty();
+		editPost({
 			title: selectedTitle,
-		} );
+		});
 		closeModal();
-		if ( ! isDirty ) {
-			await ( dispatch( 'core' ) as any ).saveEditedEntityRecord(
+		if (!isDirty) {
+			await (dispatch('core') as any).saveEditedEntityRecord(
 				'postType',
 				postType,
 				postId
@@ -206,7 +185,7 @@ export default function TitleToolbar(): JSX.Element | null {
 	};
 
 	// Ensure the experiment is enabled.
-	if ( ! aiTitleGenerationData?.enabled ) {
+	if (!aiTitleGenerationData?.enabled) {
 		return null;
 	}
 
@@ -215,33 +194,33 @@ export default function TitleToolbar(): JSX.Element | null {
 			<PostTypeSupportCheck supportKeys="title">
 				<ToolbarGroup>
 					<ToolbarButton
-						icon={ update }
-						label={ buttonLabel }
-						onClick={ handleGenerate }
-						disabled={ isGenerating }
-						isBusy={ isGenerating }
+						icon={update}
+						label={buttonLabel}
+						onClick={handleGenerate}
+						disabled={isGenerating}
+						isBusy={isGenerating}
 					>
-						{ buttonLabel }
+						{buttonLabel}
 					</ToolbarButton>
 				</ToolbarGroup>
 			</PostTypeSupportCheck>
-			{ isOpen && (
+			{isOpen && (
 				<Modal
-					title={ __( 'Select a title', 'ai' ) }
-					onRequestClose={ closeModal }
-					isFullScreen={ false }
+					title={__('Select a title', 'ai')}
+					onRequestClose={closeModal}
+					isFullScreen={false}
 					size="medium"
 					className="ai-title-generation-modal"
 				>
-					{ data && (
+					{data && (
 						<RenderData
-							data={ data }
-							onDataChange={ setData }
-							onSelect={ handleSelectTitle }
+							data={data}
+							onDataChange={setData}
+							onSelect={handleSelectTitle}
 						/>
-					) }
+					)}
 				</Modal>
-			) }
+			)}
 		</>
 	);
 }

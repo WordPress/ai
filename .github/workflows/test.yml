@@ -260,7 +260,6 @@ jobs:
         permissions:
             contents: read
         timeout-minutes: 20
-        if: false  # Temporarily disabled
 
         steps:
             - name: Checkout repository
