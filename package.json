@@ -19,6 +19,7 @@
   "scripts": {
     "plugin-zip": "wp-scripts plugin-zip",
     "build": "wp-scripts build",
+    "start": "wp-scripts start",
     "wp-env": "wp-env",
     "lint:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script lint",
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",
@@ -31,7 +32,8 @@
     "@wordpress/env": "^10.34.0",
     "@wordpress/eslint-plugin": "^22.20.0",
     "@wordpress/prettier-config": "^4.34.0",
-    "@wordpress/scripts": "^30.27.0"
+    "@wordpress/scripts": "^30.27.0",
+    "webpack-remove-empty-scripts": "^1.1.1"
   },
   "engines": {
     "node": ">=22.21.1",
