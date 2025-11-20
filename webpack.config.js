@@ -1,5 +1,5 @@
 // WordPress webpack config.
-const defaultConfig = require( '@wordpress/scripts/config/webpack.config' );
+const defaultConfig = require('@wordpress/scripts/config/webpack.config');
 
 // Plugins.
 const RemoveEmptyScriptsPlugin = require( 'webpack-remove-empty-scripts' );
