@@ -8,16 +8,16 @@
  * @license     GPL-2.0-or-later
  *
  * @wordpress-plugin
- * Plugin Name:       AI
+ * Plugin Name:       AI Experiments
  * Plugin URI:        https://github.com/WordPress/ai
- * Description:       Experimental AI features for WordPress
- * Requires at least: 6.8
+ * Description:       AI experiments and capabilities for WordPress.
  * Version:           0.1.0
+ * Requires at least: 6.9
  * Requires PHP:      7.4
  * Author:            WordPress.org Contributors
  * Author URI:        https://make.wordpress.org/ai/
- * License:           GPLv2 or later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * License:           GPL-2.0-or-later
+ * License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
  * Text Domain:       ai
  */
 

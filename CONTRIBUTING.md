@@ -12,10 +12,10 @@ All parameters, return values, and properties should use explicit type hints whe
 
 The following naming conventions must be followed for consistency and autoloading:
 
-- Interfaces are suffixed with `_Interface` (e.g., `Feature_Interface`).
+- Interfaces are suffixed with `_Interface` (e.g., `Experiment_Interface`).
 - Traits are suffixed with `_Trait` (e.g., `Validation_Trait`).
 - File names are the same as the class, trait, and interface name for PSR-4 autoloading.
-- Classes use WordPress naming conventions with underscores (e.g., `Feature_Loader`).
+- Classes use WordPress naming conventions with underscores (e.g., `Experiment_Loader`).
 - Namespaces follow the pattern `WordPress\AI\{Component}`.
 
 ## Documentation standards
@@ -43,20 +43,20 @@ All code must be properly documented with PHPDoc blocks following these standard
 
 ```php
 /**
- * Class for handling feature registration.
+ * Class for handling experiment registration.
  *
  * @since 0.1.0
  */
-class Feature_Registry {
+class Experiment_Registry {
 	/**
-	 * Registers a new feature with the plugin.
+	 * Registers a new experiment with the plugin.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param Feature $feature The feature instance to register.
+	 * @param Experiment $experiment The experiment instance to register.
 	 * @return bool True if registered successfully, false otherwise.
 	 */
-	public function register_feature( Feature $feature ): bool {
+	public function register_experiment( Experiment $experiment ): bool {
 		// Implementation
 	}
 }
@@ -91,6 +91,12 @@ Branches that you use for implementing a pull request or experimenting can use a
 Ideally, the branch name is in some form or shape descriptive of what it is for.
 
 ## Development workflow
+
+### Local setup and testing
+
+Run `composer install` so that you can install and activate the plugin.
+
+Soon we'll start having other assets (like JS and CSS files) and at that point you'll also need to run `npm i && npm run build`. You can run those commands now but the build command won't actually do anything yet as we don't have any files to build. If you're wanting to run tests locally though, you will need to at least run `npm i` to bring in those dependencies.
 
 ### Quality checks
 
@@ -131,8 +137,8 @@ echo 'Hello World';
 
 ## Additional resources
 
-For more detailed information on plugin architecture, creating features, and development workflows, see:
+For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
-- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Comprehensive guide to plugin architecture and feature development
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Comprehensive guide to plugin architecture and experiment development
 - [Testing Strategy](docs/TESTING.md) - Testing philosophy and guidelines
 - [WordPress AI Team](https://make.wordpress.org/ai/) - Community and discussion

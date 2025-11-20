@@ -1,13 +1,13 @@
 {
   "name": "wordpress/ai",
-  "description": "Experimental AI features for WordPress",
+  "description": "AI experiments and capabilities for WordPress.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
     "automattic/jetpack-autoloader": "^5.0",
     "ext-json": "*",
     "php": ">=7.4",
-    "wordpress/abilities-api": "^0.4.0-rc",
+    "wordpress/abilities-api": "^0.4.0",
     "wordpress/mcp-adapter": "dev-trunk",
     "wordpress/wp-ai-client": "dev-trunk"
   },
@@ -31,7 +31,10 @@
   "autoload": {
     "psr-4": {
       "WordPress\\AI\\": "includes/"
-    }
+    },
+    "files": [
+      "includes/helpers.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {
@@ -47,7 +50,6 @@
       "dealerdirect/phpcodesniffer-composer-installer": true,
       "php-http/discovery": true,
       "phpstan/extension-installer": true
-
     },
     "platform": {
       "php": "7.4"
