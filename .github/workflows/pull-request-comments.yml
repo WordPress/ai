@@ -69,7 +69,7 @@ jobs:
               landingPage: '/wp-admin/',
               preferredVersions: {
                 php: '7.4',
-                wp: 'latest',
+                wp: 'https://playground.wordpress.net/plugin-proxy.php?build-ref=trunk',
               },
               steps: [
                 {
