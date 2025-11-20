@@ -2,7 +2,7 @@
   "$schema": "https://playground.wordpress.net/blueprint-schema.json",
   "landingPage": "/wp-admin/options-general.php?page=ai-experiments",
   "preferredVersions": {
-    "php": "8.2",
+    "php": "8.4",
     "wp": "latest"
   },
   "features": {
