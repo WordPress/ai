@@ -12,8 +12,16 @@ module.exports = {
 	...defaultConfig,
 	entry: {
 		...defaultConfig.entry(),
-		'admin/settings': path.resolve( process.cwd(), 'src/admin/settings', 'index.scss' ),
-		'experiments/example-experiment': path.resolve(process.cwd(),'src/experiments/example-experiment', 'index.tsx'),
+		'admin/settings': path.resolve(
+			process.cwd(),
+			'src/admin/settings',
+			'index.scss'
+		),
+		'experiments/example-experiment': path.resolve(
+			process.cwd(),
+			'src/experiments/example-experiment',
+			'index.tsx'
+		),
 	},
 
 	plugins: [
