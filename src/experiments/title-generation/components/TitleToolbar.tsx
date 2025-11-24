@@ -149,7 +149,6 @@ async function generateTitles(
  */
 export default function TitleToolbar(): JSX.Element | null {
 	const postId = select('core/editor').getCurrentPostId();
-	const postType = select('core/editor').getCurrentPostType();
 	const content = select('core/editor').getEditedPostContent();
 	const title = select('core/editor').getEditedPostAttribute('title');
 

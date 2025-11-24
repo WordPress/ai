@@ -31,7 +31,7 @@ function createRetry(
 	callback: () => void,
 	maxRetries: number,
 	delay: number = 200
-): (() => void) {
+): () => void {
 	let retryCount = 0;
 	let timeoutId: NodeJS.Timeout | null = null;
 
@@ -83,9 +83,11 @@ function createFocusBlurHandlers(
 /**
  * Sets up focus and blur event listeners on an element and returns a cleanup function.
  *
- * @param {HTMLElement} element    The element to attach listeners to.
- * @param {Object}      handlers    Object containing focus and blur handler functions.
- * @param {boolean}     useFocusIn  Whether to use focusin/focusout instead of focus/blur.
+ * @param {HTMLElement} element        The element to attach listeners to.
+ * @param {Object}      handlers       Object containing focus and blur handler functions.
+ * @param {Function}    handlers.focus Callback to handle focus event.
+ * @param {Function}    handlers.blur  Callback to handle blur event.
+ * @param {boolean}     useFocusIn     Whether to use focusin/focusout instead of focus/blur.
  * @return {Function} Cleanup function to remove the event listeners.
  */
 function setupEventListeners(
