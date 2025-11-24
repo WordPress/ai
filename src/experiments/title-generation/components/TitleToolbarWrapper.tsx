@@ -17,6 +17,49 @@ import { createRoot, useEffect } from '@wordpress/element';
 import TitleToolbar from './TitleToolbar';
 
 /**
+ * Creates a reusable retry function that will attempt to execute a callback
+ * when a condition is met, retrying up to a maximum number of times.
+ *
+ * @param {Function} checkFn    Function that returns true when condition is met.
+ * @param {Function} callback   Function to execute when condition is met.
+ * @param {number}   maxRetries Maximum number of retry attempts.
+ * @param {number}   delay      Delay in milliseconds between retries.
+ * @return {Function} A function that starts the retry process.
+ */
+function createRetry(
+	checkFn: () => boolean,
+	callback: () => void,
+	maxRetries: number,
+	delay: number = 200
+): (() => void) {
+	let retryCount = 0;
+	let timeoutId: NodeJS.Timeout | null = null;
+
+	const retry = () => {
+		if (retryCount < maxRetries) {
+			retryCount++;
+			timeoutId = setTimeout(() => {
+				timeoutId = null;
+				if (checkFn()) {
+					callback();
+				} else {
+					retry();
+				}
+			}, delay);
+		}
+	};
+
+	// Store timeout ID for cleanup
+	const start = () => {
+		if (!timeoutId) {
+			retry();
+		}
+	};
+
+	return start;
+}
+
+/**
  * TitleToolbarWrapper component.
  *
  * Attaches the toolbar to the title field in normal editing mode.
@@ -46,40 +89,6 @@ function TitleToolbarWrapper(): JSX.Element {
 			}
 
 			return null;
-		};
-
-		// Create a reusable retry function
-		const createRetry = (
-			checkFn: () => boolean,
-			callback: () => void,
-			maxRetries: number,
-			delay: number = 200
-		): (() => void) => {
-			let retryCount = 0;
-			let timeoutId: NodeJS.Timeout | null = null;
-
-			const retry = () => {
-				if (retryCount < maxRetries && !isAttached) {
-					retryCount++;
-					timeoutId = setTimeout(() => {
-						timeoutId = null;
-						if (checkFn()) {
-							callback();
-						} else {
-							retry();
-						}
-					}, delay);
-				}
-			};
-
-			// Store timeout ID for cleanup
-			const start = () => {
-				if (!timeoutId) {
-					retry();
-				}
-			};
-
-			return start;
 		};
 
 		// Create reusable focus/blur handlers
