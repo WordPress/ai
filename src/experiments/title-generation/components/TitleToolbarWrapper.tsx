@@ -60,6 +60,27 @@ function createRetry(
 }
 
 /**
+ * Creates reusable focus/blur event handlers with optional delay on blur.
+ *
+ * @param {Function} onFocus   Function to call on focus event.
+ * @param {Function} onBlur    Function to call on blur event.
+ * @param {number}   blurDelay Delay in milliseconds before calling onBlur.
+ * @return {Object} Object with focus and blur handler functions.
+ */
+function createFocusBlurHandlers(
+	onFocus: () => void,
+	onBlur: () => void,
+	blurDelay: number = 10
+): { focus: () => void; blur: () => void } {
+	return {
+		focus: onFocus,
+		blur: () => {
+			setTimeout(onBlur, blurDelay);
+		},
+	};
+}
+
+/**
  * TitleToolbarWrapper component.
  *
  * Attaches the toolbar to the title field in normal editing mode.
@@ -89,20 +110,6 @@ function TitleToolbarWrapper(): JSX.Element {
 			}
 
 			return null;
-		};
-
-		// Create reusable focus/blur handlers
-		const createFocusBlurHandlers = (
-			onFocus: () => void,
-			onBlur: () => void,
-			blurDelay: number = 10
-		) => {
-			return {
-				focus: onFocus,
-				blur: () => {
-					setTimeout(onBlur, blurDelay);
-				},
-			};
 		};
 
 		// Setup event listeners on an element
