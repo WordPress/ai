@@ -27,28 +27,28 @@ const { aiTitleGenerationData } = window as any;
 /**
  * Renders the generated title data with editable textareas.
  *
- * @param {Object}   props              Component props.
- * @param {string[]} props.data         The array of titles to render.
- * @param {Function} props.onDataChange Callback to update the data array.
- * @param {Function} props.onSelect     Callback when a title is selected.
- * @return {JSX.Element | null} The rendered data.
+ * @param {Object}   props               Component props.
+ * @param {string[]} props.titles        The array of titles to render.
+ * @param {Function} props.onTitleChange Callback to update the title array.
+ * @param {Function} props.onSelect      Callback when a title is selected.
+ * @return {JSX.Element | null} The rendered titles.
  */
-function RenderData({
-	data: dataToRender,
-	onDataChange,
+function TitleOptionsList({
+	titles: titlesToRender,
+	onTitleChange,
 	onSelect,
 }: {
-	data: string[];
-	onDataChange: (newData: string[]) => void;
+	titles: string[];
+	onTitleChange: (newTitle: string[]) => void;
 	onSelect: (title: string, index: number) => void;
 }): JSX.Element | null {
-	if (!dataToRender || dataToRender.length === 0) {
+	if (!titlesToRender || titlesToRender.length === 0) {
 		return null;
 	}
 
 	return (
 		<Flex gap="5" wrap direction="column">
-			{dataToRender.map((title: string, i: number) => {
+			{titlesToRender.map((title: string, i: number) => {
 				return (
 					<FlexItem className="ai-title" key={`title-${i}`}>
 						<TextareaControl
@@ -57,8 +57,8 @@ function RenderData({
 							hideLabelFromVision
 							value={title}
 							onChange={(value: string) => {
-								onDataChange(
-									dataToRender.map((item, index) =>
+								onTitleChange(
+									titlesToRender.map((item, index) =>
 										index === i ? value : item
 									)
 								);
@@ -127,12 +127,12 @@ export default function TitleToolbar(): JSX.Element | null {
 
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isOpen, setOpen] = useState(false);
-	const [data, setData] = useState<string[]>([]);
+	const [titles, setTitles] = useState<string[]>([]);
 
 	const openModal = () => setOpen(true);
 	const closeModal = () => {
 		setOpen(false);
-		setData([]);
+		setTitles([]);
 	};
 
 	const hasTitle = title.trim().length > 0;
@@ -151,14 +151,14 @@ export default function TitleToolbar(): JSX.Element | null {
 
 		try {
 			const generatedTitles = await generateTitles(postId, content);
-			setData(generatedTitles);
+			setTitles(generatedTitles);
 			openModal();
 		} catch (error: any) {
 			(dispatch('core/notices') as any).createErrorNotice(error, {
 				id: 'ai_title_generation_error',
 				isDismissible: true,
 			});
-			setData([]);
+			setTitles([]);
 		} finally {
 			setIsGenerating(false);
 		}
@@ -204,10 +204,10 @@ export default function TitleToolbar(): JSX.Element | null {
 					size="medium"
 					className="ai-title-generation-modal"
 				>
-					{data && (
-						<RenderData
-							data={data}
-							onDataChange={setData}
+					{titles && (
+						<TitleOptionsList
+							titles={titles}
+							onTitleChange={setTitles}
 							onSelect={handleSelectTitle}
 						/>
 					)}
