@@ -25,6 +25,48 @@ import { __ } from '@wordpress/i18n';
 const { aiTitleGenerationData } = window as any;
 
 /**
+ * Renders a single title option.
+ *
+ * @param {Object}   props          Component props.
+ * @param {string}   props.title    The title value to display.
+ * @param {number}   props.index    The index of this title in the array.
+ * @param {Function} props.onChange Callback to update this title's value.
+ * @param {Function} props.onSelect Callback when this title is selected.
+ * @return {JSX.Element} The rendered title option.
+ */
+function TitleOption({
+	title,
+	index,
+	onChange,
+	onSelect,
+}: {
+	title: string;
+	index: number;
+	onChange: (value: string) => void;
+	onSelect: (title: string, index: number) => void;
+}): JSX.Element {
+	return (
+		<FlexItem className="ai-title">
+			<TextareaControl
+				rows={2}
+				label={__('Generated title', 'ai')}
+				hideLabelFromVision
+				value={title}
+				onChange={onChange}
+				__nextHasNoMarginBottom
+			/>
+			<Button
+				variant="secondary"
+				style={{ marginTop: '15px' }}
+				onClick={() => onSelect(title, index)}
+			>
+				{__('Select', 'ai')}
+			</Button>
+		</FlexItem>
+	);
+}
+
+/**
  * Renders the generated title data with editable textareas.
  *
  * @param {Object}   props               Component props.
@@ -48,33 +90,21 @@ function TitleOptionsList({
 
 	return (
 		<Flex gap="5" wrap direction="column">
-			{titlesToRender.map((title: string, i: number) => {
-				return (
-					<FlexItem className="ai-title" key={`title-${i}`}>
-						<TextareaControl
-							rows={2}
-							label={__('Generated title', 'ai')}
-							hideLabelFromVision
-							value={title}
-							onChange={(value: string) => {
-								onTitleChange(
-									titlesToRender.map((item, index) =>
-										index === i ? value : item
-									)
-								);
-							}}
-							__nextHasNoMarginBottom
-						/>
-						<Button
-							variant="secondary"
-							style={{ marginTop: '15px' }}
-							onClick={() => onSelect(title, i)}
-						>
-							{__('Select', 'ai')}
-						</Button>
-					</FlexItem>
-				);
-			})}
+			{titlesToRender.map((title: string, i: number) => (
+				<TitleOption
+					key={`title-${i}`}
+					title={title}
+					index={i}
+					onChange={(value: string) => {
+						onTitleChange(
+							titlesToRender.map((item, index) =>
+								index === i ? value : item
+							)
+						);
+					}}
+					onSelect={onSelect}
+				/>
+			))}
 		</Flex>
 	);
 }
