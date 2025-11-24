@@ -81,6 +81,31 @@ function createFocusBlurHandlers(
 }
 
 /**
+ * Sets up focus and blur event listeners on an element and returns a cleanup function.
+ *
+ * @param {HTMLElement} element    The element to attach listeners to.
+ * @param {Object}      handlers    Object containing focus and blur handler functions.
+ * @param {boolean}     useFocusIn  Whether to use focusin/focusout instead of focus/blur.
+ * @return {Function} Cleanup function to remove the event listeners.
+ */
+function setupEventListeners(
+	element: HTMLElement,
+	handlers: { focus: () => void; blur: () => void },
+	useFocusIn: boolean = false
+): () => void {
+	const focusEvent = useFocusIn ? 'focusin' : 'focus';
+	const blurEvent = useFocusIn ? 'focusout' : 'blur';
+
+	element.addEventListener(focusEvent, handlers.focus);
+	element.addEventListener(blurEvent, handlers.blur);
+
+	return () => {
+		element.removeEventListener(focusEvent, handlers.focus);
+		element.removeEventListener(blurEvent, handlers.blur);
+	};
+}
+
+/**
  * TitleToolbarWrapper component.
  *
  * Attaches the toolbar to the title field in normal editing mode.
@@ -110,24 +135,6 @@ function TitleToolbarWrapper(): JSX.Element {
 			}
 
 			return null;
-		};
-
-		// Setup event listeners on an element
-		const setupEventListeners = (
-			element: HTMLElement,
-			handlers: { focus: () => void; blur: () => void },
-			useFocusIn: boolean = false
-		) => {
-			const focusEvent = useFocusIn ? 'focusin' : 'focus';
-			const blurEvent = useFocusIn ? 'focusout' : 'blur';
-
-			element.addEventListener(focusEvent, handlers.focus);
-			element.addEventListener(blurEvent, handlers.blur);
-
-			return () => {
-				element.removeEventListener(focusEvent, handlers.focus);
-				element.removeEventListener(blurEvent, handlers.blur);
-			};
 		};
 
 		// Check if focus is on title input or toolbar
