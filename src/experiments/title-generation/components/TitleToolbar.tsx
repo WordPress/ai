@@ -155,8 +155,8 @@ export default function TitleToolbar(): JSX.Element | null {
 
 	const { editPost } = useDispatch('core/editor');
 
-	const [isGenerating, setIsGenerating] = useState(false);
-	const [isOpen, setOpen] = useState(false);
+	const [isGenerating, setIsGenerating] = useState<boolean>(false);
+	const [isOpen, setOpen] = useState<boolean>(false);
 	const [titles, setTitles] = useState<string[]>([]);
 
 	const openModal = () => setOpen(true);
