@@ -170,18 +170,10 @@ export default function TitleToolbar(): JSX.Element | null {
 	 * @param {string} selectedTitle The selected title.
 	 */
 	const handleSelectTitle = async (selectedTitle: string) => {
-		const isDirty = select('core/editor').isEditedPostDirty();
 		editPost({
 			title: selectedTitle,
 		});
 		closeModal();
-		if (!isDirty) {
-			await (dispatch('core') as any).saveEditedEntityRecord(
-				'postType',
-				postType,
-				postId
-			);
-		}
 	};
 
 	// Ensure the experiment is enabled.
