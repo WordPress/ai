@@ -331,12 +331,15 @@ function TitleToolbarWrapper(): JSX.Element {
 		const setupObserver = () => {
 			const editorDoc = getEditorDocument();
 			if (editorDoc && !observer) {
-				observer = new MutationObserver(() => {
+				observer = new MutationObserver((mutations, obs) => {
 					if (
 						!isAttached &&
 						!editorDoc.querySelector('.ai-title-toolbar-wrapper')
 					) {
 						findAndAttachToolbar();
+					} else if (isAttached) {
+						// Disconnect observer once toolbar is attached
+						obs.disconnect();
 					}
 				});
 
