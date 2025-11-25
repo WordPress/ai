@@ -159,13 +159,13 @@ function get_preferred_models(): array {
 }
 
 /**
- * Checks if we have API credentials set.
+ * Checks if we have AI credentials set.
  *
  * @since 0.1.0
  *
- * @return bool True if we have API credentials, false otherwise.
+ * @return bool True if we have AI credentials, false otherwise.
  */
-function has_api_credentials(): bool {
+function has_ai_credentials(): bool {
 	$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
 
 	// If there are no credentials, return false.
@@ -173,7 +173,7 @@ function has_api_credentials(): bool {
 		return false;
 	}
 
-	// If all of the API keys are empty, return false; otherwise, return true.
+	// If all of the AI keys are empty, return false; otherwise, return true.
 	return ! empty(
 		array_filter(
 			$credentials,
@@ -185,15 +185,15 @@ function has_api_credentials(): bool {
 }
 
 /**
- * Checks if we have valid API credentials.
+ * Checks if we have valid AI credentials.
  *
  * @since 0.1.0
  *
- * @return bool True if we have valid API credentials, false otherwise.
+ * @return bool True if we have valid AI credentials, false otherwise.
  */
-function has_valid_api_credentials(): bool {
-	// If we have no API credentials, return false.
-	if ( ! has_api_credentials() ) {
+function has_valid_ai_credentials(): bool {
+	// If we have no AI credentials, return false.
+	if ( ! has_ai_credentials() ) {
 		return false;
 	}
 
