@@ -13,6 +13,9 @@ namespace WordPress\AI\Settings;
 
 use WordPress\AI\Experiment_Registry;
 
+use function WordPress\AI\has_api_credentials;
+use function WordPress\AI\has_valid_api_credentials;
+
 /**
  * Handles registration of settings for AI experiments.
  *
@@ -84,7 +87,7 @@ class Settings_Registration {
 			array(
 				'type'              => 'boolean',
 				'default'           => false,
-				'sanitize_callback' => 'rest_sanitize_boolean',
+				'sanitize_callback' => array( $this, 'sanitize_global_toggle' ),
 			)
 		);
 
@@ -110,5 +113,42 @@ class Settings_Registration {
 
 			$experiment->register_settings();
 		}
+	}
+
+	/**
+	 * Sanitizes the global toggle value.
+	 *
+	 * If we have no API credentials set, we always return false
+	 * and show an error message.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param bool $value The value to sanitize.
+	 * @return bool The sanitized value.
+	 */
+	public function sanitize_global_toggle( bool $value ): bool {
+		// If we have no API credentials, add a settings error and return false.
+		if ( ! has_api_credentials() ) {
+			add_settings_error(
+				self::OPTION_GROUP,
+				'ai_experiments_no_credentials',
+				__( 'You must have API credentials set up to enable experiments.', 'ai' )
+			);
+
+			return false;
+		}
+
+		// If we have credentials but they aren't valid, add a settings error and return false.
+		if ( ! has_valid_api_credentials() ) {
+			add_settings_error(
+				self::OPTION_GROUP,
+				'ai_experiments_invalid_credentials',
+				__( 'You must have valid API credentials set up to enable experiments.', 'ai' )
+			);
+
+			return false;
+		}
+
+		return rest_sanitize_boolean( $value );
 	}
 }
