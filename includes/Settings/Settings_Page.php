@@ -14,6 +14,9 @@ namespace WordPress\AI\Settings;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiment_Registry;
 
+use function WordPress\AI\has_ai_credentials;
+use function WordPress\AI\has_valid_ai_credentials;
+
 /**
  * Manages the admin settings page for AI experiments.
  *
@@ -124,6 +127,26 @@ class Settings_Page {
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+
+			<?php
+			// If we don't have proper credentials, show an error message and return early.
+			if ( ! has_ai_credentials() || ! has_valid_ai_credentials() ) {
+				if ( ! has_ai_credentials() ) {
+					$error_message = sprintf(
+						__( 'Before you can enable experiments, you need to ensure you have one or more AI credentials set <a href="%s">here</a>', 'ai' ),
+						admin_url( 'options-general.php?page=wp-ai-client' )
+					);
+				} else {
+					$error_message = sprintf(
+						__( 'Before you can enable experiments, you need to ensure you have set valid AI credentials <a href="%s">here</a>', 'ai' ),
+						admin_url( 'options-general.php?page=wp-ai-client' )
+					);
+				}
+
+				wp_admin_notice( $error_message, array( 'type' => 'error' ) );
+				return;
+			}
+			?>
 
 			<?php settings_errors(); ?>
 
