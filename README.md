@@ -67,7 +67,9 @@ If you’re a plugin developer, you’ll be able to:
 
 ## How to Get Involved
 
-We want your input especially if you’re an author, editor, educator, accessibility expert, or just someone with strong feelings about AI.  Anyone contributing to the AI Experiments plugin is expected to conduct themselves in accordance with the WordPress project's [Code of Conduct](https://github.com/WordPress/.github/blob/trunk/CODE_OF_CONDUCT.md).
+We want everyone's input! Whether you're an author, editor, educator, researcher, accessibility expert, user, or just someone with strong feelings about AI, all are welcome.
+
+Anyone contributing to the AI Experiments plugin is expected to conduct themselves in accordance with the WordPress project's [Code of Conduct](https://github.com/WordPress/.github/blob/trunk/CODE_OF_CONDUCT.md).
 
 * **Discuss:** [`#core-ai` channel](https://wordpress.slack.com/archives/C08TJ8BPULS) on WordPress Slack.
 * **Ideate:** Propose and comment on [GitHub discussions](https://github.com/WordPress/ai/discussions).
