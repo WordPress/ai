@@ -26,6 +26,9 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		// Mock has_valid_ai_credentials to return true for tests.
+		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+
 		// Enable experiments globally and individually.
 		update_option( 'ai_experiments_enabled', true );
 		update_option( 'ai_experiment_title-generation_enabled', true );
@@ -47,6 +50,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_title-generation_enabled' );
+		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 

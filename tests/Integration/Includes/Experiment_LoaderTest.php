@@ -77,8 +77,22 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function setUp(): void {
 		parent::setUp();
+
+		// Mock has_valid_ai_credentials to return true for tests.
+		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+
 		$this->registry = new Experiment_Registry();
 		$this->loader   = new Experiment_Loader( $this->registry );
+	}
+
+	/**
+	 * Tear down test case.
+	 *
+	 * @since 0.1.0
+	 */
+	public function tearDown(): void {
+		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		parent::tearDown();
 	}
 
 	/**

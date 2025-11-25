@@ -192,6 +192,22 @@ function has_ai_credentials(): bool {
  * @return bool True if we have valid AI credentials, false otherwise.
  */
 function has_valid_ai_credentials(): bool {
+	/**
+	 * Filters whether valid AI credentials are available.
+	 *
+	 * Allows overriding the credentials check, useful for testing.
+	 *
+	 * @since 0.1.0
+	 * @hook ai_pre_has_valid_credentials_check
+	 *
+	 * @param bool|null $has_valid_credentials Whether valid credentials are available. Return null to use default check.
+	 * @return bool|null True if valid credentials are available, false otherwise, or null to use default check.
+	 */
+	$valid = apply_filters( 'ai_pre_has_valid_credentials_check', null );
+	if ( null !== $valid ) {
+		return (bool) $valid;
+	}
+
 	// If we have no AI credentials, return false.
 	if ( ! has_ai_credentials() ) {
 		return false;
