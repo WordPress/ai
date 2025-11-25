@@ -146,6 +146,9 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		// Set up mock AI credentials so has_ai_credentials() returns true.
+		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
+
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
 	}
@@ -156,6 +159,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
+		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
