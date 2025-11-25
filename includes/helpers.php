@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use Throwable;
 use WordPress\AI_Client\AI_Client;
 
 /**
@@ -192,6 +193,11 @@ function has_ai_credentials(): bool {
  * @return bool True if we have valid AI credentials, false otherwise.
  */
 function has_valid_ai_credentials(): bool {
+	// If we have no AI credentials, return false.
+	if ( ! has_ai_credentials() ) {
+		return false;
+	}
+
 	/**
 	 * Filters whether valid AI credentials are available.
 	 *
@@ -208,10 +214,10 @@ function has_valid_ai_credentials(): bool {
 		return (bool) $valid;
 	}
 
-	// If we have no AI credentials, return false.
-	if ( ! has_ai_credentials() ) {
+	// See if we have credentials that give us access to generate text.
+	try {
+		return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
+	} catch ( Throwable $t ) {
 		return false;
 	}
-
-	return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
 }
