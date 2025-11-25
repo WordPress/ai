@@ -1,6 +1,6 @@
 # Credits
 
-The following acknowledges the Maintainers for this repository, those who have Contributed to this repository (via bug reports, code, design, ideas, project management, translation, testing, etc.), and any Libraries utilized.
+The following acknowledges the Maintainers for this repository, those who have Contributed to this repository (via bug reports, code, design, ideas, project management, translation, testing, etc.), and any Libraries utilized.  This plugin follow's WordPress Core's "give props liberally" policy and leverages the [Props Bot](https://github.com/WordPress/props-bot-action) to do so.
 
 ## Maintainers
 
