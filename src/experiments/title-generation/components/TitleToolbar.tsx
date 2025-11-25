@@ -3,9 +3,13 @@
  */
 
 /**
- * External Dependencies.
+ * External dependencies
  */
 import React from 'react';
+
+/**
+ * WordPress dependencies
+ */
 import { executeAbility } from '@wordpress/abilities';
 import {
 	Button,
@@ -17,10 +21,11 @@ import {
 	ToolbarButton,
 } from '@wordpress/components';
 import { dispatch, select, useDispatch } from '@wordpress/data';
-import { PostTypeSupportCheck } from '@wordpress/editor';
+import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
+import { store as noticesStore } from '@wordpress/notices';
 
 const { aiTitleGenerationData } = window as any;
 
@@ -148,11 +153,11 @@ async function generateTitles(
  * @return {JSX.Element} The toolbar component.
  */
 export default function TitleToolbar(): JSX.Element | null {
-	const postId = select('core/editor').getCurrentPostId();
-	const content = select('core/editor').getEditedPostContent();
-	const title = select('core/editor').getEditedPostAttribute('title');
+	const postId = select(editorStore).getCurrentPostId();
+	const content = select(editorStore).getEditedPostContent();
+	const title = select(editorStore).getEditedPostAttribute('title');
 
-	const { editPost } = useDispatch('core/editor');
+	const { editPost } = useDispatch(editorStore);
 
 	const [isGenerating, setIsGenerating] = useState<boolean>(false);
 	const [isOpen, setOpen] = useState<boolean>(false);
@@ -174,7 +179,7 @@ export default function TitleToolbar(): JSX.Element | null {
 	 */
 	const handleGenerate = async () => {
 		setIsGenerating(true);
-		(dispatch('core/notices') as any).removeNotice(
+		(dispatch(noticesStore) as any).removeNotice(
 			'ai_title_generation_error'
 		);
 
@@ -183,7 +188,7 @@ export default function TitleToolbar(): JSX.Element | null {
 			setTitles(generatedTitles);
 			openModal();
 		} catch (error: any) {
-			(dispatch('core/notices') as any).createErrorNotice(error, {
+			(dispatch(noticesStore) as any).createErrorNotice(error, {
 				id: 'ai_title_generation_error',
 				isDismissible: true,
 			});

@@ -6,13 +6,17 @@
  */
 
 /**
- * External Dependencies.
+ * External dependencies
  */
 import React from 'react';
+
+/**
+ * WordPress dependencies
+ */
 import { createRoot, useEffect } from '@wordpress/element';
 
 /**
- * Internal Dependencies.
+ * Internal dependencies
  */
 import TitleToolbar from './TitleToolbar';
 

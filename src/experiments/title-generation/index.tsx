@@ -3,16 +3,20 @@
  */
 
 /**
- * External Dependencies.
+ * External dependencies
  */
 import React from 'react';
+
+/**
+ * WordPress dependencies
+ */
 import { BlockControls } from '@wordpress/block-editor';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { addFilter } from '@wordpress/hooks';
 import { registerPlugin } from '@wordpress/plugins';
 
 /**
- * Internal Dependencies.
+ * Internal dependencies
  */
 import TitleToolbar from './components/TitleToolbar';
 import { TitleToolbarWrapper } from './components/TitleToolbarWrapper';

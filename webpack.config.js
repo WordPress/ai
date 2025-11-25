@@ -1,10 +1,12 @@
-// WordPress webpack config.
+/**
+ * WordPress dependencies
+ */
 const defaultConfig = require('@wordpress/scripts/config/webpack.config');
 
-// Plugins.
+/**
+ * External dependencies
+ */
 const RemoveEmptyScriptsPlugin = require('webpack-remove-empty-scripts');
-
-// Utilities.
 const path = require('path');
 
 // Extend the default webpack config.
