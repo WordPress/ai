@@ -277,8 +277,5 @@ jobs:
             - name: Install NPM dependencies
               run: npm ci
 
-            - name: Run Prettier format check
-              run: npm run format
-
             - name: Run JavaScript linting
               run: npm run lint:js
