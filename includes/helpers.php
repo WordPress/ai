@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI_Client\AI_Client;
+
 /**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
  *
@@ -154,4 +156,46 @@ function get_preferred_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
 	return (array) apply_filters( 'ai_preferred_models', $preferred_models );
+}
+
+/**
+ * Checks if we have API credentials set.
+ *
+ * @since 0.1.0
+ *
+ * @return bool True if we have API credentials, false otherwise.
+ */
+function has_api_credentials(): bool {
+	$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
+
+	// If there are no credentials, return false.
+	if ( ! is_array( $credentials ) || empty( $credentials ) ) {
+		return false;
+	}
+
+	// If all of the API keys are empty, return false; otherwise, return true.
+	return ! empty(
+		array_filter(
+			$credentials,
+			static function ( $api_key ): bool {
+				return is_string( $api_key ) && '' !== $api_key;
+			}
+		)
+	);
+}
+
+/**
+ * Checks if we have valid API credentials.
+ *
+ * @since 0.1.0
+ *
+ * @return bool True if we have valid API credentials, false otherwise.
+ */
+function has_valid_api_credentials(): bool {
+	// If we have no API credentials, return false.
+	if ( ! has_api_credentials() ) {
+		return false;
+	}
+
+	return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
 }
