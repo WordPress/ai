@@ -28,11 +28,23 @@ This plugin is for experimenting with AI features in WordPress. It provides a fr
 
 No, this is an experimental plugin for testing and development purposes.
 
+== Screenshots ==
+
+1. Post editor showing `Generate` button above the post title field.
+2. Post editor showing generated title recommendations in a modal.
+3. Post editor showing generated title applied to the post and updated `Re-generate` button.
+4. AI Experiments settings screen showing toggles to enable specific experiments.
+5. AI Credentials settings screen showing API key fields for available AI service providers.
+
 == Changelog ==
 
-= 0.1.0 - 2025-11-XX =
+= 0.1.0 - 2025-11-26 =
 
-* Initial release
-* Experiments registry and loader system
-* Abstract experiment base class
-* Example experiment implementation
+First public release of the AI Experiments plugin, introducing a framework for exploring experimental AI-powered features in WordPress. 🎉
+
+* **Added:** Experiment registry and loader system for managing AI features
+* **Added:** Abstract experiment base class for consistent feature development
+* **Added:** Experiment: Title Generation
+* **Added:** Basic admin settings screen with toggle support
+* **Added:** Initial integration with WP AI Client SDK and Abilities API
+* **Added:** Utilities Ability for common AI tasks and testing

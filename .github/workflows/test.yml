@@ -4,6 +4,7 @@ on:
     workflow_dispatch:
     push:
         branches:
+            - develop
             - trunk
     pull_request:
         types:
@@ -260,7 +261,6 @@ jobs:
         permissions:
             contents: read
         timeout-minutes: 20
-        if: false  # Temporarily disabled
 
         steps:
             - name: Checkout repository
@@ -277,9 +277,6 @@ jobs:
 
             - name: Install NPM dependencies
               run: npm ci
-
-            - name: Run Prettier format check
-              run: npm run format
 
             - name: Run JavaScript linting
               run: npm run lint:js
