@@ -18,7 +18,7 @@ Welcome to the WordPress AI Experiments plugin development guide. This document 
 ### Prerequisites
 
 - PHP 7.4 or higher
-- WordPress 6.8 or higher
+- WordPress 6.9 or higher
 - Composer
 - Node.js and npm (for asset building)
 
