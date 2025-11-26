@@ -80,7 +80,8 @@ The plugin requires WordPress 6.8 or higher. Ensure all WordPress functions and 
 
 There are a few protected branch naming conventions:
 
-* `trunk`: The main development branch.
+* `develop`: The main development branch.
+* `trunk`: The stable release branch.
 * `release/*`: A branch for a specific release, useful e.g. for applying a hotfix.
 * `feature/*`: A branch for a larger feature that takes multiple iterative PRs towards completion.
 
