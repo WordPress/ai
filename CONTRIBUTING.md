@@ -25,7 +25,7 @@ All code must be properly documented with PHPDoc blocks following these standard
 ### General rules
 
 - All descriptions must end with a period.
-- Use `@since 0.1.0` for new code (version will be updated on release).
+- Use `@since x.x.x` for new code (version will be updated on release).
 - Place `@since` tags below the description and above `@param` tags, with blank comment lines around it.
 
 ### Method documentation
@@ -45,13 +45,13 @@ All code must be properly documented with PHPDoc blocks following these standard
 /**
  * Class for handling experiment registration.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class Experiment_Registry {
 	/**
 	 * Registers a new experiment with the plugin.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param Experiment $experiment The experiment instance to register.
 	 * @return bool True if registered successfully, false otherwise.
