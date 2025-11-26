@@ -130,7 +130,7 @@ class Settings_Page {
 
 			<?php
 			// If we don't have proper credentials, show an error message and return early.
-			if ( ! has_ai_credentials() || ! has_valid_ai_credentials() ) {
+			if ( ! has_valid_ai_credentials() ) {
 				if ( ! has_ai_credentials() ) {
 					$error_message = sprintf(
 						/* translators: 1: Link to the AI credentials settings page. */
