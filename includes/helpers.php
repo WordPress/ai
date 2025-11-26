@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI\Services\AI_Service;
+
 /**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
  *
@@ -154,4 +156,38 @@ function get_preferred_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
 	return (array) apply_filters( 'ai_preferred_models', $preferred_models );
+}
+
+/**
+ * Gets the AI Service instance.
+ *
+ * Provides a convenient way to access the AI Service for performing AI operations.
+ *
+ * Example usage:
+ * ```php
+ * $service = WordPress\AI\get_ai_service();
+ *
+ * // Simple text generation
+ * $result = $service->generate_text( 'Summarize this article...' );
+ *
+ * // Multiple candidates with options
+ * $titles = $service->generate_texts(
+ *     'Generate titles for: My blog post content...',
+ *     3,
+ *     array( 'temperature' => 0.8 )
+ * );
+ *
+ * // Advanced usage with prompt builder
+ * $result = $service->create_prompt( 'Translate to French: Hello' )
+ *     ->using_system_instruction( 'You are a translator.' )
+ *     ->using_temperature( 0.3 )
+ *     ->generate_text();
+ * ```
+ *
+ * @since 0.1.0
+ *
+ * @return \WordPress\AI\Services\AI_Service The AI Service instance.
+ */
+function get_ai_service(): AI_Service {
+	return AI_Service::get_instance();
 }

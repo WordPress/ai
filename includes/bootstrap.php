@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
@@ -195,6 +196,10 @@ function initialize_experiments(): void {
 
 		// Initialize the WP AI Client.
 		AI_Client::init();
+
+		// Initialize the AI Service layer.
+		$ai_service = AI_Service::get_instance();
+		$ai_service->init();
 
 		// Register our post-related WordPress Abilities.
 		$post_abilities = new Posts();
