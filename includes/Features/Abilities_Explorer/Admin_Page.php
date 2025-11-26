@@ -23,15 +23,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Admin_Page {
 
-
 	/**
 	 * Initialize admin functionality.
 	 *
 	 * @since 0.1.0
 	 */
-	public function init() {
+	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_ai_ability_explorer_invoke', array( $this, 'ajax_invoke_ability' ) );
 	}
 
@@ -40,7 +38,7 @@ class Admin_Page {
 	 *
 	 * @since 0.1.0
 	 */
-	public function add_admin_menu() {
+	public function add_admin_menu(): void {
 		// Add top-level menu
 		add_menu_page(
 			__( 'Abilities Explorer', 'ai' ),
@@ -54,61 +52,11 @@ class Admin_Page {
 	}
 
 	/**
-	 * Enqueue admin assets.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $hook Current admin page hook.
-	 */
-	public function enqueue_assets( $hook ) {
-		// Only load on the Abilities Explorer page
-		if ( 'toplevel_page_ai-abilities-explorer' !== $hook ) {
-			return;
-		}
-
-		// Enqueue styles
-		wp_enqueue_style(
-			'ai-ability-explorer-admin',
-			plugins_url( 'assets/css/abilities-explorer.css', __FILE__ ),
-			array(),
-			Abilities_Explorer::VERSION
-		);
-
-		// Enqueue scripts
-		wp_enqueue_script(
-			'ai-ability-explorer-admin',
-			plugins_url( 'assets/js/abilities-explorer.js', __FILE__ ),
-			array(),
-			Abilities_Explorer::VERSION,
-			true
-		);
-
-		// Localize script
-		wp_localize_script(
-			'ai-ability-explorer-admin',
-			'aiAbilityExplorer',
-			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'ai_ability_explorer_invoke' ),
-				'strings' => array(
-					'invoking'      => __( 'Invoking ability...', 'ai' ),
-					'success'       => __( 'Success!', 'ai' ),
-					'error'         => __( 'Error', 'ai' ),
-					'invalidJson'   => __( 'Invalid JSON input', 'ai' ),
-					'confirmInvoke' => __( 'Are you sure you want to invoke this ability?', 'ai' ),
-					'copySuccess'   => __( 'Copied to clipboard!', 'ai' ),
-					'copyError'     => __( 'Failed to copy', 'ai' ),
-				),
-			)
-		);
-	}
-
-	/**
 	 * Render the main page.
 	 *
 	 * @since 0.1.0
 	 */
-	public function render_page() {
+	public function render_page(): void {
 		// Check user capabilities
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ai' ) );
