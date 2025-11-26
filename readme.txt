@@ -28,6 +28,14 @@ This plugin is for experimenting with AI features in WordPress. It provides a fr
 
 No, this is an experimental plugin for testing and development purposes.
 
+== Screenshots ==
+
+1. Post editor showing `Generate` button above the post title field.
+2. Post editor showing generated title recommendations in a modal.
+3. Post editor showing generated title applied to the post and updated `Re-generate` button.
+4. AI Experiments settings screen showing toggles to enable specific experiments.
+5. AI Credentials settings screen showing API key fields for available AI service providers.
+
 == Changelog ==
 
 = 0.1.0 - 2025-11-26 =
