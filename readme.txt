@@ -1,18 +1,16 @@
-=== WordPress AI Experiments ===
-Contributors: wordpressorg
-Tags: ai, artificial intelligence, experiments, features
-Requires at least: 6.7
-Tested up to: 6.8
-Stable tag: 0.1.0
-Requires PHP: 7.4
-License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+=== AI Experiments ===
+Contributors:      wordpressorg
+Tags:              ai, artificial intelligence, experiments, abilities, mcp
+Tested up to:      6.9
+Stable tag:        0.1.0
+License:           GPL-2.0-or-later
+License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
-Experimental AI features and capabilities for WordPress.
+AI experiments and capabilities for WordPress.
 
 == Description ==
 
-WordPress AI Experiments is a plugin for testing and developing AI-powered features for WordPress. This plugin provides a framework for building, testing, and deploying experimental AI capabilities.
+AI Experiments is a plugin for testing and developing AI-powered experiments for WordPress. This plugin provides a framework for building, testing, and deploying experimental AI capabilities.
 
 == Installation ==
 
@@ -32,8 +30,9 @@ No, this is an experimental plugin for testing and development purposes.
 
 == Changelog ==
 
-= 0.1.0 =
+= 0.1.0 - 2025-11-XX =
+
 * Initial release
-* Feature registry and loader system
-* Abstract feature base class
-* Example feature implementation
+* Experiments registry and loader system
+* Abstract experiment base class
+* Example experiment implementation

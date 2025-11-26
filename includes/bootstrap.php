@@ -7,7 +7,14 @@
  * @package WordPress\AI
  */
 
+declare( strict_types=1 );
+
 namespace WordPress\AI;
+
+use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Settings\Settings_Page;
+use WordPress\AI\Settings\Settings_Registration;
+use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -32,6 +39,9 @@ if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
 }
 if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
 	define( 'AI_MIN_WP_VERSION', '6.8' );
+}
+if ( ! defined( 'AI_DEFAULT_ABILITY_CATEGORY' ) ) {
+	define( 'AI_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
 }
 
 /**
@@ -157,24 +167,59 @@ function load(): void {
 
 	$loaded = true;
 
-	// Hook feature initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_features' );
+	// Hook experiment initialization to init.
+	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
 }
 
 /**
- * Initializes plugin features.
+ * Initializes plugin experiments.
  *
  * @since 0.1.0
  */
-function initialize_features(): void {
+function initialize_experiments(): void {
 	try {
-		$registry = new Feature_Registry();
-		$loader   = new Feature_Loader( $registry );
-		$loader->register_default_features();
-		$loader->initialize_features();
+		// Initialize the WP AI Client.
+		AI_Client::init();
+
+		$registry = new Experiment_Registry();
+		$loader   = new Experiment_Loader( $registry );
+		$loader->register_default_experiments();
+		$loader->initialize_experiments();
+
+		// Initialize settings registration.
+		$settings_registration = new Settings_Registration( $registry );
+		$settings_registration->init();
+
+		// Initialize admin settings page.
+		if ( is_admin() ) {
+			$settings_page = new Settings_Page( $registry );
+			$settings_page->init();
+		}
+
+		// Register our post-related WordPress Abilities.
+		$post_abilities = new Posts();
+		$post_abilities->register();
+
+		add_action(
+			'wp_abilities_api_categories_init',
+			static function () {
+				/**
+				 * Register a generic catch-all category that all
+				 * Abilities we register can use. Can re-evaluate this
+				 * in the future if we need/want more specific categories.
+				 */
+				wp_register_ability_category(
+					AI_DEFAULT_ABILITY_CATEGORY,
+					array(
+						'label'       => __( 'AI Experiments', 'ai' ),
+						'description' => __( 'Various AI experiments.', 'ai' ),
+					),
+				);
+			}
+		);
 	} catch ( \Throwable $t ) {
 		_doing_it_wrong(
-			__NAMESPACE__ . '\initialize_features',
+			__NAMESPACE__ . '\initialize_experiments',
 			sprintf(
 				/* translators: %s: Error message. */
 				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
