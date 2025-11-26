@@ -19,6 +19,7 @@ parameters:
 			max: 80400
 		bootstrapFiles:
 				- ai.php
+				# Remove once the Abilities API is released.
 				- .phpstan/WP_Ability.php
 		paths:
 				- ai.php
@@ -30,6 +31,7 @@ parameters:
 			analyseAndScan:
 				- node_modules (?)
 		ignoreErrors:
+			# Remove once the Abilities API is released.
 			- '#Function wp_register_ability not found#'
 			- '#Function wp_register_ability_category not found#'
 			- '#Function wp_get_ability not found#'
