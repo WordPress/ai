@@ -126,7 +126,7 @@ async function generateTitles(
 	content: string
 ): Promise< string[] > {
 	return apiFetch( {
-		path: 'wp-abilities/v1/abilities/ai/title-generation/run',
+		path: aiTitleGenerationData?.path ?? '',
 		method: 'POST',
 		data: {
 			input: {
