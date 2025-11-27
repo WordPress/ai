@@ -277,7 +277,7 @@ add_action( 'ai_register_experiments', function( $registry ) {
 Modify the list of default experiment classes before they are instantiated:
 
 ```php
-add_filter( 'ai_default_experiment_classes', function( $experiment_classes ) {
+add_filter( 'ai_experiments_default_experiment_classes', function( $experiment_classes ) {
 	// Add a custom experiment
 	$experiment_classes[] = 'My_Namespace\My_Custom_Experiment';
 
@@ -296,7 +296,7 @@ add_filter( 'ai_default_experiment_classes', function( $experiment_classes ) {
 Experiments can be disabled using the `ai_experiment_{$experiment_id}_enabled` filter:
 
 ```php
-add_filter( 'ai_experiment_example-experiment_enabled', '__return_false' );
+add_filter( 'ai_experiments_experiment_example-experiment_enabled', '__return_false' );
 ```
 
 ### Disabling All Experiments

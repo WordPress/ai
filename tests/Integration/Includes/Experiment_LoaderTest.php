@@ -82,7 +82,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 
 		$this->registry = new Experiment_Registry();
 		$this->loader   = new Experiment_Loader( $this->registry );
@@ -284,7 +284,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->registry->register_experiment( $experiment );
 
 		// Disable the experiment.
-		add_filter( 'ai_experiment_mock-experiment_enabled', '__return_false' );
+		add_filter( 'ai_experiments_experiment_mock-experiment_enabled', '__return_false' );
 
 		$this->loader->initialize_experiments();
 

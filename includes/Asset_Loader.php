@@ -36,8 +36,8 @@ class Asset_Loader {
 	 * @param string $file_name The script file name.
 	 */
 	public static function enqueue_script( string $handle, string $file_name ): void {
-		$script_path       = WP_AI_DIR . 'build/' . $file_name . '.js';
-		$script_url        = AI_PLUGIN_URL . 'build/' . $file_name . '.js';
+		$script_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.js';
+		$script_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.js';
 		$script_asset_path = $script_path . '.asset.php';
 
 		if ( file_exists( $script_asset_path ) ) {
@@ -67,8 +67,8 @@ class Asset_Loader {
 	 * @param string $file_name The script file name.
 	 */
 	public static function enqueue_style( string $handle, string $file_name ): void {
-		$style_path       = WP_AI_DIR . 'build/' . $file_name . '.css';
-		$style_url        = AI_PLUGIN_URL . 'build/' . $file_name . '.css';
+		$style_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.css';
+		$style_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.css';
 		$style_asset_path = $style_path . '.asset.php';
 
 		if ( file_exists( $style_asset_path ) ) {

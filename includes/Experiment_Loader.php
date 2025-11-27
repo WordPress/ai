@@ -91,7 +91,7 @@ final class Experiment_Loader {
 		 *
 		 * @param \WordPress\AI\Experiment_Registry $registry The experiment registry instance.
 		 */
-		do_action( 'ai_register_experiments', $this->registry );
+		do_action( 'ai_experiments_register_experiments', $this->registry );
 	}
 
 	/**
@@ -118,7 +118,7 @@ final class Experiment_Loader {
 		 *
 		 * @param array $experiment_classes Array of experiment class names or instances.
 		 */
-		$items = apply_filters( 'ai_default_experiment_classes', $experiment_classes );
+		$items = apply_filters( 'ai_experiments_default_experiment_classes', $experiment_classes );
 
 		$experiments = array();
 		foreach ( $items as $item ) {
@@ -211,7 +211,7 @@ final class Experiment_Loader {
 		 *
 		 * @since 0.1.0
 		 */
-		do_action( 'ai_experiments_initialized' );
+		do_action( 'ai_experiments_experiments_initialized' );
 
 		$this->initialized = true;
 	}
