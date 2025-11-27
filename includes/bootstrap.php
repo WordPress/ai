@@ -203,6 +203,9 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
+		// Initialize the WP AI Client.
+		AI_Client::init();
+
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
@@ -217,9 +220,6 @@ function initialize_experiments(): void {
 			$settings_page = new Settings_Page( $registry );
 			$settings_page->init();
 		}
-
-		// Initialize the WP AI Client.
-		AI_Client::init();
 
 		// Register our post-related WordPress Abilities.
 		$post_abilities = new Posts();
