@@ -59,6 +59,19 @@ If you’re a plugin developer, you’ll be able to:
 *   Register new AI abilities
 *   Override default behavior with custom filters
 *   Reuse the same building blocks in your own plugins
+*   Browse the [experiment catalog](docs/experiments/README.md) to understand how each feature hooks into WordPress.
+
+## Experiment Catalog
+
+Each experiment ships with a short reference doc:
+
+* [Example Experiment](docs/experiments/example-experiment.md) – minimal reference implementation
+* [Title Generation](docs/experiments/title-generation.md) – AI title assistant in the editor toolbar
+* [Post Table Bulk Actions](docs/experiments/post-table-bulk.md) – taxonomy suggestions in Bulk/Quick Edit
+* [Alt Text Generation](docs/experiments/alt-text-generation.md) – image inspector controls that call a vision model
+* [Type Ahead](docs/experiments/type-ahead.md) – ghost text completions directly inside the block editor
+
+When you add or change an experiment, update its corresponding doc so other contributors can follow along.
 
 ## Current Status
 

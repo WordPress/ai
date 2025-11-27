@@ -200,7 +200,7 @@ class Settings_Page {
 								<?php endif; ?>
 							</div>
 
-							<ul class="ai-experiments__list">
+							<div class="ai-experiments__grid">
 								<?php foreach ( $this->registry->get_all_experiments() as $experiment ) : ?>
 									<?php
 									$experiment_id      = $experiment->get_id();
@@ -208,8 +208,10 @@ class Settings_Page {
 									$experiment_enabled = (bool) get_option( $experiment_option, false );
 									$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
 									$desc_id            = "ai-experiment-{$experiment_id}-desc";
+									$settings_id        = "ai-experiment-{$experiment_id}-settings";
+									$has_settings       = $experiment->has_settings();
 									?>
-									<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
+									<div class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
 										<div class="ai-experiments__item-header">
 											<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
 												<input
@@ -227,6 +229,18 @@ class Settings_Page {
 													<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
 												</span>
 											</label>
+											<?php if ( $has_settings ) : ?>
+												<button
+													type="button"
+													class="ai-experiments__settings-toggle"
+													aria-expanded="false"
+													aria-controls="<?php echo esc_attr( $settings_id ); ?>"
+													title="<?php esc_attr_e( 'Toggle settings', 'ai' ); ?>"
+												>
+													<span class="dashicons dashicons-admin-generic"></span>
+													<span class="screen-reader-text"><?php esc_html_e( 'Settings', 'ai' ); ?></span>
+												</button>
+											<?php endif; ?>
 										</div>
 										<?php if ( $experiment->get_description() ) : ?>
 											<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
@@ -249,15 +263,37 @@ class Settings_Page {
 												?>
 											</p>
 										<?php endif; ?>
-										<?php
-										// Allow experiments to render their own custom settings fields.
-										if ( method_exists( $experiment, 'render_settings_fields' ) ) {
-											$experiment->render_settings_fields();
-										}
-										?>
-									</li>
+										<?php if ( $has_settings ) : ?>
+											<div
+												id="<?php echo esc_attr( $settings_id ); ?>"
+												class="ai-experiments__settings-drawer"
+												hidden
+											>
+												<?php $experiment->render_settings_fields(); ?>
+											</div>
+										<?php endif; ?>
+									</div>
 								<?php endforeach; ?>
-							</ul>
+							</div>
+							<script>
+								( function() {
+									document.querySelectorAll( '.ai-experiments__settings-toggle' ).forEach( function( btn ) {
+										btn.addEventListener( 'click', function() {
+											var expanded = btn.getAttribute( 'aria-expanded' ) === 'true';
+											var drawerId = btn.getAttribute( 'aria-controls' );
+											var drawer = document.getElementById( drawerId );
+											if ( drawer ) {
+												btn.setAttribute( 'aria-expanded', String( ! expanded ) );
+												if ( expanded ) {
+													drawer.setAttribute( 'hidden', '' );
+												} else {
+													drawer.removeAttribute( 'hidden' );
+												}
+											}
+										} );
+									} );
+								} )();
+							</script>
 						</div>
 					<?php endif; ?>
 				</div>

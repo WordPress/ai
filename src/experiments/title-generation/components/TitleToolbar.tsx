@@ -10,7 +10,6 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
-import { executeAbility } from '@wordpress/abilities';
 import {
 	Button,
 	Flex,
@@ -26,6 +25,11 @@ import { useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
+
+/**
+ * Internal dependencies
+ */
+import { runAbility } from '../../../utils/run-ability';
 
 const { aiTitleGenerationData } = window as any;
 
@@ -125,24 +129,24 @@ async function generateTitles(
 	postId: number,
 	content: string
 ): Promise< string[] > {
-	return executeAbility( 'ai/title-generation', {
-		content,
-		post_id: postId,
-	} )
-		.then( ( response ) => {
-			if (
-				response &&
-				typeof response === 'object' &&
-				'titles' in response
-			) {
-				return response.titles as string[];
-			}
-
-			return [];
-		} )
-		.catch( ( error ) => {
-			throw new Error( `Error generating titles: ${ error.message }` );
+	try {
+		const response = await runAbility( 'ai/title-generation', {
+			content,
+			post_id: postId,
 		} );
+
+		if (
+			response &&
+			typeof response === 'object' &&
+			'titles' in response
+		) {
+			return response.titles as string[];
+		}
+
+		return [];
+	} catch ( error: any ) {
+		throw new Error( `Error generating titles: ${ error.message }` );
+	}
 }
 
 /**
