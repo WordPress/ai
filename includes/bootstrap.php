@@ -147,8 +147,8 @@ function display_composer_notice(): void {
  *
  * @since 0.1.0
  *
- * @param array $links Existing action links.
- * @return array Modified action links.
+ * @param array<string> $links Existing action links.
+ * @return array<string> Modified action links.
  */
 function plugin_action_links( array $links ): array {
 	$settings_link = sprintf(
