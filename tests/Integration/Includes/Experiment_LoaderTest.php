@@ -134,6 +134,15 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->assertNotNull( $experiment, 'Type ahead experiment should exist' );
 		$this->assertEquals( 'type-ahead', $experiment->get_id() );
 
+		$this->assertTrue(
+			$this->registry->has_experiment( 'post-table-bulk' ),
+			'Post table bulk experiment should be registered'
+		);
+
+		$experiment = $this->registry->get_experiment( 'post-table-bulk' );
+		$this->assertNotNull( $experiment, 'Post table bulk experiment should exist' );
+		$this->assertEquals( 'post-table-bulk', $experiment->get_id() );
+
 	}
 
 	/**

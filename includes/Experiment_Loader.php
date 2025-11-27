@@ -107,6 +107,7 @@ final class Experiment_Loader {
 			\WordPress\AI\Experiments\Example_Experiment\Example_Experiment::class,
 			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 			\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
+			\WordPress\AI\Experiments\Post_Table_Bulk\Post_Table_Bulk::class,
 		);
 
 		/**
