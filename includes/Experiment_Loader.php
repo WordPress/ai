@@ -54,7 +54,7 @@ final class Experiment_Loader {
 	 * Registers default experiments.
 	 *
 	 * This is where built-in experiments are registered. Third-party experiments
-	 * should use the 'ai_register_experiments' action hook.
+	 * should use the 'ai_experiments_register_experiments' action hook.
 	 *
 	 * @since 0.1.0
 	 *
@@ -82,7 +82,7 @@ final class Experiment_Loader {
 		 *
 		 * Example:
 		 * ```php
-		 * add_action( 'ai_register_experiments', function( $registry ) {
+		 * add_action( 'ai_experiments_register_experiments', function( $registry ) {
 		 *     $registry->register_experiment( new My_Custom_Experiment() );
 		 * } );
 		 * ```
@@ -211,7 +211,7 @@ final class Experiment_Loader {
 		 *
 		 * @since 0.1.0
 		 */
-		do_action( 'ai_experiments_experiments_initialized' );
+		do_action( 'ai_experiments_initialized' );
 
 		$this->initialized = true;
 	}

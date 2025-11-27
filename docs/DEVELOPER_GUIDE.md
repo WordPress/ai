@@ -264,10 +264,10 @@ The plugin provides a set of hooks and filters to allow third-party developers t
 
 ### Registering a Custom Experiment
 
-Developers can register their own experiments using the `ai_register_experiments` action. This is the primary way to add new functionality to the plugin.
+Developers can register their own experiments using the `ai_experiments_register_experiments` action. This is the primary way to add new functionality to the plugin.
 
 ```php
-add_action( 'ai_register_experiments', function( $registry ) {
+add_action( 'ai_experiments_register_experiments', function( $registry ) {
 	$registry->register_experiment( new My_Custom_Experiment() );
 } );
 ```
@@ -311,7 +311,7 @@ add_filter( 'ai_experiments_enabled', '__return_false' );
 
 The plugin also includes the following action hooks:
 
-- `ai_register_experiments`: Fires after default experiments are registered, receives `$registry` parameter
+- `ai_experiments_register_experiments`: Fires after default experiments are registered, receives `$registry` parameter
 - `ai_experiments_initialized`: Fires after all registered experiments have been initialized
 
 ### Asset Loading
