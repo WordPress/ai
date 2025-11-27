@@ -167,21 +167,24 @@ function get_preferred_models(): array {
  * ```php
  * $service = WordPress\AI\get_ai_service();
  *
+ * // Check availability first
+ * if ( ! $service->is_available() ) {
+ *     return new WP_Error( 'ai_unavailable', 'No AI provider configured.' );
+ * }
+ *
  * // Simple text generation
- * $result = $service->generate_text( 'Summarize this article...' );
+ * $text = $service->create_prompt( 'Summarize this article...' )->generate_text();
  *
- * // Multiple candidates with options
- * $titles = $service->generate_texts(
- *     'Generate titles for: My blog post content...',
- *     3,
- *     array( 'temperature' => 0.8 )
- * );
+ * // With options array
+ * $text = $service->create_prompt( 'Translate to French: Hello', array(
+ *     'system_instruction' => 'You are a translator.',
+ *     'temperature'        => 0.3,
+ * ) )->generate_text();
  *
- * // Advanced usage with prompt builder
- * $result = $service->create_prompt( 'Translate to French: Hello' )
- *     ->using_system_instruction( 'You are a translator.' )
- *     ->using_temperature( 0.3 )
- *     ->generate_text();
+ * // Chain additional SDK methods
+ * $titles = $service->create_prompt( 'Generate titles for: My blog post' )
+ *     ->using_candidate_count( 5 )
+ *     ->generate_texts();
  * ```
  *
  * @since 0.1.0
