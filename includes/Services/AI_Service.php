@@ -13,6 +13,7 @@ namespace WordPress\AI\Services;
 
 use WordPress\AI_Client\AI_Client;
 use WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error;
+use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 
 use function WordPress\AI\get_preferred_models;
 
@@ -43,6 +44,27 @@ class AI_Service {
 	 * @var bool
 	 */
 	private bool $initialized = false;
+
+	/**
+	 * Option key mapping from WordPress snake_case to SDK camelCase.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @var array<string, string>
+	 */
+	private static array $option_key_map = array(
+		'system_instruction' => 'systemInstruction',
+		'candidate_count'    => 'candidateCount',
+		'max_tokens'         => 'maxTokens',
+		'temperature'        => 'temperature',
+		'top_p'              => 'topP',
+		'top_k'              => 'topK',
+		'stop_sequences'     => 'stopSequences',
+		'presence_penalty'   => 'presencePenalty',
+		'frequency_penalty'  => 'frequencyPenalty',
+		'logprobs'           => 'logprobs',
+		'top_logprobs'       => 'topLogprobs',
+	);
 
 	/**
 	 * Gets the singleton instance.
@@ -150,16 +172,17 @@ class AI_Service {
 	 *
 	 * @param string|null          $prompt  Optional. Initial prompt content.
 	 * @param array<string, mixed> $options Optional. Configuration options. {
-	 *     @type string        $system_instruction System instruction for the AI.
-	 *     @type float         $temperature        Temperature for generation (0.0-2.0).
-	 *     @type int           $max_tokens         Maximum tokens to generate.
-	 *     @type float         $top_p              Top-p (nucleus) sampling value.
-	 *     @type int           $top_k              Top-k sampling value.
-	 *     @type int           $candidate_count    Number of candidates to generate.
-	 *     @type float         $presence_penalty   Presence penalty for generation.
-	 *     @type float         $frequency_penalty  Frequency penalty for generation.
-	 *     @type list<string>  $stop_sequences     Stop sequences for generation.
-	 *     @type int|null      $top_logprobs       Top log probabilities to return.
+	 *     @type string       $system_instruction System instruction for the AI.
+	 *     @type float        $temperature        Temperature for generation (0.0-2.0).
+	 *     @type int          $max_tokens         Maximum tokens to generate.
+	 *     @type float        $top_p              Top-p (nucleus) sampling value.
+	 *     @type int          $top_k              Top-k sampling value.
+	 *     @type int          $candidate_count    Number of candidates to generate.
+	 *     @type float        $presence_penalty   Presence penalty for generation.
+	 *     @type float        $frequency_penalty  Frequency penalty for generation.
+	 *     @type list<string> $stop_sequences     Stop sequences for generation.
+	 *     @type bool         $logprobs           Whether to return log probabilities.
+	 *     @type int          $top_logprobs       Top log probabilities to return.
 	 * }
 	 * @return \WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error The prompt builder instance.
 	 */
@@ -172,47 +195,37 @@ class AI_Service {
 			$builder = $builder->using_model_preference( ...$models );
 		}
 
-		// Apply options if provided (no forced defaults).
-		if ( isset( $options['system_instruction'] ) && is_string( $options['system_instruction'] ) ) {
-			$builder = $builder->using_system_instruction( $options['system_instruction'] );
-		}
-
-		if ( isset( $options['temperature'] ) && is_numeric( $options['temperature'] ) ) {
-			$builder = $builder->using_temperature( (float) $options['temperature'] );
-		}
-
-		if ( isset( $options['max_tokens'] ) && is_int( $options['max_tokens'] ) ) {
-			$builder = $builder->using_max_tokens( $options['max_tokens'] );
-		}
-
-		if ( isset( $options['top_p'] ) && is_numeric( $options['top_p'] ) ) {
-			$builder = $builder->using_top_p( (float) $options['top_p'] );
-		}
-
-		if ( isset( $options['top_k'] ) && is_int( $options['top_k'] ) ) {
-			$builder = $builder->using_top_k( $options['top_k'] );
-		}
-
-		if ( isset( $options['candidate_count'] ) && is_int( $options['candidate_count'] ) ) {
-			$builder = $builder->using_candidate_count( $options['candidate_count'] );
-		}
-
-		if ( isset( $options['presence_penalty'] ) && is_numeric( $options['presence_penalty'] ) ) {
-			$builder = $builder->using_presence_penalty( (float) $options['presence_penalty'] );
-		}
-
-		if ( isset( $options['frequency_penalty'] ) && is_numeric( $options['frequency_penalty'] ) ) {
-			$builder = $builder->using_frequency_penalty( (float) $options['frequency_penalty'] );
-		}
-
-		if ( isset( $options['stop_sequences'] ) && is_array( $options['stop_sequences'] ) ) {
-			$builder = $builder->using_stop_sequences( ...$options['stop_sequences'] );
-		}
-
-		if ( array_key_exists( 'top_logprobs', $options ) ) {
-			$builder = $builder->using_top_logprobs( $options['top_logprobs'] );
+		// Apply options via ModelConfig if any are provided.
+		if ( ! empty( $options ) ) {
+			$config_array = $this->map_options_to_config( $options );
+			if ( ! empty( $config_array ) ) {
+				$config  = ModelConfig::fromArray( $config_array );
+				$builder = $builder->using_model_config( $config );
+			}
 		}
 
 		return $builder;
+	}
+
+	/**
+	 * Maps WordPress snake_case options to SDK camelCase config array.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param array<string, mixed> $options The options array with snake_case keys.
+	 * @return array<string, mixed> The mapped config array with camelCase keys.
+	 */
+	private function map_options_to_config( array $options ): array {
+		$config = array();
+
+		foreach ( self::$option_key_map as $wp_key => $sdk_key ) {
+			if ( ! array_key_exists( $wp_key, $options ) ) {
+				continue;
+			}
+
+			$config[ $sdk_key ] = $options[ $wp_key ];
+		}
+
+		return $config;
 	}
 }
