@@ -1,27 +1,27 @@
 {
-  "$schema": "https://schemas.wp.org/trunk/wp-env.json",
-  "core": null,
-  "plugins": [ "." ],
-  "env": {
-    "development": {
-      "config": {
-        "WP_DEVELOPMENT_MODE": "plugin",
-        "WP_ENVIRONMENT_TYPE": "development",
-        "WP_DEBUG": true,
-        "WP_DEBUG_LOG": "/var/www/html/wp-content/plugins/ai/tests/_output/debug.log"
-      }
-    },
-    "tests": {
-      "config": {
-        "WP_DEBUG": true,
-        "FS_METHOD": "direct"
-      },
-      "mappings": {
-        "/wp-content/plugins/ai": "."
-      }
-    }
-  },
-  "lifecycleScripts": {
-    "afterStart": "wp-env run cli wp rewrite structure /%postname%/ --hard"
-  }
+	"$schema": "https://schemas.wp.org/trunk/wp-env.json",
+	"core": null,
+	"plugins": [ "." ],
+	"env": {
+		"development": {
+			"config": {
+				"WP_DEVELOPMENT_MODE": "plugin",
+				"WP_ENVIRONMENT_TYPE": "development",
+				"WP_DEBUG": true,
+				"WP_DEBUG_LOG": "/var/www/html/wp-content/plugins/ai/tests/_output/debug.log"
+			}
+		},
+		"tests": {
+			"config": {
+				"WP_DEBUG": true,
+				"FS_METHOD": "direct"
+			},
+			"mappings": {
+				"/wp-content/plugins/ai": "."
+			}
+		}
+	},
+	"lifecycleScripts": {
+		"afterStart": "wp-env run cli wp rewrite structure /%postname%/ --hard && wp-env run cli wp theme activate ai-entry"
+	}
 }

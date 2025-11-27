@@ -16,6 +16,13 @@ use WordPress\AI\Asset_Loader;
 /**
  * Title generation experiment.
  *
+ * Experiment notes:
+ * - Adds a toolbar button in the post and site editor title area via a React bundle
+ *   (`experiments/title-generation`) that calls the `ai/title-generation` ability.
+ * - Ability input: current post content/post_id; output: up to three candidate strings.
+ * - Manual test: open an edit or new post screen for a post type that supports titles,
+ *   click "Generate" in the title toolbar, and confirm suggestions populate the modal.
+ *
  * @since 0.1.0
  */
 class Title_Generation extends Abstract_Experiment {

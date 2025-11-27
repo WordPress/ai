@@ -29,6 +29,21 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'experiments/post-table-bulk': path.resolve(
+			process.cwd(),
+			'src/experiments/post-table-bulk',
+			'index.tsx'
+		),
+		'experiments/type-ahead': path.resolve(
+			process.cwd(),
+			'src/experiments/type-ahead',
+			'index.tsx'
+		),
+		'experiments/alt-text-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'index.tsx'
+		),
 	},
 
 	plugins: [

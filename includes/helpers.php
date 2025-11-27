@@ -121,6 +121,32 @@ function get_post_context( int $post_id ): array {
 }
 
 /**
+ * Extends HTTP timeout for OpenAI requests.
+ *
+ * The default WordPress timeout (5 seconds) is too short for some
+ * completions and results in cURL error 28. Increase it to 20 seconds
+ * whenever we call OpenAI's REST endpoint.
+ *
+ * @since 0.1.0
+ *
+ * @param array<string,mixed> $args HTTP request args.
+ * @param string              $url  Request URL.
+ * @return array<string,mixed>
+ */
+add_filter(
+	'http_request_args',
+	static function ( array $args, string $url ): array {
+		if ( false !== strpos( $url, 'api.openai.com' ) ) {
+			$args['timeout'] = max( (float) ( $args['timeout'] ?? 5 ), 20 );
+		}
+
+		return $args;
+	},
+	10,
+	2
+);
+
+/**
  * Returns the preferred models.
  *
  * @since 0.1.0
@@ -129,6 +155,10 @@ function get_post_context( int $post_id ): array {
  */
 function get_preferred_models(): array {
 	$preferred_models = array(
+		array(
+			'openai',
+			'gpt-5-nano-2025-08-07',
+		),
 		array(
 			'anthropic',
 			'claude-haiku-4-5',

@@ -14,6 +14,13 @@ use WordPress\AI\Abstracts\Abstract_Experiment;
 /**
  * Reference experiment demonstrating hooks and REST endpoints.
  *
+ * Experiment notes:
+ * - Surfaces simple signals so contributors can verify the experiment loader is wired up
+ *   (`wp_footer`, `document_title_parts`, and a sample REST route).
+ * - No abilities are registered; the REST response is read-only and gated by `manage_options`.
+ * - Manual test: enable the experiment in settings, load the front end while logged in to
+ *   inspect the footer comment, and hit `/wp-json/ai/v1/example` to confirm the endpoint works.
+ *
  * @since 0.1.0
  */
 class Example_Experiment extends Abstract_Experiment {

@@ -214,6 +214,19 @@ abstract class Abstract_Experiment implements Experiment {
 	}
 
 	/**
+	 * Checks if the experiment has custom settings.
+	 *
+	 * Override this method in child classes that have settings to return true.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return bool True if the experiment has settings, false otherwise.
+	 */
+	public function has_settings(): bool {
+		return false;
+	}
+
+	/**
 	 * Gets the option name for a custom experiment setting field.
 	 *
 	 * Generates a properly namespaced option name for experiment-specific settings.
