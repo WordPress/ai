@@ -126,6 +126,15 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->assertEquals( 'title-generation', $experiment->get_id() );
 
 		$this->assertTrue(
+			$this->registry->has_experiment( 'alt-text-generation' ),
+			'Alt text generation experiment should be registered'
+		);
+
+		$experiment = $this->registry->get_experiment( 'alt-text-generation' );
+		$this->assertNotNull( $experiment, 'Alt text generation experiment should exist' );
+		$this->assertEquals( 'alt-text-generation', $experiment->get_id() );
+
+		$this->assertTrue(
 			$this->registry->has_experiment( 'type-ahead' ),
 			'Type ahead experiment should be registered'
 		);
