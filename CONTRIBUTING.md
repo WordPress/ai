@@ -163,7 +163,8 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 
 - [ ] Close milestone: Edit the [milestone](https://github.com/wordpress/ai/milestone/#) with release date (in the `Due date (optional)` field) and link to GitHub release (in the `Description field`), then close the milestone.
 - [ ] Punt incomplete items: If any open issues or PRs which were milestoned for `X.Y.Z` do not make it into the release, update their milestone to `X.Y.Z+1`, `X.Y+1.0`, `X+1.0.0` or `Future Release`.
-- [ ] Publish release announcement post on make/ai, cross-posting to make/core.
+- [ ] Announce: Publish release announcement post on Make/AI, cross-posting to Make/Core and Make/Test ([example](https://make.wordpress.org/ai/2025/11/27/announcing-the-ai-experiments-plugin-v0-1-0/)).
+- [ ] Profile badges: Grant new contributors the `Core AI Contributor` [profile badge](https://make.wordpress.org/ai/wp-admin/tools.php?page=profile-badges).
 ```
 
 ## Guidelines
