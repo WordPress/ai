@@ -214,27 +214,15 @@ private function get_default_experiments(): array {
 
 ### Step 4: Add Experiment Documentation
 
-Create a `README.md` in your experiment directory:
+Every experiment must have a companion doc in `docs/experiments/`. Create a Markdown file that matches the experiment ID (for example, `docs/experiments/my-experiment.md`) and include:
 
-```markdown
-# My Experiment
+- **Summary** – One paragraph describing what surfaces the feature touches.
+- **Key Hooks & Entry Points** – PHP hooks, REST routes, or screen conditions that load the experiment.
+- **Assets & Data Flow** – JS entry points, localized data, registered abilities, or REST endpoints.
+- **Testing** – Manual steps to reproduce and verify the behavior.
+- **Notes** – Edge cases, feature flags, or follow-up tasks.
 
-Brief description of the experiment.
-
-## Functionality
-
-- What the experiment does
-- How it works
-- Any requirements
-
-## Usage
-
-Examples of how to use the experiment.
-
-## Configuration
-
-Any settings or filters available.
-```
+See the existing files in `docs/experiments/` for formatting examples. Update the doc any time the experiment’s behavior changes.
 
 ### Conditional Experiments
 
