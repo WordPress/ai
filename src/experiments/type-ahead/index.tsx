@@ -184,6 +184,8 @@ const useCaretData = ( editable: HTMLElement | null ): CaretData | null => {
 		}
 
 		const doc = editable.ownerDocument || document;
+		const win = doc.defaultView || window;
+		const viewport = win?.visualViewport;
 
 		const update = () => {
 			const sel = doc.getSelection();
@@ -219,12 +221,32 @@ const useCaretData = ( editable: HTMLElement | null ): CaretData | null => {
 		const events: Array< keyof DocumentEventMap > = [ 'selectionchange' ];
 		const elementEvents: Array< keyof HTMLElementEventMap > = [ 'keyup', 'mouseup', 'input' ];
 
+		const handleScroll = () => update();
+		const handleResize = () => update();
+		const handleViewportChange = () => update();
+		const ResizeObserverCtor = win?.ResizeObserver ?? window.ResizeObserver;
+		let resizeObserver: ResizeObserver | null = null;
+
 		events.forEach( ( eventName ) => doc.addEventListener( eventName, update ) );
 		elementEvents.forEach( ( eventName ) => editable.addEventListener( eventName, update ) );
+		doc.addEventListener( 'scroll', handleScroll, true );
+		win?.addEventListener( 'resize', handleResize );
+		viewport?.addEventListener( 'resize', handleViewportChange );
+		viewport?.addEventListener( 'scroll', handleViewportChange );
+
+		if ( ResizeObserverCtor ) {
+			resizeObserver = new ResizeObserverCtor( () => update() );
+			resizeObserver.observe( editable );
+		}
 
 		return () => {
 			events.forEach( ( eventName ) => doc.removeEventListener( eventName, update ) );
 			elementEvents.forEach( ( eventName ) => editable.removeEventListener( eventName, update ) );
+			doc.removeEventListener( 'scroll', handleScroll, true );
+			win?.removeEventListener( 'resize', handleResize );
+			viewport?.removeEventListener( 'resize', handleViewportChange );
+			viewport?.removeEventListener( 'scroll', handleViewportChange );
+			resizeObserver?.disconnect();
 		};
 	}, [ editable ] );
 
