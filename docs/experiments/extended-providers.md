@@ -9,6 +9,7 @@ Toggles registration of a custom set of AI providers with the WP AI Client. When
 - Fal.ai – adds curated FLUX/SDXL image generators via `https://fal.run/{model}`. Provide your Fal.ai API token on the AI Credentials page and enable the provider to unlock Fal’s image-only models.
 - Cohere – connects directly to Cohere’s `/chat` and `/models` APIs at `https://api.cohere.ai/v1`. Paste your Cohere API key on the credentials screen and use the experiment settings to toggle Cohere’s chat models.
 - Hugging Face – targets the OpenAI-compatible router at `https://router.huggingface.co/v1`. Add a Hugging Face access token (with `inference:all` scope) on the credentials page and enable the provider to discover router-backed chat models.
+- OpenRouter – connects to `https://openrouter.ai/api/v1`, honoring their `/models` and `/chat/completions` API. Supply your OpenRouter API key under AI Credentials and optionally set Referer/Title via the registry’s custom options filter if needed.
 
 ## Key Hooks & Entry Points
 - `WordPress\AI\Experiments\Extended_Providers\Extended_Providers::register()` attaches to `init` (priority 20) and calls `register_providers()` only when the experiment is enabled.
