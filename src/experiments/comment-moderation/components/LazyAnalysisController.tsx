@@ -7,7 +7,7 @@
 /**
  * External dependencies
  */
-import React from 'react';
+import type React from 'react';
 
 /**
  * WordPress dependencies
@@ -34,12 +34,24 @@ type PendingComment = {
 /**
  * Gets the toxicity label and class from score.
  */
-function getToxicityDisplay( score: number ): { label: string; className: string; icon: string } {
+function getToxicityDisplay( score: number ): {
+	label: string;
+	className: string;
+	icon: string;
+} {
 	if ( score >= 0.7 ) {
-		return { label: 'High', className: 'ai-badge--high-toxicity', icon: '⚠️' };
+		return {
+			label: 'High',
+			className: 'ai-badge--high-toxicity',
+			icon: '⚠️',
+		};
 	}
 	if ( score >= 0.4 ) {
-		return { label: 'Medium', className: 'ai-badge--medium-toxicity', icon: '⚡' };
+		return {
+			label: 'Medium',
+			className: 'ai-badge--medium-toxicity',
+			icon: '⚡',
+		};
 	}
 	return { label: 'Low', className: 'ai-badge--low-toxicity', icon: '✓' };
 }
@@ -47,11 +59,30 @@ function getToxicityDisplay( score: number ): { label: string; className: string
 /**
  * Gets the sentiment display info.
  */
-function getSentimentDisplay( sentiment: string ): { label: string; className: string; icon: string } {
-	const displays: Record< string, { label: string; className: string; icon: string } > = {
-		positive: { label: 'Positive', className: 'ai-badge--positive', icon: '😊' },
-		negative: { label: 'Negative', className: 'ai-badge--negative', icon: '😟' },
-		neutral: { label: 'Neutral', className: 'ai-badge--neutral', icon: '😐' },
+function getSentimentDisplay( sentiment: string ): {
+	label: string;
+	className: string;
+	icon: string;
+} {
+	const displays: Record<
+		string,
+		{ label: string; className: string; icon: string }
+	> = {
+		positive: {
+			label: 'Positive',
+			className: 'ai-badge--positive',
+			icon: '😊',
+		},
+		negative: {
+			label: 'Negative',
+			className: 'ai-badge--negative',
+			icon: '😟',
+		},
+		neutral: {
+			label: 'Neutral',
+			className: 'ai-badge--neutral',
+			icon: '😐',
+		},
 	};
 	return displays[ sentiment ] || displays.neutral;
 }
@@ -72,7 +103,9 @@ function updateBadges( comment: PendingComment, result: AnalysisResult ): void {
 	// Update toxicity badge.
 	comment.toxicityBadge.className = `ai-badge ${ toxicityDisplay.className }`;
 	comment.toxicityBadge.textContent = `${ toxicityDisplay.icon } ${ toxicityDisplay.label }`;
-	comment.toxicityBadge.title = `${ toxicityDisplay.label } (${ Math.round( result.toxicity_score * 100 ) }%)`;
+	comment.toxicityBadge.title = `${ toxicityDisplay.label } (${ Math.round(
+		result.toxicity_score * 100
+	) }%)`;
 }
 
 /**
@@ -142,24 +175,33 @@ export function LazyAnalysisController(): React.ReactElement | null {
 	/**
 	 * Analyzes a single comment.
 	 */
-	const analyzeComment = useCallback( async ( comment: PendingComment ): Promise< void > => {
-		// Mark as processing.
-		markBadgeProcessing( comment.sentimentBadge );
-		markBadgeProcessing( comment.toxicityBadge );
+	const analyzeComment = useCallback(
+		async ( comment: PendingComment ): Promise< void > => {
+			// Mark as processing.
+			markBadgeProcessing( comment.sentimentBadge );
+			markBadgeProcessing( comment.toxicityBadge );
 
-		try {
-			const result = await runAbility< AnalysisResult >( 'ai/comment-analysis', {
-				comment_id: comment.id,
-			} );
+			try {
+				const result = await runAbility< AnalysisResult >(
+					'ai/comment-analysis',
+					{
+						comment_id: comment.id,
+					}
+				);
 
-			updateBadges( comment, result );
-		} catch ( error ) {
-			// eslint-disable-next-line no-console
-			console.error( `Failed to analyze comment ${ comment.id }:`, error );
-			markBadgeFailed( comment.sentimentBadge );
-			markBadgeFailed( comment.toxicityBadge );
-		}
-	}, [] );
+				updateBadges( comment, result );
+			} catch ( error ) {
+				// eslint-disable-next-line no-console
+				console.error(
+					`Failed to analyze comment ${ comment.id }:`,
+					error
+				);
+				markBadgeFailed( comment.sentimentBadge );
+				markBadgeFailed( comment.toxicityBadge );
+			}
+		},
+		[]
+	);
 
 	/**
 	 * Processes all pending comments sequentially.

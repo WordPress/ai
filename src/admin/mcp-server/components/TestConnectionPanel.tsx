@@ -1,7 +1,22 @@
-import { Button, Card, CardBody, CardHeader, Notice } from '@wordpress/components';
+/**
+ * WordPress dependencies
+ */
+import {
+	Button,
+	Card,
+	CardBody,
+	CardHeader,
+	Notice,
+} from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React from 'react';
 
+/**
+ * Internal dependencies
+ */
 import type { TestResult } from '../types';
 
 interface TestConnectionPanelProps {
@@ -10,17 +25,31 @@ interface TestConnectionPanelProps {
 	onTest: () => void;
 }
 
-const TestConnectionPanel: React.FC< TestConnectionPanelProps > = ( { testing, result, onTest } ) => (
+const TestConnectionPanel: React.FC< TestConnectionPanelProps > = ( {
+	testing,
+	result,
+	onTest,
+} ) => (
 	<Card className="ai-mcp-server__card">
 		<CardHeader>
 			<h2>{ __( 'Connection test', 'ai' ) }</h2>
 		</CardHeader>
 		<CardBody>
 			<p>
-				{ __( 'Verify that the MCP HTTP endpoint is reachable from WordPress. For external clients you may still need to configure authentication.', 'ai' ) }
+				{ __(
+					'Verify that the MCP HTTP endpoint is reachable from WordPress. For external clients you may still need to configure authentication.',
+					'ai'
+				) }
 			</p>
-			<Button variant="primary" onClick={ onTest } isBusy={ testing } disabled={ testing }>
-				{ testing ? __( 'Testing…', 'ai' ) : __( 'Test connection', 'ai' ) }
+			<Button
+				variant="primary"
+				onClick={ onTest }
+				isBusy={ testing }
+				disabled={ testing }
+			>
+				{ testing
+					? __( 'Testing…', 'ai' )
+					: __( 'Test connection', 'ai' ) }
 			</Button>
 
 			{ result && (
@@ -33,11 +62,10 @@ const TestConnectionPanel: React.FC< TestConnectionPanelProps > = ( { testing, r
 						<strong>{ result.message }</strong>
 					</p>
 					<p>
-						{ __( 'Response code:', 'ai' ) } { result.code ?? __( 'Unavailable', 'ai' ) }
+						{ __( 'Response code:', 'ai' ) }{ ' ' }
+						{ result.code ?? __( 'Unavailable', 'ai' ) }
 					</p>
-					{ result.body && (
-						<pre>{ result.body }</pre>
-					 ) }
+					{ result.body && <pre>{ result.body }</pre> }
 				</Notice>
 			) }
 		</CardBody>

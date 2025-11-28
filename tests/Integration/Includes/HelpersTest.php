@@ -35,6 +35,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		delete_transient( 'ai_valid_credentials_status' );
+		delete_option( 'wp_ai_client_provider_credentials' );
 		parent::tearDown();
 	}
 
@@ -334,5 +336,23 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'test-model', $result[0][1], 'Model name should be test-model' );
 
 		remove_all_filters( 'ai_preferred_models' );
+	}
+
+	/**
+	 * Ensures has_valid_ai_credentials() respects cached transient values.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_has_valid_ai_credentials_uses_transient_cache(): void {
+		update_option(
+			'wp_ai_client_provider_credentials',
+			array(
+				'openai' => 'sk-test',
+			)
+		);
+
+		set_transient( 'ai_valid_credentials_status', 1, MINUTE_IN_SECONDS );
+
+		$this->assertTrue( \WordPress\AI\has_valid_ai_credentials() );
 	}
 }

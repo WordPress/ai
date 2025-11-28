@@ -46,11 +46,14 @@ const getFormElement = ( mode: 'bulk' | 'quick' ): HTMLElement | null =>
 	document.getElementById( mode === 'bulk' ? 'bulk-edit' : 'edit' );
 
 const sanitizePostIds = ( ids: number[] ): number[] =>
-	Array.from( new Set( ids.filter( ( id ) => Number.isFinite( id ) && id > 0 ) ) );
+	Array.from(
+		new Set( ids.filter( ( id ) => Number.isFinite( id ) && id > 0 ) )
+	);
 
 const getQuickPostIds = (): number[] => {
-	const input =
-		document.querySelector<HTMLInputElement>( '#edit input[name="post_ID"]' );
+	const input = document.querySelector< HTMLInputElement >(
+		'#edit input[name="post_ID"]'
+	);
 
 	if ( ! input ) {
 		return [];
@@ -61,7 +64,7 @@ const getQuickPostIds = (): number[] => {
 
 const fallbackBulkSelection = (): number[] =>
 	Array.from(
-		document.querySelectorAll<HTMLInputElement>(
+		document.querySelectorAll< HTMLInputElement >(
 			'#the-list input[name="post[]"]:checked'
 		)
 	).map( ( node ) => parseInt( node.value, 10 ) );
@@ -127,7 +130,8 @@ const aggregateBulkSuggestions = (
 				}
 
 				aggregates[ taxonomy ][ key ].count += 1;
-				aggregates[ taxonomy ][ key ].totalScore += suggestion.confidence;
+				aggregates[ taxonomy ][ key ].totalScore +=
+					suggestion.confidence;
 			} );
 		} );
 	} );
@@ -164,7 +168,9 @@ const Assistant = ( {
 	const [ status, setStatus ] = useState< Status >( 'idle' );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ notice, setNotice ] = useState< string | null >( null );
-	const [ response, setResponse ] = useState< AbilityResponse | null >( null );
+	const [ response, setResponse ] = useState< AbilityResponse | null >(
+		null
+	);
 	const [ lastPostIds, setLastPostIds ] = useState< number[] >( [] );
 
 	const displayedSuggestions = useMemo( () => {
@@ -193,13 +199,21 @@ const Assistant = ( {
 
 	const fetchSuggestions = async () => {
 		const ids =
-			mode === 'quick' ? getQuickPostIds() : getBulkPostIds().slice( 0, maxBatchSize );
+			mode === 'quick'
+				? getQuickPostIds()
+				: getBulkPostIds().slice( 0, maxBatchSize );
 
 		if ( ids.length === 0 ) {
 			setError(
 				mode === 'quick'
-					? __( 'Open quick edit for a post before requesting suggestions.', 'ai' )
-					: __( 'Select at least one post before requesting suggestions.', 'ai' )
+					? __(
+							'Open quick edit for a post before requesting suggestions.',
+							'ai'
+					  )
+					: __(
+							'Select at least one post before requesting suggestions.',
+							'ai'
+					  )
 			);
 			setStatus( 'error' );
 			return;
@@ -216,11 +230,17 @@ const Assistant = ( {
 				limit: suggestionLimit,
 				locale: document.documentElement.lang,
 			};
-			const result = ( await runAbility( ability, payload ) ) as AbilityResponse;
+			const result = ( await runAbility(
+				ability,
+				payload
+			) ) as AbilityResponse;
 
 			if ( ! result || ! result.suggestions ) {
 				throw new Error(
-					__( 'No suggestions were returned for the selected posts.', 'ai' )
+					__(
+						'No suggestions were returned for the selected posts.',
+						'ai'
+					)
 				);
 			}
 
@@ -229,28 +249,35 @@ const Assistant = ( {
 			setStatus( 'success' );
 		} catch ( err ) {
 			const message =
-				err instanceof Error ? err.message : __( 'Unknown error.', 'ai' );
+				err instanceof Error
+					? err.message
+					: __( 'Unknown error.', 'ai' );
 			setError( message );
 			setStatus( 'error' );
 		}
 	};
 
-	const applySuggestions = ( taxonomy: string, suggestions: Suggestion[] ) => {
+	const applySuggestions = (
+		taxonomy: string,
+		suggestions: Suggestion[]
+	) => {
 		const form = getFormElement( mode );
 
 		if ( ! form ) {
 			setError(
-				__( 'Unable to locate the inline edit form to apply suggestions.', 'ai' )
+				__(
+					'Unable to locate the inline edit form to apply suggestions.',
+					'ai'
+				)
 			);
 			setStatus( 'error' );
 			return;
 		}
 
 		if ( taxonomy === 'post_tag' ) {
-			const field =
-				form.querySelector<HTMLInputElement | HTMLTextAreaElement>(
-					'[name="tax_input[post_tag]"]'
-				);
+			const field = form.querySelector<
+				HTMLInputElement | HTMLTextAreaElement
+			>( '[name="tax_input[post_tag]"]' );
 
 			if ( ! field ) {
 				return;
@@ -260,11 +287,13 @@ const Assistant = ( {
 				.split( ',' )
 				.map( ( value ) => value.trim() )
 				.filter( Boolean );
-			const additions = suggestions.map( ( suggestion ) => suggestion.name.trim() );
-
-			const merged = Array.from( new Set( [ ...existing, ...additions ] ) ).filter(
-				Boolean
+			const additions = suggestions.map( ( suggestion ) =>
+				suggestion.name.trim()
 			);
+
+			const merged = Array.from(
+				new Set( [ ...existing, ...additions ] )
+			).filter( Boolean );
 			field.value = merged.join( ', ' );
 		} else {
 			suggestions.forEach( ( suggestion ) => {
@@ -272,27 +301,31 @@ const Assistant = ( {
 					return;
 				}
 
-				form
-					.querySelectorAll<HTMLInputElement>(
-						`input[name="tax_input[${ taxonomy }][]"][value="${ suggestion.term_id }"]`
-					)
-					.forEach( ( input ) => {
-						input.checked = true;
-					} );
+				form.querySelectorAll< HTMLInputElement >(
+					`input[name="tax_input[${ taxonomy }][]"][value="${ suggestion.term_id }"]`
+				).forEach( ( input ) => {
+					input.checked = true;
+				} );
 			} );
 		}
 
 		setNotice(
 			sprintf(
 				/* translators: %s: Taxonomy label. */
-				__( 'Applied %s suggestions to the form. Review and update to save.', 'ai' ),
+				__(
+					'Applied %s suggestions to the form. Review and update to save.',
+					'ai'
+				),
 				response?.metadata?.taxonomies?.[ taxonomy ] ?? taxonomy
 			)
 		);
 	};
 
 	const renderTaxonomySections = () => {
-		if ( ! displayedSuggestions || Object.keys( displayedSuggestions ).length === 0 ) {
+		if (
+			! displayedSuggestions ||
+			Object.keys( displayedSuggestions ).length === 0
+		) {
 			return null;
 		}
 
@@ -300,23 +333,31 @@ const Assistant = ( {
 			( [ taxonomy, suggestions ] ) => {
 				const label =
 					response?.metadata?.taxonomies?.[ taxonomy ] ??
-					taxonomies.find( ( tax ) => tax.name === taxonomy )?.label ??
+					taxonomies.find( ( tax ) => tax.name === taxonomy )
+						?.label ??
 					taxonomy;
 
 				return (
-					<div className="wp-ai-post-table-bulk__taxonomy" key={ taxonomy }>
+					<div
+						className="wp-ai-post-table-bulk__taxonomy"
+						key={ taxonomy }
+					>
 						<p className="wp-ai-post-table-bulk__taxonomy-heading">
 							{ label }
 						</p>
 						<ul className="wp-ai-post-table-bulk__list">
 							{ suggestions.map( ( suggestion ) => (
-								<li key={ `${ taxonomy }-${ suggestion.name }` }>
-									<strong>{ suggestion.name }</strong>{' '}
+								<li
+									key={ `${ taxonomy }-${ suggestion.name }` }
+								>
+									<strong>{ suggestion.name }</strong>{ ' ' }
 									<span className="wp-ai-post-table-bulk__confidence">
 										{ sprintf(
 											/* translators: %s: confidence percentage. */
 											__( '%s confidence', 'ai' ),
-											Math.round( suggestion.confidence * 100 ) + '%'
+											Math.round(
+												suggestion.confidence * 100
+											) + '%'
 										) }
 									</span>
 									{ suggestion.is_new && (
@@ -330,7 +371,9 @@ const Assistant = ( {
 						<Button
 							variant="secondary"
 							size="small"
-							onClick={ () => applySuggestions( taxonomy, suggestions ) }
+							onClick={ () =>
+								applySuggestions( taxonomy, suggestions )
+							}
 						>
 							{ __( 'Apply suggestions', 'ai' ) }
 						</Button>
@@ -348,14 +391,14 @@ const Assistant = ( {
 				disabled={ status === 'loading' }
 			>
 				{ status === 'loading'
-					? __( 'Generating suggestions...', 'ai' )
+					? __( 'Generating suggestions…', 'ai' )
 					: __( 'Suggest categories & tags', 'ai' ) }
 			</Button>
 
 			{ status === 'loading' && (
 				<div className="wp-ai-post-table-bulk__status">
 					<Spinner />
-					<span>{ __( 'Analyzing selected posts...', 'ai' ) }</span>
+					<span>{ __( 'Analyzing selected posts…', 'ai' ) }</span>
 				</div>
 			) }
 

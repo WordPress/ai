@@ -64,6 +64,11 @@ module.exports = {
 			'src/experiments/comment-moderation',
 			'index.tsx'
 		),
+		'experiments/writing-assistant': path.resolve(
+			process.cwd(),
+			'src/experiments/writing-assistant',
+			'index.tsx'
+		),
 	},
 
 	plugins: [

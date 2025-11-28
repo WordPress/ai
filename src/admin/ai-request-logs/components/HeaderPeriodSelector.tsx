@@ -1,5 +1,11 @@
+/**
+ * WordPress dependencies
+ */
 import { SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React from 'react';
 import { createPortal } from 'react-dom';
 
@@ -16,7 +22,9 @@ const HeaderPeriodSelector: React.FC< HeaderPeriodSelectorProps > = ( {
 	onPeriodChange,
 	loading,
 } ) => {
-	const container = document.getElementById( 'ai-request-logs-header-period' );
+	const container = document.getElementById(
+		'ai-request-logs-header-period'
+	);
 
 	if ( ! container ) {
 		return null;

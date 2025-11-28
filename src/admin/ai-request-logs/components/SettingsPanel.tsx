@@ -1,5 +1,18 @@
-import { Button, Card, CardBody, CardHeader, RangeControl, ToggleControl } from '@wordpress/components';
+/**
+ * WordPress dependencies
+ */
+import {
+	Button,
+	Card,
+	CardBody,
+	CardHeader,
+	RangeControl,
+	ToggleControl,
+} from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React, { useState } from 'react';
 
 interface SettingsPanelProps {
@@ -38,34 +51,44 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 				<h2>{ __( 'Settings', 'ai' ) }</h2>
 			</CardHeader>
 			<CardBody>
-			<ToggleControl
-				label={ __( 'Enable Logging', 'ai' ) }
-					help={ __( 'When enabled, AI client requests will be logged for observability.', 'ai' ) }
+				<ToggleControl
+					label={ __( 'Enable Logging', 'ai' ) }
+					help={ __(
+						'When enabled, AI client requests will be logged for observability.',
+						'ai'
+					) }
 					checked={ enabled }
 					onChange={ onToggleEnabled }
-				disabled={ saving }
-				__nextHasNoMarginBottom
-			/>
+					disabled={ saving }
+					__nextHasNoMarginBottom
+				/>
 
-			<RangeControl
-				label={ __( 'Log Retention', 'ai' ) }
+				<RangeControl
+					label={ __( 'Log Retention', 'ai' ) }
 					help={ sprintf(
-						__( 'Logs older than %d days will be automatically deleted.', 'ai' ),
+						/* translators: %d: number of days before logs are deleted. */
+						__(
+							'Logs older than %d days will be automatically deleted.',
+							'ai'
+						),
 						retentionDays
 					) }
 					value={ retentionDays }
 					onChange={ ( value ) => onRetentionChange( value ?? 30 ) }
 					min={ 1 }
 					max={ 365 }
-				disabled={ saving }
-				__nextHasNoMarginBottom
-				__next40pxDefaultSize
-			/>
+					disabled={ saving }
+					__nextHasNoMarginBottom
+					__next40pxDefaultSize
+				/>
 
 				<div className="ai-request-logs__settings-danger">
 					<h3>{ __( 'Danger Zone', 'ai' ) }</h3>
 					<p className="description">
-						{ __( 'Permanently delete all logged requests. This action cannot be undone.', 'ai' ) }
+						{ __(
+							'Permanently delete all logged requests. This action cannot be undone.',
+							'ai'
+						) }
 					</p>
 					{ showPurgeConfirm ? (
 						<div className="ai-request-logs__purge-confirm">

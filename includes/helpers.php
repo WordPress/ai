@@ -253,12 +253,22 @@ function has_valid_ai_credentials(): bool {
 		return (bool) $valid;
 	}
 
+	$transient_key = 'ai_valid_credentials_status';
+	$cached        = get_transient( $transient_key );
+	if ( false !== $cached ) {
+		return (bool) $cached;
+	}
+
 	// See if we have credentials that give us access to generate text.
 	try {
-		return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
+		$is_supported = AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
 	} catch ( Throwable $t ) {
-		return false;
+		$is_supported = false;
 	}
+
+	set_transient( $transient_key, $is_supported ? 1 : 0, 5 * MINUTE_IN_SECONDS );
+
+	return $is_supported;
 }
 
 /**

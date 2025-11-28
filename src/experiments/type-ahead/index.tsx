@@ -2,11 +2,26 @@
  * Type-ahead inline ghost text experiment.
  */
 
+/**
+ * Internal dependencies
+ */
 import './style.scss';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+/**
+ * External dependencies
+ */
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 
+/**
+ * WordPress dependencies
+ */
 import apiFetch from '@wordpress/api-fetch';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { addFilter } from '@wordpress/hooks';
@@ -59,7 +74,10 @@ const htmlToPlainText = ( value?: string ): string => {
 	}
 	const temp = document.createElement( 'div' );
 	temp.innerHTML = value;
-	return ( temp.textContent || temp.innerText || '' ).replaceAll( '\u00A0', ' ' );
+	return ( temp.textContent || temp.innerText || '' ).replaceAll(
+		'\u00A0',
+		' '
+	);
 };
 
 const shouldTriggerFromContext = ( preceding: string ): boolean => {
@@ -75,7 +93,10 @@ const shouldTriggerFromContext = ( preceding: string ): boolean => {
 	return lower.endsWith( 'such as' ) || lower.endsWith( 'for example' );
 };
 
-const splitSuggestion = ( suggestion: string, mode: 'word' | 'sentence' | 'all' ) => {
+const splitSuggestion = (
+	suggestion: string,
+	mode: 'word' | 'sentence' | 'all'
+) => {
 	if ( mode === 'all' ) {
 		return { apply: suggestion, remainder: '' };
 	}
@@ -91,7 +112,10 @@ const splitSuggestion = ( suggestion: string, mode: 'word' | 'sentence' | 'all' 
 	return { apply: sentence, remainder: suggestion.slice( sentence.length ) };
 };
 
-const addLeadingSpaceIfNeeded = ( text: string, precedingText: string ): string => {
+const addLeadingSpaceIfNeeded = (
+	text: string,
+	precedingText: string
+): string => {
 	if ( ! text || ! precedingText ) {
 		return text;
 	}
@@ -106,7 +130,10 @@ const addLeadingSpaceIfNeeded = ( text: string, precedingText: string ): string 
 };
 
 const useBlockDom = ( clientId: string ) => {
-	const [ state, setState ] = useState<{ block: HTMLElement | null; editable: HTMLElement | null }>( {
+	const [ state, setState ] = useState< {
+		block: HTMLElement | null;
+		editable: HTMLElement | null;
+	} >( {
 		block: null,
 		editable: null,
 	} );
@@ -117,9 +144,14 @@ const useBlockDom = ( clientId: string ) => {
 		const queryDocuments = (): Document[] => {
 			const docs: Document[] = [ document ];
 			document
-				.querySelectorAll( 'iframe[name="editor-canvas"], iframe.wp-block-editor-iframe__iframe' )
+				.querySelectorAll(
+					'iframe[name="editor-canvas"], iframe.wp-block-editor-iframe__iframe'
+				)
 				.forEach( ( frame ) => {
-					if ( frame instanceof HTMLIFrameElement && frame.contentDocument ) {
+					if (
+						frame instanceof HTMLIFrameElement &&
+						frame.contentDocument
+					) {
 						docs.push( frame.contentDocument );
 					}
 				} );
@@ -137,11 +169,15 @@ const useBlockDom = ( clientId: string ) => {
 
 			// Otherwise search for editable elements within the block
 			const candidates = Array.from(
-				blockEl.querySelectorAll< HTMLElement >( '[data-rich-text-editable], [contenteditable]' )
+				blockEl.querySelectorAll< HTMLElement >(
+					'[data-rich-text-editable], [contenteditable]'
+				)
 			);
 			return (
-				candidates.find( ( candidate ) => candidate.getAttribute( 'contenteditable' ) !== 'false' ) ??
-				null
+				candidates.find(
+					( candidate ) =>
+						candidate.getAttribute( 'contenteditable' ) !== 'false'
+				) ?? null
 			);
 		};
 
@@ -201,7 +237,9 @@ const useCaretData = ( editable: HTMLElement | null ): CaretData | null => {
 
 			const markerRange = range.cloneRange();
 			const rects = markerRange.getClientRects();
-			const rect = rects.length ? rects[ rects.length - 1 ] : markerRange.getBoundingClientRect();
+			const rect = rects.length
+				? rects[ rects.length - 1 ]
+				: markerRange.getBoundingClientRect();
 
 			const textRange = doc.createRange();
 			textRange.selectNodeContents( editable );
@@ -219,7 +257,11 @@ const useCaretData = ( editable: HTMLElement | null ): CaretData | null => {
 		update();
 
 		const events: Array< keyof DocumentEventMap > = [ 'selectionchange' ];
-		const elementEvents: Array< keyof HTMLElementEventMap > = [ 'keyup', 'mouseup', 'input' ];
+		const elementEvents: Array< keyof HTMLElementEventMap > = [
+			'keyup',
+			'mouseup',
+			'input',
+		];
 
 		const handleScroll = () => update();
 		const handleResize = () => update();
@@ -227,8 +269,12 @@ const useCaretData = ( editable: HTMLElement | null ): CaretData | null => {
 		const ResizeObserverCtor = win?.ResizeObserver ?? window.ResizeObserver;
 		let resizeObserver: ResizeObserver | null = null;
 
-		events.forEach( ( eventName ) => doc.addEventListener( eventName, update ) );
-		elementEvents.forEach( ( eventName ) => editable.addEventListener( eventName, update ) );
+		events.forEach( ( eventName ) =>
+			doc.addEventListener( eventName, update )
+		);
+		elementEvents.forEach( ( eventName ) =>
+			editable.addEventListener( eventName, update )
+		);
 		doc.addEventListener( 'scroll', handleScroll, true );
 		win?.addEventListener( 'resize', handleResize );
 		viewport?.addEventListener( 'resize', handleViewportChange );
@@ -240,8 +286,12 @@ const useCaretData = ( editable: HTMLElement | null ): CaretData | null => {
 		}
 
 		return () => {
-			events.forEach( ( eventName ) => doc.removeEventListener( eventName, update ) );
-			elementEvents.forEach( ( eventName ) => editable.removeEventListener( eventName, update ) );
+			events.forEach( ( eventName ) =>
+				doc.removeEventListener( eventName, update )
+			);
+			elementEvents.forEach( ( eventName ) =>
+				editable.removeEventListener( eventName, update )
+			);
 			doc.removeEventListener( 'scroll', handleScroll, true );
 			win?.removeEventListener( 'resize', handleResize );
 			viewport?.removeEventListener( 'resize', handleViewportChange );
@@ -253,12 +303,12 @@ const useCaretData = ( editable: HTMLElement | null ): CaretData | null => {
 	return caret;
 };
 
-const TypeAheadOverlay: React.FC<{
+const TypeAheadOverlay: React.FC< {
 	ownerDocument: Document | null;
 	rect: DOMRect | null;
 	container: HTMLElement | null;
 	text: string | null;
-}> = ( { ownerDocument, rect, container, text } ) => {
+} > = ( { ownerDocument, rect, container, text } ) => {
 	const [ style, setStyle ] = useState< React.CSSProperties | null >( null );
 	const body = ownerDocument?.body ?? document.body;
 	const win = ownerDocument?.defaultView ?? window;
@@ -299,19 +349,23 @@ const TypeAheadOverlay: React.FC<{
 	}
 
 	return createPortal(
-		<div className="ai-type-ahead-overlay" style={ style } aria-hidden="true">
-			{text}
+		<div
+			className="ai-type-ahead-overlay"
+			style={ style }
+			aria-hidden="true"
+		>
+			{ text }
 		</div>,
 		body
 	);
 };
 
-const TypeAheadBlock: React.FC<{
-	BlockEdit: React.ComponentType<any>;
+const TypeAheadBlock: React.FC< {
+	BlockEdit: React.ComponentType< any >;
 	blockProps: any;
 	settings: TypeAheadSettings;
-	allowedBlocks: Set<string>;
-}> = ( { BlockEdit, blockProps, settings, allowedBlocks } ) => {
+	allowedBlocks: Set< string >;
+} > = ( { BlockEdit, blockProps, settings, allowedBlocks } ) => {
 	const { clientId, attributes, name } = blockProps;
 	const { block, editable } = useBlockDom( clientId );
 	const caret = useCaretData( editable );
@@ -319,33 +373,49 @@ const TypeAheadBlock: React.FC<{
 	const [ requestNonce, setRequestNonce ] = useState( 0 );
 	const requestRef = useRef( 0 );
 
-	const { selectedClientId, siblingContext, postId } = useSelect( ( selectCb ) => {
-		const blockEditor = selectCb( blockEditorStore );
-		const editor = selectCb( editorStore );
-		const selected = blockEditor.getSelectedBlockClientId();
-		const rootClientId = blockEditor.getBlockRootClientId( clientId );
-		const order = rootClientId ? blockEditor.getBlockOrder( rootClientId ) : [];
-		const index = blockEditor.getBlockIndex( clientId );
-		const hasOrder = Array.isArray( order ) && order.length > 0;
-		const previousId = hasOrder && index > 0 ? order[ index - 1 ] : null;
-		const nextId = hasOrder && index !== -1 && index < order.length - 1 ? order[ index + 1 ] : null;
-		const previous = previousId ? blockEditor.getBlockAttributes( previousId ) : null;
-		const next = nextId ? blockEditor.getBlockAttributes( nextId ) : null;
+	const { selectedClientId, siblingContext, postId } = useSelect(
+		( selectCb ) => {
+			const blockEditor = selectCb( blockEditorStore );
+			const editor = selectCb( editorStore );
+			const selected = blockEditor.getSelectedBlockClientId();
+			const rootClientId = blockEditor.getBlockRootClientId( clientId );
+			const order = rootClientId
+				? blockEditor.getBlockOrder( rootClientId )
+				: [];
+			const index = blockEditor.getBlockIndex( clientId );
+			const hasOrder = Array.isArray( order ) && order.length > 0;
+			const previousId =
+				hasOrder && index > 0 ? order[ index - 1 ] : null;
+			const nextId =
+				hasOrder && index !== -1 && index < order.length - 1
+					? order[ index + 1 ]
+					: null;
+			const previous = previousId
+				? blockEditor.getBlockAttributes( previousId )
+				: null;
+			const next = nextId
+				? blockEditor.getBlockAttributes( nextId )
+				: null;
 
-		const neighborText = [ previous?.content, next?.content ]
-			.filter( Boolean )
-			.map( ( value ) => htmlToPlainText( value as string ) )
-			.join( '\n\n' )
-			.trim();
+			const neighborText = [ previous?.content, next?.content ]
+				.filter( Boolean )
+				.map( ( value ) => htmlToPlainText( value as string ) )
+				.join( '\n\n' )
+				.trim();
 
-		return {
-			selectedClientId: selected,
-			siblingContext: neighborText,
-			postId: editor.getCurrentPostId(),
-		};
-	}, [ clientId ] );
+			return {
+				selectedClientId: selected,
+				siblingContext: neighborText,
+				postId: editor.getCurrentPostId(),
+			};
+		},
+		[ clientId ]
+	);
 
-	const plainContent = useMemo( () => htmlToPlainText( attributes?.content || '' ), [ attributes?.content ] );
+	const plainContent = useMemo(
+		() => htmlToPlainText( attributes?.content || '' ),
+		[ attributes?.content ]
+	);
 	const followingText = caret ? plainContent.slice( caret.offset ) : '';
 	const caretAtEnd = caret ? followingText.length === 0 : false;
 
@@ -408,117 +478,139 @@ const TypeAheadBlock: React.FC<{
 		clearRequestTimeout();
 	}, [ clearRequestTimeout ] );
 
-	const fetchSuggestion = useCallback( async ( manual: boolean ) => {
-		const state = stateRef.current;
+	const fetchSuggestion = useCallback(
+		async ( manual: boolean ) => {
+			const state = stateRef.current;
 
-		if ( ! state.caret ) {
-			return;
-		}
-
-		// Cancel any in-flight request
-		if ( abortControllerRef.current ) {
-			abortControllerRef.current.abort();
-		}
-		clearRequestTimeout();
-
-		// Create new abort controller for this request
-		const controller = new AbortController();
-		abortControllerRef.current = controller;
-		const currentRequest = ++requestRef.current;
-		requestTimeoutRef.current = window.setTimeout( () => {
-			controller.abort();
-		}, REQUEST_TIMEOUT_MS );
-
-		try {
-			const response = await apiFetch< {
-				suggestion?: string;
-				confidence?: number;
-			} >( {
-				path: `/wp-abilities/v1/abilities/${ abilityName }/run`,
-				method: 'POST',
-				data: {
-					input: {
-						post_id: state.postId,
-						block_id: state.clientId,
-						block_content: state.plainContent,
-						preceding_text: state.caret.precedingText,
-						following_text: state.followingText,
-						surrounding_context: state.siblingContext,
-						cursor_position: state.caret.offset,
-						mode: state.completionMode,
-						max_words: state.maxWords,
-						manual_trigger: manual,
-					},
-				},
-				signal: controller.signal,
-			} );
-
-			// Ignore if a newer request has been made
-			if ( currentRequest !== requestRef.current ) {
+			if ( ! state.caret ) {
 				return;
 			}
 
-			if ( ! response || typeof response !== 'object' || ! response.suggestion ) {
-				setSuggestion( null );
-				return;
-			}
-
-			if ( typeof response.confidence === 'number' && response.confidence < state.confidence ) {
-				setSuggestion( null );
-				return;
-			}
-
-			const precedingText = stateRef.current.caret?.precedingText ?? '';
-			const normalizedText = addLeadingSpaceIfNeeded( String( response.suggestion ), precedingText );
-
-			setSuggestion( {
-				text: normalizedText,
-				confidence: Number( response.confidence || 0 ),
-			} );
-		} catch ( error: unknown ) {
-			// Ignore aborted requests
-			if ( error instanceof DOMException && error.name === 'AbortError' ) {
-				return;
-			}
-			// eslint-disable-next-line no-console
-			console.error( '[AI Type Ahead] Request failed', error );
-			setSuggestion( null );
-		} finally {
-			if ( abortControllerRef.current === controller ) {
-				abortControllerRef.current = null;
+			// Cancel any in-flight request
+			if ( abortControllerRef.current ) {
+				abortControllerRef.current.abort();
 			}
 			clearRequestTimeout();
-		}
-	}, [ abilityName, clearRequestTimeout ] );
 
-	const scheduleFetch = useCallback( ( manual: boolean ) => {
-		// Clear any pending debounce timer
-		if ( debounceTimerRef.current !== null ) {
-			window.clearTimeout( debounceTimerRef.current );
-		}
+			// Create new abort controller for this request
+			const controller = new AbortController();
+			abortControllerRef.current = controller;
+			const currentRequest = ++requestRef.current;
+			requestTimeoutRef.current = window.setTimeout( () => {
+				controller.abort();
+			}, REQUEST_TIMEOUT_MS );
 
-		if ( manual ) {
-			// Manual triggers bypass debounce
-			fetchSuggestion( true );
-			return;
-		}
+			try {
+				const response = await apiFetch< {
+					suggestion?: string;
+					confidence?: number;
+				} >( {
+					path: `/wp-abilities/v1/abilities/${ abilityName }/run`,
+					method: 'POST',
+					data: {
+						input: {
+							post_id: state.postId,
+							block_id: state.clientId,
+							block_content: state.plainContent,
+							preceding_text: state.caret.precedingText,
+							following_text: state.followingText,
+							surrounding_context: state.siblingContext,
+							cursor_position: state.caret.offset,
+							mode: state.completionMode,
+							max_words: state.maxWords,
+							manual_trigger: manual,
+						},
+					},
+					signal: controller.signal,
+				} );
 
-		// Debounce automatic triggers
-		const delay = Math.max( 200, settings.triggerDelay || 500 );
-		debounceTimerRef.current = window.setTimeout( () => {
-			debounceTimerRef.current = null;
+				// Ignore if a newer request has been made
+				if ( currentRequest !== requestRef.current ) {
+					return;
+				}
 
-			const state = stateRef.current;
-			const contextTriggered = state.caret ? shouldTriggerFromContext( state.caret.precedingText ) : false;
+				if (
+					! response ||
+					typeof response !== 'object' ||
+					! response.suggestion
+				) {
+					setSuggestion( null );
+					return;
+				}
 
-			// In word mode, only trigger after sentence-ending punctuation
-			if ( state.completionMode === 'word' && ! contextTriggered ) {
+				if (
+					typeof response.confidence === 'number' &&
+					response.confidence < state.confidence
+				) {
+					setSuggestion( null );
+					return;
+				}
+
+				const precedingText =
+					stateRef.current.caret?.precedingText ?? '';
+				const normalizedText = addLeadingSpaceIfNeeded(
+					String( response.suggestion ),
+					precedingText
+				);
+
+				setSuggestion( {
+					text: normalizedText,
+					confidence: Number( response.confidence || 0 ),
+				} );
+			} catch ( error: unknown ) {
+				// Ignore aborted requests
+				if (
+					error instanceof DOMException &&
+					error.name === 'AbortError'
+				) {
+					return;
+				}
+				// eslint-disable-next-line no-console
+				console.error( '[AI Type Ahead] Request failed', error );
+				setSuggestion( null );
+			} finally {
+				if ( abortControllerRef.current === controller ) {
+					abortControllerRef.current = null;
+				}
+				clearRequestTimeout();
+			}
+		},
+		[ abilityName, clearRequestTimeout ]
+	);
+
+	const scheduleFetch = useCallback(
+		( manual: boolean ) => {
+			// Clear any pending debounce timer
+			if ( debounceTimerRef.current !== null ) {
+				window.clearTimeout( debounceTimerRef.current );
+			}
+
+			if ( manual ) {
+				// Manual triggers bypass debounce
+				fetchSuggestion( true );
 				return;
 			}
 
-			fetchSuggestion( false );
-		}, delay );
-	}, [ fetchSuggestion, settings.triggerDelay ] );
+			// Debounce automatic triggers
+			const delay = Math.max( 200, settings.triggerDelay || 500 );
+			debounceTimerRef.current = window.setTimeout( () => {
+				debounceTimerRef.current = null;
+
+				const state = stateRef.current;
+				const contextTriggered = state.caret
+					? shouldTriggerFromContext( state.caret.precedingText )
+					: false;
+
+				// In word mode, only trigger after sentence-ending punctuation
+				if ( state.completionMode === 'word' && ! contextTriggered ) {
+					return;
+				}
+
+				fetchSuggestion( false );
+			}, delay );
+		},
+		[ fetchSuggestion, settings.triggerDelay ]
+	);
 
 	// Trigger suggestion fetch when conditions are met
 	useEffect( () => {
@@ -531,7 +623,16 @@ const TypeAheadBlock: React.FC<{
 		scheduleFetch( false );
 
 		return cancelPendingRequest;
-	}, [ shouldRequest, caret?.offset, plainContent, requestNonce, cancelPendingRequest, scheduleFetch, caret, editable ] );
+	}, [
+		shouldRequest,
+		caret?.offset,
+		plainContent,
+		requestNonce,
+		cancelPendingRequest,
+		scheduleFetch,
+		caret,
+		editable,
+	] );
 
 	useEffect( () => {
 		if ( ! editable ) {
@@ -561,7 +662,11 @@ const TypeAheadBlock: React.FC<{
 				return;
 			}
 
-			if ( suggestion && event.key === 'ArrowRight' && ( event.metaKey || event.ctrlKey ) ) {
+			if (
+				suggestion &&
+				event.key === 'ArrowRight' &&
+				( event.metaKey || event.ctrlKey )
+			) {
 				event.preventDefault();
 				acceptSuggestion( event.shiftKey ? 'sentence' : 'word' );
 				return;
@@ -573,7 +678,10 @@ const TypeAheadBlock: React.FC<{
 				return;
 			}
 
-			if ( ( event.metaKey || event.ctrlKey ) && event.code === 'Space' ) {
+			if (
+				( event.metaKey || event.ctrlKey ) &&
+				event.code === 'Space'
+			) {
 				event.preventDefault();
 				setRequestNonce( ( prev ) => prev + 1 );
 				scheduleFetch( true );
@@ -582,7 +690,7 @@ const TypeAheadBlock: React.FC<{
 
 		editable.addEventListener( 'keydown', handleKeyDown );
 		return () => editable.removeEventListener( 'keydown', handleKeyDown );
-	}, [ editable, suggestion, scheduleFetch ] );
+	}, [ editable, suggestion, scheduleFetch, acceptSuggestion ] );
 
 	useEffect( () => {
 		if ( block ) {
@@ -591,70 +699,79 @@ const TypeAheadBlock: React.FC<{
 		}
 	}, [ block ] );
 
-	const insertText = useCallback( ( text: string ) => {
-		if ( ! caret || ! editable ) {
-			return;
-		}
+	const insertText = useCallback(
+		( text: string ) => {
+			if ( ! caret || ! editable ) {
+				return;
+			}
 
-		const doc = caret.ownerDocument;
-		const sel = doc.getSelection();
-		if ( ! sel || sel.rangeCount === 0 ) {
-			return;
-		}
-		const range = sel.getRangeAt( 0 );
-		if ( ! editable.contains( range.startContainer ) ) {
-			return;
-		}
+			const doc = caret.ownerDocument;
+			const sel = doc.getSelection();
+			if ( ! sel || sel.rangeCount === 0 ) {
+				return;
+			}
+			const range = sel.getRangeAt( 0 );
+			if ( ! editable.contains( range.startContainer ) ) {
+				return;
+			}
 
-		if ( ! range.collapsed ) {
-			range.deleteContents();
-		}
-		const textNode = doc.createTextNode( text );
-		range.insertNode( textNode );
-		range.setStartAfter( textNode );
-		range.collapse( true );
-		sel.removeAllRanges();
-		sel.addRange( range );
+			if ( ! range.collapsed ) {
+				range.deleteContents();
+			}
+			const textNode = doc.createTextNode( text );
+			range.insertNode( textNode );
+			range.setStartAfter( textNode );
+			range.collapse( true );
+			sel.removeAllRanges();
+			sel.addRange( range );
 
-		const init: InputEventInit = {
-			bubbles: true,
-			cancelable: false,
-			data: text,
-			inputType: 'insertText',
-		};
+			const init: InputEventInit = {
+				bubbles: true,
+				cancelable: false,
+				data: text,
+				inputType: 'insertText',
+			};
 
-		const target = editable;
-		try {
-			const event = new InputEvent( 'input', init );
-			target.dispatchEvent( event );
-		} catch ( error ) {
-			const fallback = doc.createEvent( 'HTMLEvents' );
-			fallback.initEvent( 'input', true, false );
-			target.dispatchEvent( fallback );
-		}
-	}, [ caret, editable ] );
+			const target = editable;
+			try {
+				const event = new InputEvent( 'input', init );
+				target.dispatchEvent( event );
+			} catch ( error ) {
+				const fallback = doc.createEvent( 'HTMLEvents' );
+				fallback.initEvent( 'input', true, false );
+				target.dispatchEvent( fallback );
+			}
+		},
+		[ caret, editable ]
+	);
 
-	const acceptSuggestion = useCallback( ( mode: 'word' | 'sentence' | 'all' ) => {
-		if ( ! suggestion ) {
-			return;
-		}
+	const acceptSuggestion = useCallback(
+		( mode: 'word' | 'sentence' | 'all' ) => {
+			if ( ! suggestion ) {
+				return;
+			}
 
-		const { apply, remainder } = splitSuggestion( suggestion.text, mode );
-		if ( ! apply ) {
-			return;
-		}
+			const { apply, remainder } = splitSuggestion(
+				suggestion.text,
+				mode
+			);
+			if ( ! apply ) {
+				return;
+			}
 
-		insertText( apply );
+			insertText( apply );
 
-		if ( remainder.trim() ) {
-			setSuggestion( {
-				text: remainder,
-				confidence: suggestion.confidence,
-			} );
-		} else {
-			setSuggestion( null );
-		}
-	}, [ insertText, suggestion ] );
+			if ( remainder.trim() ) {
+				setSuggestion( {
+					text: remainder,
+					confidence: suggestion.confidence,
+				} );
+			} else {
+				setSuggestion( null );
+			}
+		},
+		[ insertText, suggestion ]
+	);
 
 	if ( ! allowedBlocks.has( name ) ) {
 		return <BlockEdit { ...blockProps } />;
@@ -669,7 +786,11 @@ const TypeAheadBlock: React.FC<{
 				container={ editable ?? null }
 				text={ suggestion?.text ?? null }
 			/>
-			<span className="screen-reader-text" role="status" aria-live="polite">
+			<span
+				className="screen-reader-text"
+				role="status"
+				aria-live="polite"
+			>
 				{ suggestion?.text ?? '' }
 			</span>
 		</>
@@ -678,7 +799,6 @@ const TypeAheadBlock: React.FC<{
 
 const bootstrap = ( settings: TypeAheadSettings ) => {
 	if ( ! settings.enabled ) {
-		console.log( '[AI Type Ahead] Experiment is disabled; ghost text will not activate.' );
 		return;
 	}
 
@@ -687,14 +807,21 @@ const bootstrap = ( settings: TypeAheadSettings ) => {
 		allowed.add( 'core/heading' );
 	}
 
-	const withTypeAhead = createHigherOrderComponent( ( BlockEdit: React.ComponentType<any> ) => {
-		return ( props: any ) => (
-			<TypeAheadBlock BlockEdit={ BlockEdit } blockProps={ props } settings={ settings } allowedBlocks={ allowed } />
-		);
-	}, 'withAITypeAhead' );
+	const withTypeAhead = createHigherOrderComponent(
+		( BlockEdit: React.ComponentType< any > ) => {
+			return ( props: any ) => (
+				<TypeAheadBlock
+					BlockEdit={ BlockEdit }
+					blockProps={ props }
+					settings={ settings }
+					allowedBlocks={ allowed }
+				/>
+			);
+		},
+		'withAITypeAhead'
+	);
 
 	addFilter( 'editor.BlockEdit', 'ai/type-ahead', withTypeAhead );
-	console.log( '[AI Type Ahead] Initialized successfully.', { mode: settings.completionMode, delay: settings.triggerDelay } );
 };
 
 const waitForSettings = ( attempts = 0 ) => {
@@ -706,7 +833,6 @@ const waitForSettings = ( attempts = 0 ) => {
 
 	if ( attempts > 200 ) {
 		// About 5 seconds of polling; bail to avoid infinite loops.
-		console.warn( '[AI Type Ahead] Settings not available; ghost text disabled.' );
 		return;
 	}
 

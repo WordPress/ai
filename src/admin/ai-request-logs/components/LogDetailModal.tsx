@@ -1,7 +1,16 @@
+/**
+ * WordPress dependencies
+ */
 import { Button, Modal } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React from 'react';
 
+/**
+ * Internal dependencies
+ */
 import type { LogEntry } from '../types';
 
 interface LogDetailModalProps {
@@ -18,18 +27,27 @@ const formatTimestamp = ( timestamp: string ): string => {
 };
 
 const formatCost = ( cost: number | null ): string => {
-	if ( cost === null ) return '-';
-	if ( cost < 0.01 ) return '$' + cost.toFixed( 6 );
+	if ( cost === null ) {
+		return '-';
+	}
+	if ( cost < 0.01 ) {
+		return '$' + cost.toFixed( 6 );
+	}
 	return '$' + cost.toFixed( 4 );
 };
 
-const LogDetailModal: React.FC< LogDetailModalProps > = ( { log, onClose } ) => {
-	const inputPreview = typeof log.context?.input_preview === 'string'
-		? log.context.input_preview
-		: null;
-	const outputPreview = typeof log.context?.output_preview === 'string'
-		? log.context.output_preview
-		: null;
+const LogDetailModal: React.FC< LogDetailModalProps > = ( {
+	log,
+	onClose,
+} ) => {
+	const inputPreview =
+		typeof log.context?.input_preview === 'string'
+			? log.context.input_preview
+			: null;
+	const outputPreview =
+		typeof log.context?.output_preview === 'string'
+			? log.context.output_preview
+			: null;
 
 	const handleCopyId = async () => {
 		try {
@@ -67,8 +85,12 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( { log, onClose } ) => 
 		>
 			<div className="ai-request-logs__detail">
 				<div className="ai-request-logs__detail-header">
-					<code className="ai-request-logs__detail-operation">{ log.operation }</code>
-					<span className={ `ai-request-logs__status ai-request-logs__status--${ log.status }` }>
+					<code className="ai-request-logs__detail-operation">
+						{ log.operation }
+					</code>
+					<span
+						className={ `ai-request-logs__status ai-request-logs__status--${ log.status }` }
+					>
 						{ getStatusIcon( log.status ) } { log.status }
 					</span>
 				</div>
@@ -85,7 +107,11 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( { log, onClose } ) => 
 								<th>{ __( 'Duration', 'ai' ) }</th>
 								<td>
 									{ log.duration_ms !== null
-										? sprintf( __( '%d ms', 'ai' ), log.duration_ms )
+										? sprintf(
+												/* translators: %d: request duration in milliseconds. */
+												__( '%d ms', 'ai' ),
+												log.duration_ms
+										  )
 										: '-' }
 								</td>
 							</tr>
@@ -125,22 +151,32 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( { log, onClose } ) => 
 					</div>
 				) }
 
-				{ ( log.tokens_input !== null || log.tokens_output !== null ) && (
+				{ ( log.tokens_input !== null ||
+					log.tokens_output !== null ) && (
 					<div className="ai-request-logs__detail-section">
 						<h3>{ __( 'Token Usage', 'ai' ) }</h3>
 						<table className="ai-request-logs__detail-table">
 							<tbody>
 								<tr>
 									<th>{ __( 'Input Tokens', 'ai' ) }</th>
-									<td>{ log.tokens_input?.toLocaleString() ?? '-' }</td>
+									<td>
+										{ log.tokens_input?.toLocaleString() ??
+											'-' }
+									</td>
 								</tr>
 								<tr>
 									<th>{ __( 'Output Tokens', 'ai' ) }</th>
-									<td>{ log.tokens_output?.toLocaleString() ?? '-' }</td>
+									<td>
+										{ log.tokens_output?.toLocaleString() ??
+											'-' }
+									</td>
 								</tr>
 								<tr>
 									<th>{ __( 'Total Tokens', 'ai' ) }</th>
-									<td>{ log.tokens_total?.toLocaleString() ?? '-' }</td>
+									<td>
+										{ log.tokens_total?.toLocaleString() ??
+											'-' }
+									</td>
 								</tr>
 								<tr>
 									<th>{ __( 'Estimated Cost', 'ai' ) }</th>
@@ -151,45 +187,57 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( { log, onClose } ) => 
 					</div>
 				) }
 
-			{ log.error_message && (
-				<div className="ai-request-logs__detail-section ai-request-logs__detail-section--error">
-					<h3>{ __( 'Error', 'ai' ) }</h3>
-					<pre className="ai-request-logs__detail-error">{ log.error_message }</pre>
-				</div>
-			) }
+				{ log.error_message && (
+					<div className="ai-request-logs__detail-section ai-request-logs__detail-section--error">
+						<h3>{ __( 'Error', 'ai' ) }</h3>
+						<pre className="ai-request-logs__detail-error">
+							{ log.error_message }
+						</pre>
+					</div>
+				) }
 
-			{ inputPreview && (
-				<div className="ai-request-logs__detail-section">
-					<h3>{ __( 'Input Preview', 'ai' ) }</h3>
-					<pre className="ai-request-logs__detail-context">{ inputPreview }</pre>
-				</div>
-			) }
+				{ inputPreview && (
+					<div className="ai-request-logs__detail-section">
+						<h3>{ __( 'Input Preview', 'ai' ) }</h3>
+						<pre className="ai-request-logs__detail-context">
+							{ inputPreview }
+						</pre>
+					</div>
+				) }
 
-			{ outputPreview && (
-				<div className="ai-request-logs__detail-section">
-					<h3>{ __( 'Output Preview', 'ai' ) }</h3>
-					<pre className="ai-request-logs__detail-context">{ outputPreview }</pre>
-				</div>
-			) }
+				{ outputPreview && (
+					<div className="ai-request-logs__detail-section">
+						<h3>{ __( 'Output Preview', 'ai' ) }</h3>
+						<pre className="ai-request-logs__detail-context">
+							{ outputPreview }
+						</pre>
+					</div>
+				) }
 
-			{ log.context && Object.keys( log.context ).length > 0 && (
-				<div className="ai-request-logs__detail-section">
-					<h3>{ __( 'Context', 'ai' ) }</h3>
-					<pre className="ai-request-logs__detail-context">
-						{ JSON.stringify( log.context, null, 2 ) }
-					</pre>
-				</div>
-			) }
+				{ log.context && Object.keys( log.context ).length > 0 && (
+					<div className="ai-request-logs__detail-section">
+						<h3>{ __( 'Context', 'ai' ) }</h3>
+						<pre className="ai-request-logs__detail-context">
+							{ JSON.stringify( log.context, null, 2 ) }
+						</pre>
+					</div>
+				) }
 
-			<div className="ai-request-logs__detail-footer">
-				<code className="ai-request-logs__detail-id">{ log.id }</code>
-				<Button variant="secondary" size="small" onClick={ handleCopyId }>
-					{ __( 'Copy Log ID', 'ai' ) }
-				</Button>
+				<div className="ai-request-logs__detail-footer">
+					<code className="ai-request-logs__detail-id">
+						{ log.id }
+					</code>
+					<Button
+						variant="secondary"
+						size="small"
+						onClick={ handleCopyId }
+					>
+						{ __( 'Copy Log ID', 'ai' ) }
+					</Button>
+				</div>
 			</div>
-		</div>
-	</Modal>
-);
+		</Modal>
+	);
 };
 
 export default LogDetailModal;

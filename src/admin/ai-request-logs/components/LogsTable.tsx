@@ -1,15 +1,26 @@
+/**
+ * WordPress dependencies
+ */
 import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
 import { DataViews } from '@wordpress/dataviews/wp';
 import type { DataViewField, Filter, View } from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React, { useCallback, useEffect, useMemo } from 'react';
 
+/**
+ * Internal dependencies
+ */
 import { AnthropicIcon, GoogleIcon, OpenAiIcon } from '../../components/icons';
 import { usePersistedView } from '../../hooks/usePersistedView';
 import type { FilterOptions, LogEntry, LogFilters } from '../types';
 
 const getProviderIcon = ( provider: string | null ): React.ReactNode => {
-	if ( ! provider ) return null;
+	if ( ! provider ) {
+		return null;
+	}
 	const normalized = provider.toLowerCase();
 	if ( normalized === 'openai' ) {
 		return <OpenAiIcon />;
@@ -42,14 +53,22 @@ const formatTimestamp = ( timestamp: string ): string => {
 };
 
 const formatDuration = ( ms: number | null ): string => {
-	if ( ms === null ) return '-';
-	if ( ms < 1000 ) return ms + 'ms';
+	if ( ms === null ) {
+		return '-';
+	}
+	if ( ms < 1000 ) {
+		return ms + 'ms';
+	}
 	return ( ms / 1000 ).toFixed( 1 ) + 's';
 };
 
 const formatTokens = ( tokens: number | null ): string => {
-	if ( tokens === null ) return '-';
-	if ( tokens >= 1000 ) return ( tokens / 1000 ).toFixed( 1 ) + 'K';
+	if ( tokens === null ) {
+		return '-';
+	}
+	if ( tokens >= 1000 ) {
+		return ( tokens / 1000 ).toFixed( 1 ) + 'K';
+	}
 	return tokens.toLocaleString();
 };
 
@@ -76,7 +95,11 @@ const normalizeFilterValue = ( raw: unknown ): string => {
 	if ( Array.isArray( raw ) ) {
 		return normalizeFilterValue( raw[ 0 ] );
 	}
-	if ( raw && typeof raw === 'object' && 'value' in ( raw as Record< string, unknown > ) ) {
+	if (
+		raw &&
+		typeof raw === 'object' &&
+		'value' in ( raw as Record< string, unknown > )
+	) {
 		return normalizeFilterValue( ( raw as { value: unknown } ).value );
 	}
 	if ( typeof raw === 'string' ) {
@@ -88,7 +111,9 @@ const normalizeFilterValue = ( raw: unknown ): string => {
 const normalizeFilterArrayValue = ( raw: unknown ): string[] => {
 	if ( Array.isArray( raw ) ) {
 		return raw.map( ( item ) => {
-			if ( typeof item === 'string' ) return item;
+			if ( typeof item === 'string' ) {
+				return item;
+			}
 			if ( item && typeof item === 'object' && 'value' in item ) {
 				return String( ( item as { value: unknown } ).value );
 			}
@@ -101,12 +126,18 @@ const normalizeFilterArrayValue = ( raw: unknown ): string[] => {
 	return [];
 };
 
-const extractFilterValue = ( activeFilters: Filter[] | undefined, field: string ): string => {
+const extractFilterValue = (
+	activeFilters: Filter[] | undefined,
+	field: string
+): string => {
 	const filter = activeFilters?.find( ( entry ) => entry.field === field );
 	return normalizeFilterValue( filter?.value ?? '' );
 };
 
-const extractFilterArrayValue = ( activeFilters: Filter[] | undefined, field: string ): string[] => {
+const extractFilterArrayValue = (
+	activeFilters: Filter[] | undefined,
+	field: string
+): string[] => {
 	const filter = activeFilters?.find( ( entry ) => entry.field === field );
 	return normalizeFilterArrayValue( filter?.value ?? [] );
 };
@@ -124,22 +155,38 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	onPageChange,
 } ) => {
 	const typeElements = useMemo(
-		() => filterOptions.types.map( ( value ) => ( { label: formatSelectLabel( value ), value } ) ),
+		() =>
+			filterOptions.types.map( ( value ) => ( {
+				label: formatSelectLabel( value ),
+				value,
+			} ) ),
 		[ filterOptions.types ]
 	);
 
 	const statusElements = useMemo(
-		() => filterOptions.statuses.map( ( value ) => ( { label: formatSelectLabel( value ), value } ) ),
+		() =>
+			filterOptions.statuses.map( ( value ) => ( {
+				label: formatSelectLabel( value ),
+				value,
+			} ) ),
 		[ filterOptions.statuses ]
 	);
 
 	const providerElements = useMemo(
-		() => filterOptions.providers.map( ( value ) => ( { label: value, value } ) ),
+		() =>
+			filterOptions.providers.map( ( value ) => ( {
+				label: value,
+				value,
+			} ) ),
 		[ filterOptions.providers ]
 	);
 
 	const operationElements = useMemo(
-		() => ( filterOptions.operations ?? [] ).map( ( value ) => ( { label: formatSelectLabel( value ), value } ) ),
+		() =>
+			( filterOptions.operations ?? [] ).map( ( value ) => ( {
+				label: formatSelectLabel( value ),
+				value,
+			} ) ),
 		[ filterOptions.operations ]
 	);
 
@@ -149,41 +196,67 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			next.push( { field: 'type', operator: 'is', value: current.type } );
 		}
 		if ( current.status ) {
-			next.push( { field: 'status', operator: 'is', value: current.status } );
+			next.push( {
+				field: 'status',
+				operator: 'is',
+				value: current.status,
+			} );
 		}
 		if ( current.provider ) {
-			next.push( { field: 'provider', operator: 'is', value: current.provider } );
+			next.push( {
+				field: 'provider',
+				operator: 'is',
+				value: current.provider,
+			} );
 		}
 		if ( current.operation.length > 0 ) {
-			next.push( { field: 'operation', operator: 'isAny', value: current.operation } );
+			next.push( {
+				field: 'operation',
+				operator: 'isAny',
+				value: current.operation,
+			} );
 		}
 		return next;
 	}, [] );
 
-	const defaultView: View = useMemo( () => ( {
-		type: 'table',
-		perPage: 25,
-		page: 1,
-		search: '',
-		filters: [],
-		fields: [ 'timestamp', 'operation', 'provider', 'tokens_total', 'duration_ms', 'status', 'actions' ],
-		sort: {
-			field: 'timestamp',
-			direction: 'desc',
-		},
-		layout: {
-			density: 'comfortable',
-		},
-	} ), [] );
+	const defaultView: View = useMemo(
+		() => ( {
+			type: 'table',
+			perPage: 25,
+			page: 1,
+			search: '',
+			filters: [],
+			fields: [
+				'timestamp',
+				'operation',
+				'provider',
+				'tokens_total',
+				'duration_ms',
+				'status',
+				'actions',
+			],
+			sort: {
+				field: 'timestamp',
+				direction: 'desc',
+			},
+			layout: {
+				density: 'comfortable',
+			},
+		} ),
+		[]
+	);
 
-	const { view, setView } = usePersistedView( 'ai-request-logs', defaultView );
+	const { view, setView } = usePersistedView(
+		'ai-request-logs',
+		defaultView
+	);
 
 	const hasInitialFilters = Boolean(
 		filters.type ||
-		filters.status ||
-		filters.provider ||
-		filters.search ||
-		filters.operation.length > 0
+			filters.status ||
+			filters.provider ||
+			filters.search ||
+			filters.operation.length > 0
 	);
 
 	// Sync parent filters with persisted view on initial load
@@ -195,8 +268,14 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		// Extract persisted filter values and update parent state
 		const persistedType = extractFilterValue( view.filters, 'type' );
 		const persistedStatus = extractFilterValue( view.filters, 'status' );
-		const persistedProvider = extractFilterValue( view.filters, 'provider' );
-		const persistedOperation = extractFilterArrayValue( view.filters, 'operation' );
+		const persistedProvider = extractFilterValue(
+			view.filters,
+			'provider'
+		);
+		const persistedOperation = extractFilterArrayValue(
+			view.filters,
+			'operation'
+		);
 		const persistedSearch = view.search ?? '';
 
 		if ( persistedType !== filters.type ) {
@@ -208,7 +287,10 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		if ( persistedProvider !== filters.provider ) {
 			onFilterChange( 'provider', persistedProvider );
 		}
-		if ( JSON.stringify( persistedOperation ) !== JSON.stringify( filters.operation ) ) {
+		if (
+			JSON.stringify( persistedOperation ) !==
+			JSON.stringify( filters.operation )
+		) {
 			onFilterChange( 'operation', persistedOperation );
 		}
 		if ( persistedSearch !== filters.search ) {
@@ -221,7 +303,8 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		setView( ( previous ) => {
 			const nextFilters = buildFilterArray( filters );
 			const prevFilters = previous.filters ?? [];
-			const filtersChanged = JSON.stringify( prevFilters ) !== JSON.stringify( nextFilters );
+			const filtersChanged =
+				JSON.stringify( prevFilters ) !== JSON.stringify( nextFilters );
 			const prevSearch = previous.search ?? '';
 			const nextSearch = filters.search ?? '';
 
@@ -245,120 +328,139 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		} ) );
 	}, [ page, setView ] );
 
-	const fields = useMemo< DataViewField< LogEntry >[] >( () => [
-		{
-			id: 'timestamp',
-			label: __( 'Time', 'ai' ),
-			type: 'datetime',
-			getValue: ( { item } ) => item.timestamp,
-			enableSorting: false,
-			render: ( { item } ) => (
-				<span className="ai-request-logs__cell--time">{ formatTimestamp( item.timestamp ) }</span>
-			),
-		},
-		{
-			id: 'operation',
-			label: __( 'Operation', 'ai' ),
-			type: 'text',
-			enableGlobalSearch: true,
-			getValue: ( { item } ) => item.operation,
-			elements: operationElements,
-			filterBy: operationElements.length > 0
-				? { operators: [ 'isAny' ] }
-				: false,
-			render: ( { item } ) => (
-				<div className="ai-request-logs__operation">
-					<code>{ item.operation }</code>
-					{ item.error_message && (
-						<div className="ai-request-logs__error-preview">
-							{ item.error_message.substring( 0, 50 ) }
-							{ item.error_message.length > 50 ? '…' : '' }
-						</div>
-					) }
-				</div>
-			),
-		},
-		{
-			id: 'type',
-			label: __( 'Type', 'ai' ),
-			type: 'text',
-			getValue: ( { item } ) => item.type,
-			elements: typeElements,
-			filterBy: typeElements.length > 0
-				? { operators: [ 'is' ] }
-				: false,
-			enableHiding: false,
-			isVisible: () => false,
-		},
-		{
-			id: 'provider',
-			label: __( 'Provider / Model', 'ai' ),
-			type: 'text',
-			getValue: ( { item } ) => item.provider ?? '',
-			elements: providerElements,
-			filterBy: providerElements.length > 0
-				? { operators: [ 'is' ] }
-				: false,
-			render: ( { item } ) => (
-				<div>
-					{ item.provider && (
-						<span className="ai-request-logs__provider">
-							{ getProviderIcon( item.provider ) }
-							{ item.provider }
-						</span>
-					) }
-					{ item.model && <div className="ai-request-logs__model">{ item.model }</div> }
-					{ ! item.provider && ! item.model && '-' }
-				</div>
-			),
-		},
-		{
-			id: 'tokens_total',
-			label: __( 'Tokens', 'ai' ),
-			type: 'number',
-			getValue: ( { item } ) => item.tokens_total ?? 0,
-			render: ( { item } ) => formatTokens( item.tokens_total ),
-		},
-		{
-			id: 'duration_ms',
-			label: __( 'Duration', 'ai' ),
-			type: 'number',
-			getValue: ( { item } ) => item.duration_ms ?? 0,
-			render: ( { item } ) => formatDuration( item.duration_ms ),
-		},
-		{
-			id: 'status',
-			label: __( 'Status', 'ai' ),
-			type: 'text',
-			getValue: ( { item } ) => item.status,
-			elements: statusElements,
-			filterBy: statusElements.length > 0
-				? { operators: [ 'is' ] }
-				: false,
-			render: ( { item } ) => (
-				<span className={ `ai-request-logs__status ${ getStatusClass( item.status ) }` }>
-					{ formatSelectLabel( item.status ) }
-				</span>
-			),
-		},
-		{
-			id: 'actions',
-			label: __( 'Details', 'ai' ),
-			type: 'text',
-			enableSorting: false,
-			enableHiding: false,
-			filterBy: false,
-			render: ( { item } ) => (
-				<Button
-					variant="tertiary"
-					size="small"
-					onClick={ () => onViewLog( item ) }
-				>
-					{ __( 'View', 'ai' ) }
-				</Button>
-			),
-		},
-	], [ onViewLog, operationElements, providerElements, statusElements, typeElements ] );
+	const fields = useMemo< DataViewField< LogEntry >[] >(
+		() => [
+			{
+				id: 'timestamp',
+				label: __( 'Time', 'ai' ),
+				type: 'datetime',
+				getValue: ( { item } ) => item.timestamp,
+				enableSorting: false,
+				render: ( { item } ) => (
+					<span className="ai-request-logs__cell--time">
+						{ formatTimestamp( item.timestamp ) }
+					</span>
+				),
+			},
+			{
+				id: 'operation',
+				label: __( 'Operation', 'ai' ),
+				type: 'text',
+				enableGlobalSearch: true,
+				getValue: ( { item } ) => item.operation,
+				elements: operationElements,
+				filterBy:
+					operationElements.length > 0
+						? { operators: [ 'isAny' ] }
+						: false,
+				render: ( { item } ) => (
+					<div className="ai-request-logs__operation">
+						<code>{ item.operation }</code>
+						{ item.error_message && (
+							<div className="ai-request-logs__error-preview">
+								{ item.error_message.substring( 0, 50 ) }
+								{ item.error_message.length > 50 ? '…' : '' }
+							</div>
+						) }
+					</div>
+				),
+			},
+			{
+				id: 'type',
+				label: __( 'Type', 'ai' ),
+				type: 'text',
+				getValue: ( { item } ) => item.type,
+				elements: typeElements,
+				filterBy:
+					typeElements.length > 0 ? { operators: [ 'is' ] } : false,
+				enableHiding: false,
+				isVisible: () => false,
+			},
+			{
+				id: 'provider',
+				label: __( 'Provider / Model', 'ai' ),
+				type: 'text',
+				getValue: ( { item } ) => item.provider ?? '',
+				elements: providerElements,
+				filterBy:
+					providerElements.length > 0
+						? { operators: [ 'is' ] }
+						: false,
+				render: ( { item } ) => (
+					<div>
+						{ item.provider && (
+							<span className="ai-request-logs__provider">
+								{ getProviderIcon( item.provider ) }
+								{ item.provider }
+							</span>
+						) }
+						{ item.model && (
+							<div className="ai-request-logs__model">
+								{ item.model }
+							</div>
+						) }
+						{ ! item.provider && ! item.model && '-' }
+					</div>
+				),
+			},
+			{
+				id: 'tokens_total',
+				label: __( 'Tokens', 'ai' ),
+				type: 'number',
+				getValue: ( { item } ) => item.tokens_total ?? 0,
+				render: ( { item } ) => formatTokens( item.tokens_total ),
+			},
+			{
+				id: 'duration_ms',
+				label: __( 'Duration', 'ai' ),
+				type: 'number',
+				getValue: ( { item } ) => item.duration_ms ?? 0,
+				render: ( { item } ) => formatDuration( item.duration_ms ),
+			},
+			{
+				id: 'status',
+				label: __( 'Status', 'ai' ),
+				type: 'text',
+				getValue: ( { item } ) => item.status,
+				elements: statusElements,
+				filterBy:
+					statusElements.length > 0 ? { operators: [ 'is' ] } : false,
+				render: ( { item } ) => (
+					<span
+						className={ `ai-request-logs__status ${ getStatusClass(
+							item.status
+						) }` }
+					>
+						{ formatSelectLabel( item.status ) }
+					</span>
+				),
+			},
+			{
+				id: 'actions',
+				label: __( 'Details', 'ai' ),
+				type: 'text',
+				enableSorting: false,
+				enableHiding: false,
+				filterBy: false,
+				render: ( { item } ) => (
+					<Button
+						variant="tertiary"
+						size="small"
+						onClick={ () => onViewLog( item ) }
+					>
+						{ __( 'View', 'ai' ) }
+					</Button>
+				),
+			},
+		],
+		[
+			onViewLog,
+			operationElements,
+			providerElements,
+			statusElements,
+			typeElements,
+		]
+	);
 
 	const handleViewChange = ( nextView: View ) => {
 		setView( ( previous ) => ( {
@@ -387,8 +489,14 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			onFilterChange( 'provider', nextProvider );
 		}
 
-		const nextOperation = extractFilterArrayValue( nextView.filters, 'operation' );
-		if ( JSON.stringify( nextOperation ) !== JSON.stringify( filters.operation ) ) {
+		const nextOperation = extractFilterArrayValue(
+			nextView.filters,
+			'operation'
+		);
+		if (
+			JSON.stringify( nextOperation ) !==
+			JSON.stringify( filters.operation )
+		) {
 			onFilterChange( 'operation', nextOperation );
 		}
 
@@ -398,7 +506,13 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		}
 	};
 
-	const hasActiveFilters = Boolean( filters.search || filters.type || filters.status || filters.provider || filters.operation.length > 0 );
+	const hasActiveFilters = Boolean(
+		filters.search ||
+			filters.type ||
+			filters.status ||
+			filters.provider ||
+			filters.operation.length > 0
+	);
 
 	return (
 		<Card className="ai-request-logs__card ai-request-logs__table-card">
@@ -406,9 +520,13 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				<h2>{ __( 'Request Logs', 'ai' ) }</h2>
 				{ total > 0 && (
 					<span className="ai-request-logs__count">
-						{ sprintf( __( '%d total', 'ai' ), total ) }
+						{ sprintf(
+							/* translators: %d: total number of logged requests. */
+							__( '%d total', 'ai' ),
+							total
+						) }
 					</span>
-				 ) }
+				) }
 			</CardHeader>
 			<CardBody>
 				<DataViews
@@ -431,13 +549,16 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 						totalPages,
 					} }
 					config={ { perPageSizes: [ 25 ] } }
-					empty={ (
+					empty={
 						<p className="ai-request-logs__empty">
 							{ hasActiveFilters
 								? __( 'No logs match your filters.', 'ai' )
-								: __( 'No AI requests have been logged yet.', 'ai' ) }
+								: __(
+										'No AI requests have been logged yet.',
+										'ai'
+								  ) }
 						</p>
-					) }
+					}
 					searchLabel={ __( 'Search logs', 'ai' ) }
 				/>
 			</CardBody>

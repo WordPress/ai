@@ -29,7 +29,7 @@ type RunAbilityOptions = {
 let hasShownFallbackNotice = false;
 
 const getAbilityClient = () =>
-	(window as Record< string, any > )?.wp?.abilities ?? null;
+	( window as Record< string, any > )?.wp?.abilities ?? null;
 
 const logFallbackWarning = () => {
 	if ( hasShownFallbackNotice ) {
@@ -48,16 +48,17 @@ const isAbilityNotFoundError = ( error: unknown ): boolean => {
 		return false;
 	}
 
-	const message = 'message' in error && typeof ( error as any ).message === 'string'
-		? ( error as any ).message
-		: '';
-	const code = 'code' in error && typeof ( error as any ).code === 'string'
-		? ( error as any ).code
-		: '';
+	const message =
+		'message' in error && typeof ( error as any ).message === 'string'
+			? ( error as any ).message
+			: '';
+	const code =
+		'code' in error && typeof ( error as any ).code === 'string'
+			? ( error as any ).code
+			: '';
 
 	return (
-		code === 'ability_not_found' ||
-		message.includes( 'Ability not found' )
+		code === 'ability_not_found' || message.includes( 'Ability not found' )
 	);
 };
 
@@ -73,9 +74,12 @@ const buildFetchOptions = (
 			path:
 				normalizedInput === null
 					? `/wp-abilities/v1/abilities/${ ability }/run`
-					: addQueryArgs( `/wp-abilities/v1/abilities/${ ability }/run`, {
-							input: normalizedInput,
-					  } ),
+					: addQueryArgs(
+							`/wp-abilities/v1/abilities/${ ability }/run`,
+							{
+								input: normalizedInput,
+							}
+					  ),
 			method,
 		};
 	}
@@ -111,7 +115,9 @@ export async function runAbility< T = unknown >(
 
 	const method: Method = options?.method ?? 'POST';
 
-	const response = await apiFetch( buildFetchOptions( ability, input, method ) );
+	const response = await apiFetch(
+		buildFetchOptions( ability, input, method )
+	);
 
 	return response as T;
 }

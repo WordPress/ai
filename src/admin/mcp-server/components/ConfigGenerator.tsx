@@ -1,7 +1,23 @@
-import { Button, Card, CardBody, CardHeader, SelectControl, TextareaControl } from '@wordpress/components';
+/**
+ * WordPress dependencies
+ */
+import {
+	Button,
+	Card,
+	CardBody,
+	CardHeader,
+	SelectControl,
+	TextareaControl,
+} from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 
+/**
+ * Internal dependencies
+ */
 import type { ConfigTemplate, CopyHandler } from '../types';
 
 interface ConfigGeneratorProps {
@@ -9,10 +25,18 @@ interface ConfigGeneratorProps {
 	onCopy: CopyHandler;
 }
 
-const ConfigGenerator: React.FC< ConfigGeneratorProps > = ( { templates, onCopy } ) => {
-	const templateEntries = useMemo( () => Object.values( templates ), [ templates ] );
+const ConfigGenerator: React.FC< ConfigGeneratorProps > = ( {
+	templates,
+	onCopy,
+} ) => {
+	const templateEntries = useMemo(
+		() => Object.values( templates ),
+		[ templates ]
+	);
 	const hasTemplates = templateEntries.length > 0;
-	const [ selected, setSelected ] = useState( templateEntries[ 0 ]?.id ?? '' );
+	const [ selected, setSelected ] = useState(
+		templateEntries[ 0 ]?.id ?? ''
+	);
 
 	useEffect( () => {
 		if ( ! templateEntries.length ) {
@@ -29,12 +53,18 @@ const ConfigGenerator: React.FC< ConfigGeneratorProps > = ( { templates, onCopy 
 			return null;
 		}
 
-		return templateEntries.find( ( tpl ) => tpl.id === selected ) ?? templateEntries[ 0 ];
+		return (
+			templateEntries.find( ( tpl ) => tpl.id === selected ) ??
+			templateEntries[ 0 ]
+		);
 	}, [ hasTemplates, selected, templateEntries ] );
 
 	const handleCopy = () => {
 		if ( activeTemplate ) {
-			onCopy( activeTemplate.content, __( 'Client configuration', 'ai' ) );
+			onCopy(
+				activeTemplate.content,
+				__( 'Client configuration', 'ai' )
+			);
 		}
 	};
 
@@ -43,7 +73,9 @@ const ConfigGenerator: React.FC< ConfigGeneratorProps > = ( { templates, onCopy 
 			return;
 		}
 
-		const blob = new Blob( [ activeTemplate.content ], { type: 'application/json' } );
+		const blob = new Blob( [ activeTemplate.content ], {
+			type: 'application/json',
+		} );
 		const url = URL.createObjectURL( blob );
 		const anchor = document.createElement( 'a' );
 		anchor.href = url;
@@ -60,38 +92,49 @@ const ConfigGenerator: React.FC< ConfigGeneratorProps > = ( { templates, onCopy 
 			<CardBody>
 				{ hasTemplates ? (
 					<>
-					<SelectControl
-						label={ __( 'Choose a client', 'ai' ) }
-						value={ activeTemplate?.id }
-						onChange={ ( value: string ) => setSelected( value ) }
-						options={ templateEntries.map( ( tpl ) => ( {
-							label: tpl.fileName,
-							value: tpl.id,
-						} ) ) }
-						__nextHasNoMarginBottom
-						__next40pxDefaultSize
-					/>
-					<TextareaControl
-						label={ __( 'Paste this JSON into your MCP client', 'ai' ) }
-						value={ activeTemplate?.content ?? '' }
-						rows={ 12 }
-						readOnly
-						__nextHasNoMarginBottom
-					/>
+						<SelectControl
+							label={ __( 'Choose a client', 'ai' ) }
+							value={ activeTemplate?.id }
+							onChange={ ( value: string ) =>
+								setSelected( value )
+							}
+							options={ templateEntries.map( ( tpl ) => ( {
+								label: tpl.fileName,
+								value: tpl.id,
+							} ) ) }
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+						<TextareaControl
+							label={ __(
+								'Paste this JSON into your MCP client',
+								'ai'
+							) }
+							value={ activeTemplate?.content ?? '' }
+							rows={ 12 }
+							readOnly
+							__nextHasNoMarginBottom
+						/>
 						<div className="ai-mcp-server__button-row">
 							<Button variant="primary" onClick={ handleCopy }>
 								{ __( 'Copy config', 'ai' ) }
 							</Button>
-							<Button variant="secondary" onClick={ handleDownload }>
+							<Button
+								variant="secondary"
+								onClick={ handleDownload }
+							>
 								{ __( 'Download file', 'ai' ) }
 							</Button>
 						</div>
 					</>
-				 ) : (
+				) : (
 					<p className="ai-mcp-server__hint">
-						{ __( 'Once the MCP HTTP endpoint is available we will generate ready-to-use config snippets for Claude Desktop, Cursor, and other clients.', 'ai' ) }
+						{ __(
+							'Once the MCP HTTP endpoint is available we will generate ready-to-use config snippets for Claude Desktop, Cursor, and other clients.',
+							'ai'
+						) }
 					</p>
-				 ) }
+				) }
 			</CardBody>
 		</Card>
 	);
