@@ -14,22 +14,31 @@ import {
 } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { registerPlugin } from '@wordpress/plugins';
-import { PluginSidebar, PluginSidebarMoreMenuItem } from '@wordpress/editor';
+import {
+	PluginSidebar,
+	PluginSidebarMoreMenuItem,
+	store as editorStore,
+} from '@wordpress/editor';
 import {
 	Button,
-	ButtonGroup,
-	Card,
-	CardBody,
-	CardHeader,
 	CheckboxControl,
 	Notice,
+	Popover,
 	Spinner,
 	TextControl,
+	__experimentalToggleGroupControl as ToggleGroupControl,
+	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
 } from '@wordpress/components';
-import { DataViews } from '@wordpress/dataviews';
+import {
+	Icon,
+	arrowRight,
+	closeSmall,
+	cog,
+	timeToRead,
+} from '@wordpress/icons';
+import { DataViews } from '@wordpress/dataviews/wp';
 import type { DataViewField, View } from '@wordpress/dataviews';
 import { useSelect } from '@wordpress/data';
-import { store as editorStore } from '@wordpress/editor';
 
 /**
  * Internal dependencies
@@ -174,21 +183,31 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 	}, [ data.suggestionTypes ] );
 
 	const [ view, setView ] = useState< View >( {
-		type: 'table',
+		type: 'grid',
 		perPage: 8,
 		page: 1,
 		search: '',
-		fields: [ 'summary', 'timestamp', 'status', 'actions' ],
+		fields: [ 'priority', 'timestamp', 'status', 'actions' ],
+		titleField: 'summary',
+		descriptionField: 'details',
+		showTitle: true,
+		showDescription: true,
+		filters: [],
 		sort: {
 			field: 'timestamp',
 			direction: 'desc',
 		},
 		layout: {
-			density: 'comfortable',
+			previewSize: 360,
+			badgeFields: [ 'priority', 'status' ],
 		},
 	} );
 
 	const lastAutoWordCount = useRef( wordCount );
+	const [ isControlsOpen, setIsControlsOpen ] = useState( false );
+	const [ isSettingsOpen, setIsSettingsOpen ] = useState( false );
+	const controlsButtonRef = useRef< HTMLButtonElement | null >( null );
+	const settingsButtonRef = useRef< HTMLButtonElement | null >( null );
 
 	const priorityLabels = useMemo(
 		() => ( {
@@ -236,6 +255,7 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 	);
 
 	const wordsWritten = Math.max( 0, wordCount - wordsAtStart );
+	const hasContent = wordCount > 0;
 
 	const updateTimer = useCallback( ( seconds: number ) => {
 		setTimerSeconds( seconds );
@@ -327,18 +347,8 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 										{ typeConfig.label }
 									</span>
 								) }
-								<span
-									className={ `ai-writing-assistant__priority ai-writing-assistant__priority--${ item.priority }` }
-								>
-									{ priorityLabels[ item.priority ] }
-								</span>
-								<span className="ai-writing-assistant__status-pill">
-									{ __( 'Status', 'ai' ) }:{ ' ' }
-									{ statusLabels[ item.status ] }
-								</span>
 							</div>
 							<strong>{ item.summary }</strong>
-							<p>{ item.details }</p>
 							{ item.context && (
 								<p className="ai-writing-assistant__context">
 									{ item.context }
@@ -355,6 +365,19 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 				getValue: ( { item } ) => item.type,
 				elements: typeElements,
 				filterBy: { operators: [ 'isAny' ] },
+				enableHiding: false,
+				isVisible: () => false,
+			},
+			{
+				id: 'details',
+				label: __( 'Details', 'ai' ),
+				type: 'text',
+				getValue: ( { item } ) => item.details,
+				render: ( { item } ) => (
+					<p className="ai-writing-assistant__details">
+						{ item.details }
+					</p>
+				),
 				enableHiding: false,
 				isVisible: () => false,
 			},
@@ -398,7 +421,7 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 				enableHiding: false,
 				filterBy: false,
 				render: ( { item } ) => (
-					<ButtonGroup>
+					<div className="ai-writing-assistant__action-buttons">
 						<Button
 							variant="primary"
 							size="small"
@@ -419,7 +442,7 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 								? __( 'Dismissed', 'ai' )
 								: __( 'Dismiss', 'ai' ) }
 						</Button>
-					</ButtonGroup>
+					</div>
 				),
 			},
 		],
@@ -573,6 +596,25 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 		return unique.sort( ( a, b ) => a - b );
 	}, [ data.timer.presets ] );
 
+	const typeSummary = useMemo( () => {
+		if ( selectedTypes.length === 0 ) {
+			return __( 'No categories selected', 'ai' );
+		}
+		if ( selectedTypes.length === data.suggestionTypes.length ) {
+			return __( 'All categories selected', 'ai' );
+		}
+		return sprintf(
+			/* translators: %d: number of selected categories. */
+			_n(
+				'%d category selected',
+				'%d categories selected',
+				selectedTypes.length,
+				'ai'
+			),
+			selectedTypes.length
+		);
+	}, [ selectedTypes, data.suggestionTypes.length ] );
+
 	const toggleType = ( slug: string, next: boolean ) => {
 		setSelectedTypes( ( current ) => {
 			if ( next ) {
@@ -594,147 +636,70 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 
 	return (
 		<div className="ai-writing-assistant">
-			<Card className="ai-writing-assistant__card">
-				<CardHeader>
-					<strong>{ __( 'Session Controls', 'ai' ) }</strong>
-				</CardHeader>
-				<CardBody>
-					<div className="ai-writing-assistant__timer-row">
-						<div>
-							<span className="ai-writing-assistant__timer-label">
-								{ __( 'Timer', 'ai' ) }
-							</span>
-							<div className="ai-writing-assistant__timer-value">
-								{ timerSeconds === 0
-									? __( 'No limit', 'ai' )
-									: formatTime( timeRemaining ) }
-							</div>
-						</div>
-						<div className="ai-writing-assistant__timer-actions">
-							<Button
-								variant={
-									sessionActive ? 'secondary' : 'primary'
-								}
-								onClick={
-									sessionActive ? stopSession : startSession
-								}
-								disabled={ isFetching && ! sessionActive }
-							>
-								{ sessionActive
-									? __( 'End Session', 'ai' )
-									: __( 'Start Session', 'ai' ) }
-							</Button>
-							<Button
-								variant="tertiary"
-								onClick={ () => triggerSuggestions( 'manual' ) }
-								disabled={ ! sessionActive || isFetching }
-							>
-								{ isFetching ? (
-									<>
-										<Spinner />
-										{ __( 'Working…', 'ai' ) }
-									</>
-								) : (
-									__( 'Generate suggestions', 'ai' )
-								) }
-							</Button>
-						</div>
-					</div>
-
-					<div className="ai-writing-assistant__stats-grid">
-						<div>
-							<span>{ __( 'Words this session', 'ai' ) }</span>
-							<strong>{ wordsWritten.toLocaleString() }</strong>
-						</div>
-						<div>
-							<span>{ __( 'Suggestions received', 'ai' ) }</span>
-							<strong>{ stats.suggestionsReceived }</strong>
-						</div>
-						<div>
-							<span>{ __( 'Suggestions applied', 'ai' ) }</span>
-							<strong>{ stats.suggestionsApplied }</strong>
-						</div>
-					</div>
-
-					<div className="ai-writing-assistant__timer-options">
-						<span>{ __( 'Timer presets', 'ai' ) }</span>
-						<ButtonGroup>
-							{ timerOptions.map( ( seconds ) => (
-								<Button
-									key={ seconds }
-									variant={
-										timerSeconds === seconds
-											? 'primary'
-											: 'secondary'
-									}
-									onClick={ () => updateTimer( seconds ) }
-								>
-									{ seconds === 0
-										? __( 'No timer', 'ai' )
-										: sprintf(
-												/* translators: %d: number of minutes. */
-												_n(
-													'%d min',
-													'%d mins',
-													seconds / 60,
-													'ai'
-												),
-												Math.round( seconds / 60 )
-										  ) }
-								</Button>
-							) ) }
-						</ButtonGroup>
-						<TextControl
-							label={ __( 'Custom timer (minutes)', 'ai' ) }
-							type="number"
-							min={ 0 }
-							value={ customMinutes }
-							onChange={ handleCustomTimerChange }
+			<div className="ai-writing-assistant__header">
+				<div className="ai-writing-assistant__status-bar">
+					<span>
+						<strong>{ __( 'Timer', 'ai' ) }:</strong>
+						{ timerSeconds === 0
+							? __( 'No limit', 'ai' )
+							: formatTime( timeRemaining ) }
+					</span>
+					<span>
+						<strong>{ __( 'Words', 'ai' ) }:</strong>
+						{ wordsWritten.toLocaleString() }
+					</span>
+					<span>
+						<strong>{ __( 'Status', 'ai' ) }:</strong>
+						{ sessionActive
+							? __( 'Active', 'ai' )
+							: __( 'Idle', 'ai' ) }
+					</span>
+				</div>
+				<div className="ai-writing-assistant__session-row">
+					<Button
+						variant="secondary"
+						onClick={ sessionActive ? stopSession : startSession }
+						disabled={ isFetching && ! sessionActive }
+						className="ai-writing-assistant__session-toggle"
+					>
+						<Icon
+							icon={ sessionActive ? closeSmall : arrowRight }
+						/>
+						<span>
+							{ sessionActive
+								? __( 'End session', 'ai' )
+								: __( 'Start session', 'ai' ) }
+						</span>
+					</Button>
+					<div className="ai-writing-assistant__header-actions">
+						<Button
+							variant="tertiary"
+							className="ai-writing-assistant__icon-button"
+							icon={ <Icon icon={ timeToRead } /> }
+							label={ __( 'Session controls', 'ai' ) }
+							ref={ controlsButtonRef }
+							onClick={ () =>
+								setIsControlsOpen( ( prev ) => ! prev )
+							}
+							aria-expanded={ isControlsOpen }
+						/>
+						<Button
+							variant="tertiary"
+							className="ai-writing-assistant__icon-button"
+							icon={ <Icon icon={ cog } /> }
+							label={ __( 'Settings', 'ai' ) }
+							ref={ settingsButtonRef }
+							onClick={ () =>
+								setIsSettingsOpen( ( prev ) => ! prev )
+							}
+							aria-expanded={ isSettingsOpen }
 						/>
 					</div>
-				</CardBody>
-			</Card>
+				</div>
+			</div>
 
-			<Card className="ai-writing-assistant__card">
-				<CardHeader>
-					<strong>{ __( 'Suggestion Categories', 'ai' ) }</strong>
-				</CardHeader>
-				<CardBody>
-					<div className="ai-writing-assistant__type-grid">
-						{ data.suggestionTypes.map( ( type ) => (
-							<div
-								key={ type.slug }
-								className="ai-writing-assistant__type"
-							>
-								<CheckboxControl
-									label={
-										<span className="ai-writing-assistant__type-label">
-											<span
-												className={ `dashicons dashicons-${ type.icon }` }
-												aria-hidden="true"
-											/>
-											{ type.label }
-										</span>
-									}
-									checked={ selectedTypes.includes(
-										type.slug
-									) }
-									onChange={ ( value: boolean ) =>
-										toggleType( type.slug, value )
-									}
-								/>
-								<p>{ type.description }</p>
-							</div>
-						) ) }
-					</div>
-				</CardBody>
-			</Card>
-
-			<Card className="ai-writing-assistant__card">
-				<CardHeader>
-					<strong>{ __( 'Suggestion Stream', 'ai' ) }</strong>
-				</CardHeader>
-				<CardBody>
+			<div className="ai-writing-assistant__content">
+				<div className="ai-writing-assistant__panel ai-writing-assistant__panel--stream">
 					{ errorMessage && (
 						<Notice
 							status="error"
@@ -744,32 +709,169 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 							{ errorMessage }
 						</Notice>
 					) }
-					{ ! sessionActive && (
-						<Notice status="info" isDismissible={ false }>
+					<div className="ai-writing-assistant__stream">
+						<DataViews
+							data={ suggestions }
+							fields={ suggestionFields }
+							view={ view }
+							onChangeView={ setView }
+							isLoading={ isFetching }
+							searchLabel={ __( 'Search suggestions', 'ai' ) }
+							getItemId={ ( item ) => item.id }
+							paginationInfo={ {
+								totalItems: suggestions.length,
+								totalPages: Math.max(
+									1,
+									Math.ceil(
+										suggestions.length /
+											( view.perPage ?? 8 )
+									)
+								),
+							} }
+							defaultLayouts={ {
+								table: {
+									layout: {
+										density: 'comfortable',
+										enableMoving: false,
+									},
+								},
+							} }
+							config={ {
+								perPageSizes: [ 8, 16, 32 ],
+							} }
+							empty={
+								<div className="ai-writing-assistant__empty">
+									<strong>
+										{ __( 'No suggestions yet', 'ai' ) }
+									</strong>
+									<p>
+										{ __(
+											'Generate suggestions to fill this stream.',
+											'ai'
+										) }
+									</p>
+								</div>
+							}
+						/>
+					</div>
+				</div>
+			</div>
+
+			<div className="ai-writing-assistant__footer">
+				<Button
+					variant="primary"
+					size="large"
+					className="ai-writing-assistant__footer-button"
+					onClick={ () => triggerSuggestions( 'manual' ) }
+					disabled={ ! hasContent || isFetching }
+				>
+					{ isFetching ? (
+						<>
+							<Spinner />
+							{ __( 'Working…', 'ai' ) }
+						</>
+					) : (
+						__( 'Generate suggestions', 'ai' )
+					) }
+				</Button>
+			</div>
+
+			{ isControlsOpen && controlsButtonRef.current && (
+				<Popover
+					anchor={ controlsButtonRef.current }
+					onClose={ () => setIsControlsOpen( false ) }
+					placement="bottom-start"
+					className="ai-writing-assistant__controls-popover"
+				>
+					<div className="ai-writing-assistant__controls">
+						<ToggleGroupControl
+							label={ __( 'Timer presets', 'ai' ) }
+							value={ String( timerSeconds ) }
+							isBlock
+							onChange={ ( value ) => {
+								const seconds = Number( value );
+								if ( ! Number.isNaN( seconds ) ) {
+									updateTimer( seconds );
+								}
+							} }
+						>
+							{ timerOptions.map( ( seconds ) => (
+								<ToggleGroupControlOption
+									key={ seconds }
+									value={ String( seconds ) }
+									label={
+										seconds === 0
+											? __( 'No timer', 'ai' )
+											: sprintf(
+													/* translators: %d: number of minutes. */
+													_n(
+														'%d min',
+														'%d mins',
+														seconds / 60,
+														'ai'
+													),
+													Math.round( seconds / 60 )
+											  )
+									}
+								/>
+							) ) }
+						</ToggleGroupControl>
+						<TextControl
+							label={ __( 'Custom timer (minutes)', 'ai' ) }
+							type="number"
+							min={ 0 }
+							value={ customMinutes }
+							onChange={ handleCustomTimerChange }
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+						<Button
+							variant="secondary"
+							onClick={ () => triggerSuggestions( 'manual' ) }
+							disabled={ ! sessionActive || isFetching }
+						>
+							{ isFetching
+								? __( 'Working…', 'ai' )
+								: __( 'Generate suggestions', 'ai' ) }
+						</Button>
+					</div>
+				</Popover>
+			) }
+
+			{ isSettingsOpen && settingsButtonRef.current && (
+				<Popover
+					anchor={ settingsButtonRef.current }
+					onClose={ () => setIsSettingsOpen( false ) }
+					placement="bottom-end"
+					className="ai-writing-assistant__settings-popover"
+				>
+					<div className="ai-writing-assistant__type-dropdown">
+						<strong>
+							{ __( 'Suggestion categories', 'ai' ) }
+						</strong>
+						<span className="ai-writing-assistant__type-summary">
+							{ typeSummary }
+						</span>
+						{ data.suggestionTypes.map( ( type ) => (
+							<CheckboxControl
+								key={ type.slug }
+								label={ type.label }
+								checked={ selectedTypes.includes( type.slug ) }
+								onChange={ ( value: boolean ) =>
+									toggleType( type.slug, value )
+								}
+								__nextHasNoMarginBottom
+							/>
+						) ) }
+						<p className="ai-writing-assistant__settings-help">
 							{ __(
-								'Start a session to collect fresh suggestions.',
+								'Selected categories inform which insight types get requested from the AI service.',
 								'ai'
 							) }
-						</Notice>
-					) }
-					<DataViews
-						records={ suggestions }
-						fields={ suggestionFields }
-						view={ view }
-						onChangeView={ setView }
-						isLoading={ isFetching }
-						searchLabel={ __( 'Search suggestions', 'ai' ) }
-						getItemId={ ( item ) => item.id }
-						emptyState={ {
-							title: __( 'No suggestions yet', 'ai' ),
-							description: __(
-								'Generate suggestions to fill this stream.',
-								'ai'
-							),
-						} }
-					/>
-				</CardBody>
-			</Card>
+						</p>
+					</div>
+				</Popover>
+			) }
 		</div>
 	);
 };

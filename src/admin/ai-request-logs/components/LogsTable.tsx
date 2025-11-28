@@ -13,7 +13,20 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 /**
  * Internal dependencies
  */
-import { AnthropicIcon, GoogleIcon, OpenAiIcon } from '../../components/icons';
+import {
+	AnthropicIcon,
+	CloudflareIcon,
+	DeepSeekIcon,
+	FalIcon,
+	GoogleIcon,
+	GroqIcon,
+	GrokIcon,
+	HuggingFaceIcon,
+	OllamaIcon,
+	OpenAiIcon,
+	OpenRouterIcon,
+	XaiIcon,
+} from '../../components/icons';
 import { usePersistedView } from '../../hooks/usePersistedView';
 import type { FilterOptions, LogEntry, LogFilters } from '../types';
 
@@ -21,16 +34,57 @@ const getProviderIcon = ( provider: string | null ): React.ReactNode => {
 	if ( ! provider ) {
 		return null;
 	}
+
 	const normalized = provider.toLowerCase();
-	if ( normalized === 'openai' ) {
+
+	if ( normalized.includes( 'openai' ) || normalized.includes( 'open-ai' ) ) {
 		return <OpenAiIcon />;
 	}
-	if ( normalized === 'anthropic' ) {
+
+	if ( normalized.includes( 'anthropic' ) || normalized.includes( 'claude' ) ) {
 		return <AnthropicIcon />;
 	}
-	if ( normalized === 'google' ) {
+
+	if ( normalized.includes( 'google' ) ) {
 		return <GoogleIcon />;
 	}
+
+	if ( normalized.includes( 'fal' ) ) {
+		return <FalIcon />;
+	}
+
+	if ( normalized.includes( 'cloudflare' ) || normalized.includes( 'workers.ai' ) ) {
+		return <CloudflareIcon />;
+	}
+
+	if ( normalized.includes( 'huggingface' ) || normalized.includes( 'hugging face' ) ) {
+		return <HuggingFaceIcon />;
+	}
+
+	if ( normalized.includes( 'deepseek' ) ) {
+		return <DeepSeekIcon />;
+	}
+
+	if ( normalized.includes( 'ollama' ) ) {
+		return <OllamaIcon />;
+	}
+
+	if ( normalized.includes( 'groq' ) ) {
+		return <GroqIcon />;
+	}
+
+	if ( normalized.includes( 'grok' ) ) {
+		return <GrokIcon />;
+	}
+
+	if ( normalized.includes( 'openrouter' ) || normalized.includes( 'open-router' ) ) {
+		return <OpenRouterIcon />;
+	}
+
+	if ( normalized.includes( 'xai' ) || normalized.includes( 'x.ai' ) ) {
+		return <XaiIcon />;
+	}
+
 	return null;
 };
 

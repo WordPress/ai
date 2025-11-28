@@ -180,7 +180,7 @@ class Writing_Suggestions extends Abstract_Ability {
 								'description' => esc_html__( 'Paragraph or block reference.', 'ai' ),
 							),
 							'action'    => array(
-								'type'        => 'object',
+								'type'        => array( 'object', 'null' ),
 								'description' => esc_html__( 'Optional structured action payload.', 'ai' ),
 							),
 							'timestamp' => array(
@@ -260,11 +260,24 @@ class Writing_Suggestions extends Abstract_Ability {
 			'post_meta'       => $post_meta,
 		);
 
-		$response = AI_Client::prompt_with_wp_error( wp_json_encode( $context ) )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference( ...$this->get_model_preferences() )
-			->using_candidate_count( 1 )
-			->generate_texts();
+		try {
+			$response = AI_Client::prompt_with_wp_error( wp_json_encode( $context ) )
+				->using_system_instruction( $this->get_system_instruction() )
+				->using_model_preference( ...$this->get_model_preferences() )
+				->using_candidate_count( 1 )
+				->generate_texts();
+		} catch ( \Throwable $error ) {
+			error_log(
+				sprintf(
+					'[AI Writing Assistant] Generation failed: %s',
+					$error->getMessage()
+				)
+			);
+			$response = new WP_Error(
+				'ai_writing_assistant_exception',
+				$error->getMessage()
+			);
+		}
 
 		if ( is_wp_error( $response ) ) {
 			// Fall back to heuristics if the provider fails.
@@ -320,7 +333,8 @@ class Writing_Suggestions extends Abstract_Ability {
 	 */
 	protected function meta(): array {
 		return array(
-			'category' => 'editor',
+			'category'     => 'editor',
+			'show_in_rest' => true,
 		);
 	}
 

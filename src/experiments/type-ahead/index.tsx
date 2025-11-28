@@ -651,48 +651,6 @@ const TypeAheadBlock: React.FC< {
 	}, [ editable, cancelPendingRequest ] );
 
 	useEffect( () => {
-		if ( ! editable ) {
-			return;
-		}
-
-		const handleKeyDown = ( event: KeyboardEvent ) => {
-			if ( suggestion && event.key === 'Tab' && ! event.shiftKey ) {
-				event.preventDefault();
-				acceptSuggestion( 'all' );
-				return;
-			}
-
-			if (
-				suggestion &&
-				event.key === 'ArrowRight' &&
-				( event.metaKey || event.ctrlKey )
-			) {
-				event.preventDefault();
-				acceptSuggestion( event.shiftKey ? 'sentence' : 'word' );
-				return;
-			}
-
-			if ( suggestion && event.key === 'Escape' ) {
-				event.preventDefault();
-				setSuggestion( null );
-				return;
-			}
-
-			if (
-				( event.metaKey || event.ctrlKey ) &&
-				event.code === 'Space'
-			) {
-				event.preventDefault();
-				setRequestNonce( ( prev ) => prev + 1 );
-				scheduleFetch( true );
-			}
-		};
-
-		editable.addEventListener( 'keydown', handleKeyDown );
-		return () => editable.removeEventListener( 'keydown', handleKeyDown );
-	}, [ editable, suggestion, scheduleFetch, acceptSuggestion ] );
-
-	useEffect( () => {
 		if ( block ) {
 			block.classList.add( 'ai-type-ahead-block' );
 			return () => block.classList.remove( 'ai-type-ahead-block' );
@@ -772,6 +730,48 @@ const TypeAheadBlock: React.FC< {
 		},
 		[ insertText, suggestion ]
 	);
+
+	useEffect( () => {
+		if ( ! editable ) {
+			return;
+		}
+
+		const handleKeyDown = ( event: KeyboardEvent ) => {
+			if ( suggestion && event.key === 'Tab' && ! event.shiftKey ) {
+				event.preventDefault();
+				acceptSuggestion( 'all' );
+				return;
+			}
+
+			if (
+				suggestion &&
+				event.key === 'ArrowRight' &&
+				( event.metaKey || event.ctrlKey )
+			) {
+				event.preventDefault();
+				acceptSuggestion( event.shiftKey ? 'sentence' : 'word' );
+				return;
+			}
+
+			if ( suggestion && event.key === 'Escape' ) {
+				event.preventDefault();
+				setSuggestion( null );
+				return;
+			}
+
+			if (
+				( event.metaKey || event.ctrlKey ) &&
+				event.code === 'Space'
+			) {
+				event.preventDefault();
+				setRequestNonce( ( prev ) => prev + 1 );
+				scheduleFetch( true );
+			}
+		};
+
+		editable.addEventListener( 'keydown', handleKeyDown );
+		return () => editable.removeEventListener( 'keydown', handleKeyDown );
+	}, [ editable, suggestion, scheduleFetch, acceptSuggestion ] );
 
 	if ( ! allowedBlocks.has( name ) ) {
 		return <BlockEdit { ...blockProps } />;

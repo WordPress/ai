@@ -1,129 +1,164 @@
-@import '../../admin/ai-request-logs/_dataviews-base.css';
-
-// Reduce default padding similar to admin DataViews override.
-.components-card__body:has(> .dataviews-wrapper) {
-	.dataviews__view-actions,
-	.dataviews-filters__container,
-	.dataviews-footer,
-	.dataviews-loading,
-	.dataviews-no-results {
-		padding-inline: 16px;
-	}
-
-	.dataviews-view-table tr th:first-child,
-	.dataviews-view-table tr td:first-child {
-		padding-inline-start: 16px;
-	}
-
-	.dataviews-view-table tr th:last-child,
-	.dataviews-view-table tr td:last-child {
-		padding-inline-end: 16px;
-	}
-}
+@import "../../admin/ai-request-logs/_dataviews-base.css";
 
 .ai-writing-assistant {
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
 	height: 100%;
-	padding: 16px;
-	overflow-y: auto;
+	min-height: 0;
+	padding: 0;
+	overflow: hidden;
 	box-sizing: border-box;
+	gap: 0;
+	background: var(--wp-components-color-surface, #fff);
 }
 
-.ai-writing-assistant__card {
-	box-shadow: none;
-}
-
-.ai-writing-assistant__timer-row {
-	display: flex;
-	justify-content: space-between;
-	gap: 16px;
-	flex-wrap: wrap;
-	align-items: center;
-}
-
-.ai-writing-assistant__timer-label {
-	font-size: 12px;
-	color: var(--wp-components-color-foreground-muted, #50575e);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-}
-
-.ai-writing-assistant__timer-value {
-	font-size: 32px;
-	font-weight: 600;
-	line-height: 1.1;
-}
-
-.ai-writing-assistant__timer-actions {
-	display: flex;
-	gap: 8px;
-	align-items: center;
-	flex-wrap: wrap;
-}
-
-.ai-writing-assistant__stats-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-	gap: 12px;
-	margin: 16px 0;
-}
-
-.ai-writing-assistant__stats-grid div {
-	background: var(--wp-components-color-accent-50, #f6f7f7);
-	border-radius: 6px;
-	padding: 12px;
+.ai-writing-assistant__header {
 	display: flex;
 	flex-direction: column;
+	gap: 12px;
+	padding: 0 16px 12px;
+	border-bottom: 1px solid var(--wp-components-color-border, #dcdcde);
+}
+
+.ai-writing-assistant__status-bar {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+	padding: 12px 16px;
+	margin: 0 -16px;
+	background: var(--wp-components-color-surface-secondary, #f6f7f7);
+	border-bottom: 1px solid var(--wp-components-color-border, #dcdcde);
+	font-size: 12px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+}
+
+.ai-writing-assistant__status-bar span {
+	display: inline-flex;
+	align-items: center;
 	gap: 4px;
+}
+
+.ai-writing-assistant__status-bar strong {
+	font-weight: 600;
 	color: var(--wp-components-color-foreground, #1d2327);
 }
 
-.ai-writing-assistant__stats-grid span {
-	font-size: 12px;
-	color: var(--wp-components-color-foreground-muted, #50575e);
-	text-transform: uppercase;
-}
-
-.ai-writing-assistant__stats-grid strong {
-	font-size: 20px;
-}
-
-.ai-writing-assistant__timer-options {
+.ai-writing-assistant__session-row {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
 	gap: 8px;
 }
 
-.ai-writing-assistant__type-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-	gap: 12px;
-}
-
-.ai-writing-assistant__type {
-	border: 1px solid var(--wp-components-color-border, #dcdcde);
-	border-radius: 8px;
-	padding: 12px;
-	background: #fff;
-}
-
-.ai-writing-assistant__type-label {
+.ai-writing-assistant__session-toggle {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-weight: 600;
-
-	.dashicons {
-		font-size: 18px;
-		line-height: 1;
-	}
 }
 
-.ai-writing-assistant__type p {
-	margin: 4px 0 0;
+.ai-writing-assistant__header-actions {
+	display: flex;
+	gap: 6px;
+	margin-left: auto;
+}
+
+.ai-writing-assistant__icon-button {
+	color: var(--wp-components-color-foreground, #1d2327);
+	box-shadow: none;
+	background: transparent;
+	padding: 4px;
+}
+
+.ai-writing-assistant__content {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	padding: 0 16px;
+	overflow: hidden;
+}
+
+.ai-writing-assistant__panel {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding-top: 12px;
+}
+
+.ai-writing-assistant__panel--stream {
+	flex: 1;
+	overflow: hidden;
+}
+
+.ai-writing-assistant__stream {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.ai-writing-assistant__stream .components-card,
+.ai-writing-assistant__stream .components-card__body {
+	border: 0;
+	box-shadow: none;
+	background: transparent;
+	padding: 0;
+}
+
+.ai-writing-assistant__stream .dataviews-wrapper {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: auto;
+	padding-bottom: 12px;
+}
+
+.ai-writing-assistant__stream .dataviews__view-actions,
+.ai-writing-assistant__stream .dataviews-filters__container,
+.ai-writing-assistant__stream .dataviews-footer,
+.ai-writing-assistant__stream .dataviews-loading,
+.ai-writing-assistant__stream .dataviews-no-results {
+	padding-inline: 0;
+}
+
+.ai-writing-assistant__stream .dataviews-view-table tr th:first-child,
+.ai-writing-assistant__stream .dataviews-view-table tr td:first-child {
+	padding-inline-start: 0;
+}
+
+.ai-writing-assistant__stream .dataviews-view-table tr th:last-child,
+.ai-writing-assistant__stream .dataviews-view-table tr td:last-child {
+	padding-inline-end: 0;
+}
+
+.ai-writing-assistant__empty {
+	text-align: center;
+	padding: 24px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+}
+
+.ai-writing-assistant__type-dropdown {
+	padding: 12px;
+	min-width: 220px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.ai-writing-assistant__type-summary {
+	font-size: 12px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-bottom: 4px;
+}
+
+.ai-writing-assistant__settings-help {
 	font-size: 13px;
+	margin: 0;
 	color: var(--wp-components-color-foreground-muted, #50575e);
 }
 
@@ -146,10 +181,10 @@
 	align-items: center;
 	gap: 4px;
 	padding: 2px 8px;
-	border-radius: 999px;
-	background: var(--wp-components-color-accent-30, #e2f3ff);
-	color: var(--wp-admin-theme-color, #3858e9);
-	font-weight: 600;
+	border-radius: 12px;
+	background: var(--wp-components-color-accent-10, #f0f0f0);
+	color: var(--wp-components-color-foreground, #1d2327);
+	font-weight: 500;
 }
 
 .ai-writing-assistant__priority {
@@ -179,16 +214,10 @@
 	text-transform: capitalize;
 }
 
-.ai-writing-assistant__status.pending {
-	color: #646970;
-}
-
-.ai-writing-assistant__status.applied {
-	color: #1d8642;
-}
-
-.ai-writing-assistant__status.dismissed {
-	color: #b32d2e;
+.ai-writing-assistant__action-buttons {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
 }
 
 .ai-writing-assistant__status-pill {
@@ -200,11 +229,39 @@
 .ai-writing-assistant__context {
 	font-size: 13px;
 	color: var(--wp-components-color-foreground-muted, #50575e);
-	border-left: 3px solid var(--wp-admin-theme-color, #3858e9);
+	border-left: 3px solid var(--wp-components-color-border, #dcdcde);
 	padding-left: 8px;
 	margin: 0;
 }
 
-.ai-writing-assistant .components-notice {
-	margin-bottom: 12px;
+.ai-writing-assistant__controls-popover {
+	width: 280px;
+}
+
+.ai-writing-assistant__controls {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 12px;
+}
+
+.ai-writing-assistant__settings-popover .components-popover__content {
+	padding: 0;
+}
+
+.ai-writing-assistant__footer {
+	border-top: 1px solid var(--wp-components-color-border, #dcdcde);
+	padding: 12px 16px 16px;
+	margin-top: auto;
+	background: var(--wp-components-color-surface, #fff);
+	position: sticky;
+	bottom: 0;
+}
+
+.ai-writing-assistant__footer-button {
+	width: 100%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
 }

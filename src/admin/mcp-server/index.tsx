@@ -363,27 +363,31 @@ const App: React.FC = () => {
 			) : (
 				<>
 					<div className="ai-mcp-server__toolbar">
-						<div className="ai-mcp-server__server-picker">
-							<SelectControl
-								label={ __( 'Server', 'ai' ) }
-								value={ selectedServerId ?? '' }
-								onChange={ handleSelectServer }
-								options={ serverOptions }
-								__nextHasNoMarginBottom
-								__next40pxDefaultSize
-							/>
-							<StatusBadge status={ activeStatus } />
+						<div className="ai-mcp-server__toolbar-main">
+							<div className="ai-mcp-server__server-picker">
+								<SelectControl
+									label={ __( 'Server', 'ai' ) }
+									value={ selectedServerId ?? '' }
+									onChange={ handleSelectServer }
+									options={ serverOptions }
+									__nextHasNoMarginBottom
+									__next40pxDefaultSize
+								/>
+							</div>
 						</div>
-						<ToggleControl
-							label={ __( 'Enable this server', 'ai' ) }
-							checked={ activeServer?.enabled ?? false }
-							onChange={ handleToggleServerEnabled }
-							disabled={ savingServer || ! activeServer }
-							__nextHasNoMarginBottom
-						/>
-						<Button variant="secondary" onClick={ handleAddServer }>
-							{ __( 'Add Server', 'ai' ) }
-						</Button>
+						<div className="ai-mcp-server__toolbar-actions">
+							<StatusBadge status={ activeStatus } />
+							<ToggleControl
+								label={ __( 'Enable this server', 'ai' ) }
+								checked={ activeServer?.enabled ?? false }
+								onChange={ handleToggleServerEnabled }
+								disabled={ savingServer || ! activeServer }
+								__nextHasNoMarginBottom
+							/>
+							<Button variant="secondary" onClick={ handleAddServer }>
+								{ __( 'Add Server', 'ai' ) }
+							</Button>
+						</div>
 					</div>
 
 					{ activeServer?.description && (

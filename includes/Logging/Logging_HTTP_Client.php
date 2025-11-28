@@ -262,6 +262,38 @@ class Logging_HTTP_Client implements ClientInterface, ClientWithOptionsInterface
 			return 'google';
 		}
 
+		if ( strpos( $host_lower, 'fal.run' ) !== false || strpos( $host_lower, 'fal.ai' ) !== false ) {
+			return 'fal';
+		}
+
+		if ( strpos( $host_lower, 'cloudflare' ) !== false || strpos( $host_lower, 'workers.ai' ) !== false ) {
+			return 'cloudflare';
+		}
+
+		if ( strpos( $host_lower, 'groq' ) !== false ) {
+			return 'groq';
+		}
+
+		if ( strpos( $host_lower, 'x.ai' ) !== false || strpos( $host_lower, 'xai' ) !== false ) {
+			return 'grok';
+		}
+
+		if ( strpos( $host_lower, 'huggingface' ) !== false ) {
+			return 'huggingface';
+		}
+
+		if ( strpos( $host_lower, 'deepseek' ) !== false ) {
+			return 'deepseek';
+		}
+
+		if ( strpos( $host_lower, 'ollama' ) !== false ) {
+			return 'ollama';
+		}
+
+		if ( strpos( $host_lower, 'openrouter' ) !== false ) {
+			return 'openrouter';
+		}
+
 		if ( strpos( $host_lower, 'azure' ) !== false ) {
 			return 'azure';
 		}
