@@ -12,8 +12,10 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
-use WordPress\AI\MCP\MCP_Server_Manager;
-use WordPress\AI\MCP\MCP_Server_Page;
+use WordPress\AI\Logging\AI_Request_Log_Manager;
+use WordPress\AI\Logging\AI_Request_Log_Page;
+use WordPress\AI\Logging\Logging_Discovery_Strategy;
+use WordPress\AI\Logging\REST\AI_Request_Log_Controller;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
@@ -180,6 +182,14 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
+		// Initialize AI request logging BEFORE AI_Client so we can intercept HTTP discovery.
+		$log_manager = new AI_Request_Log_Manager();
+		$log_manager->init();
+
+		// Register logging HTTP client discovery strategy.
+		// This must happen before AI_Client::init() to wrap the HTTP client.
+		Logging_Discovery_Strategy::init( $log_manager );
+
 		// Initialize the WP AI Client.
 		AI_Client::init();
 
@@ -188,8 +198,14 @@ function initialize_experiments(): void {
 		$loader->register_default_experiments();
 		$loader->initialize_experiments();
 
-		$mcp_manager = new MCP_Server_Manager();
-		$mcp_manager->init();
+		// Register logging REST controller.
+		add_action(
+			'rest_api_init',
+			static function () use ( $log_manager ) {
+				$log_controller = new AI_Request_Log_Controller( $log_manager );
+				$log_controller->register_routes();
+			}
+		);
 
 		// Initialize settings registration.
 		$settings_registration = new Settings_Registration( $registry );
@@ -200,8 +216,8 @@ function initialize_experiments(): void {
 			$settings_page = new Settings_Page( $registry );
 			$settings_page->init();
 
-			$mcp_page = new MCP_Server_Page( $mcp_manager );
-			$mcp_page->init();
+			$log_page = new AI_Request_Log_Page( $log_manager );
+			$log_page->init();
 		}
 
 		// Register our post-related WordPress Abilities.
