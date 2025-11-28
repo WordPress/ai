@@ -2,8 +2,9 @@ import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
 import { DataViews } from '@wordpress/dataviews/wp';
 import type { DataViewField, Filter, View } from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 
+import { usePersistedView } from '../../hooks/usePersistedView';
 import type { FilterOptions, LogEntry, LogFilters } from '../types';
 
 interface LogsTableProps {
@@ -122,12 +123,12 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		return next;
 	}, [] );
 
-	const [ view, setView ] = useState< View >( {
+	const defaultView: View = useMemo( () => ( {
 		type: 'table',
 		perPage: 25,
-		page,
-		search: filters.search,
-		filters: buildFilterArray( filters ),
+		page: 1,
+		search: '',
+		filters: [],
 		fields: [ 'timestamp', 'operation', 'provider', 'tokens_total', 'duration_ms', 'status', 'actions' ],
 		sort: {
 			field: 'timestamp',
@@ -136,16 +137,44 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		layout: {
 			density: 'comfortable',
 		},
-	} );
+	} ), [] );
 
+	const { view, setView } = usePersistedView( 'ai-request-logs', defaultView );
+
+	// Sync parent filters with persisted view on initial load
+	useEffect( () => {
+		// Extract persisted filter values and update parent state
+		const persistedType = extractFilterValue( view.filters, 'type' );
+		const persistedStatus = extractFilterValue( view.filters, 'status' );
+		const persistedProvider = extractFilterValue( view.filters, 'provider' );
+		const persistedOperation = extractFilterValue( view.filters, 'operation' );
+		const persistedSearch = view.search ?? '';
+
+		if ( persistedType !== filters.type ) {
+			onFilterChange( 'type', persistedType );
+		}
+		if ( persistedStatus !== filters.status ) {
+			onFilterChange( 'status', persistedStatus );
+		}
+		if ( persistedProvider !== filters.provider ) {
+			onFilterChange( 'provider', persistedProvider );
+		}
+		if ( persistedOperation !== filters.operation ) {
+			onFilterChange( 'operation', persistedOperation );
+		}
+		if ( persistedSearch !== filters.search ) {
+			onFilterChange( 'search', persistedSearch );
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [] ); // Only run once on mount
+
+	// Update view when page changes from parent
 	useEffect( () => {
 		setView( ( previous ) => ( {
 			...previous,
-			search: filters.search,
-			filters: buildFilterArray( filters ),
 			page,
 		} ) );
-	}, [ filters, page, buildFilterArray ] );
+	}, [ page, setView ] );
 
 	const fields = useMemo< DataViewField< LogEntry >[] >( () => [
 		{

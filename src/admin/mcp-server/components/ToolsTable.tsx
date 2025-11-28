@@ -2,8 +2,9 @@ import { Card, CardBody, CardHeader, Notice, ToggleControl } from '@wordpress/co
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
 import type { DataViewField, View } from '@wordpress/dataviews';
 import { __ } from '@wordpress/i18n';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 
+import { usePersistedView } from '../../hooks/usePersistedView';
 import type { ToolSummary } from '../types';
 
 interface ToolsTableProps {
@@ -88,7 +89,7 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 
 	const initialFields = useMemo( () => fields.map( ( field ) => field.id ), [ fields ] );
 
-	const [ view, setView ] = useState< View >( {
+	const defaultView: View = useMemo( () => ( {
 		type: 'table',
 		search: '',
 		page: 1,
@@ -99,7 +100,9 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 			direction: 'asc',
 		},
 		filters: [],
-	} );
+	} ), [ initialFields ] );
+
+	const { view, setView } = usePersistedView( 'mcp-tools', defaultView );
 
 	useEffect( () => {
 		setView( ( previous ) => {
@@ -110,7 +113,7 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 				fields: nextFields,
 			};
 		} );
-	}, [ fields ] );
+	}, [ fields, setView ] );
 
 	const { data: filteredTools, paginationInfo } = useMemo( () => {
 		const result = filterSortAndPaginate( tools, view, fields );
