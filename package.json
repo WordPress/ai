@@ -44,6 +44,7 @@
     "@wordpress/components": "^30.7.0",
     "@wordpress/compose": "^7.34.0",
     "@wordpress/data": "^10.34.0",
+    "@wordpress/dataviews": "^10.3.0",
     "@wordpress/editor": "^14.34.0",
     "@wordpress/element": "^6.34.0",
     "@wordpress/hooks": "^4.35.0",
