@@ -230,8 +230,8 @@ class Reply_Suggestion extends Abstract_Ability {
 	private function generate_replies( string $context, int $candidates ) {
 		$result = AI_Client::prompt_with_wp_error( $context )
 			->using_system_instruction( $this->get_system_instruction( 'reply-system-instruction.php' ) )
-			->using_candidate_count( $candidates )
-			->using_model_preference( ...get_preferred_models() )
+			->using_candidate_count( max( 1, $candidates ) )
+			->using_model_preference( ...$this->get_reply_model_preferences() )
 			->generate_texts();
 
 		if ( is_wp_error( $result ) ) {
@@ -245,5 +245,26 @@ class Reply_Suggestion extends Abstract_Ability {
 			},
 			$result
 		);
+	}
+
+	/**
+	 * Returns model preferences prioritizing OpenAI for replies.
+	 *
+	 * @return array<int, array{string, string}>
+	 */
+	private function get_reply_model_preferences(): array {
+		$openai_preferences = array(
+			array( 'openai', 'gpt-4.1' ),
+			array( 'openai', 'gpt-4o-mini' ),
+		);
+
+		$remaining = array_filter(
+			get_preferred_models(),
+			static function ( array $model ): bool {
+				return 'openai' !== $model[0];
+			}
+		);
+
+		return array_merge( $openai_preferences, $remaining );
 	}
 }

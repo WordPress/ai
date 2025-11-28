@@ -192,8 +192,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.3 )
 			->using_model_preference(
+				array( 'anthropic', 'claude-haiku-4-5-20251001' ),
 				array( 'openai', 'gpt-5-nano' ),
-				array( 'anthropic', 'claude-haiku-4-5' ),
 				array( 'google', 'gemini-2.5-flash' )
 			)
 			->generate_text();

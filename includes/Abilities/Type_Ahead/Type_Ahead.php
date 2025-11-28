@@ -219,7 +219,9 @@ class Type_Ahead extends Abstract_Ability {
 			)
 		);
 
-		$result = $this->generate_suggestion( $context );
+		$start_time = microtime( true );
+		$result     = $this->generate_suggestion( $context );
+		$duration   = ( microtime( true ) - $start_time ) * 1000;
 
 		if ( is_wp_error( $result ) ) {
 			$this->log_debug(
@@ -227,6 +229,7 @@ class Type_Ahead extends Abstract_Ability {
 				array(
 					'code'    => $result->get_error_code(),
 					'message' => $result->get_error_message(),
+					'duration_ms' => (int) round( $duration ),
 				)
 			);
 			return $result;
@@ -241,6 +244,7 @@ class Type_Ahead extends Abstract_Ability {
 				'cursor_position' => $cursor_position,
 				'confidence'      => $result['confidence'],
 				'preview'         => mb_substr( $result['suggestion'], 0, 80 ),
+				'duration_ms'     => (int) round( $duration ),
 			)
 		);
 
@@ -348,7 +352,7 @@ class Type_Ahead extends Abstract_Ability {
 			return new WP_Error( 'ai_type_ahead_empty', esc_html__( 'The AI provider returned an empty suggestion.', 'ai' ) );
 		}
 
-		$data = json_decode( $text, true );
+		$data = $this->decode_suggestion_payload( $text );
 
 		if ( ! is_array( $data ) || empty( $data['suggestion'] ) ) {
 			$this->log_debug( 'AI response failed JSON decode', array( 'raw' => mb_substr( $text, 0, 160 ) ) );
@@ -368,6 +372,35 @@ class Type_Ahead extends Abstract_Ability {
 			'suggestion' => $suggestion,
 			'confidence' => $confidence,
 		);
+	}
+
+	/**
+	 * Attempts to decode a JSON payload that may be wrapped in markdown fences or extra prose.
+	 */
+	private function decode_suggestion_payload( string $raw ): ?array {
+		$clean = trim( $raw );
+
+		if ( str_starts_with( $clean, '```' ) ) {
+			$clean = preg_replace( '/^```[a-zA-Z0-9_-]*\s*/', '', $clean ) ?? $clean;
+			if ( str_contains( $clean, '```' ) ) {
+				$clean = substr( $clean, 0, strpos( $clean, '```' ) );
+			}
+			$clean = trim( $clean );
+		}
+
+		$decoded = json_decode( $clean, true );
+		if ( is_array( $decoded ) ) {
+			return $decoded;
+		}
+
+		if ( preg_match( '/\{.*\}/s', $clean, $matches ) === 1 ) {
+			$decoded = json_decode( $matches[0], true );
+			if ( is_array( $decoded ) ) {
+				return $decoded;
+			}
+		}
+
+		return null;
 	}
 
 	/**
