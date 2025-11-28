@@ -66,7 +66,10 @@ class Settings_Registration {
 	 * @return void
 	 */
 	public function init(): void {
-		$this->register_settings();
+		// Register settings on admin_init to ensure proper Settings API integration.
+		// This prevents duplicate "Settings saved" notices that occur when settings
+		// are registered on the wrong hook.
+		add_action( 'admin_init', array( $this, 'register_settings' ) );
 	}
 
 	/**
