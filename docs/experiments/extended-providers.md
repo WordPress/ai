@@ -11,6 +11,7 @@ Toggles registration of a custom set of AI providers with the WP AI Client. When
 - Hugging Face – targets the OpenAI-compatible router at `https://router.huggingface.co/v1`. Add a Hugging Face access token (with `inference:all` scope) on the credentials page and enable the provider to discover router-backed chat models.
 - OpenRouter – connects to `https://openrouter.ai/api/v1`, honoring their `/models` and `/chat/completions` API. Supply your OpenRouter API key under AI Credentials and optionally set Referer/Title via the registry’s custom options filter if needed.
 - Ollama – calls your local `http://localhost:11434/api` daemon for chat generation. No cloud credentials required; just install/serve models via Ollama and enable the provider to expose them in the registry. Use the `ai_ollama_base_url` filter if you need a custom host.
+- DeepSeek – uses the `https://api.deepseek.com/v1` OpenAI-compatible surface. Create a DeepSeek API key, paste it on the AI Credentials page, and the models listed under `/v1/models` will automatically flow into discovery.
 
 ## Key Hooks & Entry Points
 - `WordPress\AI\Experiments\Extended_Providers\Extended_Providers::register()` attaches to `init` (priority 20) and calls `register_providers()` only when the experiment is enabled.

@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\Extended_Providers;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Providers\Cohere\CohereProvider;
+use WordPress\AI\Providers\DeepSeek\DeepSeekProvider;
 use WordPress\AI\Providers\FalAi\FalAiProvider;
 use WordPress\AI\Providers\Grok\GrokProvider;
 use WordPress\AI\Providers\Groq\GroqProvider;
@@ -45,6 +46,7 @@ use function wp_kses_post;
 class Extended_Providers extends Abstract_Experiment {
 	private const DEFAULT_PROVIDER_CLASSES = array(
 		CohereProvider::class,
+		DeepSeekProvider::class,
 		FalAiProvider::class,
 		GrokProvider::class,
 		GroqProvider::class,
