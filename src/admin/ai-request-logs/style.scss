@@ -14,23 +14,6 @@
 	margin-bottom: 24px;
 }
 
-.ai-request-logs__summary-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 16px;
-
-	h2 {
-		margin: 0;
-		font-size: 18px;
-		font-weight: 600;
-	}
-
-	.components-select-control {
-		min-width: 160px;
-	}
-}
-
 .ai-request-logs__summary-cards {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -117,7 +100,16 @@
 }
 
 .ai-request-logs__provider {
+	display: flex;
+	align-items: center;
+	gap: 6px;
 	font-weight: 500;
+
+	svg {
+		flex-shrink: 0;
+		width: 14px;
+		height: 14px;
+	}
 }
 
 .ai-request-logs__model {

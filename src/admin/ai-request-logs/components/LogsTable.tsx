@@ -4,8 +4,24 @@ import type { DataViewField, Filter, View } from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
 import React, { useCallback, useEffect, useMemo } from 'react';
 
+import { AnthropicIcon, GoogleIcon, OpenAiIcon } from '../../components/icons';
 import { usePersistedView } from '../../hooks/usePersistedView';
 import type { FilterOptions, LogEntry, LogFilters } from '../types';
+
+const getProviderIcon = ( provider: string | null ): React.ReactNode => {
+	if ( ! provider ) return null;
+	const normalized = provider.toLowerCase();
+	if ( normalized === 'openai' ) {
+		return <OpenAiIcon />;
+	}
+	if ( normalized === 'anthropic' ) {
+		return <AnthropicIcon />;
+	}
+	if ( normalized === 'google' ) {
+		return <GoogleIcon />;
+	}
+	return null;
+};
 
 interface LogsTableProps {
 	logs: LogEntry[];
@@ -285,7 +301,12 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				: false,
 			render: ( { item } ) => (
 				<div>
-					{ item.provider && <span className="ai-request-logs__provider">{ item.provider }</span> }
+					{ item.provider && (
+						<span className="ai-request-logs__provider">
+							{ getProviderIcon( item.provider ) }
+							{ item.provider }
+						</span>
+					) }
 					{ item.model && <div className="ai-request-logs__model">{ item.model }</div> }
 					{ ! item.provider && ! item.model && '-' }
 				</div>
