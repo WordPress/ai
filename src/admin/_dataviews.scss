@@ -15,6 +15,82 @@
 		flex-wrap: wrap;
 	}
 
+	// Active filter chip styling
+	.dataviews-filters__summary-chip-container {
+		display: flex;
+		align-items: center;
+	}
+
+	.dataviews-filters__summary-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 8px;
+		background: #f0f0f0;
+		border: 1px solid #c3c4c7;
+		border-radius: 4px 0 0 4px;
+		font-size: 13px;
+		cursor: pointer;
+		transition: background-color 0.1s;
+
+		&:hover {
+			background: #e0e0e0;
+		}
+
+		&.has-values {
+			background: #e7f5fe;
+			border-color: #4f94d4;
+		}
+	}
+
+	.dataviews-filters__summary-filter-text-name {
+		color: #757575;
+	}
+
+	.dataviews-filters__summary-filter-text-value {
+		font-weight: 500;
+		color: #1e1e1e;
+	}
+
+	.dataviews-filters__summary-chip-remove {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 4px 6px;
+		background: #f0f0f0;
+		border: 1px solid #c3c4c7;
+		border-left: none;
+		border-radius: 0 4px 4px 0;
+		cursor: pointer;
+		transition: background-color 0.1s;
+
+		&:hover {
+			background: #ddd;
+		}
+
+		&.has-values {
+			background: #e7f5fe;
+			border-color: #4f94d4;
+
+			&:hover {
+				background: #cce5fc;
+			}
+		}
+
+		svg {
+			width: 16px;
+			height: 16px;
+			fill: #757575;
+		}
+	}
+
+	// Add filter and Reset buttons
+	.dataviews-filters-button,
+	.dataviews-filters__reset-button {
+		font-size: 13px;
+		padding: 4px 12px;
+	}
+
 	// Responsive table wrapper
 	.dataviews-view-table-wrapper {
 		overflow-x: auto;
