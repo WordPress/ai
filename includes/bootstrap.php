@@ -184,16 +184,18 @@ function initialize_experiments(): void {
 		// Initialize the WP AI Client.
 		AI_Client::init();
 
-		$log_manager = get_request_log_manager();
-		if ( $log_manager && class_exists( Logging_Discovery_Strategy::class ) ) {
-			$log_manager->init();
-			Logging_Discovery_Strategy::init( $log_manager );
-
-			if ( class_exists( PhpAiClient::class ) && class_exists( HttpTransporterFactory::class ) ) {
-				PhpAiClient::defaultRegistry()->setHttpTransporter(
-					HttpTransporterFactory::createTransporter()
-				);
+		if ( is_experiment_enabled( 'ai-request-logging' ) ) {
+			$log_manager = get_request_log_manager();
+			if ( $log_manager && class_exists( Logging_Discovery_Strategy::class ) ) {
+				$log_manager->init();
+				Logging_Discovery_Strategy::init( $log_manager );
 			}
+		}
+
+		if ( class_exists( PhpAiClient::class ) && class_exists( HttpTransporterFactory::class ) ) {
+			PhpAiClient::defaultRegistry()->setHttpTransporter(
+				HttpTransporterFactory::createTransporter()
+			);
 		}
 
 		$registry = new Experiment_Registry();

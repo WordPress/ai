@@ -11,6 +11,7 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
+use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
 
 /**
@@ -259,6 +260,41 @@ function has_valid_ai_credentials(): bool {
 	} catch ( Throwable $t ) {
 		return false;
 	}
+}
+
+/**
+ * Checks if a specific experiment is enabled via global + per-experiment toggles.
+ *
+ * Mirrors {@see Abstract_Experiment::is_enabled()} so infrastructure that runs
+ * before experiments register can honor user settings.
+ *
+ * @since 0.1.0
+ *
+ * @param string $experiment_id Experiment identifier (e.g. 'ai-request-logging').
+ * @return bool
+ */
+function is_experiment_enabled( string $experiment_id ): bool {
+	$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+	if ( ! $global_enabled ) {
+		return false;
+	}
+
+	$experiment_enabled = (bool) get_option( "ai_experiment_{$experiment_id}_enabled", false );
+
+	/**
+	 * Filters the enabled status for a specific experiment.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param bool $experiment_enabled Default enabled state from the option.
+	 */
+	$is_enabled = (bool) apply_filters( "ai_experiment_{$experiment_id}_enabled", $experiment_enabled );
+
+	if ( ! has_valid_ai_credentials() ) {
+		return false;
+	}
+
+	return $is_enabled;
 }
 
 /**
