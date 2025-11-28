@@ -1,13 +1,11 @@
-import { Card, CardBody, SelectControl } from '@wordpress/components';
-import { __, sprintf } from '@wordpress/i18n';
+import { Card, CardBody } from '@wordpress/components';
+import { __ } from '@wordpress/i18n';
 import React from 'react';
 
 import type { LogSummary } from '../types';
 
 interface SummaryCardsProps {
 	summary: LogSummary;
-	period: 'day' | 'week' | 'month' | 'all';
-	onPeriodChange: ( period: 'day' | 'week' | 'month' | 'all' ) => void;
 	loading: boolean;
 }
 
@@ -35,33 +33,9 @@ const formatDuration = ( ms: number ): string => {
 	return ( ms / 1000 ).toFixed( 1 ) + 's';
 };
 
-const SummaryCards: React.FC< SummaryCardsProps > = ( { summary, period, onPeriodChange, loading } ) => {
-	const periodLabels: Record< string, string > = {
-		day: __( 'Last 24 Hours', 'ai' ),
-		week: __( 'Last 7 Days', 'ai' ),
-		month: __( 'Last 30 Days', 'ai' ),
-		all: __( 'All Time', 'ai' ),
-	};
-
+const SummaryCards: React.FC< SummaryCardsProps > = ( { summary } ) => {
 	return (
 		<div className="ai-request-logs__summary">
-			<div className="ai-request-logs__summary-header">
-				<h2>{ periodLabels[ period ] }</h2>
-				<SelectControl
-					value={ period }
-					options={ [
-						{ label: __( 'Last 24 Hours', 'ai' ), value: 'day' },
-						{ label: __( 'Last 7 Days', 'ai' ), value: 'week' },
-						{ label: __( 'Last 30 Days', 'ai' ), value: 'month' },
-					{ label: __( 'All Time', 'ai' ), value: 'all' },
-					] }
-					onChange={ ( value ) => onPeriodChange( value as 'day' | 'week' | 'month' | 'all' ) }
-					disabled={ loading }
-					__nextHasNoMarginBottom
-					__next40pxDefaultSize
-				/>
-			</div>
-
 			<div className="ai-request-logs__summary-cards">
 				<Card className="ai-request-logs__stat-card">
 					<CardBody>

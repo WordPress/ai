@@ -119,6 +119,7 @@ class AI_Request_Log_Page {
 							<h1><?php esc_html_e( 'AI Request Logs', 'ai' ); ?></h1>
 						</div>
 					</div>
+					<div id="ai-request-logs-header-period" class="ai-admin-header__right"></div>
 				</div>
 			</div>
 			<div id="ai-request-logs-root"></div>

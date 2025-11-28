@@ -8,6 +8,7 @@ import { __ } from '@wordpress/i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import HeaderPeriodSelector from './components/HeaderPeriodSelector';
 import LogDetailModal from './components/LogDetailModal';
 import LogsTable from './components/LogsTable';
 import SettingsPanel from './components/SettingsPanel';
@@ -50,7 +51,7 @@ const App: React.FC = () => {
 
 	// Summary state
 	const [ summary, setSummary ] = useState< LogSummary >( settings.initialState.summary );
-	const [ summaryPeriod, setSummaryPeriod ] = useState< 'day' | 'week' | 'month' | 'all' >( 'day' );
+	const [ summaryPeriod, setSummaryPeriod ] = useState< 'minute' | 'hour' | 'day' | 'week' | 'month' | 'all' >( 'day' );
 	const [ summaryLoading, setSummaryLoading ] = useState( false );
 
 	// Logs state
@@ -143,7 +144,7 @@ const App: React.FC = () => {
 	}, [ fetchLogs, fetchFilters ] );
 
 	// Handle period change
-	const handlePeriodChange = ( period: 'day' | 'week' | 'month' | 'all' ) => {
+	const handlePeriodChange = ( period: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'all' ) => {
 		setSummaryPeriod( period );
 		fetchSummary( period );
 	};
@@ -206,6 +207,12 @@ const App: React.FC = () => {
 
 	return (
 		<div className="ai-request-logs__app">
+			<HeaderPeriodSelector
+				period={ summaryPeriod }
+				onPeriodChange={ handlePeriodChange }
+				loading={ summaryLoading }
+			/>
+
 			{ error && (
 				<Notice status="error" onRemove={ () => setError( null ) }>
 					{ error }
@@ -214,8 +221,6 @@ const App: React.FC = () => {
 
 			<SummaryCards
 				summary={ summary }
-				period={ summaryPeriod }
-				onPeriodChange={ handlePeriodChange }
 				loading={ summaryLoading }
 			/>
 
