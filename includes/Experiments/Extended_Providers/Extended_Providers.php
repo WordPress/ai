@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Extended_Providers;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Providers\Cloudflare\CloudflareWorkersAiProvider;
 use WordPress\AI\Providers\Cohere\CohereProvider;
 use WordPress\AI\Providers\DeepSeek\DeepSeekProvider;
 use WordPress\AI\Providers\FalAi\FalAiProvider;
@@ -45,6 +46,7 @@ use function wp_kses_post;
  */
 class Extended_Providers extends Abstract_Experiment {
 	private const DEFAULT_PROVIDER_CLASSES = array(
+		CloudflareWorkersAiProvider::class,
 		CohereProvider::class,
 		DeepSeekProvider::class,
 		FalAiProvider::class,
