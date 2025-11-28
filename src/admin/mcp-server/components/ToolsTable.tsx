@@ -63,22 +63,28 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 			filterBy: false,
 		},
 			{
-				id: 'enabled',
+			id: 'enabled',
 			label: __( 'Expose via MCP', 'ai' ),
-			type: 'boolean',
-			getValue: ( { item } ) => item.enabled,
-			enableSorting: false,
-			enableHiding: false,
-			filterBy: false,
-				render: ( { item } ) => (
-					<ToggleControl
-						checked={ item.enabled }
-						onChange={ ( value: boolean ) => onToggle( item.name, value ) }
-						disabled={ saving || ! serverEnabled }
-						__nextHasNoMarginBottom
-					/>
-				),
+			type: 'text',
+			getValue: ( { item } ) => item.enabled ? 'exposed' : 'not_exposed',
+			elements: [
+				{ label: __( 'Exposed', 'ai' ), value: 'exposed' },
+				{ label: __( 'Not exposed', 'ai' ), value: 'not_exposed' },
+			],
+			filterBy: {
+				operators: [ 'is' ],
 			},
+			enableSorting: true,
+			enableHiding: false,
+			render: ( { item } ) => (
+				<ToggleControl
+					checked={ item.enabled }
+					onChange={ ( value: boolean ) => onToggle( item.name, value ) }
+					disabled={ saving || ! serverEnabled }
+					__nextHasNoMarginBottom
+				/>
+			),
+		},
 	], [ categoryOptions, onToggle, saving, serverEnabled ] );
 
 	const initialFields = useMemo( () => fields.map( ( field ) => field.id ), [ fields ] );
