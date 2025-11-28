@@ -1,8 +1,10 @@
-# Writing Assistant
+# Writing Assistant (Suggestions Stream)
 
 ## Overview
 
-A comprehensive AI writing assistant for the Gutenberg editor that provides real-time feedback and acceleration through two complementary interfaces: a suggestions stream sidebar and inline ghost text completions.
+This issue now tracks the **Suggestions Stream sidebar only**. The inline ghost text/type-ahead implementation shipped already, so the remaining work is to deliver the session-based sidebar that surfaces actionable feedback (readability, SEO, internal links, etc.) while authors write.
+
+> **Status:** Ghost text completions are live. Sidebar UX + backend plumbing described below still needs implementation.
 
 ## What problem does this address?
 
@@ -14,11 +16,7 @@ Writers benefit from continuous, contextual feedback while drafting content. Cur
 
 ## What is your proposed solution?
 
-A unified "AI Writing Assistant" experiment with two main components:
-1. **Suggestions Stream** - Passive, reviewable feedback in a sidebar
-2. **Ghost Text (Type-ahead)** - Active, inline text completion
-
-Both share session context, settings, and AI infrastructure.
+Deliver a **session-aware sidebar** that observes editor activity and emits structured suggestions. The sidebar includes a Stream tab (live feed) and a Settings tab (per-session controls). It should sit alongside the existing ghost text tools so authors can use both simultaneously.
 
 ---
 
@@ -85,71 +83,6 @@ The AI understands:
 - **Previous suggestions**: Avoid repetition, track patterns
 - **User preferences**: Learn from accepted/dismissed suggestions
 
----
-
-## Component 2: Ghost Text (Type-ahead)
-
-### Core UX Pattern
-
-**Ghost Text Display**
-- Dimmed/opaque text appears ahead of cursor
-- Visually distinct from authored content (40% opacity, italic)
-- Does not interfere with normal typing
-- Disappears if user types something different
-
-**Keyboard Interactions**
-
-| Key | Action |
-|-----|--------|
-| `Tab` | Accept entire suggestion |
-| `Ctrl/Cmd + →` | Accept next word |
-| `Ctrl/Cmd + Shift + →` | Accept next sentence |
-| `Escape` | Dismiss suggestion |
-| Any typing | Ignores suggestion, continues with user input |
-
-### Completion Modes
-
-| Mode | Description |
-|------|-------------|
-| **Word** | Complete current word only |
-| **Sentence** | Complete to end of sentence |
-| **Paragraph** | Complete entire thought/paragraph |
-| **Smart** | AI decides based on context |
-
-### Trigger Behavior
-
-**When to Show Suggestions**
-- After typing pause (configurable: 300ms - 2s)
-- At end of sentence (period, question mark)
-- After specific triggers (colon, "such as", "for example")
-- Manual trigger via keyboard shortcut
-
-**When NOT to Show**
-- While user is actively typing
-- In headings (unless enabled)
-- In code blocks
-- When disabled in settings
-
-### Visual Example
-
-```
-+--Paragraph Block----------------------------------------+
-|                                                         |
-| WordPress 6.9 introduces the Abilities API, which|      |
-|                                                  ↑      |
-|                                               cursor    |
-|                                                         |
-| [ghost: allows plugins to register AI-powered actions.] |
-|         ↑                                               |
-|    dimmed/opaque text, not selectable                   |
-|                                                         |
-+---------------------------------------------------------+
-
-Status bar hint: [Tab] Accept  [Cmd+→] Accept word  [Esc] Dismiss
-```
-
----
-
 ## Combined User Flow
 
 ### Starting a Session
@@ -165,9 +98,7 @@ Status bar hint: [Tab] Accept  [Cmd+→] Accept word  [Esc] Dismiss
    - Link: "Link 'block editor' to 'Getting Started Guide'"
    - Readability: "Consider breaking this 45-word sentence"
    - SEO: "Primary keyword not yet used in first paragraph"
-3. **Ghost Text**: Author pauses, ghost text appears:
-   - ` provides a modern editing experience with drag-and-drop functionality.`
-4. Author presses Tab to accept, or keeps typing to dismiss
+3. **Ghost text (already shipped)** can continue working in parallel, but no longer needs additional engineering effort from this issue.
 
 ### Ending a Session
 1. Author clicks "End Session"
@@ -176,8 +107,7 @@ Status bar hint: [Tab] Accept  [Cmd+→] Accept word  [Esc] Dismiss
    - Words written: 847
    - Suggestions received: 23
    - Suggestions applied: 8
-   - Ghost text accepted: 12 times
-3. Option to export session report
+3. Option to export session report (and optionally show ghost text stats pulled from the already-shipped feature).
 
 ---
 
@@ -196,9 +126,9 @@ Status bar hint: [Tab] Accept  [Cmd+→] Accept word  [Esc] Dismiss
 | enables developers to...       | Link "Abilities API" to guide     |
 |                                | [Apply] [Dismiss] [Details]       |
 |                                |-----------------------------------|
-| [ghost: seamlessly integrate   | READABILITY | MED | 5 min ago     |
-|  AI capabilities into their    | Paragraph 2 has 52 words          |
-|  existing plugins.]            | Consider splitting for clarity    |
+|                                | READABILITY | MED | 5 min ago     |
+|                                | Paragraph 2 has 52 words          |
+|                                | Consider splitting for clarity    |
 |                                | [Apply] [Dismiss] [Details]       |
 +--------------------------------+------------------------------------+
 ```
@@ -208,18 +138,17 @@ Status bar hint: [Tab] Accept  [Cmd+→] Accept word  [Esc] Dismiss
 ## Technical Architecture
 
 ### Frontend
-- `@wordpress/dataviews` for suggestion list
-- Custom WordPress data store for session/suggestion state
-- `PluginSidebar` from `@wordpress/edit-post`
-- Debounced content change detection
-- Custom RichText extension for ghost text overlay
+- `@wordpress/dataviews` for the suggestion list UI.
+- Custom WordPress data store for session/suggestion state, shared with the existing ghost text store where sensible.
+- `PluginSidebar` from `@wordpress/edit-post`.
+- Debounced content change detection so the sidebar remains performant.
 
 ### Backend
-- New experiment: `Writing_Assistant`
-- Unified ability or multiple abilities per suggestion type
-- Efficient prompt design to minimize token usage
-- Caching layer for repeated content analysis
-- Rate limiting per session
+- Existing `Writing_Assistant` experiment registers REST endpoints for session lifecycle + suggestion retrieval.
+- Either a unified ability or multiple abilities per suggestion type (SEO, readability, etc.).
+- Efficient prompt design to minimize token usage.
+- Caching layer for repeated content analysis.
+- Rate limiting per session/user to protect providers.
 
 ### AI Integration
 - System instruction aware of all suggestion types
@@ -252,26 +181,14 @@ interface Session {
   timerDuration?: number;
   wordsAtStart: number;
   suggestions: Suggestion[];
-  ghostTextAccepted: number;
+  ghostTextAccepted?: number; // optional, populated by the shipped feature
   settings: SessionSettings;
 }
 ```
 
-### Ghost Text Implementation
+### Integration with existing ghost text
 
-**Potential Approaches:**
-
-1. **RichText Format Registration**
-   - Register a custom format for ghost text
-   - Mark as non-editable, auto-remove on interaction
-
-2. **Absolute Positioned Overlay**
-   - Render ghost text in a separate element
-   - Position absolutely based on cursor coordinates
-
-3. **Block Editor Filter**
-   - Use `editor.BlockEdit` filter
-   - Wrap paragraph block with ghost text logic
+The completed ghost text feature should emit events (accepted/dismissed counts, idle timers). The sidebar can listen to those to enrich session summaries but does not require additional RichText work.
 
 ---
 
@@ -287,25 +204,13 @@ interface Session {
 | Auto-dismiss applied | On/Off | On |
 | Notifications | Sound/Visual | Visual |
 
-### Ghost Text Settings
-| Setting | Options | Default |
-|---------|---------|---------|
-| Enable ghost text | On/Off | Off |
-| Completion mode | Word/Sentence/Paragraph/Smart | Smart |
-| Trigger delay | 300ms - 2000ms | 500ms |
-| Minimum confidence | 0-100% | 70% |
-| Show in headings | On/Off | Off |
-| Visual style | Opacity, color | 40%, theme |
+----
 
----
+## Accessibility considerations
 
-## Accessibility Considerations
-
-- Ghost text announced by screen readers (aria-label)
-- Clear visual distinction from authored content
-- Keyboard-only operation (no mouse required)
-- Option to disable entirely
-- Respect reduced motion preferences
+- All sidebar controls should be keyboard navigable.
+- Suggestions need clear type/priority labels for screen readers.
+- Respect reduced-motion preferences for animations/transitions.
 
 ---
 

@@ -1,363 +1,141 @@
 # Fork Contribution Strategy
 
-This document outlines the approach for developing experimental AI features on this fork and contributing them back to the upstream WordPress/ai repository.
+This document is the canonical “map” for feature planning on this fork. Update it whenever issues in `issues/` are added, renamed, merged, or deleted.
 
-## Repository Setup
+## Repository setup
 
 | Remote | Repository | Purpose |
 |--------|------------|---------|
-| `origin` | `Jameswlepage/ai` | Your fork - development happens here |
-| `upstream` | `WordPress/ai` | Original project - PR target |
+| `origin` | `Jameswlepage/ai` | Primary fork where day-to-day development happens. |
+| `upstream` | `WordPress/ai` | Canonical project; submit PRs here. |
 
-## Branch Strategy
+## Branch strategy
 
-### Integration Branch
-- **`develop`** - Your "kitchen sink" branch where all features merge together
-- Used for integration testing the full experience
-- Not intended for direct PR to upstream
-
-### Feature Branches
-- Branch from `upstream/develop` for independent features
-- Branch from parent feature branch for dependent features
-- PR to upstream when ready
+- **Integration branch (`develop`)** – Kitchen-sink branch where every experiment lands for internal testing. Never PR this branch upstream.
+- **Feature branches** – Branch from `upstream/develop` (or a parent feature branch) per experiment. Keep the scope aligned with the matching Markdown spec inside `issues/`.
+- **Upstream PRs** – Cherry-pick or branch from the relevant feature branch when opening against `WordPress/ai`.
 
 ---
 
-## Feature Consolidation
+## Backlog structure (Updated)
 
-After analyzing the 18 proposed features, several should be consolidated due to overlapping infrastructure, UX patterns, or functionality.
+Only files listed below should exist under `issues/` right now. Completed specs get deleted (git history remains).
 
-### Consolidation 1: Embeddings Platform
-**Merge into: `feature/embeddings-platform`**
+### Recently completed
 
-| Original Issues | Rationale |
-|-----------------|-----------|
-| Semantic Search | Core embedding infrastructure |
-| Related Posts | Consumes embeddings for similarity |
-| Smart 404 | Consumes embeddings for content matching |
+| Issue | Notes |
+|-------|-------|
+| `issue-ai-request-logging.md` (removed) | Full logging shipped; spec kept in history only. |
+| `issue-comment-moderation.md` (removed) | Experiment + abilities live under `includes/Experiments/Comment_Moderation`. |
+| `issue-post-table-bulk-ai.md` (removed) | Experiment + docs live under `includes/Experiments/Post_Table_Bulk`. |
+| Writing Assistant (ghost text) | Inline type-ahead completions delivered; only sidebar suggestions remain (still tracked in `issue-writing-assistant.md`). |
 
-**Shared Infrastructure:**
-- Vector embedding generation (on post save/update)
-- Embedding storage (post meta, custom table, or vector DB)
-- Similarity search functions
-- Batch processing for existing content
-- Index maintenance on CRUD
+### Platform foundations
 
-**Recommendation:** Build as a single cohesive feature with three consumer interfaces:
-1. Search replacement/enhancement
-2. Related Posts block + REST endpoint
-3. 404 template integration
+| File | Summary | Tier |
+|------|---------|------|
+| `issue-embeddings-platform.md` | Vector index powering semantic search, related posts, and smart 404 suggestions. | Tier 0 |
+| `issue-ai-admin-console.md` | Unified Abilities Explorer + MCP server tooling built on DataViews. | Tier 1 |
+| `issue-experiment-settings-framework.md` | Schema-driven experiment settings with a React UI, REST endpoints, and reusable controls. | Tier 1 |
 
----
+### Editorial assistants
 
-### Consolidation 2: Editor Writing Assistant
-**Merge into: `feature/writing-assistant`**
+| File | Summary |
+|------|---------|
+| `issue-writing-assistant.md` | Suggestions stream sidebar (ghost text already shipped). |
+| `issue-accessibility-suite.md` | Heading/link analysis with auto-fix suggestions. |
+| `issue-content-repurposing.md` | Generate platform-specific social copy from posts. |
+| `issue-content-freshness-audit.md` | Detect stale references, broken links, and prioritize review queues. |
+| `issue-faq-generation.md` | Extract Q&A pairs, insert FAQ blocks, and emit schema. |
 
-| Original Issues | Rationale |
-|-----------------|-----------|
-| Suggestions Stream | Already supersedes Readability + Tone |
-| Type-ahead Text (Ghost Text) | Same "real-time writing help" UX |
-| Readability Analysis | Explicitly superseded |
-| Tone Adjustment | Explicitly superseded |
+### Site operations & insights
 
-**Shared Infrastructure:**
-- Gutenberg sidebar (`PluginSidebar`)
-- Session management (start/stop, timer, stats)
-- Debounced content change detection
-- AI streaming responses
-- WordPress data store for state
-
-**Recommendation:** Single "AI Writing Assistant" experiment with:
-1. **Suggestions Stream** - sidebar with filterable suggestion feed
-2. **Ghost Text** - inline type-ahead completions
-3. Both share session context, settings, and AI infrastructure
-
-**UX Consideration:** These are complementary, not competing:
-- Suggestions Stream = passive, reviewable feedback
-- Ghost Text = active, inline acceleration
-- Users may want both, one, or neither
+| File | Summary |
+|------|---------|
+| `issue-media-smart-cropping.md` | AI focal point detection for better thumbnails and featured images. |
+| `issue-media-transcription.md` | Audio/video transcription pipeline with captions + transcript UI. |
+| `issue-media-text-to-speech.md` | Text-to-speech generation plus optional audio feed. |
+| `issue-form-response-summary.md` | Summaries, themes, and sentiment for form submissions. |
 
 ---
 
-### Consolidation 3: Accessibility Suite
-**Merge into: `feature/accessibility-suite`**
-
-| Original Issues | Rationale |
-|-----------------|-----------|
-| Heading Structure Analysis | Document structure a11y |
-| Link Text Improvement | Link a11y |
-
-**Shared Infrastructure:**
-- Editor sidebar panel ("Accessibility")
-- Issue detection + inline highlighting
-- Fix suggestions with one-click apply
-- Pre-publish checks integration
-
-**Recommendation:** Single "Accessibility Assistant" with tabbed interface:
-- **Structure Tab**: Heading hierarchy, document outline
-- **Links Tab**: Vague link detection, rewrite suggestions
-- **Summary Tab**: Overall a11y score, issues count
-
-**Future Expansion:** Alt text (already upstream issue #44), color contrast, etc.
-
----
-
-### Consolidation 4: Media AI Suite
-**Merge into: `feature/media-ai`**
-
-| Original Issues | Rationale |
-|-----------------|-----------|
-| Audio/Video Transcription | Media library AI |
-| Text-to-Speech | Media library AI |
-| Smart Image Cropping | Media library AI |
-
-**Shared Infrastructure:**
-- Media Library UI enhancements
-- Async processing with progress indication
-- File attachment/meta storage
-- Bulk processing for existing media
-
-**Recommendation:** Single "Media AI" experiment with toggleable features:
-1. **Transcription**: Generate transcripts for audio/video
-2. **Text-to-Speech**: Generate audio from post content
-3. **Smart Cropping**: AI focal point detection
-
-**Note:** These are more loosely coupled than other consolidations. Could remain separate if preferred, but share admin UI patterns.
-
----
-
-### Consolidation 5: Content Audit Tools
-**Merge into: `feature/content-audit`**
-
-| Original Issues | Rationale |
-|-----------------|-----------|
-| Content Freshness Audit | Bulk content analysis |
-| FAQ Generation | Bulk content transformation |
-
-**Shared Infrastructure:**
-- Admin dashboard for bulk operations
-- Post scanning/queuing system
-- Review queue workflow
-- Scheduled/background processing
-
-**Recommendation:** "Content Tools" dashboard with:
-1. **Freshness Audit**: Find outdated content, suggest updates
-2. **FAQ Generator**: Generate FAQ blocks from existing posts
-
-**Weaker Consolidation:** These share admin patterns but are functionally distinct. Could remain separate.
-
----
-
-### Standalone Features (No Consolidation Needed)
-
-These are sufficiently distinct to remain independent:
-
-| Feature | Rationale |
-|---------|-----------|
-| **Post Table Bulk AI** | List table enhancement, tightly scoped |
-| **Comment Moderation** | Distinct admin area, unique workflow |
-| **Content Repurposing (Social)** | Post sidebar, distinct output format |
-| **Form Response Summary** | Integrates with external plugins, unique data source |
-
----
-
-## Final Feature List (Consolidated)
-
-After consolidation, **18 issues become 9 features**:
-
-| # | Feature | Type | Complexity |
-|---|---------|------|------------|
-| 1 | **Embeddings Platform** | Tier 0 (Foundation) | High |
-| 2 | **Writing Assistant** | Tier 0 (Foundation) | High |
-| 3 | **Accessibility Suite** | Tier 1 (Independent) | Medium |
-| 4 | **Media AI Suite** | Tier 1 (Independent) | Medium |
-| 5 | **Content Audit Tools** | Tier 1 (Independent) | Medium |
-| 6 | **Post Table Bulk AI** | Tier 1 (Independent) | Low |
-| 7 | **Comment Moderation** | Tier 1 (Independent) | Medium |
-| 8 | **Content Repurposing** | Tier 1 (Independent) | Low |
-| 9 | **Form Response Summary** | Tier 1 (Independent) | Medium |
-
----
-
-## Dependency Graph
+## Dependency overview
 
 ```
 upstream/develop
 │
-├─── feature/embeddings-platform (Tier 0) ◄── HIGH PRIORITY
-│    │
-│    └─── Provides: Search, Related Posts, Smart 404
+├── Foundations
+│   ├── Embeddings Platform (Tier 0)
+│   ├── Writing Assistant (Tier 0 UX)
+│   ├── AI Admin Console (Explorer + MCP)
+│   └── Experiment Settings Framework
 │
-├─── feature/writing-assistant (Tier 0) ◄── HIGH PRIORITY
-│    │
-│    └─── Provides: Suggestions Stream, Ghost Text, Readability, Tone
+├── Editorial Accelerators
+│   ├── Accessibility Suite
+│   ├── Content Repurposing
+│   ├── Content Freshness Audit
+│   └── FAQ Generation
 │
-├─── feature/accessibility-suite (Tier 1)
-│    └─── Provides: Heading Analysis, Link Text
-│
-├─── feature/media-ai (Tier 1)
-│    └─── Provides: Transcription, TTS, Smart Cropping
-│
-├─── feature/content-audit (Tier 1)
-│    └─── Provides: Freshness Audit, FAQ Generation
-│
-├─── feature/post-table-bulk-ai (Tier 1)
-│
-├─── feature/comment-moderation (Tier 1)
-│
-├─── feature/content-repurposing (Tier 1)
-│
-└─── feature/form-response-summary (Tier 1)
+└── Site Operations & Insights
+    ├── Media Smart Cropping
+    ├── Media Transcription
+    ├── Media Text-to-Speech
+    └── Form Response Summary
 ```
 
----
-
-## Implementation Sequence
-
-### Phase 1: Quick Wins (Tier 1 Independents)
-Start with lower-complexity independent features to:
-- Establish contribution patterns with upstream
-- Build familiarity with the codebase
-- Deliver value quickly
-
-**Recommended order:**
-1. `feature/post-table-bulk-ai` - Extends existing Title Generation
-2. `feature/content-repurposing` - Simple sidebar addition
-3. `feature/accessibility-suite` - High value, moderate complexity
-
-### Phase 2: Foundations (Tier 0)
-Build the foundational infrastructure that enables advanced features:
-
-1. `feature/embeddings-platform`
-   - Start with embedding generation + storage
-   - Add semantic search
-   - Add related posts
-   - Add smart 404
-
-2. `feature/writing-assistant`
-   - Start with suggestions stream sidebar
-   - Add session management
-   - Add ghost text / type-ahead
-
-### Phase 3: Remaining Features
-Complete the feature set:
-
-1. `feature/media-ai` - Transcription, TTS, Smart Cropping
-2. `feature/content-audit` - Freshness, FAQ Generation
-3. `feature/comment-moderation`
-4. `feature/form-response-summary`
+Foundations (embeddings + writing assistant) unblock most downstream UI work. The AI Admin Console and Experiment Settings Framework ensure a consistent admin surface for activating/configuring every experiment.
 
 ---
 
-## PR Strategy
+## Implementation sequence
 
-### For Independent Features
-```bash
-# Create branch from upstream
-git fetch upstream
-git checkout -b feature/post-table-bulk-ai upstream/develop
-
-# Develop the feature
-# ... commits ...
-
-# Push to your fork
-git push origin feature/post-table-bulk-ai
-
-# Open PR: origin/feature/post-table-bulk-ai → upstream/develop
-```
-
-### For Consolidated Features
-Each consolidated feature may result in multiple PRs:
-
-**Example: Embeddings Platform**
-1. PR #1: Core embedding infrastructure (generation, storage, indexing)
-2. PR #2: Semantic search (depends on #1)
-3. PR #3: Related posts block (depends on #1)
-4. PR #4: Smart 404 integration (depends on #1)
-
-This allows upstream to review/merge incrementally.
-
-### Integration Testing
-```bash
-# Merge all features into your develop for testing
-git checkout develop
-git merge feature/embeddings-platform
-git merge feature/writing-assistant
-git merge feature/accessibility-suite
-# ... etc
-
-# Test the integrated experience
-# Your develop branch is your "preview" of the full vision
-```
+1. **Quick wins / editorial polish**
+   - Content Repurposing
+   - Accessibility Suite
+2. **Foundations**
+   - Embeddings Platform (incremental: indexing → search → related posts → smart 404)
+   - Writing Assistant (suggestions stream; ghost text already shipped)
+   - AI Admin Console + Experiment Settings Framework in parallel to modernize admin tooling.
+3. **Operational tooling**
+   - Media smart-cropping / transcription / TTS (ship independently).
+   - Content Freshness Audit + FAQ Generation dashboards.
+   - Form Response Summary (heavier integrations).
 
 ---
 
-## Alignment with Upstream Roadmap
+## Alignment with upstream roadmap
 
-These features align with the WordPress/ai roadmap and open issues:
-
-| Your Feature | Upstream Alignment |
-|--------------|-------------------|
-| Embeddings Platform | Issue #37 (MCP usage), #21 (abilities scaling) |
-| Writing Assistant | Roadmap: Content Assistant |
-| Accessibility Suite | Issue #44 (Alt Text), WCAG compliance goals |
-| Media AI | Roadmap: Media Enhancement, Alt Text Generation |
-| Content Audit | Roadmap: Workflow Automation |
-| Post Table Bulk AI | Extends existing Title Generation experiment |
-
----
-
-## Open Questions
-
-1. **Embeddings Storage**: Local (post meta/custom table) vs. external vector DB?
-   - Impacts scalability and hosting requirements
-   - Should discuss with upstream before implementation
-
-2. **MCP Integration**: Should new features use the layered tool pattern (#21)?
-   - Would require implementing the adapter layer first (#37)
-   - May be prerequisite for some features
-
-3. **UI Consistency**: Should consolidated features share a unified settings page?
-   - Or remain as separate experiments with own toggles?
-
-4. **Breaking into PRs**: For large consolidated features, what's the right granularity?
-   - Too small = overhead
-   - Too large = hard to review
+| Local issue | Upstream alignment |
+|-------------|-------------------|
+| Embeddings Platform | Issues #21 & #37 (Abilities scaling + MCP usage). |
+| AI Admin Console | Issues #62 & #63 (Abilities Explorer) plus MCP adapter work. |
+| Experiment Settings Framework | Issues #32, #33, #90–#103 (settings modernization). |
+| Writing Assistant | Roadmap: Content Assistant. |
+| Accessibility Suite | Issue #44 (alt text) + WCAG compliance goals. |
+| Media features | Roadmap: Media enhancements & accessibility. |
+| Content Freshness / FAQ Generation | Workflow automation & SEO initiatives. |
 
 ---
 
-## Files to Update
+## Open questions
 
-When creating consolidated issues, archive or update these temp files:
-
-### To Archive (superseded by consolidations)
-- `temp/issue-semantic-search.md` → part of Embeddings Platform
-- `temp/issue-related-posts.md` → part of Embeddings Platform
-- `temp/issue-smart-404.md` → part of Embeddings Platform
-- `temp/issue-suggestions-stream.md` → part of Writing Assistant
-- `temp/issue-type-ahead-text.md` → part of Writing Assistant
-- `temp/issue-readability-analysis.md` → superseded by Writing Assistant
-- `temp/issue-tone-adjustment.md` → superseded by Writing Assistant
-- `temp/issue-accessibility-heading-analysis.md` → part of Accessibility Suite
-- `temp/issue-accessibility-link-text.md` → part of Accessibility Suite
-- `temp/issue-audio-video-transcription.md` → part of Media AI Suite
-- `temp/issue-text-to-speech.md` → part of Media AI Suite
-- `temp/issue-smart-image-cropping.md` → part of Media AI Suite
-- `temp/issue-content-freshness.md` → part of Content Audit Tools
-- `temp/issue-faq-generation.md` → part of Content Audit Tools
-
-### To Keep (standalone features)
-- `temp/issue-post-table-bulk-ai.md`
-- `temp/issue-comment-moderation.md`
-- `temp/issue-content-repurposing.md`
-- `temp/issue-form-response-summary.md`
+1. **Embeddings storage** – Post meta vs. custom tables vs. external vector DB remains undecided.
+2. **MCP exposure** – Do we need multiple MCP namespaces, or is a single default server enough?
+3. **Settings schema** – How opinionated should the shared React components be versus letting experiments roll their own UI?
+4. **Media processing costs** – Need a budgeting/alerting model before bulk transcription or TTS launches.
 
 ---
 
-## Next Steps
+## File maintenance rules
 
-1. [ ] Review this strategy document
-2. [ ] Decide on consolidation approach (accept/modify)
-3. [ ] Create consolidated issue documents for each merged feature
-4. [ ] Create feature branches
-5. [ ] Begin Phase 1 implementation
+- Keep feature specs in `issues/issue-*.md` only. When a feature ships, delete the file and add a note in the “Recently completed” table above.
+- If a feature spans distinct deliverables (e.g., Media AI), split it into separate Markdown files so scopes stay reviewable.
+- When adding a new spec, immediately update the tables in this document so others can discover it.
+
+---
+
+## Next steps
+
+1. [ ] Use this document when triaging or reporting status.
+2. [ ] Update the backlog tables whenever issues are added/removed.
+3. [ ] Keep branch naming aligned with the file names listed here.
