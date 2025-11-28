@@ -25,7 +25,6 @@
 	.wrap > & {
 		margin-left: -20px;
 		margin-right: -20px;
-		margin-top: -10px; // Offset the .wrap default top margin
 
 		@media screen and (max-width: 782px) {
 			margin-left: -10px;
