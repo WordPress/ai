@@ -231,6 +231,11 @@ class Title_Generation extends Abstract_Ability {
 	protected function meta(): array {
 		return array(
 			'show_in_rest' => true,
+			'mcp'          => array(
+				'public'   => true,
+				'type'     => 'tool',
+				'category' => 'content',
+			),
 		);
 	}
 

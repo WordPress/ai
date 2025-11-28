@@ -155,8 +155,9 @@ class Posts {
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(
 					'mcp' => array(
-						'public' => true,
-						'type'   => 'tool',
+						'public'   => true,
+						'type'     => 'tool',
+						'category' => 'utilities',
 					),
 				),
 			)
@@ -297,8 +298,9 @@ class Posts {
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(
 					'mcp' => array(
-						'public' => true,
-						'type'   => 'tool',
+						'public'   => true,
+						'type'     => 'tool',
+						'category' => 'utilities',
 					),
 				),
 			),
