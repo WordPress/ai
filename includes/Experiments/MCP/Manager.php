@@ -9,6 +9,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\MCP;
 
+use WP\MCP\Abilities\DiscoverAbilitiesAbility;
+use WP\MCP\Abilities\ExecuteAbilityAbility;
+use WP\MCP\Abilities\GetAbilityInfoAbility;
 use WP\MCP\Core\McpAdapter;
 use WP\MCP\Core\McpServer;
 use WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler;
@@ -16,8 +19,6 @@ use WP\MCP\Infrastructure\Observability\NullMcpObservabilityHandler;
 use WP\MCP\Transport\HttpTransport;
 use WordPress\AI\Experiments\MCP\REST\MCP_Controller;
 
-use function add_action;
-use function add_filter;
 use function add_action;
 use function add_filter;
 use function array_key_exists;
@@ -34,6 +35,7 @@ use function sanitize_text_field;
 use function set_url_scheme;
 use function update_option;
 use function wp_generate_password;
+use function wp_get_ability;
 use function wp_get_ability_category;
 use function wp_get_abilities;
 use function wp_json_encode;
@@ -41,6 +43,7 @@ use function wp_parse_url;
 use function wp_remote_request;
 use function wp_remote_retrieve_body;
 use function wp_remote_retrieve_response_code;
+use function wp_register_ability_category;
 
 /**
  * Coordinates MCP adapter bootstrapping, configuration persistence, and REST data.
@@ -59,9 +62,65 @@ class Manager {
 	 */
 	public function init(): void {
 		add_filter( 'mcp_adapter_create_default_server', '__return_false' );
+		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_adapter_category' ), 5 );
+		add_action( 'wp_abilities_api_init', array( $this, 'register_adapter_abilities' ), 5 );
 		add_action( 'init', array( $this, 'bootstrap_adapter' ), 20 );
 		add_action( 'mcp_adapter_init', array( $this, 'register_servers' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
+	}
+
+	/**
+	 * Ensure the MCP adapter ability category is available.
+	 */
+	public function register_adapter_category(): void {
+		if ( ! function_exists( 'wp_register_ability_category' ) ) {
+			return;
+		}
+
+		if ( function_exists( 'wp_has_ability_category' ) && wp_has_ability_category( 'mcp-adapter' ) ) {
+			return;
+		}
+
+		wp_register_ability_category(
+			'mcp-adapter',
+			array(
+				'label'       => esc_html__( 'MCP Adapter', 'ai' ),
+				'description' => esc_html__( 'Built-in abilities required for MCP discovery and execution.', 'ai' ),
+			)
+		);
+	}
+
+	/**
+	 * Register the core MCP adapter abilities when Abilities API is available.
+	 */
+	public function register_adapter_abilities(): void {
+		if ( ! function_exists( 'wp_get_ability' ) ) {
+			return;
+		}
+
+		$this->register_adapter_category();
+
+		$this->maybe_register_adapter_ability( 'mcp-adapter/discover-abilities', DiscoverAbilitiesAbility::class );
+		$this->maybe_register_adapter_ability( 'mcp-adapter/get-ability-info', GetAbilityInfoAbility::class );
+		$this->maybe_register_adapter_ability( 'mcp-adapter/execute-ability', ExecuteAbilityAbility::class );
+	}
+
+	/**
+	 * Register an adapter ability if it is not already available.
+	 *
+	 * @param string $ability_name  Ability identifier.
+	 * @param string $ability_class Fully-qualified ability class name.
+	 */
+	private function maybe_register_adapter_ability( string $ability_name, string $ability_class ): void {
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ) ) {
+			return;
+		}
+
+		if ( ! class_exists( $ability_class ) || ! is_callable( array( $ability_class, 'register' ) ) ) {
+			return;
+		}
+
+		$ability_class::register();
 	}
 
 	/**
@@ -841,7 +900,11 @@ class Manager {
 	 * Helper to get ability category labels.
 	 */
 	private function get_category_label( string $slug ): string {
-		$category = wp_get_ability_category( $slug );
+		if ( function_exists( 'wp_has_ability_category' ) && ! wp_has_ability_category( $slug ) ) {
+			return $slug;
+		}
+
+		$category = function_exists( 'wp_get_ability_category' ) ? wp_get_ability_category( $slug ) : null;
 
 		return $category ? $category->get_label() : $slug;
 	}
