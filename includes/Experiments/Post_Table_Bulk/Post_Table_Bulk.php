@@ -29,6 +29,23 @@ use WordPress\AI\Asset_Loader;
  */
 class Post_Table_Bulk extends Abstract_Experiment {
 	/**
+	 * Tracks whether bulk and quick mount points have been rendered.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	private bool $bulk_mount_rendered = false;
+
+	/**
+	 * Tracks whether the quick edit mount point has been rendered.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	private bool $quick_mount_rendered = false;
+	/**
 	 * {@inheritDoc}
 	 *
 	 * @since 0.1.0
@@ -61,7 +78,7 @@ class Post_Table_Bulk extends Abstract_Experiment {
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
-			'ai/' . $this->get_id() . '/taxonomy-suggestions',
+			$this->get_taxonomy_suggestions_ability_name(),
 			array(
 				'label'         => $this->get_label(),
 				'description'   => __( 'Suggests taxonomy terms for selected posts.', 'ai' ),
@@ -94,13 +111,17 @@ class Post_Table_Bulk extends Abstract_Experiment {
 			return;
 		}
 
+		if ( function_exists( 'wp_script_is' ) && wp_script_is( 'wp-abilities', 'registered' ) ) {
+			wp_enqueue_script( 'wp-abilities' );
+		}
+
 		Asset_Loader::enqueue_script( 'post_table_bulk', 'experiments/post-table-bulk' );
 		Asset_Loader::localize_script(
 			'post_table_bulk',
 			'PostTableBulkData',
 			array(
 				'enabled'       => $this->is_enabled(),
-				'ability'       => 'ai/' . $this->get_id() . '/taxonomy-suggestions',
+				'ability'       => $this->get_taxonomy_suggestions_ability_name(),
 				'postType'      => $screen->post_type,
 				'taxonomies'    => array_values( $taxonomies ),
 				'maxBatchSize'  => 20,
@@ -118,11 +139,18 @@ class Post_Table_Bulk extends Abstract_Experiment {
 	 * @param string $post_type   Current post type.
 	 */
 	public function render_bulk_mount_point( string $column_name, string $post_type ): void {
-		if ( 'categories' !== $column_name || ! $this->should_render_mount_point( $post_type ) ) {
+		if ( $this->bulk_mount_rendered || ! $this->is_enabled() ) {
+			return;
+		}
+
+		$taxonomies = $this->supported_taxonomies( $post_type );
+
+		if ( empty( $taxonomies ) || ! $this->is_taxonomy_column( $column_name, $taxonomies ) ) {
 			return;
 		}
 
 		echo '<div class="wp-ai-taxonomy-suggestions" data-mode="bulk" aria-live="polite"></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		$this->bulk_mount_rendered = true;
 	}
 
 	/**
@@ -134,23 +162,66 @@ class Post_Table_Bulk extends Abstract_Experiment {
 	 * @param string $post_type   Current post type.
 	 */
 	public function render_quick_mount_point( string $column_name, string $post_type ): void {
-		if ( 'categories' !== $column_name || ! $this->should_render_mount_point( $post_type ) ) {
+		if ( $this->quick_mount_rendered || ! $this->is_enabled() ) {
+			return;
+		}
+
+		$taxonomies = $this->supported_taxonomies( $post_type );
+
+		if ( empty( $taxonomies ) || ! $this->is_taxonomy_column( $column_name, $taxonomies ) ) {
 			return;
 		}
 
 		echo '<div class="wp-ai-taxonomy-suggestions" data-mode="quick" aria-live="polite"></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		$this->quick_mount_rendered = true;
 	}
 
 	/**
-	 * Determines whether we should render mount points for the provided post type.
+	 * Determines whether the provided column represents a supported taxonomy field.
 	 *
-	 * @since 0.1.0
+	 * WordPress renders taxonomy columns as either `categories`, `tags`, the taxonomy slug,
+	 * or the `taxonomy-{$slug}` format. Support each style so the assistant works no matter
+	 * which taxonomy column (categories, tags, or a custom taxonomy) triggers the hook.
 	 *
-	 * @param string $post_type Post type.
+	 * @since x.x.x
+	 *
+	 * @param string $column_name        Column identifier.
+	 * @param array  $supported_taxonomies Supported taxonomies keyed by slug.
 	 * @return bool
 	 */
-	private function should_render_mount_point( string $post_type ): bool {
-		return $this->is_enabled() && ! empty( $this->supported_taxonomies( $post_type ) );
+	private function is_taxonomy_column( string $column_name, array $supported_taxonomies ): bool {
+		if ( empty( $column_name ) ) {
+			return false;
+		}
+
+		$normalized = $column_name;
+
+		if ( 0 === strpos( $normalized, 'taxonomy-' ) ) {
+			$normalized = substr( $normalized, strlen( 'taxonomy-' ) );
+		}
+
+		$aliases = array(
+			'categories' => 'category',
+			'category'   => 'category',
+			'tags'       => 'post_tag',
+		);
+
+		if ( isset( $aliases[ $normalized ] ) ) {
+			$normalized = $aliases[ $normalized ];
+		}
+
+		return isset( $supported_taxonomies[ $normalized ] );
+	}
+
+	/**
+	 * Returns the ability name used for taxonomy suggestions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string
+	 */
+	private function get_taxonomy_suggestions_ability_name(): string {
+		return 'ai-post-table-bulk/taxonomy-suggestions';
 	}
 
 	/**

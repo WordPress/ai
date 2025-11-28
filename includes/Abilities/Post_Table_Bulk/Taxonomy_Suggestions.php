@@ -279,6 +279,11 @@ class Taxonomy_Suggestions extends Abstract_Ability {
 	protected function meta(): array {
 		return array(
 			'show_in_rest' => true,
+			'mcp'          => array(
+				'public'   => true,
+				'type'     => 'tool',
+				'category' => 'bulk-edit',
+			),
 		);
 	}
 
@@ -514,18 +519,16 @@ class Taxonomy_Suggestions extends Abstract_Ability {
 	private function request_suggestions( string $payload ) {
 		$response = AI_Client::prompt_with_wp_error( $payload )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.2 )
-			->using_candidate_count( 1 )
 			->using_model_preference( ...get_preferred_models() )
-			->generate_texts();
+			->generate_text();
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$text = $response[0] ?? '';
+		$text = is_string( $response ) ? $response : '';
 
-		if ( ! is_string( $text ) || '' === trim( $text ) ) {
+		if ( '' === trim( $text ) ) {
 			return new WP_Error(
 				'ai_empty_response',
 				esc_html__( 'The AI provider returned an empty response.', 'ai' )
