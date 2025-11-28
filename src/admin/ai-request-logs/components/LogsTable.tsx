@@ -291,37 +291,35 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				 ) }
 			</CardHeader>
 			<CardBody>
-				<div className="ai-request-logs__dataviews">
-					<DataViews
-						data={ logs }
-						fields={ fields }
-						view={ view }
-						onChangeView={ handleViewChange }
-						getItemId={ ( item ) => item.id }
-						defaultLayouts={ {
-							table: {
-								layout: {
-									density: 'comfortable',
-									enableMoving: false,
-								},
+				<DataViews
+					data={ logs }
+					fields={ fields }
+					view={ view }
+					onChangeView={ handleViewChange }
+					getItemId={ ( item ) => item.id }
+					defaultLayouts={ {
+						table: {
+							layout: {
+								density: 'comfortable',
+								enableMoving: false,
 							},
-						} }
-						isLoading={ loading }
-						paginationInfo={ {
-							totalItems: total,
-							totalPages,
-						} }
-						config={ { perPageSizes: [ 25 ] } }
-						empty={ (
-							<p className="ai-request-logs__empty">
-								{ hasActiveFilters
-									? __( 'No logs match your filters.', 'ai' )
-									: __( 'No AI requests have been logged yet.', 'ai' ) }
-							</p>
-						) }
-						searchLabel={ __( 'Search logs', 'ai' ) }
-					/>
-				</div>
+						},
+					} }
+					isLoading={ loading }
+					paginationInfo={ {
+						totalItems: total,
+						totalPages,
+					} }
+					config={ { perPageSizes: [ 25 ] } }
+					empty={ (
+						<p className="ai-request-logs__empty">
+							{ hasActiveFilters
+								? __( 'No logs match your filters.', 'ai' )
+								: __( 'No AI requests have been logged yet.', 'ai' ) }
+						</p>
+					) }
+					searchLabel={ __( 'Search logs', 'ai' ) }
+				/>
 			</CardBody>
 		</Card>
 	);

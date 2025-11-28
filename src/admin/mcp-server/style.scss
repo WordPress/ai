@@ -33,15 +33,15 @@
 			word-break: break-all;
 		}
 
-		.components-card__body {
+		// Card body flex layout for non-dataviews cards
+		.components-card__body:not(:has(> .dataviews-wrapper)) {
 			display: flex;
 			flex-direction: column;
 			gap: 16px;
 			align-items: flex-start;
 
-			// Allow button rows, form elements, and dataviews to stretch
+			// Allow button rows and form elements to stretch
 			.ai-mcp-server__button-row,
-			.ai-mcp-server__dataviews,
 			.components-select-control,
 			.components-textarea-control {
 				align-self: stretch;
@@ -119,10 +119,6 @@
 
 	&__tools {
 		margin-bottom: 24px;
-
-		.ai-mcp-server__dataviews {
-			margin-top: 16px;
-		}
 
 		.dataviews__layout {
 			font-size: 13px;

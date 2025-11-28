@@ -139,33 +139,31 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 					</Notice>
 				 ) }
 
-				<div className="ai-mcp-server__dataviews">
-					<DataViews
-						data={ filteredTools }
-						fields={ fields }
-						view={ view }
-						onChangeView={ handleViewChange }
-						getItemId={ ( item ) => item.name }
-						defaultLayouts={ {
-							table: {
-								layout: {
-									density: 'comfortable',
-									enableMoving: false,
-								},
+				<DataViews
+					data={ filteredTools }
+					fields={ fields }
+					view={ view }
+					onChangeView={ handleViewChange }
+					getItemId={ ( item ) => item.name }
+					defaultLayouts={ {
+						table: {
+							layout: {
+								density: 'comfortable',
+								enableMoving: false,
 							},
-						} }
-						isLoading={ false }
-						paginationInfo={ paginationInfo }
-						empty={ (
-							<p className="ai-mcp-server__hint">
-								{ hasActiveFilters
-									? __( 'No abilities match your filters.', 'ai' )
-									: __( 'Enable experiments to register more abilities for MCP clients.', 'ai' ) }
-							</p>
-						) }
-							searchLabel={ __( 'Search abilities', 'ai' ) }
-					/>
-				</div>
+						},
+					} }
+					isLoading={ false }
+					paginationInfo={ paginationInfo }
+					empty={ (
+						<p className="ai-mcp-server__hint">
+							{ hasActiveFilters
+								? __( 'No abilities match your filters.', 'ai' )
+								: __( 'Enable experiments to register more abilities for MCP clients.', 'ai' ) }
+						</p>
+					) }
+					searchLabel={ __( 'Search abilities', 'ai' ) }
+				/>
 			</CardBody>
 		</Card>
 	);

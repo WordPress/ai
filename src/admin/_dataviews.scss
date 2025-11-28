@@ -2,16 +2,4 @@
 // Copied from node_modules/@wordpress/dataviews/build-style/style.css
 @import './_dataviews-base.css';
 
-// Project-specific overrides
-
-// Ensure DataViews wrapper fills container
-.dataviews-wrapper {
-	width: 100%;
-}
-
-// Ensure table fills container width
-.dataviews-view-table {
-	width: 100%;
-	min-width: 100%;
-	table-layout: auto;
-}
+// Project-specific overrides - minimal, as the base CSS handles most styling
