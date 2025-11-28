@@ -260,19 +260,19 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[0], 'First model should be an array' );
 		$this->assertCount( 2, $result[0], 'First model should have 2 elements' );
 		$this->assertEquals( 'anthropic', $result[0][0], 'First model provider should be anthropic' );
-		$this->assertEquals( 'claude-haiku-4-5', $result[0][1], 'First model name should be claude-haiku-4-5' );
+		$this->assertEquals( 'claude-haiku-4-5-20251001', $result[0][1], 'First model name should be claude-haiku-4-5-20251001' );
 
-		// Check second model (google).
+		// Check second model (openai).
 		$this->assertIsArray( $result[1], 'Second model should be an array' );
 		$this->assertCount( 2, $result[1], 'Second model should have 2 elements' );
-		$this->assertEquals( 'google', $result[1][0], 'Second model provider should be google' );
-		$this->assertEquals( 'gemini-2.5-flash', $result[1][1], 'Second model name should be gemini-2.5-flash' );
+		$this->assertEquals( 'openai', $result[1][0], 'Second model provider should be openai' );
+		$this->assertEquals( 'gpt-5-nano-2025-08-07', $result[1][1], 'Second model name should be gpt-5-nano-2025-08-07' );
 
-		// Check third model (openai).
+		// Check third model (google).
 		$this->assertIsArray( $result[2], 'Third model should be an array' );
 		$this->assertCount( 2, $result[2], 'Third model should have 2 elements' );
-		$this->assertEquals( 'openai', $result[2][0], 'Third model provider should be openai' );
-		$this->assertEquals( 'gpt-4o-mini', $result[2][1], 'Third model name should be gpt-4o-mini' );
+		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
+		$this->assertEquals( 'gemini-2.5-flash', $result[2][1], 'Third model name should be gemini-2.5-flash' );
 
 		// Check fourth model (openai).
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
@@ -336,4 +336,3 @@ class HelpersTest extends WP_UnitTestCase {
 		remove_all_filters( 'ai_preferred_models' );
 	}
 }
-
