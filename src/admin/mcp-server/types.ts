@@ -1,13 +1,18 @@
-export interface ServerDetails {
-	id: string | null;
-	name: string | null;
-	description: string | null;
-	route_namespace: string | null;
-	route: string | null;
+export interface ServerSummary {
+	id: string;
+	name: string;
+	description: string;
+	status: 'running' | 'initializing' | 'disabled';
+}
+
+export interface ServerDetails extends ServerSummary {
+	route_namespace: string;
+	route: string;
+	transports: string[];
 	http_endpoint: string | null;
 	cli_command: string | null;
 	has_route: boolean;
-	status: 'running' | 'initializing' | 'disabled';
+	enabled: boolean;
 }
 
 export interface ToolSummary {
@@ -28,9 +33,11 @@ export interface ConfigTemplate {
 	content: string;
 }
 
-export interface McpServerState {
+export interface McpOverview {
 	enabled: boolean;
-	server: ServerDetails | null;
+	servers: ServerSummary[];
+	activeServerId: string;
+	activeServer: ServerDetails | null;
 	tools: ToolSummary[];
 	configTemplates: Record<string, ConfigTemplate>;
 }
@@ -47,16 +54,15 @@ export interface LocalizedSettings {
 		nonce: string;
 		root: string;
 		routes: {
-			base: string;
+			overview: string;
+			enabled: string;
+			server: string;
+			addServer: string;
 			tools: string;
 			test: string;
 		};
 	};
 	profileUrl: string;
-	initialState: {
-		enabled: boolean;
-		server: ServerDetails | null;
-	};
 }
 
 declare global {

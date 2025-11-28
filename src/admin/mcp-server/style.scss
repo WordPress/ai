@@ -14,6 +14,18 @@
 		}
 	}
 
+	&__toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		align-items: flex-end;
+		margin-bottom: 24px;
+
+		.components-select-control {
+			min-width: 240px;
+		}
+	}
+
 	&__card {
 		code {
 			word-break: break-all;

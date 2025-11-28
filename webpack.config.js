@@ -24,6 +24,11 @@ module.exports = {
 			'src/admin/mcp-server',
 			'index.tsx'
 		),
+		'admin/ai-request-logs': path.resolve(
+			process.cwd(),
+			'src/admin/ai-request-logs',
+			'index.tsx'
+		),
 		'experiments/example-experiment': path.resolve(
 			process.cwd(),
 			'src/experiments/example-experiment',

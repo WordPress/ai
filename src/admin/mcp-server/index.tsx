@@ -1,7 +1,7 @@
 import './style.scss';
 
 import apiFetch from '@wordpress/api-fetch';
-import { Notice, Spinner } from '@wordpress/components';
+import { Button, Notice, SelectControl, Spinner } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
 import { __, sprintf } from '@wordpress/i18n';
@@ -12,7 +12,14 @@ import ConfigGenerator from './components/ConfigGenerator';
 import ServerStatusCard from './components/ServerStatusCard';
 import TestConnectionPanel from './components/TestConnectionPanel';
 import ToolsTable from './components/ToolsTable';
-import type { ConfigTemplate, LocalizedSettings, McpServerState, TestResult, ToolSummary } from './types';
+import type {
+	ConfigTemplate,
+	LocalizedSettings,
+	McpOverview,
+	ServerSummary,
+	TestResult,
+	ToolSummary,
+} from './types';
 
 const settings: LocalizedSettings = window.aiMcpServerSettings;
 
@@ -37,12 +44,8 @@ const getErrorMessage = ( error: unknown ): string => {
 const getEnabledToolNames = ( tools: ToolSummary[] ): string[] => tools.filter( ( tool ) => tool.enabled ).map( ( tool ) => tool.name );
 
 const App: React.FC = () => {
-	const [ data, setData ] = useState< McpServerState >( {
-		enabled: settings.initialState.enabled,
-		server: settings.initialState.server,
-		tools: [],
-		configTemplates: {},
-	} );
+	const [ data, setData ] = useState< McpOverview | null >( null );
+	const [ selectedServerId, setSelectedServerId ] = useState< string | null >( null );
 	const [ loading, setLoading ] = useState( true );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ savingTools, setSavingTools ] = useState( false );
@@ -50,11 +53,14 @@ const App: React.FC = () => {
 	const [ testing, setTesting ] = useState( false );
 	const [ testResult, setTestResult ] = useState< TestResult | null >( null );
 
-	const fetchOverview = useCallback( async () => {
+	const fetchOverview = useCallback( async ( serverId?: string ) => {
 		setLoading( true );
 		try {
-			const response = ( await apiFetch( { path: settings.rest.routes.base } ) ) as McpServerState;
+			const path =
+				settings.rest.routes.overview + ( serverId ? `?server_id=${ encodeURIComponent( serverId ) }` : '' );
+			const response = ( await apiFetch( { path } ) ) as McpOverview;
 			setData( response );
+			setSelectedServerId( response.activeServerId );
 			setError( null );
 		} catch ( apiError ) {
 			setError( getErrorMessage( apiError ) );
@@ -71,14 +77,15 @@ const App: React.FC = () => {
 		setSavingSettings( true );
 		try {
 			const response = ( await apiFetch( {
-				path: settings.rest.routes.base,
+				path: settings.rest.routes.enabled,
 				method: 'POST',
-				data: { enabled: nextValue },
-			} ) ) as McpServerState;
+				data: { enabled: nextValue, server_id: selectedServerId },
+			} ) ) as McpOverview;
 			setData( response );
+			setSelectedServerId( response.activeServerId );
 			showNotice(
 				nextValue ? 'success' : 'warning',
-				nextValue ? __( 'MCP server enabled.', 'ai' ) : __( 'MCP server disabled.', 'ai' )
+				nextValue ? __( 'MCP enabled.', 'ai' ) : __( 'MCP disabled.', 'ai' )
 			);
 		} catch ( apiError ) {
 			const message = getErrorMessage( apiError );
@@ -94,6 +101,10 @@ const App: React.FC = () => {
 			return;
 		}
 
+		if ( ! data?.activeServerId ) {
+			return;
+		}
+
 		const currentNames = getEnabledToolNames( data.tools );
 		const payload = nextValue
 			? Array.from( new Set( [ ...currentNames, name ] ) )
@@ -104,9 +115,10 @@ const App: React.FC = () => {
 			const response = ( await apiFetch( {
 				path: settings.rest.routes.tools,
 				method: 'POST',
-				data: { tools: payload },
-			} ) ) as McpServerState;
+				data: { tools: payload, serverId: data.activeServerId },
+			} ) ) as McpOverview;
 			setData( response );
+			setSelectedServerId( response.activeServerId );
 		} catch ( apiError ) {
 			const message = getErrorMessage( apiError );
 			showNotice( 'error', message );
@@ -139,11 +151,16 @@ const App: React.FC = () => {
 	};
 
 	const handleTestConnection = async () => {
+		if ( ! data?.activeServerId ) {
+			return;
+		}
+
 		setTesting( true );
 		try {
 			const response = ( await apiFetch( {
 				path: settings.rest.routes.test,
 				method: 'POST',
+				data: { serverId: data.activeServerId },
 			} ) ) as TestResult;
 			setTestResult( response );
 			showNotice( response.success ? 'success' : 'error', response.message );
@@ -156,7 +173,48 @@ const App: React.FC = () => {
 		}
 	};
 
-	const templates = useMemo( () => data.configTemplates as Record< string, ConfigTemplate >, [ data.configTemplates ] );
+	const templates = useMemo(
+		() => ( data?.configTemplates ?? {} ) as Record< string, ConfigTemplate >,
+		[ data?.configTemplates ]
+	);
+
+	const handleSelectServer = async ( serverId: string ) => {
+		if ( ! serverId ) {
+			return;
+		}
+
+		setSelectedServerId( serverId );
+		await fetchOverview( serverId );
+	};
+
+	const handleAddServer = async () => {
+		const name = window.prompt( __( 'Enter a name for the new server:', 'ai' ) );
+
+		if ( ! name ) {
+			return;
+		}
+
+		try {
+			const response = ( await apiFetch( {
+				path: settings.rest.routes.addServer,
+				method: 'POST',
+				data: {
+					server: { name },
+				},
+			} ) ) as McpOverview;
+			setData( response );
+			setSelectedServerId( response.activeServerId );
+			showNotice( 'success', __( 'Server created.', 'ai' ) );
+		} catch ( apiError ) {
+			showNotice( 'error', getErrorMessage( apiError ) );
+		}
+	};
+
+	const activeServer = data?.activeServer ?? null;
+	const serverOptions = ( data?.servers ?? [] ).map( ( server: ServerSummary ) => ( {
+		label: server.name,
+		value: server.id,
+	} ) );
 
 	return (
 		<div className="ai-mcp-server__app">
@@ -173,26 +231,47 @@ const App: React.FC = () => {
 				</div>
 			 ) : (
 				<>
-					<div className="ai-mcp-server__grid">
-						<ServerStatusCard
-							server={ data.server }
-							enabled={ data.enabled }
-							saving={ savingSettings }
-							onToggle={ handleToggleServer }
-							onCopy={ handleCopy }
-							profileUrl={ settings.profileUrl }
+					<div className="ai-mcp-server__toolbar">
+						<SelectControl
+							label={ __( 'Server', 'ai' ) }
+							value={ selectedServerId ?? '' }
+							onChange={ handleSelectServer }
+							options={ serverOptions }
+							__nextHasNoMarginBottom
 						/>
-						<ConfigGenerator templates={ templates } onCopy={ handleCopy } />
+						<Button variant="secondary" onClick={ handleAddServer }>
+							{ __( 'Add Server', 'ai' ) }
+						</Button>
 					</div>
 
-					<ToolsTable
-						tools={ data.tools }
-						saving={ savingTools }
-						serverEnabled={ data.enabled }
-						onToggle={ handleToggleTool }
-					/>
+					{ activeServer ? (
+						<>
+							<div className="ai-mcp-server__grid">
+								<ServerStatusCard
+									server={ activeServer }
+									globalEnabled={ data?.enabled ?? false }
+									saving={ savingSettings }
+									onToggleGlobal={ handleToggleServer }
+									onCopy={ handleCopy }
+									profileUrl={ settings.profileUrl }
+								/>
+								<ConfigGenerator templates={ templates } onCopy={ handleCopy } />
+							</div>
 
-					<TestConnectionPanel testing={ testing } result={ testResult } onTest={ handleTestConnection } />
+							<ToolsTable
+								tools={ data?.tools ?? [] }
+								saving={ savingTools }
+								serverEnabled={ data?.enabled ?? false }
+								onToggle={ handleToggleTool }
+							/>
+
+							<TestConnectionPanel testing={ testing } result={ testResult } onTest={ handleTestConnection } />
+						</>
+					) : (
+						<Notice status="warning" isDismissible={ false }>
+							{ __( 'No MCP servers are configured yet.', 'ai' ) }
+						</Notice>
+					) }
 				</>
 			 ) }
 		</div>

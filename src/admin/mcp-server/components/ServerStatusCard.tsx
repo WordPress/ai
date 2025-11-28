@@ -5,25 +5,25 @@ import React from 'react';
 import type { CopyHandler, ServerDetails } from '../types';
 
 interface ServerStatusCardProps {
-	server: ServerDetails | null;
-	enabled: boolean;
+	server: ServerDetails;
+	globalEnabled: boolean;
 	saving: boolean;
-	onToggle: ( nextValue: boolean ) => void;
+	onToggleGlobal: ( nextValue: boolean ) => void;
 	onCopy: CopyHandler;
 	profileUrl: string;
 }
 
 const ServerStatusCard: React.FC< ServerStatusCardProps > = ( {
 	server,
-	enabled,
+	globalEnabled,
 	saving,
-	onToggle,
+	onToggleGlobal,
 	onCopy,
 	profileUrl,
 } ) => {
-	const statusKey = ! enabled ? 'disabled' : server?.status ?? 'initializing';
-	const endpoint = server?.http_endpoint ?? '';
-	const cliCommand = server?.cli_command ?? '';
+	const statusKey = ! globalEnabled ? 'disabled' : server.status ?? 'initializing';
+	const endpoint = server.http_endpoint ?? '';
+	const cliCommand = server.cli_command ?? '';
 
 	const statusLabelMap: Record< string, string > = {
 		disabled: __( 'Disabled', 'ai' ),
@@ -48,9 +48,9 @@ const ServerStatusCard: React.FC< ServerStatusCardProps > = ( {
 						<strong>{ statusLabelMap[ statusKey ] ?? statusLabelMap.initializing }</strong>
 					</div>
 					<ToggleControl
-						label={ __( 'Enable MCP server', 'ai' ) }
-						checked={ enabled }
-						onChange={ onToggle }
+						label={ __( 'Enable MCP', 'ai' ) }
+						checked={ globalEnabled }
+						onChange={ onToggleGlobal }
 						disabled={ saving }
 					/>
 				</div>
@@ -82,6 +82,11 @@ const ServerStatusCard: React.FC< ServerStatusCardProps > = ( {
 							{ __( 'Copy Command', 'ai' ) }
 						</Button>
 					</div>
+				</div>
+
+				<div className="ai-mcp-server__field">
+					<label>{ __( 'REST route', 'ai' ) }</label>
+					<code>{ `/${ server.route_namespace }/${ server.route }` }</code>
 				</div>
 
 				<p className="ai-mcp-server__hint">
