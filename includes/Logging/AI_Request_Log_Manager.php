@@ -29,7 +29,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Current database schema version.
 	 */
-	private const DB_VERSION = '1.1.0';
+	private const DB_VERSION = '1.2.0';
 
 	/**
 	 * Option key for log retention days.
@@ -246,6 +246,8 @@ class AI_Request_Log_Manager {
 			error_message TEXT DEFAULT NULL,
 			user_id BIGINT UNSIGNED DEFAULT NULL,
 			context JSON DEFAULT NULL,
+			request_preview TEXT DEFAULT NULL,
+			response_preview TEXT DEFAULT NULL,
 			INDEX idx_timestamp (timestamp),
 			INDEX idx_type (type),
 			INDEX idx_status (status),
@@ -260,8 +262,116 @@ class AI_Request_Log_Manager {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 
-		// Add indexes that dbDelta may not handle well for existing tables.
+		// Add columns and indexes that dbDelta may not handle well for existing tables.
+		$this->maybe_add_columns();
 		$this->maybe_add_indexes();
+	}
+
+	/**
+	 * Adds missing columns to existing tables.
+	 *
+	 * dbDelta doesn't always add new columns to existing tables,
+	 * so we check and add them manually if needed.
+	 */
+	private function maybe_add_columns(): void {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . self::TABLE_NAME;
+
+		// Get existing columns.
+		$existing_columns = array();
+		$columns          = $wpdb->get_results( "SHOW COLUMNS FROM {$table_name}", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( $columns ) {
+			foreach ( $columns as $column ) {
+				$existing_columns[ $column['Field'] ] = true;
+			}
+		}
+
+		// Add request_preview column if missing.
+		if ( ! isset( $existing_columns['request_preview'] ) ) {
+			$wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN request_preview TEXT DEFAULT NULL AFTER context" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		// Add response_preview column if missing.
+		if ( ! isset( $existing_columns['response_preview'] ) ) {
+			$wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN response_preview TEXT DEFAULT NULL AFTER request_preview" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		// Migrate existing data from context JSON to new columns.
+		$this->maybe_migrate_preview_columns();
+	}
+
+	/**
+	 * Migrates preview data from context JSON to dedicated columns.
+	 *
+	 * This runs in batches to avoid timeout issues on large tables.
+	 */
+	private function maybe_migrate_preview_columns(): void {
+		global $wpdb;
+
+		$table_name    = $wpdb->prefix . self::TABLE_NAME;
+		$migration_key = 'ai_request_logs_preview_migration_complete';
+
+		// Check if migration already completed.
+		if ( get_option( $migration_key ) ) {
+			return;
+		}
+
+		// Migrate in batches of 1000 rows.
+		$batch_size = 1000;
+		$migrated   = 0;
+
+		do {
+			// Find rows that have context but empty preview columns.
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT id, context FROM {$table_name}
+					WHERE context IS NOT NULL
+					AND (request_preview IS NULL OR response_preview IS NULL)
+					LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$batch_size
+				),
+				ARRAY_A
+			);
+
+			if ( empty( $rows ) ) {
+				break;
+			}
+
+			foreach ( $rows as $row ) {
+				$context = json_decode( $row['context'], true );
+				if ( ! is_array( $context ) ) {
+					continue;
+				}
+
+				$request_preview  = $context['input_preview'] ?? null;
+				$response_preview = $context['output_preview'] ?? null;
+
+				if ( $request_preview || $response_preview ) {
+					$wpdb->update(
+						$table_name,
+						array(
+							'request_preview'  => $request_preview,
+							'response_preview' => $response_preview,
+						),
+						array( 'id' => $row['id'] ),
+						array( '%s', '%s' ),
+						array( '%d' )
+					);
+				}
+			}
+
+			$migrated += count( $rows );
+
+			// Yield to other processes.
+			if ( count( $rows ) >= $batch_size ) {
+				usleep( 50000 ); // 50ms pause.
+			}
+		} while ( count( $rows ) >= $batch_size );
+
+		// Mark migration as complete.
+		update_option( $migration_key, true, false );
 	}
 
 	/**
@@ -296,6 +406,19 @@ class AI_Request_Log_Manager {
 		foreach ( $indexes_to_add as $index_name => $sql ) {
 			if ( ! isset( $existing_indexes[ $index_name ] ) ) {
 				$wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		// Add FULLTEXT index for search if MySQL supports it (5.6+ for InnoDB).
+		// This is optional - search will fall back to LIKE if not available.
+		if ( ! isset( $existing_indexes['ft_search'] ) ) {
+			// Check MySQL version for InnoDB FULLTEXT support.
+			$mysql_version = $wpdb->get_var( 'SELECT VERSION()' );
+			if ( version_compare( $mysql_version, '5.6', '>=' ) ) {
+				// Suppress errors as FULLTEXT may not be supported on all configurations.
+				$wpdb->suppress_errors( true );
+				$wpdb->query( "ALTER TABLE {$table_name} ADD FULLTEXT INDEX ft_search (operation, request_preview, response_preview)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->suppress_errors( false );
 			}
 		}
 	}
@@ -390,22 +513,29 @@ class AI_Request_Log_Manager {
 			$data['tokens_output'] ?? 0
 		);
 
+		// Extract preview content for searchable columns.
+		$context          = $data['context'] ?? array();
+		$request_preview  = $context['input_preview'] ?? null;
+		$response_preview = $context['output_preview'] ?? null;
+
 		$insert_data = array(
-			'log_id'        => $log_id,
-			'timestamp'     => current_time( 'mysql', true ),
-			'type'          => $data['type'],
-			'operation'     => $data['operation'],
-			'provider'      => $data['provider'] ?? null,
-			'model'         => $data['model'] ?? null,
-			'duration_ms'   => $data['duration_ms'] ?? null,
-			'tokens_input'  => $data['tokens_input'] ?? null,
-			'tokens_output' => $data['tokens_output'] ?? null,
-			'tokens_total'  => $tokens_total > 0 ? $tokens_total : null,
-			'cost_estimate' => $cost_estimate,
-			'status'        => $data['status'],
-			'error_message' => $data['error_message'] ?? null,
-			'user_id'       => $data['user_id'] ?? get_current_user_id(),
-			'context'       => isset( $data['context'] ) ? wp_json_encode( $data['context'] ) : null,
+			'log_id'           => $log_id,
+			'timestamp'        => current_time( 'mysql', true ),
+			'type'             => $data['type'],
+			'operation'        => $data['operation'],
+			'provider'         => $data['provider'] ?? null,
+			'model'            => $data['model'] ?? null,
+			'duration_ms'      => $data['duration_ms'] ?? null,
+			'tokens_input'     => $data['tokens_input'] ?? null,
+			'tokens_output'    => $data['tokens_output'] ?? null,
+			'tokens_total'     => $tokens_total > 0 ? $tokens_total : null,
+			'cost_estimate'    => $cost_estimate,
+			'status'           => $data['status'],
+			'error_message'    => $data['error_message'] ?? null,
+			'user_id'          => $data['user_id'] ?? get_current_user_id(),
+			'context'          => ! empty( $context ) ? wp_json_encode( $context ) : null,
+			'request_preview'  => $request_preview,
+			'response_preview' => $response_preview,
 		);
 
 		$result = $wpdb->insert(
@@ -427,6 +557,8 @@ class AI_Request_Log_Manager {
 				'%s', // error_message.
 				'%d', // user_id.
 				'%s', // context.
+				'%s', // request_preview.
+				'%s', // response_preview.
 			)
 		);
 
@@ -653,10 +785,24 @@ class AI_Request_Log_Manager {
 		}
 
 		if ( ! empty( $args['search'] ) ) {
-			$where[]  = '(operation LIKE %s OR error_message LIKE %s)';
-			$search   = '%' . $wpdb->esc_like( $args['search'] ) . '%';
-			$values[] = $search;
-			$values[] = $search;
+			// Search across operation, error_message, request_preview, and response_preview.
+			// Try FULLTEXT search first (faster for larger tables), fall back to LIKE.
+			if ( $this->has_fulltext_index() ) {
+				// Use MATCH...AGAINST for FULLTEXT search.
+				// IN BOOLEAN MODE allows partial word matching with *.
+				$search_term = $wpdb->esc_like( $args['search'] );
+				$where[]     = '(MATCH(operation, request_preview, response_preview) AGAINST(%s IN BOOLEAN MODE) OR error_message LIKE %s)';
+				$values[]    = '*' . $search_term . '*';
+				$values[]    = '%' . $search_term . '%';
+			} else {
+				// Fallback to LIKE search (works on all MySQL versions).
+				$search   = '%' . $wpdb->esc_like( $args['search'] ) . '%';
+				$where[]  = '(operation LIKE %s OR error_message LIKE %s OR request_preview LIKE %s OR response_preview LIKE %s)';
+				$values[] = $search;
+				$values[] = $search;
+				$values[] = $search;
+				$values[] = $search;
+			}
 		}
 
 		$where_clause = implode( ' AND ', $where );
@@ -977,6 +1123,41 @@ class AI_Request_Log_Manager {
 	 */
 	public function get_max_rows(): int {
 		return (int) get_option( self::OPTION_MAX_ROWS, self::DEFAULT_MAX_ROWS );
+	}
+
+	/**
+	 * Checks if the FULLTEXT search index exists on the table.
+	 *
+	 * Results are cached in a static variable to avoid repeated queries.
+	 *
+	 * @return bool True if FULLTEXT index exists.
+	 */
+	private function has_fulltext_index(): bool {
+		static $has_index = null;
+
+		if ( null !== $has_index ) {
+			return $has_index;
+		}
+
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . self::TABLE_NAME;
+
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM information_schema.statistics
+				WHERE table_schema = %s
+				AND table_name = %s
+				AND index_name = 'ft_search'
+				AND index_type = 'FULLTEXT'",
+				DB_NAME,
+				$table_name
+			)
+		);
+
+		$has_index = (int) $result > 0;
+
+		return $has_index;
 	}
 
 	/**
