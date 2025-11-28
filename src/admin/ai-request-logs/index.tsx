@@ -1,29 +1,55 @@
-import './style.scss';
-
+/**
+ * WordPress dependencies
+ */
 import apiFetch from '@wordpress/api-fetch';
-import { Notice, Spinner } from '@wordpress/components';
+import { Notice } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
+import type { Filter, View } from '@wordpress/dataviews';
 import { store as noticesStore } from '@wordpress/notices';
 import { __ } from '@wordpress/i18n';
+
+/**
+ * External dependencies
+ */
 import React, { useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+
+/**
+ * Internal dependencies
+ */
+import './style.scss';
+
+import { usePersistedView } from '../hooks/usePersistedView';
 
 import HeaderPeriodSelector from './components/HeaderPeriodSelector';
 import LogDetailModal from './components/LogDetailModal';
 import LogsTable from './components/LogsTable';
 import SettingsPanel from './components/SettingsPanel';
 import SummaryCards from './components/SummaryCards';
-import type { FilterOptions, LocalizedSettings, LogEntry, LogFilters, LogSummary } from './types';
+import type {
+	FilterOptions,
+	LocalizedSettings,
+	LogEntry,
+	LogSummary,
+} from './types';
 
-const settings: LocalizedSettings = window.aiAiRequestLogsSettings ?? window.AiRequestLogsSettings ?? ( () => {
-	throw new Error( 'AiRequestLogsSettings is not defined.' );
-} )();
+const settings: LocalizedSettings =
+	window.aiAiRequestLogsSettings ??
+	window.AiRequestLogsSettings ??
+	( () => {
+		throw new Error( 'AiRequestLogsSettings is not defined.' );
+	} )();
 
 apiFetch.use( apiFetch.createNonceMiddleware( settings.rest.nonce ) );
 apiFetch.use( apiFetch.createRootURLMiddleware( settings.rest.root ) );
 
-const showNotice = ( status: 'success' | 'error' | 'warning', message: string ) =>
-	dispatch( noticesStore ).createNotice( status, message, { type: 'snackbar' } );
+const showNotice = (
+	status: 'success' | 'error' | 'warning',
+	message: string
+) =>
+	dispatch( noticesStore ).createNotice( status, message, {
+		type: 'snackbar',
+	} );
 
 const getErrorMessage = ( error: unknown ): string => {
 	if ( typeof error === 'string' ) {
@@ -35,35 +61,110 @@ const getErrorMessage = ( error: unknown ): string => {
 	return __( 'Something went wrong. Please try again.', 'ai' );
 };
 
-const defaultFilters: LogFilters = {
-	type: '',
-	status: '',
-	provider: '',
-	operation: [],
+const defaultView: View = {
+	type: 'table',
+	perPage: 25,
+	page: 1,
 	search: '',
-	period: 'day',
+	filters: [],
+	fields: [
+		'timestamp',
+		'operation',
+		'provider',
+		'tokens_total',
+		'duration_ms',
+		'status',
+		'actions',
+	],
+	sort: {
+		field: 'timestamp',
+		direction: 'desc',
+	},
+	layout: {
+		density: 'comfortable',
+	},
+};
+
+const normalizeFilterValue = ( raw: unknown ): string => {
+	if ( Array.isArray( raw ) ) {
+		return normalizeFilterValue( raw[ 0 ] );
+	}
+	if (
+		raw &&
+		typeof raw === 'object' &&
+		'value' in ( raw as Record< string, unknown > )
+	) {
+		return normalizeFilterValue( ( raw as { value: unknown } ).value );
+	}
+	if ( typeof raw === 'string' ) {
+		return raw;
+	}
+	return '';
+};
+
+const normalizeFilterArrayValue = ( raw: unknown ): string[] => {
+	if ( Array.isArray( raw ) ) {
+		return raw.map( ( item ) => {
+			if ( typeof item === 'string' ) {
+				return item;
+			}
+			if ( item && typeof item === 'object' && 'value' in item ) {
+				return String( ( item as { value: unknown } ).value );
+			}
+			return String( item );
+		} );
+	}
+	if ( typeof raw === 'string' && raw ) {
+		return [ raw ];
+	}
+	return [];
+};
+
+const extractFilterValue = (
+	filters: Filter[] | undefined,
+	field: string
+): string => {
+	const match = filters?.find( ( entry ) => entry.field === field );
+	return normalizeFilterValue( match?.value ?? '' );
+};
+
+const extractFilterArrayValue = (
+	filters: Filter[] | undefined,
+	field: string
+): string[] => {
+	const match = filters?.find( ( entry ) => entry.field === field );
+	return normalizeFilterArrayValue( match?.value ?? [] );
 };
 
 const App: React.FC = () => {
 	// Settings state
 	const [ enabled, setEnabled ] = useState( settings.initialState.enabled );
-	const [ retentionDays, setRetentionDays ] = useState( settings.initialState.retentionDays );
+	const [ retentionDays, setRetentionDays ] = useState(
+		settings.initialState.retentionDays
+	);
 
 	// Summary state
-	const [ summary, setSummary ] = useState< LogSummary >( settings.initialState.summary );
-	const [ summaryPeriod, setSummaryPeriod ] = useState< 'minute' | 'hour' | 'day' | 'week' | 'month' | 'all' >( 'day' );
+	const [ summary, setSummary ] = useState< LogSummary >(
+		settings.initialState.summary
+	);
+	const [ summaryPeriod, setSummaryPeriod ] = useState<
+		'minute' | 'hour' | 'day' | 'week' | 'month' | 'all'
+	>( 'day' );
 	const [ summaryLoading, setSummaryLoading ] = useState( false );
 
 	// Logs state
 	const [ logs, setLogs ] = useState< LogEntry[] >( [] );
 	const [ logsLoading, setLogsLoading ] = useState( true );
-	const [ page, setPage ] = useState( 1 );
 	const [ totalPages, setTotalPages ] = useState( 1 );
 	const [ total, setTotal ] = useState( 0 );
 
-	// Filters state
-	const [ filters, setFilters ] = useState< LogFilters >( defaultFilters );
-	const [ filterOptions, setFilterOptions ] = useState< FilterOptions >( settings.initialState.filters );
+	const { view, setView } = usePersistedView< View >(
+		'ai-request-logs',
+		defaultView
+	);
+	const [ filterOptions, setFilterOptions ] = useState< FilterOptions >(
+		settings.initialState.filters
+	);
 
 	// UI state
 	const [ selectedLog, setSelectedLog ] = useState< LogEntry | null >( null );
@@ -80,7 +181,7 @@ const App: React.FC = () => {
 			} );
 			setSummary( response );
 		} catch ( apiError ) {
-			console.error( 'Failed to fetch summary:', apiError );
+			showNotice( 'error', __( 'Failed to fetch summary data.', 'ai' ) );
 		} finally {
 			setSummaryLoading( false );
 		}
@@ -91,35 +192,57 @@ const App: React.FC = () => {
 		setLogsLoading( true );
 		try {
 			const params = new URLSearchParams( {
-				page: String( page ),
+				page: String( view.page ?? 1 ),
 				per_page: '25',
 			} );
-			if ( filters.type ) params.append( 'type', filters.type );
-			if ( filters.status ) params.append( 'status', filters.status );
-			if ( filters.provider ) params.append( 'provider', filters.provider );
-			if ( filters.operation.length > 0 ) {
-				// Send as comma-separated for REST API
-				params.append( 'operation', filters.operation.join( ',' ) );
-			}
-			if ( filters.search ) params.append( 'search', filters.search );
+			const typeFilter = extractFilterValue( view.filters, 'type' );
+			const statusFilter = extractFilterValue( view.filters, 'status' );
+			const providerFilter = extractFilterValue(
+				view.filters,
+				'provider'
+			);
+			const operationFilter = extractFilterArrayValue(
+				view.filters,
+				'operation'
+			);
+			const searchTerm = view.search ?? '';
 
-			const response = await apiFetch< LogEntry[] >( {
+			if ( typeFilter ) {
+				params.append( 'type', typeFilter );
+			}
+			if ( statusFilter ) {
+				params.append( 'status', statusFilter );
+			}
+			if ( providerFilter ) {
+				params.append( 'provider', providerFilter );
+			}
+			if ( operationFilter.length > 0 ) {
+				params.append( 'operation', operationFilter.join( ',' ) );
+			}
+			if ( searchTerm ) {
+				params.append( 'search', searchTerm );
+			}
+
+			const response = ( await apiFetch< LogEntry[] >( {
 				path: `${ settings.rest.routes.logs }?${ params.toString() }`,
 				parse: false,
-			} ) as Response;
+			} ) ) as Response;
 
 			const data = await response.json();
 			setLogs( data );
-			setTotal( parseInt( response.headers.get( 'X-WP-Total' ) || '0', 10 ) );
-			setTotalPages( parseInt( response.headers.get( 'X-WP-TotalPages' ) || '1', 10 ) );
+			setTotal(
+				parseInt( response.headers.get( 'X-WP-Total' ) || '0', 10 )
+			);
+			setTotalPages(
+				parseInt( response.headers.get( 'X-WP-TotalPages' ) || '1', 10 )
+			);
 			setError( null );
 		} catch ( apiError ) {
-			console.error( 'Failed to fetch AI request logs:', apiError );
 			setError( getErrorMessage( apiError ) );
 		} finally {
 			setLogsLoading( false );
 		}
-	}, [ page, filters ] );
+	}, [ view.filters, view.page, view.search ] );
 
 	// Fetch filter options
 	const fetchFilters = useCallback( async () => {
@@ -133,7 +256,10 @@ const App: React.FC = () => {
 				operations: response.operations ?? [],
 			} );
 		} catch ( apiError ) {
-			console.error( 'Failed to fetch filters:', apiError );
+			showNotice(
+				'error',
+				__( 'Failed to fetch filter options.', 'ai' )
+			);
 		}
 	}, [] );
 
@@ -144,24 +270,28 @@ const App: React.FC = () => {
 	}, [ fetchLogs, fetchFilters ] );
 
 	// Handle period change
-	const handlePeriodChange = ( period: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'all' ) => {
+	const handlePeriodChange = (
+		period: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'all'
+	) => {
 		setSummaryPeriod( period );
 		fetchSummary( period );
 	};
 
 	// Handle filter change
-	const handleFilterChange = ( key: keyof LogFilters, value: string | string[] ) => {
-		setFilters( ( prev ) => ( { ...prev, [ key ]: value } ) );
-		setPage( 1 );
-	};
-
 	// Handle settings update
-	const handleSettingsUpdate = async ( newEnabled?: boolean, newRetention?: number ) => {
+	const handleSettingsUpdate = async (
+		newEnabled?: boolean,
+		newRetention?: number
+	) => {
 		setSaving( true );
 		try {
 			const data: Record< string, unknown > = {};
-			if ( newEnabled !== undefined ) data.enabled = newEnabled;
-			if ( newRetention !== undefined ) data.retention_days = newRetention;
+			if ( newEnabled !== undefined ) {
+				data.enabled = newEnabled;
+			}
+			if ( newRetention !== undefined ) {
+				data.retention_days = newRetention;
+			}
 
 			await apiFetch( {
 				path: settings.rest.routes.logs,
@@ -169,8 +299,12 @@ const App: React.FC = () => {
 				data,
 			} );
 
-			if ( newEnabled !== undefined ) setEnabled( newEnabled );
-			if ( newRetention !== undefined ) setRetentionDays( newRetention );
+			if ( newEnabled !== undefined ) {
+				setEnabled( newEnabled );
+			}
+			if ( newRetention !== undefined ) {
+				setRetentionDays( newRetention );
+			}
 
 			showNotice( 'success', __( 'Settings saved.', 'ai' ) );
 		} catch ( apiError ) {
@@ -193,7 +327,7 @@ const App: React.FC = () => {
 			setLogs( [] );
 			setTotal( 0 );
 			setTotalPages( 1 );
-			setPage( 1 );
+			setView( ( prev ) => ( { ...prev, page: 1 } ) );
 
 			showNotice( 'success', __( 'All logs have been purged.', 'ai' ) );
 			fetchSummary( summaryPeriod );
@@ -219,30 +353,29 @@ const App: React.FC = () => {
 				</Notice>
 			) }
 
-			<SummaryCards
-				summary={ summary }
-				loading={ summaryLoading }
-			/>
+			<SummaryCards summary={ summary } loading={ summaryLoading } />
 
 			<div className="ai-request-logs__main">
 				<LogsTable
 					logs={ logs }
-					filters={ filters }
 					filterOptions={ filterOptions }
-					onFilterChange={ handleFilterChange }
 					onViewLog={ setSelectedLog }
 					loading={ logsLoading }
-					page={ page }
 					totalPages={ totalPages }
 					total={ total }
-					onPageChange={ setPage }
+					view={ view }
+					setView={ setView }
 				/>
 
 				<SettingsPanel
 					enabled={ enabled }
 					retentionDays={ retentionDays }
-					onToggleEnabled={ ( value ) => handleSettingsUpdate( value, undefined ) }
-					onRetentionChange={ ( value ) => handleSettingsUpdate( undefined, value ) }
+					onToggleEnabled={ ( value ) =>
+						handleSettingsUpdate( value, undefined )
+					}
+					onRetentionChange={ ( value ) =>
+						handleSettingsUpdate( undefined, value )
+					}
 					onPurgeLogs={ handlePurge }
 					saving={ saving }
 					purging={ purging }
@@ -250,7 +383,10 @@ const App: React.FC = () => {
 			</div>
 
 			{ selectedLog && (
-				<LogDetailModal log={ selectedLog } onClose={ () => setSelectedLog( null ) } />
+				<LogDetailModal
+					log={ selectedLog }
+					onClose={ () => setSelectedLog( null ) }
+				/>
 			) }
 		</div>
 	);
