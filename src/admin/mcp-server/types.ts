@@ -2,6 +2,7 @@ export interface ServerSummary {
 	id: string;
 	name: string;
 	description: string;
+	enabled: boolean;
 	status: 'running' | 'initializing' | 'disabled';
 }
 

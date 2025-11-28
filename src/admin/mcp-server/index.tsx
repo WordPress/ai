@@ -1,15 +1,17 @@
 import './style.scss';
 
 import apiFetch from '@wordpress/api-fetch';
-import { Button, Notice, SelectControl, Spinner } from '@wordpress/components';
+import { Button, Notice, SelectControl, Spinner, ToggleControl } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
 import { __, sprintf } from '@wordpress/i18n';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createPortal } from 'react-dom';
 
 import ConfigGenerator from './components/ConfigGenerator';
 import ServerStatusCard from './components/ServerStatusCard';
+import StatusBadge, { getStatusLabel } from './components/StatusBadge';
 import TestConnectionPanel from './components/TestConnectionPanel';
 import ToolsTable from './components/ToolsTable';
 import type {
@@ -49,7 +51,8 @@ const App: React.FC = () => {
 	const [ loading, setLoading ] = useState( true );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ savingTools, setSavingTools ] = useState( false );
-	const [ savingSettings, setSavingSettings ] = useState( false );
+	const [ savingGlobal, setSavingGlobal ] = useState( false );
+	const [ savingServer, setSavingServer ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ testResult, setTestResult ] = useState< TestResult | null >( null );
 
@@ -73,8 +76,8 @@ const App: React.FC = () => {
 		fetchOverview();
 	}, [ fetchOverview ] );
 
-	const handleToggleServer = async ( nextValue: boolean ) => {
-		setSavingSettings( true );
+	const handleToggleGlobal = async ( nextValue: boolean ) => {
+		setSavingGlobal( true );
 		try {
 			const response = ( await apiFetch( {
 				path: settings.rest.routes.enabled,
@@ -92,7 +95,38 @@ const App: React.FC = () => {
 			showNotice( 'error', message );
 			setError( message );
 		} finally {
-			setSavingSettings( false );
+			setSavingGlobal( false );
+		}
+	};
+
+	const handleToggleServerEnabled = async ( nextValue: boolean ) => {
+		if ( ! selectedServerId ) {
+			return;
+		}
+
+		setSavingServer( true );
+		try {
+			const response = ( await apiFetch( {
+				path: settings.rest.routes.server,
+				method: 'POST',
+				data: {
+					server: {
+						id: selectedServerId,
+						enabled: nextValue,
+					},
+				},
+			} ) ) as McpOverview;
+			setData( response );
+			setSelectedServerId( response.activeServerId );
+			showNotice(
+				nextValue ? 'success' : 'warning',
+				nextValue ? __( 'Server enabled.', 'ai' ) : __( 'Server disabled.', 'ai' )
+			);
+		} catch ( apiError ) {
+			const message = getErrorMessage( apiError );
+			showNotice( 'error', message );
+		} finally {
+			setSavingServer( false );
 		}
 	};
 
@@ -211,69 +245,113 @@ const App: React.FC = () => {
 	};
 
 	const activeServer = data?.activeServer ?? null;
-	const serverOptions = ( data?.servers ?? [] ).map( ( server: ServerSummary ) => ( {
-		label: server.name,
-		value: server.id,
-	} ) );
+	const activeStatus = ( activeServer?.status ?? 'initializing' ) as 'running' | 'initializing' | 'disabled';
+	const globalStatus = ! ( data?.enabled ?? true ) ? 'disabled' : activeStatus;
+	const serverOptions = ( data?.servers ?? [] ).map( ( server: ServerSummary ) => {
+		const showStatus = server.status !== 'running';
+		const label = showStatus
+			? sprintf( __( '%1$s (%2$s)', 'ai' ), server.name, getStatusLabel( server.status ) )
+			: server.name;
+		return {
+			label,
+			value: server.id,
+		};
+	} );
+
+	// Get portal mount points for header elements (rendered by PHP)
+	const headerStatusMount = document.getElementById( 'ai-mcp-header-status' );
+	const headerToggleMount = document.getElementById( 'ai-mcp-header-toggle' );
 
 	return (
 		<div className="ai-mcp-server__app">
+			{ /* Portal: Status badge in PHP header */ }
+			{ headerStatusMount && ! loading && createPortal(
+				<StatusBadge status={ globalStatus } />,
+				headerStatusMount
+			) }
+
+			{ /* Portal: Global toggle in PHP header */ }
+			{ headerToggleMount && ! loading && createPortal(
+				<ToggleControl
+					label={ __( 'Enable MCP', 'ai' ) }
+					checked={ data?.enabled ?? false }
+					onChange={ handleToggleGlobal }
+					disabled={ savingGlobal }
+					__nextHasNoMarginBottom
+				/>,
+				headerToggleMount
+			) }
+
 			{ error && (
 				<Notice status="error" onRemove={ () => setError( null ) }>
 					{ error }
 				</Notice>
 			) }
 
-			{ loading ? (
-				<div className="ai-mcp-server__loading">
-					<Spinner />
-					<span>{ __( 'Loading MCP server data…', 'ai' ) }</span>
-				</div>
+		{ loading ? (
+			<div className="ai-mcp-server__loading">
+				<Spinner />
+				<span>{ __( 'Loading MCP server data…', 'ai' ) }</span>
+			</div>
 			 ) : (
-				<>
-					<div className="ai-mcp-server__toolbar">
-					<SelectControl
-						label={ __( 'Server', 'ai' ) }
-						value={ selectedServerId ?? '' }
-						onChange={ handleSelectServer }
-						options={ serverOptions }
-						__nextHasNoMarginBottom
-						__next40pxDefaultSize
-					/>
-						<Button variant="secondary" onClick={ handleAddServer }>
-							{ __( 'Add Server', 'ai' ) }
-						</Button>
+			<>
+				<div className="ai-mcp-server__toolbar">
+					<div className="ai-mcp-server__server-picker">
+						<SelectControl
+							label={ __( 'Server', 'ai' ) }
+							value={ selectedServerId ?? '' }
+							onChange={ handleSelectServer }
+							options={ serverOptions }
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+						<StatusBadge status={ activeStatus } />
 					</div>
+					<ToggleControl
+						label={ __( 'Enable this server', 'ai' ) }
+						checked={ activeServer?.enabled ?? false }
+						onChange={ handleToggleServerEnabled }
+						disabled={ savingServer || ! activeServer }
+						__nextHasNoMarginBottom
+					/>
+					<Button variant="secondary" onClick={ handleAddServer }>
+						{ __( 'Add Server', 'ai' ) }
+					</Button>
+				</div>
 
-					{ activeServer ? (
-						<>
-							<div className="ai-mcp-server__grid">
-								<ServerStatusCard
-									server={ activeServer }
-									globalEnabled={ data?.enabled ?? false }
-									saving={ savingSettings }
-									onToggleGlobal={ handleToggleServer }
-									onCopy={ handleCopy }
-									profileUrl={ settings.profileUrl }
-								/>
-								<ConfigGenerator templates={ templates } onCopy={ handleCopy } />
-							</div>
+				{ activeServer?.description && (
+					<p className="ai-mcp-server__server-description">{ activeServer.description }</p>
+				 ) }
 
-							<ToolsTable
-								tools={ data?.tools ?? [] }
-								saving={ savingTools }
-								serverEnabled={ data?.enabled ?? false }
-								onToggle={ handleToggleTool }
+				{ activeServer ? (
+					<>
+						<div className="ai-mcp-server__grid">
+							<ServerStatusCard
+								server={ activeServer }
+								savingServer={ savingServer }
+								onToggleServer={ handleToggleServerEnabled }
+								onCopy={ handleCopy }
+								profileUrl={ settings.profileUrl }
 							/>
+							<ConfigGenerator templates={ templates } onCopy={ handleCopy } />
+						</div>
 
-							<TestConnectionPanel testing={ testing } result={ testResult } onTest={ handleTestConnection } />
-						</>
-					) : (
-						<Notice status="warning" isDismissible={ false }>
-							{ __( 'No MCP servers are configured yet.', 'ai' ) }
-						</Notice>
-					) }
-				</>
+						<ToolsTable
+							tools={ data?.tools ?? [] }
+							saving={ savingTools }
+							globalEnabled={ data?.enabled ?? false }
+							serverEnabled={ activeServer?.enabled ?? false }
+							onToggle={ handleToggleTool }
+						/>
+
+						<TestConnectionPanel testing={ testing } result={ testResult } onTest={ handleTestConnection } />
+					</>
+				 ) : (
+					<Notice status="warning" isDismissible={ false }>
+						{ __( 'No MCP servers are configured yet.', 'ai' ) }
+					</Notice>
+				 ) }
+			</>
 			 ) }
 		</div>
 	);

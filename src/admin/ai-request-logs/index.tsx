@@ -8,6 +8,8 @@ import { __ } from '@wordpress/i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { usePersistedState } from '../hooks/usePersistedView';
+
 import LogDetailModal from './components/LogDetailModal';
 import LogsTable from './components/LogsTable';
 import SettingsPanel from './components/SettingsPanel';
@@ -34,6 +36,15 @@ const getErrorMessage = ( error: unknown ): string => {
 	return __( 'Something went wrong. Please try again.', 'ai' );
 };
 
+const defaultFilters: LogFilters = {
+	type: '',
+	status: '',
+	provider: '',
+	operation: [],
+	search: '',
+	period: 'day',
+};
+
 const App: React.FC = () => {
 	// Settings state
 	const [ enabled, setEnabled ] = useState( settings.initialState.enabled );
@@ -52,14 +63,7 @@ const App: React.FC = () => {
 	const [ total, setTotal ] = useState( 0 );
 
 	// Filters state
-	const [ filters, setFilters ] = useState< LogFilters >( {
-		type: '',
-		status: '',
-		provider: '',
-		operation: [],
-		search: '',
-		period: 'day',
-	} );
+	const [ filters, setFilters ] = usePersistedState< LogFilters >( 'ai-request-logs-filters', defaultFilters );
 	const [ filterOptions, setFilterOptions ] = useState< FilterOptions >( settings.initialState.filters );
 
 	// UI state

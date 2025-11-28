@@ -24,6 +24,13 @@ const formatCost = ( cost: number | null ): string => {
 };
 
 const LogDetailModal: React.FC< LogDetailModalProps > = ( { log, onClose } ) => {
+	const inputPreview = typeof log.context?.input_preview === 'string'
+		? log.context.input_preview
+		: null;
+	const outputPreview = typeof log.context?.output_preview === 'string'
+		? log.context.output_preview
+		: null;
+
 	const handleCopyId = async () => {
 		try {
 			await navigator.clipboard.writeText( log.id );
@@ -144,31 +151,45 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( { log, onClose } ) => 
 					</div>
 				) }
 
-				{ log.error_message && (
-					<div className="ai-request-logs__detail-section ai-request-logs__detail-section--error">
-						<h3>{ __( 'Error', 'ai' ) }</h3>
-						<pre className="ai-request-logs__detail-error">{ log.error_message }</pre>
-					</div>
-				) }
-
-				{ log.context && Object.keys( log.context ).length > 0 && (
-					<div className="ai-request-logs__detail-section">
-						<h3>{ __( 'Context', 'ai' ) }</h3>
-						<pre className="ai-request-logs__detail-context">
-							{ JSON.stringify( log.context, null, 2 ) }
-						</pre>
-					</div>
-				) }
-
-				<div className="ai-request-logs__detail-footer">
-					<code className="ai-request-logs__detail-id">{ log.id }</code>
-					<Button variant="secondary" size="small" onClick={ handleCopyId }>
-						{ __( 'Copy Log ID', 'ai' ) }
-					</Button>
+			{ log.error_message && (
+				<div className="ai-request-logs__detail-section ai-request-logs__detail-section--error">
+					<h3>{ __( 'Error', 'ai' ) }</h3>
+					<pre className="ai-request-logs__detail-error">{ log.error_message }</pre>
 				</div>
+			) }
+
+			{ inputPreview && (
+				<div className="ai-request-logs__detail-section">
+					<h3>{ __( 'Input Preview', 'ai' ) }</h3>
+					<pre className="ai-request-logs__detail-context">{ inputPreview }</pre>
+				</div>
+			) }
+
+			{ outputPreview && (
+				<div className="ai-request-logs__detail-section">
+					<h3>{ __( 'Output Preview', 'ai' ) }</h3>
+					<pre className="ai-request-logs__detail-context">{ outputPreview }</pre>
+				</div>
+			) }
+
+			{ log.context && Object.keys( log.context ).length > 0 && (
+				<div className="ai-request-logs__detail-section">
+					<h3>{ __( 'Context', 'ai' ) }</h3>
+					<pre className="ai-request-logs__detail-context">
+						{ JSON.stringify( log.context, null, 2 ) }
+					</pre>
+				</div>
+			) }
+
+			<div className="ai-request-logs__detail-footer">
+				<code className="ai-request-logs__detail-id">{ log.id }</code>
+				<Button variant="secondary" size="small" onClick={ handleCopyId }>
+					{ __( 'Copy Log ID', 'ai' ) }
+				</Button>
 			</div>
-		</Modal>
-	);
+		</div>
+	</Modal>
+);
 };
 
 export default LogDetailModal;

@@ -598,6 +598,7 @@ class Manager {
 				'id'          => $server['id'],
 				'name'        => $server['name'],
 				'description' => $server['description'] ?? '',
+				'enabled'     => (bool) ( $server['enabled'] ?? true ),
 				'status'      => $this->determine_status( $server, $runtime ),
 			);
 		}

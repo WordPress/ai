@@ -2,56 +2,38 @@ import { Button, Card, CardBody, CardHeader, ToggleControl } from '@wordpress/co
 import { __ } from '@wordpress/i18n';
 import React from 'react';
 
+import StatusBadge from './StatusBadge';
 import type { CopyHandler, ServerDetails } from '../types';
 
 interface ServerStatusCardProps {
 	server: ServerDetails;
-	globalEnabled: boolean;
-	saving: boolean;
-	onToggleGlobal: ( nextValue: boolean ) => void;
+	savingServer: boolean;
+	onToggleServer: ( nextValue: boolean ) => void;
 	onCopy: CopyHandler;
 	profileUrl: string;
 }
 
 const ServerStatusCard: React.FC< ServerStatusCardProps > = ( {
 	server,
-	globalEnabled,
-	saving,
-	onToggleGlobal,
+	savingServer,
+	onToggleServer,
 	onCopy,
 	profileUrl,
 } ) => {
-	const statusKey = ! globalEnabled ? 'disabled' : server.status ?? 'initializing';
+	const statusKey = server.status ?? 'initializing';
 	const endpoint = server.http_endpoint ?? '';
 	const cliCommand = server.cli_command ?? '';
-
-	const statusLabelMap: Record< string, string > = {
-		disabled: __( 'Disabled', 'ai' ),
-		initializing: __( 'Starting…', 'ai' ),
-		running: __( 'Running', 'ai' ),
-	};
-
-	const dotClass = [
-		'ai-mcp-server__status-dot',
-		statusKey === 'running' ? 'ai-mcp-server__status-dot--running' : '',
-		statusKey === 'disabled' ? 'ai-mcp-server__status-dot--disabled' : '',
-	]
-		.filter( Boolean )
-		.join( ' ' );
 
 	return (
 		<Card className="ai-mcp-server__card ai-mcp-server__card--status">
 			<CardHeader>
 				<div className="ai-mcp-server__card-heading">
-					<div className="ai-mcp-server__status-text">
-						<span className={ dotClass }></span>
-						<strong>{ statusLabelMap[ statusKey ] ?? statusLabelMap.initializing }</strong>
-					</div>
+					<StatusBadge status={ statusKey } />
 					<ToggleControl
-						label={ __( 'Enable MCP', 'ai' ) }
-						checked={ globalEnabled }
-						onChange={ onToggleGlobal }
-						disabled={ saving }
+						label={ __( 'Enable this server', 'ai' ) }
+						checked={ server.enabled }
+						onChange={ onToggleServer }
+						disabled={ savingServer }
 						__nextHasNoMarginBottom
 					/>
 				</div>

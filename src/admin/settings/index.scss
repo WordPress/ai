@@ -8,6 +8,8 @@
  * @since 0.1.0
  */
 
+@use '../common';
+
 /* Block: ai-experiments */
 .ai-experiments {
 	display: flex;
@@ -23,7 +25,7 @@
 		padding: 1.25rem;
 		background: #fff;
 		border: 0.0625rem solid #ddd;
-		border-radius: 0.125rem;
+		border-radius: 4px;
 	}
 
 	/* Element: card heading */

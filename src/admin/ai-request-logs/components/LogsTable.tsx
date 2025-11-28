@@ -162,8 +162,20 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 
 	const { view, setView } = usePersistedView( 'ai-request-logs', defaultView );
 
+	const hasInitialFilters = Boolean(
+		filters.type ||
+		filters.status ||
+		filters.provider ||
+		filters.search ||
+		filters.operation.length > 0
+	);
+
 	// Sync parent filters with persisted view on initial load
 	useEffect( () => {
+		if ( hasInitialFilters ) {
+			return;
+		}
+
 		// Extract persisted filter values and update parent state
 		const persistedType = extractFilterValue( view.filters, 'type' );
 		const persistedStatus = extractFilterValue( view.filters, 'status' );
@@ -188,6 +200,26 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] ); // Only run once on mount
+
+	useEffect( () => {
+		setView( ( previous ) => {
+			const nextFilters = buildFilterArray( filters );
+			const prevFilters = previous.filters ?? [];
+			const filtersChanged = JSON.stringify( prevFilters ) !== JSON.stringify( nextFilters );
+			const prevSearch = previous.search ?? '';
+			const nextSearch = filters.search ?? '';
+
+			if ( ! filtersChanged && prevSearch === nextSearch ) {
+				return previous;
+			}
+
+			return {
+				...previous,
+				filters: nextFilters,
+				search: nextSearch,
+			};
+		} );
+	}, [ filters, buildFilterArray, setView ] );
 
 	// Update view when page changes from parent
 	useEffect( () => {

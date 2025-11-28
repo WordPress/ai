@@ -1,8 +1,17 @@
 @use '../dataviews';
+@use '../common';
 
 .ai-mcp-server {
-	&__app {
-		margin-top: 1.5rem;
+	// Header styles for PHP/React hybrid header
+	&__header {
+		// Header toggle needs proper alignment
+		.components-toggle-control {
+			margin: 0;
+
+			.components-base-control__field {
+				margin-bottom: 0;
+			}
+		}
 	}
 
 	&__grid {
@@ -26,6 +35,18 @@
 		.components-select-control {
 			min-width: 240px;
 		}
+	}
+
+	&__server-picker {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 12px;
+	}
+
+	&__server-description {
+		margin: -8px 0 24px;
+		color: #50575e;
 	}
 
 	&__card {

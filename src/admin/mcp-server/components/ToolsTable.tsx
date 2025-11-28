@@ -10,11 +10,13 @@ import type { ToolSummary } from '../types';
 interface ToolsTableProps {
 	tools: ToolSummary[];
 	saving: boolean;
+	globalEnabled: boolean;
 	serverEnabled: boolean;
 	onToggle: ( name: string, next: boolean ) => void;
 }
 
-const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled, onToggle } ) => {
+const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, globalEnabled, serverEnabled, onToggle } ) => {
+	const canEditTools = globalEnabled && serverEnabled;
 	const categoryOptions = useMemo( () => {
 		const seen = new Map< string, { label: string; value: string } >();
 		tools.forEach( ( tool ) => {
@@ -62,7 +64,7 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 			render: ( { item } ) => ( item.isPublic ? __( 'Yes', 'ai' ) : __( 'No', 'ai' ) ),
 			filterBy: false,
 		},
-			{
+		{
 			id: 'enabled',
 			label: __( 'Expose via MCP', 'ai' ),
 			type: 'text',
@@ -76,16 +78,16 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 			},
 			enableSorting: true,
 			enableHiding: false,
-			render: ( { item } ) => (
-				<ToggleControl
-					checked={ item.enabled }
-					onChange={ ( value: boolean ) => onToggle( item.name, value ) }
-					disabled={ saving || ! serverEnabled }
-					__nextHasNoMarginBottom
-				/>
-			),
+				render: ( { item } ) => (
+					<ToggleControl
+						checked={ item.enabled }
+						onChange={ ( value: boolean ) => onToggle( item.name, value ) }
+						disabled={ saving || ! canEditTools }
+						__nextHasNoMarginBottom
+					/>
+				),
 		},
-	], [ categoryOptions, onToggle, saving, serverEnabled ] );
+	], [ categoryOptions, onToggle, saving, canEditTools ] );
 
 	const initialFields = useMemo( () => fields.map( ( field ) => field.id ), [ fields ] );
 
@@ -136,11 +138,13 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 				<h2>{ __( 'Exposed abilities', 'ai' ) }</h2>
 			</CardHeader>
 			<CardBody>
-				{ ! serverEnabled && (
-					<Notice status="warning" isDismissible={ false }>
-						{ __( 'Enable the MCP server to edit which abilities are exposed.', 'ai' ) }
-					</Notice>
-				 ) }
+			{ ! canEditTools && (
+				<Notice status="warning" isDismissible={ false }>
+					{ ! globalEnabled
+						? __( 'Enable MCP globally to edit which abilities are exposed.', 'ai' )
+						: __( 'Enable the selected server to edit which abilities are exposed.', 'ai' ) }
+				</Notice>
+			 ) }
 
 				<DataViews
 					data={ filteredTools }
