@@ -1,6 +1,6 @@
 <?php
 /**
- * Bootstrap file for the AI plugin.
+ * Bootstrap file for the AI Experiments plugin.
  *
  * Handles plugin initialization, version checks, and feature loading.
  *
@@ -28,26 +28,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-if ( ! defined( 'AI_VERSION' ) ) {
-	define( 'AI_VERSION', '0.1.0' );
+if ( ! defined( 'AI_EXPERIMENTS_VERSION' ) ) {
+	define( 'AI_EXPERIMENTS_VERSION', '0.1.0' );
 }
-if ( ! defined( 'AI_PLUGIN_FILE' ) ) {
-	define( 'AI_PLUGIN_FILE', defined( 'WP_AI_DIR' ) ? WP_AI_DIR . 'ai.php' : '' );
+if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_FILE' ) ) {
+	define( 'AI_EXPERIMENTS_PLUGIN_FILE', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR . 'ai.php' : '' );
 }
-if ( ! defined( 'AI_PLUGIN_DIR' ) ) {
-	define( 'AI_PLUGIN_DIR', defined( 'WP_AI_DIR' ) ? WP_AI_DIR : '' );
+if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_DIR' ) ) {
+	define( 'AI_EXPERIMENTS_PLUGIN_DIR', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR : '' );
 }
-if ( ! defined( 'AI_PLUGIN_URL' ) ) {
-	define( 'AI_PLUGIN_URL', plugin_dir_url( AI_PLUGIN_FILE ) );
+if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_URL' ) ) {
+	define( 'AI_EXPERIMENTS_PLUGIN_URL', plugin_dir_url( AI_EXPERIMENTS_PLUGIN_FILE ) );
 }
-if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
-	define( 'AI_MIN_PHP_VERSION', '7.4' );
+if ( ! defined( 'AI_EXPERIMENTS_MIN_PHP_VERSION' ) ) {
+	define( 'AI_EXPERIMENTS_MIN_PHP_VERSION', '7.4' );
 }
-if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
-	define( 'AI_MIN_WP_VERSION', '6.8' );
+if ( ! defined( 'AI_EXPERIMENTS_MIN_WP_VERSION' ) ) {
+	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '6.8' );
 }
-if ( ! defined( 'AI_DEFAULT_ABILITY_CATEGORY' ) ) {
-	define( 'AI_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
+if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
+	define( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
 }
 
 /**
@@ -76,15 +76,15 @@ function version_notice( string $message ): void {
  * @return bool True if PHP version is sufficient, false otherwise.
  */
 function check_php_version(): bool {
-	if ( version_compare( phpversion(), AI_MIN_PHP_VERSION, '<' ) ) {
+	if ( version_compare( phpversion(), AI_EXPERIMENTS_MIN_PHP_VERSION, '<' ) ) {
 		add_action(
 			'admin_notices',
 			static function () {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required PHP version, 2: Current PHP version */
-						__( 'AI plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
-						AI_MIN_PHP_VERSION,
+						__( 'AI Experiments plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
+						AI_EXPERIMENTS_MIN_PHP_VERSION,
 						PHP_VERSION
 					)
 				);
@@ -105,7 +105,7 @@ function check_php_version(): bool {
 function check_wp_version(): bool {
 	global $wp_version;
 
-	if ( version_compare( $wp_version, AI_MIN_WP_VERSION, '<' ) ) {
+	if ( version_compare( $wp_version, AI_EXPERIMENTS_MIN_WP_VERSION, '<' ) ) {
 		add_action(
 			'admin_notices',
 			static function () {
@@ -113,8 +113,8 @@ function check_wp_version(): bool {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required WordPress version, 2: Current WordPress version */
-						__( 'AI plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
-						AI_MIN_WP_VERSION,
+						__( 'AI Experiments plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
+						AI_EXPERIMENTS_MIN_WP_VERSION,
 						$wp_version
 					)
 				);
@@ -137,7 +137,7 @@ function display_composer_notice(): void {
 			<?php
 			printf(
 				/* translators: %s: composer install command */
-				esc_html__( 'Your installation of the AI plugin is incomplete. Please run %s.', 'ai' ),
+				esc_html__( 'Your installation of the AI Experiments plugin is incomplete. Please run %s.', 'ai' ),
 				'<code>composer install</code>'
 			);
 			?>
@@ -165,11 +165,11 @@ function load(): void {
 	}
 
 	// Load the Jetpack autoloader.
-	if ( ! file_exists( AI_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
+	if ( ! file_exists( AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
 		add_action( 'admin_notices', __NAMESPACE__ . '\display_composer_notice' );
 		return;
 	}
-	require_once AI_PLUGIN_DIR . 'vendor/autoload_packages.php';
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php';
 
 	$loaded = true;
 
@@ -232,7 +232,7 @@ function initialize_experiments(): void {
 				 * in the future if we need/want more specific categories.
 				 */
 				wp_register_ability_category(
-					AI_DEFAULT_ABILITY_CATEGORY,
+					AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY,
 					array(
 						'label'       => __( 'AI Experiments', 'ai' ),
 						'description' => __( 'Various AI experiments.', 'ai' ),

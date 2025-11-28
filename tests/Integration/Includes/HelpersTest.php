@@ -114,7 +114,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_normalize_content_applies_filters() {
-		add_filter( 'ai_pre_normalize_content', function( $content ) {
+		add_filter( 'ai_experiments_pre_normalize_content', function( $content ) {
 			return 'Filtered: ' . $content;
 		} );
 
@@ -122,7 +122,7 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'Filtered:', $result, 'Should apply pre-normalize filter' );
 
-		remove_all_filters( 'ai_pre_normalize_content' );
+		remove_all_filters( 'ai_experiments_pre_normalize_content' );
 	}
 
 	/**
@@ -273,7 +273,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_models_applies_filter() {
 		add_filter(
-			'ai_preferred_models',
+			'ai_experiments_preferred_models',
 			function( $models ) {
 				// Add a custom model.
 				$models[] = array(
@@ -290,7 +290,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'custom', $result[5][0], 'Sixth model provider should be custom' );
 		$this->assertEquals( 'custom-model', $result[5][1], 'Sixth model name should be custom-model' );
 
-		remove_all_filters( 'ai_preferred_models' );
+		remove_all_filters( 'ai_experiments_preferred_models' );
 	}
 
 	/**
@@ -300,7 +300,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_models_filter_can_replace_models() {
 		add_filter(
-			'ai_preferred_models',
+			'ai_experiments_preferred_models',
 			function( $models ) {
 				// Replace with a single model.
 				return array(
@@ -318,7 +318,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'test', $result[0][0], 'Model provider should be test' );
 		$this->assertEquals( 'test-model', $result[0][1], 'Model name should be test-model' );
 
-		remove_all_filters( 'ai_preferred_models' );
+		remove_all_filters( 'ai_experiments_preferred_models' );
 	}
 
 	public function test_is_experiment_enabled_requires_global_toggle(): void {
