@@ -60,21 +60,24 @@ const ConfigGenerator: React.FC< ConfigGeneratorProps > = ( { templates, onCopy 
 			<CardBody>
 				{ hasTemplates ? (
 					<>
-						<SelectControl
-							label={ __( 'Choose a client', 'ai' ) }
-							value={ activeTemplate?.id }
-							onChange={ ( value: string ) => setSelected( value ) }
-							options={ templateEntries.map( ( tpl ) => ( {
-								label: tpl.fileName,
-								value: tpl.id,
-							} ) ) }
-						/>
-						<TextareaControl
-							label={ __( 'Paste this JSON into your MCP client', 'ai' ) }
-							value={ activeTemplate?.content ?? '' }
-							rows={ 12 }
-							readOnly
-						/>
+					<SelectControl
+						label={ __( 'Choose a client', 'ai' ) }
+						value={ activeTemplate?.id }
+						onChange={ ( value: string ) => setSelected( value ) }
+						options={ templateEntries.map( ( tpl ) => ( {
+							label: tpl.fileName,
+							value: tpl.id,
+						} ) ) }
+						__nextHasNoMarginBottom
+						__next40pxDefaultSize
+					/>
+					<TextareaControl
+						label={ __( 'Paste this JSON into your MCP client', 'ai' ) }
+						value={ activeTemplate?.content ?? '' }
+						rows={ 12 }
+						readOnly
+						__nextHasNoMarginBottom
+					/>
 						<div className="ai-mcp-server__button-row">
 							<Button variant="primary" onClick={ handleCopy }>
 								{ __( 'Copy config', 'ai' ) }

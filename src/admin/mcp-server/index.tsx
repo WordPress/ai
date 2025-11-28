@@ -232,13 +232,14 @@ const App: React.FC = () => {
 			 ) : (
 				<>
 					<div className="ai-mcp-server__toolbar">
-						<SelectControl
-							label={ __( 'Server', 'ai' ) }
-							value={ selectedServerId ?? '' }
-							onChange={ handleSelectServer }
-							options={ serverOptions }
-							__nextHasNoMarginBottom
-						/>
+					<SelectControl
+						label={ __( 'Server', 'ai' ) }
+						value={ selectedServerId ?? '' }
+						onChange={ handleSelectServer }
+						options={ serverOptions }
+						__nextHasNoMarginBottom
+						__next40pxDefaultSize
+					/>
 						<Button variant="secondary" onClick={ handleAddServer }>
 							{ __( 'Add Server', 'ai' ) }
 						</Button>

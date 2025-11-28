@@ -52,6 +52,7 @@ const ServerStatusCard: React.FC< ServerStatusCardProps > = ( {
 						checked={ globalEnabled }
 						onChange={ onToggleGlobal }
 						disabled={ saving }
+						__nextHasNoMarginBottom
 					/>
 				</div>
 			</CardHeader>
