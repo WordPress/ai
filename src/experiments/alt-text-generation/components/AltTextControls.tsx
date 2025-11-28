@@ -29,49 +29,12 @@ interface AltTextControlsProps {
 }
 
 /**
- * Detects MIME type from base64 image data by checking magic bytes.
+ * Generates alt text for an image using the AI ability.
  *
- * @param {string} base64 The base64 encoded image data.
- * @return {string|null} The detected MIME type or null if unknown.
+ * @param {number|undefined} attachmentId The attachment ID.
+ * @param {string|undefined} imageUrl     The image URL (fallback if no attachment ID).
+ * @return {Promise<string>} The generated alt text.
  */
-function detectMimeTypeFromBase64( base64: string ): string | null {
-	if ( base64.startsWith( 'iVBORw0KGgo' ) ) {
-		return 'image/png';
-	}
-	if ( base64.startsWith( '/9j/' ) ) {
-		return 'image/jpeg';
-	}
-	if ( base64.startsWith( 'R0lGOD' ) ) {
-		return 'image/gif';
-	}
-	if ( base64.startsWith( 'UklGR' ) ) {
-		return 'image/webp';
-	}
-	return null;
-}
-
-/**
- * Converts raw base64 image data to a proper data URI if needed.
- *
- * @param {string} imageUrl The image URL or base64 data.
- * @return {string} A valid URL or data URI.
- */
-function normalizeImageUrl( imageUrl: string ): string {
-	// Already a URL or data URI - return as-is.
-	if ( imageUrl.startsWith( 'http' ) || imageUrl.startsWith( 'data:' ) ) {
-		return imageUrl;
-	}
-
-	// Try to detect if it's raw base64 and convert to data URI.
-	const mimeType = detectMimeTypeFromBase64( imageUrl );
-	if ( mimeType ) {
-		return `data:${ mimeType };base64,${ imageUrl }`;
-	}
-
-	// Return as-is and let the server handle it.
-	return imageUrl;
-}
-
 async function generateAltText(
 	attachmentId: number | undefined,
 	imageUrl: string | undefined
@@ -81,7 +44,7 @@ async function generateAltText(
 	if ( attachmentId ) {
 		params.attachment_id = attachmentId;
 	} else if ( imageUrl ) {
-		params.image_url = normalizeImageUrl( imageUrl );
+		params.image_url = imageUrl;
 	} else {
 		throw new Error(
 			__( 'No image available to generate alt text for.', 'ai' )

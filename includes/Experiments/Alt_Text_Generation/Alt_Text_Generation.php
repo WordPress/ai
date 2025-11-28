@@ -21,6 +21,14 @@ use WordPress\AI\Asset_Loader;
  * @since x.x.x
  */
 class Alt_Text_Generation extends Abstract_Experiment {
+	/**
+	 * Tracks whether the media-focused assets have already been enqueued.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	private bool $media_assets_enqueued = false;
 
 	/**
 	 * {@inheritDoc}
@@ -45,6 +53,8 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
+		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
 	}
 
 	/**
@@ -77,5 +87,66 @@ class Alt_Text_Generation extends Abstract_Experiment {
 				'enabled' => $this->is_enabled(),
 			)
 		);
+
+		$this->maybe_enqueue_media_script();
+	}
+
+	/**
+	 * Enqueues assets whenever the core media modal is registered.
+	 *
+	 * @since x.x.x
+	 */
+	public function enqueue_media_frame_assets(): void {
+		$this->maybe_enqueue_media_script();
+	}
+
+	/**
+	 * Conditionally enqueues assets on media-related admin screens (e.g., upload.php).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 */
+	public function maybe_enqueue_media_library_assets( string $hook_suffix ): void {
+		if ( ! $this->is_enabled() ) {
+			return;
+		}
+
+		if ( in_array( $hook_suffix, array( 'upload.php', 'media-new.php' ), true ) ) {
+			$this->maybe_enqueue_media_script();
+			return;
+		}
+
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+		if ( ! $screen ) {
+			return;
+		}
+
+		if ( 'attachment' === $screen->post_type ) {
+			$this->maybe_enqueue_media_script();
+		}
+	}
+
+	/**
+	 * Shared helper to enqueue and localize the media UI script once per request.
+	 *
+	 * @since x.x.x
+	 */
+	private function maybe_enqueue_media_script(): void {
+		if ( $this->media_assets_enqueued || ! $this->is_enabled() ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script( 'alt_text_generation_media', 'experiments/alt-text-generation-media' );
+		Asset_Loader::localize_script(
+			'alt_text_generation_media',
+			'AltTextGenerationMediaData',
+			array(
+				'enabled' => $this->is_enabled(),
+			)
+		);
+
+		$this->media_assets_enqueued = true;
 	}
 }

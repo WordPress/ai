@@ -123,12 +123,12 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Gets the best image reference (local path preferred) from the input arguments.
+	 * Gets the image as a data URI from the input arguments.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $args The input arguments.
-	 * @return array{reference: string, temporary: bool}|\WP_Error The prepared reference payload or WP_Error on failure.
+	 * @return array{reference: string}|\WP_Error The prepared reference payload or WP_Error on failure.
 	 */
 	protected function get_image_reference( array $args ) {
 		if ( ! empty( $args['attachment_id'] ) ) {
@@ -144,7 +144,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 			$path = $this->maybe_map_url_to_local_path( $args['image_url'] );
 
 			if ( $path ) {
-				return $this->prepare_reference_result( $path );
+				$data_uri = $this->file_to_data_uri( $path );
+				if ( $data_uri ) {
+					return $this->prepare_reference_result( $data_uri );
+				}
 			}
 
 			$downloaded = $this->download_remote_image_to_temp_file( $args['image_url'] );
@@ -153,7 +156,17 @@ class Alt_Text_Generation extends Abstract_Ability {
 				return $downloaded;
 			}
 
-			return $this->prepare_reference_result( $downloaded, true );
+			$data_uri = $this->file_to_data_uri( $downloaded );
+			$this->cleanup_temporary_file( $downloaded );
+
+			if ( ! $data_uri ) {
+				return new WP_Error(
+					'file_read_error',
+					esc_html__( 'Could not read the downloaded image file.', 'ai' )
+				);
+			}
+
+			return $this->prepare_reference_result( $data_uri );
 		}
 
 		return new WP_Error(
@@ -167,32 +180,23 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array{reference: string, temporary: bool} $image_reference Prepared image reference.
-	 * @param string $context   Optional context to improve alt text relevance.
+	 * @param array{reference: string} $image_reference Prepared image reference containing a data URI.
+	 * @param string                   $context         Optional context to improve alt text relevance.
 	 * @return string|\WP_Error The generated alt text or WP_Error on failure.
 	 */
 	protected function generate_alt_text( array $image_reference, string $context = '' ) {
 		$prompt = $this->build_prompt( $context );
 
-		$reference = $image_reference['reference'];
-		$temporary = ! empty( $image_reference['temporary'] );
-
-		try {
-			$result = AI_Client::prompt_with_wp_error( $prompt )
-				->with_file( $reference )
-				->using_system_instruction( $this->get_system_instruction() )
-				->using_temperature( 0.3 )
-				->using_model_preference(
-					array( 'openai', 'gpt-5-nano' ),
-					array( 'anthropic', 'claude-haiku-4-5' ),
-					array( 'google', 'gemini-2.5-flash' )
-				)
-				->generate_text();
-		} finally {
-			if ( $temporary && is_string( $reference ) ) {
-				$this->cleanup_temporary_file( $reference );
-			}
-		}
+		$result = AI_Client::prompt_with_wp_error( $prompt )
+			->with_file( $image_reference['reference'] )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_temperature( 0.3 )
+			->using_model_preference(
+				array( 'openai', 'gpt-5-nano' ),
+				array( 'anthropic', 'claude-haiku-4-5' ),
+				array( 'google', 'gemini-2.5-flash' )
+			)
+			->generate_text();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -211,12 +215,12 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the best reference for an attachment (local path preferred, URL fallback).
+	 * Returns a data URI for an attachment.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param int $attachment_id Attachment ID.
-	 * @return array{reference: string, temporary: bool}|\WP_Error Local reference array or WP_Error on failure.
+	 * @return array{reference: string}|\WP_Error Data URI reference array or WP_Error on failure.
 	 */
 	protected function get_attachment_reference( int $attachment_id ) {
 		$attachment = get_post( $attachment_id );
@@ -238,7 +242,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		$file_path = get_attached_file( $attachment_id );
 		if ( $file_path && file_exists( $file_path ) ) {
-			return $this->prepare_reference_result( $file_path );
+			$data_uri = $this->file_to_data_uri( $file_path );
+			if ( $data_uri ) {
+				return $this->prepare_reference_result( $data_uri );
+			}
 		}
 
 		$image_src = wp_get_attachment_image_src( $attachment_id, 'large' );
@@ -254,7 +261,24 @@ class Alt_Text_Generation extends Abstract_Ability {
 			);
 		}
 
-		return $this->prepare_reference_result( $image_src[0] );
+		// Download remote URL and convert to data URI.
+		$downloaded = $this->download_remote_image_to_temp_file( $image_src[0] );
+
+		if ( is_wp_error( $downloaded ) ) {
+			return $downloaded;
+		}
+
+		$data_uri = $this->file_to_data_uri( $downloaded );
+		$this->cleanup_temporary_file( $downloaded );
+
+		if ( ! $data_uri ) {
+			return new WP_Error(
+				'file_read_error',
+				esc_html__( 'Could not read the downloaded image file.', 'ai' )
+			);
+		}
+
+		return $this->prepare_reference_result( $data_uri );
 	}
 
 	/**
@@ -412,15 +436,35 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $reference The path or data reference.
-	 * @param bool   $temporary Whether the reference needs cleanup after use.
-	 * @return array{reference: string, temporary: bool} Standardized reference array.
+	 * @param string $reference The data URI reference.
+	 * @return array{reference: string} Standardized reference array.
 	 */
-	protected function prepare_reference_result( string $reference, bool $temporary = false ): array {
+	protected function prepare_reference_result( string $reference ): array {
 		return array(
 			'reference' => $reference,
-			'temporary' => $temporary,
 		);
+	}
+
+	/**
+	 * Converts a file to a data URI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $file_path Path to the file.
+	 * @return string|null Data URI or null on failure.
+	 */
+	protected function file_to_data_uri( string $file_path ): ?string {
+		$mime_type = wp_check_filetype( $file_path )['type'];
+		if ( ! $mime_type ) {
+			return null;
+		}
+
+		$contents = file_get_contents( $file_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( false === $contents ) {
+			return null;
+		}
+
+		return 'data:' . $mime_type . ';base64,' . base64_encode( $contents );
 	}
 
 	/**
@@ -473,6 +517,11 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function meta(): array {
 		return array(
 			'show_in_rest' => true,
+			'mcp'          => array(
+				'public'   => true,
+				'type'     => 'tool',
+				'category' => 'media',
+			),
 		);
 	}
 }
