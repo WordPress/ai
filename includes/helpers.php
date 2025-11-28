@@ -9,9 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
-use Throwable;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
-use WordPress\AI_Client\AI_Client;
 
 /**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
@@ -253,22 +251,7 @@ function has_valid_ai_credentials(): bool {
 		return (bool) $valid;
 	}
 
-	$transient_key = 'ai_valid_credentials_status';
-	$cached        = get_transient( $transient_key );
-	if ( false !== $cached ) {
-		return (bool) $cached;
-	}
-
-	// See if we have credentials that give us access to generate text.
-	try {
-		$is_supported = AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
-	} catch ( Throwable $t ) {
-		$is_supported = false;
-	}
-
-	set_transient( $transient_key, $is_supported ? 1 : 0, 5 * MINUTE_IN_SECONDS );
-
-	return $is_supported;
+	return true;
 }
 
 /**

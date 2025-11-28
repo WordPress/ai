@@ -3,9 +3,12 @@
 ## Summary
 Toggles registration of a custom set of AI providers with the WP AI Client. When the experiment is enabled, any provider classes you supply via filters are registered with `AiClient::defaultRegistry()` so they can participate in model discovery alongside the core providers (OpenAI, Anthropic, Google). Disable the experiment to remove those providers without touching the default stack.
 
+### Included Providers
+- Grok (xAI) – exposes Grok’s `/v1/models` listing and chat completion models. Add your Grok API key under **Settings → AI Credentials** (`options-general.php?page=wp-ai-client`) and the registry will inject it automatically.
+
 ## Key Hooks & Entry Points
 - `WordPress\AI\Experiments\Extended_Providers\Extended_Providers::register()` attaches to `init` (priority 20) and calls `register_providers()` only when the experiment is enabled.
-- `ai_extended_provider_default_classes` – Filter the default list of provider class names bundled with the experiment (empty by default).
+- `ai_extended_provider_default_classes` – Filter the default list of provider class names bundled with the experiment (defaults to `WordPress\AI\Providers\Grok\GrokProvider`).
 - `ai_extended_provider_classes` – Final filter to adjust the provider class list before registration. Receives the experiment instance so you can inspect settings if needed.
 
 ```php
