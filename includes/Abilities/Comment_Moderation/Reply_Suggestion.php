@@ -13,8 +13,6 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
-use function WordPress\AI\get_preferred_models;
-
 /**
  * Reply Suggestion WordPress Ability.
  *
@@ -231,7 +229,7 @@ class Reply_Suggestion extends Abstract_Ability {
 		$result = AI_Client::prompt_with_wp_error( $context )
 			->using_system_instruction( $this->get_system_instruction( 'reply-system-instruction.php' ) )
 			->using_candidate_count( max( 1, $candidates ) )
-			->using_model_preference( ...$this->get_reply_model_preferences() )
+			->using_model_preference( ...$this->get_model_preferences() )
 			->generate_texts();
 
 		if ( is_wp_error( $result ) ) {
@@ -248,18 +246,16 @@ class Reply_Suggestion extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns model preferences prioritizing OpenAI for replies.
-	 *
-	 * @return array<int, array{string, string}>
+	 * {@inheritDoc}
 	 */
-	private function get_reply_model_preferences(): array {
+	protected function get_model_preferences(): array {
 		$openai_preferences = array(
 			array( 'openai', 'gpt-4.1' ),
 			array( 'openai', 'gpt-4o-mini' ),
 		);
 
 		$remaining = array_filter(
-			get_preferred_models(),
+			parent::get_model_preferences(),
 			static function ( array $model ): bool {
 				return 'openai' !== $model[0];
 			}

@@ -12,6 +12,8 @@ namespace WordPress\AI\Abstracts;
 use ReflectionClass;
 use WP_Ability;
 
+use function WordPress\AI\get_preferred_models;
+
 /**
  * Base implementation for a WordPress Ability.
  *
@@ -112,6 +114,19 @@ abstract class Abstract_Ability extends WP_Ability {
 	 */
 	public function get_system_instruction( ?string $filename = null ): string {
 		return $this->load_system_instruction_from_file( $filename );
+	}
+
+	/**
+	 * Returns the preferred model ordering for the ability.
+	 *
+	 * Child classes can override this to provide experiment-specific model preferences.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array<int, array{string, string}> List of provider/model tuples in priority order.
+	 */
+	protected function get_model_preferences(): array {
+		return get_preferred_models();
 	}
 
 	/**

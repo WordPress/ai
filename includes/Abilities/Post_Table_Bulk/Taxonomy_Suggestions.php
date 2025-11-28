@@ -16,8 +16,6 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_preferred_models;
-
 /**
  * Suggests taxonomy terms for a collection of posts.
  *
@@ -519,7 +517,7 @@ class Taxonomy_Suggestions extends Abstract_Ability {
 	private function request_suggestions( string $payload ) {
 		$response = AI_Client::prompt_with_wp_error( $payload )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference( ...get_preferred_models() )
+			->using_model_preference( ...$this->get_model_preferences() )
 			->generate_text();
 
 		if ( is_wp_error( $response ) ) {

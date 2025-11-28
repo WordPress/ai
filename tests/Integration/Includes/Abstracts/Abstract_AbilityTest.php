@@ -255,6 +255,70 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that get_model_preferences() defaults to helper output.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_model_preferences_defaults_to_helper() {
+		$experiment = new Test_Ability_Experiment();
+		$ability = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'get_model_preferences' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $ability );
+
+		$this->assertSame(
+			\WordPress\AI\get_preferred_models(),
+			$result,
+			'Default implementation should defer to helper output.'
+		);
+	}
+
+	/**
+	 * Test that get_model_preferences() can be overridden.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_model_preferences_can_be_overridden() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new class(
+			'custom-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		) extends Test_Ability {
+			protected function get_model_preferences(): array {
+				return array(
+					array( 'provider-x', 'model-y' ),
+				);
+			}
+		};
+
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'get_model_preferences' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $ability );
+
+		$this->assertSame(
+			array(
+				array( 'provider-x', 'model-y' ),
+			),
+			$result,
+			'Overridden model preferences should be returned.'
+		);
+	}
+
+	/**
 	 * Test that constructor requires label.
 	 *
 	 * @since 0.1.0
@@ -289,4 +353,3 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$this->assertEquals( '', $system_instruction, 'System instruction should be empty when no file exists' );
 	}
 }
-

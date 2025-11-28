@@ -14,8 +14,6 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI_Client\AI_Client;
 
-use function WordPress\AI\get_preferred_models;
-
 /**
  * Comment Analysis WordPress Ability.
  *
@@ -193,7 +191,7 @@ class Comment_Analysis extends Abstract_Ability {
 
 		$result = AI_Client::prompt_with_wp_error( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference( ...get_preferred_models() )
+			->using_model_preference( ...$this->get_model_preferences() )
 			->generate_text();
 
 		if ( is_wp_error( $result ) ) {

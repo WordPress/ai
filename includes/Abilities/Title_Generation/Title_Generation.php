@@ -14,7 +14,6 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_preferred_models;
 use function WordPress\AI\normalize_content;
 
 /**
@@ -271,7 +270,7 @@ class Title_Generation extends Abstract_Ability {
 		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_candidate_count( (int) $candidates )
-			->using_model_preference( ...get_preferred_models() )
+			->using_model_preference( ...$this->get_model_preferences() )
 			->generate_texts();
 	}
 }
