@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
+use WordPress\AI\Settings\Settings_Registration;
 
 /**
  * Helper functions test case.
@@ -334,5 +335,38 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'test-model', $result[0][1], 'Model name should be test-model' );
 
 		remove_all_filters( 'ai_preferred_models' );
+	}
+
+	public function test_is_experiment_enabled_requires_global_toggle(): void {
+		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+
+		update_option( Settings_Registration::GLOBAL_OPTION, false );
+		update_option( 'ai_experiment_test-experiment_enabled', true );
+
+		$this->assertFalse( \WordPress\AI\is_experiment_enabled( 'test-experiment' ) );
+
+		remove_all_filters( 'ai_pre_has_valid_credentials_check' );
+	}
+
+	public function test_is_experiment_enabled_returns_true_when_all_conditions_met(): void {
+		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+
+		update_option( Settings_Registration::GLOBAL_OPTION, true );
+		update_option( 'ai_experiment_test-experiment_enabled', true );
+
+		$this->assertTrue( \WordPress\AI\is_experiment_enabled( 'test-experiment' ) );
+
+		remove_all_filters( 'ai_pre_has_valid_credentials_check' );
+	}
+
+	public function test_is_experiment_enabled_requires_valid_credentials(): void {
+		add_filter( 'ai_pre_has_valid_credentials_check', '__return_false' );
+
+		update_option( Settings_Registration::GLOBAL_OPTION, true );
+		update_option( 'ai_experiment_test-experiment_enabled', true );
+
+		$this->assertFalse( \WordPress\AI\is_experiment_enabled( 'test-experiment' ) );
+
+		remove_all_filters( 'ai_pre_has_valid_credentials_check' );
 	}
 }
