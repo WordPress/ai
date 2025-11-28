@@ -2,23 +2,19 @@
 /**
  * REST API controller for AI request logs.
  *
- * @package WordPress\AI\Experiments\AI_Request_Logging
+ * @package WordPress\AI\Logging
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Experiments\AI_Request_Logging\REST;
+namespace WordPress\AI\Logging\REST;
 
 use WP_Error;
 use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
-use WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging;
-
-use function current_user_can;
-use function rest_ensure_response;
-use function __;
+use WordPress\AI\Logging\AI_Request_Log_Manager;
 
 /**
  * Provides `/ai/v1/logs` routes for the AI Request Logs admin UI.
@@ -28,19 +24,19 @@ use function __;
 class AI_Request_Log_Controller extends WP_REST_Controller {
 
 	/**
-	 * Experiment instance (which manages logs).
+	 * Log manager instance.
 	 */
-	private AI_Request_Logging $experiment;
+	private AI_Request_Log_Manager $manager;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param AI_Request_Logging $experiment Experiment instance.
+	 * @param AI_Request_Log_Manager $manager Log manager.
 	 */
-	public function __construct( AI_Request_Logging $experiment ) {
-		$this->namespace  = 'ai/v1';
-		$this->rest_base  = 'logs';
-		$this->experiment = $experiment;
+	public function __construct( AI_Request_Log_Manager $manager ) {
+		$this->namespace = 'ai/v1';
+		$this->rest_base = 'logs';
+		$this->manager   = $manager;
 	}
 
 	/**
@@ -48,6 +44,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 */
 	public function register_routes(): void {
 		// GET /ai/v1/logs - List logs with filtering.
+		// POST /ai/v1/logs - Update settings (enabled, retention).
 		// DELETE /ai/v1/logs - Purge all logs.
 		register_rest_route(
 			$this->namespace,
@@ -58,6 +55,23 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 					'callback'            => array( $this, 'get_logs' ),
 					'permission_callback' => array( $this, 'permissions_check' ),
 					'args'                => $this->get_collection_params(),
+				),
+				array(
+					'methods'             => WP_REST_Server::EDITABLE,
+					'callback'            => array( $this, 'update_settings' ),
+					'permission_callback' => array( $this, 'permissions_check' ),
+					'args'                => array(
+						'enabled'        => array(
+							'type'     => 'boolean',
+							'required' => false,
+						),
+						'retention_days' => array(
+							'type'     => 'integer',
+							'required' => false,
+							'minimum'  => 1,
+							'maximum'  => 365,
+						),
+					),
 				),
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
@@ -159,7 +173,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			'order'     => $request->get_param( 'order' ) ?? 'DESC',
 		);
 
-		$result = $this->experiment->get_logs( $args );
+		$result = $this->manager->get_logs( $args );
 
 		$response = rest_ensure_response( $result['items'] );
 		$response->header( 'X-WP-Total', (string) $result['total'] );
@@ -176,7 +190,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 */
 	public function get_log( WP_REST_Request $request ) {
 		$log_id = $request->get_param( 'id' );
-		$log    = $this->experiment->get_log( $log_id );
+		$log    = $this->manager->get_log( $log_id );
 
 		if ( ! $log ) {
 			return new WP_Error(
@@ -197,7 +211,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 */
 	public function get_summary( WP_REST_Request $request ): WP_REST_Response {
 		$period  = $request->get_param( 'period' ) ?? 'day';
-		$summary = $this->experiment->get_summary( $period );
+		$summary = $this->manager->get_summary( $period );
 
 		return rest_ensure_response( $summary );
 	}
@@ -209,9 +223,32 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function get_filters( WP_REST_Request $request ): WP_REST_Response {
-		$filters = $this->experiment->get_filter_options();
+		$filters = $this->manager->get_filter_options();
 
 		return rest_ensure_response( $filters );
+	}
+
+	/**
+	 * Updates logging settings.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public function update_settings( WP_REST_Request $request ): WP_REST_Response {
+		if ( $request->has_param( 'enabled' ) ) {
+			$this->manager->set_logging_enabled( (bool) $request->get_param( 'enabled' ) );
+		}
+
+		if ( $request->has_param( 'retention_days' ) ) {
+			$this->manager->set_retention_days( (int) $request->get_param( 'retention_days' ) );
+		}
+
+		return rest_ensure_response(
+			array(
+				'enabled'        => $this->manager->is_logging_enabled(),
+				'retention_days' => $this->manager->get_retention_days(),
+			)
+		);
 	}
 
 	/**
@@ -221,7 +258,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function purge_logs( WP_REST_Request $request ): WP_REST_Response {
-		$deleted = $this->experiment->purge_all_logs();
+		$deleted = $this->manager->purge_all_logs();
 
 		return rest_ensure_response(
 			array(
@@ -269,13 +306,11 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 				'description' => __( 'Filter logs from this date (YYYY-MM-DD HH:MM:SS).', 'ai' ),
 				'type'        => 'string',
 				'format'      => 'date-time',
-				'default'     => '',
 			),
 			'date_to'   => array(
 				'description' => __( 'Filter logs until this date (YYYY-MM-DD HH:MM:SS).', 'ai' ),
 				'type'        => 'string',
 				'format'      => 'date-time',
-				'default'     => '',
 			),
 			'search'    => array(
 				'description' => __( 'Search in operation and error message.', 'ai' ),

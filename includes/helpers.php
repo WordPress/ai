@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use Throwable;
+use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI_Client\AI_Client;
 
 /**
@@ -123,9 +124,10 @@ function get_post_context( int $post_id ): array {
 /**
  * Extends HTTP timeout for OpenAI requests.
  *
- * The default WordPress timeout (5 seconds) is too short for some
+ * The default WordPress timeout (5 seconds) is too short for some AI
  * completions and results in cURL error 28. Increase it to 20 seconds
- * whenever we call OpenAI's REST endpoint.
+ * whenever we call known AI REST endpoints, guarding against direct CLI
+ * execution where WordPress functions are unavailable.
  *
  * @since 0.1.0
  *
@@ -133,18 +135,29 @@ function get_post_context( int $post_id ): array {
  * @param string              $url  Request URL.
  * @return array<string,mixed>
  */
-add_filter(
-	'http_request_args',
-	static function ( array $args, string $url ): array {
-		if ( false !== strpos( $url, 'api.openai.com' ) ) {
-			$args['timeout'] = max( (float) ( $args['timeout'] ?? 5 ), 20 );
-		}
+if ( function_exists( 'add_filter' ) ) {
+	add_filter(
+		'http_request_args',
+		static function ( array $args, string $url ): array {
+			$ai_hosts = array(
+				'api.openai.com',
+				'api.anthropic.com',
+				'generativelanguage.googleapis.com',
+			);
 
-		return $args;
-	},
-	10,
-	2
-);
+			foreach ( $ai_hosts as $host ) {
+				if ( false !== strpos( $url, $host ) ) {
+					$args['timeout'] = max( (float) ( $args['timeout'] ?? 5 ), 20 );
+					break;
+				}
+			}
+
+			return $args;
+		},
+		10,
+		2
+	);
+}
 
 /**
  * Returns the preferred models.
@@ -156,20 +169,16 @@ add_filter(
 function get_preferred_models(): array {
 	$preferred_models = array(
 		array(
+			'anthropic',
+			'claude-haiku-4-5-20251001',
+		),
+		array(
 			'openai',
 			'gpt-5-nano-2025-08-07',
 		),
 		array(
-			'anthropic',
-			'claude-haiku-4-5',
-		),
-		array(
 			'google',
 			'gemini-2.5-flash',
-		),
-		array(
-			'openai',
-			'gpt-4o-mini',
 		),
 		array(
 			'openai',
@@ -250,4 +259,21 @@ function has_valid_ai_credentials(): bool {
 	} catch ( Throwable $t ) {
 		return false;
 	}
+}
+
+/**
+ * Get the shared AI request log manager instance.
+ *
+ * @since 0.1.0
+ *
+ * @return AI_Request_Log_Manager|null
+ */
+function get_request_log_manager(): ?AI_Request_Log_Manager {
+	static $log_manager = null;
+
+	if ( null === $log_manager && class_exists( AI_Request_Log_Manager::class ) ) {
+		$log_manager = new AI_Request_Log_Manager();
+	}
+
+	return $log_manager;
 }
