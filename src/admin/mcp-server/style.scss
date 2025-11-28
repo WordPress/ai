@@ -39,8 +39,9 @@
 			gap: 16px;
 			align-items: flex-start;
 
-			// Allow button rows and form elements to stretch
+			// Allow button rows, form elements, and dataviews to stretch
 			.ai-mcp-server__button-row,
+			.ai-mcp-server__dataviews,
 			.components-select-control,
 			.components-textarea-control {
 				align-self: stretch;

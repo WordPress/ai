@@ -46,13 +46,12 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 			id: 'category',
 			label: __( 'Category', 'ai' ),
 			type: 'text',
-			getValue: ( { item } ) => item.category.label,
+			getValue: ( { item } ) => item.category.slug,
 			elements: categoryOptions,
-			filterBy: categoryOptions.length
-				? {
-					operators: [ 'isAny' ],
-				}
+			filterBy: categoryOptions.length > 0
+				? { operators: [ 'is' ] }
 				: false,
+			render: ( { item } ) => item.category.label,
 		},
 		{
 			id: 'isPublic',
@@ -114,7 +113,8 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, serverEnabled
 	}, [ fields ] );
 
 	const { data: filteredTools, paginationInfo } = useMemo( () => {
-		return filterSortAndPaginate( tools, view, fields );
+		const result = filterSortAndPaginate( tools, view, fields );
+		return result ?? { data: tools, paginationInfo: { totalItems: tools.length, totalPages: 1 } };
 	}, [ tools, view, fields ] );
 
 	const hasActiveFilters = Boolean( view.search ) || ( view.filters?.length ?? 0 ) > 0;

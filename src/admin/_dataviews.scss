@@ -4,13 +4,14 @@
 
 // Project-specific overrides
 
-// Adjust padding for DataViews within cards (the default is designed for full-page use)
-.components-card__body > .dataviews-wrapper {
-	// Reset the default top padding from dataviews
-	padding-top: 0;
+// Ensure DataViews wrapper fills container
+.dataviews-wrapper {
+	width: 100%;
 }
 
 // Ensure table fills container width
 .dataviews-view-table {
+	width: 100%;
 	min-width: 100%;
+	table-layout: auto;
 }
