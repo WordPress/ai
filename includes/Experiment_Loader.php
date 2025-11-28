@@ -110,6 +110,8 @@ final class Experiment_Loader {
 			\WordPress\AI\Experiments\Post_Table_Bulk\Post_Table_Bulk::class,
 			\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
 			\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
+			\WordPress\AI\Experiments\MCP\MCP::class,
+			\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
 		);
 
 		/**
