@@ -38,7 +38,7 @@ export interface LogFilters {
 	type: string;
 	status: string;
 	provider: string;
-	operation: string;
+	operation: string[];
 	search: string;
 	period: 'day' | 'week' | 'month' | 'all';
 }

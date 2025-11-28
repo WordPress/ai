@@ -494,8 +494,16 @@ class AI_Request_Log_Manager {
 		}
 
 		if ( ! empty( $args['operation'] ) ) {
-			$where[]  = 'operation = %s';
-			$values[] = $args['operation'];
+			// Support comma-separated list for multi-select filter
+			$operations = array_filter( array_map( 'trim', explode( ',', $args['operation'] ) ) );
+			if ( count( $operations ) === 1 ) {
+				$where[]  = 'operation = %s';
+				$values[] = $operations[0];
+			} elseif ( count( $operations ) > 1 ) {
+				$placeholders = implode( ', ', array_fill( 0, count( $operations ), '%s' ) );
+				$where[]      = "operation IN ( $placeholders )";
+				$values       = array_merge( $values, $operations );
+			}
 		}
 
 		if ( ! empty( $args['user_id'] ) ) {

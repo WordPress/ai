@@ -56,7 +56,7 @@ const App: React.FC = () => {
 		type: '',
 		status: '',
 		provider: '',
-		operation: '',
+		operation: [],
 		search: '',
 		period: 'day',
 	} );
@@ -94,7 +94,10 @@ const App: React.FC = () => {
 			if ( filters.type ) params.append( 'type', filters.type );
 			if ( filters.status ) params.append( 'status', filters.status );
 			if ( filters.provider ) params.append( 'provider', filters.provider );
-			if ( filters.operation ) params.append( 'operation', filters.operation );
+			if ( filters.operation.length > 0 ) {
+				// Send as comma-separated for REST API
+				params.append( 'operation', filters.operation.join( ',' ) );
+			}
 			if ( filters.search ) params.append( 'search', filters.search );
 
 			const response = await apiFetch< LogEntry[] >( {
@@ -144,7 +147,7 @@ const App: React.FC = () => {
 	};
 
 	// Handle filter change
-	const handleFilterChange = ( key: keyof LogFilters, value: string ) => {
+	const handleFilterChange = ( key: keyof LogFilters, value: string | string[] ) => {
 		setFilters( ( prev ) => ( { ...prev, [ key ]: value } ) );
 		setPage( 1 );
 	};

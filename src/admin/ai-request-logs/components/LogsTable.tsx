@@ -11,7 +11,7 @@ interface LogsTableProps {
 	logs: LogEntry[];
 	filters: LogFilters;
 	filterOptions: FilterOptions;
-	onFilterChange: ( key: keyof LogFilters, value: string ) => void;
+	onFilterChange: ( key: keyof LogFilters, value: string | string[] ) => void;
 	onViewLog: ( log: LogEntry ) => void;
 	loading: boolean;
 	page: number;
@@ -69,9 +69,30 @@ const normalizeFilterValue = ( raw: unknown ): string => {
 	return '';
 };
 
+const normalizeFilterArrayValue = ( raw: unknown ): string[] => {
+	if ( Array.isArray( raw ) ) {
+		return raw.map( ( item ) => {
+			if ( typeof item === 'string' ) return item;
+			if ( item && typeof item === 'object' && 'value' in item ) {
+				return String( ( item as { value: unknown } ).value );
+			}
+			return String( item );
+		} );
+	}
+	if ( typeof raw === 'string' && raw ) {
+		return [ raw ];
+	}
+	return [];
+};
+
 const extractFilterValue = ( activeFilters: Filter[] | undefined, field: string ): string => {
 	const filter = activeFilters?.find( ( entry ) => entry.field === field );
 	return normalizeFilterValue( filter?.value ?? '' );
+};
+
+const extractFilterArrayValue = ( activeFilters: Filter[] | undefined, field: string ): string[] => {
+	const filter = activeFilters?.find( ( entry ) => entry.field === field );
+	return normalizeFilterArrayValue( filter?.value ?? [] );
 };
 
 const LogsTable: React.FC< LogsTableProps > = ( {
@@ -117,8 +138,8 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		if ( current.provider ) {
 			next.push( { field: 'provider', operator: 'is', value: current.provider } );
 		}
-		if ( current.operation ) {
-			next.push( { field: 'operation', operator: 'is', value: current.operation } );
+		if ( current.operation.length > 0 ) {
+			next.push( { field: 'operation', operator: 'isAny', value: current.operation } );
 		}
 		return next;
 	}, [] );
@@ -147,7 +168,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		const persistedType = extractFilterValue( view.filters, 'type' );
 		const persistedStatus = extractFilterValue( view.filters, 'status' );
 		const persistedProvider = extractFilterValue( view.filters, 'provider' );
-		const persistedOperation = extractFilterValue( view.filters, 'operation' );
+		const persistedOperation = extractFilterArrayValue( view.filters, 'operation' );
 		const persistedSearch = view.search ?? '';
 
 		if ( persistedType !== filters.type ) {
@@ -159,7 +180,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		if ( persistedProvider !== filters.provider ) {
 			onFilterChange( 'provider', persistedProvider );
 		}
-		if ( persistedOperation !== filters.operation ) {
+		if ( JSON.stringify( persistedOperation ) !== JSON.stringify( filters.operation ) ) {
 			onFilterChange( 'operation', persistedOperation );
 		}
 		if ( persistedSearch !== filters.search ) {
@@ -195,7 +216,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			getValue: ( { item } ) => item.operation,
 			elements: operationElements,
 			filterBy: operationElements.length > 0
-				? { operators: [ 'is' ] }
+				? { operators: [ 'isAny' ] }
 				: false,
 			render: ( { item } ) => (
 				<div className="ai-request-logs__operation">
@@ -313,8 +334,8 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			onFilterChange( 'provider', nextProvider );
 		}
 
-		const nextOperation = extractFilterValue( nextView.filters, 'operation' );
-		if ( nextOperation !== filters.operation ) {
+		const nextOperation = extractFilterArrayValue( nextView.filters, 'operation' );
+		if ( JSON.stringify( nextOperation ) !== JSON.stringify( filters.operation ) ) {
 			onFilterChange( 'operation', nextOperation );
 		}
 
@@ -324,7 +345,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		}
 	};
 
-	const hasActiveFilters = Boolean( filters.search || filters.type || filters.status || filters.provider || filters.operation );
+	const hasActiveFilters = Boolean( filters.search || filters.type || filters.status || filters.provider || filters.operation.length > 0 );
 
 	return (
 		<Card className="ai-request-logs__card ai-request-logs__table-card">
