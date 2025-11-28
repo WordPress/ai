@@ -91,15 +91,19 @@ class AI_Request_Log_Manager {
 			),
 		),
 		'anthropic' => array(
-			'claude-4.5-opus'   => array(
+			'claude-4.5-opus'    => array(
 				'input'  => 0.005,
 				'output' => 0.025,
 			),
-			'claude-4.5-sonnet' => array(
+			'claude-4.5-sonnet'  => array(
 				'input'  => 0.003,
 				'output' => 0.015,
 			),
-			'claude-4.5-haiku'  => array(
+			'claude-4.5-haiku'   => array(
+				'input'  => 0.001,
+				'output' => 0.005,
+			),
+			'claude-haiku-4-5'   => array(
 				'input'  => 0.001,
 				'output' => 0.005,
 			),
