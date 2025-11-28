@@ -179,7 +179,6 @@
 
 	/* Element: settings drawer */
 	&__settings-drawer {
-		overflow: hidden;
 		padding-top: 0.75rem;
 		margin-top: 0.5rem;
 		border-top: 0.0625rem solid #e0e0e0;
@@ -192,8 +191,7 @@
 
 	/* Element: item fields (custom experiment settings) */
 	&__item-fields {
-		padding-top: 0.75rem;
-		padding-left: 1.5rem;
+		padding: 0.75rem 0.25rem 0 1.5rem;
 		border-top: 0.0625rem solid #f0f0f0;
 
 		ul {
