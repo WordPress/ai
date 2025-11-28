@@ -16,6 +16,8 @@ use WordPress\AI\Logging\Logging_Discovery_Strategy;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
+use WordPress\AiClient\AiClient as PhpAiClient;
+use WordPress\AiClient\Providers\Http\HttpTransporterFactory;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -186,6 +188,12 @@ function initialize_experiments(): void {
 		if ( $log_manager && class_exists( Logging_Discovery_Strategy::class ) ) {
 			$log_manager->init();
 			Logging_Discovery_Strategy::init( $log_manager );
+
+			if ( class_exists( PhpAiClient::class ) && class_exists( HttpTransporterFactory::class ) ) {
+				PhpAiClient::defaultRegistry()->setHttpTransporter(
+					HttpTransporterFactory::createTransporter()
+				);
+			}
 		}
 
 		$registry = new Experiment_Registry();

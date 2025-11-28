@@ -111,6 +111,9 @@ class AI_Request_Log_Manager {
 		add_action( 'admin_init', array( $this, 'maybe_create_table' ) );
 		add_action( 'ai_request_logs_cleanup', array( $this, 'cleanup_old_logs' ) );
 
+		// Ensure the logs table exists even before an admin request runs.
+		$this->maybe_create_table();
+
 		// Schedule cleanup if not already scheduled.
 		if ( ! wp_next_scheduled( 'ai_request_logs_cleanup' ) ) {
 			wp_schedule_event( time(), 'daily', 'ai_request_logs_cleanup' );
