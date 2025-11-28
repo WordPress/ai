@@ -1,4 +1,3 @@
-import '@wordpress/dataviews/build-style/style.css';
 import './style.scss';
 
 import apiFetch from '@wordpress/api-fetch';

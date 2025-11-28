@@ -1,6 +1,8 @@
-// DataViews overrides for admin pages
-// The base styles come from @wordpress/dataviews/build-style/style.css
-// This file contains only project-specific adjustments
+// DataViews base styles (from @wordpress/dataviews package)
+// Copied from node_modules/@wordpress/dataviews/build-style/style.css
+@import './_dataviews-base.css';
+
+// Project-specific overrides
 
 // Adjust padding for DataViews within cards (the default is designed for full-page use)
 .components-card__body > .dataviews-wrapper {
