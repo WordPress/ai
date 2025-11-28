@@ -1,0 +1,70 @@
+// Shared DataViews styling for admin pages
+// Import this in any admin page that uses @wordpress/dataviews
+
+.dataviews-wrapper {
+	// Search and filter bar spacing
+	.dataviews__view-actions {
+		margin-bottom: 16px;
+	}
+
+	// Table container for border radius clipping
+	.dataviews-view-table {
+		border: 1px solid #c3c4c7;
+		border-radius: 4px;
+		border-spacing: 0;
+		width: 100%;
+		overflow: hidden;
+	}
+
+	// Table header styling
+	.dataviews-view-table thead th {
+		font-weight: 600;
+		font-size: 13px;
+		color: #1e1e1e;
+		background: #f6f7f7;
+		border-bottom: 1px solid #c3c4c7;
+		padding: 12px 16px;
+	}
+
+	// Table cell styling
+	.dataviews-view-table tbody td {
+		padding: 12px 16px;
+		vertical-align: middle;
+		font-size: 13px;
+	}
+
+	// Row borders (avoid double border with table border)
+	.dataviews-view-table tbody tr:not(:last-child) td {
+		border-bottom: 1px solid #e0e0e0;
+	}
+
+	// Alternating row backgrounds
+	.dataviews-view-table tbody tr:nth-child(even) {
+		background: #fafafa;
+	}
+
+	// Row hover state
+	.dataviews-view-table tbody tr:hover {
+		background: #f0f6fc;
+	}
+
+	// Footer and pagination
+	.dataviews-footer {
+		width: 100%;
+	}
+
+	.dataviews-pagination {
+		flex: 1;
+		justify-content: space-between;
+		margin-top: 16px;
+		padding-top: 16px;
+		border-top: 1px solid #e0e0e0;
+	}
+
+	// Empty state
+	.dataviews-no-results {
+		padding: 40px 20px;
+		text-align: center;
+		color: #757575;
+	}
+}
