@@ -44,6 +44,24 @@ class Type_Ahead extends Abstract_Ability {
 	private const MODES = array( 'word', 'sentence', 'paragraph', 'smart' );
 
 	/**
+	 * Logs structured debug details when WP_DEBUG is enabled.
+	 */
+	private function log_debug( string $message, array $context = array() ): void {
+		if ( ! defined( 'WP_DEBUG' ) || true !== WP_DEBUG ) {
+			return;
+		}
+
+		if ( ! empty( $context ) ) {
+			$encoded = wp_json_encode( $context );
+			if ( false !== $encoded ) {
+				$message .= ' ' . $encoded;
+			}
+		}
+
+		error_log( '[AI Type Ahead] ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	protected function input_schema(): array {
@@ -149,7 +167,24 @@ class Type_Ahead extends Abstract_Ability {
 		$surrounding     = $this->truncate_text( (string) $args['surrounding_context'] );
 		$cursor_position = absint( $args['cursor_position'] );
 
+		$this->log_debug(
+			'Received Type Ahead request',
+			array(
+				'post_id'         => $args['post_id'],
+				'block_id'        => $args['block_id'],
+				'mode'            => $mode,
+				'max_words'       => $max_words,
+				'cursor_position' => $cursor_position,
+				'manual_trigger'  => (bool) $args['manual_trigger'],
+				'block_length'    => mb_strlen( $block_content ),
+				'preceding_len'   => mb_strlen( $preceding_text ),
+				'following_len'   => mb_strlen( $following_text ),
+				'surrounding_len' => mb_strlen( $surrounding ),
+			)
+		);
+
 		if ( '' === $block_content ) {
+			$this->log_debug( 'Rejected request with empty block content', array( 'block_id' => $args['block_id'] ) );
 			return new WP_Error( 'ai_type_ahead_missing_block', esc_html__( 'Block content is required for type-ahead suggestions.', 'ai' ) );
 		}
 
@@ -161,18 +196,53 @@ class Type_Ahead extends Abstract_Ability {
 		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
 
 		if ( ! empty( $cached ) ) {
+			$this->log_debug(
+				'Cache hit for Type Ahead request',
+				array(
+					'block_id'        => $args['block_id'],
+					'cursor_position' => $cursor_position,
+					'mode'            => $mode,
+					'max_words'       => $max_words,
+				)
+			);
 			return $cached;
 		}
 
 		$context = $this->prepare_prompt_context( $args['post_id'], $block_content, $preceding_text, $following_text, $surrounding, $cursor_position, $mode, $max_words, (bool) $args['manual_trigger'] );
 
+		$this->log_debug(
+			'Dispatching Type Ahead prompt',
+			array(
+				'block_id'        => $args['block_id'],
+				'cursor_position' => $cursor_position,
+				'manual_trigger'  => (bool) $args['manual_trigger'],
+			)
+		);
+
 		$result = $this->generate_suggestion( $context );
 
 		if ( is_wp_error( $result ) ) {
+			$this->log_debug(
+				'Type Ahead provider returned WP_Error',
+				array(
+					'code'    => $result->get_error_code(),
+					'message' => $result->get_error_message(),
+				)
+			);
 			return $result;
 		}
 
 		$result['cursor_position'] = $cursor_position;
+
+		$this->log_debug(
+			'Type Ahead suggestion ready',
+			array(
+				'block_id'        => $args['block_id'],
+				'cursor_position' => $cursor_position,
+				'confidence'      => $result['confidence'],
+				'preview'         => mb_substr( $result['suggestion'], 0, 80 ),
+			)
+		);
 
 		wp_cache_set( $cache_key, $result, self::CACHE_GROUP, self::CACHE_TTL );
 
@@ -189,6 +259,7 @@ class Type_Ahead extends Abstract_Ability {
 			$post = get_post( $post_id );
 
 			if ( ! $post ) {
+				$this->log_debug( 'Permission denied: post not found', array( 'post_id' => $post_id ) );
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
@@ -197,12 +268,14 @@ class Type_Ahead extends Abstract_Ability {
 			}
 
 			if ( ! current_user_can( 'edit_post', $post_id ) ) {
+				$this->log_debug( 'Permission denied: cannot edit post', array( 'post_id' => $post_id ) );
 				return new WP_Error(
 					'insufficient_capabilities',
 					esc_html__( 'You do not have permission to request type-ahead suggestions for this post.', 'ai' )
 				);
 			}
 		} elseif ( ! current_user_can( 'edit_posts' ) ) {
+			$this->log_debug( 'Permission denied: cannot edit posts capability missing', array( 'user_id' => get_current_user_id() ) );
 			return new WP_Error(
 				'insufficient_capabilities',
 				esc_html__( 'You do not have permission to request type-ahead suggestions.', 'ai' )
@@ -240,6 +313,17 @@ class Type_Ahead extends Abstract_Ability {
 	 * @return array{suggestion: string, confidence: float}|WP_Error
 	 */
 	private function generate_suggestion( array $context ) {
+		$this->log_debug(
+			'Calling AI client for Type Ahead',
+			array(
+				'mode'         => $context['mode'],
+				'max_words'    => $context['max_words'],
+				'cursor'       => $context['cursor_position'],
+				'manual'       => (bool) $context['manual_trigger'],
+				'block_length' => mb_strlen( (string) $context['block_content'] ),
+			)
+		);
+
 		$response = AI_Client::prompt_with_wp_error( wp_json_encode( $context ) )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_candidate_count( 1 )
@@ -247,24 +331,34 @@ class Type_Ahead extends Abstract_Ability {
 			->generate_texts();
 
 		if ( is_wp_error( $response ) ) {
+			$this->log_debug(
+				'AI client returned WP_Error',
+				array(
+					'code'    => $response->get_error_code(),
+					'message' => $response->get_error_message(),
+				)
+			);
 			return $response;
 		}
 
 		$text = $response[0] ?? '';
 
 		if ( ! is_string( $text ) || '' === trim( $text ) ) {
+			$this->log_debug( 'AI client returned empty response text' );
 			return new WP_Error( 'ai_type_ahead_empty', esc_html__( 'The AI provider returned an empty suggestion.', 'ai' ) );
 		}
 
 		$data = json_decode( $text, true );
 
 		if ( ! is_array( $data ) || empty( $data['suggestion'] ) ) {
+			$this->log_debug( 'AI response failed JSON decode', array( 'raw' => mb_substr( $text, 0, 160 ) ) );
 			return new WP_Error( 'ai_type_ahead_invalid', esc_html__( 'Unable to parse the type-ahead suggestion response.', 'ai' ) );
 		}
 
 		$suggestion = sanitize_textarea_field( $data['suggestion'] );
 
 		if ( '' === $suggestion ) {
+			$this->log_debug( 'Suggestion blank after sanitization' );
 			return new WP_Error( 'ai_type_ahead_blank', esc_html__( 'The suggestion returned was blank after sanitization.', 'ai' ) );
 		}
 
