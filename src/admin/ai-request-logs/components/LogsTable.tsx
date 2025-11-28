@@ -61,6 +61,16 @@ const formatTokens = ( tokens: number | null ): string => {
 	return tokens.toLocaleString();
 };
 
+const formatTokensPerSecond = ( value: number | null ): string => {
+	if ( value === null ) {
+		return '-';
+	}
+	if ( value >= 1000 ) {
+		return ( value / 1000 ).toFixed( 1 ) + 'K';
+	}
+	return value.toFixed( 1 );
+};
+
 const getStatusClass = ( status: string ): string => {
 	switch ( status ) {
 		case 'success':
@@ -298,6 +308,14 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				type: 'number',
 				getValue: ( { item } ) => item.duration_ms ?? 0,
 				render: ( { item } ) => formatDuration( item.duration_ms ),
+			},
+			{
+				id: 'tokens_per_second',
+				label: __( 'Tokens/s', 'ai' ),
+				type: 'number',
+				getValue: ( { item } ) => item.tokens_per_second ?? 0,
+				render: ( { item } ) =>
+					formatTokensPerSecond( item.tokens_per_second ),
 			},
 			{
 				id: 'status',

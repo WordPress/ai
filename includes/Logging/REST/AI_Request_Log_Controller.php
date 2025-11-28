@@ -71,6 +71,12 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 							'minimum'  => 1,
 							'maximum'  => 365,
 						),
+						'max_rows'       => array(
+							'type'     => 'integer',
+							'required' => false,
+							'minimum'  => 1000,
+							'maximum'  => 10000000,
+						),
 					),
 				),
 				array(
@@ -109,6 +115,19 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( $this, 'get_filters' ),
+					'permission_callback' => array( $this, 'permissions_check' ),
+				),
+			)
+		);
+
+		// GET /ai/v1/logs/stats - Get table statistics.
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/stats',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_stats' ),
 					'permission_callback' => array( $this, 'permissions_check' ),
 				),
 			)
@@ -176,6 +195,8 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			'per_page'          => $request->get_param( 'per_page' ) ?? 25,
 			'orderby'           => $request->get_param( 'orderby' ) ?? 'timestamp',
 			'order'             => $request->get_param( 'order' ) ?? 'DESC',
+			'cursor_id'         => $request->get_param( 'cursor_id' ),
+			'cursor_timestamp'  => $request->get_param( 'cursor_timestamp' ),
 		);
 
 		$result = $this->manager->get_logs( $args );
@@ -183,6 +204,12 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 		$response = rest_ensure_response( $result['items'] );
 		$response->header( 'X-WP-Total', (string) $result['total'] );
 		$response->header( 'X-WP-TotalPages', (string) $result['pages'] );
+
+		// Include cursor info for cursor-based pagination.
+		if ( isset( $result['next_cursor'] ) ) {
+			$response->header( 'X-WP-NextCursorId', (string) $result['next_cursor']['id'] );
+			$response->header( 'X-WP-NextCursorTimestamp', $result['next_cursor']['timestamp'] );
+		}
 
 		return $response;
 	}
@@ -234,6 +261,52 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	}
 
 	/**
+	 * Retrieves table statistics.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public function get_stats( WP_REST_Request $request ): WP_REST_Response {
+		$stats = $this->manager->get_table_stats();
+
+		// Add warning thresholds.
+		$stats['warnings'] = array();
+
+		// Warn if table is over 80% of max rows.
+		if ( $stats['row_count'] > $stats['max_rows'] * 0.8 ) {
+			$stats['warnings'][] = array(
+				'type'    => 'row_count',
+				'level'   => $stats['row_count'] >= $stats['max_rows'] ? 'error' : 'warning',
+				'message' => $stats['row_count'] >= $stats['max_rows']
+					? __( 'Log table has reached the maximum row limit. Oldest logs will be automatically deleted.', 'ai' )
+					: sprintf(
+						/* translators: %d: Percentage of max rows used. */
+						__( 'Log table is at %d%% capacity. Consider increasing the max rows limit or reducing retention.', 'ai' ),
+						(int) ( ( $stats['row_count'] / $stats['max_rows'] ) * 100 )
+					),
+			);
+		}
+
+		// Warn if table size exceeds 100MB.
+		$size_warning_threshold = 100 * 1024 * 1024; // 100MB.
+		$size_error_threshold   = 500 * 1024 * 1024; // 500MB.
+
+		if ( $stats['table_size_bytes'] > $size_warning_threshold ) {
+			$stats['warnings'][] = array(
+				'type'    => 'table_size',
+				'level'   => $stats['table_size_bytes'] >= $size_error_threshold ? 'error' : 'warning',
+				'message' => sprintf(
+					/* translators: %s: Table size formatted. */
+					__( 'Log table size is %s. Consider reducing retention period or max rows to improve performance.', 'ai' ),
+					$stats['table_size_formatted']
+				),
+			);
+		}
+
+		return rest_ensure_response( $stats );
+	}
+
+	/**
 	 * Updates logging settings.
 	 *
 	 * @param WP_REST_Request $request Request.
@@ -248,10 +321,15 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			$this->manager->set_retention_days( (int) $request->get_param( 'retention_days' ) );
 		}
 
+		if ( $request->has_param( 'max_rows' ) ) {
+			$this->manager->set_max_rows( (int) $request->get_param( 'max_rows' ) );
+		}
+
 		return rest_ensure_response(
 			array(
 				'enabled'        => $this->manager->is_logging_enabled(),
 				'retention_days' => $this->manager->get_retention_days(),
+				'max_rows'       => $this->manager->get_max_rows(),
 			)
 		);
 	}
@@ -366,6 +444,16 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 				'type'        => 'string',
 				'enum'        => array( 'ASC', 'DESC' ),
 				'default'     => 'DESC',
+			),
+			'cursor_id'        => array(
+				'description' => __( 'Cursor ID for cursor-based pagination (use with cursor_timestamp).', 'ai' ),
+				'type'        => 'integer',
+				'minimum'     => 1,
+			),
+			'cursor_timestamp' => array(
+				'description' => __( 'Cursor timestamp for cursor-based pagination (use with cursor_id).', 'ai' ),
+				'type'        => 'string',
+				'format'      => 'date-time',
 			),
 		);
 	}

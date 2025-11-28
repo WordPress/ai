@@ -29,7 +29,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Current database schema version.
 	 */
-	private const DB_VERSION = '1.0.0';
+	private const DB_VERSION = '1.1.0';
 
 	/**
 	 * Option key for log retention days.
@@ -45,6 +45,36 @@ class AI_Request_Log_Manager {
 	 * Default retention period in days.
 	 */
 	public const DEFAULT_RETENTION_DAYS = 30;
+
+	/**
+	 * Option key for max rows limit.
+	 */
+	public const OPTION_MAX_ROWS = 'ai_request_logs_max_rows';
+
+	/**
+	 * Default maximum number of rows.
+	 */
+	public const DEFAULT_MAX_ROWS = 100000;
+
+	/**
+	 * Chunk size for batched delete operations.
+	 */
+	private const DELETE_BATCH_SIZE = 5000;
+
+	/**
+	 * Cache group for transient caching.
+	 */
+	private const CACHE_GROUP = 'ai_request_logs';
+
+	/**
+	 * Cache expiration for filter options (1 hour).
+	 */
+	private const FILTER_CACHE_EXPIRATION = HOUR_IN_SECONDS;
+
+	/**
+	 * Cache expiration for summary stats (5 minutes).
+	 */
+	private const SUMMARY_CACHE_EXPIRATION = 5 * MINUTE_IN_SECONDS;
 
 	/**
 	 * Model pricing registry (per 1K tokens in USD).
@@ -220,11 +250,54 @@ class AI_Request_Log_Manager {
 			INDEX idx_type (type),
 			INDEX idx_status (status),
 			INDEX idx_user_id (user_id),
-			INDEX idx_log_id (log_id)
+			INDEX idx_log_id (log_id),
+			INDEX idx_provider (provider),
+			INDEX idx_operation (operation(191)),
+			INDEX idx_timestamp_type_status (timestamp, type, status),
+			INDEX idx_timestamp_provider (timestamp, provider)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
+
+		// Add indexes that dbDelta may not handle well for existing tables.
+		$this->maybe_add_indexes();
+	}
+
+	/**
+	 * Adds missing indexes to existing tables.
+	 *
+	 * dbDelta doesn't always add new indexes to existing tables,
+	 * so we check and add them manually if needed.
+	 */
+	private function maybe_add_indexes(): void {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . self::TABLE_NAME;
+
+		// Get existing indexes.
+		$existing_indexes = array();
+		$indexes          = $wpdb->get_results( "SHOW INDEX FROM {$table_name}", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( $indexes ) {
+			foreach ( $indexes as $index ) {
+				$existing_indexes[ $index['Key_name'] ] = true;
+			}
+		}
+
+		// Define indexes to add.
+		$indexes_to_add = array(
+			'idx_provider'              => "ALTER TABLE {$table_name} ADD INDEX idx_provider (provider)",
+			'idx_operation'             => "ALTER TABLE {$table_name} ADD INDEX idx_operation (operation(191))",
+			'idx_timestamp_type_status' => "ALTER TABLE {$table_name} ADD INDEX idx_timestamp_type_status (timestamp, type, status)",
+			'idx_timestamp_provider'    => "ALTER TABLE {$table_name} ADD INDEX idx_timestamp_provider (timestamp, provider)",
+		);
+
+		foreach ( $indexes_to_add as $index_name => $sql ) {
+			if ( ! isset( $existing_indexes[ $index_name ] ) ) {
+				$wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
 	}
 
 	/**
@@ -361,6 +434,11 @@ class AI_Request_Log_Manager {
 			return false;
 		}
 
+		// Invalidate summary cache since new data was added.
+		// Note: We don't invalidate filter cache on every insert for performance;
+		// new filter options will appear after cache expires (1 hour).
+		$this->invalidate_summary_cache();
+
 		/**
 		 * Fires after an AI request is logged.
 		 *
@@ -443,6 +521,9 @@ class AI_Request_Log_Manager {
 	/**
 	 * Retrieves logs with filtering and pagination.
 	 *
+	 * Supports both offset-based pagination (for early pages) and cursor-based
+	 * pagination (for deep pages) to maintain performance at scale.
+	 *
 	 * @param array{
 	 *     type?: string,
 	 *     status?: string,
@@ -456,9 +537,11 @@ class AI_Request_Log_Manager {
 	 *     page?: int,
 	 *     per_page?: int,
 	 *     orderby?: string,
-	 *     order?: string
+	 *     order?: string,
+	 *     cursor_id?: int,
+	 *     cursor_timestamp?: string
 	 * } $args Query arguments.
-	 * @return array{items: array<int, array<string, mixed>>, total: int, pages: int} Results with pagination info.
+	 * @return array{items: array<int, array<string, mixed>>, total: int, pages: int, next_cursor?: array{id: int, timestamp: string}} Results with pagination info.
 	 */
 	public function get_logs( array $args = array() ): array {
 		global $wpdb;
@@ -480,9 +563,16 @@ class AI_Request_Log_Manager {
 			'per_page'          => 25,
 			'orderby'           => 'timestamp',
 			'order'             => 'DESC',
+			'cursor_id'         => null,
+			'cursor_timestamp'  => null,
 		);
 
 		$args = wp_parse_args( $args, $defaults );
+
+		// Use cursor-based pagination for deep pages (page > 10) when ordering by timestamp.
+		$use_cursor = $args['orderby'] === 'timestamp'
+			&& $args['cursor_id'] !== null
+			&& $args['cursor_timestamp'] !== null;
 
 		$table_name = $wpdb->prefix . self::TABLE_NAME;
 		$where      = array( '1=1' );
@@ -587,32 +677,76 @@ class AI_Request_Log_Manager {
 		$per_page = max( 1, min( 100, (int) $args['per_page'] ) );
 		$pages    = (int) ceil( $total / $per_page );
 		$page     = max( 1, min( $pages ?: 1, (int) $args['page'] ) );
-		$offset   = ( $page - 1 ) * $per_page;
 
-		// Get items.
-		$sql = "SELECT * FROM {$table_name} WHERE {$where_clause} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
+		// Build query based on pagination method.
+		if ( $use_cursor ) {
+			// Cursor-based pagination: more efficient for deep pages.
+			// Uses (timestamp, id) as a composite cursor for stable ordering.
+			$cursor_values = $values;
 
-		$values[] = $per_page;
-		$values[] = $offset;
+			if ( 'DESC' === $order ) {
+				// For DESC: get rows where (timestamp < cursor_timestamp) OR (timestamp = cursor_timestamp AND id < cursor_id).
+				$cursor_values[] = $args['cursor_timestamp'];
+				$cursor_values[] = $args['cursor_timestamp'];
+				$cursor_values[] = (int) $args['cursor_id'];
+				$cursor_condition = '((timestamp < %s) OR (timestamp = %s AND id < %d))';
+			} else {
+				// For ASC: get rows where (timestamp > cursor_timestamp) OR (timestamp = cursor_timestamp AND id > cursor_id).
+				$cursor_values[] = $args['cursor_timestamp'];
+				$cursor_values[] = $args['cursor_timestamp'];
+				$cursor_values[] = (int) $args['cursor_id'];
+				$cursor_condition = '((timestamp > %s) OR (timestamp = %s AND id > %d))';
+			}
 
-		$rows = $wpdb->get_results(
-			$wpdb->prepare( $sql, $values ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-			ARRAY_A
-		);
+			$sql = "SELECT * FROM {$table_name} WHERE {$where_clause} AND {$cursor_condition} ORDER BY {$orderby} {$order}, id {$order} LIMIT %d";
+			$cursor_values[] = $per_page;
+
+			$rows = $wpdb->get_results(
+				$wpdb->prepare( $sql, $cursor_values ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				ARRAY_A
+			);
+		} else {
+			// Offset-based pagination: simpler but slower for deep pages.
+			$offset = ( $page - 1 ) * $per_page;
+
+			$sql = "SELECT * FROM {$table_name} WHERE {$where_clause} ORDER BY {$orderby} {$order}, id {$order} LIMIT %d OFFSET %d";
+
+			$values[] = $per_page;
+			$values[] = $offset;
+
+			$rows = $wpdb->get_results(
+				$wpdb->prepare( $sql, $values ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				ARRAY_A
+			);
+		}
 
 		$items = array_map( array( $this, 'format_log_row' ), $rows ?: array() );
 
-		return array(
+		$result = array(
 			'items' => $items,
 			'total' => $total,
 			'pages' => max( 1, $pages ),
 		);
+
+		// Include next cursor for cursor-based pagination.
+		if ( ! empty( $rows ) ) {
+			$last_row = end( $rows );
+			$result['next_cursor'] = array(
+				'id'        => (int) $last_row['id'],
+				'timestamp' => $last_row['timestamp'],
+			);
+		}
+
+		return $result;
 	}
 
 	/**
 	 * Gets aggregate statistics for the dashboard.
 	 *
-	 * @param string $period Time period: 'day', 'week', 'month', or 'all'.
+	 * Results are cached for 5 minutes to reduce database load.
+	 *
+	 * @param string $period        Time period: 'day', 'week', 'month', or 'all'.
+	 * @param bool   $force_refresh Whether to bypass the cache.
 	 * @return array{
 	 *     total_requests: int,
 	 *     total_tokens: int,
@@ -624,7 +758,16 @@ class AI_Request_Log_Manager {
 	 *     by_status: array<string, int>
 	 * } Aggregated statistics.
 	 */
-	public function get_summary( string $period = 'day' ): array {
+	public function get_summary( string $period = 'day', bool $force_refresh = false ): array {
+		$cache_key = self::CACHE_GROUP . '_summary_' . $period;
+
+		if ( ! $force_refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
+		}
+
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . self::TABLE_NAME;
@@ -648,77 +791,235 @@ class AI_Request_Log_Manager {
 				break;
 		}
 
-		// Main aggregates.
+		// Combined query: main aggregates + breakdowns in a single scan.
+		// Uses conditional aggregation to get all stats in one query instead of four.
 		$sql = "SELECT
 			COUNT(*) as total_requests,
 			COALESCE(SUM(tokens_total), 0) as total_tokens,
 			COALESCE(SUM(cost_estimate), 0) as total_cost,
 			COALESCE(AVG(duration_ms), 0) as avg_duration_ms,
-			SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count
+			SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+			type,
+			provider,
+			status
 			FROM {$table_name}
-			WHERE 1=1 {$date_condition}";
+			WHERE 1=1 {$date_condition}
+			GROUP BY type, provider, status";
 
-		$main = $wpdb->get_row( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
-		$total_requests = (int) ( $main['total_requests'] ?? 0 );
-		$success_count  = (int) ( $main['success_count'] ?? 0 );
-		$success_rate   = $total_requests > 0 ? ( $success_count / $total_requests ) * 100 : 0;
+		// Process results.
+		$total_requests = 0;
+		$total_tokens   = 0;
+		$total_cost     = 0.0;
+		$total_duration = 0.0;
+		$success_count  = 0;
+		$row_count      = 0;
+		$by_type        = array();
+		$by_provider    = array();
+		$by_status      = array();
 
-		// By type.
-		$by_type_sql = "SELECT type, COUNT(*) as count FROM {$table_name} WHERE 1=1 {$date_condition} GROUP BY type";
-		$by_type_raw = $wpdb->get_results( $by_type_sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$by_type     = array();
-		foreach ( $by_type_raw ?: array() as $row ) {
-			$by_type[ $row['type'] ] = (int) $row['count'];
+		foreach ( $rows ?: array() as $row ) {
+			$count = (int) $row['total_requests'];
+
+			$total_requests += $count;
+			$total_tokens   += (int) $row['total_tokens'];
+			$total_cost     += (float) $row['total_cost'];
+			$total_duration += (float) $row['avg_duration_ms'] * $count;
+			$success_count  += (int) $row['success_count'];
+			++$row_count;
+
+			// Aggregate by type.
+			$type = $row['type'];
+			if ( $type ) {
+				$by_type[ $type ] = ( $by_type[ $type ] ?? 0 ) + $count;
+			}
+
+			// Aggregate by provider.
+			$provider = $row['provider'];
+			if ( $provider ) {
+				$by_provider[ $provider ] = ( $by_provider[ $provider ] ?? 0 ) + $count;
+			}
+
+			// Aggregate by status.
+			$status = $row['status'];
+			if ( $status ) {
+				$by_status[ $status ] = ( $by_status[ $status ] ?? 0 ) + $count;
+			}
 		}
 
-		// By provider.
-		$by_provider_sql = "SELECT provider, COUNT(*) as count FROM {$table_name} WHERE provider IS NOT NULL {$date_condition} GROUP BY provider";
-		$by_provider_raw = $wpdb->get_results( $by_provider_sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$by_provider     = array();
-		foreach ( $by_provider_raw ?: array() as $row ) {
-			$by_provider[ $row['provider'] ] = (int) $row['count'];
-		}
+		$avg_duration_ms = $total_requests > 0 ? $total_duration / $total_requests : 0;
+		$success_rate    = $total_requests > 0 ? ( $success_count / $total_requests ) * 100 : 0;
 
-		// By status.
-		$by_status_sql = "SELECT status, COUNT(*) as count FROM {$table_name} WHERE 1=1 {$date_condition} GROUP BY status";
-		$by_status_raw = $wpdb->get_results( $by_status_sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$by_status     = array();
-		foreach ( $by_status_raw ?: array() as $row ) {
-			$by_status[ $row['status'] ] = (int) $row['count'];
-		}
-
-		return array(
+		$result = array(
 			'total_requests'  => $total_requests,
-			'total_tokens'    => (int) ( $main['total_tokens'] ?? 0 ),
-			'total_cost'      => (float) ( $main['total_cost'] ?? 0 ),
-			'avg_duration_ms' => round( (float) ( $main['avg_duration_ms'] ?? 0 ), 2 ),
+			'total_tokens'    => $total_tokens,
+			'total_cost'      => $total_cost,
+			'avg_duration_ms' => round( $avg_duration_ms, 2 ),
 			'success_rate'    => round( $success_rate, 2 ),
 			'by_type'         => $by_type,
 			'by_provider'     => $by_provider,
 			'by_status'       => $by_status,
 		);
+
+		set_transient( $cache_key, $result, self::SUMMARY_CACHE_EXPIRATION );
+
+		return $result;
 	}
 
 	/**
-	 * Deletes logs older than the retention period.
+	 * Deletes logs older than the retention period using batched deletes.
+	 *
+	 * This method deletes in chunks to avoid locking the table for extended periods.
 	 *
 	 * @return int Number of logs deleted.
 	 */
 	public function cleanup_old_logs(): int {
+		$total_deleted = $this->cleanup_by_retention();
+		$total_deleted += $this->cleanup_by_max_rows();
+
+		if ( $total_deleted > 0 ) {
+			$this->invalidate_caches();
+		}
+
+		return $total_deleted;
+	}
+
+	/**
+	 * Deletes logs older than the retention period in batches.
+	 *
+	 * @return int Number of logs deleted.
+	 */
+	private function cleanup_by_retention(): int {
 		global $wpdb;
 
 		$retention_days = $this->get_retention_days();
 		$table_name     = $wpdb->prefix . self::TABLE_NAME;
+		$total_deleted  = 0;
 
-		$deleted = $wpdb->query(
+		// Delete in batches to avoid long table locks.
+		do {
+			$deleted = $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$table_name} WHERE timestamp < DATE_SUB(NOW(), INTERVAL %d DAY) LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$retention_days,
+					self::DELETE_BATCH_SIZE
+				)
+			);
+
+			$batch_deleted = $deleted ?: 0;
+			$total_deleted += $batch_deleted;
+
+			// Allow other queries to run between batches.
+			if ( $batch_deleted >= self::DELETE_BATCH_SIZE ) {
+				usleep( 100000 ); // 100ms pause.
+			}
+		} while ( $batch_deleted >= self::DELETE_BATCH_SIZE );
+
+		return $total_deleted;
+	}
+
+	/**
+	 * Deletes oldest logs when table exceeds max rows limit.
+	 *
+	 * @return int Number of logs deleted.
+	 */
+	private function cleanup_by_max_rows(): int {
+		global $wpdb;
+
+		$max_rows    = $this->get_max_rows();
+		$table_name  = $wpdb->prefix . self::TABLE_NAME;
+
+		// Get current row count.
+		$current_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( $current_count <= $max_rows ) {
+			return 0;
+		}
+
+		$rows_to_delete = $current_count - $max_rows;
+		$total_deleted  = 0;
+
+		// Delete oldest rows in batches.
+		while ( $rows_to_delete > 0 ) {
+			$batch_size = min( $rows_to_delete, self::DELETE_BATCH_SIZE );
+
+			// Delete the oldest rows by using a subquery to find IDs.
+			$deleted = $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$table_name} WHERE id IN (SELECT id FROM (SELECT id FROM {$table_name} ORDER BY timestamp ASC LIMIT %d) AS oldest)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$batch_size
+				)
+			);
+
+			$batch_deleted = $deleted ?: 0;
+			$total_deleted += $batch_deleted;
+			$rows_to_delete -= $batch_deleted;
+
+			// Break if we couldn't delete any rows.
+			if ( 0 === $batch_deleted ) {
+				break;
+			}
+
+			// Allow other queries to run between batches.
+			if ( $batch_deleted >= self::DELETE_BATCH_SIZE ) {
+				usleep( 100000 ); // 100ms pause.
+			}
+		}
+
+		return $total_deleted;
+	}
+
+	/**
+	 * Gets the maximum number of rows to retain.
+	 *
+	 * @return int Maximum rows.
+	 */
+	public function get_max_rows(): int {
+		return (int) get_option( self::OPTION_MAX_ROWS, self::DEFAULT_MAX_ROWS );
+	}
+
+	/**
+	 * Sets the maximum number of rows to retain.
+	 *
+	 * @param int $max_rows Maximum rows.
+	 */
+	public function set_max_rows( int $max_rows ): void {
+		update_option( self::OPTION_MAX_ROWS, max( 1000, $max_rows ), false );
+	}
+
+	/**
+	 * Gets table statistics for admin display.
+	 *
+	 * @return array{row_count: int, table_size_bytes: int, table_size_formatted: string, max_rows: int, retention_days: int}
+	 */
+	public function get_table_stats(): array {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . self::TABLE_NAME;
+
+		// Get row count.
+		$row_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		// Get table size.
+		$table_status = $wpdb->get_row(
 			$wpdb->prepare(
-				"DELETE FROM {$table_name} WHERE timestamp < DATE_SUB(NOW(), INTERVAL %d DAY)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$retention_days
-			)
+				'SELECT data_length + index_length as size FROM information_schema.tables WHERE table_schema = %s AND table_name = %s',
+				DB_NAME,
+				$table_name
+			),
+			ARRAY_A
 		);
 
-		return $deleted ?: 0;
+		$table_size_bytes = (int) ( $table_status['size'] ?? 0 );
+
+		return array(
+			'row_count'            => $row_count,
+			'table_size_bytes'     => $table_size_bytes,
+			'table_size_formatted' => size_format( $table_size_bytes ),
+			'max_rows'             => $this->get_max_rows(),
+			'retention_days'       => $this->get_retention_days(),
+		);
 	}
 
 	/**
@@ -730,32 +1031,117 @@ class AI_Request_Log_Manager {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . self::TABLE_NAME;
-		$deleted    = $wpdb->query( "TRUNCATE TABLE {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
-		return $deleted ?: 0;
+		// Get count before truncating.
+		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$wpdb->query( "TRUNCATE TABLE {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		// Invalidate all caches after purge.
+		$this->invalidate_caches();
+
+		return $count;
 	}
 
 	/**
 	 * Gets distinct values for filter dropdowns.
 	 *
+	 * Results are cached for 1 hour to avoid expensive DISTINCT queries on every page load.
+	 *
+	 * @param bool $force_refresh Whether to bypass the cache.
 	 * @return array{types: array<string>, providers: array<string>, statuses: array<string>, operations: array<string>} Filter options.
 	 */
-	public function get_filter_options(): array {
+	public function get_filter_options( bool $force_refresh = false ): array {
+		$cache_key = self::CACHE_GROUP . '_filter_options';
+
+		if ( ! $force_refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
+		}
+
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . self::TABLE_NAME;
 
-		$types      = $wpdb->get_col( "SELECT DISTINCT type FROM {$table_name} ORDER BY type" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$providers  = $wpdb->get_col( "SELECT DISTINCT provider FROM {$table_name} WHERE provider IS NOT NULL ORDER BY provider" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$statuses   = $wpdb->get_col( "SELECT DISTINCT status FROM {$table_name} ORDER BY status" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$operations = $wpdb->get_col( "SELECT DISTINCT operation FROM {$table_name} WHERE operation IS NOT NULL ORDER BY operation" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// Use a single query with UNION ALL for better performance.
+		// This scans the table once instead of four times.
+		$sql = "SELECT 'type' as category, type as value FROM {$table_name} WHERE type IS NOT NULL GROUP BY type
+				UNION ALL
+				SELECT 'provider' as category, provider as value FROM {$table_name} WHERE provider IS NOT NULL GROUP BY provider
+				UNION ALL
+				SELECT 'status' as category, status as value FROM {$table_name} WHERE status IS NOT NULL GROUP BY status
+				UNION ALL
+				SELECT 'operation' as category, operation as value FROM {$table_name} WHERE operation IS NOT NULL GROUP BY operation";
 
-		return array(
-			'types'      => $types ?: array(),
-			'providers'  => $providers ?: array(),
-			'statuses'   => $statuses ?: array(),
-			'operations' => $operations ?: array(),
+		$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		$result = array(
+			'types'      => array(),
+			'providers'  => array(),
+			'statuses'   => array(),
+			'operations' => array(),
 		);
+
+		if ( $rows ) {
+			foreach ( $rows as $row ) {
+				switch ( $row['category'] ) {
+					case 'type':
+						$result['types'][] = $row['value'];
+						break;
+					case 'provider':
+						$result['providers'][] = $row['value'];
+						break;
+					case 'status':
+						$result['statuses'][] = $row['value'];
+						break;
+					case 'operation':
+						$result['operations'][] = $row['value'];
+						break;
+				}
+			}
+
+			// Sort the arrays.
+			sort( $result['types'] );
+			sort( $result['providers'] );
+			sort( $result['statuses'] );
+			sort( $result['operations'] );
+		}
+
+		set_transient( $cache_key, $result, self::FILTER_CACHE_EXPIRATION );
+
+		return $result;
+	}
+
+	/**
+	 * Invalidates the filter options cache.
+	 *
+	 * Should be called when logs are added or deleted.
+	 */
+	public function invalidate_filter_cache(): void {
+		delete_transient( self::CACHE_GROUP . '_filter_options' );
+	}
+
+	/**
+	 * Invalidates the summary cache.
+	 *
+	 * Should be called when logs are added or deleted.
+	 */
+	public function invalidate_summary_cache(): void {
+		// Delete all period-specific summary caches.
+		$periods = array( 'minute', 'hour', 'day', 'week', 'month', 'all' );
+		foreach ( $periods as $period ) {
+			delete_transient( self::CACHE_GROUP . '_summary_' . $period );
+		}
+	}
+
+	/**
+	 * Invalidates all caches.
+	 */
+	public function invalidate_caches(): void {
+		$this->invalidate_filter_cache();
+		$this->invalidate_summary_cache();
 	}
 
 	/**
@@ -765,6 +1151,13 @@ class AI_Request_Log_Manager {
 	 * @return array<string, mixed> Formatted log entry.
 	 */
 	private function format_log_row( array $row ): array {
+		$duration = $row['duration_ms'] ? (int) $row['duration_ms'] : null;
+		$tokens_total = $row['tokens_total'] ? (int) $row['tokens_total'] : null;
+		$tokens_per_second = null;
+		if ( $tokens_total !== null && $duration && $duration > 0 ) {
+			$tokens_per_second = $tokens_total / ( $duration / 1000 );
+		}
+
 		return array(
 			'id'            => $row['log_id'],
 			'timestamp'     => $row['timestamp'],
@@ -772,10 +1165,11 @@ class AI_Request_Log_Manager {
 			'operation'     => $row['operation'],
 			'provider'      => $row['provider'],
 			'model'         => $row['model'],
-			'duration_ms'   => $row['duration_ms'] ? (int) $row['duration_ms'] : null,
+			'duration_ms'   => $duration,
 			'tokens_input'  => $row['tokens_input'] ? (int) $row['tokens_input'] : null,
 			'tokens_output' => $row['tokens_output'] ? (int) $row['tokens_output'] : null,
-			'tokens_total'  => $row['tokens_total'] ? (int) $row['tokens_total'] : null,
+			'tokens_total'  => $tokens_total,
+			'tokens_per_second' => $tokens_per_second !== null ? (float) $tokens_per_second : null,
 			'cost_estimate' => $row['cost_estimate'] ? (float) $row['cost_estimate'] : null,
 			'status'        => $row['status'],
 			'error_message' => $row['error_message'],

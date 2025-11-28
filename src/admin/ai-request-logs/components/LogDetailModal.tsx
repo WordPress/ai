@@ -43,6 +43,16 @@ const formatKindLabel = ( value: string ): string =>
 		.map( ( part ) => part.charAt( 0 ).toUpperCase() + part.slice( 1 ) )
 		.join( ' ' );
 
+const formatTokensPerSecond = ( value: number | null ): string => {
+	if ( value === null ) {
+		return '-';
+	}
+	if ( value >= 1000 ) {
+		return ( value / 1000 ).toFixed( 1 ) + 'K';
+	}
+	return value.toFixed( 1 );
+};
+
 const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 	log,
 	onClose,
@@ -223,6 +233,14 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 									<td>
 										{ log.tokens_total?.toLocaleString() ??
 											'-' }
+									</td>
+								</tr>
+								<tr>
+									<th>{ __( 'Tokens per Second', 'ai' ) }</th>
+									<td>
+										{ formatTokensPerSecond(
+											log.tokens_per_second ?? null
+										) }
 									</td>
 								</tr>
 								<tr>

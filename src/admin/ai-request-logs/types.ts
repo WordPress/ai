@@ -11,6 +11,7 @@ export interface LogEntry {
 	tokens_input: number | null;
 	tokens_output: number | null;
 	tokens_total: number | null;
+	tokens_per_second: number | null;
 	cost_estimate: number | null;
 	status: 'success' | 'error' | 'timeout';
 	error_message: string | null;
