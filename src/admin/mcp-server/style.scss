@@ -38,10 +38,36 @@
 	}
 
 	&__server-picker {
-		display: flex;
-		flex-wrap: wrap;
+		flex: 1 1 320px;
+		min-width: 260px;
+		display: grid;
+		grid-template-columns: minmax( 0, 1fr ) auto;
 		align-items: center;
 		gap: 12px;
+
+		.components-base-control {
+			margin: 0;
+			width: 100%;
+		}
+
+		.components-base-control__field,
+		.components-input-control,
+		.components-input-control__container,
+		.components-select-control,
+		.components-select-control__input {
+			width: 100%;
+		}
+
+		.ai-mcp-server__status-text {
+			justify-self: flex-start;
+		}
+
+		@media ( max-width: 600px ) {
+			grid-template-columns: 1fr;
+			.ai-mcp-server__status-text {
+				margin-left: 0;
+			}
+		}
 	}
 
 	&__server-description {
