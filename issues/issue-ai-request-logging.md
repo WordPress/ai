@@ -334,6 +334,61 @@ DELETE /wp-json/ai/v1/logs            # Purge old logs
 4. How to handle logging for streaming responses?
 5. Should we integrate with external APM tools (Datadog, New Relic, etc.)?
 
+## Implementation Status
+
+### Completed - Full Implementation
+
+**Backend PHP Files:**
+- `includes/Logging/AI_Request_Log_Manager.php` - Core logging manager with:
+  - Database table creation and schema management
+  - Log storage with timing, tokens, and cost estimation
+  - Model pricing registry (OpenAI, Anthropic, Google)
+  - Query methods with filtering and pagination
+  - Aggregate statistics (summary by period)
+  - Log retention and cleanup (scheduled daily)
+
+- `includes/Logging/AI_Request_Log_Page.php` - Admin page under Settings:
+  - Registers "AI Request Logs" menu item
+  - Enqueues React assets
+  - Passes initial state via localized script
+
+- `includes/Logging/REST/AI_Request_Log_Controller.php` - REST API endpoints:
+  - `GET /ai/v1/logs` - List logs with filtering
+  - `GET /ai/v1/logs/{id}` - Single log entry
+  - `GET /ai/v1/logs/summary` - Aggregate stats
+  - `GET /ai/v1/logs/filters` - Filter options
+  - `POST /ai/v1/logs` - Update settings
+  - `DELETE /ai/v1/logs` - Purge all logs
+
+- `includes/Logging/Logging_HTTP_Client.php` - HTTP client decorator:
+  - Wraps the WordPress HTTP client
+  - Extracts provider/model from request URL and body
+  - Extracts token usage from response (OpenAI, Anthropic, Google formats)
+  - Measures request duration
+  - Logs success/error status
+
+- `includes/Logging/Logging_Discovery_Strategy.php` - PSR-18 discovery strategy:
+  - Intercepts HTTP client discovery
+  - Wraps client with logging decorator when enabled
+  - Respects logging enabled/disabled setting
+
+**React UI Files:**
+- `src/admin/ai-request-logs/index.tsx` - Main app component
+- `src/admin/ai-request-logs/types.ts` - TypeScript interfaces
+- `src/admin/ai-request-logs/style.scss` - Styles
+- `src/admin/ai-request-logs/components/SummaryCards.tsx` - Dashboard summary
+- `src/admin/ai-request-logs/components/LogsTable.tsx` - Filterable log table
+- `src/admin/ai-request-logs/components/LogDetailModal.tsx` - Log detail view
+- `src/admin/ai-request-logs/components/SettingsPanel.tsx` - Settings controls
+
+**Configuration:**
+- `webpack.config.js` - Added entry point for ai-request-logs
+- `includes/bootstrap.php` - Wired up initialization
+
+### Scope Note
+
+This implementation covers **WP AI Client logging only**. MCP tool logging and Ability execution logging will be separate implementations as they are individual experiments at this point.
+
 ## Labels
 
 `enhancement`, `observability`, `logging`, `admin`, `abilities`
