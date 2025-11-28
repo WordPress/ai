@@ -15,6 +15,7 @@ use WordPress\AI\Providers\FalAi\FalAiProvider;
 use WordPress\AI\Providers\Grok\GrokProvider;
 use WordPress\AI\Providers\Groq\GroqProvider;
 use WordPress\AI\Providers\HuggingFace\HuggingFaceProvider;
+use WordPress\AI\Providers\Ollama\OllamaProvider;
 use WordPress\AI\Providers\OpenRouter\OpenRouterProvider;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AiClient\AiClient;
@@ -48,6 +49,7 @@ class Extended_Providers extends Abstract_Experiment {
 		GrokProvider::class,
 		GroqProvider::class,
 		HuggingFaceProvider::class,
+		OllamaProvider::class,
 		OpenRouterProvider::class,
 	);
 	private const FIELD_PROVIDERS = 'providers';
