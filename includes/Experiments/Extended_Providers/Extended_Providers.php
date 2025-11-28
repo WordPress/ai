@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\Extended_Providers;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Providers\Grok\GrokProvider;
+use WordPress\AI\Providers\Groq\GroqProvider;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AiClient\AiClient;
 
@@ -39,6 +40,7 @@ use function wp_kses_post;
 class Extended_Providers extends Abstract_Experiment {
 	private const DEFAULT_PROVIDER_CLASSES = array(
 		GrokProvider::class,
+		GroqProvider::class,
 	);
 	private const FIELD_PROVIDERS = 'providers';
 

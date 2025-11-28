@@ -5,6 +5,7 @@ Toggles registration of a custom set of AI providers with the WP AI Client. When
 
 ### Included Providers
 - Grok (xAI) – exposes Grok’s `/v1/models` listing and chat completion models. Add your Grok API key under **Settings → AI Credentials** (`options-general.php?page=wp-ai-client`) and the registry will inject it automatically.
+- Groq – exposes Groq’s `https://api.groq.com/openai/v1` chat-completions interface. Store a **Groq API key** on the credentials screen and toggle the provider inside the Extended Providers experiment.
 
 ## Key Hooks & Entry Points
 - `WordPress\AI\Experiments\Extended_Providers\Extended_Providers::register()` attaches to `init` (priority 20) and calls `register_providers()` only when the experiment is enabled.
