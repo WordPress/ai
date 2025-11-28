@@ -190,8 +190,13 @@ const App: React.FC = () => {
 				method: 'DELETE',
 			} );
 
+			// Clear logs immediately for instant UI feedback
+			setLogs( [] );
+			setTotal( 0 );
+			setTotalPages( 1 );
+			setPage( 1 );
+
 			showNotice( 'success', __( 'All logs have been purged.', 'ai' ) );
-			fetchLogs();
 			fetchSummary( summaryPeriod );
 			fetchFilters();
 		} catch ( apiError ) {
