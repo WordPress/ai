@@ -590,6 +590,12 @@ class AI_Request_Log_Manager {
 
 		$date_condition = '';
 		switch ( $period ) {
+			case 'minute':
+				$date_condition = 'AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 MINUTE)';
+				break;
+			case 'hour':
+				$date_condition = 'AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 HOUR)';
+				break;
 			case 'day':
 				$date_condition = 'AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY)';
 				break;
