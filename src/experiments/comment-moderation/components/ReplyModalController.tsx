@@ -42,6 +42,7 @@ export function ReplyModalController(): React.ReactElement {
 
 	// Cache replies per comment ID so reopening shows previous results.
 	const repliesCache = useRef< Map< number, CachedReplies > >( new Map() );
+	const pendingPopulateTimeout = useRef< number | null >( null );
 
 	/**
 	 * Opens the modal for a specific comment.
@@ -66,16 +67,22 @@ export function ReplyModalController(): React.ReactElement {
 	/**
 	 * Gets cached replies for a comment.
 	 */
-	const getCachedReplies = useCallback( ( commentId: number ): CachedReplies | undefined => {
-		return repliesCache.current.get( commentId );
-	}, [] );
+	const getCachedReplies = useCallback(
+		( commentId: number ): CachedReplies | undefined => {
+			return repliesCache.current.get( commentId );
+		},
+		[]
+	);
 
 	/**
 	 * Caches replies for a comment.
 	 */
-	const setCachedReplies = useCallback( ( commentId: number, data: CachedReplies ) => {
-		repliesCache.current.set( commentId, data );
-	}, [] );
+	const setCachedReplies = useCallback(
+		( commentId: number, data: CachedReplies ) => {
+			repliesCache.current.set( commentId, data );
+		},
+		[]
+	);
 
 	/**
 	 * Populates the reply textarea with the selected reply.
@@ -90,57 +97,80 @@ export function ReplyModalController(): React.ReactElement {
 			replyTextarea.focus();
 
 			// Trigger input event for any listeners.
-			replyTextarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+			replyTextarea.dispatchEvent(
+				new Event( 'input', { bubbles: true } )
+			);
 		}
 	}, [] );
 
 	/**
 	 * Checks if the inline reply form is currently open for a specific comment.
 	 */
-	const isReplyFormOpenForComment = useCallback( ( commentId: number ): boolean => {
-		const replyRow = document.querySelector< HTMLElement >( '#replyrow' );
-		const commentIdInput = document.querySelector< HTMLInputElement >( '#replyrow #comment_ID' );
+	const isReplyFormOpenForComment = useCallback(
+		( commentId: number ): boolean => {
+			const replyRow =
+				document.querySelector< HTMLElement >( '#replyrow' );
+			const commentIdInput = document.querySelector< HTMLInputElement >(
+				'#replyrow #comment_ID'
+			);
 
-		if ( ! replyRow || ! commentIdInput ) {
-			return false;
-		}
+			if ( ! replyRow || ! commentIdInput ) {
+				return false;
+			}
 
-		// Check if the reply row is visible and for the correct comment.
-		const isVisible = replyRow.style.display !== 'none' && replyRow.offsetParent !== null;
-		const isForComment = parseInt( commentIdInput.value, 10 ) === commentId;
+			// Check if the reply row is visible and for the correct comment.
+			const isVisible =
+				replyRow.style.display !== 'none' &&
+				replyRow.offsetParent !== null;
+			const isForComment =
+				parseInt( commentIdInput.value, 10 ) === commentId;
 
-		return isVisible && isForComment;
-	}, [] );
+			return isVisible && isForComment;
+		},
+		[]
+	);
 
 	/**
 	 * Handles selecting a reply suggestion.
 	 */
-	const handleSelectReply = useCallback( ( reply: string, commentId: number ) => {
-		// Check if the reply form is already open for this comment.
-		if ( isReplyFormOpenForComment( commentId ) ) {
-			// Just populate the existing textarea.
-			populateReplyTextarea( reply );
-			closeModal();
-			return;
-		}
-
-		// Find the reply button for this comment and trigger WordPress's inline reply.
-		const replyButton = document.querySelector< HTMLButtonElement >(
-			`#comment-${ commentId } .reply button`
-		);
-
-		if ( replyButton ) {
-			// Click the reply button to open the inline reply form.
-			replyButton.click();
-
-			// Wait for the form to appear, then populate it.
-			setTimeout( () => {
+	const handleSelectReply = useCallback(
+		( reply: string, commentId: number ) => {
+			// Check if the reply form is already open for this comment.
+			if ( isReplyFormOpenForComment( commentId ) ) {
+				// Just populate the existing textarea.
 				populateReplyTextarea( reply );
-			}, 100 );
-		}
+				closeModal();
+				return;
+			}
 
-		closeModal();
-	}, [ closeModal, isReplyFormOpenForComment, populateReplyTextarea ] );
+			// Find the reply button for this comment and trigger WordPress's inline reply.
+			const replyButton = document.querySelector< HTMLButtonElement >(
+				`#comment-${ commentId } .reply button`
+			);
+
+			if ( replyButton ) {
+				// Click the reply button to open the inline reply form.
+				replyButton.click();
+
+				// Wait for the form to appear, then populate it.
+				if ( pendingPopulateTimeout.current !== null ) {
+					window.clearTimeout( pendingPopulateTimeout.current );
+				}
+				pendingPopulateTimeout.current = window.setTimeout( () => {
+					populateReplyTextarea( reply );
+					pendingPopulateTimeout.current = null;
+				}, 100 );
+			}
+
+			closeModal();
+		},
+		[
+			closeModal,
+			isReplyFormOpenForComment,
+			populateReplyTextarea,
+			pendingPopulateTimeout,
+		]
+	);
 
 	/**
 	 * Sets up click handlers for AI Reply links.
@@ -166,15 +196,29 @@ export function ReplyModalController(): React.ReactElement {
 		const commentsTable = document.querySelector( '#the-comment-list' );
 
 		if ( commentsTable ) {
-			commentsTable.addEventListener( 'click', handleClick as EventListener );
+			commentsTable.addEventListener(
+				'click',
+				handleClick as EventListener
+			);
 
 			return () => {
-				commentsTable.removeEventListener( 'click', handleClick as EventListener );
+				commentsTable.removeEventListener(
+					'click',
+					handleClick as EventListener
+				);
 			};
 		}
 
 		return undefined;
 	}, [ openModal ] );
+
+	useEffect( () => {
+		return () => {
+			if ( pendingPopulateTimeout.current !== null ) {
+				window.clearTimeout( pendingPopulateTimeout.current );
+			}
+		};
+	}, [] );
 
 	return (
 		<>
@@ -184,7 +228,9 @@ export function ReplyModalController(): React.ReactElement {
 					onClose={ closeModal }
 					onSelectReply={ handleSelectReply }
 					initialReplies={ getCachedReplies( modalState.commentId ) }
-					onRepliesChange={ ( data ) => setCachedReplies( modalState.commentId!, data ) }
+					onRepliesChange={ ( data ) =>
+						setCachedReplies( modalState.commentId!, data )
+					}
 				/>
 			) }
 		</>

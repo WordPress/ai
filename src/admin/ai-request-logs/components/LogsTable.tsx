@@ -1,9 +1,15 @@
 /**
  * WordPress dependencies
  */
-import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
+import {
+	Button,
+	Card,
+	CardBody,
+	CardHeader,
+	Tooltip,
+} from '@wordpress/components';
 import { DataViews } from '@wordpress/dataviews/wp';
-import type { DataViewField, View } from '@wordpress/dataviews';
+import type { DataViewField, View, Filter } from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -14,25 +20,10 @@ import React, { useCallback, useMemo } from 'react';
 /**
  * Internal dependencies
  */
-import { AnthropicIcon, GoogleIcon, OpenAiIcon } from '../../components/icons';
+import { getProviderIconComponent } from '../../components/provider-icons';
+import ProviderTooltipContent from '../../components/ProviderTooltipContent';
 import type { FilterOptions, LogEntry } from '../types';
-
-const getProviderIcon = ( provider: string | null ): React.ReactNode => {
-	if ( ! provider ) {
-		return null;
-	}
-	const normalized = provider.toLowerCase();
-	if ( normalized === 'openai' ) {
-		return <OpenAiIcon />;
-	}
-	if ( normalized === 'anthropic' ) {
-		return <AnthropicIcon />;
-	}
-	if ( normalized === 'google' ) {
-		return <GoogleIcon />;
-	}
-	return null;
-};
+import type { ProviderMetadata } from '../../types/providers';
 
 interface LogsTableProps {
 	logs: LogEntry[];
@@ -43,6 +34,7 @@ interface LogsTableProps {
 	total: number;
 	view: View;
 	setView: ( next: View | ( ( prev: View ) => View ) ) => void;
+	providerMetadata: Record< string, ProviderMetadata >;
 }
 
 const formatTimestamp = ( timestamp: string ): string => {
@@ -55,9 +47,9 @@ const formatDuration = ( ms: number | null ): string => {
 		return '-';
 	}
 	if ( ms < 1000 ) {
-		return `${ ms }ms`;
+		return ms + 'ms';
 	}
-	return `${ ( ms / 1000 ).toFixed( 1 ) }s`;
+	return ( ms / 1000 ).toFixed( 1 ) + 's';
 };
 
 const formatTokens = ( tokens: number | null ): string => {
@@ -65,7 +57,7 @@ const formatTokens = ( tokens: number | null ): string => {
 		return '-';
 	}
 	if ( tokens >= 1000 ) {
-		return `${ ( tokens / 1000 ).toFixed( 1 ) }K`;
+		return ( tokens / 1000 ).toFixed( 1 ) + 'K';
 	}
 	return tokens.toLocaleString();
 };
@@ -98,6 +90,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	total,
 	view,
 	setView,
+	providerMetadata,
 } ) => {
 	const typeElements = useMemo(
 		() =>
@@ -194,20 +187,15 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 						? { operators: [ 'is' ] }
 						: false,
 				render: ( { item } ) => (
-					<div>
-						{ item.provider && (
-							<span className="ai-request-logs__provider">
-								{ getProviderIcon( item.provider ) }
-								{ item.provider }
-							</span>
-						) }
-						{ item.model && (
-							<div className="ai-request-logs__model">
-								{ item.model }
-							</div>
-						) }
-						{ ! item.provider && ! item.model && '-' }
-					</div>
+					<ProviderCell
+						provider={ item.provider }
+						model={ item.model }
+						metadata={
+							item.provider
+								? providerMetadata[ item.provider ]
+								: undefined
+						}
+					/>
 				),
 			},
 			{
@@ -264,6 +252,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			onViewLog,
 			operationElements,
 			providerElements,
+			providerMetadata,
 			statusElements,
 			typeElements,
 		]
@@ -291,7 +280,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				{ total > 0 && (
 					<span className="ai-request-logs__count">
 						{ sprintf(
-							/* translators: %d: number of log entries. */
+							/* translators: %d: total number of logged requests. */
 							__( '%d total', 'ai' ),
 							total
 						) }
@@ -333,6 +322,69 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				/>
 			</CardBody>
 		</Card>
+	);
+};
+
+interface ProviderCellProps {
+	provider: string | null;
+	model: string | null;
+	metadata?: ProviderMetadata;
+}
+
+const ProviderCell: React.FC< ProviderCellProps > = ( {
+	provider,
+	model,
+	metadata,
+} ) => {
+	if ( ! provider && ! model ) {
+		return <span>-</span>;
+	}
+
+	if ( ! metadata ) {
+		return (
+			<div>
+				{ provider && (
+					<span className="ai-request-logs__provider">
+						{ provider }
+					</span>
+				) }
+				{ model && (
+					<div className="ai-request-logs__model">{ model }</div>
+				) }
+			</div>
+		);
+	}
+
+	const IconComponent = getProviderIconComponent(
+		metadata.icon || metadata.id,
+		provider || undefined
+	);
+
+	const cell = (
+		<div className="ai-request-logs__provider">
+			<span className="ai-request-logs__provider-logo">
+				<IconComponent />
+			</span>
+			<span>
+				{ metadata.name }
+				{ model && (
+					<span className="ai-request-logs__model">{ model }</span>
+				) }
+			</span>
+		</div>
+	);
+
+	return (
+		<Tooltip
+			text={
+				<ProviderTooltipContent
+					metadata={ metadata }
+					activeModel={ model }
+				/>
+			}
+		>
+			{ cell }
+		</Tooltip>
 	);
 };
 

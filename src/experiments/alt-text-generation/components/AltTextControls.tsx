@@ -207,7 +207,7 @@ export function AltTextControls( {
 							<>
 								<Spinner />
 								<span style={ { marginLeft: '8px' } }>
-									{ __( 'Generating...', 'ai' ) }
+									{ __( 'Generating…', 'ai' ) }
 								</span>
 							</>
 						) : (

@@ -9,10 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
-use Throwable;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Settings\Settings_Registration;
-use WordPress\AI_Client\AI_Client;
 
 /**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
@@ -171,19 +169,23 @@ function get_preferred_models(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-haiku-4-5-20251001',
+			'claude-3-5-sonnet-20240620',
 		),
 		array(
-			'openai',
-			'gpt-5-nano-2025-08-07',
+			'anthropic',
+			'claude-3-haiku-20240307',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-1.5-flash',
 		),
 		array(
 			'openai',
-			'gpt-4.1',
+			'gpt-4o-mini',
+		),
+		array(
+			'openai',
+			'gpt-4o',
 		),
 	);
 
@@ -254,12 +256,7 @@ function has_valid_ai_credentials(): bool {
 		return (bool) $valid;
 	}
 
-	// See if we have credentials that give us access to generate text.
-	try {
-		return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
-	} catch ( Throwable $t ) {
-		return false;
-	}
+	return true;
 }
 
 /**

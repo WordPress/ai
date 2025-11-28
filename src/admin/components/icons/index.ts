@@ -1,5 +1,14 @@
 export { default as AiIcon } from './AiIcon';
 export { default as AnthropicIcon } from './AnthropicIcon';
+export { default as CloudflareIcon } from './CloudflareIcon';
+export { default as DeepSeekIcon } from './DeepSeekIcon';
+export { default as FalIcon } from './FalIcon';
 export { default as GoogleIcon } from './GoogleIcon';
+export { default as GroqIcon } from './GroqIcon';
+export { default as GrokIcon } from './GrokIcon';
+export { default as HuggingFaceIcon } from './HuggingFaceIcon';
 export { default as McpIcon } from './McpIcon';
 export { default as OpenAiIcon } from './OpenAiIcon';
+export { default as OpenRouterIcon } from './OpenRouterIcon';
+export { default as OllamaIcon } from './OllamaIcon';
+export { default as XaiIcon } from './XaiIcon';

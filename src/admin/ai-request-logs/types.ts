@@ -1,3 +1,5 @@
+import type { ProviderMetadataMap } from '../types/providers';
+
 export interface LogEntry {
 	id: string;
 	timestamp: string;
@@ -64,6 +66,7 @@ export interface LocalizedSettings {
 		summary: LogSummary;
 		filters: FilterOptions;
 	};
+	providerMetadata: ProviderMetadataMap;
 }
 
 declare global {

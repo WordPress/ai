@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+use WordPress\AI\Admin\Provider_Metadata_Registry;
 use WordPress\AI\Asset_Loader;
 
 /**
@@ -94,6 +95,7 @@ class AI_Request_Log_Page {
 					'summary'       => $this->manager->get_summary( 'day' ),
 					'filters'       => $this->manager->get_filter_options(),
 				),
+				'providerMetadata' => Provider_Metadata_Registry::get_metadata(),
 			)
 		);
 	}

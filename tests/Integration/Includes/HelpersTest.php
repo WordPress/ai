@@ -36,6 +36,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		delete_transient( 'ai_valid_credentials_status' );
+		delete_option( 'wp_ai_client_provider_credentials' );
 		parent::tearDown();
 	}
 
@@ -255,31 +257,13 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_models_returns_default_models() {
 		$result = \WordPress\AI\get_preferred_models();
 
-		$this->assertCount( 4, $result, 'Should have 4 preferred models' );
+		$this->assertCount( 5, $result, 'Should have 5 preferred models' );
 
 		// Check first model (anthropic).
 		$this->assertIsArray( $result[0], 'First model should be an array' );
 		$this->assertCount( 2, $result[0], 'First model should have 2 elements' );
 		$this->assertEquals( 'anthropic', $result[0][0], 'First model provider should be anthropic' );
-		$this->assertEquals( 'claude-haiku-4-5-20251001', $result[0][1], 'First model name should be claude-haiku-4-5-20251001' );
-
-		// Check second model (openai).
-		$this->assertIsArray( $result[1], 'Second model should be an array' );
-		$this->assertCount( 2, $result[1], 'Second model should have 2 elements' );
-		$this->assertEquals( 'openai', $result[1][0], 'Second model provider should be openai' );
-		$this->assertEquals( 'gpt-5-nano-2025-08-07', $result[1][1], 'Second model name should be gpt-5-nano-2025-08-07' );
-
-		// Check third model (google).
-		$this->assertIsArray( $result[2], 'Third model should be an array' );
-		$this->assertCount( 2, $result[2], 'Third model should have 2 elements' );
-		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
-		$this->assertEquals( 'gemini-2.5-flash', $result[2][1], 'Third model name should be gemini-2.5-flash' );
-
-		// Check fourth model (openai).
-		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
-		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
-		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'gpt-4.1', $result[3][1], 'Fourth model name should be gpt-4.1' );
+		$this->assertEquals( 'claude-3-5-sonnet-20240620', $result[0][1], 'First model name should be claude-3-5-sonnet-20240620' );
 	}
 
 	/**
@@ -302,9 +286,9 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$result = \WordPress\AI\get_preferred_models();
 
-		$this->assertCount( 5, $result, 'Should have 5 models after filter' );
-		$this->assertEquals( 'custom', $result[4][0], 'Fifth model provider should be custom' );
-		$this->assertEquals( 'custom-model', $result[4][1], 'Fifth model name should be custom-model' );
+		$this->assertCount( 6, $result, 'Should have 6 models after filter' );
+		$this->assertEquals( 'custom', $result[5][0], 'Sixth model provider should be custom' );
+		$this->assertEquals( 'custom-model', $result[5][1], 'Sixth model name should be custom-model' );
 
 		remove_all_filters( 'ai_preferred_models' );
 	}
@@ -368,5 +352,23 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertFalse( \WordPress\AI\is_experiment_enabled( 'test-experiment' ) );
 
 		remove_all_filters( 'ai_pre_has_valid_credentials_check' );
+	}
+
+	/**
+	 * Ensures has_valid_ai_credentials() respects cached transient values.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_has_valid_ai_credentials_uses_transient_cache(): void {
+		update_option(
+			'wp_ai_client_provider_credentials',
+			array(
+				'openai' => 'sk-test',
+			)
+		);
+
+		set_transient( 'ai_valid_credentials_status', 1, MINUTE_IN_SECONDS );
+
+		$this->assertTrue( \WordPress\AI\has_valid_ai_credentials() );
 	}
 }

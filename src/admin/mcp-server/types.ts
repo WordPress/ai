@@ -40,7 +40,7 @@ export interface McpOverview {
 	activeServerId: string;
 	activeServer: ServerDetails | null;
 	tools: ToolSummary[];
-	configTemplates: Record<string, ConfigTemplate>;
+	configTemplates: Record< string, ConfigTemplate >;
 }
 
 export interface TestResult {

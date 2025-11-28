@@ -61,6 +61,15 @@
 	display: flex;
 	align-items: center;
 	gap: 1rem;
+
+	// Header toggle needs proper alignment
+	.components-toggle-control {
+		margin: 0;
+
+		.components-base-control__field {
+			margin-bottom: 0;
+		}
+	}
 }
 
 .ai-admin-header__icon {

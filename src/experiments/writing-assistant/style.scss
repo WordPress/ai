@@ -1,0 +1,295 @@
+@import "../../admin/ai-request-logs/_dataviews-base.css";
+
+.ai-writing-assistant {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	padding: 0;
+	overflow: hidden;
+	box-sizing: border-box;
+	gap: 0;
+	background: var(--wp-components-color-surface, #fff);
+}
+
+.ai-writing-assistant__header {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 0 16px 12px;
+	border-bottom: 1px solid var(--wp-components-color-border, #dcdcde);
+}
+
+.ai-writing-assistant__status-bar {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+	padding: 12px 16px;
+	margin: 0 -16px;
+	background: var(--wp-components-color-surface-secondary, #f6f7f7);
+	border-bottom: 1px solid var(--wp-components-color-border, #dcdcde);
+	font-size: 12px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+}
+
+.ai-writing-assistant__status-bar span {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.ai-writing-assistant__status-bar strong {
+	font-weight: 600;
+	color: var(--wp-components-color-foreground, #1d2327);
+}
+
+.ai-writing-assistant__session-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ai-writing-assistant__session-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ai-writing-assistant__header-actions {
+	display: flex;
+	gap: 6px;
+	margin-left: auto;
+}
+
+.ai-writing-assistant__icon-button {
+	color: var(--wp-components-color-foreground, #1d2327);
+	box-shadow: none;
+	background: transparent;
+	padding: 4px;
+}
+
+.ai-writing-assistant__content {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	padding-inline: 0;
+	overflow: hidden;
+}
+
+.ai-writing-assistant__panel {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding-top: 12px;
+}
+
+.ai-writing-assistant__panel--stream {
+	flex: 1;
+	overflow: hidden;
+}
+
+.ai-writing-assistant__stream {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.ai-writing-assistant__stream .components-card,
+.ai-writing-assistant__stream .components-card__body {
+	border: 0;
+	box-shadow: none;
+	background: transparent;
+	padding: 0;
+}
+
+.ai-writing-assistant__stream .dataviews-wrapper {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: auto;
+	padding: 0 16px 12px;
+}
+
+.ai-writing-assistant__stream .dataviews__view-actions,
+.ai-writing-assistant__stream .dataviews-filters__container,
+.ai-writing-assistant__stream .dataviews-footer,
+.ai-writing-assistant__stream .dataviews-loading,
+.ai-writing-assistant__stream .dataviews-no-results {
+	padding-inline: 0;
+}
+
+.ai-writing-assistant__stream .dataviews-view-grid {
+	gap: 16px;
+	margin: 0;
+	grid-template-columns: repeat(
+		auto-fit,
+		minmax(220px, 1fr)
+	);
+}
+
+.ai-writing-assistant__stream .dataviews-view-grid__card {
+	border: none;
+	border-radius: 10px;
+	padding: 16px;
+	box-shadow: none;
+	background: var(--wp-components-color-surface-muted, #f6f7f7);
+}
+
+.ai-writing-assistant__stream .dataviews-view-grid__fields {
+	gap: 8px;
+}
+
+.ai-writing-assistant__stream .dataviews-view-grid__badge-fields {
+	gap: 6px;
+}
+
+.ai-writing-assistant__empty {
+	text-align: center;
+	padding: 24px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+}
+
+.ai-writing-assistant__type-dropdown {
+	padding: 12px;
+	min-width: 220px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.ai-writing-assistant__type-summary {
+	font-size: 12px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-bottom: 4px;
+}
+
+.ai-writing-assistant__settings-help {
+	font-size: 13px;
+	margin: 0;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+}
+
+.ai-writing-assistant__suggestion {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.ai-writing-assistant__suggestion-meta {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	font-size: 12px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+}
+
+.ai-writing-assistant__type-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	border-radius: 12px;
+	background: var(--wp-components-color-accent-10, #f0f0f0);
+	color: var(--wp-components-color-foreground, #1d2327);
+	font-weight: 500;
+}
+
+.ai-writing-assistant__priority {
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-weight: 600;
+	text-transform: capitalize;
+}
+
+.ai-writing-assistant__priority--high {
+	background: #fbeaea;
+	color: #b32d2e;
+}
+
+.ai-writing-assistant__priority--medium {
+	background: #fff4e5;
+	color: #b26b00;
+}
+
+.ai-writing-assistant__priority--low {
+	background: #edf6f0;
+	color: #1d8642;
+}
+
+.ai-writing-assistant__status {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: #f5f5f5;
+	font-weight: 600;
+	text-transform: capitalize;
+}
+
+.ai-writing-assistant__action-buttons {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.ai-writing-assistant__status-pill {
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: #f0f0f0;
+}
+
+.ai-writing-assistant__context {
+	font-size: 13px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+	border-left: 3px solid var(--wp-components-color-border, #dcdcde);
+	padding-left: 8px;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.ai-writing-assistant__details {
+	font-size: 13px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+	margin: 8px 0 0;
+	overflow-wrap: anywhere;
+}
+
+.ai-writing-assistant__controls-popover {
+	width: 280px;
+}
+
+.ai-writing-assistant__controls {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 12px;
+}
+
+.ai-writing-assistant__settings-popover .components-popover__content {
+	padding: 0;
+}
+
+.ai-writing-assistant__footer {
+	border-top: 1px solid var(--wp-components-color-border, #dcdcde);
+	padding: 12px 16px 16px;
+	margin-top: auto;
+	background: var(--wp-components-color-surface, #fff);
+	position: sticky;
+	bottom: 0;
+}
+
+.ai-writing-assistant__footer-button {
+	width: 100%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}

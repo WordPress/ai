@@ -29,6 +29,11 @@ module.exports = {
 			'src/admin/ai-request-logs',
 			'index.tsx'
 		),
+		'admin/provider-credentials': path.resolve(
+			process.cwd(),
+			'src/admin/provider-credentials',
+			'index.tsx'
+		),
 		'experiments/example-experiment': path.resolve(
 			process.cwd(),
 			'src/experiments/example-experiment',
@@ -62,6 +67,11 @@ module.exports = {
 		'experiments/comment-moderation': path.resolve(
 			process.cwd(),
 			'src/experiments/comment-moderation',
+			'index.tsx'
+		),
+		'experiments/writing-assistant': path.resolve(
+			process.cwd(),
+			'src/experiments/writing-assistant',
 			'index.tsx'
 		),
 	},

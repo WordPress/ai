@@ -2,15 +2,17 @@
 @use '../common';
 
 .ai-mcp-server {
-	// Header styles for PHP/React hybrid header
-	&__header {
-		// Header toggle needs proper alignment
-		.components-toggle-control {
-			margin: 0;
+	// Header server picker in the left section
+	&__header-server-picker {
+		min-width: 180px;
 
-			.components-base-control__field {
-				margin-bottom: 0;
-			}
+		.components-base-control {
+			margin: 0;
+		}
+
+		.components-select-control__input {
+			min-height: 32px;
+			font-size: 13px;
 		}
 	}
 
@@ -25,53 +27,8 @@
 		}
 	}
 
-	&__toolbar {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 12px;
-		align-items: flex-end;
-		margin-bottom: 24px;
-
-		.components-select-control {
-			min-width: 240px;
-		}
-	}
-
-	&__server-picker {
-		flex: 1 1 320px;
-		min-width: 260px;
-		display: grid;
-		grid-template-columns: minmax( 0, 1fr ) auto;
-		align-items: center;
-		gap: 12px;
-
-		.components-base-control {
-			margin: 0;
-			width: 100%;
-		}
-
-		.components-base-control__field,
-		.components-input-control,
-		.components-input-control__container,
-		.components-select-control,
-		.components-select-control__input {
-			width: 100%;
-		}
-
-		.ai-mcp-server__status-text {
-			justify-self: flex-start;
-		}
-
-		@media ( max-width: 600px ) {
-			grid-template-columns: 1fr;
-			.ai-mcp-server__status-text {
-				margin-left: 0;
-			}
-		}
-	}
-
 	&__server-description {
-		margin: -8px 0 24px;
+		margin: 0 0 24px;
 		color: #50575e;
 	}
 
@@ -101,10 +58,46 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
+		width: 100%;
 
 		@media ( max-width: 600px ) {
 			flex-direction: column;
 			align-items: flex-start;
+		}
+	}
+
+	&__server-name {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex: 1;
+		min-width: 0;
+
+		h3 {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 600;
+		}
+	}
+
+	&__name-display {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	&__name-edit {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		flex: 1;
+		min-width: 0;
+
+		.components-base-control {
+			margin: 0;
+			flex: 1;
+			min-width: 120px;
+			max-width: 240px;
 		}
 	}
 

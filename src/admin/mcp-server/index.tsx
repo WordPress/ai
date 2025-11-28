@@ -1,10 +1,27 @@
+/**
+ * Internal dependencies
+ */
 import './style.scss';
 
+/**
+ * WordPress dependencies
+ */
 import apiFetch from '@wordpress/api-fetch';
-import { Button, Notice, SelectControl, Spinner, ToggleControl } from '@wordpress/components';
+import {
+	Button,
+	Notice,
+	SelectControl,
+	Spinner,
+	ToggleControl,
+	Tooltip,
+} from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
+import { plus } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 import { __, sprintf } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
@@ -28,8 +45,13 @@ const settings: LocalizedSettings = window.aiMcpServerSettings;
 apiFetch.use( apiFetch.createNonceMiddleware( settings.rest.nonce ) );
 apiFetch.use( apiFetch.createRootURLMiddleware( settings.rest.root ) );
 
-const showNotice = ( status: 'success' | 'error' | 'warning', message: string ) =>
-	dispatch( noticesStore ).createNotice( status, message, { type: 'snackbar' } );
+const showNotice = (
+	status: 'success' | 'error' | 'warning',
+	message: string
+) =>
+	dispatch( noticesStore ).createNotice( status, message, {
+		type: 'snackbar',
+	} );
 
 const getErrorMessage = ( error: unknown ): string => {
 	if ( typeof error === 'string' ) {
@@ -43,11 +65,14 @@ const getErrorMessage = ( error: unknown ): string => {
 	return __( 'Something went wrong. Please try again.', 'ai' );
 };
 
-const getEnabledToolNames = ( tools: ToolSummary[] ): string[] => tools.filter( ( tool ) => tool.enabled ).map( ( tool ) => tool.name );
+const getEnabledToolNames = ( tools: ToolSummary[] ): string[] =>
+	tools.filter( ( tool ) => tool.enabled ).map( ( tool ) => tool.name );
 
 const App: React.FC = () => {
 	const [ data, setData ] = useState< McpOverview | null >( null );
-	const [ selectedServerId, setSelectedServerId ] = useState< string | null >( null );
+	const [ selectedServerId, setSelectedServerId ] = useState< string | null >(
+		null
+	);
 	const [ loading, setLoading ] = useState( true );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ savingTools, setSavingTools ] = useState( false );
@@ -60,7 +85,10 @@ const App: React.FC = () => {
 		setLoading( true );
 		try {
 			const path =
-				settings.rest.routes.overview + ( serverId ? `?server_id=${ encodeURIComponent( serverId ) }` : '' );
+				settings.rest.routes.overview +
+				( serverId
+					? `?server_id=${ encodeURIComponent( serverId ) }`
+					: '' );
 			const response = ( await apiFetch( { path } ) ) as McpOverview;
 			setData( response );
 			setSelectedServerId( response.activeServerId );
@@ -88,7 +116,9 @@ const App: React.FC = () => {
 			setSelectedServerId( response.activeServerId );
 			showNotice(
 				nextValue ? 'success' : 'warning',
-				nextValue ? __( 'MCP enabled.', 'ai' ) : __( 'MCP disabled.', 'ai' )
+				nextValue
+					? __( 'MCP enabled.', 'ai' )
+					: __( 'MCP disabled.', 'ai' )
 			);
 		} catch ( apiError ) {
 			const message = getErrorMessage( apiError );
@@ -120,13 +150,41 @@ const App: React.FC = () => {
 			setSelectedServerId( response.activeServerId );
 			showNotice(
 				nextValue ? 'success' : 'warning',
-				nextValue ? __( 'Server enabled.', 'ai' ) : __( 'Server disabled.', 'ai' )
+				nextValue
+					? __( 'Server enabled.', 'ai' )
+					: __( 'Server disabled.', 'ai' )
 			);
 		} catch ( apiError ) {
 			const message = getErrorMessage( apiError );
 			showNotice( 'error', message );
 		} finally {
 			setSavingServer( false );
+		}
+	};
+
+	const handleRenameServer = async ( newName: string ) => {
+		if ( ! selectedServerId ) {
+			return;
+		}
+
+		try {
+			const response = ( await apiFetch( {
+				path: settings.rest.routes.server,
+				method: 'POST',
+				data: {
+					server: {
+						id: selectedServerId,
+						name: newName,
+					},
+				},
+			} ) ) as McpOverview;
+			setData( response );
+			setSelectedServerId( response.activeServerId );
+			showNotice( 'success', __( 'Server renamed.', 'ai' ) );
+		} catch ( apiError ) {
+			const message = getErrorMessage( apiError );
+			showNotice( 'error', message );
+			throw apiError;
 		}
 	};
 
@@ -178,9 +236,23 @@ const App: React.FC = () => {
 				document.body.removeChild( temp );
 			}
 
-			showNotice( 'success', sprintf( __( '%s copied to clipboard.', 'ai' ), label ) );
+			showNotice(
+				'success',
+				sprintf(
+					/* translators: %s: label for the value that was copied. */
+					__( '%s copied to clipboard.', 'ai' ),
+					label
+				)
+			);
 		} catch ( copyError ) {
-			showNotice( 'error', sprintf( __( 'Could not copy %s.', 'ai' ), label ) );
+			showNotice(
+				'error',
+				sprintf(
+					/* translators: %s: label for the value that failed to copy. */
+					__( 'Could not copy %s.', 'ai' ),
+					label
+				)
+			);
 		}
 	};
 
@@ -197,7 +269,10 @@ const App: React.FC = () => {
 				data: { serverId: data.activeServerId },
 			} ) ) as TestResult;
 			setTestResult( response );
-			showNotice( response.success ? 'success' : 'error', response.message );
+			showNotice(
+				response.success ? 'success' : 'error',
+				response.message
+			);
 		} catch ( apiError ) {
 			const message = getErrorMessage( apiError );
 			setTestResult( { success: false, code: null, message } );
@@ -208,7 +283,8 @@ const App: React.FC = () => {
 	};
 
 	const templates = useMemo(
-		() => ( data?.configTemplates ?? {} ) as Record< string, ConfigTemplate >,
+		() =>
+			( data?.configTemplates ?? {} ) as Record< string, ConfigTemplate >,
 		[ data?.configTemplates ]
 	);
 
@@ -222,7 +298,10 @@ const App: React.FC = () => {
 	};
 
 	const handleAddServer = async () => {
-		const name = window.prompt( __( 'Enter a name for the new server:', 'ai' ) );
+		// eslint-disable-next-line no-alert
+		const name = window.prompt(
+			__( 'Enter a name for the new server:', 'ai' )
+		);
 
 		if ( ! name ) {
 			return;
@@ -245,42 +324,101 @@ const App: React.FC = () => {
 	};
 
 	const activeServer = data?.activeServer ?? null;
-	const activeStatus = ( activeServer?.status ?? 'initializing' ) as 'running' | 'initializing' | 'disabled';
-	const globalStatus = ! ( data?.enabled ?? true ) ? 'disabled' : activeStatus;
-	const serverOptions = ( data?.servers ?? [] ).map( ( server: ServerSummary ) => {
-		const showStatus = server.status !== 'running';
-		const label = showStatus
-			? sprintf( __( '%1$s (%2$s)', 'ai' ), server.name, getStatusLabel( server.status ) )
-			: server.name;
-		return {
-			label,
-			value: server.id,
-		};
-	} );
+	const activeStatus = ( activeServer?.status ?? 'initializing' ) as
+		| 'running'
+		| 'initializing'
+		| 'disabled';
+	const globalStatus = ! ( data?.enabled ?? true )
+		? 'disabled'
+		: activeStatus;
+	const serverOptions = ( data?.servers ?? [] ).map(
+		( server: ServerSummary ) => {
+			const showStatus = server.status !== 'running';
+			const label = showStatus
+				? sprintf(
+						/* translators: 1: Server name, 2: server status label. */
+						__( '%1$s (%2$s)', 'ai' ),
+						server.name,
+						getStatusLabel( server.status )
+				  )
+				: server.name;
+			return {
+				label,
+				value: server.id,
+			};
+		}
+	);
 
 	// Get portal mount points for header elements (rendered by PHP)
 	const headerStatusMount = document.getElementById( 'ai-mcp-header-status' );
-	const headerToggleMount = document.getElementById( 'ai-mcp-header-toggle' );
+	const headerServerSelectorMount = document.getElementById(
+		'ai-mcp-header-server-selector'
+	);
+	const headerControlsMount = document.getElementById(
+		'ai-mcp-header-controls'
+	);
 
 	return (
 		<div className="ai-mcp-server__app">
 			{ /* Portal: Status badge in PHP header */ }
-			{ headerStatusMount && ! loading && createPortal(
-				<StatusBadge status={ globalStatus } />,
-				headerStatusMount
-			) }
+			{ headerStatusMount &&
+				! loading &&
+				createPortal(
+					<StatusBadge status={ globalStatus } />,
+					headerStatusMount
+				) }
 
-			{ /* Portal: Global toggle in PHP header */ }
-			{ headerToggleMount && ! loading && createPortal(
-				<ToggleControl
-					label={ __( 'Enable MCP', 'ai' ) }
-					checked={ data?.enabled ?? false }
-					onChange={ handleToggleGlobal }
-					disabled={ savingGlobal }
-					__nextHasNoMarginBottom
-				/>,
-				headerToggleMount
-			) }
+			{ /* Portal: Server selector in PHP header */ }
+			{ headerServerSelectorMount &&
+				! loading &&
+				createPortal(
+					<div className="ai-mcp-server__header-server-picker">
+						<SelectControl
+							value={ selectedServerId ?? '' }
+							onChange={ handleSelectServer }
+							options={ serverOptions }
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+					</div>,
+					headerServerSelectorMount
+				) }
+
+			{ /* Portal: Header controls (global toggle, server toggle, add button) */ }
+			{ headerControlsMount &&
+				! loading &&
+				createPortal(
+					<>
+						<ToggleControl
+							label={ __( 'Enable MCP', 'ai' ) }
+							checked={ data?.enabled ?? false }
+							onChange={ handleToggleGlobal }
+							disabled={ savingGlobal }
+							__nextHasNoMarginBottom
+						/>
+						<ToggleControl
+							label={ __( 'Enable Server', 'ai' ) }
+							checked={ activeServer?.enabled ?? false }
+							onChange={ handleToggleServerEnabled }
+							disabled={ savingServer || ! activeServer }
+							__nextHasNoMarginBottom
+						/>
+						<Tooltip
+							text={ __(
+								'Add a new MCP server configuration',
+								'ai'
+							) }
+						>
+							<Button
+								icon={ plus }
+								variant="secondary"
+								onClick={ handleAddServer }
+								label={ __( 'Add Server', 'ai' ) }
+							/>
+						</Tooltip>
+					</>,
+					headerControlsMount
+				) }
 
 			{ error && (
 				<Notice status="error" onRemove={ () => setError( null ) }>
@@ -288,71 +426,56 @@ const App: React.FC = () => {
 				</Notice>
 			) }
 
-		{ loading ? (
-			<div className="ai-mcp-server__loading">
-				<Spinner />
-				<span>{ __( 'Loading MCP server data…', 'ai' ) }</span>
-			</div>
-			 ) : (
-			<>
-				<div className="ai-mcp-server__toolbar">
-					<div className="ai-mcp-server__server-picker">
-						<SelectControl
-							label={ __( 'Server', 'ai' ) }
-							value={ selectedServerId ?? '' }
-							onChange={ handleSelectServer }
-							options={ serverOptions }
-							__nextHasNoMarginBottom
-							__next40pxDefaultSize
-						/>
-						<StatusBadge status={ activeStatus } />
-					</div>
-					<ToggleControl
-						label={ __( 'Enable this server', 'ai' ) }
-						checked={ activeServer?.enabled ?? false }
-						onChange={ handleToggleServerEnabled }
-						disabled={ savingServer || ! activeServer }
-						__nextHasNoMarginBottom
-					/>
-					<Button variant="secondary" onClick={ handleAddServer }>
-						{ __( 'Add Server', 'ai' ) }
-					</Button>
+			{ loading ? (
+				<div className="ai-mcp-server__loading">
+					<Spinner />
+					<span>{ __( 'Loading MCP server data…', 'ai' ) }</span>
 				</div>
+			) : (
+				<>
 
-				{ activeServer?.description && (
-					<p className="ai-mcp-server__server-description">{ activeServer.description }</p>
-				 ) }
+					{ activeServer?.description && (
+						<p className="ai-mcp-server__server-description">
+							{ activeServer.description }
+						</p>
+					) }
 
-				{ activeServer ? (
-					<>
-						<div className="ai-mcp-server__grid">
-							<ServerStatusCard
-								server={ activeServer }
-								savingServer={ savingServer }
-								onToggleServer={ handleToggleServerEnabled }
-								onCopy={ handleCopy }
-								profileUrl={ settings.profileUrl }
+					{ activeServer ? (
+						<>
+							<div className="ai-mcp-server__grid">
+								<ServerStatusCard
+									server={ activeServer }
+									onRename={ handleRenameServer }
+									onCopy={ handleCopy }
+									profileUrl={ settings.profileUrl }
+								/>
+								<ConfigGenerator
+									templates={ templates }
+									onCopy={ handleCopy }
+								/>
+							</div>
+
+							<ToolsTable
+								tools={ data?.tools ?? [] }
+								saving={ savingTools }
+								globalEnabled={ data?.enabled ?? false }
+								serverEnabled={ activeServer?.enabled ?? false }
+								onToggle={ handleToggleTool }
 							/>
-							<ConfigGenerator templates={ templates } onCopy={ handleCopy } />
-						</div>
 
-						<ToolsTable
-							tools={ data?.tools ?? [] }
-							saving={ savingTools }
-							globalEnabled={ data?.enabled ?? false }
-							serverEnabled={ activeServer?.enabled ?? false }
-							onToggle={ handleToggleTool }
-						/>
-
-						<TestConnectionPanel testing={ testing } result={ testResult } onTest={ handleTestConnection } />
-					</>
-				 ) : (
-					<Notice status="warning" isDismissible={ false }>
-						{ __( 'No MCP servers are configured yet.', 'ai' ) }
-					</Notice>
-				 ) }
-			</>
-			 ) }
+							<TestConnectionPanel
+								testing={ testing }
+								result={ testResult }
+								onTest={ handleTestConnection }
+							/>
+						</>
+					) : (
+						<Notice status="warning" isDismissible={ false }>
+							{ __( 'No MCP servers are configured yet.', 'ai' ) }
+						</Notice>
+					) }
+				</>
+			) }
 		</div>
 	);
 };

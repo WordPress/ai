@@ -2,8 +2,17 @@
  * Entry point for the post table bulk experiment.
  */
 
+/**
+ * WordPress dependencies
+ */
 import domReady from '@wordpress/dom-ready';
+/**
+ * External dependencies
+ */
 import { createRoot } from 'react-dom/client';
+/**
+ * Internal dependencies
+ */
 import Assistant from './components/Assistant';
 
 type MountMode = 'bulk' | 'quick';
@@ -95,7 +104,8 @@ const mountAssistants = ( data: LocalizedData ) => {
 			}
 
 			processedMounts.add( node );
-			const mode = ( node.dataset.mode as MountMode | undefined ) ?? 'quick';
+			const mode =
+				( node.dataset.mode as MountMode | undefined ) ?? 'quick';
 			const root = createRoot( node );
 			root.render(
 				<Assistant

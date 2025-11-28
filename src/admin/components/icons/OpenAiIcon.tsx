@@ -1,3 +1,6 @@
+/**
+ * External dependencies
+ */
 import type { SVGProps } from 'react';
 
 /**

@@ -87,11 +87,13 @@ class Admin_Page {
 						<div class="ai-admin-header__title">
 							<h1><?php esc_html_e( 'MCP', 'ai' ); ?></h1>
 						</div>
+						<!-- React mounts server selector here -->
+						<div id="ai-mcp-header-server-selector"></div>
 						<!-- React mounts status badge here -->
 						<div id="ai-mcp-header-status"></div>
 					</div>
-					<!-- React mounts global toggle here -->
-					<div id="ai-mcp-header-toggle" class="ai-admin-header__right"></div>
+					<!-- React mounts header controls (global toggle, server toggle, add button) -->
+					<div id="ai-mcp-header-controls" class="ai-admin-header__right"></div>
 				</div>
 			</div>
 			<div id="ai-mcp-server-root"></div>

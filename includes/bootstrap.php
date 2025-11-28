@@ -12,10 +12,13 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Admin\Provider_Credentials_UI;
+use WordPress\AI\Experiments\Extended_Providers\Extended_Providers;
 use WordPress\AI\Logging\Logging_Discovery_Strategy;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
+use WordPress\AI_Client\HTTP\WP_AI_Client_Discovery_Strategy;
 use WordPress\AiClient\AiClient as PhpAiClient;
 use WordPress\AiClient\Providers\Http\HttpTransporterFactory;
 
@@ -181,6 +184,8 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
+		maybe_register_extended_providers();
+
 		// Initialize the WP AI Client.
 		AI_Client::init();
 
@@ -211,6 +216,7 @@ function initialize_experiments(): void {
 		if ( is_admin() ) {
 			$settings_page = new Settings_Page( $registry );
 			$settings_page->init();
+			Provider_Credentials_UI::init();
 		}
 
 		// Register our post-related WordPress Abilities.
@@ -240,6 +246,44 @@ function initialize_experiments(): void {
 			sprintf(
 				/* translators: %s: Error message. */
 				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
+				esc_html( $t->getMessage() )
+			),
+			'0.1.0'
+		);
+	}
+}
+
+/**
+ * Ensures extended provider classes are registered with the AI client registry before credentials load.
+ *
+ * @since 0.1.0
+ */
+function maybe_register_extended_providers(): void {
+	static $providers_registered = false;
+
+	if ( $providers_registered ) {
+		return;
+	}
+
+	if ( ! class_exists( Extended_Providers::class ) ) {
+		return;
+	}
+
+	if ( class_exists( WP_AI_Client_Discovery_Strategy::class ) ) {
+		WP_AI_Client_Discovery_Strategy::init();
+	}
+
+	try {
+		$experiment = new Extended_Providers();
+		$experiment->register_providers();
+		$providers_registered = true;
+	} catch ( \Throwable $t ) {
+		// Surface a developer notice but do not block bootstrapping.
+		_doing_it_wrong(
+			__NAMESPACE__ . '\maybe_register_extended_providers',
+			sprintf(
+				/* translators: %s: Error message. */
+				esc_html__( 'Failed to preload extended providers: %s', 'ai' ),
 				esc_html( $t->getMessage() )
 			),
 			'0.1.0'

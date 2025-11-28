@@ -1,4 +1,9 @@
 /**
+ * Internal dependencies
+ */
+import './style.scss';
+
+/**
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
@@ -17,8 +22,6 @@ import { createRoot } from 'react-dom/client';
 /**
  * Internal dependencies
  */
-import './style.scss';
-
 import { usePersistedView } from '../hooks/usePersistedView';
 
 import HeaderPeriodSelector from './components/HeaderPeriodSelector';
@@ -39,6 +42,8 @@ const settings: LocalizedSettings =
 	( () => {
 		throw new Error( 'AiRequestLogsSettings is not defined.' );
 	} )();
+
+const providerMetadata = settings.providerMetadata ?? {};
 
 apiFetch.use( apiFetch.createNonceMiddleware( settings.rest.nonce ) );
 apiFetch.use( apiFetch.createRootURLMiddleware( settings.rest.root ) );
@@ -181,7 +186,7 @@ const App: React.FC = () => {
 			} );
 			setSummary( response );
 		} catch ( apiError ) {
-			showNotice( 'error', __( 'Failed to fetch summary data.', 'ai' ) );
+			showNotice( 'error', __( 'Unable to load summary data.', 'ai' ) );
 		} finally {
 			setSummaryLoading( false );
 		}
@@ -258,7 +263,7 @@ const App: React.FC = () => {
 		} catch ( apiError ) {
 			showNotice(
 				'error',
-				__( 'Failed to fetch filter options.', 'ai' )
+				__( 'Unable to load filter metadata.', 'ai' )
 			);
 		}
 	}, [] );
@@ -277,7 +282,6 @@ const App: React.FC = () => {
 		fetchSummary( period );
 	};
 
-	// Handle filter change
 	// Handle settings update
 	const handleSettingsUpdate = async (
 		newEnabled?: boolean,
@@ -365,6 +369,7 @@ const App: React.FC = () => {
 					total={ total }
 					view={ view }
 					setView={ setView }
+					providerMetadata={ providerMetadata }
 				/>
 
 				<SettingsPanel

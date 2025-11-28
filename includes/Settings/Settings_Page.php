@@ -163,8 +163,6 @@ class Settings_Page {
 			}
 			?>
 
-			<?php settings_errors(); ?>
-
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( Settings_Registration::OPTION_GROUP );

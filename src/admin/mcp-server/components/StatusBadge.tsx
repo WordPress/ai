@@ -1,4 +1,10 @@
+/**
+ * WordPress dependencies
+ */
 import { __ } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React from 'react';
 
 type StatusKey = 'running' | 'initializing' | 'disabled';
@@ -13,7 +19,8 @@ interface StatusBadgeProps {
 	status: StatusKey;
 }
 
-export const getStatusLabel = ( status: StatusKey ): string => statusLabelMap[ status ] ?? statusLabelMap.initializing;
+export const getStatusLabel = ( status: StatusKey ): string =>
+	statusLabelMap[ status ] ?? statusLabelMap.initializing;
 
 const StatusBadge: React.FC< StatusBadgeProps > = ( { status } ) => {
 	const dotClass = [

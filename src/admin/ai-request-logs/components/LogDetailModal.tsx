@@ -32,9 +32,9 @@ const formatCost = ( cost: number | null ): string => {
 		return '-';
 	}
 	if ( cost < 0.01 ) {
-		return `$${ cost.toFixed( 6 ) }`;
+		return '$' + cost.toFixed( 6 );
 	}
-	return `$${ cost.toFixed( 4 ) }`;
+	return '$' + cost.toFixed( 4 );
 };
 
 const LogDetailModal: React.FC< LogDetailModalProps > = ( {
@@ -109,7 +109,7 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 								<td>
 									{ log.duration_ms !== null
 										? sprintf(
-												/* translators: %d: duration in milliseconds. */
+												/* translators: %d: request duration in milliseconds. */
 												__( '%d ms', 'ai' ),
 												log.duration_ms
 										  )

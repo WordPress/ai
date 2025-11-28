@@ -97,10 +97,16 @@ export function ReplyModal( {
 	onRepliesChange,
 }: ReplyModalProps ): React.ReactElement {
 	const [ isLoading, setIsLoading ] = useState( false );
-	const [ replies, setReplies ] = useState< string[] >( initialReplies?.replies ?? [] );
-	const [ tone, setTone ] = useState< Tone >( initialReplies?.tone ?? 'friendly' );
+	const [ replies, setReplies ] = useState< string[] >(
+		initialReplies?.replies ?? []
+	);
+	const [ tone, setTone ] = useState< Tone >(
+		initialReplies?.tone ?? 'friendly'
+	);
 	const [ error, setError ] = useState< string | null >( null );
-	const [ hasGenerated, setHasGenerated ] = useState( !! initialReplies?.replies?.length );
+	const [ hasGenerated, setHasGenerated ] = useState(
+		!! initialReplies?.replies?.length
+	);
 
 	/**
 	 * Generates reply suggestions.
@@ -126,7 +132,9 @@ export function ReplyModal( {
 			onRepliesChange?.( { replies: result.replies, tone } );
 		} catch ( err ) {
 			const message =
-				err instanceof Error ? err.message : __( 'Failed to generate replies.', 'ai' );
+				err instanceof Error
+					? err.message
+					: __( 'Failed to generate replies.', 'ai' );
 			setError( message );
 		} finally {
 			setIsLoading( false );
@@ -146,14 +154,19 @@ export function ReplyModal( {
 	/**
 	 * Updates a reply in the list.
 	 */
-	const handleReplyChange = useCallback( ( index: number, value: string ) => {
-		setReplies( ( prev ) => {
-			const updated = prev.map( ( r, i ) => ( i === index ? value : r ) );
-			// Update cache with edited reply.
-			onRepliesChange?.( { replies: updated, tone } );
-			return updated;
-		} );
-	}, [ tone, onRepliesChange ] );
+	const handleReplyChange = useCallback(
+		( index: number, value: string ) => {
+			setReplies( ( prev ) => {
+				const updated = prev.map( ( r, i ) =>
+					i === index ? value : r
+				);
+				// Update cache with edited reply.
+				onRepliesChange?.( { replies: updated, tone } );
+				return updated;
+			} );
+		},
+		[ tone, onRepliesChange ]
+	);
 
 	/**
 	 * Generate replies on mount only if no cached replies.
@@ -172,16 +185,28 @@ export function ReplyModal( {
 			size="large"
 			className="ai-reply-modal"
 		>
-			<div className="ai-reply-modal__controls" style={ { marginBottom: '20px' } }>
+			<div
+				className="ai-reply-modal__controls"
+				style={ { marginBottom: '20px' } }
+			>
 				<Flex gap={ 4 } align="flex-end">
 					<FlexItem>
 						<SelectControl
 							label={ __( 'Tone', 'ai' ) }
 							value={ tone }
 							options={ [
-								{ label: __( 'Professional', 'ai' ), value: 'professional' },
-								{ label: __( 'Friendly', 'ai' ), value: 'friendly' },
-								{ label: __( 'Casual', 'ai' ), value: 'casual' },
+								{
+									label: __( 'Professional', 'ai' ),
+									value: 'professional',
+								},
+								{
+									label: __( 'Friendly', 'ai' ),
+									value: 'friendly',
+								},
+								{
+									label: __( 'Casual', 'ai' ),
+									value: 'casual',
+								},
 							] }
 							onChange={ ( value ) => setTone( value as Tone ) }
 							__nextHasNoMarginBottom
@@ -206,7 +231,7 @@ export function ReplyModal( {
 				{ isLoading && (
 					<div className="ai-reply-modal__loading">
 						<Spinner />
-						<p>{ __( 'Generating reply suggestions...', 'ai' ) }</p>
+						<p>{ __( 'Generating reply suggestions…', 'ai' ) }</p>
 					</div>
 				) }
 
@@ -235,11 +260,17 @@ export function ReplyModal( {
 					</Flex>
 				) }
 
-				{ ! isLoading && ! error && replies.length === 0 && hasGenerated && (
-					<p className="ai-reply-modal__empty">
-						{ __( 'No reply suggestions were generated. Please try again.', 'ai' ) }
-					</p>
-				) }
+				{ ! isLoading &&
+					! error &&
+					replies.length === 0 &&
+					hasGenerated && (
+						<p className="ai-reply-modal__empty">
+							{ __(
+								'No reply suggestions were generated. Please try again.',
+								'ai'
+							) }
+						</p>
+					) }
 			</div>
 		</Modal>
 	);

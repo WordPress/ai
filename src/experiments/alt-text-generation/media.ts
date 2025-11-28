@@ -33,7 +33,8 @@ declare global {
 }
 
 const ABILITY_NAME = 'ai/alt-text-generation';
-const MEDIA_MODAL_SELECTOR = '.media-sidebar .setting[data-setting="alt"] textarea';
+const MEDIA_MODAL_SELECTOR =
+	'.media-sidebar .setting[data-setting="alt"] textarea';
 const ATTACHMENT_EDIT_SELECTOR = '#attachment_alt';
 
 class AltTextFieldObserver {
@@ -87,14 +88,18 @@ class AltTextFieldObserver {
 		} );
 	}
 
-	private queryAltTextFields( root: ParentNode ): Array< HTMLTextAreaElement > {
+	private queryAltTextFields(
+		root: ParentNode
+	): Array< HTMLTextAreaElement > {
 		const fields: Array< HTMLTextAreaElement > = [];
 		const selectors = [ MEDIA_MODAL_SELECTOR, ATTACHMENT_EDIT_SELECTOR ];
 
 		selectors.forEach( ( selector ) => {
-			root.querySelectorAll< HTMLTextAreaElement >( selector ).forEach( ( field ) => {
-				fields.push( field );
-			} );
+			root.querySelectorAll< HTMLTextAreaElement >( selector ).forEach(
+				( field ) => {
+					fields.push( field );
+				}
+			);
 		} );
 
 		return fields;
@@ -168,13 +173,17 @@ class AltTextMediaControls {
 		this.isGenerating = true;
 		this.button.disabled = true;
 		this.spinner.classList.add( 'is-active' );
-		this.setStatus( __( 'Generating alt text...', 'ai' ) );
+		this.setStatus( __( 'Generating alt text…', 'ai' ) );
 
 		try {
 			const generated = await requestAltText( this.context );
 			this.textarea.value = generated;
-			this.textarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
-			this.textarea.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+			this.textarea.dispatchEvent(
+				new Event( 'input', { bubbles: true } )
+			);
+			this.textarea.dispatchEvent(
+				new Event( 'change', { bubbles: true } )
+			);
 			this.setStatus( __( 'Alt text generated and applied.', 'ai' ) );
 		} catch ( error ) {
 			const message = getErrorMessage( error );
@@ -193,7 +202,9 @@ class AltTextMediaControls {
 	}
 }
 
-function getDescriptionElement( textarea: HTMLTextAreaElement ): HTMLElement | null {
+function getDescriptionElement(
+	textarea: HTMLTextAreaElement
+): HTMLElement | null {
 	const describedBy = textarea.getAttribute( 'aria-describedby' );
 
 	if ( describedBy ) {
@@ -206,17 +217,22 @@ function getDescriptionElement( textarea: HTMLTextAreaElement ): HTMLElement | n
 		}
 	}
 
-	return textarea.closest( '.setting' )?.querySelector( '.description' ) ?? null;
+	return (
+		textarea.closest( '.setting' )?.querySelector( '.description' ) ?? null
+	);
 }
 
-function createFieldContext( textarea: HTMLTextAreaElement ): FieldContext | null {
+function createFieldContext(
+	textarea: HTMLTextAreaElement
+): FieldContext | null {
 	const mediaSidebar = textarea.closest< HTMLElement >( '.media-sidebar' );
 
 	if ( mediaSidebar ) {
 		const fieldNameId = getAttachmentIdFromFieldName( textarea );
 
 		return {
-			getAttachmentId: () => fieldNameId ?? getAttachmentIdFromDetails( mediaSidebar ),
+			getAttachmentId: () =>
+				fieldNameId ?? getAttachmentIdFromDetails( mediaSidebar ),
 			getImageUrl: () => getFileUrlFromDetails( mediaSidebar ),
 		};
 	}
@@ -232,22 +248,30 @@ function createFieldContext( textarea: HTMLTextAreaElement ): FieldContext | nul
 }
 
 function getAttachmentIdFromDetails( sidebar: HTMLElement ): number | null {
-	const datasetId = sidebar.dataset?.id ?? sidebar.dataset?.attachmentId ?? sidebar.getAttribute( 'data-id' ) ?? sidebar.getAttribute( 'data-attachment-id' );
+	const datasetId =
+		sidebar.dataset?.id ??
+		sidebar.dataset?.attachmentId ??
+		sidebar.getAttribute( 'data-id' ) ??
+		sidebar.getAttribute( 'data-attachment-id' );
 	const parsedDataset = parseNumeric( datasetId );
 
 	if ( parsedDataset ) {
 		return parsedDataset;
 	}
 
-	const details = sidebar.querySelector< HTMLElement >( '.attachment-details' ) ?? sidebar;
-	const editLink = details.querySelector< HTMLAnchorElement >( '.edit-attachment' );
+	const details =
+		sidebar.querySelector< HTMLElement >( '.attachment-details' ) ??
+		sidebar;
+	const editLink =
+		details.querySelector< HTMLAnchorElement >( '.edit-attachment' );
 	const idFromLink = editLink ? getIdFromUrl( editLink.href ) : null;
 
 	if ( idFromLink ) {
 		return idFromLink;
 	}
 
-	const deleteButton = details.querySelector< HTMLElement >( '.delete-attachment' );
+	const deleteButton =
+		details.querySelector< HTMLElement >( '.delete-attachment' );
 	const deleteId = deleteButton?.getAttribute( 'data-id' );
 
 	if ( deleteId ) {
@@ -257,19 +281,23 @@ function getAttachmentIdFromDetails( sidebar: HTMLElement ): number | null {
 		}
 	}
 
-	const hiddenId = sidebar.querySelector< HTMLInputElement >( 'input[name="id"], input[name="attachment[id]"]' );
+	const hiddenId = sidebar.querySelector< HTMLInputElement >(
+		'input[name="id"], input[name="attachment[id]"]'
+	);
 	const parsedHidden = parseNumeric( hiddenId?.value ?? null );
 
 	if ( parsedHidden ) {
 		return parsedHidden;
 	}
 
-	const compatField = sidebar.querySelector< HTMLInputElement >( 'input[name^="attachments["]' );
+	const compatField = sidebar.querySelector< HTMLInputElement >(
+		'input[name^="attachments["]'
+	);
 
 	if ( compatField ) {
 		const match = compatField.name.match( /^attachments\[(\d+)\]/ );
 		if ( match ) {
-			return parseNumeric( match[1] );
+			return parseNumeric( match[ 1 ] );
 		}
 	}
 
@@ -277,12 +305,16 @@ function getAttachmentIdFromDetails( sidebar: HTMLElement ): number | null {
 }
 
 function getFileUrlFromDetails( sidebar: HTMLElement ): string | null {
-	const copyField = sidebar.querySelector< HTMLInputElement >( '.attachment-details-copy-link' );
+	const copyField = sidebar.querySelector< HTMLInputElement >(
+		'.attachment-details-copy-link'
+	);
 	if ( copyField?.value ) {
 		return copyField.value;
 	}
 
-	const thumbnail = sidebar.querySelector< HTMLImageElement >( '.thumbnail img, .thumbnail-image img' );
+	const thumbnail = sidebar.querySelector< HTMLImageElement >(
+		'.thumbnail img, .thumbnail-image img'
+	);
 	if ( thumbnail?.src && ! thumbnail.src.startsWith( 'blob:' ) ) {
 		return thumbnail.src;
 	}
@@ -291,17 +323,22 @@ function getFileUrlFromDetails( sidebar: HTMLElement ): string | null {
 }
 
 function getAttachmentIdFromEditScreen(): number | null {
-	const postIdInput = document.querySelector< HTMLInputElement >( '#post_ID, input[name="post_ID"]' );
+	const postIdInput = document.querySelector< HTMLInputElement >(
+		'#post_ID, input[name="post_ID"]'
+	);
 	return parseNumeric( postIdInput?.value ?? null );
 }
 
 function getAttachmentUrlFromEditScreen(): string | null {
-	const urlInput = document.querySelector< HTMLInputElement >( '#attachment_url input[type="text"], #attachment_url textarea' );
+	const urlInput = document.querySelector< HTMLInputElement >(
+		'#attachment_url input[type="text"], #attachment_url textarea'
+	);
 	if ( urlInput?.value ) {
 		return urlInput.value;
 	}
 
-	const urlAnchor = document.querySelector< HTMLAnchorElement >( '#attachment_url a' );
+	const urlAnchor =
+		document.querySelector< HTMLAnchorElement >( '#attachment_url a' );
 	if ( urlAnchor?.href ) {
 		return urlAnchor.href;
 	}
@@ -319,7 +356,9 @@ function parseNumeric( value: string | null | undefined ): number | null {
 	return Number.isFinite( int ) ? int : null;
 }
 
-function getAttachmentIdFromFieldName( field: HTMLTextAreaElement ): number | null {
+function getAttachmentIdFromFieldName(
+	field: HTMLTextAreaElement
+): number | null {
 	const nameAttr = field.getAttribute( 'name' );
 
 	if ( ! nameAttr ) {
@@ -328,13 +367,15 @@ function getAttachmentIdFromFieldName( field: HTMLTextAreaElement ): number | nu
 
 	const match = nameAttr.match( /^attachments\[(\d+)\]/ );
 
-	return match ? parseNumeric( match[1] ) : null;
+	return match ? parseNumeric( match[ 1 ] ) : null;
 }
 
 function getIdFromUrl( url: string ): number | null {
 	try {
 		const parsed = new URL( url, window.location.origin );
-		const postId = parsed.searchParams.get( 'post' ) || parsed.searchParams.get( 'item' );
+		const postId =
+			parsed.searchParams.get( 'post' ) ||
+			parsed.searchParams.get( 'item' );
 		return parseNumeric( postId );
 	} catch ( error ) {
 		return null;
@@ -355,10 +396,15 @@ async function requestAltText( context: FieldContext ): Promise< string > {
 	}
 
 	if ( Object.keys( params ).length === 0 ) {
-		throw new Error( __( 'Unable to determine which image to describe.', 'ai' ) );
+		throw new Error(
+			__( 'Unable to determine which image to describe.', 'ai' )
+		);
 	}
 
-	const response = await runAbility< AbilityResponse >( ABILITY_NAME, params );
+	const response = await runAbility< AbilityResponse >(
+		ABILITY_NAME,
+		params
+	);
 
 	if ( response?.alt_text ) {
 		return response.alt_text;
@@ -368,11 +414,19 @@ async function requestAltText( context: FieldContext ): Promise< string > {
 }
 
 function getErrorMessage( error: unknown ): string {
-	if ( error && typeof error === 'object' && 'message' in error && typeof ( error as any ).message === 'string' ) {
+	if (
+		error &&
+		typeof error === 'object' &&
+		'message' in error &&
+		typeof ( error as any ).message === 'string'
+	) {
 		return ( error as any ).message;
 	}
 
-	return __( 'An unexpected error occurred while generating alt text.', 'ai' );
+	return __(
+		'An unexpected error occurred while generating alt text.',
+		'ai'
+	);
 }
 
 domReady( () => {

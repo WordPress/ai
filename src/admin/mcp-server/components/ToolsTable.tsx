@@ -1,9 +1,24 @@
-import { Card, CardBody, CardHeader, Notice, ToggleControl } from '@wordpress/components';
+/**
+ * WordPress dependencies
+ */
+import {
+	Card,
+	CardBody,
+	CardHeader,
+	Notice,
+	ToggleControl,
+} from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
 import type { DataViewField, View } from '@wordpress/dataviews';
 import { __ } from '@wordpress/i18n';
+/**
+ * External dependencies
+ */
 import React, { useEffect, useMemo } from 'react';
 
+/**
+ * Internal dependencies
+ */
 import { usePersistedView } from '../../hooks/usePersistedView';
 import type { ToolSummary } from '../types';
 
@@ -15,7 +30,13 @@ interface ToolsTableProps {
 	onToggle: ( name: string, next: boolean ) => void;
 }
 
-const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, globalEnabled, serverEnabled, onToggle } ) => {
+const ToolsTable: React.FC< ToolsTableProps > = ( {
+	tools,
+	saving,
+	globalEnabled,
+	serverEnabled,
+	onToggle,
+} ) => {
 	const canEditTools = globalEnabled && serverEnabled;
 	const categoryOptions = useMemo( () => {
 		const seen = new Map< string, { label: string; value: string } >();
@@ -30,86 +51,104 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, globalEnabled
 		return Array.from( seen.values() );
 	}, [ tools ] );
 
-	const fields = useMemo< DataViewField< ToolSummary >[] >( () => [
-		{
-			id: 'ability',
-			label: __( 'Ability', 'ai' ),
-			type: 'text',
-			enableGlobalSearch: true,
-			getValue: ( { item } ) => item.label,
-			render: ( { item } ) => (
-				<div className="ai-mcp-server__tool-info">
-					<strong>{ item.label }</strong>
-					{ item.description && <p className="description">{ item.description }</p> }
-					<code>{ item.name }</code>
-				</div>
-			),
-		},
-		{
-			id: 'category',
-			label: __( 'Category', 'ai' ),
-			type: 'text',
-			getValue: ( { item } ) => item.category.slug,
-			elements: categoryOptions,
-			filterBy: categoryOptions.length > 0
-				? { operators: [ 'is' ] }
-				: false,
-			render: ( { item } ) => item.category.label,
-		},
-		{
-			id: 'isPublic',
-			label: __( 'Public', 'ai' ),
-			type: 'boolean',
-			getValue: ( { item } ) => item.isPublic,
-			render: ( { item } ) => ( item.isPublic ? __( 'Yes', 'ai' ) : __( 'No', 'ai' ) ),
-			filterBy: false,
-		},
-		{
-			id: 'enabled',
-			label: __( 'Expose via MCP', 'ai' ),
-			type: 'text',
-			getValue: ( { item } ) => item.enabled ? 'exposed' : 'not_exposed',
-			elements: [
-				{ label: __( 'Exposed', 'ai' ), value: 'exposed' },
-				{ label: __( 'Not exposed', 'ai' ), value: 'not_exposed' },
-			],
-			filterBy: {
-				operators: [ 'is' ],
+	const fields = useMemo< DataViewField< ToolSummary >[] >(
+		() => [
+			{
+				id: 'ability',
+				label: __( 'Ability', 'ai' ),
+				type: 'text',
+				enableGlobalSearch: true,
+				getValue: ( { item } ) => item.label,
+				render: ( { item } ) => (
+					<div className="ai-mcp-server__tool-info">
+						<strong>{ item.label }</strong>
+						{ item.description && (
+							<p className="description">{ item.description }</p>
+						) }
+						<code>{ item.name }</code>
+					</div>
+				),
 			},
-			enableSorting: true,
-			enableHiding: false,
+			{
+				id: 'category',
+				label: __( 'Category', 'ai' ),
+				type: 'text',
+				getValue: ( { item } ) => item.category.slug,
+				elements: categoryOptions,
+				filterBy:
+					categoryOptions.length > 0
+						? { operators: [ 'is' ] }
+						: false,
+				render: ( { item } ) => item.category.label,
+			},
+			{
+				id: 'isPublic',
+				label: __( 'Public', 'ai' ),
+				type: 'boolean',
+				getValue: ( { item } ) => item.isPublic,
+				render: ( { item } ) =>
+					item.isPublic ? __( 'Yes', 'ai' ) : __( 'No', 'ai' ),
+				filterBy: false,
+			},
+			{
+				id: 'enabled',
+				label: __( 'Expose via MCP', 'ai' ),
+				type: 'text',
+				getValue: ( { item } ) =>
+					item.enabled ? 'exposed' : 'not_exposed',
+				elements: [
+					{ label: __( 'Exposed', 'ai' ), value: 'exposed' },
+					{ label: __( 'Not exposed', 'ai' ), value: 'not_exposed' },
+				],
+				filterBy: {
+					operators: [ 'is' ],
+				},
+				enableSorting: true,
+				enableHiding: false,
 				render: ( { item } ) => (
 					<ToggleControl
 						checked={ item.enabled }
-						onChange={ ( value: boolean ) => onToggle( item.name, value ) }
+						onChange={ ( value: boolean ) =>
+							onToggle( item.name, value )
+						}
 						disabled={ saving || ! canEditTools }
 						__nextHasNoMarginBottom
 					/>
 				),
-		},
-	], [ categoryOptions, onToggle, saving, canEditTools ] );
+			},
+		],
+		[ categoryOptions, onToggle, saving, canEditTools ]
+	);
 
-	const initialFields = useMemo( () => fields.map( ( field ) => field.id ), [ fields ] );
+	const initialFields = useMemo(
+		() => fields.map( ( field ) => field.id ),
+		[ fields ]
+	);
 
-	const defaultView: View = useMemo( () => ( {
-		type: 'table',
-		search: '',
-		page: 1,
-		perPage: 10,
-		fields: initialFields,
-		sort: {
-			field: 'ability',
-			direction: 'asc',
-		},
-		filters: [],
-	} ), [ initialFields ] );
+	const defaultView: View = useMemo(
+		() => ( {
+			type: 'table',
+			search: '',
+			page: 1,
+			perPage: 10,
+			fields: initialFields,
+			sort: {
+				field: 'ability',
+				direction: 'asc',
+			},
+			filters: [],
+		} ),
+		[ initialFields ]
+	);
 
 	const { view, setView } = usePersistedView( 'mcp-tools', defaultView );
 
 	useEffect( () => {
 		setView( ( previous ) => {
 			const availableFieldIds = fields.map( ( field ) => field.id );
-			const nextFields = ( previous.fields ?? availableFieldIds ).filter( ( id ) => availableFieldIds.includes( id ) );
+			const nextFields = ( previous.fields ?? availableFieldIds ).filter(
+				( id ) => availableFieldIds.includes( id )
+			);
 			return {
 				...previous,
 				fields: nextFields,
@@ -119,10 +158,16 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, globalEnabled
 
 	const { data: filteredTools, paginationInfo } = useMemo( () => {
 		const result = filterSortAndPaginate( tools, view, fields );
-		return result ?? { data: tools, paginationInfo: { totalItems: tools.length, totalPages: 1 } };
+		return (
+			result ?? {
+				data: tools,
+				paginationInfo: { totalItems: tools.length, totalPages: 1 },
+			}
+		);
 	}, [ tools, view, fields ] );
 
-	const hasActiveFilters = Boolean( view.search ) || ( view.filters?.length ?? 0 ) > 0;
+	const hasActiveFilters =
+		Boolean( view.search ) || ( view.filters?.length ?? 0 ) > 0;
 
 	const handleViewChange = ( nextView: View ) => {
 		setView( ( previous ) => ( {
@@ -138,13 +183,19 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, globalEnabled
 				<h2>{ __( 'Exposed abilities', 'ai' ) }</h2>
 			</CardHeader>
 			<CardBody>
-			{ ! canEditTools && (
-				<Notice status="warning" isDismissible={ false }>
-					{ ! globalEnabled
-						? __( 'Enable MCP globally to edit which abilities are exposed.', 'ai' )
-						: __( 'Enable the selected server to edit which abilities are exposed.', 'ai' ) }
-				</Notice>
-			 ) }
+				{ ! canEditTools && (
+					<Notice status="warning" isDismissible={ false }>
+						{ ! globalEnabled
+							? __(
+									'Enable MCP globally to edit which abilities are exposed.',
+									'ai'
+							  )
+							: __(
+									'Enable the selected server to edit which abilities are exposed.',
+									'ai'
+							  ) }
+					</Notice>
+				) }
 
 				<DataViews
 					data={ filteredTools }
@@ -162,13 +213,16 @@ const ToolsTable: React.FC< ToolsTableProps > = ( { tools, saving, globalEnabled
 					} }
 					isLoading={ false }
 					paginationInfo={ paginationInfo }
-					empty={ (
+					empty={
 						<p className="ai-mcp-server__hint">
 							{ hasActiveFilters
 								? __( 'No abilities match your filters.', 'ai' )
-								: __( 'Enable experiments to register more abilities for MCP clients.', 'ai' ) }
+								: __(
+										'Enable experiments to register more abilities for MCP clients.',
+										'ai'
+								  ) }
 						</p>
-					) }
+					}
 					searchLabel={ __( 'Search abilities', 'ai' ) }
 				/>
 			</CardBody>
