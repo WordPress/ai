@@ -54,7 +54,7 @@ final class Experiment_Loader {
 	 * Registers default experiments.
 	 *
 	 * This is where built-in experiments are registered. Third-party experiments
-	 * should use the 'ai_register_experiments' action hook.
+	 * should use the 'ai_experiments_register_experiments' action hook.
 	 *
 	 * @since 0.1.0
 	 *
@@ -82,7 +82,7 @@ final class Experiment_Loader {
 		 *
 		 * Example:
 		 * ```php
-		 * add_action( 'ai_register_experiments', function( $registry ) {
+		 * add_action( 'ai_experiments_register_experiments', function( $registry ) {
 		 *     $registry->register_experiment( new My_Custom_Experiment() );
 		 * } );
 		 * ```
@@ -91,7 +91,7 @@ final class Experiment_Loader {
 		 *
 		 * @param \WordPress\AI\Experiment_Registry $registry The experiment registry instance.
 		 */
-		do_action( 'ai_register_experiments', $this->registry );
+		do_action( 'ai_experiments_register_experiments', $this->registry );
 	}
 
 	/**
@@ -118,7 +118,7 @@ final class Experiment_Loader {
 		 *
 		 * @param array $experiment_classes Array of experiment class names or instances.
 		 */
-		$items = apply_filters( 'ai_default_experiment_classes', $experiment_classes );
+		$items = apply_filters( 'ai_experiments_default_experiment_classes', $experiment_classes );
 
 		$experiments = array();
 		foreach ( $items as $item ) {
