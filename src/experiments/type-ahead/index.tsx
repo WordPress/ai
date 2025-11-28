@@ -17,6 +17,7 @@ import { __ } from '@wordpress/i18n';
 
 const ALLOWED_BLOCKS = [ 'core/paragraph' ];
 const OVERLAY_OFFSET_Y = 2; // nudges ghost text slightly below caret.
+const REQUEST_TIMEOUT_MS = 8000; // abort long-running completions to avoid apiFetch 20s timeout.
 
 type CompletionMode = 'word' | 'sentence' | 'paragraph' | 'smart';
 
@@ -234,6 +235,15 @@ const TypeAheadOverlay: React.FC<{
 		const scrollY = win?.scrollY ?? win?.pageYOffset ?? 0;
 
 		setStyle( {
+			position: 'absolute',
+			pointerEvents: 'none',
+			color: 'var(--wp-admin-theme-color, #3858e9)',
+			opacity: 0.45,
+			fontStyle: 'italic',
+			fontSize: 'inherit',
+			lineHeight: 'inherit',
+			whiteSpace: 'pre-wrap',
+			zIndex: 1000,
 			top: rect.bottom + OVERLAY_OFFSET_Y + scrollY,
 			left: rect.left + scrollX,
 		} );
@@ -255,15 +265,31 @@ const isMac = navigator.platform.toLowerCase().includes( 'mac' );
 
 const KeyboardHint: React.FC = () => {
 	const metaKeyLabel = isMac ? 'Cmd' : 'Ctrl';
+	const hintStyle: React.CSSProperties = {
+		fontSize: '11px',
+		opacity: 0.65,
+		display: 'flex',
+		flexWrap: 'wrap',
+		gap: '6px',
+		marginTop: '4px',
+		color: 'currentColor',
+	};
+	const shortcutStyle: React.CSSProperties = { fontWeight: 600 };
+	const descriptionStyle: React.CSSProperties = { fontWeight: 400 };
+	const hints = [
+		{ shortcut: __( 'Tab', 'ai' ), description: __( 'Accept', 'ai' ) },
+		{ shortcut: `${ metaKeyLabel }+Right Arrow`, description: __( 'Word', 'ai' ) },
+		{ shortcut: `${ metaKeyLabel }+Shift+Right Arrow`, description: __( 'Sentence', 'ai' ) },
+	];
 
 	return (
-		<div className="ai-type-ahead-hint" aria-hidden="true">
-			<span>{ __( 'Tab', 'ai' ) }</span>
-			<span>{ __( 'Accept', 'ai' ) }</span>
-			<span>{ `${ metaKeyLabel }+Right Arrow` }</span>
-			<span>{ __( 'Word', 'ai' ) }</span>
-			<span>{ `${ metaKeyLabel }+Shift+Right Arrow` }</span>
-			<span>{ __( 'Sentence', 'ai' ) }</span>
+		<div className="ai-type-ahead-hint" style={ hintStyle } aria-hidden="true">
+			{ hints.map( ( hint ) => (
+				<React.Fragment key={ hint.shortcut }>
+					<span style={ shortcutStyle }>{ hint.shortcut }</span>
+					<span style={ descriptionStyle }>{ hint.description }</span>
+				</React.Fragment>
+			) ) }
 		</div>
 	);
 };
@@ -321,6 +347,7 @@ const TypeAheadBlock: React.FC<{
 	const abilityName = settings.abilityName || 'ai/type-ahead';
 	const abortControllerRef = useRef< AbortController | null >( null );
 	const debounceTimerRef = useRef< number | null >( null );
+	const requestTimeoutRef = useRef< number | null >( null );
 
 	// Stable reference to current values for use in callbacks
 	const stateRef = useRef( {
@@ -350,6 +377,13 @@ const TypeAheadBlock: React.FC<{
 		};
 	} );
 
+	const clearRequestTimeout = useCallback( () => {
+		if ( requestTimeoutRef.current !== null ) {
+			window.clearTimeout( requestTimeoutRef.current );
+			requestTimeoutRef.current = null;
+		}
+	}, [] );
+
 	const cancelPendingRequest = useCallback( () => {
 		if ( debounceTimerRef.current !== null ) {
 			window.clearTimeout( debounceTimerRef.current );
@@ -359,7 +393,8 @@ const TypeAheadBlock: React.FC<{
 			abortControllerRef.current.abort();
 			abortControllerRef.current = null;
 		}
-	}, [] );
+		clearRequestTimeout();
+	}, [ clearRequestTimeout ] );
 
 	const fetchSuggestion = useCallback( async ( manual: boolean ) => {
 		const state = stateRef.current;
@@ -372,11 +407,15 @@ const TypeAheadBlock: React.FC<{
 		if ( abortControllerRef.current ) {
 			abortControllerRef.current.abort();
 		}
+		clearRequestTimeout();
 
 		// Create new abort controller for this request
 		const controller = new AbortController();
 		abortControllerRef.current = controller;
 		const currentRequest = ++requestRef.current;
+		requestTimeoutRef.current = window.setTimeout( () => {
+			controller.abort();
+		}, REQUEST_TIMEOUT_MS );
 
 		try {
 			const response = await apiFetch< {
@@ -429,8 +468,13 @@ const TypeAheadBlock: React.FC<{
 			// eslint-disable-next-line no-console
 			console.error( '[AI Type Ahead] Request failed', error );
 			setSuggestion( null );
+		} finally {
+			if ( abortControllerRef.current === controller ) {
+				abortControllerRef.current = null;
+			}
+			clearRequestTimeout();
 		}
-	}, [ abilityName ] );
+	}, [ abilityName, clearRequestTimeout ] );
 
 	const scheduleFetch = useCallback( ( manual: boolean ) => {
 		// Clear any pending debounce timer

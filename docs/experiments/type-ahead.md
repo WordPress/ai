@@ -28,3 +28,4 @@ Adds inline "ghost text" completions to the block editor. When the experiment an
 - Permissions require `edit_post` when a post ID is provided, otherwise `edit_posts`.
 - The ability trims contexts to 5000 characters and normalizes HTML content before sending it to the model.
 - Settings are stored via the standard options API; sanitizers enforce safe ranges (delay 200-2000 ms, confidence 0-100, etc.).
+- The client aborts long-running REST calls after roughly 8 seconds to avoid default 20s browser/`apiFetch` timeouts; writers can press Cmd/Ctrl + Space to manually try again.
