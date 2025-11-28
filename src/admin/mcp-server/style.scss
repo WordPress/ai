@@ -125,6 +125,9 @@
 		}
 
 		.ai-mcp-server__tool-info {
+			max-width: 100%;
+			overflow: hidden;
+
 			strong {
 				display: block;
 				font-weight: 600;
@@ -142,6 +145,7 @@
 				-webkit-line-clamp: 2;
 				-webkit-box-orient: vertical;
 				overflow: hidden;
+				word-break: break-word;
 			}
 
 			code {
@@ -151,6 +155,7 @@
 				border-radius: 3px;
 				font-size: 11px;
 				color: #50575e;
+				word-break: break-all;
 			}
 		}
 	}
