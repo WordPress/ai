@@ -31,12 +31,14 @@ export interface FilterOptions {
 	types: string[];
 	providers: string[];
 	statuses: string[];
+	operations: string[];
 }
 
 export interface LogFilters {
 	type: string;
 	status: string;
 	provider: string;
+	operation: string;
 	search: string;
 	period: 'day' | 'week' | 'month' | 'all';
 }

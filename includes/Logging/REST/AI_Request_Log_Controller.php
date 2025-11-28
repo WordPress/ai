@@ -163,6 +163,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			'type'      => $request->get_param( 'type' ) ?? '',
 			'status'    => $request->get_param( 'status' ) ?? '',
 			'provider'  => $request->get_param( 'provider' ) ?? '',
+			'operation' => $request->get_param( 'operation' ) ?? '',
 			'user_id'   => $request->get_param( 'user_id' ) ?? 0,
 			'date_from' => $request->get_param( 'date_from' ) ?? '',
 			'date_to'   => $request->get_param( 'date_to' ) ?? '',

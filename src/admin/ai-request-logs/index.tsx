@@ -56,6 +56,7 @@ const App: React.FC = () => {
 		type: '',
 		status: '',
 		provider: '',
+		operation: '',
 		search: '',
 		period: 'day',
 	} );
@@ -93,6 +94,7 @@ const App: React.FC = () => {
 			if ( filters.type ) params.append( 'type', filters.type );
 			if ( filters.status ) params.append( 'status', filters.status );
 			if ( filters.provider ) params.append( 'provider', filters.provider );
+			if ( filters.operation ) params.append( 'operation', filters.operation );
 			if ( filters.search ) params.append( 'search', filters.search );
 
 			const response = await apiFetch< LogEntry[] >( {
@@ -119,7 +121,11 @@ const App: React.FC = () => {
 			const response = await apiFetch< FilterOptions >( {
 				path: settings.rest.routes.filters,
 			} );
-			setFilterOptions( response );
+			// Ensure operations array exists (fallback for older backends)
+			setFilterOptions( {
+				...response,
+				operations: response.operations ?? [],
+			} );
 		} catch ( apiError ) {
 			console.error( 'Failed to fetch filters:', apiError );
 		}

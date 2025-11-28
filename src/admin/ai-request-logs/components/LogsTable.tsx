@@ -100,6 +100,11 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		[ filterOptions.providers ]
 	);
 
+	const operationElements = useMemo(
+		() => ( filterOptions.operations ?? [] ).map( ( value ) => ( { label: formatSelectLabel( value ), value } ) ),
+		[ filterOptions.operations ]
+	);
+
 	const buildFilterArray = useCallback( ( current: LogFilters ): Filter[] => {
 		const next: Filter[] = [];
 		if ( current.type ) {
@@ -110,6 +115,9 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		}
 		if ( current.provider ) {
 			next.push( { field: 'provider', operator: 'is', value: current.provider } );
+		}
+		if ( current.operation ) {
+			next.push( { field: 'operation', operator: 'is', value: current.operation } );
 		}
 		return next;
 	}, [] );
@@ -156,6 +164,10 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			type: 'text',
 			enableGlobalSearch: true,
 			getValue: ( { item } ) => item.operation,
+			elements: operationElements,
+			filterBy: operationElements.length > 0
+				? { operators: [ 'is' ] }
+				: false,
 			render: ( { item } ) => (
 				<div className="ai-request-logs__operation">
 					<code>{ item.operation }</code>
@@ -243,7 +255,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				</Button>
 			),
 		},
-	], [ onViewLog, providerElements, statusElements, typeElements ] );
+	], [ onViewLog, operationElements, providerElements, statusElements, typeElements ] );
 
 	const handleViewChange = ( nextView: View ) => {
 		setView( ( previous ) => ( {
@@ -272,13 +284,18 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			onFilterChange( 'provider', nextProvider );
 		}
 
+		const nextOperation = extractFilterValue( nextView.filters, 'operation' );
+		if ( nextOperation !== filters.operation ) {
+			onFilterChange( 'operation', nextOperation );
+		}
+
 		const nextPage = nextView.page ?? 1;
 		if ( nextPage !== page ) {
 			onPageChange( nextPage );
 		}
 	};
 
-	const hasActiveFilters = Boolean( filters.search || filters.type || filters.status || filters.provider );
+	const hasActiveFilters = Boolean( filters.search || filters.type || filters.status || filters.provider || filters.operation );
 
 	return (
 		<Card className="ai-request-logs__card ai-request-logs__table-card">
