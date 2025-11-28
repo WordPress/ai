@@ -14,7 +14,9 @@ import SettingsPanel from './components/SettingsPanel';
 import SummaryCards from './components/SummaryCards';
 import type { FilterOptions, LocalizedSettings, LogEntry, LogFilters, LogSummary } from './types';
 
-const settings: LocalizedSettings = window.AiRequestLogsSettings;
+const settings: LocalizedSettings = window.aiAiRequestLogsSettings ?? window.AiRequestLogsSettings ?? ( () => {
+	throw new Error( 'AiRequestLogsSettings is not defined.' );
+} )();
 
 apiFetch.use( apiFetch.createNonceMiddleware( settings.rest.nonce ) );
 apiFetch.use( apiFetch.createRootURLMiddleware( settings.rest.root ) );
@@ -104,6 +106,7 @@ const App: React.FC = () => {
 			setTotalPages( parseInt( response.headers.get( 'X-WP-TotalPages' ) || '1', 10 ) );
 			setError( null );
 		} catch ( apiError ) {
+			console.error( 'Failed to fetch AI request logs:', apiError );
 			setError( getErrorMessage( apiError ) );
 		} finally {
 			setLogsLoading( false );

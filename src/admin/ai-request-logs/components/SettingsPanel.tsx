@@ -38,16 +38,17 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 				<h2>{ __( 'Settings', 'ai' ) }</h2>
 			</CardHeader>
 			<CardBody>
-				<ToggleControl
-					label={ __( 'Enable Logging', 'ai' ) }
+			<ToggleControl
+				label={ __( 'Enable Logging', 'ai' ) }
 					help={ __( 'When enabled, AI client requests will be logged for observability.', 'ai' ) }
 					checked={ enabled }
 					onChange={ onToggleEnabled }
-					disabled={ saving }
-				/>
+				disabled={ saving }
+				__nextHasNoMarginBottom
+			/>
 
-				<RangeControl
-					label={ __( 'Log Retention', 'ai' ) }
+			<RangeControl
+				label={ __( 'Log Retention', 'ai' ) }
 					help={ sprintf(
 						__( 'Logs older than %d days will be automatically deleted.', 'ai' ),
 						retentionDays
@@ -56,8 +57,10 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 					onChange={ ( value ) => onRetentionChange( value ?? 30 ) }
 					min={ 1 }
 					max={ 365 }
-					disabled={ saving }
-				/>
+				disabled={ saving }
+				__nextHasNoMarginBottom
+				__next40pxDefaultSize
+			/>
 
 				<div className="ai-request-logs__settings-danger">
 					<h3>{ __( 'Danger Zone', 'ai' ) }</h3>

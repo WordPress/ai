@@ -1,6 +1,8 @@
-import { Button, Card, CardBody, CardHeader, SelectControl, Spinner, TextControl } from '@wordpress/components';
+import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
+import { DataViews } from '@wordpress/dataviews/wp';
+import type { DataViewField, Filter, View } from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { FilterOptions, LogEntry, LogFilters } from '../types';
 
@@ -47,6 +49,30 @@ const getStatusClass = ( status: string ): string => {
 	}
 };
 
+const formatSelectLabel = ( value: string ): string =>
+	value
+		.split( '_' )
+		.map( ( part ) => part.charAt( 0 ).toUpperCase() + part.slice( 1 ) )
+		.join( ' ' );
+
+const normalizeFilterValue = ( raw: unknown ): string => {
+	if ( Array.isArray( raw ) ) {
+		return normalizeFilterValue( raw[ 0 ] );
+	}
+	if ( raw && typeof raw === 'object' && 'value' in ( raw as Record< string, unknown > ) ) {
+		return normalizeFilterValue( ( raw as { value: unknown } ).value );
+	}
+	if ( typeof raw === 'string' ) {
+		return raw;
+	}
+	return '';
+};
+
+const extractFilterValue = ( activeFilters: Filter[] | undefined, field: string ): string => {
+	const filter = activeFilters?.find( ( entry ) => entry.field === field );
+	return normalizeFilterValue( filter?.value ?? '' );
+};
+
 const LogsTable: React.FC< LogsTableProps > = ( {
 	logs,
 	filters,
@@ -59,29 +85,201 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	total,
 	onPageChange,
 } ) => {
-	const typeOptions = useMemo(
-		() => [
-			{ label: __( 'All Types', 'ai' ), value: '' },
-			...filterOptions.types.map( ( t ) => ( { label: t, value: t } ) ),
-		],
+	const typeElements = useMemo(
+		() => filterOptions.types.map( ( value ) => ( { label: formatSelectLabel( value ), value } ) ),
 		[ filterOptions.types ]
 	);
 
-	const statusOptions = useMemo(
-		() => [
-			{ label: __( 'All Statuses', 'ai' ), value: '' },
-			...filterOptions.statuses.map( ( s ) => ( { label: s, value: s } ) ),
-		],
+	const statusElements = useMemo(
+		() => filterOptions.statuses.map( ( value ) => ( { label: formatSelectLabel( value ), value } ) ),
 		[ filterOptions.statuses ]
 	);
 
-	const providerOptions = useMemo(
-		() => [
-			{ label: __( 'All Providers', 'ai' ), value: '' },
-			...filterOptions.providers.map( ( p ) => ( { label: p, value: p } ) ),
-		],
+	const providerElements = useMemo(
+		() => filterOptions.providers.map( ( value ) => ( { label: value, value } ) ),
 		[ filterOptions.providers ]
 	);
+
+	const buildFilterArray = useCallback( ( current: LogFilters ): Filter[] => {
+		const next: Filter[] = [];
+		if ( current.type ) {
+			next.push( { field: 'type', operator: 'is', value: current.type } );
+		}
+		if ( current.status ) {
+			next.push( { field: 'status', operator: 'is', value: current.status } );
+		}
+		if ( current.provider ) {
+			next.push( { field: 'provider', operator: 'is', value: current.provider } );
+		}
+		return next;
+	}, [] );
+
+	const [ view, setView ] = useState< View >( {
+		type: 'table',
+		perPage: 25,
+		page,
+		search: filters.search,
+		filters: buildFilterArray( filters ),
+		fields: [ 'timestamp', 'operation', 'provider', 'tokens_total', 'duration_ms', 'status', 'actions' ],
+		sort: {
+			field: 'timestamp',
+			direction: 'desc',
+		},
+		layout: {
+			density: 'comfortable',
+		},
+	} );
+
+	useEffect( () => {
+		setView( ( previous ) => ( {
+			...previous,
+			search: filters.search,
+			filters: buildFilterArray( filters ),
+			page,
+		} ) );
+	}, [ filters, page, buildFilterArray ] );
+
+	const fields = useMemo< DataViewField< LogEntry >[] >( () => [
+		{
+			id: 'timestamp',
+			label: __( 'Time', 'ai' ),
+			type: 'datetime',
+			getValue: ( { item } ) => item.timestamp,
+			enableSorting: false,
+			render: ( { item } ) => (
+				<span className="ai-request-logs__cell--time">{ formatTimestamp( item.timestamp ) }</span>
+			),
+		},
+		{
+			id: 'operation',
+			label: __( 'Operation', 'ai' ),
+			type: 'text',
+			enableGlobalSearch: true,
+			getValue: ( { item } ) => item.operation,
+			render: ( { item } ) => (
+				<div className="ai-request-logs__operation">
+					<code>{ item.operation }</code>
+					{ item.error_message && (
+						<div className="ai-request-logs__error-preview">
+							{ item.error_message.substring( 0, 50 ) }
+							{ item.error_message.length > 50 ? '…' : '' }
+						</div>
+					) }
+				</div>
+			),
+		},
+		{
+			id: 'type',
+			label: __( 'Type', 'ai' ),
+			type: 'text',
+			getValue: ( { item } ) => item.type,
+			elements: typeElements,
+			filterBy: {
+				operators: [ 'is' ],
+				isPrimary: true,
+			},
+			isVisible: () => false,
+		},
+		{
+			id: 'provider',
+			label: __( 'Provider / Model', 'ai' ),
+			type: 'text',
+			getValue: ( { item } ) => item.provider ?? '',
+			elements: providerElements,
+			filterBy: {
+				operators: [ 'is' ],
+			},
+			render: ( { item } ) => (
+				<div>
+					{ item.provider && <span className="ai-request-logs__provider">{ item.provider }</span> }
+					{ item.model && <div className="ai-request-logs__model">{ item.model }</div> }
+					{ ! item.provider && ! item.model && '-' }
+				</div>
+			),
+		},
+		{
+			id: 'tokens_total',
+			label: __( 'Tokens', 'ai' ),
+			type: 'number',
+			getValue: ( { item } ) => item.tokens_total ?? 0,
+			render: ( { item } ) => formatTokens( item.tokens_total ),
+		},
+		{
+			id: 'duration_ms',
+			label: __( 'Duration', 'ai' ),
+			type: 'number',
+			getValue: ( { item } ) => item.duration_ms ?? 0,
+			render: ( { item } ) => formatDuration( item.duration_ms ),
+		},
+		{
+			id: 'status',
+			label: __( 'Status', 'ai' ),
+			type: 'text',
+			getValue: ( { item } ) => item.status,
+			elements: statusElements,
+			filterBy: {
+				operators: [ 'is' ],
+				isPrimary: true,
+			},
+			render: ( { item } ) => (
+				<span className={ `ai-request-logs__status ${ getStatusClass( item.status ) }` }>
+					{ formatSelectLabel( item.status ) }
+				</span>
+			),
+		},
+		{
+			id: 'actions',
+			label: __( 'Details', 'ai' ),
+			type: 'text',
+			enableSorting: false,
+			enableHiding: false,
+			filterBy: false,
+			render: ( { item } ) => (
+				<Button
+					variant="tertiary"
+					size="small"
+					onClick={ () => onViewLog( item ) }
+				>
+					{ __( 'View', 'ai' ) }
+				</Button>
+			),
+		},
+	], [ onViewLog, providerElements, statusElements, typeElements ] );
+
+	const handleViewChange = ( nextView: View ) => {
+		setView( ( previous ) => ( {
+			...previous,
+			...nextView,
+			layout: nextView.layout ?? previous.layout,
+		} ) );
+
+		const nextSearch = nextView.search ?? '';
+		if ( nextSearch !== filters.search ) {
+			onFilterChange( 'search', nextSearch );
+		}
+
+		const nextType = extractFilterValue( nextView.filters, 'type' );
+		if ( nextType !== filters.type ) {
+			onFilterChange( 'type', nextType );
+		}
+
+		const nextStatus = extractFilterValue( nextView.filters, 'status' );
+		if ( nextStatus !== filters.status ) {
+			onFilterChange( 'status', nextStatus );
+		}
+
+		const nextProvider = extractFilterValue( nextView.filters, 'provider' );
+		if ( nextProvider !== filters.provider ) {
+			onFilterChange( 'provider', nextProvider );
+		}
+
+		const nextPage = nextView.page ?? 1;
+		if ( nextPage !== page ) {
+			onPageChange( nextPage );
+		}
+	};
+
+	const hasActiveFilters = Boolean( filters.search || filters.type || filters.status || filters.provider );
 
 	return (
 		<Card className="ai-request-logs__card ai-request-logs__table-card">
@@ -91,128 +289,40 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 					<span className="ai-request-logs__count">
 						{ sprintf( __( '%d total', 'ai' ), total ) }
 					</span>
-				) }
+				 ) }
 			</CardHeader>
 			<CardBody>
-				<div className="ai-request-logs__filters">
-					<TextControl
-						placeholder={ __( 'Search...', 'ai' ) }
-						value={ filters.search }
-						onChange={ ( value ) => onFilterChange( 'search', value ) }
-						__nextHasNoMarginBottom
-					/>
-					<SelectControl
-						value={ filters.type }
-						options={ typeOptions }
-						onChange={ ( value ) => onFilterChange( 'type', value ) }
-						__nextHasNoMarginBottom
-					/>
-					<SelectControl
-						value={ filters.status }
-						options={ statusOptions }
-						onChange={ ( value ) => onFilterChange( 'status', value ) }
-						__nextHasNoMarginBottom
-					/>
-					<SelectControl
-						value={ filters.provider }
-						options={ providerOptions }
-						onChange={ ( value ) => onFilterChange( 'provider', value ) }
-						__nextHasNoMarginBottom
+				<div className="ai-request-logs__dataviews">
+					<DataViews
+						data={ logs }
+						fields={ fields }
+						view={ view }
+						onChangeView={ handleViewChange }
+						getItemId={ ( item ) => item.id }
+						defaultLayouts={ {
+							table: {
+								layout: {
+									density: 'comfortable',
+									enableMoving: false,
+								},
+							},
+						} }
+						isLoading={ loading }
+						paginationInfo={ {
+							totalItems: total,
+							totalPages,
+						} }
+						config={ { perPageSizes: [ 25 ] } }
+						empty={ (
+							<p className="ai-request-logs__empty">
+								{ hasActiveFilters
+									? __( 'No logs match your filters.', 'ai' )
+									: __( 'No AI requests have been logged yet.', 'ai' ) }
+							</p>
+						) }
+						searchLabel={ __( 'Search logs', 'ai' ) }
 					/>
 				</div>
-
-				{ loading ? (
-					<div className="ai-request-logs__loading">
-						<Spinner />
-					</div>
-				) : logs.length > 0 ? (
-					<>
-						<table className="ai-request-logs__table">
-							<thead>
-								<tr>
-									<th>{ __( 'Time', 'ai' ) }</th>
-									<th>{ __( 'Operation', 'ai' ) }</th>
-									<th>{ __( 'Provider / Model', 'ai' ) }</th>
-									<th>{ __( 'Tokens', 'ai' ) }</th>
-									<th>{ __( 'Duration', 'ai' ) }</th>
-									<th>{ __( 'Status', 'ai' ) }</th>
-									<th></th>
-								</tr>
-							</thead>
-							<tbody>
-								{ logs.map( ( log ) => (
-									<tr key={ log.id } className={ log.status === 'error' ? 'ai-request-logs__row--error' : '' }>
-										<td className="ai-request-logs__cell--time">
-											{ formatTimestamp( log.timestamp ) }
-										</td>
-										<td className="ai-request-logs__cell--operation">
-											<code>{ log.operation }</code>
-											{ log.error_message && (
-												<div className="ai-request-logs__error-preview">
-													{ log.error_message.substring( 0, 50 ) }
-													{ log.error_message.length > 50 ? '...' : '' }
-												</div>
-											) }
-										</td>
-										<td>
-											{ log.provider && (
-												<span className="ai-request-logs__provider">{ log.provider }</span>
-											) }
-											{ log.model && (
-												<div className="ai-request-logs__model">{ log.model }</div>
-											) }
-											{ ! log.provider && ! log.model && '-' }
-										</td>
-										<td>{ formatTokens( log.tokens_total ) }</td>
-										<td>{ formatDuration( log.duration_ms ) }</td>
-										<td>
-											<span className={ `ai-request-logs__status ${ getStatusClass( log.status ) }` }>
-												{ log.status }
-											</span>
-										</td>
-										<td>
-											<Button
-												variant="tertiary"
-												size="small"
-												onClick={ () => onViewLog( log ) }
-											>
-												{ __( 'View', 'ai' ) }
-											</Button>
-										</td>
-									</tr>
-								) ) }
-							</tbody>
-						</table>
-
-						{ totalPages > 1 && (
-							<div className="ai-request-logs__pagination">
-								<Button
-									variant="secondary"
-									disabled={ page <= 1 }
-									onClick={ () => onPageChange( page - 1 ) }
-								>
-									{ __( 'Previous', 'ai' ) }
-								</Button>
-								<span>
-									{ sprintf( __( 'Page %1$d of %2$d', 'ai' ), page, totalPages ) }
-								</span>
-								<Button
-									variant="secondary"
-									disabled={ page >= totalPages }
-									onClick={ () => onPageChange( page + 1 ) }
-								>
-									{ __( 'Next', 'ai' ) }
-								</Button>
-							</div>
-						) }
-					</>
-				) : (
-					<p className="ai-request-logs__empty">
-						{ filters.search || filters.type || filters.status || filters.provider
-							? __( 'No logs match your filters.', 'ai' )
-							: __( 'No AI requests have been logged yet.', 'ai' ) }
-					</p>
-				) }
 			</CardBody>
 		</Card>
 	);

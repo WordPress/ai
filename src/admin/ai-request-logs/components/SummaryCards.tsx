@@ -53,11 +53,12 @@ const SummaryCards: React.FC< SummaryCardsProps > = ( { summary, period, onPerio
 						{ label: __( 'Last 24 Hours', 'ai' ), value: 'day' },
 						{ label: __( 'Last 7 Days', 'ai' ), value: 'week' },
 						{ label: __( 'Last 30 Days', 'ai' ), value: 'month' },
-						{ label: __( 'All Time', 'ai' ), value: 'all' },
+					{ label: __( 'All Time', 'ai' ), value: 'all' },
 					] }
 					onChange={ ( value ) => onPeriodChange( value as 'day' | 'week' | 'month' | 'all' ) }
 					disabled={ loading }
 					__nextHasNoMarginBottom
+					__next40pxDefaultSize
 				/>
 			</div>
 
