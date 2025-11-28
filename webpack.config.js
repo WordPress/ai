@@ -19,6 +19,11 @@ module.exports = {
 			'src/admin/settings',
 			'index.scss'
 		),
+		'admin/mcp-server': path.resolve(
+			process.cwd(),
+			'src/admin/mcp-server',
+			'index.tsx'
+		),
 		'experiments/example-experiment': path.resolve(
 			process.cwd(),
 			'src/experiments/example-experiment',
@@ -42,6 +47,16 @@ module.exports = {
 		'experiments/alt-text-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',
+			'index.tsx'
+		),
+		'experiments/alt-text-generation-media': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'media.ts'
+		),
+		'experiments/comment-moderation': path.resolve(
+			process.cwd(),
+			'src/experiments/comment-moderation',
 			'index.tsx'
 		),
 	},
