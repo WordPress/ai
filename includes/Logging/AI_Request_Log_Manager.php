@@ -53,6 +53,22 @@ class AI_Request_Log_Manager {
 	 */
 	private static array $model_costs = array(
 		'openai'    => array(
+			'gpt-5.1'           => array(
+				'input'  => 0.00125,
+				'output' => 0.01,
+			),
+			'gpt-5-mini'        => array(
+				'input'  => 0.00025,
+				'output' => 0.002,
+			),
+			'gpt-5-nano'        => array(
+				'input'  => 0.00005,
+				'output' => 0.0004,
+			),
+			'gpt-5-pro'         => array(
+				'input'  => 0.015,
+				'output' => 0.12,
+			),
 			'gpt-4'              => array(
 				'input'  => 0.03,
 				'output' => 0.06,
@@ -75,6 +91,18 @@ class AI_Request_Log_Manager {
 			),
 		),
 		'anthropic' => array(
+			'claude-4.5-opus'   => array(
+				'input'  => 0.005,
+				'output' => 0.025,
+			),
+			'claude-4.5-sonnet' => array(
+				'input'  => 0.003,
+				'output' => 0.015,
+			),
+			'claude-4.5-haiku'  => array(
+				'input'  => 0.001,
+				'output' => 0.005,
+			),
 			'claude-3-opus'      => array(
 				'input'  => 0.015,
 				'output' => 0.075,
@@ -93,6 +121,30 @@ class AI_Request_Log_Manager {
 			),
 		),
 		'google'    => array(
+			'gemini-3-pro-preview'               => array(
+				'input'  => 0.002,
+				'output' => 0.012,
+			),
+			'gemini-3-pro-preview-high-context'  => array(
+				'input'  => 0.004,
+				'output' => 0.018,
+			),
+			'gemini-2.5-pro'                     => array(
+				'input'  => 0.00125,
+				'output' => 0.01,
+			),
+			'gemini-2.5-pro-high-context'        => array(
+				'input'  => 0.0025,
+				'output' => 0.015,
+			),
+			'gemini-2.5-flash'                   => array(
+				'input'  => 0.0003,
+				'output' => 0.0025,
+			),
+			'gemini-2.5-flash-lite'              => array(
+				'input'  => 0.0001,
+				'output' => 0.0004,
+			),
 			'gemini-1.5-pro'     => array(
 				'input'  => 0.00125,
 				'output' => 0.005,
@@ -409,6 +461,7 @@ class AI_Request_Log_Manager {
 			'type'      => '',
 			'status'    => '',
 			'provider'  => '',
+			'operation' => '',
 			'user_id'   => 0,
 			'date_from' => '',
 			'date_to'   => '',
@@ -438,6 +491,11 @@ class AI_Request_Log_Manager {
 		if ( ! empty( $args['provider'] ) ) {
 			$where[]  = 'provider = %s';
 			$values[] = $args['provider'];
+		}
+
+		if ( ! empty( $args['operation'] ) ) {
+			$where[]  = 'operation = %s';
+			$values[] = $args['operation'];
 		}
 
 		if ( ! empty( $args['user_id'] ) ) {
@@ -625,21 +683,23 @@ class AI_Request_Log_Manager {
 	/**
 	 * Gets distinct values for filter dropdowns.
 	 *
-	 * @return array{types: array<string>, providers: array<string>, statuses: array<string>} Filter options.
+	 * @return array{types: array<string>, providers: array<string>, statuses: array<string>, operations: array<string>} Filter options.
 	 */
 	public function get_filter_options(): array {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . self::TABLE_NAME;
 
-		$types     = $wpdb->get_col( "SELECT DISTINCT type FROM {$table_name} ORDER BY type" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$providers = $wpdb->get_col( "SELECT DISTINCT provider FROM {$table_name} WHERE provider IS NOT NULL ORDER BY provider" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$statuses  = $wpdb->get_col( "SELECT DISTINCT status FROM {$table_name} ORDER BY status" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$types      = $wpdb->get_col( "SELECT DISTINCT type FROM {$table_name} ORDER BY type" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$providers  = $wpdb->get_col( "SELECT DISTINCT provider FROM {$table_name} WHERE provider IS NOT NULL ORDER BY provider" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$statuses   = $wpdb->get_col( "SELECT DISTINCT status FROM {$table_name} ORDER BY status" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$operations = $wpdb->get_col( "SELECT DISTINCT operation FROM {$table_name} WHERE operation IS NOT NULL ORDER BY operation" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		return array(
-			'types'     => $types ?: array(),
-			'providers' => $providers ?: array(),
-			'statuses'  => $statuses ?: array(),
+			'types'      => $types ?: array(),
+			'providers'  => $providers ?: array(),
+			'statuses'   => $statuses ?: array(),
+			'operations' => $operations ?: array(),
 		);
 	}
 
