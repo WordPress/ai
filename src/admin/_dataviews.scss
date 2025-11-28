@@ -27,7 +27,8 @@
 		border-radius: 4px;
 		border-spacing: 0;
 		width: 100%;
-		min-width: 600px; // Ensure minimum width for scroll
+		min-width: 100%; // Always fill container width
+		table-layout: fixed;
 	}
 
 	// Table header styling
@@ -94,5 +95,60 @@
 		padding: 40px 20px;
 		text-align: center;
 		color: #757575;
+	}
+}
+
+// View options popover styling (outside wrapper as it's rendered in portal)
+.dataviews-view-config {
+	.components-popover__content {
+		padding: 16px;
+		min-width: 240px;
+	}
+
+	.dataviews-view-config__header {
+		font-weight: 600;
+		font-size: 13px;
+		margin-bottom: 12px;
+		padding-bottom: 8px;
+		border-bottom: 1px solid #e0e0e0;
+	}
+
+	.dataviews-view-config__section {
+		margin-bottom: 16px;
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+
+	.dataviews-view-config__section-title {
+		font-weight: 500;
+		font-size: 12px;
+		color: #757575;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		margin-bottom: 8px;
+	}
+
+	// Field visibility toggles
+	.dataviews-view-config__field {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 6px 0;
+
+		&:not(:last-child) {
+			border-bottom: 1px solid #f0f0f0;
+		}
+	}
+
+	.dataviews-view-config__field-label {
+		font-size: 13px;
+	}
+
+	// Density options
+	.dataviews-view-config__density {
+		display: flex;
+		gap: 8px;
 	}
 }
