@@ -188,7 +188,8 @@
 // Modal
 .ai-request-logs__modal {
 	.components-modal__content {
-		max-width: 700px;
+		width: 100%;
+		max-width: none;
 	}
 }
 
