@@ -1,0 +1,133 @@
+.ai-mcp-server {
+	&__app {
+		margin-top: 1.5rem;
+	}
+
+	&__grid {
+		display: grid;
+		gap: 24px;
+		grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+		margin-bottom: 24px;
+
+		@media ( max-width: 960px ) {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	&__card {
+		code {
+			word-break: break-all;
+		}
+	}
+
+	&__card-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+
+		@media ( max-width: 600px ) {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+	}
+
+	&__status-text {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	&__status-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 999px;
+		background-color: #949494;
+
+		&--running {
+			background-color: #1a7f37;
+		}
+
+		&--disabled {
+			background-color: #d63638;
+		}
+	}
+
+	&__field {
+		margin-bottom: 16px;
+
+		label {
+			display: block;
+			font-weight: 600;
+			margin-bottom: 4px;
+		}
+	}
+
+	&__field-row {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		flex-wrap: wrap;
+
+		code {
+			flex: 1;
+			background: #f6f7f7;
+			padding: 6px 8px;
+			border-radius: 4px;
+		}
+	}
+
+	&__hint {
+		margin-top: 0;
+		color: #50575e;
+	}
+
+	&__button-row {
+		display: flex;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+
+	&__tools {
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 16px;
+		}
+
+		th,
+		td {
+			padding: 12px;
+			border-bottom: 1px solid #dcdcde;
+			vertical-align: top;
+		}
+
+		th {
+			text-align: left;
+			font-weight: 600;
+		}
+
+		.description {
+			margin: 6px 0;
+			color: #3c434a;
+		}
+	}
+
+	&__loading {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	&__test-result {
+		margin-top: 16px;
+
+		pre {
+			background: #f6f7f7;
+			padding: 12px;
+			border-radius: 4px;
+			max-height: 160px;
+			overflow: auto;
+		}
+	}
+}

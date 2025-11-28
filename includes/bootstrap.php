@@ -12,6 +12,8 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\MCP\MCP_Server_Manager;
+use WordPress\AI\MCP\MCP_Server_Page;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
@@ -186,6 +188,9 @@ function initialize_experiments(): void {
 		$loader->register_default_experiments();
 		$loader->initialize_experiments();
 
+		$mcp_manager = new MCP_Server_Manager();
+		$mcp_manager->init();
+
 		// Initialize settings registration.
 		$settings_registration = new Settings_Registration( $registry );
 		$settings_registration->init();
@@ -194,6 +199,9 @@ function initialize_experiments(): void {
 		if ( is_admin() ) {
 			$settings_page = new Settings_Page( $registry );
 			$settings_page->init();
+
+			$mcp_page = new MCP_Server_Page( $mcp_manager );
+			$mcp_page->init();
 		}
 
 		// Register our post-related WordPress Abilities.
