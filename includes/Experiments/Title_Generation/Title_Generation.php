@@ -13,6 +13,8 @@ use WordPress\AI\Abilities\Title_Generation\Title_Generation as Title_Generation
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
+use function admin_url;
+
 /**
  * Title generation experiment.
  *
@@ -99,6 +101,19 @@ class Title_Generation extends Abstract_Experiment {
 			array(
 				'enabled' => $this->is_enabled(),
 			)
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_entry_points(): array {
+		return array(
+			array(
+				'label' => __( 'Try', 'ai' ),
+				'url'   => admin_url( 'post-new.php' ),
+				'type'  => 'try',
+			),
 		);
 	}
 }

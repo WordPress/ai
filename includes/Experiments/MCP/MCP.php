@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\MCP;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
 use function __;
+use function admin_url;
 use function is_admin;
 
 /**
@@ -45,5 +46,18 @@ class MCP extends Abstract_Experiment {
 			$page = new Admin_Page( $this->manager );
 			$page->init();
 		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_entry_points(): array {
+		return array(
+			array(
+				'label' => __( 'Dashboard', 'ai' ),
+				'url'   => admin_url( 'admin.php?page=ai-mcp' ),
+				'type'  => 'dashboard',
+			),
+		);
 	}
 }

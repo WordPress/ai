@@ -14,6 +14,7 @@ use WordPress\AI\Abilities\Type_Ahead\Type_Ahead as Type_Ahead_Ability;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Settings\Settings_Registration;
 
+use function admin_url;
 use function esc_html__;
 
 /**
@@ -277,5 +278,18 @@ class Type_Ahead extends Abstract_Experiment {
 	 */
 	public function has_settings(): bool {
 		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_entry_points(): array {
+		return array(
+			array(
+				'label' => esc_html__( 'Try', 'ai' ),
+				'url'   => admin_url( 'post-new.php' ),
+				'type'  => 'try',
+			),
+		);
 	}
 }

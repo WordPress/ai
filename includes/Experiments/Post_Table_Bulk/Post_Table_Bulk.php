@@ -13,6 +13,8 @@ use WordPress\AI\Abilities\Post_Table_Bulk\Taxonomy_Suggestions;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
+use function admin_url;
+
 /**
  * Enables AI-powered taxonomy suggestions in the posts list table.
  *
@@ -258,5 +260,18 @@ class Post_Table_Bulk extends Abstract_Experiment {
 		}
 
 		return $supported;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_entry_points(): array {
+		return array(
+			array(
+				'label' => __( 'Try', 'ai' ),
+				'url'   => admin_url( 'edit.php' ),
+				'type'  => 'try',
+			),
+		);
 	}
 }

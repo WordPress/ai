@@ -214,6 +214,31 @@ abstract class Abstract_Experiment implements Experiment {
 	}
 
 	/**
+	 * Provides contextual entry points for the experiment.
+	 *
+	 * Child classes can override to return an array of links, for example:
+	 * array(
+	 *     array(
+	 *         'label' => __( 'Try', 'ai' ),
+	 *         'url'   => admin_url( 'post-new.php' ),
+	 *         'type'  => 'try',
+	 *     ),
+	 *     array(
+	 *         'label' => __( 'Dashboard', 'ai' ),
+	 *         'url'   => admin_url( 'admin.php?page=ai-mcp' ),
+	 *         'type'  => 'dashboard',
+	 *     ),
+	 * );
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array<int, array{label: string, url: string, type?: string}>
+	 */
+	public function get_entry_points(): array {
+		return array();
+	}
+
+	/**
 	 * Checks if the experiment has custom settings.
 	 *
 	 * Override this method in child classes that have settings to return true.

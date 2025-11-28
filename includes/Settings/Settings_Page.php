@@ -223,6 +223,7 @@ class Settings_Page {
 									$desc_id            = "ai-experiment-{$experiment_id}-desc";
 									$settings_id        = "ai-experiment-{$experiment_id}-settings";
 									$has_settings       = $experiment->has_settings();
+									$entry_points       = $experiment->get_entry_points();
 									?>
 									<div class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
 										<div class="ai-experiments__item-header">
@@ -238,8 +239,29 @@ class Settings_Page {
 														aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
 													<?php endif; ?>
 												/>
-												<span>
+												<span class="ai-experiments__item-title">
 													<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
+													<?php if ( ! empty( $entry_points ) ) : ?>
+														<span class="ai-experiments__item-links">
+															<?php
+															$links = array();
+															foreach ( $entry_points as $action ) {
+																if ( empty( $action['label'] ) || empty( $action['url'] ) ) {
+																	continue;
+																}
+																$links[] = sprintf(
+																	'<a href="%s">%s</a>',
+																	esc_url( $action['url'] ),
+																	esc_html( $action['label'] )
+																);
+															}
+
+															if ( ! empty( $links ) ) {
+																echo wp_kses_post( '(' . implode( ' · ', $links ) . ')' );
+															}
+															?>
+														</span>
+													<?php endif; ?>
 												</span>
 											</label>
 											<?php if ( $has_settings ) : ?>

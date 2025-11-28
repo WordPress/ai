@@ -14,6 +14,8 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis;
 use WordPress\AI\Abilities\Comment_Moderation\Reply_Suggestion;
 
+use function admin_url;
+
 /**
  * AI-powered comment moderation experiment.
  *
@@ -538,5 +540,18 @@ class Comment_Moderation extends Abstract_Experiment {
 			}
 		</style>
 		<?php
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_entry_points(): array {
+		return array(
+			array(
+				'label' => __( 'Try', 'ai' ),
+				'url'   => admin_url( 'edit-comments.php' ),
+				'type'  => 'try',
+			),
+		);
 	}
 }

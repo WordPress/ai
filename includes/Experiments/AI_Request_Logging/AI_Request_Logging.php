@@ -18,6 +18,7 @@ use function WordPress\AI\get_request_log_manager;
 use WordPress\AI\Settings\Settings_Registration;
 
 use function add_action;
+use function admin_url;
 use function esc_attr;
 use function esc_html__;
 use function esc_html_e;
@@ -135,5 +136,18 @@ class AI_Request_Logging extends Abstract_Experiment {
 		}
 
 		return $this->manager;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_entry_points(): array {
+		return array(
+			array(
+				'label' => esc_html__( 'Dashboard', 'ai' ),
+				'url'   => admin_url( 'options-general.php?page=ai-request-logs' ),
+				'type'  => 'dashboard',
+			),
+		);
 	}
 }

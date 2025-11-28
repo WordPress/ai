@@ -13,6 +13,8 @@ use WordPress\AI\Abilities\Alt_Text_Generation\Alt_Text_Generation as Alt_Text_G
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
+use function admin_url;
+
 /**
  * Alt text generation experiment.
  *
@@ -148,5 +150,18 @@ class Alt_Text_Generation extends Abstract_Experiment {
 		);
 
 		$this->media_assets_enqueued = true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_entry_points(): array {
+		return array(
+			array(
+				'label' => __( 'Try', 'ai' ),
+				'url'   => admin_url( 'upload.php' ),
+				'type'  => 'try',
+			),
+		);
 	}
 }

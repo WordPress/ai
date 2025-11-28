@@ -204,6 +204,22 @@
 			margin-left: 1.5rem;
 		}
 	}
+
+	/* Element: item title links */
+	&__item-links {
+		font-weight: normal;
+		font-size: 0.85em;
+
+		a {
+			text-decoration: none;
+		}
+
+		a + a::before {
+			content: ' · ';
+			color: inherit;
+			padding: 0 0.15rem;
+		}
+	}
 }
 
 /* Animation for drawer */
