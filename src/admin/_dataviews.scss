@@ -5,6 +5,20 @@
 	// Search and filter bar spacing
 	.dataviews__view-actions {
 		margin-bottom: 16px;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	// Filter chips/buttons spacing
+	.dataviews-filters__container {
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	// Responsive table wrapper
+	.dataviews-view-table-wrapper {
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
 	}
 
 	// Table container for border radius clipping
@@ -13,7 +27,7 @@
 		border-radius: 4px;
 		border-spacing: 0;
 		width: 100%;
-		overflow: hidden;
+		min-width: 600px; // Ensure minimum width for scroll
 	}
 
 	// Table header styling
@@ -24,6 +38,7 @@
 		background: #f6f7f7;
 		border-bottom: 1px solid #c3c4c7;
 		padding: 12px 16px;
+		white-space: nowrap;
 	}
 
 	// Table cell styling
@@ -48,6 +63,19 @@
 		background: #f0f6fc;
 	}
 
+	// Empty state - remove header border to avoid double border
+	.dataviews-view-table--empty thead th {
+		border-bottom: none;
+	}
+
+	// Empty state styling
+	.dataviews-view-table tbody .dataviews-view-table__empty td {
+		padding: 40px 20px;
+		text-align: center;
+		color: #757575;
+		border-bottom: none;
+	}
+
 	// Footer and pagination
 	.dataviews-footer {
 		width: 100%;
@@ -61,7 +89,7 @@
 		border-top: 1px solid #e0e0e0;
 	}
 
-	// Empty state
+	// Legacy empty state class
 	.dataviews-no-results {
 		padding: 40px 20px;
 		text-align: center;

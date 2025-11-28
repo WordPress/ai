@@ -174,10 +174,10 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			type: 'text',
 			getValue: ( { item } ) => item.type,
 			elements: typeElements,
-			filterBy: {
-				operators: [ 'is' ],
-				isPrimary: true,
-			},
+			filterBy: typeElements.length > 0
+				? { operators: [ 'is' ] }
+				: false,
+			enableHiding: false,
 			isVisible: () => false,
 		},
 		{
@@ -186,9 +186,9 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			type: 'text',
 			getValue: ( { item } ) => item.provider ?? '',
 			elements: providerElements,
-			filterBy: {
-				operators: [ 'is' ],
-			},
+			filterBy: providerElements.length > 0
+				? { operators: [ 'is' ] }
+				: false,
 			render: ( { item } ) => (
 				<div>
 					{ item.provider && <span className="ai-request-logs__provider">{ item.provider }</span> }
@@ -217,10 +217,9 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			type: 'text',
 			getValue: ( { item } ) => item.status,
 			elements: statusElements,
-			filterBy: {
-				operators: [ 'is' ],
-				isPrimary: true,
-			},
+			filterBy: statusElements.length > 0
+				? { operators: [ 'is' ] }
+				: false,
 			render: ( { item } ) => (
 				<span className={ `ai-request-logs__status ${ getStatusClass( item.status ) }` }>
 					{ formatSelectLabel( item.status ) }
