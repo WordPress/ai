@@ -1,7 +1,13 @@
 /**
  * WordPress dependencies
  */
-import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
+import {
+	Button,
+	Card,
+	CardBody,
+	CardHeader,
+	Tooltip,
+} from '@wordpress/components';
 import { DataViews } from '@wordpress/dataviews/wp';
 import type { DataViewField, Filter, View } from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
@@ -13,80 +19,11 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 /**
  * Internal dependencies
  */
-import {
-	AnthropicIcon,
-	CloudflareIcon,
-	DeepSeekIcon,
-	FalIcon,
-	GoogleIcon,
-	GroqIcon,
-	GrokIcon,
-	HuggingFaceIcon,
-	OllamaIcon,
-	OpenAiIcon,
-	OpenRouterIcon,
-	XaiIcon,
-} from '../../components/icons';
+import { getProviderIconComponent } from '../../components/provider-icons';
+import ProviderTooltipContent from '../../components/ProviderTooltipContent';
 import { usePersistedView } from '../../hooks/usePersistedView';
 import type { FilterOptions, LogEntry, LogFilters } from '../types';
-
-const getProviderIcon = ( provider: string | null ): React.ReactNode => {
-	if ( ! provider ) {
-		return null;
-	}
-
-	const normalized = provider.toLowerCase();
-
-	if ( normalized.includes( 'openai' ) || normalized.includes( 'open-ai' ) ) {
-		return <OpenAiIcon />;
-	}
-
-	if ( normalized.includes( 'anthropic' ) || normalized.includes( 'claude' ) ) {
-		return <AnthropicIcon />;
-	}
-
-	if ( normalized.includes( 'google' ) ) {
-		return <GoogleIcon />;
-	}
-
-	if ( normalized.includes( 'fal' ) ) {
-		return <FalIcon />;
-	}
-
-	if ( normalized.includes( 'cloudflare' ) || normalized.includes( 'workers.ai' ) ) {
-		return <CloudflareIcon />;
-	}
-
-	if ( normalized.includes( 'huggingface' ) || normalized.includes( 'hugging face' ) ) {
-		return <HuggingFaceIcon />;
-	}
-
-	if ( normalized.includes( 'deepseek' ) ) {
-		return <DeepSeekIcon />;
-	}
-
-	if ( normalized.includes( 'ollama' ) ) {
-		return <OllamaIcon />;
-	}
-
-	if ( normalized.includes( 'groq' ) ) {
-		return <GroqIcon />;
-	}
-
-	if ( normalized.includes( 'grok' ) ) {
-		return <GrokIcon />;
-	}
-
-	if ( normalized.includes( 'openrouter' ) || normalized.includes( 'open-router' ) ) {
-		return <OpenRouterIcon />;
-	}
-
-	if ( normalized.includes( 'xai' ) || normalized.includes( 'x.ai' ) ) {
-		return <XaiIcon />;
-	}
-
-	return null;
-};
+import type { ProviderMetadata } from '../../types/providers';
 
 interface LogsTableProps {
 	logs: LogEntry[];
@@ -99,6 +36,7 @@ interface LogsTableProps {
 	totalPages: number;
 	total: number;
 	onPageChange: ( page: number ) => void;
+	providerMetadata: Record< string, ProviderMetadata >;
 }
 
 const formatTimestamp = ( timestamp: string ): string => {
@@ -207,6 +145,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	totalPages,
 	total,
 	onPageChange,
+	providerMetadata,
 } ) => {
 	const typeElements = useMemo(
 		() =>
@@ -441,20 +380,15 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 						? { operators: [ 'is' ] }
 						: false,
 				render: ( { item } ) => (
-					<div>
-						{ item.provider && (
-							<span className="ai-request-logs__provider">
-								{ getProviderIcon( item.provider ) }
-								{ item.provider }
-							</span>
-						) }
-						{ item.model && (
-							<div className="ai-request-logs__model">
-								{ item.model }
-							</div>
-						) }
-						{ ! item.provider && ! item.model && '-' }
-					</div>
+					<ProviderCell
+						provider={ item.provider }
+						model={ item.model }
+						metadata={
+							item.provider
+								? providerMetadata[ item.provider ]
+								: undefined
+						}
+					/>
 				),
 			},
 			{
@@ -617,6 +551,69 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				/>
 			</CardBody>
 		</Card>
+	);
+};
+
+interface ProviderCellProps {
+	provider: string | null;
+	model: string | null;
+	metadata?: ProviderMetadata;
+}
+
+const ProviderCell: React.FC< ProviderCellProps > = ( {
+	provider,
+	model,
+	metadata,
+} ) => {
+	if ( ! provider && ! model ) {
+		return <span>-</span>;
+	}
+
+	if ( ! metadata ) {
+		return (
+			<div>
+				{ provider && (
+					<span className="ai-request-logs__provider">
+						{ provider }
+					</span>
+				) }
+				{ model && (
+					<div className="ai-request-logs__model">{ model }</div>
+				) }
+			</div>
+		);
+	}
+
+	const IconComponent = getProviderIconComponent(
+		metadata.icon || metadata.id,
+		provider || undefined
+	);
+
+	const cell = (
+		<div className="ai-request-logs__provider">
+			<span className="ai-request-logs__provider-logo">
+				<IconComponent />
+			</span>
+			<span>
+				{ metadata.name }
+				{ model && (
+					<span className="ai-request-logs__model">{ model }</span>
+				) }
+			</span>
+		</div>
+	);
+
+	return (
+		<Tooltip
+			text={
+				<ProviderTooltipContent
+					metadata={ metadata }
+					activeModel={ model }
+				/>
+			}
+		>
+			{ cell }
+		</Tooltip>
 	);
 };
 

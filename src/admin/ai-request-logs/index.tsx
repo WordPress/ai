@@ -37,6 +37,8 @@ const settings: LocalizedSettings =
 		throw new Error( 'AiRequestLogsSettings is not defined.' );
 	} )();
 
+const providerMetadata = settings.providerMetadata ?? {};
+
 apiFetch.use( apiFetch.createNonceMiddleware( settings.rest.nonce ) );
 apiFetch.use( apiFetch.createRootURLMiddleware( settings.rest.root ) );
 
@@ -294,6 +296,7 @@ const App: React.FC = () => {
 					totalPages={ totalPages }
 					total={ total }
 					onPageChange={ setPage }
+					providerMetadata={ providerMetadata }
 				/>
 
 				<SettingsPanel

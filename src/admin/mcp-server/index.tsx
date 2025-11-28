@@ -13,8 +13,10 @@ import {
 	SelectControl,
 	Spinner,
 	ToggleControl,
+	Tooltip,
 } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
+import { plus } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 import { __, sprintf } from '@wordpress/i18n';
 /**
@@ -157,6 +159,32 @@ const App: React.FC = () => {
 			showNotice( 'error', message );
 		} finally {
 			setSavingServer( false );
+		}
+	};
+
+	const handleRenameServer = async ( newName: string ) => {
+		if ( ! selectedServerId ) {
+			return;
+		}
+
+		try {
+			const response = ( await apiFetch( {
+				path: settings.rest.routes.server,
+				method: 'POST',
+				data: {
+					server: {
+						id: selectedServerId,
+						name: newName,
+					},
+				},
+			} ) ) as McpOverview;
+			setData( response );
+			setSelectedServerId( response.activeServerId );
+			showNotice( 'success', __( 'Server renamed.', 'ai' ) );
+		} catch ( apiError ) {
+			const message = getErrorMessage( apiError );
+			showNotice( 'error', message );
+			throw apiError;
 		}
 	};
 
@@ -323,7 +351,12 @@ const App: React.FC = () => {
 
 	// Get portal mount points for header elements (rendered by PHP)
 	const headerStatusMount = document.getElementById( 'ai-mcp-header-status' );
-	const headerToggleMount = document.getElementById( 'ai-mcp-header-toggle' );
+	const headerServerSelectorMount = document.getElementById(
+		'ai-mcp-header-server-selector'
+	);
+	const headerControlsMount = document.getElementById(
+		'ai-mcp-header-controls'
+	);
 
 	return (
 		<div className="ai-mcp-server__app">
@@ -335,18 +368,56 @@ const App: React.FC = () => {
 					headerStatusMount
 				) }
 
-			{ /* Portal: Global toggle in PHP header */ }
-			{ headerToggleMount &&
+			{ /* Portal: Server selector in PHP header */ }
+			{ headerServerSelectorMount &&
 				! loading &&
 				createPortal(
-					<ToggleControl
-						label={ __( 'Enable MCP', 'ai' ) }
-						checked={ data?.enabled ?? false }
-						onChange={ handleToggleGlobal }
-						disabled={ savingGlobal }
-						__nextHasNoMarginBottom
-					/>,
-					headerToggleMount
+					<div className="ai-mcp-server__header-server-picker">
+						<SelectControl
+							value={ selectedServerId ?? '' }
+							onChange={ handleSelectServer }
+							options={ serverOptions }
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+					</div>,
+					headerServerSelectorMount
+				) }
+
+			{ /* Portal: Header controls (global toggle, server toggle, add button) */ }
+			{ headerControlsMount &&
+				! loading &&
+				createPortal(
+					<>
+						<ToggleControl
+							label={ __( 'Enable MCP', 'ai' ) }
+							checked={ data?.enabled ?? false }
+							onChange={ handleToggleGlobal }
+							disabled={ savingGlobal }
+							__nextHasNoMarginBottom
+						/>
+						<ToggleControl
+							label={ __( 'Enable Server', 'ai' ) }
+							checked={ activeServer?.enabled ?? false }
+							onChange={ handleToggleServerEnabled }
+							disabled={ savingServer || ! activeServer }
+							__nextHasNoMarginBottom
+						/>
+						<Tooltip
+							text={ __(
+								'Add a new MCP server configuration',
+								'ai'
+							) }
+						>
+							<Button
+								icon={ plus }
+								variant="secondary"
+								onClick={ handleAddServer }
+								label={ __( 'Add Server', 'ai' ) }
+							/>
+						</Tooltip>
+					</>,
+					headerControlsMount
 				) }
 
 			{ error && (
@@ -362,33 +433,6 @@ const App: React.FC = () => {
 				</div>
 			) : (
 				<>
-					<div className="ai-mcp-server__toolbar">
-						<div className="ai-mcp-server__toolbar-main">
-							<div className="ai-mcp-server__server-picker">
-								<SelectControl
-									label={ __( 'Server', 'ai' ) }
-									value={ selectedServerId ?? '' }
-									onChange={ handleSelectServer }
-									options={ serverOptions }
-									__nextHasNoMarginBottom
-									__next40pxDefaultSize
-								/>
-							</div>
-						</div>
-						<div className="ai-mcp-server__toolbar-actions">
-							<StatusBadge status={ activeStatus } />
-							<ToggleControl
-								label={ __( 'Enable this server', 'ai' ) }
-								checked={ activeServer?.enabled ?? false }
-								onChange={ handleToggleServerEnabled }
-								disabled={ savingServer || ! activeServer }
-								__nextHasNoMarginBottom
-							/>
-							<Button variant="secondary" onClick={ handleAddServer }>
-								{ __( 'Add Server', 'ai' ) }
-							</Button>
-						</div>
-					</div>
 
 					{ activeServer?.description && (
 						<p className="ai-mcp-server__server-description">
@@ -401,8 +445,7 @@ const App: React.FC = () => {
 							<div className="ai-mcp-server__grid">
 								<ServerStatusCard
 									server={ activeServer }
-									savingServer={ savingServer }
-									onToggleServer={ handleToggleServerEnabled }
+									onRename={ handleRenameServer }
 									onCopy={ handleCopy }
 									profileUrl={ settings.profileUrl }
 								/>

@@ -31,7 +31,7 @@ class OllamaModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 	protected function sendListModelsRequest(): array {
 		$request = new Request(
 			HttpMethodEnum::GET(),
-			rtrim( OllamaProvider::baseUrl(), '/api' ) . '/api/tags'
+			rtrim( OllamaProvider::get_base_url(), '/api' ) . '/api/tags'
 		);
 
 		$response = $this->getHttpTransporter()->send( $request );

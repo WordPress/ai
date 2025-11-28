@@ -168,19 +168,23 @@ function get_preferred_models(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-haiku-4-5-20251001',
+			'claude-3-5-sonnet-20240620',
 		),
 		array(
-			'openai',
-			'gpt-5-nano-2025-08-07',
+			'anthropic',
+			'claude-3-haiku-20240307',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-1.5-flash',
 		),
 		array(
 			'openai',
-			'gpt-4.1',
+			'gpt-4o-mini',
+		),
+		array(
+			'openai',
+			'gpt-4o',
 		),
 	);
 

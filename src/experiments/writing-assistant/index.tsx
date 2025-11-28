@@ -389,7 +389,13 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 				elements: priorityElements,
 				filterBy: { operators: [ 'is' ] },
 				enableHiding: false,
-				isVisible: () => false,
+				render: ( { item } ) => (
+					<span
+						className={ `ai-writing-assistant__priority ai-writing-assistant__priority--${ item.priority }` }
+					>
+						{ priorityLabels[ item.priority ] }
+					</span>
+				),
 			},
 			{
 				id: 'timestamp',
@@ -728,14 +734,21 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 									)
 								),
 							} }
-							defaultLayouts={ {
-								table: {
-									layout: {
-										density: 'comfortable',
-										enableMoving: false,
+								defaultLayouts={ {
+									grid: {
+										layout: {
+											previewSize: 360,
+											badgeFields: [ 'priority', 'status' ],
+										},
 									},
-								},
-							} }
+									table: {
+										layout: {
+											density: 'comfortable',
+											enableMoving: false,
+										},
+									},
+									list: {},
+								} }
 							config={ {
 								perPageSizes: [ 8, 16, 32 ],
 							} }

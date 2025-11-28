@@ -280,23 +280,26 @@ class Writing_Suggestions extends Abstract_Ability {
 		}
 
 		if ( is_wp_error( $response ) ) {
-			// Fall back to heuristics if the provider fails.
-			$suggestions = $this->build_fallback_suggestions( $content, $types );
-			return $this->format_response( $session['id'], $context['word_count'], $suggestions );
+			return $response;
 		}
 
 		$raw_payload = $response[0] ?? '';
 		$decoded     = $this->decode_payload( $raw_payload );
 
 		if ( null === $decoded ) {
-			$suggestions = $this->build_fallback_suggestions( $content, $types );
-			return $this->format_response( $session['id'], $context['word_count'], $suggestions );
+			return new WP_Error(
+				'ai_writing_assistant_unexpected_response',
+				esc_html__( 'The AI service returned an unexpected response.', 'ai' )
+			);
 		}
 
 		$normalized = $this->normalize_suggestions( $decoded['suggestions'] ?? array(), $types );
 
 		if ( empty( $normalized ) ) {
-			$normalized = $this->build_fallback_suggestions( $content, $types );
+			return new WP_Error(
+				'ai_writing_assistant_empty_response',
+				esc_html__( 'The AI service did not return any suggestions.', 'ai' )
+			);
 		}
 
 		return $this->format_response( $decoded['session_id'] ?? $session['id'], $context['word_count'], $normalized );
@@ -428,103 +431,6 @@ class Writing_Suggestions extends Abstract_Ability {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Builds deterministic fallback suggestions.
-	 *
-	 * @param string   $content Source content.
-	 * @param string[] $requested_types Requested suggestion categories.
-	 * @return array<int, array<string, mixed>>
-	 */
-	private function build_fallback_suggestions( string $content, array $requested_types ): array {
-		$word_count = $this->count_words( $content );
-		$paragraphs = array_filter( preg_split( '/\n{2,}/', wp_strip_all_tags( $content ) ) );
-		$suggestions = array();
-		$timestamp   = gmdate( 'c' );
-
-		if ( in_array( 'readability', $requested_types, true ) ) {
-			$long_sentences = $this->detect_long_sentences( $content );
-
-			if ( ! empty( $long_sentences ) ) {
-				$suggestions[] = array(
-					'id'        => uniqid( 'readability_', true ),
-					'type'      => 'readability',
-					'priority'  => 'medium',
-					'summary'   => esc_html__( 'Break up long sentences.', 'ai' ),
-					'details'   => sprintf(
-						/* translators: %d: Number of sentences that exceed 30 words. */
-						esc_html__( 'Detected %d sentence(s) over 30 words. Consider splitting them for clarity.', 'ai' ),
-						count( $long_sentences )
-					),
-					'context'   => $long_sentences[0],
-					'action'    => null,
-					'timestamp' => $timestamp,
-				);
-			}
-		}
-
-		if ( in_array( 'seo', $requested_types, true ) ) {
-			$suggestions[] = array(
-				'id'        => uniqid( 'seo_', true ),
-				'type'      => 'seo',
-				'priority'  => $word_count < 200 ? 'high' : 'medium',
-				'summary'   => esc_html__( 'Surface your primary keyword earlier.', 'ai' ),
-				'details'   => esc_html__( 'Add the target keyword within the opening paragraph to strengthen SEO signals.', 'ai' ),
-				'context'   => $paragraphs ? reset( $paragraphs ) : '',
-				'action'    => null,
-				'timestamp' => $timestamp,
-			);
-		}
-
-		if ( in_array( 'structure', $requested_types, true ) && count( $paragraphs ) < 3 ) {
-			$suggestions[] = array(
-				'id'        => uniqid( 'structure_', true ),
-				'type'      => 'structure',
-				'priority'  => 'medium',
-				'summary'   => esc_html__( 'Outline supporting sections.', 'ai' ),
-				'details'   => esc_html__( 'Add at least two additional paragraphs to cover background and next steps.', 'ai' ),
-				'context'   => '',
-				'action'    => null,
-				'timestamp' => $timestamp,
-			);
-		}
-
-		if ( empty( $suggestions ) ) {
-			$suggestions[] = array(
-				'id'        => uniqid( 'general_', true ),
-				'type'      => $requested_types[0] ?? 'tone',
-				'priority'  => 'low',
-				'summary'   => esc_html__( 'Keep refining your draft.', 'ai' ),
-				'details'   => esc_html__( 'Everything looks solid. Continue writing to unlock deeper insights.', 'ai' ),
-				'context'   => '',
-				'action'    => null,
-				'timestamp' => $timestamp,
-			);
-		}
-
-		return $suggestions;
-	}
-
-	/**
-	 * Detects long sentences to reference in fallback suggestions.
-	 *
-	 * @param string $content Content to inspect.
-	 * @return array<int, string>
-	 */
-	private function detect_long_sentences( string $content ): array {
-		$plain = wp_strip_all_tags( $content );
-		$sentences = preg_split( '/(?<=[.!?])\s+/', $plain ) ?: array();
-
-		$matches = array();
-		foreach ( $sentences as $sentence ) {
-			$words = preg_split( '/\s+/', trim( $sentence ) );
-			if ( is_array( $words ) && count( array_filter( $words ) ) > 30 ) {
-				$matches[] = trim( $sentence );
-			}
-		}
-
-		return $matches;
 	}
 
 	/**

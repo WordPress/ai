@@ -436,22 +436,24 @@ class Manager {
 			return array();
 		}
 
+		$mcp_remote_config = array(
+			'mcpServers' => array(
+				'wordpress' => array(
+					'command' => 'npx',
+					'args'    => array( 'mcp-remote', $endpoint ),
+					'env'     => array(
+						'MCP_HEADERS' => 'Authorization: Basic <base64-credentials>',
+					),
+				),
+			),
+		);
+
 		return array(
 			'claude-desktop' => array(
 				'id'       => 'claude-desktop',
 				'fileName' => 'claude_desktop_config.json',
 				'content'  => wp_json_encode(
-					array(
-						'mcpServers' => array(
-							'wordpress' => array(
-								'command' => 'npx',
-								'args'    => array( 'mcp-remote', $endpoint ),
-								'env'     => array(
-									'MCP_HEADERS' => 'Authorization: Basic <base64-credentials>',
-								),
-							),
-						),
-					),
+					$mcp_remote_config,
 					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 				),
 			),
@@ -459,13 +461,29 @@ class Manager {
 				'id'       => 'cursor',
 				'fileName' => '.cursor/mcp.json',
 				'content'  => wp_json_encode(
+					$mcp_remote_config,
+					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+				),
+			),
+			'windsurf' => array(
+				'id'       => 'windsurf',
+				'fileName' => 'mcp_config.json (Windsurf)',
+				'content'  => wp_json_encode(
+					$mcp_remote_config,
+					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+				),
+			),
+			'vscode' => array(
+				'id'       => 'vscode',
+				'fileName' => '.vscode/mcp.json',
+				'content'  => wp_json_encode(
 					array(
-						'mcpServers' => array(
+						'servers' => array(
 							'wordpress' => array(
-								'command' => 'npx',
-								'args'    => array( 'mcp-remote', $endpoint ),
-								'env'     => array(
-									'MCP_HEADERS' => 'Authorization: Basic <base64-credentials>',
+								'type' => 'http',
+								'url'  => $endpoint,
+								'headers' => array(
+									'Authorization' => 'Basic <base64-credentials>',
 								),
 							),
 						),
@@ -473,9 +491,17 @@ class Manager {
 					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 				),
 			),
+			'jetbrains' => array(
+				'id'       => 'jetbrains',
+				'fileName' => 'mcp.json (JetBrains)',
+				'content'  => wp_json_encode(
+					$mcp_remote_config,
+					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+				),
+			),
 			'generic' => array(
 				'id'       => 'generic',
-				'fileName' => 'mcp-server.json',
+				'fileName' => 'mcp-server.json (Generic)',
 				'content'  => wp_json_encode(
 					array(
 						'endpoint'    => $endpoint,
@@ -631,13 +657,18 @@ class Manager {
 
 	/**
 	 * Figure out the status label for a server.
+	 *
+	 * Note: When a server is enabled but has no runtime instance, it means
+	 * either the server was just enabled via API (runtime will exist on next
+	 * request) or it's still initializing. We return 'running' for enabled
+	 * servers since they will be running once the page reloads.
 	 */
 	private function determine_status( array $server, ?McpServer $runtime ): string {
 		if ( empty( $server['enabled'] ) || ! $this->is_enabled() ) {
 			return 'disabled';
 		}
 
-		return $runtime ? 'running' : 'initializing';
+		return 'running';
 	}
 
 	/**

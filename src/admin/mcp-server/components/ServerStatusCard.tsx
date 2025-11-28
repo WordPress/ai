@@ -6,51 +6,112 @@ import {
 	Card,
 	CardBody,
 	CardHeader,
-	ToggleControl,
+	TextControl,
 } from '@wordpress/components';
+import { check, pencil, closeSmall } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
 /**
  * External dependencies
  */
-import React from 'react';
+import React, { useState } from 'react';
 
 /**
  * Internal dependencies
  */
-import StatusBadge from './StatusBadge';
 import type { CopyHandler, ServerDetails } from '../types';
 
 interface ServerStatusCardProps {
 	server: ServerDetails;
-	savingServer: boolean;
-	onToggleServer: ( nextValue: boolean ) => void;
+	onRename: ( newName: string ) => Promise< void >;
 	onCopy: CopyHandler;
 	profileUrl: string;
 }
 
 const ServerStatusCard: React.FC< ServerStatusCardProps > = ( {
 	server,
-	savingServer,
-	onToggleServer,
+	onRename,
 	onCopy,
 	profileUrl,
 } ) => {
-	const statusKey = server.status ?? 'initializing';
+	const [ isEditing, setIsEditing ] = useState( false );
+	const [ editName, setEditName ] = useState( server.name );
+	const [ isSaving, setIsSaving ] = useState( false );
+
 	const endpoint = server.http_endpoint ?? '';
 	const cliCommand = server.cli_command ?? '';
+
+	const handleStartEdit = () => {
+		setEditName( server.name );
+		setIsEditing( true );
+	};
+
+	const handleCancelEdit = () => {
+		setEditName( server.name );
+		setIsEditing( false );
+	};
+
+	const handleSaveEdit = async () => {
+		if ( ! editName.trim() || editName === server.name ) {
+			setIsEditing( false );
+			return;
+		}
+
+		setIsSaving( true );
+		try {
+			await onRename( editName.trim() );
+			setIsEditing( false );
+		} finally {
+			setIsSaving( false );
+		}
+	};
+
+	const handleKeyDown = ( event: React.KeyboardEvent ) => {
+		if ( event.key === 'Enter' ) {
+			handleSaveEdit();
+		} else if ( event.key === 'Escape' ) {
+			handleCancelEdit();
+		}
+	};
 
 	return (
 		<Card className="ai-mcp-server__card ai-mcp-server__card--status">
 			<CardHeader>
 				<div className="ai-mcp-server__card-heading">
-					<StatusBadge status={ statusKey } />
-					<ToggleControl
-						label={ __( 'Enable this server', 'ai' ) }
-						checked={ server.enabled }
-						onChange={ onToggleServer }
-						disabled={ savingServer }
-						__nextHasNoMarginBottom
-					/>
+					<div className="ai-mcp-server__server-name">
+						{ isEditing ? (
+							<div className="ai-mcp-server__name-edit">
+								<TextControl
+									value={ editName }
+									onChange={ setEditName }
+									onKeyDown={ handleKeyDown }
+									disabled={ isSaving }
+									__nextHasNoMarginBottom
+									__next40pxDefaultSize
+								/>
+								<Button
+									icon={ check }
+									label={ __( 'Save', 'ai' ) }
+									onClick={ handleSaveEdit }
+									disabled={ isSaving }
+								/>
+								<Button
+									icon={ closeSmall }
+									label={ __( 'Cancel', 'ai' ) }
+									onClick={ handleCancelEdit }
+									disabled={ isSaving }
+								/>
+							</div>
+						) : (
+							<div className="ai-mcp-server__name-display">
+								<h3>{ server.name }</h3>
+								<Button
+									icon={ pencil }
+									label={ __( 'Rename server', 'ai' ) }
+									onClick={ handleStartEdit }
+								/>
+							</div>
+						) }
+					</div>
 				</div>
 			</CardHeader>
 			<CardBody>

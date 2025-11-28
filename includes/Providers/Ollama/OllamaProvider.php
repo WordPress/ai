@@ -30,7 +30,7 @@ class OllamaProvider extends AbstractApiProvider {
 	/**
 	 * {@inheritDoc}
 	 */
-	protected static function baseUrl(): string {
+	public static function get_base_url(): string {
 		/**
 		 * Filters the Ollama base URL.
 		 *
@@ -39,6 +39,13 @@ class OllamaProvider extends AbstractApiProvider {
 		 * @param string $base_url Default base URL.
 		 */
 		return apply_filters( 'ai_ollama_base_url', 'http://localhost:11434/api' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected static function baseUrl(): string {
+		return static::get_base_url();
 	}
 
 	/**

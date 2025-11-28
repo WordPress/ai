@@ -104,17 +104,18 @@
 	align-items: center;
 	gap: 6px;
 	font-weight: 500;
+	color: var(--wp-components-color-foreground, #1d2327);
 
 	svg {
 		flex-shrink: 0;
-		width: 14px;
-		height: 14px;
+		width: 18px;
+		height: 18px;
 	}
 }
 
 .ai-request-logs__model {
 	font-size: 11px;
-	color: #757575;
+	color: var(--wp-components-color-foreground-muted, #50575e);
 }
 
 // Status badges
@@ -146,6 +147,46 @@
 	text-align: center;
 	color: #757575;
 	padding: 40px;
+}
+
+.ai-provider-tooltip {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-width: 280px;
+}
+
+.ai-provider-tooltip__section-title {
+	font-size: 12px;
+	text-transform: uppercase;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+}
+
+.ai-provider-tooltip__models ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.ai-provider-tooltip__models li {
+	font-size: 12px;
+}
+
+.ai-provider-tooltip__capabilities {
+	display: block;
+	font-size: 11px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
+}
+
+.ai-provider-tooltip__link,
+.ai-provider-tooltip__hint,
+.ai-provider-tooltip__type,
+.ai-provider-tooltip__model {
+	font-size: 11px;
+	color: var(--wp-components-color-foreground-muted, #50575e);
 }
 
 // Settings panel

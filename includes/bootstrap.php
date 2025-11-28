@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Admin\Provider_Credentials_UI;
 use WordPress\AI\Experiments\Extended_Providers\Extended_Providers;
 use WordPress\AI\Logging\Logging_Discovery_Strategy;
 use WordPress\AI\Settings\Settings_Page;
@@ -213,6 +214,7 @@ function initialize_experiments(): void {
 		if ( is_admin() ) {
 			$settings_page = new Settings_Page( $registry );
 			$settings_page->init();
+			Provider_Credentials_UI::init();
 		}
 
 		// Register our post-related WordPress Abilities.
