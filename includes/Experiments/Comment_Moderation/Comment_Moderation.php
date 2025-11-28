@@ -102,15 +102,17 @@ class Comment_Moderation extends Abstract_Experiment {
 		// Register abilities.
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 
-		// Mark new comments as pending analysis.
-		add_action( 'comment_post', array( $this, 'mark_comment_pending' ), 10, 1 );
-
 		// Add columns to comments list table.
 		add_filter( 'manage_edit-comments_columns', array( $this, 'add_columns' ) );
 		add_action( 'manage_comments_custom_column', array( $this, 'render_column' ), 10, 2 );
 
 		// Add row action for suggest reply.
 		add_filter( 'comment_row_actions', array( $this, 'add_row_actions' ), 10, 2 );
+
+		// Add bulk action.
+		add_filter( 'bulk_actions-edit-comments', array( $this, 'add_bulk_actions' ) );
+		add_filter( 'handle_bulk_actions-edit-comments', array( $this, 'handle_bulk_action' ), 10, 3 );
+		add_action( 'admin_notices', array( $this, 'show_bulk_action_notice' ) );
 
 		// Enqueue assets.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
@@ -142,17 +144,6 @@ class Comment_Moderation extends Abstract_Experiment {
 				'ability_class' => Reply_Suggestion::class,
 			)
 		);
-	}
-
-	/**
-	 * Marks a new comment as pending analysis.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param int $comment_id The comment ID.
-	 */
-	public function mark_comment_pending( int $comment_id ): void {
-		update_comment_meta( $comment_id, self::META_ANALYSIS_STATUS, self::STATUS_PENDING );
 	}
 
 	/**
@@ -209,8 +200,13 @@ class Comment_Moderation extends Abstract_Experiment {
 		if ( self::STATUS_COMPLETE === $status ) {
 			$sentiment = get_comment_meta( $comment_id, self::META_SENTIMENT, true );
 			$this->render_sentiment_badge( $sentiment );
+		} elseif ( self::STATUS_PENDING === $status ) {
+			$this->render_pending_badge( $comment_id );
+		} elseif ( self::STATUS_PROCESSING === $status ) {
+			$this->render_processing_badge( $comment_id );
 		} else {
-			$this->render_pending_badge( $comment_id, $status );
+			// Empty or not analyzed - show dash.
+			echo '<span class="ai-badge ai-badge--empty">—</span>';
 		}
 	}
 
@@ -226,8 +222,13 @@ class Comment_Moderation extends Abstract_Experiment {
 		if ( self::STATUS_COMPLETE === $status ) {
 			$score = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
 			$this->render_toxicity_badge( $score );
+		} elseif ( self::STATUS_PENDING === $status ) {
+			$this->render_pending_badge( $comment_id );
+		} elseif ( self::STATUS_PROCESSING === $status ) {
+			$this->render_processing_badge( $comment_id );
 		} else {
-			echo '<span class="ai-badge ai-badge--pending">—</span>';
+			// Empty or not analyzed - show dash.
+			echo '<span class="ai-badge ai-badge--empty">—</span>';
 		}
 	}
 
@@ -301,39 +302,106 @@ class Comment_Moderation extends Abstract_Experiment {
 	}
 
 	/**
-	 * Renders a pending analysis badge.
+	 * Renders a pending badge for comments queued for analysis.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param int    $comment_id The comment ID.
-	 * @param string $status     The analysis status.
+	 * @param int $comment_id The comment ID.
 	 */
-	private function render_pending_badge( int $comment_id, string $status ): void {
-		$status_class = '';
-		$status_text  = '';
+	private function render_pending_badge( int $comment_id ): void {
+		printf(
+			'<span class="ai-badge ai-badge--pending" data-comment-id="%d" data-ai-status="pending">%s</span>',
+			absint( $comment_id ),
+			esc_html__( 'Queued', 'ai' )
+		);
+	}
 
-		switch ( $status ) {
-			case self::STATUS_PROCESSING:
-				$status_class = 'ai-badge--processing';
-				$status_text  = __( 'Analyzing...', 'ai' );
-				break;
-			case self::STATUS_FAILED:
-				$status_class = 'ai-badge--failed';
-				$status_text  = __( 'Failed', 'ai' );
-				break;
-			default:
-				$status_class = 'ai-badge--pending';
-				$status_text  = __( 'Pending', 'ai' );
-				break;
+	/**
+	 * Renders a processing badge.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param int $comment_id The comment ID.
+	 */
+	private function render_processing_badge( int $comment_id ): void {
+		printf(
+			'<span class="ai-badge ai-badge--processing" data-comment-id="%d" data-ai-status="processing">%s</span>',
+			absint( $comment_id ),
+			esc_html__( 'Analyzing...', 'ai' )
+		);
+	}
+
+	/**
+	 * Adds bulk actions to the comments list.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param array<string, string> $actions The existing bulk actions.
+	 * @return array<string, string> The modified bulk actions.
+	 */
+	public function add_bulk_actions( array $actions ): array {
+		$actions['ai_analyze'] = __( 'Analyze with AI', 'ai' );
+		return $actions;
+	}
+
+	/**
+	 * Handles the bulk action for AI analysis.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $redirect_url The redirect URL.
+	 * @param string $action       The action being performed.
+	 * @param array  $comment_ids  The comment IDs.
+	 * @return string The modified redirect URL.
+	 */
+	public function handle_bulk_action( string $redirect_url, string $action, array $comment_ids ): string {
+		if ( 'ai_analyze' !== $action ) {
+			return $redirect_url;
 		}
 
-		printf(
-			'<span class="ai-badge %s" data-comment-id="%d" data-ai-status="%s">%s</span>',
-			esc_attr( $status_class ),
-			absint( $comment_id ),
-			esc_attr( $status ?: self::STATUS_PENDING ),
-			esc_html( $status_text )
-		);
+		// Mark selected comments as pending for analysis.
+		$queued = 0;
+		foreach ( $comment_ids as $comment_id ) {
+			$comment_id = absint( $comment_id );
+			if ( $comment_id ) {
+				update_comment_meta( $comment_id, self::META_ANALYSIS_STATUS, self::STATUS_PENDING );
+				++$queued;
+			}
+		}
+
+		// Add query arg to show notice.
+		return add_query_arg( 'ai_analysis_queued', $queued, $redirect_url );
+	}
+
+	/**
+	 * Shows admin notice after bulk action.
+	 *
+	 * @since 0.1.0
+	 */
+	public function show_bulk_action_notice(): void {
+		if ( ! isset( $_GET['ai_analysis_queued'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+
+		$count = absint( $_GET['ai_analysis_queued'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( $count > 0 ) {
+			printf(
+				'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+				esc_html(
+					sprintf(
+						/* translators: %d: Number of comments queued for analysis. */
+						_n(
+							'%d comment queued for AI analysis.',
+							'%d comments queued for AI analysis.',
+							$count,
+							'ai'
+						),
+						$count
+					)
+				)
+			);
+		}
 	}
 
 	/**
@@ -439,6 +507,11 @@ class Comment_Moderation extends Abstract_Experiment {
 			.ai-badge--high-toxicity {
 				background-color: #f8d7da;
 				color: #721c24;
+			}
+
+			.ai-badge--empty {
+				background-color: transparent;
+				color: #999;
 			}
 
 			.ai-badge--pending {

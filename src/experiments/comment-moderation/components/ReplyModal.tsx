@@ -36,10 +36,17 @@ type ReplySuggestionResult = {
 	replies: string[];
 };
 
+type CachedReplies = {
+	replies: string[];
+	tone: Tone;
+};
+
 type ReplyModalProps = {
 	commentId: number;
 	onClose: () => void;
 	onSelectReply: ( reply: string, commentId: number ) => void;
+	initialReplies?: CachedReplies;
+	onRepliesChange?: ( data: CachedReplies ) => void;
 };
 
 /**
@@ -86,12 +93,14 @@ export function ReplyModal( {
 	commentId,
 	onClose,
 	onSelectReply,
+	initialReplies,
+	onRepliesChange,
 }: ReplyModalProps ): React.ReactElement {
 	const [ isLoading, setIsLoading ] = useState( false );
-	const [ replies, setReplies ] = useState< string[] >( [] );
-	const [ tone, setTone ] = useState< Tone >( 'friendly' );
+	const [ replies, setReplies ] = useState< string[] >( initialReplies?.replies ?? [] );
+	const [ tone, setTone ] = useState< Tone >( initialReplies?.tone ?? 'friendly' );
 	const [ error, setError ] = useState< string | null >( null );
-	const [ hasGenerated, setHasGenerated ] = useState( false );
+	const [ hasGenerated, setHasGenerated ] = useState( !! initialReplies?.replies?.length );
 
 	/**
 	 * Generates reply suggestions.
@@ -112,6 +121,9 @@ export function ReplyModal( {
 
 			setReplies( result.replies );
 			setHasGenerated( true );
+
+			// Notify parent of new replies for caching.
+			onRepliesChange?.( { replies: result.replies, tone } );
 		} catch ( err ) {
 			const message =
 				err instanceof Error ? err.message : __( 'Failed to generate replies.', 'ai' );
@@ -119,7 +131,7 @@ export function ReplyModal( {
 		} finally {
 			setIsLoading( false );
 		}
-	}, [ commentId, tone ] );
+	}, [ commentId, tone, onRepliesChange ] );
 
 	/**
 	 * Handles selecting a reply.
@@ -135,16 +147,21 @@ export function ReplyModal( {
 	 * Updates a reply in the list.
 	 */
 	const handleReplyChange = useCallback( ( index: number, value: string ) => {
-		setReplies( ( prev ) =>
-			prev.map( ( r, i ) => ( i === index ? value : r ) )
-		);
-	}, [] );
+		setReplies( ( prev ) => {
+			const updated = prev.map( ( r, i ) => ( i === index ? value : r ) );
+			// Update cache with edited reply.
+			onRepliesChange?.( { replies: updated, tone } );
+			return updated;
+		} );
+	}, [ tone, onRepliesChange ] );
 
 	/**
-	 * Generate replies on mount.
+	 * Generate replies on mount only if no cached replies.
 	 */
 	useEffect( () => {
-		generateReplies();
+		if ( ! initialReplies?.replies?.length ) {
+			generateReplies();
+		}
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	return (
@@ -155,7 +172,7 @@ export function ReplyModal( {
 			size="large"
 			className="ai-reply-modal"
 		>
-			<div className="ai-reply-modal__controls">
+			<div className="ai-reply-modal__controls" style={ { marginBottom: '20px' } }>
 				<Flex gap={ 4 } align="flex-end">
 					<FlexItem>
 						<SelectControl
