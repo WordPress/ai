@@ -8,8 +8,6 @@ import { __ } from '@wordpress/i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { usePersistedState } from '../hooks/usePersistedView';
-
 import LogDetailModal from './components/LogDetailModal';
 import LogsTable from './components/LogsTable';
 import SettingsPanel from './components/SettingsPanel';
@@ -63,7 +61,7 @@ const App: React.FC = () => {
 	const [ total, setTotal ] = useState( 0 );
 
 	// Filters state
-	const [ filters, setFilters ] = usePersistedState< LogFilters >( 'ai-request-logs-filters', defaultFilters );
+	const [ filters, setFilters ] = useState< LogFilters >( defaultFilters );
 	const [ filterOptions, setFilterOptions ] = useState< FilterOptions >( settings.initialState.filters );
 
 	// UI state

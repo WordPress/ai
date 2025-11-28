@@ -155,18 +155,18 @@
 		}
 
 		&:focus {
-			outline: 0.125rem solid #2271b1;
+			outline: 0.125rem solid var(--wp-admin-theme-color, #2271b1);
 			outline-offset: 0.0625rem;
 		}
 
 		&[aria-expanded="true"] {
-			background: #2271b1;
-			border-color: #2271b1;
+			background: var(--wp-admin-theme-color, #2271b1);
+			border-color: var(--wp-admin-theme-color, #2271b1);
 			color: #fff;
 
 			&:hover {
-				background: #135e96;
-				border-color: #135e96;
+				background: var(--wp-admin-theme-color-darker-20, #135e96);
+				border-color: var(--wp-admin-theme-color-darker-20, #135e96);
 			}
 		}
 
@@ -248,8 +248,8 @@
 		background: #fff;
 
 		&:focus {
-			border-color: #2271b1;
-			box-shadow: 0 0 0 0.0625rem #2271b1;
+			border-color: var(--wp-admin-theme-color, #2271b1);
+			box-shadow: 0 0 0 0.0625rem var(--wp-admin-theme-color, #2271b1);
 			outline: none;
 		}
 	}
