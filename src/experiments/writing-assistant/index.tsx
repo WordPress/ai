@@ -838,15 +838,6 @@ const WritingAssistantApp: React.FC< { data: LocalizedData } > = ( {
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>
-						<Button
-							variant="secondary"
-							onClick={ () => triggerSuggestions( 'manual' ) }
-							disabled={ ! sessionActive || isFetching }
-						>
-							{ isFetching
-								? __( 'Working…', 'ai' )
-								: __( 'Generate suggestions', 'ai' ) }
-						</Button>
 					</div>
 				</Popover>
 			) }

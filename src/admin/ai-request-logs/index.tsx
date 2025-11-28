@@ -210,6 +210,14 @@ const App: React.FC = () => {
 				view.filters,
 				'operation'
 			);
+			const operationPatternFilter = extractFilterValue(
+				view.filters,
+				'operation_pattern'
+			);
+			const tokensFilterValue = extractFilterValue(
+				view.filters,
+				'tokens_total'
+			);
 			const searchTerm = view.search ?? '';
 
 			if ( typeFilter ) {
@@ -223,6 +231,12 @@ const App: React.FC = () => {
 			}
 			if ( operationFilter.length > 0 ) {
 				params.append( 'operation', operationFilter.join( ',' ) );
+			}
+			if ( operationPatternFilter ) {
+				params.append( 'operation_pattern', operationPatternFilter );
+			}
+			if ( tokensFilterValue ) {
+				params.append( 'tokens_filter', tokensFilterValue );
 			}
 			if ( searchTerm ) {
 				params.append( 'search', searchTerm );

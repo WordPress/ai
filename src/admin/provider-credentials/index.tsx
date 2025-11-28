@@ -3,7 +3,8 @@
  */
 import domReady from '@wordpress/dom-ready';
 import { Popover } from '@wordpress/components';
-import { useRef, useState } from '@wordpress/element';
+import { useRef, useState, useEffect } from '@wordpress/element';
+import * as React from 'react';
 
 /**
  * External dependencies
@@ -22,6 +23,7 @@ declare global {
 	interface Window {
 		aiProviderCredentialsConfig?: {
 			providers?: ProviderMetadataMap;
+			cloudflareAccountId?: string;
 		};
 	}
 }
@@ -29,9 +31,10 @@ declare global {
 const ProviderBadge: React.FC< {
 	providerId: string;
 	config: ProviderMetadata;
-} > = ( { providerId, config } ) => {
+	labelElement?: HTMLElement | null;
+} > = ( { providerId, config, labelElement } ) => {
 	const [ isOpen, setIsOpen ] = useState( false );
-	const anchorRef = useRef< HTMLButtonElement | null >( null );
+	const triggerRef = useRef< HTMLDivElement | null >( null );
 	const closeTimeout = useRef< ReturnType< typeof setTimeout > | null >( null );
 
 	const clearCloseTimeout = () => {
@@ -56,6 +59,26 @@ const ProviderBadge: React.FC< {
 		setIsOpen( false );
 	};
 
+	// Attach event listeners to the label element so it also triggers the popover
+	React.useEffect( () => {
+		if ( ! labelElement ) return;
+
+		const handleMouseEnter = () => open();
+		const handleMouseLeave = () => scheduleClose();
+		const handleClick = () => open();
+
+		labelElement.addEventListener( 'mouseenter', handleMouseEnter );
+		labelElement.addEventListener( 'mouseleave', handleMouseLeave );
+		labelElement.addEventListener( 'click', handleClick );
+		labelElement.style.cursor = 'pointer';
+
+		return () => {
+			labelElement.removeEventListener( 'mouseenter', handleMouseEnter );
+			labelElement.removeEventListener( 'mouseleave', handleMouseLeave );
+			labelElement.removeEventListener( 'click', handleClick );
+		};
+	}, [ labelElement ] );
+
 	const IconComponent = getProviderIconComponent(
 		config.icon || providerId,
 		providerId
@@ -74,24 +97,26 @@ const ProviderBadge: React.FC< {
 	);
 
 	return (
-		<>
+		<div
+			ref={ triggerRef }
+			className="ai-provider-credentials__trigger"
+			onMouseEnter={ open }
+			onMouseLeave={ scheduleClose }
+			aria-expanded={ isOpen }
+		>
 			<button
 				type="button"
 				className="ai-provider-credentials__icon-button"
-				ref={ anchorRef }
 				onClick={ open }
-				onMouseEnter={ open }
-				onMouseLeave={ scheduleClose }
 				onFocus={ open }
 				onBlur={ scheduleClose }
-				aria-expanded={ isOpen }
 				aria-haspopup="dialog"
 			>
 				{ icon }
 			</button>
-			{ isOpen && anchorRef.current && (
+			{ isOpen && triggerRef.current && (
 				<Popover
-					anchor={ anchorRef.current }
+					anchor={ triggerRef.current }
 					placement="right-start"
 					offset={ 12 }
 					onClose={ close }
@@ -106,11 +131,58 @@ const ProviderBadge: React.FC< {
 					</div>
 				</Popover>
 			) }
-		</>
+		</div>
 	);
 };
 
-const enhanceProviderRows = ( providers: ProviderMetadataMap ) => {
+const injectCloudflareAccountField = (
+	row: HTMLTableRowElement | null,
+	currentValue: string
+) => {
+	if ( ! row ) {
+		return;
+	}
+
+	const targetCell = row.querySelector< HTMLTableCellElement >( 'td' );
+	if ( ! targetCell ) {
+		return;
+	}
+
+	if ( targetCell.querySelector( '.ai-provider-credentials__cloudflare-account' ) ) {
+		return;
+	}
+
+	const wrapper = document.createElement( 'div' );
+	wrapper.className = 'ai-provider-credentials__cloudflare-account';
+
+	const label = document.createElement( 'label' );
+	label.htmlFor = 'ai-cloudflare-account-id';
+	label.textContent = 'Account ID';
+
+	const input = document.createElement( 'input' );
+	input.type = 'text';
+	input.id = 'ai-cloudflare-account-id';
+	input.name = 'ai_cloudflare_account_id';
+	input.className = 'regular-text';
+	input.value = currentValue ?? '';
+	input.placeholder = 'Enter your Cloudflare account ID';
+
+	const helpText = document.createElement( 'p' );
+	helpText.className = 'description';
+	helpText.textContent =
+		'Find this under Workers AI → Overview in the Cloudflare dashboard.';
+
+	wrapper.appendChild( label );
+	wrapper.appendChild( input );
+	wrapper.appendChild( helpText );
+
+	targetCell.appendChild( wrapper );
+};
+
+const enhanceProviderRows = (
+	providers: ProviderMetadataMap,
+	cloudflareAccountId: string
+) => {
 	const inputs = document.querySelectorAll<HTMLInputElement>(
 		'input[id^="wp-ai-client-provider-api-key-"]'
 	);
@@ -162,15 +234,21 @@ const enhanceProviderRows = ( providers: ProviderMetadataMap ) => {
 
 		const root = createRoot( iconHost );
 		root.render(
-			<ProviderBadge providerId={ providerId } config={ config } />
+			<ProviderBadge providerId={ providerId } config={ config } labelElement={ label as HTMLElement } />
 		);
+
+		if ( providerId === 'cloudflare' ) {
+			injectCloudflareAccountField( row, cloudflareAccountId );
+		}
 	} );
 };
 
 domReady( () => {
 	const providers =
 		window.aiProviderCredentialsConfig?.providers ?? undefined;
+	const cloudflareAccountId =
+		window.aiProviderCredentialsConfig?.cloudflareAccountId ?? '';
 	if ( providers ) {
-		enhanceProviderRows( providers );
+		enhanceProviderRows( providers, cloudflareAccountId );
 	}
 } );

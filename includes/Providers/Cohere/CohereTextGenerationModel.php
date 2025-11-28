@@ -26,6 +26,7 @@ use WordPress\AiClient\Results\DTO\TokenUsage;
 use WordPress\AiClient\Results\Enums\FinishReasonEnum;
 
 use function __;
+use function array_values;
 
 /**
  * Provides direct access to Cohere's `/chat` endpoint.
@@ -83,20 +84,21 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 			);
 		}
 
-		if ( $system_text ) {
-			array_unshift(
-				$messages,
-				array(
-					'role'    => 'system',
-					'content' => $system_text,
-				)
-			);
-		}
+		$current_message = $this->extractLatestUserMessage( $messages );
+		$chat_history    = $this->convertMessagesToChatHistory( $messages );
 
 		$payload = array(
 			'model'    => $this->metadata()->getId(),
-			'messages' => $messages,
+			'message'  => $current_message,
 		);
+
+		if ( $system_text ) {
+			$payload['preamble'] = $system_text;
+		}
+
+		if ( ! empty( $chat_history ) ) {
+			$payload['chat_history'] = $chat_history;
+		}
 
 		if ( null !== $config->getCandidateCount() ) {
 			$payload['response_count'] = (int) $config->getCandidateCount();
@@ -278,5 +280,55 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	 */
 	protected function throwIfNotSuccessful( Response $response ): void {
 		ResponseUtil::throwIfNotSuccessful( $response );
+	}
+
+	/**
+	 * Extracts the most recent user utterance for Cohere's `message` field.
+	 *
+	 * @param array<int, array{role:string,content:string}> $messages Normalized message list.
+	 *
+	 * @return string
+	 */
+	private function extractLatestUserMessage( array &$messages ): string {
+		for ( $index = count( $messages ) - 1; $index >= 0; $index-- ) {
+			if ( 'user' !== $messages[ $index ]['role'] ) {
+				continue;
+			}
+
+			$content = $messages[ $index ]['content'];
+			unset( $messages[ $index ] );
+
+			return $content;
+		}
+
+		throw new InvalidArgumentException(
+			__( 'Cohere chat requests require at least one user message.', 'ai' )
+		);
+	}
+
+	/**
+	 * Converts remaining messages into Cohere `chat_history` entries.
+	 *
+	 * @param array<int, array{role:string,content:string}> $messages Normalized message list.
+	 *
+	 * @return array<int, array{role:string,message:string}>
+	 */
+	private function convertMessagesToChatHistory( array $messages ): array {
+		$history = array();
+
+		foreach ( array_values( $messages ) as $message ) {
+			if ( 'system' === $message['role'] ) {
+				continue;
+			}
+
+			$role = 'user' === $message['role'] ? 'USER' : 'CHATBOT';
+
+			$history[] = array(
+				'role'    => $role,
+				'message' => $message['content'],
+			);
+		}
+
+		return $history;
 	}
 }

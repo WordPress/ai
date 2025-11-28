@@ -264,6 +264,42 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertCount( 2, $result[0], 'First model should have 2 elements' );
 		$this->assertEquals( 'anthropic', $result[0][0], 'First model provider should be anthropic' );
 		$this->assertEquals( 'claude-3-5-sonnet-20240620', $result[0][1], 'First model name should be claude-3-5-sonnet-20240620' );
+
+		// Ensure ordering remains Anthropic → OpenAI → Google.
+		$this->assertEquals( 'anthropic', $result[1][0], 'Second model provider should be anthropic' );
+		$this->assertEquals( 'openai', $result[2][0], 'Third model provider should be openai' );
+		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
+		$this->assertEquals( 'google', $result[4][0], 'Fifth model provider should be google' );
+	}
+
+	/**
+	 * Test that other providers are always lower priority than Anthropic/OpenAI/Google.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_preferred_models_demotes_other_providers(): void {
+		add_filter(
+			'ai_experiments_preferred_models',
+			static function ( $models ) {
+				return array(
+					array( 'custom', 'custom-alpha' ),
+					array( 'anthropic', 'claude-x' ),
+					array( 'openai', 'gpt-x' ),
+					array( 'google', 'gemini-x' ),
+					array( 'custom', 'custom-beta' ),
+				);
+			}
+		);
+
+		$result = \WordPress\AI\get_preferred_models();
+
+		$this->assertEquals( 'anthropic', $result[0][0], 'Anthropic should remain highest priority' );
+		$this->assertEquals( 'openai', $result[1][0], 'OpenAI should follow Anthropic' );
+		$this->assertEquals( 'google', $result[2][0], 'Google should follow OpenAI' );
+		$this->assertEquals( 'custom', $result[3][0], 'Custom providers should be demoted' );
+		$this->assertEquals( 'custom', $result[4][0], 'Additional custom providers should remain after priority list' );
+
+		remove_all_filters( 'ai_experiments_preferred_models' );
 	}
 
 	/**
@@ -322,36 +358,39 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	public function test_is_experiment_enabled_requires_global_toggle(): void {
-		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
+		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 
 		update_option( Settings_Registration::GLOBAL_OPTION, false );
 		update_option( 'ai_experiment_test-experiment_enabled', true );
 
 		$this->assertFalse( \WordPress\AI\is_experiment_enabled( 'test-experiment' ) );
 
-		remove_all_filters( 'ai_pre_has_valid_credentials_check' );
+		remove_all_filters( 'ai_experiments_pre_has_valid_credentials_check' );
 	}
 
 	public function test_is_experiment_enabled_returns_true_when_all_conditions_met(): void {
-		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
+		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 
 		update_option( Settings_Registration::GLOBAL_OPTION, true );
 		update_option( 'ai_experiment_test-experiment_enabled', true );
 
 		$this->assertTrue( \WordPress\AI\is_experiment_enabled( 'test-experiment' ) );
 
-		remove_all_filters( 'ai_pre_has_valid_credentials_check' );
+		remove_all_filters( 'ai_experiments_pre_has_valid_credentials_check' );
 	}
 
 	public function test_is_experiment_enabled_requires_valid_credentials(): void {
-		add_filter( 'ai_pre_has_valid_credentials_check', '__return_false' );
+		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
+		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_false' );
 
 		update_option( Settings_Registration::GLOBAL_OPTION, true );
 		update_option( 'ai_experiment_test-experiment_enabled', true );
 
 		$this->assertFalse( \WordPress\AI\is_experiment_enabled( 'test-experiment' ) );
 
-		remove_all_filters( 'ai_pre_has_valid_credentials_check' );
+		remove_all_filters( 'ai_experiments_pre_has_valid_credentials_check' );
 	}
 
 	/**

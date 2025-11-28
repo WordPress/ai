@@ -174,16 +174,16 @@ function get_preferred_models(): array {
 			'claude-3-haiku-20240307',
 		),
 		array(
-			'google',
-			'gemini-1.5-flash',
-		),
-		array(
 			'openai',
 			'gpt-4o-mini',
 		),
 		array(
 			'openai',
 			'gpt-4o',
+		),
+		array(
+			'google',
+			'gemini-1.5-flash',
 		),
 	);
 
@@ -195,7 +195,36 @@ function get_preferred_models(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred models.
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_models', $preferred_models );
+	$preferred_models = (array) apply_filters( 'ai_experiments_preferred_models', $preferred_models );
+
+	$grouped = array(
+		'anthropic' => array(),
+		'openai'    => array(),
+		'google'    => array(),
+		'other'     => array(),
+	);
+
+	foreach ( $preferred_models as $model ) {
+		if ( ! is_array( $model ) || count( $model ) < 2 ) {
+			continue;
+		}
+
+		$provider = strtolower( (string) $model[0] );
+
+		if ( isset( $grouped[ $provider ] ) ) {
+			$grouped[ $provider ][] = $model;
+			continue;
+		}
+
+		$grouped['other'][] = $model;
+	}
+
+	return array_merge(
+		$grouped['anthropic'],
+		$grouped['openai'],
+		$grouped['google'],
+		$grouped['other']
+	);
 }
 
 /**

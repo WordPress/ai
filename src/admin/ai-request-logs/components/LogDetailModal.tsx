@@ -37,6 +37,12 @@ const formatCost = ( cost: number | null ): string => {
 	return '$' + cost.toFixed( 4 );
 };
 
+const formatKindLabel = ( value: string ): string =>
+	value
+		.split( '_' )
+		.map( ( part ) => part.charAt( 0 ).toUpperCase() + part.slice( 1 ) )
+		.join( ' ' );
+
 const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 	log,
 	onClose,
@@ -49,6 +55,40 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 		typeof log.context?.output_preview === 'string'
 			? log.context.output_preview
 			: null;
+	const requestKind =
+		typeof log.context?.request_kind === 'string'
+			? log.context.request_kind
+			: null;
+
+	const imageUrlValue = log.context?.image_urls;
+	const imageUrls = Array.isArray( imageUrlValue )
+		? imageUrlValue.filter(
+				( url ): url is string =>
+					typeof url === 'string' && url.length > 0
+		  )
+		: [];
+
+	const base64Value = log.context?.image_base64_samples;
+	const base64Images = Array.isArray( base64Value )
+		? base64Value
+				.map( ( sample ) =>
+					typeof sample === 'object' && sample !== null
+						? sample
+						: null
+				)
+				.filter(
+					(
+						sample
+					): sample is { data: string; mime?: string } =>
+						Boolean(
+							sample &&
+								typeof sample === 'object' &&
+								typeof ( sample as { data?: unknown } ).data ===
+									'string' &&
+								( sample as { data: string } ).data.length > 0
+						)
+				)
+		: [];
 
 	const handleCopyId = async () => {
 		try {
@@ -120,6 +160,12 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 								<th>{ __( 'Type', 'ai' ) }</th>
 								<td>{ log.type }</td>
 							</tr>
+							{ requestKind && (
+								<tr>
+									<th>{ __( 'Request Kind', 'ai' ) }</th>
+									<td>{ formatKindLabel( requestKind ) }</td>
+								</tr>
+							) }
 							{ log.user_id && (
 								<tr>
 									<th>{ __( 'User ID', 'ai' ) }</th>
@@ -212,6 +258,50 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 						<pre className="ai-request-logs__detail-context">
 							{ outputPreview }
 						</pre>
+					</div>
+				) }
+
+				{ ( imageUrls.length > 0 || base64Images.length > 0 ) && (
+					<div className="ai-request-logs__detail-section">
+						<h3>{ __( 'Generated Images', 'ai' ) }</h3>
+						<div className="ai-request-logs__image-grid">
+							{ imageUrls.map( ( url, index ) => (
+								<figure key={ `image-url-${ index }` }>
+									<img
+										src={ url }
+										alt={ __(
+											'Generated image output',
+											'ai'
+										) }
+									/>
+									<figcaption>
+										{ sprintf(
+											/* translators: %d: image index */
+											__( 'Image %d', 'ai' ),
+											index + 1
+										) }
+									</figcaption>
+								</figure>
+							) ) }
+							{ base64Images.map( ( sample, index ) => (
+								<figure key={ `image-b64-${ index }` }>
+									<img
+										src={ `data:${ sample.mime ?? 'image/png' };base64,${ sample.data }` }
+										alt={ __(
+											'Generated image output (base64)',
+											'ai'
+										) }
+									/>
+									<figcaption>
+										{ sprintf(
+											/* translators: %d: image index */
+											__( 'Image %d', 'ai' ),
+											imageUrls.length + index + 1
+										) }
+									</figcaption>
+								</figure>
+							) ) }
+						</div>
 					</div>
 				) }
 

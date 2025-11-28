@@ -21,6 +21,7 @@ use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 
 use function apply_filters;
 use function getenv;
+use function get_option;
 use function is_string;
 
 /**
@@ -51,6 +52,10 @@ class CloudflareWorkersAiProvider extends AbstractApiProvider {
 
 		if ( ! $account_id && defined( 'CLOUDFLARE_ACCOUNT_ID' ) ) {
 			$account_id = CLOUDFLARE_ACCOUNT_ID;
+		}
+
+		if ( ! $account_id ) {
+			$account_id = get_option( 'ai_cloudflare_account_id', '' );
 		}
 
 		/**

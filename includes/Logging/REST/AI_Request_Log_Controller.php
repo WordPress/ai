@@ -160,18 +160,22 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 */
 	public function get_logs( WP_REST_Request $request ): WP_REST_Response {
 		$args = array(
-			'type'      => $request->get_param( 'type' ) ?? '',
-			'status'    => $request->get_param( 'status' ) ?? '',
-			'provider'  => $request->get_param( 'provider' ) ?? '',
-			'operation' => $request->get_param( 'operation' ) ?? '',
-			'user_id'   => $request->get_param( 'user_id' ) ?? 0,
-			'date_from' => $request->get_param( 'date_from' ) ?? '',
-			'date_to'   => $request->get_param( 'date_to' ) ?? '',
-			'search'    => $request->get_param( 'search' ) ?? '',
-			'page'      => $request->get_param( 'page' ) ?? 1,
-			'per_page'  => $request->get_param( 'per_page' ) ?? 25,
-			'orderby'   => $request->get_param( 'orderby' ) ?? 'timestamp',
-			'order'     => $request->get_param( 'order' ) ?? 'DESC',
+			'type'              => $request->get_param( 'type' ) ?? '',
+			'status'            => $request->get_param( 'status' ) ?? '',
+			'provider'          => $request->get_param( 'provider' ) ?? '',
+			'operation'         => $request->get_param( 'operation' ) ?? '',
+			'operation_pattern' => $request->get_param( 'operation_pattern' ) ?? '',
+			'tokens_gt'         => $request->get_param( 'tokens_gt' ),
+			'tokens_lt'         => $request->get_param( 'tokens_lt' ),
+			'tokens_filter'     => $request->get_param( 'tokens_filter' ) ?? '',
+			'user_id'           => $request->get_param( 'user_id' ) ?? 0,
+			'date_from'         => $request->get_param( 'date_from' ) ?? '',
+			'date_to'           => $request->get_param( 'date_to' ) ?? '',
+			'search'            => $request->get_param( 'search' ) ?? '',
+			'page'              => $request->get_param( 'page' ) ?? 1,
+			'per_page'          => $request->get_param( 'per_page' ) ?? 25,
+			'orderby'           => $request->get_param( 'orderby' ) ?? 'timestamp',
+			'order'             => $request->get_param( 'order' ) ?? 'DESC',
 		);
 
 		$result = $this->manager->get_logs( $args );
@@ -313,12 +317,32 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 				'type'        => 'string',
 				'format'      => 'date-time',
 			),
-			'search'    => array(
+			'search'            => array(
 				'description' => __( 'Search in operation and error message.', 'ai' ),
 				'type'        => 'string',
 				'default'     => '',
 			),
-			'page'      => array(
+			'operation_pattern' => array(
+				'description' => __( 'Regex pattern to filter operations (e.g., ":completions$" for completion requests only).', 'ai' ),
+				'type'        => 'string',
+				'default'     => '',
+			),
+			'tokens_gt'         => array(
+				'description' => __( 'Filter logs with tokens greater than this value.', 'ai' ),
+				'type'        => 'integer',
+				'minimum'     => 0,
+			),
+			'tokens_lt'         => array(
+				'description' => __( 'Filter logs with tokens less than this value.', 'ai' ),
+				'type'        => 'integer',
+				'minimum'     => 0,
+			),
+			'tokens_filter'     => array(
+				'description' => __( 'Filter by tokens: "gt:N", "lt:N", or "none".', 'ai' ),
+				'type'        => 'string',
+				'default'     => '',
+			),
+			'page'              => array(
 				'description' => __( 'Current page of the collection.', 'ai' ),
 				'type'        => 'integer',
 				'default'     => 1,

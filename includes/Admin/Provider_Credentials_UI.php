@@ -10,6 +10,7 @@ namespace WordPress\AI\Admin;
 use WordPress\AI\Asset_Loader;
 
 use function add_action;
+use function get_option;
 use function wp_localize_script;
 
 /**
@@ -50,6 +51,7 @@ class Provider_Credentials_UI {
 			'aiProviderCredentialsConfig',
 			array(
 				'providers' => Provider_Metadata_Registry::get_metadata(),
+				'cloudflareAccountId' => (string) get_option( 'ai_cloudflare_account_id', '' ),
 			)
 		);
 	}

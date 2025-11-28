@@ -14,6 +14,24 @@
 	padding-top: 0;
 }
 
+/* Force AI admin screens to use white page backgrounds */
+$ai-admin-white-pages: (
+	'settings_page_ai-request-logs',
+	'settings_page_wp-ai-client',
+	'settings_page_ai-experiments',
+	'toplevel_page_ai-mcp'
+);
+
+@each $page-class in $ai-admin-white-pages {
+	body.#{$page-class},
+	body.#{$page-class} #wpwrap,
+	body.#{$page-class} #wpcontent,
+	body.#{$page-class} #wpbody,
+	body.#{$page-class} #wpbody-content {
+		background-color: #fff;
+	}
+}
+
 /* Full-width page header (privacy-style) */
 .ai-admin-header {
 	background: #fff;

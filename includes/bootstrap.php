@@ -50,6 +50,8 @@ if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
 	define( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
 }
 
+add_action( 'admin_init', __NAMESPACE__ . '\register_admin_settings' );
+
 /**
  * Displays an admin notice for version requirement failures.
  *
@@ -144,6 +146,23 @@ function display_composer_notice(): void {
 		</p>
 	</div>
 	<?php
+}
+
+/**
+ * Registers additional settings surfaced on the AI credentials screen.
+ *
+ * @since 0.1.0
+ */
+function register_admin_settings(): void {
+	register_setting(
+		'wp-ai-client',
+		'ai_cloudflare_account_id',
+		array(
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_text_field',
+			'default'           => '',
+		)
+	);
 }
 
 /**

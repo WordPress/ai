@@ -21,57 +21,58 @@ const ProviderTooltipContent: React.FC< ProviderTooltipContentProps > = ( {
 
 	return (
 		<div className="ai-provider-tooltip">
-			<strong>{ metadata.name }</strong>
-			<span className="ai-provider-tooltip__type">
-				{ metadata.type === 'client'
-					? __( 'Local provider', 'ai' )
-					: __( 'Cloud provider', 'ai' ) }
-			</span>
-			{ activeModel && (
-				<span className="ai-provider-tooltip__model">
-					{ sprintf(
-						/* translators: %s: AI model name. */
-						__( 'Requested model: %s', 'ai' ),
-						activeModel
-					) }
-				</span>
-			) }
-			{ metadata.tooltip && (
-				<span className="ai-provider-tooltip__hint">
-					{ metadata.tooltip }
-				</span>
-			) }
-			{ metadata.tooltip && (
-				<p className="ai-provider-tooltip__hint">{ metadata.tooltip }</p>
-			) }
-			{ topModels.length > 0 && (
-				<div className="ai-provider-tooltip__models">
-					<span className="ai-provider-tooltip__section-title">
-						{ __( 'Available models', 'ai' ) }
+			<div className="ai-provider-tooltip__body">
+				<div className="ai-provider-tooltip__header">
+					<strong className="ai-provider-tooltip__name">{ metadata.name }</strong>
+					<span className="ai-provider-tooltip__badge">
+						{ metadata.type === 'client'
+							? __( 'Local', 'ai' )
+							: __( 'Cloud', 'ai' ) }
 					</span>
-					<ul>
-						{ topModels.map( ( model ) => (
-							<li key={ model.id }>
-								<strong>{ model.name }</strong>
-								{ model.capabilities?.length > 0 && (
-									<span className="ai-provider-tooltip__capabilities">
-										{ model.capabilities.join( ', ' ) }
-									</span>
-								) }
-							</li>
-						) ) }
-					</ul>
 				</div>
-			) }
+				{ activeModel && (
+					<span className="ai-provider-tooltip__model">
+						{ sprintf(
+							/* translators: %s: AI model name. */
+							__( 'Requested model: %s', 'ai' ),
+							activeModel
+						) }
+					</span>
+				) }
+				{ metadata.tooltip && (
+					<p className="ai-provider-tooltip__hint">{ metadata.tooltip }</p>
+				) }
+				{ topModels.length > 0 && (
+					<div className="ai-provider-tooltip__models">
+						<span className="ai-provider-tooltip__section-title">
+							{ __( 'Available models', 'ai' ) }
+						</span>
+						<ul>
+							{ topModels.map( ( model ) => (
+								<li key={ model.id }>
+									<span className="ai-provider-tooltip__model-name">{ model.name }</span>
+									{ model.capabilities?.length > 0 && (
+										<span className="ai-provider-tooltip__capabilities">
+											{ model.capabilities.join( ', ' ) }
+										</span>
+									) }
+								</li>
+							) ) }
+						</ul>
+					</div>
+				) }
+			</div>
 			{ metadata.url && (
-				<a
-					className="ai-provider-tooltip__link"
-					href={ metadata.url }
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					{ __( 'Open API key settings', 'ai' ) }
-				</a>
+				<div className="ai-provider-tooltip__footer">
+					<a
+						className="ai-provider-tooltip__link"
+						href={ metadata.url }
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						{ __( 'Open API key settings', 'ai' ) }
+					</a>
+				</div>
 			) }
 		</div>
 	);

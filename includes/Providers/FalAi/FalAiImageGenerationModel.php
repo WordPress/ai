@@ -47,6 +47,7 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 		);
 
 		$request  = $this->getRequestAuthentication()->authenticateRequest( $request );
+		$request  = $this->ensureFalAuthorizationHeader( $request );
 		$response = $http_transporter->send( $request );
 		$this->throwIfNotSuccessful( $response );
 
@@ -86,9 +87,7 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 	 */
 	private function buildPayload( array $prompt ): array {
 		return array(
-			'input' => array(
-				'prompt' => $this->preparePromptText( $prompt ),
-			),
+			'prompt' => $this->preparePromptText( $prompt ),
 		);
 	}
 
@@ -182,5 +181,31 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 	 */
 	protected function throwIfNotSuccessful( Response $response ): void {
 		ResponseUtil::throwIfNotSuccessful( $response );
+	}
+
+	/**
+	 * Converts Bearer auth headers into Fal.ai `Key` headers.
+	 *
+	 * @param Request $request Authenticated request.
+	 *
+	 * @return Request
+	 */
+	private function ensureFalAuthorizationHeader( Request $request ): Request {
+		$authorization = $request->getHeader( 'Authorization' );
+		if ( empty( $authorization ) || ! is_string( $authorization[0] ?? null ) ) {
+			return $request;
+		}
+
+		$value = $authorization[0];
+		if ( 0 !== strpos( $value, 'Bearer ' ) ) {
+			return $request;
+		}
+
+		$token = trim( substr( $value, 7 ) );
+		if ( '' === $token ) {
+			return $request;
+		}
+
+		return $request->withHeader( 'Authorization', 'Key ' . $token );
 	}
 }

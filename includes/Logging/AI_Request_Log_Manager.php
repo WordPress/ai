@@ -447,6 +447,8 @@ class AI_Request_Log_Manager {
 	 *     type?: string,
 	 *     status?: string,
 	 *     provider?: string,
+	 *     operation?: string,
+	 *     operation_pattern?: string,
 	 *     user_id?: int,
 	 *     date_from?: string,
 	 *     date_to?: string,
@@ -462,18 +464,22 @@ class AI_Request_Log_Manager {
 		global $wpdb;
 
 		$defaults = array(
-			'type'      => '',
-			'status'    => '',
-			'provider'  => '',
-			'operation' => '',
-			'user_id'   => 0,
-			'date_from' => '',
-			'date_to'   => '',
-			'search'    => '',
-			'page'      => 1,
-			'per_page'  => 25,
-			'orderby'   => 'timestamp',
-			'order'     => 'DESC',
+			'type'              => '',
+			'status'            => '',
+			'provider'          => '',
+			'operation'         => '',
+			'operation_pattern' => '',
+			'tokens_gt'         => null,
+			'tokens_lt'         => null,
+			'tokens_filter'     => '',
+			'user_id'           => 0,
+			'date_from'         => '',
+			'date_to'           => '',
+			'search'            => '',
+			'page'              => 1,
+			'per_page'          => 25,
+			'orderby'           => 'timestamp',
+			'order'             => 'DESC',
 		);
 
 		$args = wp_parse_args( $args, $defaults );
@@ -507,6 +513,37 @@ class AI_Request_Log_Manager {
 				$placeholders = implode( ', ', array_fill( 0, count( $operations ), '%s' ) );
 				$where[]      = "operation IN ( $placeholders )";
 				$values       = array_merge( $values, $operations );
+			}
+		}
+
+		if ( ! empty( $args['operation_pattern'] ) ) {
+			// MySQL REGEXP for pattern matching on operations (e.g., ":completions$")
+			$where[]  = 'operation REGEXP %s';
+			$values[] = $args['operation_pattern'];
+		}
+
+		if ( isset( $args['tokens_gt'] ) && is_numeric( $args['tokens_gt'] ) ) {
+			$where[]  = 'tokens_total > %d';
+			$values[] = (int) $args['tokens_gt'];
+		}
+
+		if ( isset( $args['tokens_lt'] ) && is_numeric( $args['tokens_lt'] ) ) {
+			$where[]  = 'tokens_total < %d';
+			$values[] = (int) $args['tokens_lt'];
+		}
+
+		if ( ! empty( $args['tokens_filter'] ) ) {
+			$filter = $args['tokens_filter'];
+			if ( 'none' === $filter ) {
+				$where[] = '(tokens_total IS NULL OR tokens_total = 0)';
+			} elseif ( str_starts_with( $filter, 'gt:' ) ) {
+				$value    = (int) substr( $filter, 3 );
+				$where[]  = 'tokens_total > %d';
+				$values[] = $value;
+			} elseif ( str_starts_with( $filter, 'lt:' ) ) {
+				$value    = (int) substr( $filter, 3 );
+				$where[]  = 'tokens_total < %d';
+				$values[] = $value;
 			}
 		}
 

@@ -29,11 +29,18 @@ export interface LogSummary {
 	by_status: Record< string, number >;
 }
 
+export interface OperationPatternFilter {
+	label: string;
+	pattern: string;
+	description?: string;
+}
+
 export interface FilterOptions {
 	types: string[];
 	providers: string[];
 	statuses: string[];
 	operations: string[];
+	operationPatterns?: OperationPatternFilter[];
 }
 
 export interface LogFilters {

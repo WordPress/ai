@@ -14,12 +14,25 @@ use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 use function __;
 use function esc_html__;
+use function get_option;
+use function get_transient;
+use function is_array;
+use function is_string;
 use function sprintf;
+use function trim;
+use function wp_json_encode;
+use function set_transient;
+use function md5;
 
 /**
  * Provides a single source of truth for provider metadata and branding.
  */
 class Provider_Metadata_Registry {
+	/**
+	 * Cache TTL for provider model metadata.
+	 */
+	private const MODEL_CACHE_TTL = 6 * HOUR_IN_SECONDS;
+
 	/**
 	 * Returns structured metadata for all registered providers.
 	 *
@@ -29,6 +42,7 @@ class Provider_Metadata_Registry {
 		$registry  = AiClient::defaultRegistry();
 		$providers = array();
 		$overrides = self::get_branding_overrides();
+		$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
 
 		foreach ( $registry->getRegisteredProviderIds() as $provider_id ) {
 			$class_name = $registry->getProviderClassName( $provider_id );
@@ -51,8 +65,8 @@ class Provider_Metadata_Registry {
 				'url'             => $brand['url'] ?? '',
 				'tooltip'         => $brand['tooltip'] ?? '',
 				'keepDescription' => ! empty( $brand['keepDescription'] ),
-				'isConfigured'    => $registry->isProviderConfigured( $metadata->getId() ),
-				'models'          => self::get_models_for_provider( $class_name ),
+				'isConfigured'    => self::has_credentials( $metadata->getId(), $credentials ),
+				'models'          => self::get_models_for_provider( $class_name, $metadata->getId(), $credentials ),
 			);
 		}
 
@@ -88,9 +102,17 @@ class Provider_Metadata_Registry {
 	 * @param string $provider_class Provider class name.
 	 * @return array<int, array<string, mixed>>
 	 */
-	private static function get_models_for_provider( string $provider_class ): array {
+	private static function get_models_for_provider( string $provider_class, string $provider_id, array $credentials ): array {
 		if ( ! method_exists( $provider_class, 'modelMetadataDirectory' ) ) {
 			return array();
+		}
+
+		$cache_key = self::get_models_cache_key( $provider_id, $credentials[ $provider_id ] ?? '' );
+		if ( $cache_key ) {
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
 		}
 
 		try {
@@ -119,7 +141,54 @@ class Provider_Metadata_Registry {
 			);
 		}
 
+		if ( $cache_key ) {
+			set_transient( $cache_key, $models, self::MODEL_CACHE_TTL );
+		}
+
 		return $models;
+	}
+
+	/**
+	 * Determines whether stored credentials exist for a provider.
+	 *
+	 * @param string               $provider_id Provider identifier.
+	 * @param array<string, mixed> $credentials Raw credentials map.
+	 * @return bool
+	 */
+	private static function has_credentials( string $provider_id, array $credentials ): bool {
+		if ( 'ollama' === $provider_id ) {
+			return true;
+		}
+
+		if ( ! isset( $credentials[ $provider_id ] ) ) {
+			return false;
+		}
+
+		$value = $credentials[ $provider_id ];
+		if ( is_array( $value ) ) {
+			$value = wp_json_encode( $value );
+		}
+
+		return is_string( $value ) && '' !== trim( $value );
+	}
+
+	/**
+	 * Builds a cache key for provider models.
+	 *
+	 * @param string              $provider_id Provider identifier.
+	 * @param string|array<mixed> $credential  Credential value.
+	 * @return string|null
+	 */
+	private static function get_models_cache_key( string $provider_id, $credential ): ?string {
+		if ( '' === $provider_id ) {
+			return null;
+		}
+
+		if ( is_array( $credential ) ) {
+			$credential = wp_json_encode( $credential );
+		}
+
+		return 'ai_provider_models_' . md5( $provider_id . '|' . (string) $credential );
 	}
 
 	/**

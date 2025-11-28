@@ -6,7 +6,7 @@ import {
 	Card,
 	CardBody,
 	CardHeader,
-	Tooltip,
+	Popover,
 } from '@wordpress/components';
 import { DataViews } from '@wordpress/dataviews/wp';
 import type { DataViewField, View, Filter } from '@wordpress/dataviews';
@@ -15,13 +15,12 @@ import { __, sprintf } from '@wordpress/i18n';
 /**
  * External dependencies
  */
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 /**
  * Internal dependencies
  */
 import { getProviderIconComponent } from '../../components/provider-icons';
-import ProviderTooltipContent from '../../components/ProviderTooltipContent';
 import type { FilterOptions, LogEntry } from '../types';
 import type { ProviderMetadata } from '../../types/providers';
 
@@ -81,6 +80,11 @@ const formatSelectLabel = ( value: string ): string =>
 		.map( ( part ) => part.charAt( 0 ).toUpperCase() + part.slice( 1 ) )
 		.join( ' ' );
 
+const getRequestKind = ( entry: LogEntry ): string => {
+	const raw = entry.context?.request_kind;
+	return typeof raw === 'string' ? raw : 'text';
+};
+
 const LogsTable: React.FC< LogsTableProps > = ( {
 	logs,
 	filterOptions,
@@ -128,6 +132,58 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		[ filterOptions.operations ]
 	);
 
+	// Token filter elements with useful ranges
+	const tokenFilterElements = useMemo(
+		() => [
+			{
+				label: __( 'Has Tokens (> 0)', 'ai' ),
+				value: 'gt:0',
+			},
+			{
+				label: __( '< 100 tokens', 'ai' ),
+				value: 'lt:100',
+			},
+			{
+				label: __( '< 500 tokens', 'ai' ),
+				value: 'lt:500',
+			},
+			{
+				label: __( '< 1K tokens', 'ai' ),
+				value: 'lt:1000',
+			},
+			{
+				label: __( '< 5K tokens', 'ai' ),
+				value: 'lt:5000',
+			},
+			{
+				label: __( '> 1K tokens', 'ai' ),
+				value: 'gt:1000',
+			},
+			{
+				label: __( '> 5K tokens', 'ai' ),
+				value: 'gt:5000',
+			},
+			{
+				label: __( '> 10K tokens', 'ai' ),
+				value: 'gt:10000',
+			},
+			{
+				label: __( 'No Tokens', 'ai' ),
+				value: 'none',
+			},
+		],
+		[]
+	);
+
+	const requestKindElements = useMemo( () => {
+		const kinds = new Set<string>();
+		logs.forEach( ( entry ) => kinds.add( getRequestKind( entry ) ) );
+		return Array.from( kinds ).map( ( value ) => ( {
+			label: formatSelectLabel( value ),
+			value,
+		} ) );
+	}, [ logs ] );
+
 	const fields = useMemo< DataViewField< LogEntry >[] >(
 		() => [
 			{
@@ -166,6 +222,25 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				),
 			},
 			{
+				id: 'operation_pattern',
+				label: __( 'Request Type', 'ai' ),
+				type: 'text',
+				getValue: ( { item } ) => getRequestKind( item ),
+				elements: requestKindElements,
+				filterBy:
+					requestKindElements.length > 0
+						? { operators: [ 'is' ] }
+						: false,
+				enableHiding: false,
+				render: ( { item } ) => (
+					<span
+						className={ `ai-request-logs__kind ai-request-logs__kind--${ getRequestKind( item ) }` }
+					>
+						{ formatSelectLabel( getRequestKind( item ) ) }
+					</span>
+				),
+			},
+			{
 				id: 'type',
 				label: __( 'Type', 'ai' ),
 				type: 'text',
@@ -201,8 +276,20 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			{
 				id: 'tokens_total',
 				label: __( 'Tokens', 'ai' ),
-				type: 'number',
-				getValue: ( { item } ) => item.tokens_total ?? 0,
+				type: 'text',
+				getValue: ( { item } ) => {
+					// Return filter value for matching
+					const tokens = item.tokens_total ?? 0;
+					if ( tokens === 0 || item.tokens_total === null ) {
+						return 'none';
+					}
+					if ( tokens > 10000 ) return 'gt:10000';
+					if ( tokens > 5000 ) return 'gt:5000';
+					if ( tokens > 1000 ) return 'gt:1000';
+					return 'gt:0';
+				},
+				elements: tokenFilterElements,
+				filterBy: { operators: [ 'is' ] },
 				render: ( { item } ) => formatTokens( item.tokens_total ),
 			},
 			{
@@ -254,17 +341,39 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			providerElements,
 			providerMetadata,
 			statusElements,
+			tokenFilterElements,
 			typeElements,
+			requestKindElements,
 		]
 	);
 
 	const handleViewChange = useCallback(
 		( nextView: View ) => {
-			setView( ( previous ) => ( {
-				...previous,
-				...nextView,
-				layout: nextView.layout ?? previous.layout,
-			} ) );
+			setView( ( previous ) => {
+				// Deduplicate filters by field - keep only the last filter for each field
+				const filters = nextView.filters ?? [];
+				const deduplicatedFilters = filters.reduce(
+					( acc: Filter[], filter ) => {
+						const existingIndex = acc.findIndex(
+							( f ) => f.field === filter.field
+						);
+						if ( existingIndex >= 0 ) {
+							acc[ existingIndex ] = filter;
+						} else {
+							acc.push( filter );
+						}
+						return acc;
+					},
+					[]
+				);
+
+				return {
+					...previous,
+					...nextView,
+					filters: deduplicatedFilters,
+					layout: nextView.layout ?? previous.layout,
+				};
+			} );
 		},
 		[ setView ]
 	);
@@ -336,20 +445,24 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 	model,
 	metadata,
 } ) => {
+	const [ isPopoverVisible, setIsPopoverVisible ] = useState( false );
+
 	if ( ! provider && ! model ) {
-		return <span>-</span>;
+		return <span className="ai-request-logs__cell-muted">-</span>;
 	}
 
 	if ( ! metadata ) {
 		return (
-			<div>
-				{ provider && (
-					<span className="ai-request-logs__provider">
-						{ provider }
-					</span>
-				) }
+			<div className="ai-request-logs__provider-cell">
+				<div className="ai-request-logs__provider-row">
+					{ provider && (
+						<span className="ai-request-logs__provider-name">
+							{ provider }
+						</span>
+					) }
+				</div>
 				{ model && (
-					<div className="ai-request-logs__model">{ model }</div>
+					<div className="ai-request-logs__model-row">{ model }</div>
 				) }
 			</div>
 		);
@@ -360,31 +473,71 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 		provider || undefined
 	);
 
-	const cell = (
-		<div className="ai-request-logs__provider">
-			<span className="ai-request-logs__provider-logo">
-				<IconComponent />
-			</span>
-			<span>
-				{ metadata.name }
-				{ model && (
-					<span className="ai-request-logs__model">{ model }</span>
-				) }
-			</span>
-		</div>
-	);
-
 	return (
-		<Tooltip
-			text={
-				<ProviderTooltipContent
-					metadata={ metadata }
-					activeModel={ model }
-				/>
-			}
+		<div
+			className="ai-request-logs__provider-cell"
+			onMouseEnter={ () => setIsPopoverVisible( true ) }
+			onMouseLeave={ () => setIsPopoverVisible( false ) }
 		>
-			{ cell }
-		</Tooltip>
+			<div className="ai-request-logs__provider-row">
+				<span className="ai-request-logs__provider-icon">
+					<IconComponent />
+				</span>
+				<span className="ai-request-logs__provider-name">
+					{ metadata.name }
+				</span>
+			</div>
+			{ model && (
+				<div className="ai-request-logs__model-row">{ model }</div>
+			) }
+			{ isPopoverVisible && (
+				<Popover
+					placement="bottom-start"
+					noArrow={ false }
+					offset={ 8 }
+					className="ai-request-logs__provider-popover"
+				>
+					<div className="ai-request-logs__popover-content">
+						<div className="ai-request-logs__popover-header">
+							<span className="ai-request-logs__popover-icon">
+								<IconComponent />
+							</span>
+							<span className="ai-request-logs__popover-title">
+								{ metadata.name }
+							</span>
+							<span className="ai-request-logs__popover-badge">
+								{ metadata.type === 'client'
+									? __( 'Local', 'ai' )
+									: __( 'Cloud', 'ai' ) }
+							</span>
+						</div>
+						{ model && (
+							<div className="ai-request-logs__popover-model">
+								{ model }
+							</div>
+						) }
+						<div className="ai-request-logs__popover-links">
+							{ metadata.url && (
+								<a
+									href={ metadata.url }
+									target="_blank"
+									rel="noopener noreferrer"
+									className="ai-request-logs__popover-link"
+								>
+									{ __( 'API Key Settings', 'ai' ) }
+								</a>
+							) }
+							<a
+								href="admin.php?page=ai-provider-credentials"
+								className="ai-request-logs__popover-link"
+							>
+								{ __( 'Provider Credentials', 'ai' ) }
+							</a>
+						</div>
+					</div>
+				</Popover>
+			) }
+		</div>
 	);
 };
 

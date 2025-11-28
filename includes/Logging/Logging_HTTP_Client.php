@@ -39,6 +39,11 @@ class Logging_HTTP_Client implements ClientInterface, ClientWithOptionsInterface
 	private const PAYLOAD_PREVIEW_LIMIT = 1200;
 
 	/**
+	 * Maximum number of media samples to retain per response.
+	 */
+	private const MAX_IMAGE_SAMPLES = 3;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param ClientInterface        $client      The HTTP client to wrap.
@@ -160,6 +165,8 @@ class Logging_HTTP_Client implements ClientInterface, ClientWithOptionsInterface
 			}
 		}
 
+		$context['request_kind'] = $this->detect_request_kind( $provider, $path, $decoded );
+
 		return array(
 			'type'      => 'ai_client',
 			'operation' => $operation,
@@ -228,6 +235,13 @@ class Logging_HTTP_Client implements ClientInterface, ClientWithOptionsInterface
 		$output_preview = $this->extract_output_preview( $decoded );
 		if ( $output_preview ) {
 			$context['output_preview'] = $output_preview;
+		}
+
+		if ( is_array( $decoded ) ) {
+			$media_context = $this->extract_media_context( $decoded );
+			if ( ! empty( $media_context ) ) {
+				$context = array_merge( $context, $media_context );
+			}
 		}
 
 		if ( ! empty( $context ) ) {
@@ -438,6 +452,14 @@ class Logging_HTTP_Client implements ClientInterface, ClientWithOptionsInterface
 		}
 
 		if ( is_array( $content ) ) {
+			if ( isset( $content['b64_json'] ) && is_string( $content['b64_json'] ) ) {
+				return '[base64 image]';
+			}
+
+			if ( isset( $content['image_base64'] ) && is_string( $content['image_base64'] ) ) {
+				return '[base64 image]';
+			}
+
 			$parts = array();
 
 			foreach ( $content as $chunk ) {
@@ -502,5 +524,110 @@ class Logging_HTTP_Client implements ClientInterface, ClientWithOptionsInterface
 		}
 
 		return substr( $value, 0, $limit ) . '...';
+	}
+
+	/**
+	 * Determines the high-level request kind.
+	 *
+	 * @param string|null               $provider Provider identifier.
+	 * @param string                    $path     Request path.
+	 * @param array<string, mixed>|null $payload  Request payload.
+	 * @return string
+	 */
+	private function detect_request_kind( ?string $provider, string $path, ?array $payload ): string {
+		$path_lower = strtolower( $path );
+
+		if ( $provider === 'fal' ) {
+			return 'image';
+		}
+
+		if ( str_contains( $path_lower, 'embeddings' ) ) {
+			return 'embeddings';
+		}
+
+		if (
+			str_contains( $path_lower, '/images' ) ||
+			str_contains( $path_lower, 'imagegeneration' ) ||
+			str_contains( $path_lower, 'image-generation' )
+		) {
+			return 'image';
+		}
+
+		if ( isset( $payload['response_format']['type'] ) && 'json_schema' === $payload['response_format']['type'] ) {
+			return 'text';
+		}
+
+		return 'text';
+	}
+
+	/**
+	 * Extracts image/media metadata from a response payload.
+	 *
+	 * @param array<string, mixed> $payload Response data.
+	 * @return array<string, mixed>
+	 */
+	private function extract_media_context( array $payload ): array {
+		$context     = array();
+		$image_urls  = array();
+		$base64_data = array();
+
+		if ( isset( $payload['images'] ) && is_array( $payload['images'] ) ) {
+			foreach ( $payload['images'] as $image ) {
+				if ( ! is_array( $image ) ) {
+					continue;
+				}
+
+				if ( isset( $image['url'] ) && is_string( $image['url'] ) ) {
+					$image_urls[] = $image['url'];
+				}
+
+				$encoded = $image['b64_json'] ?? ( $image['image_base64'] ?? null );
+				if ( is_string( $encoded ) && '' !== $encoded ) {
+					$base64_data[] = array(
+						'mime' => $image['content_type'] ?? 'image/png',
+						'data' => $encoded,
+					);
+				}
+			}
+		}
+
+		if ( isset( $payload['data'] ) && is_array( $payload['data'] ) ) {
+			foreach ( $payload['data'] as $entry ) {
+				if ( ! is_array( $entry ) ) {
+					continue;
+				}
+
+				if ( isset( $entry['url'] ) && is_string( $entry['url'] ) ) {
+					$image_urls[] = $entry['url'];
+				}
+
+				if ( isset( $entry['b64_json'] ) && is_string( $entry['b64_json'] ) ) {
+					$base64_data[] = array(
+						'mime' => $entry['mime'] ?? 'image/png',
+						'data' => $entry['b64_json'],
+					);
+				}
+			}
+		}
+
+		if ( $image_urls ) {
+			$context['image_urls'] = array_slice( $image_urls, 0, self::MAX_IMAGE_SAMPLES );
+			$context['output_preview'] = $context['output_preview'] ?? sprintf(
+				'Generated %d image(s).',
+				count( $image_urls )
+			);
+		}
+
+		if ( $base64_data ) {
+			$context['image_base64_samples'] = array_slice( $base64_data, 0, self::MAX_IMAGE_SAMPLES );
+			if ( empty( $context['output_preview'] ) ) {
+				$context['output_preview'] = sprintf(
+					'Generated %d image(s).',
+					count( $base64_data )
+				);
+			}
+		}
+
+		return $context;
 	}
 }

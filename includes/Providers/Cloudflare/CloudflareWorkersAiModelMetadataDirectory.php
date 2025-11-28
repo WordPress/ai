@@ -10,11 +10,6 @@ declare( strict_types=1 );
 namespace WordPress\AI\Providers\Cloudflare;
 
 use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiBasedModelMetadataDirectory;
-use WordPress\AiClient\Providers\Http\DTO\Request;
-use WordPress\AiClient\Providers\Http\DTO\Response;
-use WordPress\AiClient\Providers\Http\Enums\HttpMethodEnum;
-use WordPress\AiClient\Providers\Http\Exception\ResponseException;
-use WordPress\AiClient\Providers\Http\Util\ResponseUtil;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 use WordPress\AiClient\Providers\Models\DTO\SupportedOption;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
@@ -27,34 +22,29 @@ use WordPress\AiClient\Providers\Models\Enums\OptionEnum;
  */
 class CloudflareWorkersAiModelMetadataDirectory extends AbstractApiBasedModelMetadataDirectory {
 	/**
+	 * Curated list of Workers AI chat models exposed via the run endpoint.
+	 *
+	 * @var array<int, array{id:string,name:string}>
+	 */
+	private $catalogue = array(
+		array(
+			'id'   => '@cf/meta/llama-3-8b-instruct',
+			'name' => 'Meta Llama 3 8B (Cloudflare)',
+		),
+		array(
+			'id'   => '@cf/meta/llama-3-70b-instruct',
+			'name' => 'Meta Llama 3 70B (Cloudflare)',
+		),
+		array(
+			'id'   => '@cf/mistral/mistral-7b-instruct-v0.2',
+			'name' => 'Mistral 7B Instruct (Cloudflare)',
+		),
+	);
+
+	/**
 	 * {@inheritDoc}
 	 */
 	protected function sendListModelsRequest(): array {
-		$request = new Request(
-			HttpMethodEnum::GET(),
-			CloudflareWorkersAiProvider::url( 'models' )
-		);
-		$request = $this->getRequestAuthentication()->authenticateRequest( $request );
-
-		$response = $this->getHttpTransporter()->send( $request );
-		ResponseUtil::throwIfNotSuccessful( $response );
-
-		return $this->parseResponse( $response );
-	}
-
-	/**
-	 * Parses the Cloudflare response into model metadata.
-	 *
-	 * @param Response $response HTTP response.
-	 *
-	 * @return array<string, ModelMetadata>
-	 */
-	private function parseResponse( Response $response ): array {
-		$data = $response->getData();
-		if ( ! isset( $data['result'] ) || ! is_array( $data['result'] ) ) {
-			throw ResponseException::fromMissingData( 'Cloudflare Workers AI', 'result' );
-		}
-
 		$capabilities = array(
 			CapabilityEnum::textGeneration(),
 			CapabilityEnum::chatHistory(),
@@ -71,16 +61,10 @@ class CloudflareWorkersAiModelMetadataDirectory extends AbstractApiBasedModelMet
 		);
 
 		$map = array();
-
-		foreach ( $data['result'] as $model ) {
-			if ( ! isset( $model['id'] ) ) {
-				continue;
-			}
-
-			$model_id = (string) $model['id'];
-			$map[ $model_id ] = new ModelMetadata(
-				$model_id,
-				$model['name'] ?? $model_id,
+		foreach ( $this->catalogue as $model ) {
+			$map[ $model['id'] ] = new ModelMetadata(
+				$model['id'],
+				$model['name'],
 				$capabilities,
 				$options
 			);

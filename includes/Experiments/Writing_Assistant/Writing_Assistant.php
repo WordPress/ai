@@ -172,6 +172,19 @@ class Writing_Assistant extends Abstract_Experiment {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 */
+	public function get_entry_points(): array {
+		return array(
+			array(
+				'label' => __( 'Try', 'ai' ),
+				'url'   => admin_url( 'post-new.php' ),
+				'type'  => 'try',
+			),
+		);
+	}
+
+	/**
 	 * Sanitizes the timer option.
 	 *
 	 * @param mixed $value Raw option value.
