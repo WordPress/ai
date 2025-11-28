@@ -14,6 +14,7 @@ use WordPress\AI\Providers\Cohere\CohereProvider;
 use WordPress\AI\Providers\FalAi\FalAiProvider;
 use WordPress\AI\Providers\Grok\GrokProvider;
 use WordPress\AI\Providers\Groq\GroqProvider;
+use WordPress\AI\Providers\HuggingFace\HuggingFaceProvider;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AiClient\AiClient;
 
@@ -45,6 +46,7 @@ class Extended_Providers extends Abstract_Experiment {
 		FalAiProvider::class,
 		GrokProvider::class,
 		GroqProvider::class,
+		HuggingFaceProvider::class,
 	);
 	private const FIELD_PROVIDERS = 'providers';
 
