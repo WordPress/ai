@@ -13,11 +13,12 @@ import { addFilter } from '@wordpress/hooks';
 import { useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
-import { __ } from '@wordpress/i18n';
 
 const ALLOWED_BLOCKS = [ 'core/paragraph' ];
-const OVERLAY_OFFSET_Y = 2; // nudges ghost text slightly below caret.
-const REQUEST_TIMEOUT_MS = 8000; // abort long-running completions to avoid apiFetch 20s timeout.
+const GHOST_COLOR = 'var(--ai-type-ahead-ghost-color, #8a8f98)';
+const REQUEST_TIMEOUT_MS = 15000; // abort long-running completions to avoid apiFetch 20s timeout while giving server time.
+const WHITESPACE_REGEX = /\s/;
+const LEADING_WHITESPACE_REGEX = /^\s/;
 
 type CompletionMode = 'word' | 'sentence' | 'paragraph' | 'smart';
 
@@ -88,6 +89,20 @@ const splitSuggestion = ( suggestion: string, mode: 'word' | 'sentence' | 'all' 
 	const sentenceMatch = suggestion.match( /^(.*?[\.!?](?:\s|$))/ );
 	const sentence = sentenceMatch ? sentenceMatch[ 0 ] : suggestion;
 	return { apply: sentence, remainder: suggestion.slice( sentence.length ) };
+};
+
+const addLeadingSpaceIfNeeded = ( text: string, precedingText: string ): string => {
+	if ( ! text || ! precedingText ) {
+		return text;
+	}
+	const lastChar = precedingText.slice( -1 );
+	if ( ! lastChar || WHITESPACE_REGEX.test( lastChar ) ) {
+		return text;
+	}
+	if ( LEADING_WHITESPACE_REGEX.test( text ) ) {
+		return text;
+	}
+	return ` ${ text }`;
 };
 
 const useBlockDom = ( clientId: string ) => {
@@ -219,8 +234,9 @@ const useCaretData = ( editable: HTMLElement | null ): CaretData | null => {
 const TypeAheadOverlay: React.FC<{
 	ownerDocument: Document | null;
 	rect: DOMRect | null;
+	container: HTMLElement | null;
 	text: string | null;
-}> = ( { ownerDocument, rect, text } ) => {
+}> = ( { ownerDocument, rect, container, text } ) => {
 	const [ style, setStyle ] = useState< React.CSSProperties | null >( null );
 	const body = ownerDocument?.body ?? document.body;
 	const win = ownerDocument?.defaultView ?? window;
@@ -233,21 +249,28 @@ const TypeAheadOverlay: React.FC<{
 
 		const scrollX = win?.scrollX ?? win?.pageXOffset ?? 0;
 		const scrollY = win?.scrollY ?? win?.pageYOffset ?? 0;
+		const containerRect = container?.getBoundingClientRect() ?? null;
+		const containerLeft = containerRect?.left ?? rect.left;
+		const indent = Math.max( 0, rect.left - containerLeft );
 
 		setStyle( {
 			position: 'absolute',
 			pointerEvents: 'none',
-			color: 'var(--wp-admin-theme-color, #3858e9)',
-			opacity: 0.45,
-			fontStyle: 'italic',
+			display: 'block',
+			color: GHOST_COLOR,
+			opacity: 1,
+			fontStyle: 'normal',
 			fontSize: 'inherit',
 			lineHeight: 'inherit',
 			whiteSpace: 'pre-wrap',
+			wordBreak: 'break-word',
 			zIndex: 1000,
-			top: rect.bottom + OVERLAY_OFFSET_Y + scrollY,
-			left: rect.left + scrollX,
+			top: rect.top + scrollY,
+			left: containerLeft + scrollX,
+			width: containerRect?.width,
+			textIndent: indent ? `${ indent }px` : undefined,
 		} );
-	}, [ body, rect, win ] );
+	}, [ body, rect, win, container ] );
 
 	if ( ! body || ! rect || ! text || ! style ) {
 		return null;
@@ -258,39 +281,6 @@ const TypeAheadOverlay: React.FC<{
 			{text}
 		</div>,
 		body
-	);
-};
-
-const isMac = navigator.platform.toLowerCase().includes( 'mac' );
-
-const KeyboardHint: React.FC = () => {
-	const metaKeyLabel = isMac ? 'Cmd' : 'Ctrl';
-	const hintStyle: React.CSSProperties = {
-		fontSize: '11px',
-		opacity: 0.65,
-		display: 'flex',
-		flexWrap: 'wrap',
-		gap: '6px',
-		marginTop: '4px',
-		color: 'currentColor',
-	};
-	const shortcutStyle: React.CSSProperties = { fontWeight: 600 };
-	const descriptionStyle: React.CSSProperties = { fontWeight: 400 };
-	const hints = [
-		{ shortcut: __( 'Tab', 'ai' ), description: __( 'Accept', 'ai' ) },
-		{ shortcut: `${ metaKeyLabel }+Right Arrow`, description: __( 'Word', 'ai' ) },
-		{ shortcut: `${ metaKeyLabel }+Shift+Right Arrow`, description: __( 'Sentence', 'ai' ) },
-	];
-
-	return (
-		<div className="ai-type-ahead-hint" style={ hintStyle } aria-hidden="true">
-			{ hints.map( ( hint ) => (
-				<React.Fragment key={ hint.shortcut }>
-					<span style={ shortcutStyle }>{ hint.shortcut }</span>
-					<span style={ descriptionStyle }>{ hint.description }</span>
-				</React.Fragment>
-			) ) }
-		</div>
 	);
 };
 
@@ -456,8 +446,11 @@ const TypeAheadBlock: React.FC<{
 				return;
 			}
 
+			const precedingText = stateRef.current.caret?.precedingText ?? '';
+			const normalizedText = addLeadingSpaceIfNeeded( String( response.suggestion ), precedingText );
+
 			setSuggestion( {
-				text: String( response.suggestion ),
+				text: normalizedText,
 				confidence: Number( response.confidence || 0 ),
 			} );
 		} catch ( error: unknown ) {
@@ -648,8 +641,12 @@ const TypeAheadBlock: React.FC<{
 	return (
 		<>
 			<BlockEdit { ...blockProps } />
-			<TypeAheadOverlay ownerDocument={ caret?.ownerDocument ?? document } rect={ caret?.rect ?? null } text={ suggestion?.text ?? null } />
-			{ suggestion && <KeyboardHint /> }
+			<TypeAheadOverlay
+				ownerDocument={ caret?.ownerDocument ?? document }
+				rect={ caret?.rect ?? null }
+				container={ editable ?? null }
+				text={ suggestion?.text ?? null }
+			/>
 			<span className="screen-reader-text" role="status" aria-live="polite">
 				{ suggestion?.text ?? '' }
 			</span>

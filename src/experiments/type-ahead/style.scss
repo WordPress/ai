@@ -5,22 +5,10 @@
 .ai-type-ahead-overlay {
 	position: absolute;
 	pointer-events: none;
-	color: var(--wp-admin-theme-color, #3858e9);
-	opacity: 0.45;
-	font-style: italic;
+	color: var(--ai-type-ahead-ghost-color, #8a8f98);
+	opacity: 1;
 	font-size: inherit;
+	line-height: inherit;
 	white-space: pre-wrap;
-}
-
-.ai-type-ahead-hint {
-	font-size: 11px;
-	opacity: 0.65;
-	display: flex;
-	gap: 6px;
-	margin-top: 4px;
-	color: currentColor;
-}
-
-.ai-type-ahead-hint span:nth-child(odd) {
-	font-weight: 600;
+	word-break: break-word;
 }
