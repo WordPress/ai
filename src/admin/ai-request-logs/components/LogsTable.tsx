@@ -212,7 +212,6 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				id: 'operation',
 				label: __( 'Operation', 'ai' ),
 				type: 'text',
-				enableGlobalSearch: true,
 				getValue: ( { item } ) => item.operation,
 				elements: operationElements,
 				filterBy:
