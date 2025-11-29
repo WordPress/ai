@@ -12,8 +12,8 @@
     {
       "step": "installPlugin",
       "pluginData": {
-        "resource": "url",
-        "url": "https://github-proxy.com/proxy/?repo=Jameswlepage/ai&branch=develop"
+        "resource": "wordpress.org/plugins",
+        "slug": "ai"
       },
       "options": {
         "activate": true
