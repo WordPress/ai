@@ -13,7 +13,7 @@
       "step": "installPlugin",
       "pluginData": {
         "resource": "url",
-        "url": "https://github-proxy.com/proxy/?repo=WordPress/ai&branch=trunk"
+        "url": "https://github-proxy.com/proxy/?repo=Jameswlepage/ai&branch=develop"
       },
       "options": {
         "activate": true
