@@ -120,13 +120,13 @@ function get_post_context( int $post_id ): array {
 }
 
 /**
- * Returns the preferred models.
+ * Returns the preferred models for text generation.
  *
  * @since 0.1.0
  *
- * @return array<int, array{string, string}> The preferred models.
+ * @return array<int, array{string, string}> The preferred models for text generation.
  */
-function get_preferred_models(): array {
+function get_preferred_models_for_text_generation(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
@@ -147,15 +147,15 @@ function get_preferred_models(): array {
 	);
 
 	/**
-	 * Filters the preferred models.
+	 * Filters the preferred models for text generation.
 	 *
 	 * @since 0.1.0
-	 * @hook ai_preferred_models
+	 * @hook ai_preferred_models_for_text_generation
 	 *
-	 * @param array<int, array{string, string}> $preferred_models The preferred models.
+	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
-	return (array) apply_filters( 'ai_preferred_models', $preferred_models );
+	return (array) apply_filters( 'ai_preferred_models_for_text_generation', $preferred_models );
 }
 
 /**
@@ -167,13 +167,12 @@ function get_preferred_models(): array {
  * ```php
  * $service = WordPress\AI\get_ai_service();
  *
- * // Check availability first
- * if ( ! $service->is_available() ) {
- *     return new WP_Error( 'ai_unavailable', 'No AI provider configured.' );
+ * // Check if text generation is supported before generating
+ * $builder = $service->create_prompt( 'Summarize this article...' );
+ * if ( ! $builder->is_supported_for_text_generation() ) {
+ *     return new WP_Error( 'ai_unsupported', 'No AI provider supports text generation.' );
  * }
- *
- * // Simple text generation
- * $text = $service->create_prompt( 'Summarize this article...' )->generate_text();
+ * $text = $builder->generate_text();
  *
  * // With options array
  * $text = $service->create_prompt( 'Translate to French: Hello', array(

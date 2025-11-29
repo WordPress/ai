@@ -15,7 +15,7 @@ use WordPress\AI_Client\AI_Client;
 use WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 
-use function WordPress\AI\get_preferred_models;
+use function WordPress\AI\get_preferred_models_for_text_generation;
 
 /**
  * AI Service class.
@@ -112,36 +112,6 @@ class AI_Service {
 	}
 
 	/**
-	 * Checks if an AI provider is available and configured.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return bool True if a provider is available, false otherwise.
-	 */
-	public function is_available(): bool {
-		/**
-		 * Filters whether the AI service is available.
-		 *
-		 * Allows developers or hosts to override availability detection,
-		 * for example when using pre-configured providers.
-		 *
-		 * @since 0.1.0
-		 *
-		 * @param bool|null $available Null to use default detection, or boolean to override.
-		 */
-		$available = apply_filters( 'ai_service_available', null );
-
-		if ( null !== $available ) {
-			return (bool) $available;
-		}
-
-		// Check if any provider credentials are configured.
-		$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
-
-		return ! empty( $credentials );
-	}
-
-	/**
 	 * Creates a prompt builder with default configuration applied.
 	 *
 	 * This is the primary method for interacting with AI providers. It returns
@@ -190,7 +160,7 @@ class AI_Service {
 		$builder = AI_Client::prompt_with_wp_error( $prompt );
 
 		// Apply default model preferences.
-		$models = get_preferred_models();
+		$models = get_preferred_models_for_text_generation();
 		if ( ! empty( $models ) ) {
 			$builder = $builder->using_model_preference( ...$models );
 		}

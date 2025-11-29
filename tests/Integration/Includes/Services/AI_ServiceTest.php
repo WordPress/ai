@@ -43,7 +43,6 @@ class AI_Service_Test extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
-		remove_all_filters( 'ai_service_available' );
 		parent::tearDown();
 	}
 
@@ -69,48 +68,6 @@ class AI_Service_Test extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( AI_Service::class, $service, 'Helper should return AI_Service instance' );
 		$this->assertSame( $this->service, $service, 'Helper should return singleton instance' );
-	}
-
-	/**
-	 * Test is_available returns false when no credentials configured.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_is_available_returns_false_without_credentials(): void {
-		// Ensure no credentials are set.
-		delete_option( 'wp_ai_client_provider_credentials' );
-
-		$this->assertFalse( $this->service->is_available(), 'Should be unavailable without credentials' );
-	}
-
-	/**
-	 * Test is_available returns true when credentials configured.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_is_available_returns_true_with_credentials(): void {
-		// Set mock credentials.
-		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-key' ) );
-
-		$this->assertTrue( $this->service->is_available(), 'Should be available with credentials' );
-
-		// Cleanup.
-		delete_option( 'wp_ai_client_provider_credentials' );
-	}
-
-	/**
-	 * Test is_available filter can override detection.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_is_available_filter_override(): void {
-		// Ensure no credentials.
-		delete_option( 'wp_ai_client_provider_credentials' );
-
-		// Override to return true.
-		add_filter( 'ai_service_available', '__return_true' );
-
-		$this->assertTrue( $this->service->is_available(), 'Filter should override availability' );
 	}
 
 	/**
