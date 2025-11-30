@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Abilities\Utilities\Date_Calculation;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
@@ -199,6 +200,10 @@ function initialize_experiments(): void {
 		// Register our post-related WordPress Abilities.
 		$post_abilities = new Posts();
 		$post_abilities->register();
+
+        // Register our date calculation WordPress Abilities.
+        $date_calculation = new Date_Calculation();
+        $date_calculation->register();
 
 		add_action(
 			'wp_abilities_api_categories_init',
