@@ -1,0 +1,33 @@
+name: Attach Plugin Zip to Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Plugin Zip
+    uses: ./.github/workflows/build-plugin-zip.yaml
+    permissions:
+      contents: read
+
+  attach-to-release:
+    name: Attach to Release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ai
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ai.zip
