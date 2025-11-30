@@ -105,10 +105,11 @@ class Asset_Loader {
 		wp_style_add_data( 'ai_' . $handle, 'path', $style_path );
 
 		$rtl_style_path = str_replace( '.css', '-rtl.css', $style_path );
-		if ( file_exists( $rtl_style_path ) ) {
-			wp_style_add_data( 'ai_' . $handle, 'rtl', 'replace' );
-			wp_style_add_data( 'ai_' . $handle, 'path', $rtl_style_path );
+		if ( ! file_exists( $rtl_style_path ) ) {
+			return;
 		}
+		wp_style_add_data( 'ai_' . $handle, 'rtl', 'replace' );
+		wp_style_add_data( 'ai_' . $handle, 'path', $rtl_style_path );
 	}
 
 	/**
