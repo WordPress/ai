@@ -38,7 +38,7 @@ class Asset_Loader {
 	public static function enqueue_script( string $handle, string $file_name ): void {
 		$script_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.js';
 		$script_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.js';
-		$script_asset_path = $script_path . '.asset.php';
+		$script_asset_path = substr( $script_path, 0, -3 ) . '.asset.php';
 
 		if ( file_exists( $script_asset_path ) ) {
 			$asset_data = require $script_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
@@ -69,7 +69,7 @@ class Asset_Loader {
 	public static function enqueue_style( string $handle, string $file_name ): void {
 		$style_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.css';
 		$style_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.css';
-		$style_asset_path = $style_path . '.asset.php';
+		$style_asset_path = substr( $style_path, 0, -4 ) . '.asset.php';
 
 		if ( file_exists( $style_asset_path ) ) {
 			$asset_data = require $style_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
