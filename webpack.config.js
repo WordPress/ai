@@ -30,6 +30,11 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'experiments/ai-playground': path.resolve(
+			process.cwd(),
+			'src/experiments/ai-playground',
+			'index.tsx'
+		),
 	},
 
 	plugins: [

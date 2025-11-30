@@ -1,0 +1,7 @@
+.wp-interface-header__right {
+
+	.components-button:disabled,
+	.components-button[aria-disabled="true"] {
+		cursor: not-allowed;
+	}
+}
