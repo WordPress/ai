@@ -85,4 +85,64 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 		$this->assertSame( 250, (int) $row['tokens_total'] );
 		$this->assertGreaterThan( 0, (float) $row['cost_estimate'] );
 	}
+
+	public function test_get_logs_search_matches_request_preview(): void {
+		$this->manager->set_logging_enabled( true );
+
+		$matching_id = $this->manager->log(
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:images/generations',
+				'status'    => 'success',
+				'context'   => array(
+					'input_preview' => 'Prompt: A llama sitting on a mountain',
+				),
+			)
+		);
+
+		// Non matching entry to ensure search filters correctly.
+		$this->manager->log(
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:images/generations',
+				'status'    => 'success',
+				'context'   => array(
+					'input_preview' => 'Prompt: Sunset over the ocean',
+				),
+			)
+		);
+
+		$result = $this->manager->get_logs(
+			array(
+				'search' => 'llama',
+			)
+		);
+
+		$this->assertSame( 1, $result['total'] );
+		$this->assertSame( $matching_id, $result['items'][0]['id'] );
+	}
+
+	public function test_get_logs_search_falls_back_for_short_terms(): void {
+		$this->manager->set_logging_enabled( true );
+
+		$matching_id = $this->manager->log(
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:responses',
+				'status'    => 'success',
+				'context'   => array(
+					'input_preview' => 'AI prompt about colors',
+				),
+			)
+		);
+
+		$result = $this->manager->get_logs(
+			array(
+				'search' => 'AI',
+			)
+		);
+
+		$this->assertSame( 1, $result['total'] );
+		$this->assertSame( $matching_id, $result['items'][0]['id'] );
+	}
 }

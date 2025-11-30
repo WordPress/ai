@@ -54,6 +54,32 @@ const ToolsTable: React.FC< ToolsTableProps > = ( {
 	const fields = useMemo< DataViewField< ToolSummary >[] >(
 		() => [
 			{
+				id: 'enabled',
+				label: __( 'Expose via MCP', 'ai' ),
+				type: 'text',
+				getValue: ( { item } ) =>
+					item.enabled ? 'exposed' : 'not_exposed',
+				elements: [
+					{ label: __( 'Exposed', 'ai' ), value: 'exposed' },
+					{ label: __( 'Not exposed', 'ai' ), value: 'not_exposed' },
+				],
+				filterBy: {
+					operators: [ 'is' ],
+				},
+				enableSorting: true,
+				enableHiding: false,
+				render: ( { item } ) => (
+					<ToggleControl
+						checked={ item.enabled }
+						onChange={ ( value: boolean ) =>
+							onToggle( item.name, value )
+						}
+						disabled={ saving || ! canEditTools }
+						__nextHasNoMarginBottom
+					/>
+				),
+			},
+			{
 				id: 'ability',
 				label: __( 'Ability', 'ai' ),
 				type: 'text',
@@ -90,32 +116,6 @@ const ToolsTable: React.FC< ToolsTableProps > = ( {
 					item.isPublic ? __( 'Yes', 'ai' ) : __( 'No', 'ai' ),
 				filterBy: false,
 			},
-			{
-				id: 'enabled',
-				label: __( 'Expose via MCP', 'ai' ),
-				type: 'text',
-				getValue: ( { item } ) =>
-					item.enabled ? 'exposed' : 'not_exposed',
-				elements: [
-					{ label: __( 'Exposed', 'ai' ), value: 'exposed' },
-					{ label: __( 'Not exposed', 'ai' ), value: 'not_exposed' },
-				],
-				filterBy: {
-					operators: [ 'is' ],
-				},
-				enableSorting: true,
-				enableHiding: false,
-				render: ( { item } ) => (
-					<ToggleControl
-						checked={ item.enabled }
-						onChange={ ( value: boolean ) =>
-							onToggle( item.name, value )
-						}
-						disabled={ saving || ! canEditTools }
-						__nextHasNoMarginBottom
-					/>
-				),
-			},
 		],
 		[ categoryOptions, onToggle, saving, canEditTools ]
 	);
@@ -146,8 +146,10 @@ const ToolsTable: React.FC< ToolsTableProps > = ( {
 	useEffect( () => {
 		setView( ( previous ) => {
 			const availableFieldIds = fields.map( ( field ) => field.id );
-			const nextFields = ( previous.fields ?? availableFieldIds ).filter(
-				( id ) => availableFieldIds.includes( id )
+			const previousFields = previous.fields ?? availableFieldIds;
+			const visibleSet = new Set( previousFields );
+			const nextFields = availableFieldIds.filter( ( id ) =>
+				visibleSet.has( id )
 			);
 			return {
 				...previous,

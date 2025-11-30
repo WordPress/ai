@@ -22,6 +22,6 @@
 		}
 	},
 	"lifecycleScripts": {
-		"afterStart": "wp-env run cli wp rewrite structure /%postname%/ --hard && wp-env run cli wp theme activate ai-entry"
+		"afterStart": "wp-env run cli wp rewrite structure /%postname%/ --hard"
 	}
 }

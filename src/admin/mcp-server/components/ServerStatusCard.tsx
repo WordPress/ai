@@ -1,19 +1,12 @@
 /**
  * WordPress dependencies
  */
-import {
-	Button,
-	Card,
-	CardBody,
-	CardHeader,
-	TextControl,
-} from '@wordpress/components';
-import { check, pencil, closeSmall } from '@wordpress/icons';
+import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 /**
  * External dependencies
  */
-import React, { useState } from 'react';
+import React from 'react';
 
 /**
  * Internal dependencies
@@ -22,95 +15,24 @@ import type { CopyHandler, ServerDetails } from '../types';
 
 interface ServerStatusCardProps {
 	server: ServerDetails;
-	onRename: ( newName: string ) => Promise< void >;
 	onCopy: CopyHandler;
 	profileUrl: string;
 }
 
 const ServerStatusCard: React.FC< ServerStatusCardProps > = ( {
 	server,
-	onRename,
 	onCopy,
 	profileUrl,
 } ) => {
-	const [ isEditing, setIsEditing ] = useState( false );
-	const [ editName, setEditName ] = useState( server.name );
-	const [ isSaving, setIsSaving ] = useState( false );
-
 	const endpoint = server.http_endpoint ?? '';
 	const cliCommand = server.cli_command ?? '';
-
-	const handleStartEdit = () => {
-		setEditName( server.name );
-		setIsEditing( true );
-	};
-
-	const handleCancelEdit = () => {
-		setEditName( server.name );
-		setIsEditing( false );
-	};
-
-	const handleSaveEdit = async () => {
-		if ( ! editName.trim() || editName === server.name ) {
-			setIsEditing( false );
-			return;
-		}
-
-		setIsSaving( true );
-		try {
-			await onRename( editName.trim() );
-			setIsEditing( false );
-		} finally {
-			setIsSaving( false );
-		}
-	};
-
-	const handleKeyDown = ( event: React.KeyboardEvent ) => {
-		if ( event.key === 'Enter' ) {
-			handleSaveEdit();
-		} else if ( event.key === 'Escape' ) {
-			handleCancelEdit();
-		}
-	};
 
 	return (
 		<Card className="ai-mcp-server__card ai-mcp-server__card--status">
 			<CardHeader>
 				<div className="ai-mcp-server__card-heading">
 					<div className="ai-mcp-server__server-name">
-						{ isEditing ? (
-							<div className="ai-mcp-server__name-edit">
-								<TextControl
-									value={ editName }
-									onChange={ setEditName }
-									onKeyDown={ handleKeyDown }
-									disabled={ isSaving }
-									__nextHasNoMarginBottom
-									__next40pxDefaultSize
-								/>
-								<Button
-									icon={ check }
-									label={ __( 'Save', 'ai' ) }
-									onClick={ handleSaveEdit }
-									disabled={ isSaving }
-								/>
-								<Button
-									icon={ closeSmall }
-									label={ __( 'Cancel', 'ai' ) }
-									onClick={ handleCancelEdit }
-									disabled={ isSaving }
-								/>
-							</div>
-						) : (
-							<div className="ai-mcp-server__name-display">
-								<h3>{ server.name }</h3>
-								<Button
-									icon={ pencil }
-									label={ __( 'Rename server', 'ai' ) }
-									onClick={ handleStartEdit }
-								/>
-							</div>
-						) }
+						<h3>{ server.name }</h3>
 					</div>
 				</div>
 			</CardHeader>

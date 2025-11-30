@@ -396,7 +396,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 				'format'      => 'date-time',
 			),
 			'search'            => array(
-				'description' => __( 'Search in operation and error message.', 'ai' ),
+				'description' => __( 'Search in operations, request previews, response previews, and error messages.', 'ai' ),
 				'type'        => 'string',
 				'default'     => '',
 			),

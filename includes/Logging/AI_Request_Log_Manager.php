@@ -787,21 +787,31 @@ class AI_Request_Log_Manager {
 		if ( ! empty( $args['search'] ) ) {
 			// Search across operation, error_message, request_preview, and response_preview.
 			// Try FULLTEXT search first (faster for larger tables), fall back to LIKE.
+			$search_like = '%' . $wpdb->esc_like( $args['search'] ) . '%';
+
 			if ( $this->has_fulltext_index() ) {
-				// Use MATCH...AGAINST for FULLTEXT search.
-				// IN BOOLEAN MODE allows partial word matching with *.
-				$search_term = $wpdb->esc_like( $args['search'] );
-				$where[]     = '(MATCH(operation, request_preview, response_preview) AGAINST(%s IN BOOLEAN MODE) OR error_message LIKE %s)';
-				$values[]    = '*' . $search_term . '*';
-				$values[]    = '%' . $search_term . '%';
+				$boolean_query = $this->build_fulltext_search_query( $args['search'] );
+
+				if ( '' !== $boolean_query ) {
+					// Use MATCH...AGAINST for FULLTEXT search.
+					$where[]  = '(MATCH(operation, request_preview, response_preview) AGAINST(%s IN BOOLEAN MODE) OR error_message LIKE %s)';
+					$values[] = $boolean_query;
+					$values[] = $search_like;
+				} else {
+					// All tokens were too short for FULLTEXT, fall back to LIKE.
+					$where[]  = '(operation LIKE %s OR error_message LIKE %s OR request_preview LIKE %s OR response_preview LIKE %s)';
+					$values[] = $search_like;
+					$values[] = $search_like;
+					$values[] = $search_like;
+					$values[] = $search_like;
+				}
 			} else {
 				// Fallback to LIKE search (works on all MySQL versions).
-				$search   = '%' . $wpdb->esc_like( $args['search'] ) . '%';
 				$where[]  = '(operation LIKE %s OR error_message LIKE %s OR request_preview LIKE %s OR response_preview LIKE %s)';
-				$values[] = $search;
-				$values[] = $search;
-				$values[] = $search;
-				$values[] = $search;
+				$values[] = $search_like;
+				$values[] = $search_like;
+				$values[] = $search_like;
+				$values[] = $search_like;
 			}
 		}
 
@@ -1158,6 +1168,59 @@ class AI_Request_Log_Manager {
 		$has_index = (int) $result > 0;
 
 		return $has_index;
+	}
+
+	/**
+	 * Builds a boolean-mode FULLTEXT query string with partial term support.
+	 *
+	 * Tokens shorter than three characters are skipped because MySQL does not
+	 * index them by default (innodb_ft_min_token_size / ft_min_word_len).
+	 * Callers should fall back to LIKE operations when this method returns
+	 * an empty string.
+	 *
+	 * @param string $search Raw search string.
+	 * @return string Boolean FULLTEXT query or empty string when no tokens qualify.
+	 */
+	private function build_fulltext_search_query( string $search ): string {
+		$search = trim( $search );
+
+		if ( '' === $search ) {
+			return '';
+		}
+
+		$tokens = preg_split( '/\s+/', $search );
+		if ( ! $tokens ) {
+			return '';
+		}
+
+		$clauses = array();
+
+		foreach ( $tokens as $token ) {
+			$token = trim( (string) $token );
+			if ( '' === $token ) {
+				continue;
+			}
+
+			// Remove boolean operators that would otherwise break the query.
+			$token = preg_replace( '/[+\-><()~*"@]+/', ' ', $token );
+			$token = trim( (string) $token );
+
+			if ( '' === $token ) {
+				continue;
+			}
+
+			$length = function_exists( 'mb_strlen' )
+				? mb_strlen( $token, 'UTF-8' )
+				: strlen( $token );
+
+			if ( $length < 3 ) {
+				continue;
+			}
+
+			$clauses[] = '+' . $token . '*';
+		}
+
+		return implode( ' ', $clauses );
 	}
 
 	/**

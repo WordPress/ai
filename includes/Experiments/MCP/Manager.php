@@ -847,7 +847,7 @@ class Manager {
 
 		return array(
 			'id'              => $this->get_default_server_id(),
-			'name'            => esc_html__( 'Default Server', 'ai' ),
+			'name'            => esc_html__( 'Patient', 'ai' ),
 			'description'     => esc_html__( 'Automatically exposes public abilities over HTTP.', 'ai' ),
 			'route_namespace' => 'mcp',
 			'route'           => 'default-server',
@@ -873,7 +873,7 @@ class Manager {
 	private function sanitize_server_config( array $server ): array {
 		return array(
 			'id'              => sanitize_key( $server['id'] ?? $this->unique_server_id( 'server' ) ),
-			'name'            => sanitize_text_field( $server['name'] ?? esc_html__( 'MCP Server', 'ai' ) ),
+			'name'            => sanitize_text_field( $server['name'] ?? esc_html__( 'Patient', 'ai' ) ),
 			'description'     => sanitize_text_field( $server['description'] ?? '' ),
 			'route_namespace' => sanitize_key( $server['route_namespace'] ?? 'mcp' ),
 			'route'           => sanitize_key( $server['route'] ?? 'default-server' ),

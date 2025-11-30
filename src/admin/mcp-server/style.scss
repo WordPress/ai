@@ -2,34 +2,63 @@
 @use '../common';
 
 .ai-mcp-server {
-	// Header server picker in the left section
-	&__header-server-picker {
-		min-width: 180px;
-
-		.components-base-control {
-			margin: 0;
-		}
-
-		.components-select-control__input {
-			min-height: 32px;
-			font-size: 13px;
-		}
-	}
-
-	&__grid {
+	&__layout {
 		display: grid;
+		grid-template-columns: minmax( 0, 2fr ) minmax( 280px, 1fr );
 		gap: 24px;
-		grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
-		margin-bottom: 24px;
+		align-items: flex-start;
 
-		@media ( max-width: 960px ) {
+		@media ( max-width: 1200px ) {
 			grid-template-columns: 1fr;
 		}
 	}
 
+	&__main,
+	&__sidebar {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+	}
+
 	&__server-description {
-		margin: 0 0 24px;
+		margin: 0;
 		color: #50575e;
+	}
+
+	&__header-switcher {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin-left: 16px;
+		flex-wrap: wrap;
+
+		.ai-mcp-server__status-text strong {
+			font-size: 12px;
+			font-weight: 500;
+		}
+	}
+
+	&__header-server-name {
+		font-size: 16px;
+		font-weight: 600;
+		color: #1e1e1e;
+	}
+
+	&__header-icon-button.components-button {
+		min-width: 28px;
+		height: 28px;
+		padding: 0;
+		border-radius: 999px;
+	}
+
+	&__header-dropdown {
+		.components-popover__content {
+			min-width: 220px;
+		}
+
+		.components-menu-item.is-selected {
+			font-weight: 600;
+		}
 	}
 
 	&__card {
@@ -77,27 +106,6 @@
 			margin: 0;
 			font-size: 14px;
 			font-weight: 600;
-		}
-	}
-
-	&__name-display {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-	}
-
-	&__name-edit {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		flex: 1;
-		min-width: 0;
-
-		.components-base-control {
-			margin: 0;
-			flex: 1;
-			min-width: 120px;
-			max-width: 240px;
 		}
 	}
 

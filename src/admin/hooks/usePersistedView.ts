@@ -7,7 +7,7 @@ import { useView } from '@wordpress/views';
 /**
  * External dependencies
  */
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface PersistedViewReturn< T extends View > {
 	view: T;
@@ -28,11 +28,45 @@ export function usePersistedView< T extends View >(
 	slug: string,
 	defaultView: T
 ): PersistedViewReturn< T > {
+	const defaultQuery = useMemo(
+		() => ( {
+			page: defaultView.page ?? 1,
+			search: defaultView.search ?? '',
+		} ),
+		[ defaultView.page, defaultView.search ]
+	);
+
+	const [ queryParams, setQueryParams ] = useState( defaultQuery );
+
+	// Keep query params in sync if defaults change (should be rare).
+	useEffect( () => {
+		setQueryParams( ( previous ) => ( {
+			page: previous.page ?? defaultQuery.page,
+			search:
+				typeof previous.search === 'string'
+					? previous.search
+					: defaultQuery.search,
+		} ) );
+	}, [ defaultQuery.page, defaultQuery.search ] );
+
 	const { view, updateView, resetToDefault, isModified } = useView( {
 		kind: VIEW_KIND,
 		name: VIEW_NAME,
 		slug,
 		defaultView,
+		queryParams,
+		onChangeQueryParams: ( params ) => {
+			setQueryParams( {
+				page:
+					typeof params.page === 'number'
+						? params.page
+						: defaultQuery.page,
+				search:
+					typeof params.search === 'string'
+						? params.search
+						: defaultQuery.search,
+			} );
+		},
 	} );
 
 	const latestViewRef = useRef< View >( view );
@@ -53,7 +87,8 @@ export function usePersistedView< T extends View >(
 
 	const resetView = useCallback( () => {
 		resetToDefault();
-	}, [ resetToDefault ] );
+		setQueryParams( defaultQuery );
+	}, [ resetToDefault, defaultQuery ] );
 
 	return {
 		view: view as T,

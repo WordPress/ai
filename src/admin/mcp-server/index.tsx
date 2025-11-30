@@ -9,14 +9,16 @@ import './style.scss';
 import apiFetch from '@wordpress/api-fetch';
 import {
 	Button,
+	Dropdown,
+	MenuGroup,
+	MenuItem,
 	Notice,
-	SelectControl,
 	Spinner,
 	ToggleControl,
 	Tooltip,
 } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
-import { plus } from '@wordpress/icons';
+import { chevronDown, pencil, plus } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 import { __, sprintf } from '@wordpress/i18n';
 /**
@@ -349,8 +351,37 @@ const App: React.FC = () => {
 		}
 	);
 
+	const handleHeaderRename = async () => {
+		if ( ! activeServer ) {
+			return;
+		}
+
+		// eslint-disable-next-line no-alert
+		const nextName = window.prompt(
+			__( 'Enter a new name for this server:', 'ai' ),
+			activeServer.name
+		);
+
+		if ( ! nextName ) {
+			return;
+		}
+
+		const trimmed = nextName.trim();
+		if ( ! trimmed || trimmed === activeServer.name ) {
+			return;
+		}
+
+		await handleRenameServer( trimmed );
+	};
+
+	const currentServerLabel =
+		activeServer?.name ??
+		( serverOptions.length > 0
+			? __( 'Select a server', 'ai' )
+			: __( 'No servers available', 'ai' ) );
+	const canSwitchServers = serverOptions.length > 0;
+
 	// Get portal mount points for header elements (rendered by PHP)
-	const headerStatusMount = document.getElementById( 'ai-mcp-header-status' );
 	const headerServerSelectorMount = document.getElementById(
 		'ai-mcp-header-server-selector'
 	);
@@ -360,26 +391,65 @@ const App: React.FC = () => {
 
 	return (
 		<div className="ai-mcp-server__app">
-			{ /* Portal: Status badge in PHP header */ }
-			{ headerStatusMount &&
-				! loading &&
-				createPortal(
-					<StatusBadge status={ globalStatus } />,
-					headerStatusMount
-				) }
-
 			{ /* Portal: Server selector in PHP header */ }
 			{ headerServerSelectorMount &&
 				! loading &&
 				createPortal(
-					<div className="ai-mcp-server__header-server-picker">
-						<SelectControl
-							value={ selectedServerId ?? '' }
-							onChange={ handleSelectServer }
-							options={ serverOptions }
-							__nextHasNoMarginBottom
-							__next40pxDefaultSize
+					<div className="ai-mcp-server__header-switcher">
+						<span className="ai-mcp-server__header-server-name">
+							{ currentServerLabel }
+						</span>
+						<Button
+							icon={ pencil }
+							label={ __( 'Rename server', 'ai' ) }
+							variant="tertiary"
+							onClick={ handleHeaderRename }
+							className="ai-mcp-server__header-icon-button"
+							disabled={ ! activeServer }
 						/>
+						<Dropdown
+							popoverProps={ {
+								className: 'ai-mcp-server__header-dropdown',
+							} }
+							renderToggle={ ( { isOpen, onToggle } ) => (
+								<Button
+									icon={ chevronDown }
+									label={ __( 'Switch server', 'ai' ) }
+									variant="tertiary"
+									onClick={ onToggle }
+									aria-expanded={ isOpen }
+									className="ai-mcp-server__header-icon-button"
+									disabled={ ! canSwitchServers }
+								/>
+							) }
+							renderContent={ ( { onClose } ) => (
+								<MenuGroup label={ __( 'Select a server', 'ai' ) }>
+									{ serverOptions.length === 0 && (
+										<MenuItem disabled>
+											{ __( 'No servers found.', 'ai' ) }
+										</MenuItem>
+									) }
+									{ serverOptions.map( ( option ) => (
+										<MenuItem
+											key={ option.value }
+											isSelected={
+												option.value === selectedServerId
+											}
+											role="menuitemradio"
+											onClick={ () => {
+												handleSelectServer(
+													option.value
+												);
+												onClose();
+											} }
+										>
+											{ option.label }
+										</MenuItem>
+									) ) }
+								</MenuGroup>
+							) }
+						/>
+						<StatusBadge status={ globalStatus } />
 					</div>,
 					headerServerSelectorMount
 				) }
@@ -431,50 +501,46 @@ const App: React.FC = () => {
 					<Spinner />
 					<span>{ __( 'Loading MCP server data…', 'ai' ) }</span>
 				</div>
+			) : activeServer ? (
+				<div className="ai-mcp-server__layout">
+					<div className="ai-mcp-server__main">
+						{ activeServer.description && (
+							<p className="ai-mcp-server__server-description">
+								{ activeServer.description }
+							</p>
+						) }
+
+						<ToolsTable
+							tools={ data?.tools ?? [] }
+							saving={ savingTools }
+							globalEnabled={ data?.enabled ?? false }
+							serverEnabled={ activeServer?.enabled ?? false }
+							onToggle={ handleToggleTool }
+						/>
+
+						<TestConnectionPanel
+							testing={ testing }
+							result={ testResult }
+							onTest={ handleTestConnection }
+						/>
+					</div>
+
+					<div className="ai-mcp-server__sidebar">
+						<ServerStatusCard
+							server={ activeServer }
+							onCopy={ handleCopy }
+							profileUrl={ settings.profileUrl }
+						/>
+						<ConfigGenerator
+							templates={ templates }
+							onCopy={ handleCopy }
+						/>
+					</div>
+				</div>
 			) : (
-				<>
-
-					{ activeServer?.description && (
-						<p className="ai-mcp-server__server-description">
-							{ activeServer.description }
-						</p>
-					) }
-
-					{ activeServer ? (
-						<>
-							<div className="ai-mcp-server__grid">
-								<ServerStatusCard
-									server={ activeServer }
-									onRename={ handleRenameServer }
-									onCopy={ handleCopy }
-									profileUrl={ settings.profileUrl }
-								/>
-								<ConfigGenerator
-									templates={ templates }
-									onCopy={ handleCopy }
-								/>
-							</div>
-
-							<ToolsTable
-								tools={ data?.tools ?? [] }
-								saving={ savingTools }
-								globalEnabled={ data?.enabled ?? false }
-								serverEnabled={ activeServer?.enabled ?? false }
-								onToggle={ handleToggleTool }
-							/>
-
-							<TestConnectionPanel
-								testing={ testing }
-								result={ testResult }
-								onTest={ handleTestConnection }
-							/>
-						</>
-					) : (
-						<Notice status="warning" isDismissible={ false }>
-							{ __( 'No MCP servers are configured yet.', 'ai' ) }
-						</Notice>
-					) }
-				</>
+				<Notice status="warning" isDismissible={ false }>
+					{ __( 'No MCP servers are configured yet.', 'ai' ) }
+				</Notice>
 			) }
 		</div>
 	);
