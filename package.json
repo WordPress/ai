@@ -34,6 +34,7 @@
     "@types/wordpress__blocks": "^12.5.18",
     "@wordpress/env": "^10.34.0",
     "@wordpress/scripts": "^31.0.0",
+    "copy-webpack-plugin": "^13.0.1",
     "typescript": "^5.9.3",
     "webpack-remove-empty-scripts": "^1.1.1"
   },
@@ -49,7 +50,9 @@
     "@wordpress/icons": "^11.1.0",
     "@wordpress/notices": "^5.35.0",
     "@wordpress/plugins": "^7.34.0",
-    "react": "^18.3.1"
+    "react": "^18.3.1",
+    "wp-admin-components": "^1.0.0",
+    "wp-interface": "^1.0.0"
   },
   "overrides": {
     "webpack-dev-server@<=5.2.0": ">=5.2.1"
