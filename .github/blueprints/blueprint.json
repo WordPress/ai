@@ -12,8 +12,8 @@
     {
       "step": "installPlugin",
       "pluginData": {
-        "resource": "url",
-        "url": "https://wordpress.org/plugins/ai/"
+        "resource": "wordpress.org/plugins",
+        "slug": "ai"
       },
       "options": {
         "activate": true
