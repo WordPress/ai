@@ -12,7 +12,7 @@ import PlaygroundApp from './components/PlaygroundApp';
 /**
  * Mounts the given component into the DOM.
  *
- * @since 0.4.0
+ * @since n.e.x.t
  *
  * @param jsx          - The JSX node to be mounted.
  * @param renderTarget - The target element to render the JSX into.

@@ -5,22 +5,28 @@ import {
 	App,
 	Header,
 	HeaderActions,
-	PinnedSidebars,
-	MoreMenu,
-	Sidebar,
 	Footer,
+	Sidebar,
+	PinnedSidebars,
 } from 'wp-interface';
 
 /**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
-import { __, _x, isRTL } from '@wordpress/i18n';
+import { __, isRTL } from '@wordpress/i18n';
 import { drawerLeft, drawerRight } from '@wordpress/icons';
 
 /**
  * Internal dependencies
  */
+import PlaygroundMoreMenu from '../PlaygroundMoreMenu';
+import PlaygroundStatus from '../PlaygroundStatus';
+import PlaygroundMain from '../PlaygroundMain';
+import PlaygroundCapabilitiesPanel from '../PlaygroundCapabilitiesPanel';
+import PlaygroundProviderModelPanel from '../PlaygroundProviderModelPanel';
+import PlaygroundModelConfigPanel from '../PlaygroundModelConfigPanel';
+import SystemInstructionToggle from './system-instruction-toggle';
+import ResetMessagesButton from './reset-messages-button';
 import './style.scss';
 
 /**
@@ -65,47 +71,30 @@ export default function PlaygroundApp() {
 			<Header>
 				<h1>{ __( 'AI Playground', 'ai' ) }</h1>
 				<HeaderActions>
-					<Button variant="primary">
-						{ __( 'Perform Primary Action', 'ai' ) }
-					</Button>
+					<ResetMessagesButton />
+					<SystemInstructionToggle />
 					<PinnedSidebars />
-					<MoreMenu>
-						{ () => (
-							<>
-								<MoreMenu.MenuGroup
-									label={ _x( 'View', 'noun', 'ai' ) }
-								>
-									<MoreMenu.DistractionFreePreferenceToggleMenuItem />
-								</MoreMenu.MenuGroup>
-								<MoreMenu.MenuGroup
-									label={ __( 'Tools', 'ai' ) }
-								>
-									<MoreMenu.KeyboardShortcutsMenuItem />
-									<MoreMenu.ExternalLinkMenuItem href="https://ai-website.com">
-										{ __( 'Learn more', 'ai' ) }
-									</MoreMenu.ExternalLinkMenuItem>
-								</MoreMenu.MenuGroup>
-							</>
-						) }
-					</MoreMenu>
+					<PlaygroundMoreMenu />
 				</HeaderActions>
 			</Header>
-
-			<div className="ai-content">
-				<p>{ __( 'Main content goes here.', 'ai' ) }</p>
-			</div>
-
+			<PlaygroundMain />
 			<Sidebar
-				identifier="primary-sidebar"
-				title={ __( 'Primary sidebar', 'ai' ) }
+				identifier="ai/playground-sidebar"
+				title={ __( 'AI Configuration', 'ai' ) }
 				icon={ isRTL() ? drawerLeft : drawerRight }
+				header={
+					<h2 className="interface-complementary-area-header__title">
+						{ __( 'AI Configuration', 'ai' ) }
+					</h2>
+				}
 				isActiveByDefault
 			>
-				<p>{ __( 'Sidebar content goes here.', 'ai' ) }</p>
+				<PlaygroundCapabilitiesPanel />
+				<PlaygroundProviderModelPanel />
+				<PlaygroundModelConfigPanel />
 			</Sidebar>
-
 			<Footer>
-				<p>{ __( 'Version 1.0', 'ai' ) }</p>
+				<PlaygroundStatus />
 			</Footer>
 		</App>
 	);

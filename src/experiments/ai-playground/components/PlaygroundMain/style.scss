@@ -1,0 +1,397 @@
+.ai-playground {
+
+	&__main {
+		position: relative;
+		margin: 0;
+		padding: 0;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+		background: #fff;
+	}
+
+	&__system-instruction-container {
+		display: block;
+		background-color: #fff;
+		border-bottom: 1px solid #c3c4c7;
+		box-shadow: 0 1px 8px 0 rgba(0, 0, 0, 0.133);
+	}
+
+	&__system-instruction {
+		display: block;
+		max-width: 800px; // 768px + 2 * 16px.
+		width: 100%;
+		margin: 0 auto;
+		padding: 8px 16px;
+		background-color: transparent;
+		font-size: 16px;
+		line-height: 24px;
+		border: 0;
+		outline: 0;
+		box-shadow: none;
+
+		&:focus {
+			border: 0;
+			outline: 0;
+			box-shadow: none;
+		}
+	}
+
+	&__messages-container {
+		flex: 1;
+		padding: 16px 16px 142px;
+		overflow-x: hidden;
+		overflow-y: scroll;
+	}
+
+	&__messages {
+		display: block;
+		max-width: 800px; // 768px + 2 * 16px.
+		margin: 0 auto;
+	}
+
+	&__message-container {
+		display: flex;
+		margin: 16px 0;
+
+		&--user {
+			justify-content: flex-start;
+		}
+
+		&--model,
+		&--error {
+			justify-content: flex-end;
+		}
+	}
+
+	&__message {
+		position: relative;
+		min-width: 60%;
+		max-width: 80%;
+
+		.ai-playground__message-author {
+			font-weight: 700;
+			margin-bottom: 8px;
+		}
+
+		.ai-playground__message-toolbar {
+			position: absolute;
+			top: 0;
+			right: 0;
+
+			.components-button.is-small {
+				height: auto;
+				padding: 2px 6px;
+				font-size: 11px;
+				line-height: normal;
+				border-radius: 5px;
+
+				&::before {
+					right: 0;
+					left: 0;
+					height: 18px;
+				}
+			}
+		}
+
+		.ai-playground__message-content {
+			padding: 8px 12px;
+			border-radius: 5px;
+			text-align: left;
+
+			ul {
+				list-style: disc;
+			}
+
+			ul,
+			ol {
+				padding-left: 1rem;
+			}
+
+			p:first-child,
+			ul:first-child,
+			ol:first-child {
+				margin-top: 0;
+			}
+
+			p:last-child,
+			ul:last-child,
+			ol:last-child {
+				margin-bottom: 0;
+			}
+
+			img,
+			audio,
+			video {
+				display: block;
+				margin-right: auto;
+				margin-left: auto;
+				max-width: 100%;
+				max-height: 800px; // Prevent excessive height.
+			}
+
+			img,
+			video {
+				height: auto;
+			}
+		}
+
+		&--user {
+
+			.ai-playground__message-author {
+				color: #585858;
+			}
+
+			.ai-playground__message-content {
+				background-color: #f1f1f1;
+				color: #585858;
+			}
+		}
+
+		&--model {
+
+			.ai-playground__message-author {
+				color: #2898ec;
+			}
+
+			.ai-playground__message-content {
+				background-color: #2898ec;
+				color: #fff;
+			}
+		}
+
+		&--error {
+
+			.ai-playground__message-author {
+				color: #d63638;
+			}
+
+			.ai-playground__message-content {
+				background-color: #d63638;
+				color: #fff;
+			}
+		}
+	}
+
+	&__message-part {
+		margin: 1em 0;
+
+		&:first-child {
+			margin-top: 0;
+		}
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6 {
+
+			/*
+			* Ensure WordPress's general heading color does not override the
+			* content part text color.
+			*/
+			color: inherit;
+		}
+
+		textarea.code {
+			width: 100%;
+		}
+	}
+
+
+	&__input-backdrop {
+		position: absolute;
+		bottom: 0;
+		left: 16px;
+		right: 16px;
+		z-index: 10;
+		padding: 32px 16px 16px;
+		background: linear-gradient(transparent, 30%, #fff);
+	}
+
+	&__input-container {
+		display: block;
+		background-color: #fff;
+		max-width: 768px;
+		margin: 0 auto;
+		padding: 4px 10px;
+		border-radius: 16px;
+		border: 1px solid #c3c4c7;
+		box-shadow: 0 1px 8px 0 rgba(0, 0, 0, 0.133);
+	}
+
+	&__input {
+		display: block;
+		width: 100%;
+		padding: 4px 0;
+		background-color: transparent;
+		font-size: 16px;
+		line-height: 24px;
+		resize: none;
+		border: 0;
+		outline: 0;
+		box-shadow: none;
+
+		&:focus {
+			border: 0;
+			outline: 0;
+			box-shadow: none;
+		}
+	}
+
+	&__input-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	&__input-action-group {
+		display: flex;
+	}
+
+	&__input-action {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: transparent;
+		border: 0;
+		border-radius: 50%;
+		padding: 0;
+		color: var(--wp-components-color-foreground, #1e1e1e);
+		cursor: pointer;
+		width: 32px;
+		height: 32px;
+
+		&:hover {
+			color: var(--wp-components-color-accent, var(--wp-admin-theme-color, #3858e9));
+		}
+
+		&--complex {
+			width: auto;
+		}
+
+		&--primary:not(:disabled) {
+			color: var(--wp-components-color-accent, var(--wp-admin-theme-color, #3858e9));
+
+			&:hover {
+				color: var(--wp-components-color-accent-darker-10, var(--wp-admin-theme-color-darker-10, #2145e6));
+			}
+		}
+
+		&:disabled {
+			color: #c3c4c7;
+			cursor: not-allowed;
+		}
+
+		+ .ai-playground__input-action {
+			margin-left: 8px;
+		}
+
+		svg {
+			display: block;
+			width: 28px;
+			height: 28px;
+			fill: currentcolor;
+		}
+	}
+
+	&__input-notices {
+
+		.components-notice.is-info {
+			background-color: rgba(0, 0, 0, 0.05);
+		}
+	}
+
+	&__input-attachment {
+		position: relative;
+		display: block;
+		padding: 4px 0;
+		width: 80px;
+
+		.attachment-preview {
+			display: block;
+		}
+
+		.attachment-remove-button {
+			position: absolute;
+			top: 6px; // Padding of 4px + 2px.
+			right: 2px; // Padding of 0px + 2px.
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background-color: transparent;
+			border: 0;
+			border-radius: 50%;
+			padding: 8px;
+			cursor: pointer;
+
+			svg {
+				display: block;
+				width: 0;
+				height: 0;
+				fill: currentcolor;
+			}
+		}
+
+		&:hover .attachment-remove-button {
+			padding: 0;
+			width: 32px;
+			height: 32px;
+			color: #fff;
+			background-color: #1e1e1e;
+
+			svg {
+				width: 28px;
+				height: 28px;
+			}
+		}
+	}
+
+	&__loader-container {
+		display: flex;
+		width: 100%;
+		justify-content: center;
+		align-items: center;
+	}
+
+	&__loader {
+		fill: var(--wp-components-color-accent, var(--wp-admin-theme-color, #3858e9));
+	}
+
+	&__loader-dot {
+		animation: load 1s infinite;
+
+		&:first-child {
+			animation-delay: 0s;
+		}
+
+		&:not(:first-child, :last-child) {
+			animation-delay: 0.2s;
+		}
+
+		&:last-child {
+			animation-delay: 0.4s;
+		}
+	}
+}
+
+@keyframes load {
+
+	0% {
+		opacity: 0;
+	}
+
+	50% {
+		opacity: 1;
+	}
+
+	100% {
+		opacity: 0;
+	}
+}
