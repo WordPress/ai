@@ -1,10 +1,4 @@
 /**
- * External dependencies
- */
-import { enums, store as aiStore } from '@ai-services/ai';
-import type { AiCapability } from '@ai-services/ai/types';
-
-/**
  * WordPress dependencies
  */
 import { useSelect, useDispatch } from '@wordpress/data';
@@ -26,9 +20,12 @@ import { UP, DOWN } from '@wordpress/keycodes';
  */
 import { store as playgroundStore } from '../../store';
 import MediaModal from './media-modal';
+import { Capability } from '../../ai-client-enums';
+import type { ModelMetadata, SupportedOption } from '../../ai-client-types';
 import type { AiPlaygroundMessage, WordPressAttachment } from '../../types';
 
-const EMPTY_CAPABILITY_ARRAY: AiCapability[] = [];
+const EMPTY_CAPABILITY_ARRAY: Capability[] = [];
+const EMPTY_OPTION_ARRAY: SupportedOption[] = [];
 
 const matchMessage = ( message: AiPlaygroundMessage, prompt: string ) => {
 	if ( message.type !== 'user' ) {
@@ -103,44 +100,54 @@ export default function Input() {
 	);
 	const [ matchedIndex, setMatchedIndex ] = useState( -1 );
 
-	const { provider, model, capabilities, messages, canUploadMedia } =
-		useSelect( ( select ) => {
-			const { getProvider, getModel, getMessages } =
-				select( playgroundStore );
-			const { getServices } = select( aiStore );
+	const {
+		provider,
+		model,
+		supportedCapabilities,
+		supportedOptionsMap,
+		messages,
+		canUploadMedia,
+	} = useSelect( ( select ) => {
+		const { getProvider, getModel, getMessages } =
+			select( playgroundStore );
 
-			const currentProvider = getProvider();
-			const currentModel = getModel();
+		// @ts-expect-error
+		const { getProviderModel } = select( window.wp.aiClient.store );
 
-			let currentCapabilities = EMPTY_CAPABILITY_ARRAY;
-			if ( currentProvider && currentModel ) {
-				const services = getServices();
-				if (
-					services &&
-					services[ currentProvider ] &&
-					services[ currentProvider ].available_models[ currentModel ]
-				) {
-					currentCapabilities =
-						services[ currentProvider ].available_models[
-							currentModel
-						].capabilities;
-				}
+		const currentProvider = getProvider();
+		const currentModel = getModel();
+
+		let currentCapabilities = EMPTY_CAPABILITY_ARRAY;
+		let currentOptions = EMPTY_OPTION_ARRAY;
+		const currentOptionsMap: Record< string, unknown[] | undefined > = {};
+		if ( currentProvider && currentModel ) {
+			const modelMetadata = getProviderModel() as
+				| ModelMetadata
+				| undefined;
+			if ( modelMetadata ) {
+				currentCapabilities = modelMetadata.supportedCapabilities;
+				currentOptions = modelMetadata.supportedOptions;
+				currentOptions.forEach( ( option ) => {
+					currentOptionsMap[ option.name ] = option.supportedValues;
+				} );
 			}
+		}
 
-			const { canUser } = select( coreStore );
+		const { canUser } = select( coreStore );
 
-			return {
-				provider: currentProvider,
-				model: currentModel,
-				capabilities: currentCapabilities,
-				messages: getMessages(),
-				canUploadMedia:
-					canUser( 'create', {
-						kind: 'root',
-						name: 'media',
-					} ) ?? true,
-			};
-		}, [] );
+		return {
+			provider: currentProvider,
+			model: currentModel,
+			supportedCapabilities: currentCapabilities,
+			supportedOptionsMap: currentOptionsMap,
+			messages: getMessages(),
+			canUploadMedia:
+				canUser( 'create', {
+					kind: 'root',
+					name: 'media',
+				} ) ?? true,
+		};
+	}, [] );
 
 	const { sendMessage } = useDispatch( playgroundStore );
 
@@ -160,10 +167,11 @@ export default function Input() {
 		setAttachments( [] );
 		await sendMessage(
 			prompt,
-			capabilities.includes( enums.AiCapability.MULTIMODAL_INPUT )
+			supportedOptionsMap?.inputModalities?.length &&
+				supportedOptionsMap?.inputModalities?.length > 1
 				? attachments
 				: undefined,
-			capabilities.includes( enums.AiCapability.CHAT_HISTORY )
+			supportedCapabilities.includes( Capability.CHAT_HISTORY )
 				? includeHistory
 				: false
 		);
@@ -192,7 +200,7 @@ export default function Input() {
 
 	// If the last message is a function call, allow providing JSON data as a prompt for the function response.
 	const allowFunctionResponse = useMemo( () => {
-		if ( ! capabilities.includes( enums.AiCapability.FUNCTION_CALLING ) ) {
+		if ( ! supportedOptionsMap.functionDeclarations ) {
 			return false;
 		}
 
@@ -209,7 +217,7 @@ export default function Input() {
 		return !! lastMessage.content?.parts?.some(
 			( part ) => 'functionCall' in part
 		);
-	}, [ capabilities, messages ] );
+	}, [ supportedOptionsMap.functionDeclarations, messages ] );
 
 	const inputRef = useRef< HTMLTextAreaElement | null >( null );
 
@@ -239,11 +247,15 @@ export default function Input() {
 			'Enter AI prompt or JSON data for a function response',
 			'ai'
 		);
-	} else if ( capabilities.includes( enums.AiCapability.TEXT_TO_SPEECH ) ) {
+	} else if (
+		supportedCapabilities.includes( Capability.TEXT_TO_SPEECH_CONVERSION )
+	) {
 		inputPlaceholder = __( 'Enter AI text to transform to speech', 'ai' );
-	} else if ( capabilities.includes( enums.AiCapability.IMAGE_GENERATION ) ) {
+	} else if (
+		supportedCapabilities.includes( Capability.IMAGE_GENERATION )
+	) {
 		inputPlaceholder = __( 'Enter AI prompt to generate images', 'ai' );
-	} else if ( capabilities.includes( enums.AiCapability.TEXT_GENERATION ) ) {
+	} else if ( supportedCapabilities.includes( Capability.TEXT_GENERATION ) ) {
 		inputPlaceholder = __( 'Enter AI prompt to generate content', 'ai' );
 	} else {
 		inputPlaceholder = __( 'Enter AI prompt', 'ai' );
@@ -273,9 +285,8 @@ export default function Input() {
 					rows={ 2 }
 				/>
 				<Flex direction="column" gap="2">
-					{ capabilities.includes(
-						enums.AiCapability.MULTIMODAL_INPUT
-					) &&
+					{ supportedOptionsMap?.inputModalities?.length &&
+						supportedOptionsMap?.inputModalities?.length > 1 &&
 						attachments.length > 0 && (
 							<Flex justify="flex-start" gap="2">
 								{ attachments.map( ( attachment, index ) => (
@@ -325,9 +336,9 @@ export default function Input() {
 					) }
 					<div className="ai-playground__input-actions">
 						<div className="ai-playground__input-action-group">
-							{ capabilities.includes(
-								enums.AiCapability.MULTIMODAL_INPUT
-							) &&
+							{ supportedOptionsMap?.inputModalities?.length &&
+								supportedOptionsMap?.inputModalities?.length >
+									1 &&
 								canUploadMedia && (
 									<MediaModal
 										onSelect={ setAttachments }
@@ -353,9 +364,9 @@ export default function Input() {
 										} }
 									/>
 								) }
-							{ capabilities.includes(
-								enums.AiCapability.MULTIMODAL_INPUT
-							) &&
+							{ supportedOptionsMap?.inputModalities?.length &&
+								supportedOptionsMap?.inputModalities?.length >
+									1 &&
 								! canUploadMedia && (
 									<button
 										className="ai-playground__input-action ai-playground__input-action--secondary"
@@ -369,8 +380,8 @@ export default function Input() {
 										{ upload }
 									</button>
 								) }
-							{ capabilities.includes(
-								enums.AiCapability.CHAT_HISTORY
+							{ supportedCapabilities.includes(
+								Capability.CHAT_HISTORY
 							) && (
 								<ToggleControl
 									__nextHasNoMarginBottom

@@ -8,6 +8,7 @@
  * Internal dependencies
  */
 import type {
+	Capability,
 	FileType,
 	FinishReason,
 	MessagePartChannel,
@@ -47,7 +48,7 @@ export type SupportedOption = {
 export type ModelMetadata = {
 	id: string;
 	name: string;
-	supportedCapabilities: string[];
+	supportedCapabilities: Capability[];
 	supportedOptions: SupportedOption[];
 };
 

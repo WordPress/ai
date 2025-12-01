@@ -1,7 +1,6 @@
 /**
  * External dependencies
  */
-import { store as aiStore } from '@ai-services/ai';
 import { store as interfaceStore, useInterfaceScope } from 'wp-interface';
 
 /**
@@ -57,23 +56,17 @@ export default function PlaygroundProviderModelPanel() {
 				getProvider,
 				getModel,
 			} = select( playgroundStore );
-			const {
-				getPluginSettingsUrl,
-				currentUserCan,
-				hasAvailableServices,
-			} = select( aiStore );
 			const { isPanelActive } = select( interfaceStore );
 
 			return {
-				hasAnyAvailableServices: hasAvailableServices(),
+				hasAnyAvailableServices: true, // TODO: Implement check.
 				availableProviders: getAvailableProviders(),
 				availableModels: getAvailableModels(),
 				provider: getProvider(),
 				model: getModel(),
-				servicesSettingsUrl: getPluginSettingsUrl(),
-				currentUserCanManageServices: currentUserCan(
-					'ais_manage_services'
-				),
+				servicesSettingsUrl:
+					'/wp-admin/admin.php?page=wp-ai-client-settings', // TODO: Fix this.
+				currentUserCanManageServices: true, // TODO: Implement check.
 				isPanelOpened: isPanelActive(
 					scope,
 					'playground-service-model',

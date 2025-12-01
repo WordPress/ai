@@ -1,7 +1,6 @@
 /**
  * External dependencies
  */
-import { helpers } from '@ai-services/ai';
 import type { StoreConfig, Action, ThunkArgs } from 'wp-store-utils';
 
 /**
@@ -30,7 +29,13 @@ import {
 	type MediaOrientation,
 	type Modality,
 } from '../ai-client-enums';
-import type { Message, File as FileDto, ProviderMetadata, ModelMetadata, ModelConfig } from '../ai-client-types';
+import type {
+	Message,
+	File as FileDto,
+	ProviderMetadata,
+	ModelMetadata,
+	ModelConfig,
+} from '../ai-client-types';
 import type {
 	AiPlaygroundMessage,
 	AiPlaygroundMessageAdditionalData,
@@ -156,19 +161,18 @@ const retrieveMessages = async (): Promise< AiPlaygroundMessage[] > => {
 };
 
 const storeMessages = async ( messages: AiPlaygroundMessage[] ) => {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const history = {
 		feature: FEATURE_SLUG,
 		slug: HISTORY_SLUG,
 		lastUpdated: '',
 		entries: messages.map( preparePlaygroundMessageForCache ),
 	};
-	await helpers.historyPersistence().saveHistory( history );
+	// TODO: Handle storing history.
 };
 
 const clearMessages = async () => {
-	await helpers
-		.historyPersistence()
-		.clearHistory( FEATURE_SLUG, HISTORY_SLUG );
+	// TODO: Handle clearing history.
 };
 
 const formatNewMessage = async (
@@ -456,17 +460,24 @@ const actions = {
 				payload: {},
 			} );
 
-			const providerMetadata = registry.select(
-				// @ts-expect-error
-				window.wp.aiClient.store
-			).getProvider( providerId ) as ProviderMetadata | undefined;
-			const modelMetadata = registry.select(
-				// @ts-expect-error
-				window.wp.aiClient.store
-			).getProviderModel( providerId, modelId ) as ModelMetadata | undefined;
+			const providerMetadata = registry
+				.select(
+					// @ts-expect-error
+					window.wp.aiClient.store
+				)
+				.getProvider( providerId ) as ProviderMetadata | undefined;
+			const modelMetadata = registry
+				.select(
+					// @ts-expect-error
+					window.wp.aiClient.store
+				)
+				.getProviderModel( providerId, modelId ) as
+				| ModelMetadata
+				| undefined;
 
 			// @ts-expect-error
-			const promptBuilder = window.wp.aiClient.prompt( contentToSend )
+			const promptBuilder = window.wp.aiClient
+				.prompt( contentToSend )
 				.usingModel( providerId, modelId );
 			if ( Object.keys( modelConfig ).length ) {
 				promptBuilder.usingModelConfig( modelConfig );
@@ -500,15 +511,19 @@ const actions = {
 			try {
 				switch ( capability ) {
 					case Capability.IMAGE_GENERATION:
-						const imageResult = await promptBuilder.generateImageResult();
+						const imageResult =
+							await promptBuilder.generateImageResult();
 						responseMessage = imageResult.toMessage() as Message;
 						break;
 					case Capability.TEXT_TO_SPEECH_CONVERSION:
-						const textToSpeechResult = await promptBuilder.convertTextToSpeechResult();
-						responseMessage = textToSpeechResult.toMessage() as Message;
+						const textToSpeechResult =
+							await promptBuilder.convertTextToSpeechResult();
+						responseMessage =
+							textToSpeechResult.toMessage() as Message;
 						break;
 					default:
-						const textResult = await promptBuilder.generateTextResult();
+						const textResult =
+							await promptBuilder.generateTextResult();
 						responseMessage = textResult.toMessage() as Message;
 				}
 
@@ -581,19 +596,22 @@ const actions = {
 			if ( message.type === 'model' ) {
 				const previousMessage = messages?.[ index - 1 ];
 				if ( previousMessage && previousMessage.type === 'user' ) {
-					const prompt = helpers.contentToText(
-						previousMessage.content
-					);
-					if ( prompt ) {
-						attachmentData.caption = sprintf(
-							/* translators: %s: prompt text */
-							_x(
-								'Generated for prompt: %s',
-								'attachment caption',
-								'ai'
-							),
-							prompt
-						);
+					if (
+						'text' in ( previousMessage.content.parts?.[ 0 ] || {} )
+					) {
+						const prompt =
+							previousMessage.content.parts?.[ 0 ].text;
+						if ( prompt ) {
+							attachmentData.caption = sprintf(
+								/* translators: %s: prompt text */
+								_x(
+									'Generated for prompt: %s',
+									'attachment caption',
+									'ai'
+								),
+								prompt
+							);
+						}
 					}
 				}
 			}

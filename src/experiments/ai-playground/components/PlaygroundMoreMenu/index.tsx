@@ -1,7 +1,6 @@
 /**
  * External dependencies
  */
-import { store as aiStore } from '@ai-services/ai';
 import { MoreMenu } from 'wp-interface';
 
 /**
@@ -18,24 +17,13 @@ import { useSelect } from '@wordpress/data';
  * @return The component to be rendered.
  */
 export default function PlaygroundMoreMenu() {
-	const { settingsUrl, homepageUrl, supportUrl, contributingUrl } = useSelect(
-		( select ) => {
-			const {
-				getPluginSettingsUrl,
-				getPluginHomepageUrl,
-				getPluginSupportUrl,
-				getPluginContributingUrl,
-			} = select( aiStore );
-
-			return {
-				settingsUrl: getPluginSettingsUrl(),
-				homepageUrl: getPluginHomepageUrl(),
-				supportUrl: getPluginSupportUrl(),
-				contributingUrl: getPluginContributingUrl(),
-			};
-		},
-		[]
-	);
+	const { settingsUrl, supportUrl, contributingUrl } = useSelect( () => {
+		return {
+			settingsUrl: '/wp-admin/admin.php?page=wp-ai-client-settings', // TODO: Fix this.
+			supportUrl: 'https://wordpress.org/support/plugin/ai/',
+			contributingUrl: 'https://github.com/WordPress/ai',
+		};
+	}, [] );
 
 	return (
 		<MoreMenu
@@ -78,11 +66,6 @@ export default function PlaygroundMoreMenu() {
 						{ !! supportUrl && (
 							<MoreMenu.ExternalLinkMenuItem href={ supportUrl }>
 								{ __( 'Support', 'ai' ) }
-							</MoreMenu.ExternalLinkMenuItem>
-						) }
-						{ !! homepageUrl && (
-							<MoreMenu.ExternalLinkMenuItem href={ homepageUrl }>
-								{ __( 'Homepage', 'ai' ) }
 							</MoreMenu.ExternalLinkMenuItem>
 						) }
 						{ !! contributingUrl && (
