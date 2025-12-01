@@ -108,18 +108,9 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->loader->register_default_experiments();
 
 		$this->assertTrue(
-			$this->registry->has_experiment( 'example-experiment' ),
-			'Example experiment should be registered'
-		);
-
-		$this->assertTrue(
 			$this->registry->has_experiment( 'title-generation' ),
 			'Title generation experiment should be registered'
 		);
-
-		$experiment = $this->registry->get_experiment( 'example-experiment' );
-		$this->assertNotNull( $experiment, 'Example experiment should exist' );
-		$this->assertEquals( 'example-experiment', $experiment->get_id() );
 
 		$experiment = $this->registry->get_experiment( 'title-generation' );
 		$this->assertNotNull( $experiment, 'Title generation experiment should exist' );
