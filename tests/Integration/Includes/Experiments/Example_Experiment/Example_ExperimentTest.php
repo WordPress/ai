@@ -39,6 +39,11 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
+
+		// Manually register the Example Experiment since it's no longer loaded by default.
+		$example_experiment = new Example_Experiment();
+		$registry->register_experiment( $example_experiment );
+
 		$loader->initialize_experiments();
 
 		$experiment = $registry->get_experiment( 'example-experiment' );
