@@ -16,7 +16,9 @@ AI Experiments is a plugin for testing and developing AI-powered experiments for
 
 1. Upload the plugin files to the `/wp-content/plugins/ai` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Use the Settings->AI screen to configure the plugin.
+3. Go to `Settings -> AI Credentials` and add at least one valid AI credential.
+4. Go to `Settings -> AI Experiments` and globally enable experiments and then enable the individual experiments you want to test.
+5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Re-generate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
 
 == Frequently Asked Questions ==
 

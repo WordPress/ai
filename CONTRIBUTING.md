@@ -145,7 +145,7 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 ## [Release steps](https://github.com/wordpress/ai/blob/develop/CONTRIBUTING.md#release-instructions)
 
 - [ ] Branch: Starting from `develop`, cut a release branch named `release/X.Y.Z` for your changes.
-- [ ] Version bump: Bump the version number in `ai.php`, `package-lock.json` (twice), `package.json`, and `readme.txt` if it does not already reflect the version being released.  In `includes/bootstrap.php`, ensure you're updating the `AI_VERSION` version constant.
+- [ ] Version bump: Bump the version number in `ai.php`, `package-lock.json` (twice), `package.json`, and `readme.txt` if it does not already reflect the version being released.  In `includes/bootstrap.php`, ensure you're updating the `AI_EXPERIMENTS_VERSION` version constant.
 - [ ] Update `@since`: Find all new `@since x.x.x` lines and update those with the new version number in place of `x.x.x`.
 - [ ] Changelog: Add/update the changelog in `CHANGELOG.md` and in `readme.txt`.
 - [ ] Props: update `CREDITS.md` file with any new contributors, confirm maintainers are accurate.
@@ -163,7 +163,8 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 
 - [ ] Close milestone: Edit the [milestone](https://github.com/wordpress/ai/milestone/#) with release date (in the `Due date (optional)` field) and link to GitHub release (in the `Description field`), then close the milestone.
 - [ ] Punt incomplete items: If any open issues or PRs which were milestoned for `X.Y.Z` do not make it into the release, update their milestone to `X.Y.Z+1`, `X.Y+1.0`, `X+1.0.0` or `Future Release`.
-- [ ] Publish release announcement post on make/ai, cross-posting to make/core.
+- [ ] Announce: Publish release announcement post on Make/AI, cross-posting to Make/Core and Make/Test ([example](https://make.wordpress.org/ai/2025/11/27/announcing-the-ai-experiments-plugin-v0-1-0/)).
+- [ ] Profile badges: Grant new contributors the `Core AI Contributor` [profile badge](https://make.wordpress.org/ai/wp-admin/tools.php?page=profile-badges).
 ```
 
 ## Guidelines

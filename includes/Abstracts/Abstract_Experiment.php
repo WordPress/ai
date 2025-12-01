@@ -13,8 +13,6 @@ use WordPress\AI\Contracts\Experiment;
 use WordPress\AI\Exception\Invalid_Experiment_Metadata_Exception;
 use WordPress\AI\Settings\Settings_Registration;
 
-use function WordPress\AI\has_valid_ai_credentials;
-
 /**
  * Base implementation for experiments.
  *
@@ -169,12 +167,7 @@ abstract class Abstract_Experiment implements Experiment {
 		 *
 		 * @param bool $experiment_enabled Whether the experiment is enabled.
 		 */
-		$is_enabled = (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $experiment_enabled );
-
-		// Check if we have valid AI credentials.
-		if ( ! has_valid_ai_credentials() ) {
-			$is_enabled = false;
-		}
+		$is_enabled = (bool) apply_filters( "ai_experiments_experiment_{$this->id}_enabled", $experiment_enabled );
 
 		// Cache the result.
 		$this->enabled_cache = $is_enabled;
