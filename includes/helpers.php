@@ -168,25 +168,25 @@ function get_preferred_models_for_text_generation(): array {
  * $service = WordPress\AI\get_ai_service();
  *
  * // Check if text generation is supported before generating
- * $builder = $service->create_prompt( 'Summarize this article...' );
+ * $builder = $service->create_textgen_prompt( 'Summarize this article...' );
  * if ( ! $builder->is_supported_for_text_generation() ) {
  *     return new WP_Error( 'ai_unsupported', 'No AI provider supports text generation.' );
  * }
  * $text = $builder->generate_text();
  *
  * // With options array
- * $text = $service->create_prompt( 'Translate to French: Hello', array(
+ * $text = $service->create_textgen_prompt( 'Translate to French: Hello', array(
  *     'system_instruction' => 'You are a translator.',
  *     'temperature'        => 0.3,
  * ) )->generate_text();
  *
  * // Chain additional SDK methods
- * $titles = $service->create_prompt( 'Generate titles for: My blog post' )
+ * $titles = $service->create_textgen_prompt( 'Generate titles for: My blog post' )
  *     ->using_candidate_count( 5 )
  *     ->generate_texts();
  * ```
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @return \WordPress\AI\Services\AI_Service The AI Service instance.
  */

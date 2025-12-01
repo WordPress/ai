@@ -16,7 +16,7 @@ use function WordPress\AI\get_ai_service;
 /**
  * AI_Service test case.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class AI_Service_Test extends WP_UnitTestCase {
 
@@ -30,7 +30,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Setup test case.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -40,7 +40,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Teardown test case.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		parent::tearDown();
@@ -49,7 +49,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Test singleton instance.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_get_instance_returns_singleton(): void {
 		$instance1 = AI_Service::get_instance();
@@ -61,7 +61,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Test helper function returns service instance.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_get_ai_service_helper_returns_instance(): void {
 		$service = get_ai_service();
@@ -71,12 +71,12 @@ class AI_Service_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test create_prompt returns prompt builder.
+	 * Test create_textgen_prompt returns prompt builder.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function test_create_prompt_returns_builder(): void {
-		$builder = $this->service->create_prompt( 'Test prompt' );
+	public function test_create_textgen_prompt_returns_builder(): void {
+		$builder = $this->service->create_textgen_prompt( 'Test prompt' );
 
 		$this->assertInstanceOf(
 			Prompt_Builder_With_WP_Error::class,
@@ -86,12 +86,12 @@ class AI_Service_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test create_prompt with options applies configuration.
+	 * Test create_textgen_prompt with options applies configuration.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function test_create_prompt_with_options(): void {
-		$builder = $this->service->create_prompt(
+	public function test_create_textgen_prompt_with_options(): void {
+		$builder = $this->service->create_textgen_prompt(
 			'Test prompt',
 			array(
 				'system_instruction' => 'You are helpful.',
@@ -108,22 +108,22 @@ class AI_Service_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test ai_service_initialized action can be hooked.
+	 * Test ai_experiments_service_initialized action can be hooked.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_init_action_is_hookable(): void {
 		$callback = static function () {};
 
-		add_action( 'ai_service_initialized', $callback );
+		add_action( 'ai_experiments_service_initialized', $callback );
 
 		// Verify callback was registered.
 		$this->assertNotFalse(
-			has_action( 'ai_service_initialized', $callback ),
+			has_action( 'ai_experiments_service_initialized', $callback ),
 			'Action should accept callbacks'
 		);
 
 		// Cleanup.
-		remove_action( 'ai_service_initialized', $callback );
+		remove_action( 'ai_experiments_service_initialized', $callback );
 	}
 }

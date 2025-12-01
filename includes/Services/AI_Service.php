@@ -23,14 +23,14 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
  * Manages AI provider configuration and provides a consistent interface
  * for experimental features to communicate with AI providers.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class AI_Service {
 
 	/**
 	 * Singleton instance.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @var \WordPress\AI\Services\AI_Service|null
 	 */
@@ -39,7 +39,7 @@ class AI_Service {
 	/**
 	 * Whether the service has been initialized.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @var bool
 	 */
@@ -48,7 +48,7 @@ class AI_Service {
 	/**
 	 * Option key mapping from WordPress snake_case to SDK camelCase.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @var array<string, string>
 	 */
@@ -69,7 +69,7 @@ class AI_Service {
 	/**
 	 * Gets the singleton instance.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return \WordPress\AI\Services\AI_Service The singleton instance.
 	 */
@@ -83,7 +83,7 @@ class AI_Service {
 	/**
 	 * Private constructor to enforce singleton pattern.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	private function __construct() {}
 
@@ -92,7 +92,7 @@ class AI_Service {
 	 *
 	 * This method should be called after AI_Client::init() on the WordPress 'init' hook.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function init(): void {
 		if ( $this->initialized ) {
@@ -104,17 +104,17 @@ class AI_Service {
 		/**
 		 * Fires when the AI service is initialized.
 		 *
-		 * @since 0.1.0
+		 * @since x.x.x
 		 *
 		 * @param \WordPress\AI\Services\AI_Service $service The AI service instance.
 		 */
-		do_action( 'ai_service_initialized', $this );
+		do_action( 'ai_experiments_service_initialized', $this );
 	}
 
 	/**
-	 * Creates a prompt builder with default configuration applied.
+	 * Creates a text generation prompt builder with default configuration applied.
 	 *
-	 * This is the primary method for interacting with AI providers. It returns
+	 * This is the primary method for text generation with AI providers. It returns
 	 * a configured prompt builder that consumers can use with the full SDK API.
 	 *
 	 * Example usage:
@@ -122,23 +122,23 @@ class AI_Service {
 	 * $service = AI_Service::get_instance();
 	 *
 	 * // Simple usage
-	 * $text = $service->create_prompt( 'Summarize this text' )->generate_text();
+	 * $text = $service->create_textgen_prompt( 'Summarize this text' )->generate_text();
 	 *
 	 * // With options
-	 * $text = $service->create_prompt( 'Translate to French', array(
+	 * $text = $service->create_textgen_prompt( 'Translate to French', array(
 	 *     'system_instruction' => 'You are a translator.',
 	 *     'temperature'        => 0.3,
 	 *     'max_tokens'         => 500,
 	 * ) )->generate_text();
 	 *
 	 * // Generate multiple candidates
-	 * $titles = $service->create_prompt( 'Generate titles', array(
+	 * $titles = $service->create_textgen_prompt( 'Generate titles', array(
 	 *     'candidate_count' => 5,
 	 *     'temperature'     => 0.8,
 	 * ) )->generate_texts();
 	 * ```
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string|null          $prompt  Optional. Initial prompt content.
 	 * @param array<string, mixed> $options Optional. Configuration options. {
@@ -156,7 +156,7 @@ class AI_Service {
 	 * }
 	 * @return \WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error The prompt builder instance.
 	 */
-	public function create_prompt( ?string $prompt = null, array $options = array() ): Prompt_Builder_With_WP_Error {
+	public function create_textgen_prompt( ?string $prompt = null, array $options = array() ): Prompt_Builder_With_WP_Error {
 		$builder = AI_Client::prompt_with_wp_error( $prompt );
 
 		// Apply default model preferences.
@@ -180,7 +180,7 @@ class AI_Service {
 	/**
 	 * Maps WordPress snake_case options to SDK camelCase config array.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $options The options array with snake_case keys.
 	 * @return array<string, mixed> The mapped config array with camelCase keys.
