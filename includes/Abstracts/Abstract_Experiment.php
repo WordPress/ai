@@ -169,7 +169,7 @@ abstract class Abstract_Experiment implements Experiment {
 		 *
 		 * @param bool $experiment_enabled Whether the experiment is enabled.
 		 */
-		$is_enabled = (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $experiment_enabled );
+		$is_enabled = (bool) apply_filters( "ai_experiments_experiment_{$this->id}_enabled", $experiment_enabled );
 
 		// Check if we have valid AI credentials.
 		if ( ! has_valid_ai_credentials() ) {
