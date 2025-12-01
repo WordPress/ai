@@ -30,7 +30,7 @@ This experiment registers a REST endpoint to demonstrate how to expose experimen
 Use the experiment-specific filter:
 
 ```php
-add_filter( 'ai_experiment_example-experiment_enabled', '__return_false' );
+add_filter( 'ai_experiments_experiment_example-experiment_enabled', '__return_false' );
 ```
 
 Or use the generic filter to disable all experiments:

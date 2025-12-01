@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c090eaf914ad00fc2c80834b4732cae1",
+    "content-hash": "08533b755bb4ca06b46c71e090cc2046",
     "packages": [
         {
             "name": "automattic/jetpack-autoloader",
@@ -696,7 +696,7 @@
         },
         {
             "name": "wordpress/wp-ai-client",
-            "version": "dev-trunk",
+            "version": "0.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/wp-ai-client.git",
@@ -726,7 +726,6 @@
                 "wp-phpunit/wp-phpunit": "^6.8",
                 "yoast/phpunit-polyfills": "^4.0"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -4057,8 +4056,7 @@
     "minimum-stability": "dev",
     "stability-flags": {
         "phpcompatibility/php-compatibility": 20,
-        "wordpress/mcp-adapter": 20,
-        "wordpress/wp-ai-client": 20
+        "wordpress/mcp-adapter": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
