@@ -109,9 +109,10 @@ class Asset_Loader {
 			return;
 		}
 		wp_style_add_data( 'ai_' . $handle, 'rtl', 'replace' );
-		if ( is_rtl() ) {
-			wp_style_add_data( 'ai_' . $handle, 'path', $rtl_style_path );
+		if ( ! is_rtl() ) {
+			return;
 		}
+		wp_style_add_data( 'ai_' . $handle, 'path', $rtl_style_path );
 	}
 
 	/**
