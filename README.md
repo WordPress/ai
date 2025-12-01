@@ -1,6 +1,5 @@
 # WordPress AI Experiments
 
-Experimental AI features for WordPress. Modular framework for testing AI capabilities.
 ![AI Experiments](https://github.com/WordPress/ai/blob/trunk/.wordpress-org/banner-1544x500.png)
 
 ![Required PHP Version](https://img.shields.io/wordpress/plugin/required-php/ai?label=Requires%20PHP) ![Required WordPress Version](https://img.shields.io/wordpress/plugin/wp-version/ai?label=Requires%20WordPress) ![WordPress Tested Up To](https://img.shields.io/wordpress/plugin/tested/ai?label=WordPress) [![GPL-2.0-or-later License](https://img.shields.io/github/license/WordPress/ai.svg)](https://github.com/WordPress/ai/blob/trunk/LICENSE.md?label=License)
