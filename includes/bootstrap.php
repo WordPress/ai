@@ -145,7 +145,7 @@ function display_composer_notice(): void {
  *
  * This adds a "Settings" link to the plugin's action links on the Plugins page.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @param array<string> $links Existing action links.
  * @return array<string> Modified action links.
@@ -190,7 +190,7 @@ function load(): void {
 	$loaded = true;
 
 	// Add plugin action links.
-	add_filter( 'plugin_action_links_' . plugin_basename( AI_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
+	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
 	// Hook experiment initialization to init.
 	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
