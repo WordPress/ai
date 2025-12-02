@@ -8,8 +8,8 @@
     "ext-json": "*",
     "php": ">=7.4",
     "wordpress/abilities-api": "^0.4.0",
-    "wordpress/mcp-adapter": "dev-trunk",
-    "wordpress/wp-ai-client": "0.1.1"
+    "wordpress/mcp-adapter": "^0.3.0",
+    "wordpress/wp-ai-client": "^0.2.0"
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",
