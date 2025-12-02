@@ -59,4 +59,3 @@ class Excerpt_Generation extends Abstract_Experiment {
 		);
 	}
 }
-
