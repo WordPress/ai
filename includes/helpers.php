@@ -25,13 +25,12 @@ function normalize_content( string $content ): string {
 	 * Hook to filter content before cleaning it.
 	 *
 	 * @since 0.1.0
-	 * @hook ai_pre_normalize_content
 	 *
 	 * @param string $post_content The post content.
 	 *
 	 * @return string The filtered Post content.
 	 */
-	$content = (string) apply_filters( 'ai_pre_normalize_content', $content );
+	$content = (string) apply_filters( 'ai_experiments_pre_normalize_content', $content );
 
 	// Strip HTML entities.
 	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content );
@@ -49,13 +48,12 @@ function normalize_content( string $content ): string {
 	 * Filters the normalized content to allow for additional cleanup.
 	 *
 	 * @since 0.1.0
-	 * @hook ai_normalize_content
 	 *
 	 * @param string $content The normalized content.
 	 *
 	 * @return string The filtered normalized content.
 	 */
-	$content = (string) apply_filters( 'ai_normalize_content', (string) $content );
+	$content = (string) apply_filters( 'ai_experiments_normalize_content', (string) $content );
 
 	return trim( $content );
 }
@@ -151,12 +149,11 @@ function get_preferred_models(): array {
 	 * Filters the preferred models.
 	 *
 	 * @since 0.1.0
-	 * @hook ai_preferred_models
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred models.
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
-	return (array) apply_filters( 'ai_preferred_models', $preferred_models );
+	return (array) apply_filters( 'ai_experiments_preferred_models', $preferred_models );
 }
 
 /**
@@ -204,12 +201,11 @@ function has_valid_ai_credentials(): bool {
 	 * Allows overriding the credentials check, useful for testing.
 	 *
 	 * @since 0.1.0
-	 * @hook ai_pre_has_valid_credentials_check
 	 *
 	 * @param bool|null $has_valid_credentials Whether valid credentials are available. Return null to use default check.
 	 * @return bool|null True if valid credentials are available, false otherwise, or null to use default check.
 	 */
-	$valid = apply_filters( 'ai_pre_has_valid_credentials_check', null );
+	$valid = apply_filters( 'ai_experiments_pre_has_valid_credentials_check', null );
 	if ( null !== $valid ) {
 		return (bool) $valid;
 	}
