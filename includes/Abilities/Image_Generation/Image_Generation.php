@@ -123,6 +123,15 @@ class Image_Generation extends Abstract_Ability {
 		}
 
 		// Return the base64 encoded image data.
-		return $file->getBase64Data();
+		$data = $file->getBase64Data();
+
+		if ( empty( $data ) ) {
+			return new WP_Error(
+				'no_image_data',
+				esc_html__( 'No image data was generated.', 'ai' )
+			);
+		}
+
+		return $data;
 	}
 }
