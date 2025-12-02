@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "08533b755bb4ca06b46c71e090cc2046",
+    "content-hash": "c55bab2aba22f24cd49e2e08a8ae0050",
     "packages": [
         {
             "name": "automattic/jetpack-autoloader",
@@ -554,16 +554,16 @@
         },
         {
             "name": "wordpress/mcp-adapter",
-            "version": "dev-trunk",
+            "version": "v0.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/mcp-adapter.git",
-                "reference": "6d46c961c779bb44037da85bf4b562ead42dee37"
+                "reference": "653ca8d95180b25809b1a1dc489d8305ec5beb63"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/mcp-adapter/zipball/6d46c961c779bb44037da85bf4b562ead42dee37",
-                "reference": "6d46c961c779bb44037da85bf4b562ead42dee37",
+                "url": "https://api.github.com/repos/WordPress/mcp-adapter/zipball/653ca8d95180b25809b1a1dc489d8305ec5beb63",
+                "reference": "653ca8d95180b25809b1a1dc489d8305ec5beb63",
                 "shasum": ""
             },
             "require": {
@@ -585,7 +585,6 @@
                 "wpackagist-plugin/plugin-check": "^1.6",
                 "yoast/phpunit-polyfills": "^4.0"
             },
-            "default-branch": true,
             "type": "library",
             "extra": {
                 "installer-paths": {
@@ -625,20 +624,20 @@
                 "issues": "https://github.com/wordpress/mcp-adapter/issues",
                 "source": "https://github.com/wordpress/mcp-adapter"
             },
-            "time": "2025-11-26T22:09:42+00:00"
+            "time": "2025-11-06T14:56:51+00:00"
         },
         {
             "name": "wordpress/php-ai-client",
-            "version": "0.2.1",
+            "version": "0.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/php-ai-client.git",
-                "reference": "61ecd7c86329d0cc3d17567891f363d8f3fc3be6"
+                "reference": "70e5e222c74d734f5740802057762135a8a33318"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/php-ai-client/zipball/61ecd7c86329d0cc3d17567891f363d8f3fc3be6",
-                "reference": "61ecd7c86329d0cc3d17567891f363d8f3fc3be6",
+                "url": "https://api.github.com/repos/WordPress/php-ai-client/zipball/70e5e222c74d734f5740802057762135a8a33318",
+                "reference": "70e5e222c74d734f5740802057762135a8a33318",
                 "shasum": ""
             },
             "require": {
@@ -692,27 +691,27 @@
                 "issues": "https://github.com/WordPress/php-ai-client/issues",
                 "source": "https://github.com/WordPress/php-ai-client"
             },
-            "time": "2025-11-17T18:04:50+00:00"
+            "time": "2025-11-27T00:07:29+00:00"
         },
         {
             "name": "wordpress/wp-ai-client",
-            "version": "0.1.1",
+            "version": "0.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/wp-ai-client.git",
-                "reference": "3c1f14f11f13753d13e58c12902d40f02a5c8207"
+                "reference": "152992c198553820d2ba656623c4e0816d3c77db"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/3c1f14f11f13753d13e58c12902d40f02a5c8207",
-                "reference": "3c1f14f11f13753d13e58c12902d40f02a5c8207",
+                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/152992c198553820d2ba656623c4e0816d3c77db",
+                "reference": "152992c198553820d2ba656623c4e0816d3c77db",
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
                 "nyholm/psr7": "^1.5",
                 "php": ">=7.4",
-                "wordpress/php-ai-client": "^0.2"
+                "wordpress/php-ai-client": "^0.3"
             },
             "require-dev": {
                 "automattic/vipwpcs": "^3.0",
@@ -773,7 +772,7 @@
                 "issues": "https://github.com/WordPress/wp-ai-client/issues",
                 "source": "https://github.com/WordPress/wp-ai-client"
             },
-            "time": "2025-11-21T22:57:02+00:00"
+            "time": "2025-12-02T00:19:41+00:00"
         }
     ],
     "packages-dev": [
@@ -4055,8 +4054,7 @@
     ],
     "minimum-stability": "dev",
     "stability-flags": {
-        "phpcompatibility/php-compatibility": 20,
-        "wordpress/mcp-adapter": 20
+        "phpcompatibility/php-compatibility": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
