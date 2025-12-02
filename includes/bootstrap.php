@@ -179,6 +179,9 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
+		// Initialize the WP AI Client.
+		AI_Client::init();
+
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
