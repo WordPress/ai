@@ -25,15 +25,6 @@ use function WordPress\AI\normalize_content;
 class Excerpt_Generation extends Abstract_Ability {
 
 	/**
-	 * The default number of candidates to generate.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @var int
-	 */
-	protected const CANDIDATES_DEFAULT = 3;
-
-	/**
 	 * Returns the input schema of the ability.
 	 *
 	 * @since 0.1.0
@@ -54,14 +45,6 @@ class Excerpt_Generation extends Abstract_Ability {
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Content from this post will be used to generate excerpt suggestions. This overrides the content parameter if both are provided.', 'ai' ),
 				),
-				'candidates' => array(
-					'type'              => 'integer',
-					'minimum'           => 1,
-					'maximum'           => 10,
-					'default'           => self::CANDIDATES_DEFAULT,
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'Number of excerpts to generate', 'ai' ),
-				),
 			),
 		);
 	}
@@ -77,12 +60,9 @@ class Excerpt_Generation extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'excerpts' => array(
-					'type'        => 'array',
-					'description' => esc_html__( 'Generated excerpt suggestions.', 'ai' ),
-					'items'       => array(
-						'type' => 'string',
-					),
+				'excerpt' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'Generated excerpt.', 'ai' ),
 				),
 			),
 		);
@@ -103,7 +83,6 @@ class Excerpt_Generation extends Abstract_Ability {
 			array(
 				'content'    => null,
 				'post_id'    => null,
-				'candidates' => self::CANDIDATES_DEFAULT,
 			),
 		);
 
@@ -141,7 +120,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		}
 
 		// Generate the excerpts.
-		$result = $this->generate_excerpts( $context, $args['candidates'] );
+		$result = $this->generate_excerpt( $context );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -158,12 +137,7 @@ class Excerpt_Generation extends Abstract_Ability {
 
 		// Return the excerpts in the format the Ability expects.
 		return array(
-			'excerpts' => array_map(
-				static function ( $excerpt ) {
-					return sanitize_textarea_field( trim( $excerpt, ' "\'' ) );
-				},
-				$result
-			),
+			'excerpt' => sanitize_textarea_field( trim( $result[0], ' "\'' ) )
 		);
 	}
 
@@ -235,15 +209,14 @@ class Excerpt_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Generates excerpt suggestions from the given content.
+	 * Generate an excerpt suggestion from the given content.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @param string|array<string, string> $context The context to generate an excerpt from.
-	 * @param int $candidates The number of excerpts to generate.
-	 * @return array<string>|\WP_Error The generated excerpts, or a WP_Error if there was an error.
+	 * @return array<string>|\WP_Error The generated excerpt, or a WP_Error if there was an error.
 	 */
-	protected function generate_excerpts( $context, int $candidates = 1 ) {
+	protected function generate_excerpt( $context ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -266,7 +239,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
-			->using_candidate_count( (int) $candidates )
+			->using_candidate_count( 1 )
 			->using_model_preference( ...get_preferred_models() )
 			->generate_texts();
 	}
