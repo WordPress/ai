@@ -35,12 +35,12 @@ class Excerpt_Generation extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'content'    => array(
+				'content' => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'Content to generate excerpt suggestions for.', 'ai' ),
 				),
-				'post_id'    => array(
+				'post_id' => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Content from this post will be used to generate excerpt suggestions. This overrides the content parameter if both are provided.', 'ai' ),
@@ -74,15 +74,15 @@ class Excerpt_Generation extends Abstract_Ability {
 	 * @since 0.1.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
-	 * @return array{excerpts: array<string>}|\WP_Error The result of the ability execution, or a WP_Error on failure.
+	 * @return array{excerpt: string}|\WP_Error The result of the ability execution, or a WP_Error on failure.
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
 		$args = wp_parse_args(
 			$input,
 			array(
-				'content'    => null,
-				'post_id'    => null,
+				'content' => null,
+				'post_id' => null,
 			),
 		);
 
@@ -137,7 +137,7 @@ class Excerpt_Generation extends Abstract_Ability {
 
 		// Return the excerpts in the format the Ability expects.
 		return array(
-			'excerpt' => sanitize_textarea_field( trim( $result[0], ' "\'' ) )
+			'excerpt' => sanitize_textarea_field( trim( $result[0], ' "\'' ) ),
 		);
 	}
 
