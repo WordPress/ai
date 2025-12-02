@@ -150,7 +150,7 @@ class Settings_Page {
 			}
 			?>
 
-			<?php settings_errors('ai_experiments'); ?>
+			<?php settings_errors( 'ai_experiments' ); ?>
 
 			<form method="post" action="options.php">
 				<?php
