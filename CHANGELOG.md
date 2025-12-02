@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [0.1.1] - 2025-12-01
 ### Added
-- Action link to the plugin list table (#98).
+- Link to the plugin settings screen from the plugin list table (#98).
 - WordPress Playground live preview integration (#85).
 
 ### Changed
