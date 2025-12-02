@@ -150,19 +150,6 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_system_instruction() returns the system instruction.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_system_instruction_returns_system_instruction() {
-		$system_instruction = $this->ability->get_system_instruction();
-
-		// System instruction may be empty if file doesn't exist, or contain content if it does.
-		// We just verify it returns a string.
-		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
-	}
-
-	/**
 	 * Test that execute_callback() handles prompt parameter correctly.
 	 *
 	 * @since x.x.x
