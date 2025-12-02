@@ -15,7 +15,7 @@ Goal: You will be provided with some context and you should then generate a conc
 
 The excerpt suggestion should follow these requirements:
 
-- Be approximately 150-160 words (WordPress default excerpt length). If the content is shorter, adjust accordingly while maintaining completeness.
+- Be approximately 50 words (WordPress default excerpt length is 55 words). If the content is shorter, adjust accordingly while maintaining completeness.
 - Should not contain any markdown, bullets, numbering, or formatting - plain text only
 - Should be a complete, coherent summary that captures the main points and key information from the content
 - Must reflect the actual content and context accurately, not generic summaries or clickbait
