@@ -77,8 +77,26 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function setUp(): void {
 		parent::setUp();
+
+		// Set up mock AI credentials so has_ai_credentials() returns true.
+		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
+
+		// Mock has_valid_ai_credentials to return true for tests.
+		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+
 		$this->registry = new Experiment_Registry();
 		$this->loader   = new Experiment_Loader( $this->registry );
+	}
+
+	/**
+	 * Tear down test case.
+	 *
+	 * @since 0.1.0
+	 */
+	public function tearDown(): void {
+		delete_option( 'wp_ai_client_provider_credentials' );
+		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		parent::tearDown();
 	}
 
 	/**
@@ -90,18 +108,9 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->loader->register_default_experiments();
 
 		$this->assertTrue(
-			$this->registry->has_experiment( 'example-experiment' ),
-			'Example experiment should be registered'
-		);
-
-		$this->assertTrue(
 			$this->registry->has_experiment( 'title-generation' ),
 			'Title generation experiment should be registered'
 		);
-
-		$experiment = $this->registry->get_experiment( 'example-experiment' );
-		$this->assertNotNull( $experiment, 'Example experiment should exist' );
-		$this->assertEquals( 'example-experiment', $experiment->get_id() );
 
 		$experiment = $this->registry->get_experiment( 'title-generation' );
 		$this->assertNotNull( $experiment, 'Title generation experiment should exist' );
@@ -109,16 +118,16 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test ai_register_experiments action hook fires.
+	 * Test ai_experiments_register_experiments action hook fires.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_ai_register_experiments_hook_fires() {
+	public function test_ai_experiments_register_experiments_hook_fires() {
 		$hook_fired = false;
 		$passed_registry = null;
 
 		add_action(
-			'ai_register_experiments',
+			'ai_experiments_register_experiments',
 			function ( $registry ) use ( &$hook_fired, &$passed_registry ) {
 				$hook_fired = true;
 				$passed_registry = $registry;
@@ -127,7 +136,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 
 		$this->loader->register_default_experiments();
 
-		$this->assertTrue( $hook_fired, 'ai_register_experiments hook should fire' );
+		$this->assertTrue( $hook_fired, 'ai_experiments_register_experiments hook should fire' );
 		$this->assertSame(
 			$this->registry,
 			$passed_registry,
@@ -142,7 +151,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function test_third_party_experiment_registration() {
 		add_action(
-			'ai_register_experiments',
+			'ai_experiments_register_experiments',
 			function ( $registry ) {
 				$custom_experiment = new Mock_Experiment();
 				$registry->register_experiment( $custom_experiment );
@@ -266,7 +275,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->registry->register_experiment( $experiment );
 
 		// Disable the experiment.
-		add_filter( 'ai_experiment_mock-experiment_enabled', '__return_false' );
+		add_filter( 'ai_experiments_experiment_mock-experiment_enabled', '__return_false' );
 
 		$this->loader->initialize_experiments();
 
