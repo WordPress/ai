@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ### Changed
 - Updated namespace to `ai_experiments` (#111).
-- Bumped WP AI Client from dev-trunk to 0.1.1 (#118, #122).
+- Bumped WP AI Client from `dev-trunk` to 0.2.0 (#118, #122, #125).
 - Updated format script to only format JS to avoid random JSON file changes (#114).
 
 ### Removed
