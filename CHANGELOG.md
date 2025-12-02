@@ -4,30 +4,29 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
-## [0.2.0] - YYYY-MM-DD
-
 ## [0.1.1] - 2025-12-01
 ### Added
-- Link to the plugin settings screen from the plugin list table (#98).
-- WordPress Playground live preview integration (#85).
+- Link to the plugin settings screen from the plugin list table ([#98](https://github.com/WordPress/ai/pull/98)).
+- WordPress Playground live preview integration ([#85](https://github.com/WordPress/ai/pull/85)).
+- RTL language support and inlining for performance ([#113](https://github.com/WordPress/ai/pull/113)).
 
 ### Changed
-- Updated namespace to `ai_experiments` (#111).
-- Bumped WP AI Client from `dev-trunk` to 0.2.0 (#118, #122, #125).
-- Updated format script to only format JS to avoid random JSON file changes (#114).
+- Updated namespace to `ai_experiments` ([#111](https://github.com/WordPress/ai/pull/111)).
+- Bumped WP AI Client from `dev-trunk` to 0.2.0 ([#118](https://github.com/WordPress/ai/pull/118), [#122](https://github.com/WordPress/ai/pull/122), [#125](https://github.com/WordPress/ai/pull/125)).
 
 ### Removed
-- Valid AI credentials check from the Experiment `is_enabled` check (#120).
-- Example Experiment registration (#121).
+- Valid AI credentials check from the Experiment `is_enabled` check ([#120](https://github.com/WordPress/ai/pull/120)).
+- Example Experiment registration ([#121](https://github.com/WordPress/ai/pull/121)).
 
 ### Fixed
-- Bug in asset loader causing missing dependencies, lack of RTL support, lack of inlining for performance (#113).
+- Bug in asset loader causing missing dependencies ([#113](https://github.com/WordPress/ai/pull/113)).
 
 ### Security
-- Bumped `js-yaml` from 3.14.1 to 3.14.2 (#105).
+- Bumped `js-yaml` from 3.14.1 to 3.14.2 ([#105](https://github.com/WordPress/ai/pull/105)).
 
 ### Developer
-- Updated documentation (#108, #112).
+- Updated format script to only format JS to avoid random JSON file changes ([#114](https://github.com/WordPress/ai/pull/114)).
+- Updated documentation ([#108](https://github.com/WordPress/ai/pull/108), [#112](https://github.com/WordPress/ai/pull/112)).
 
 ## [0.1.0] - 2025-11-26
 First public release of the AI Experiments plugin, introducing a framework for exploring experimental AI-powered features in WordPress. 🎉
@@ -41,6 +40,5 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/wordpress/ai/compare/trunk...develop
-[0.2.0]: https://github.com/wordpress/ai/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/wordpress/ai/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/wordpress/ai/tree/0.1.0
