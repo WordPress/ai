@@ -29,14 +29,37 @@ class FalAiModelMetadataDirectory extends AbstractApiBasedModelMetadataDirectory
 	 * @var array<int, array<string, string>>
 	 */
 	private $catalogue = array(
+		// FLUX.2 models.
 		array(
-			'id'    => 'fal-ai/flux/dev',
-			'name'  => 'FLUX Dev (Fal.ai)',
+			'id'    => 'fal-ai/flux-2',
+			'name'  => 'FLUX.2 Dev',
 			'mime'  => 'image/jpeg',
 		),
 		array(
+			'id'    => 'fal-ai/flux-2-pro',
+			'name'  => 'FLUX.2 Pro',
+			'mime'  => 'image/jpeg',
+		),
+		array(
+			'id'    => 'fal-ai/flux-2-flex',
+			'name'  => 'FLUX.2 Flex',
+			'mime'  => 'image/jpeg',
+		),
+		// FLUX.1 models.
+		array(
+			'id'    => 'fal-ai/flux/dev',
+			'name'  => 'FLUX.1 Dev',
+			'mime'  => 'image/jpeg',
+		),
+		array(
+			'id'    => 'fal-ai/flux/schnell',
+			'name'  => 'FLUX.1 Schnell',
+			'mime'  => 'image/jpeg',
+		),
+		// Other models.
+		array(
 			'id'    => 'fal-ai/fast-sdxl',
-			'name'  => 'Fast SDXL (Fal.ai)',
+			'name'  => 'Fast SDXL',
 			'mime'  => 'image/png',
 		),
 	);
