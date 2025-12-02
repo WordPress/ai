@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 - Updated format script to only format JS to avoid random JSON file changes (#114).
 
 ### Removed
-- Credentials check from `is_enabled` check (#120).
+- Valid AI credentials check from the Experiment `is_enabled` check (#120).
 - Example Experiment registration (#121).
 
 ### Fixed
