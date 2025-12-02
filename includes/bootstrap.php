@@ -145,7 +145,7 @@ function display_composer_notice(): void {
  *
  * This adds a "Settings" link to the plugin's action links on the Plugins page.
  *
- * @since x.x.x
+ * @since 0.1.1
  *
  * @param array<string> $links Existing action links.
  * @return array<string> Modified action links.
