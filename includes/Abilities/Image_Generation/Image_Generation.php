@@ -11,6 +11,7 @@ namespace WordPress\AI\Abilities\Image_Generation;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI_Client\AI_Client;
 
 /**
  * Image generation WordPress Ability.
@@ -113,6 +114,15 @@ class Image_Generation extends Abstract_Ability {
 	 * @return string|\WP_Error The generated image data, or a WP_Error if there was an error.
 	 */
 	protected function generate_image( string $prompt ) {
-		return 'Image data here';
+		// Generate the image using the AI client.
+		$file = AI_Client::prompt_with_wp_error( $prompt )->generate_image();
+
+		// If we have an error, return it.
+		if ( is_wp_error( $file ) ) {
+			return $file;
+		}
+
+		// Return the base64 encoded image data.
+		return $file->getBase64Data();
 	}
 }
