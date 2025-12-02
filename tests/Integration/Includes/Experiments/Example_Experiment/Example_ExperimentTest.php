@@ -30,7 +30,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable experiments globally and individually.
 		update_option( 'ai_experiments_enabled', true );
@@ -39,6 +39,11 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
+
+		// Manually register the Example Experiment since it's no longer loaded by default.
+		$example_experiment = new Example_Experiment();
+		$registry->register_experiment( $example_experiment );
+
 		$loader->initialize_experiments();
 
 		$experiment = $registry->get_experiment( 'example-experiment' );
