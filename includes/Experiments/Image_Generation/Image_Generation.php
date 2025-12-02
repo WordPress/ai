@@ -9,7 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Image_Generation;
 
-use WordPress\AI\Abilities\Image_Generation\Image_Generation as Image_Generation_Ability;
+use WordPress\AI\Abilities\Image\Generate as Image_Generation_Ability;
+use WordPress\AI\Abilities\Image\Import as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
 /**
@@ -55,6 +56,15 @@ class Image_Generation extends Abstract_Experiment {
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
 				'ability_class' => Image_Generation_Ability::class,
+			),
+		);
+
+		wp_register_ability(
+			'ai/image-import',
+			array(
+				'label'         => __( 'Image Import', 'ai' ),
+				'description'   => __( 'Imports an image into the media library from a base64 encoded string', 'ai' ),
+				'ability_class' => Image_Import_Ability::class,
 			),
 		);
 	}

@@ -7,7 +7,7 @@
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities\Image_Generation;
+namespace WordPress\AI\Abilities\Image;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
@@ -18,7 +18,7 @@ use WordPress\AI_Client\AI_Client;
  *
  * @since 0.1.0
  */
-class Image_Generation extends Abstract_Ability {
+class Generate extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
