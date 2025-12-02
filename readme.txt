@@ -10,7 +10,30 @@ AI experiments and capabilities for WordPress.
 
 == Description ==
 
-AI Experiments is a plugin for testing and developing AI-powered experiments for WordPress. This plugin provides a framework for building, testing, and deploying experimental AI capabilities.
+The WordPress AI Experiments plugin brings experimental AI-powered features directly into your WordPress admin and editing experience.
+
+**What's Inside:**
+
+This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the PHP AI Client SDK, Abilities API, and MCP Adapter into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
+
+**Current Features:**
+
+* **Title Generation** - Generate multiple AI-powered title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
+* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google AI, and Anthropic.
+
+**Coming Soon:**
+
+We're actively developing new features to enhance your WordPress workflow:
+
+* **Excerpt Generation** - Automatically create concise summaries for your posts
+* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility
+* **Image Generation** - Create images from text prompts directly in the block editor
+* **Content Summarization** - Quickly summarize long-form content
+* **Contextual Tagging** - AI-suggested tags and categories to organize your content
+* **AI Playground** - Experiment with different AI models and prompts
+
+This is an experimental plugin - features may change as we gather feedback from the community. We recommend testing in a staging environment before using it on production sites.
 
 == Installation ==
 
@@ -20,15 +43,62 @@ AI Experiments is a plugin for testing and developing AI-powered experiments for
 4. Go to `Settings -> AI Experiments` and globally enable experiments and then enable the individual experiments you want to test.
 5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Re-generate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
 
+== For Developers ==
+
+The AI Experiments plugin is designed to be studied, extended, and built upon. Whether you're a plugin developer, agency, or hosting provider, here's what you can do:
+
+**Extend the Plugin:**
+
+* **Build Custom Experiments** - Use the `Abstract_Experiment` base class to create your own AI-powered features
+* **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities
+* **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements
+* **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys
+
+**Key Developer Tools:**
+
+* **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled)
+* **MCP Demo** - See how Model Context Protocol integration works with WordPress
+* **Example Experiment** - Reference implementation showing best practices for building experiments
+* **Comprehensive Hooks** - Filters and actions throughout the codebase for customization
+
+
+**Get Started:**
+
+1. Read the [Contributing Guide](https://github.com/WordPress/ai/blob/trunk/CONTRIBUTING.md) for development setup
+2. Join the discussion in [#core-ai on WordPress Slack](https://wordpress.slack.com/archives/C08TJ8BPULS)
+3. Browse the [GitHub repository](https://github.com/WordPress/ai) to see how experiments are built
+
+We welcome contributions! Whether you want to build new experiments, improve existing features, or help with documentation, check out our [GitHub repository](https://github.com/WordPress/ai) to get involved.
+
 == Frequently Asked Questions ==
 
 = What is this plugin for? =
 
-This plugin is for experimenting with AI features in WordPress. It provides a framework for building and testing AI-powered capabilities.
+This plugin brings AI-powered writing and editing tools directly into WordPress. It's also a reference implementation for developers who want to build their own AI features.
 
-= Is this production-ready? =
+= Do I need my own API key? =
 
-No, this is an experimental plugin for testing and development purposes.
+Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic). Future versions may allow hosting providers to pre-configure this for you.
+
+= Which AI providers are supported? =
+
+The plugin supports OpenAI, Google AI (Gemini), and Anthropic (Claude). You can configure one or multiple providers in Settings -> AI Credentials.
+
+= Is this safe to use on a production site? =
+
+This is an experimental plugin, so we recommend testing in a staging environment first. Features may change as we gather community feedback. All AI features are opt-in and require manual triggering - nothing happens automatically without your approval.
+
+= How much does it cost? =
+
+The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started.
+
+= Can I use this without coding knowledge? =
+
+Absolutely! The plugin is designed for content creators and site administrators. Once your API credentials are configured, you can use AI features directly from the post editor with simple button clicks.
+
+= Where can I get help or report issues? =
+
+You can ask questions in the [#core-ai channel on WordPress Slack](https://wordpress.slack.com/archives/C08TJ8BPULS) or report issues on the [GitHub repository](https://github.com/WordPress/ai/issues).
 
 == Screenshots ==
 
