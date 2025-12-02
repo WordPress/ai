@@ -2,7 +2,7 @@
 Contributors:      wordpressorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      6.9
-Stable tag:        0.1.0
+Stable tag:        0.1.1
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -39,6 +39,18 @@ No, this is an experimental plugin for testing and development purposes.
 5. AI Credentials settings screen showing API key fields for available AI service providers.
 
 == Changelog ==
+
+= 0.1.1 - 2025-12-01 =
+
+* **Added:** Link to the plugin settings screen from the plugin list table ([#98](https://github.com/WordPress/ai/pull/98)).
+* **Added:** WordPress Playground live preview integration ([#85](https://github.com/WordPress/ai/pull/85)).
+* **Added:** RTL language support and inlining for performance ([#113](https://github.com/WordPress/ai/pull/113)).
+* **Changed:** Updated namespace to `ai_experiments` ([#111](https://github.com/WordPress/ai/pull/111)).
+* **Changed:** Bumped WP AI Client from `dev-trunk` to 0.2.0 ([#118](https://github.com/WordPress/ai/pull/118), [#122](https://github.com/WordPress/ai/pull/122), [#125](https://github.com/WordPress/ai/pull/125)).
+* **Removed:** Valid AI credentials check from the Experiment `is_enabled` check ([#120](https://github.com/WordPress/ai/pull/120)).
+* **Removed:** Example Experiment registration ([#121](https://github.com/WordPress/ai/pull/121)).
+* **Fixed:** Bug in asset loader causing missing dependencies ([#113](https://github.com/WordPress/ai/pull/113)).
+* **Security:** Bumped `js-yaml` from 3.14.1 to 3.14.2 ([#105](https://github.com/WordPress/ai/pull/105)).
 
 = 0.1.0 - 2025-11-26 =
 
