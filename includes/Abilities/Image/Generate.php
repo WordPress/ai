@@ -14,6 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
 
+use function WordPress\AI\get_preferred_image_models;
+
 /**
  * Image generation WordPress Ability.
  *
@@ -118,6 +120,7 @@ class Generate extends Abstract_Ability {
 		// Generate the image using the AI client.
 		$file = AI_Client::prompt_with_wp_error( $prompt )
 			->as_output_file_type( FileTypeEnum::inline() )
+			->using_model_preference( ...get_preferred_image_models() )
 			->generate_image();
 
 		// If we have an error, return it.

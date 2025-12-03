@@ -157,6 +157,44 @@ function get_preferred_models(): array {
 }
 
 /**
+ * Returns the preferred image models.
+ *
+ * @since x.x.x
+ *
+ * @return array<int, array{string, string}> The preferred image models.
+ */
+function get_preferred_image_models(): array {
+	$preferred_models = array(
+		array(
+			'google',
+			'gemini-3-pro-image-preview',
+		),
+		array(
+			'google',
+			'gemini-2.5-flash-image',
+		),
+		array(
+			'openai',
+			'gpt-image-1',
+		),
+		array(
+			'openai',
+			'dall-e-3',
+		),
+	);
+
+	/**
+	 * Filters the preferred image models.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred image models.
+	 * @return array<int, array{string, string}> The filtered preferred image models.
+	 */
+	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
+}
+
+/**
  * Checks if we have AI credentials set.
  *
  * @since 0.1.0
