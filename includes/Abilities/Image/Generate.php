@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Image;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
+use WordPress\AiClient\Files\Enums\FileTypeEnum;
 
 /**
  * Image generation WordPress Ability.
@@ -115,7 +116,9 @@ class Generate extends Abstract_Ability {
 	 */
 	protected function generate_image( string $prompt ) {
 		// Generate the image using the AI client.
-		$file = AI_Client::prompt_with_wp_error( $prompt )->generate_image();
+		$file = AI_Client::prompt_with_wp_error( $prompt )
+			->as_output_file_type( FileTypeEnum::inline() )
+			->generate_image();
 
 		// If we have an error, return it.
 		if ( is_wp_error( $file ) ) {
