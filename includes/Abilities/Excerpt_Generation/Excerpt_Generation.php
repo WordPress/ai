@@ -124,7 +124,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		}
 
 		// Return the excerpts in the format the Ability expects.
-		return sanitize_textarea_field( trim( $result[0], ' "\'' ) );
+		return sanitize_textarea_field( trim( $result, ' "\'' ) );
 	}
 
 	/**
