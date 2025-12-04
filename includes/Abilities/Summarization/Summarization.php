@@ -20,7 +20,7 @@ use function WordPress\AI\normalize_content;
 /**
  * Content summarization WordPress Ability.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class Summarization extends Abstract_Ability {
 
