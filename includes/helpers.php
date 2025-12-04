@@ -9,6 +9,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use Throwable;
+use WordPress\AI_Client\AI_Client;
+
 /**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
  *
@@ -22,13 +25,12 @@ function normalize_content( string $content ): string {
 	 * Hook to filter content before cleaning it.
 	 *
 	 * @since 0.1.0
-	 * @hook ai_pre_normalize_content
 	 *
 	 * @param string $post_content The post content.
 	 *
 	 * @return string The filtered Post content.
 	 */
-	$content = (string) apply_filters( 'ai_pre_normalize_content', $content );
+	$content = (string) apply_filters( 'ai_experiments_pre_normalize_content', $content );
 
 	// Strip HTML entities.
 	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content );
@@ -46,13 +48,12 @@ function normalize_content( string $content ): string {
 	 * Filters the normalized content to allow for additional cleanup.
 	 *
 	 * @since 0.1.0
-	 * @hook ai_normalize_content
 	 *
 	 * @param string $content The normalized content.
 	 *
 	 * @return string The filtered normalized content.
 	 */
-	$content = (string) apply_filters( 'ai_normalize_content', (string) $content );
+	$content = (string) apply_filters( 'ai_experiments_normalize_content', (string) $content );
 
 	return trim( $content );
 }
@@ -148,10 +149,71 @@ function get_preferred_models(): array {
 	 * Filters the preferred models.
 	 *
 	 * @since 0.1.0
-	 * @hook ai_preferred_models
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred models.
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
-	return (array) apply_filters( 'ai_preferred_models', $preferred_models );
+	return (array) apply_filters( 'ai_experiments_preferred_models', $preferred_models );
+}
+
+/**
+ * Checks if we have AI credentials set.
+ *
+ * @since 0.1.0
+ *
+ * @return bool True if we have AI credentials, false otherwise.
+ */
+function has_ai_credentials(): bool {
+	$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
+
+	// If there are no credentials, return false.
+	if ( ! is_array( $credentials ) || empty( $credentials ) ) {
+		return false;
+	}
+
+	// If all of the AI keys are empty, return false; otherwise, return true.
+	return ! empty(
+		array_filter(
+			$credentials,
+			static function ( $api_key ): bool {
+				return is_string( $api_key ) && '' !== $api_key;
+			}
+		)
+	);
+}
+
+/**
+ * Checks if we have valid AI credentials.
+ *
+ * @since 0.1.0
+ *
+ * @return bool True if we have valid AI credentials, false otherwise.
+ */
+function has_valid_ai_credentials(): bool {
+	// If we have no AI credentials, return false.
+	if ( ! has_ai_credentials() ) {
+		return false;
+	}
+
+	/**
+	 * Filters whether valid AI credentials are available.
+	 *
+	 * Allows overriding the credentials check, useful for testing.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param bool|null $has_valid_credentials Whether valid credentials are available. Return null to use default check.
+	 * @return bool|null True if valid credentials are available, false otherwise, or null to use default check.
+	 */
+	$valid = apply_filters( 'ai_experiments_pre_has_valid_credentials_check', null );
+	if ( null !== $valid ) {
+		return (bool) $valid;
+	}
+
+	// See if we have credentials that give us access to generate text.
+	try {
+		return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
+	} catch ( Throwable $t ) {
+		return false;
+	}
 }

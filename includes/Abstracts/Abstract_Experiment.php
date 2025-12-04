@@ -11,6 +11,7 @@ namespace WordPress\AI\Abstracts;
 
 use WordPress\AI\Contracts\Experiment;
 use WordPress\AI\Exception\Invalid_Experiment_Metadata_Exception;
+use WordPress\AI\Settings\Settings_Registration;
 
 /**
  * Base implementation for experiments.
@@ -148,7 +149,7 @@ abstract class Abstract_Experiment implements Experiment {
 		}
 
 		// Check global experiments toggle first.
-		$global_enabled = (bool) get_option( 'ai_experiments_enabled', false );
+		$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
 		if ( ! $global_enabled ) {
 			$this->enabled_cache = false;
 			return false;
@@ -166,7 +167,7 @@ abstract class Abstract_Experiment implements Experiment {
 		 *
 		 * @param bool $experiment_enabled Whether the experiment is enabled.
 		 */
-		$is_enabled = (bool) apply_filters( "ai_experiment_{$this->id}_enabled", $experiment_enabled );
+		$is_enabled = (bool) apply_filters( "ai_experiments_experiment_{$this->id}_enabled", $experiment_enabled );
 
 		// Cache the result.
 		$this->enabled_cache = $is_enabled;

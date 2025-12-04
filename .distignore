@@ -1,0 +1,28 @@
+# Directories
+/.git
+/.github
+/.wordpress-org
+/docs
+/node_modules
+/src
+/tests
+
+# Files
+.*
+ai.zip
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+composer.json
+composer.lock
+CONTRIBUTING.md
+CREDITS.md
+LICENSE.md
+package-lock.json
+package.json
+phpcs.xml.dist
+phpstan.neon.dist
+phpunit.xml.dist
+README.md
+ROADMAP.md
+SECURITY.md
+webpack.config.js
