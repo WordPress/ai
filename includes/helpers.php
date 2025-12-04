@@ -81,11 +81,6 @@ function get_post_context( int $post_id ): array {
 				$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
 			}
 
-			if ( isset( $context['title'] ) ) {
-				$context['current_title'] = $context['title'];
-				unset( $context['title'] );
-			}
-
 			if ( isset( $context['type'] ) ) {
 				$context['content_type'] = $context['type'];
 				unset( $context['type'] );
