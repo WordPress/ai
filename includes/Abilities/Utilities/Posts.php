@@ -124,11 +124,11 @@ class Posts {
 					}
 
 					if ( in_array( 'title', $fields, true ) ) {
-						$details['title'] = ! empty( $post->post_title ) ? $post->post_title : 'not set';
+						$details['title'] = $post->post_title;
 					}
 
 					if ( in_array( 'slug', $fields, true ) ) {
-						$details['slug'] = ! empty( $post->post_name ) ? $post->post_name : 'not set';
+						$details['slug'] = $post->post_name;
 					}
 
 					if ( in_array( 'author', $fields, true ) ) {
@@ -137,7 +137,7 @@ class Posts {
 						if ( $author ) {
 							$details['author'] = $author->display_name;
 						} else {
-							$details['author'] = 'not set';
+							$details['author'] = '';
 						}
 					}
 
@@ -146,7 +146,7 @@ class Posts {
 					}
 
 					if ( in_array( 'excerpt', $fields, true ) ) {
-						$details['excerpt'] = ! empty( $post->post_excerpt ) ? $post->post_excerpt : 'not set';
+						$details['excerpt'] = $post->post_excerpt;
 					}
 
 					// Return the post details.

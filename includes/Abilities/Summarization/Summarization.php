@@ -33,12 +33,12 @@ class Summarization extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'content'    => array(
+				'content' => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'Content to summarize.', 'ai' ),
 				),
-				'post_id'    => array(
+				'post_id' => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Content from this post will be summarized. This overrides the content parameter if both are provided.', 'ai' ),

@@ -85,6 +85,9 @@ function get_post_context( int $post_id ): array {
 				$context['content_type'] = $context['type'];
 				unset( $context['type'] );
 			}
+
+			// Remove any empty context values.
+			$context = array_filter( $context );
 		}
 	}
 
