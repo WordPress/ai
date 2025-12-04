@@ -27,8 +27,7 @@ curl -X POST "https://wordpress-ai.test/wp-json/wp-abilities/v1/abilities/ai/exc
   -H "Content-Type: application/json" \
   -d '{
     "input": {
-      "content": "This is a sample article about artificial intelligence and machine learning. AI has revolutionized many industries including healthcare, finance, and transportation. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions that were previously impossible.",
-      "candidates": 3
+      "content": "This is a sample article about artificial intelligence and machine learning. AI has revolutionized many industries including healthcare, finance, and transportation. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions that were previously impossible."
     }
   }'
 ```
@@ -38,8 +37,7 @@ curl -X POST "https://wordpress-ai.test/wp-json/wp-abilities/v1/abilities/ai/exc
 1. **Get a nonce:**
    - Log into WordPress admin in your browser
    - Open browser DevTools → Console
-   - Run: `wpApiSettings.nonce` (if available) OR
-   - Visit: `https://wordpress-ai.test/wp-content/plugins/ai/get-nonce.php` (if you created this helper)
+   - Run: `wpApiSettings.nonce` (if available)
 
 2. **Get your session cookie:**
    - Open DevTools → Application/Storage → Cookies
@@ -54,8 +52,7 @@ curl -X POST "https://wordpress-ai.test/wp-json/wp-abilities/v1/abilities/ai/exc
   -H "Cookie: wordpress_logged_in_[hash]=YOUR_COOKIE_VALUE_HERE" \
   -d '{
     "input": {
-      "content": "This is a sample article about artificial intelligence and machine learning. AI has revolutionized many industries including healthcare, finance, and transportation. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions that were previously impossible.",
-      "candidates": 3
+      "content": "This is a sample article about artificial intelligence and machine learning. AI has revolutionized many industries including healthcare, finance, and transportation. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions that were previously impossible."
     }
   }'
 ```
@@ -68,8 +65,7 @@ curl -X POST "https://wordpress-ai.test/wp-json/wp-abilities/v1/abilities/ai/exc
 ```json
 {
   "input": {
-    "content": "This is a sample article about artificial intelligence and machine learning. AI has revolutionized many industries including healthcare, finance, and transportation. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions that were previously impossible.",
-    "candidates": 3
+    "content": "This is a sample article about artificial intelligence and machine learning. AI has revolutionized many industries including healthcare, finance, and transportation. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions that were previously impossible."
   }
 }
 ```
@@ -81,8 +77,7 @@ curl -X POST "https://wordpress-ai.test/wp-json/wp-abilities/v1/abilities/ai/exc
   -H "Content-Type: application/json" \
   -d '{
     "input": {
-      "content": "This is a sample article about artificial intelligence and machine learning. AI has revolutionized many industries including healthcare, finance, and transportation. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions that were previously impossible.",
-      "candidates": 3
+      "content": "This is a sample article about artificial intelligence and machine learning. AI has revolutionized many industries including healthcare, finance, and transportation. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions that were previously impossible."
     }
   }'
 ```

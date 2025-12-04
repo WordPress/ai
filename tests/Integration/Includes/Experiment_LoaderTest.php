@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Includes;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_UnitTestCase;
+use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Registry;
 
 /**
  * Test experiment for loader tests.
@@ -59,14 +59,14 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	/**
 	 * Experiment registry instance.
 	 *
-	 * @var Experiment_Registry
+	 * @var \WordPress\AI\Experiment_Registry
 	 */
 	private $registry;
 
 	/**
 	 * Experiment loader instance.
 	 *
-	 * @var Experiment_Loader
+	 * @var \WordPress\AI\Experiment_Loader
 	 */
 	private $loader;
 
@@ -114,13 +114,13 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_ai_register_experiments_hook_fires() {
-		$hook_fired = false;
+		$hook_fired      = false;
 		$passed_registry = null;
 
 		add_action(
 			'ai_register_experiments',
-			function ( $registry ) use ( &$hook_fired, &$passed_registry ) {
-				$hook_fired = true;
+			static function ( $registry ) use ( &$hook_fired, &$passed_registry ) {
+				$hook_fired      = true;
 				$passed_registry = $registry;
 			}
 		);
@@ -143,7 +143,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	public function test_third_party_experiment_registration() {
 		add_action(
 			'ai_register_experiments',
-			function ( $registry ) {
+			static function ( $registry ) {
 				$custom_experiment = new Mock_Experiment();
 				$registry->register_experiment( $custom_experiment );
 			}
@@ -216,7 +216,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 
 		add_action(
 			'ai_experiments_initialized',
-			function () use ( &$hook_fired ) {
+			static function () use ( &$hook_fired ) {
 				$hook_fired = true;
 			}
 		);

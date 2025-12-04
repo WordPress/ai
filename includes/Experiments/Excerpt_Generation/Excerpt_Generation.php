@@ -15,16 +15,14 @@ use WordPress\AI\Abstracts\Abstract_Experiment;
 /**
  * Excerpt generation experiment.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class Excerpt_Generation extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @since x.x.x
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
@@ -37,7 +35,7 @@ class Excerpt_Generation extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -46,7 +44,7 @@ class Excerpt_Generation extends Abstract_Experiment {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(

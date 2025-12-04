@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation;
+use WordPress\AI\Abstracts\Abstract_Experiment;
 
 /**
  * Test experiment for Excerpt_Generation Ability tests.
@@ -41,7 +41,6 @@ class Test_Excerpt_Generation_Experiment extends Abstract_Experiment {
 	public function register(): void {
 		// No-op for testing.
 	}
-
 }
 
 /**
@@ -54,14 +53,14 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Excerpt_Generation ability instance.
 	 *
-	 * @var Excerpt_Generation
+	 * @var \WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Excerpt_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Excerpt_Generation_Experiment
 	 */
 	private $experiment;
 
@@ -74,7 +73,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->experiment = new Test_Excerpt_Generation_Experiment();
-		$this->ability = new Excerpt_Generation(
+		$this->ability    = new Excerpt_Generation(
 			'ai/excerpt-generation',
 			array(
 				'label'       => $this->experiment->get_label(),
@@ -149,11 +148,8 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$schema = $method->invoke( $this->ability );
 
 		$this->assertIsArray( $schema, 'Output schema should be an array' );
-		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
-		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
-		$this->assertArrayHasKey( 'excerpt', $schema['properties'], 'Schema should have excerpt property' );
-		$this->assertEquals( 'string', $schema['properties']['excerpt']['type'], 'Excerpt should be string type' );
-		$this->assertArrayNotHasKey( 'excerpts', $schema['properties'], 'Schema should not have excerpts property' );
+		$this->assertEquals( 'string', $schema['type'], 'Schema type should be string' );
+		$this->assertArrayHasKey( 'description', $schema, 'Schema should have description' );
 	}
 
 	/**
@@ -179,7 +175,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$input  = array(
+		$input = array(
 			'content' => 'This is some test content.',
 		);
 
@@ -221,7 +217,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$input  = array(
+		$input = array(
 			'post_id' => $post_id,
 		);
 
@@ -298,7 +294,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$input  = array(
+		$input = array(
 			'content' => 'This content should be ignored.',
 			'post_id' => $post_id,
 		);
@@ -333,7 +329,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$input  = array(
+		$input = array(
 			'content' => 'This is test content for excerpt generation.',
 		);
 
@@ -366,7 +362,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$input  = array(
+		$input = array(
 			'content' => 'This is test content for excerpt generation.',
 		);
 
@@ -583,4 +579,3 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
 }
-

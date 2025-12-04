@@ -7,9 +7,9 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
 
+use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
-use WP_UnitTestCase;
 
 /**
  * Test ability implementation for Abstract_Ability tests.
@@ -145,7 +145,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_constructor_sets_up_ability() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -163,7 +163,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_constructor_calls_parent_with_properties() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -183,7 +183,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_label_delegates_to_experiment() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -209,7 +209,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_description_delegates_to_experiment() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -248,7 +248,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_get_system_instruction_returns_empty_when_no_file() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -263,4 +263,3 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$this->assertEquals( '', $system_instruction, 'System instruction should be empty when no file exists' );
 	}
 }
-

@@ -20,16 +20,14 @@ use function WordPress\AI\normalize_content;
 /**
  * Excerpt generation WordPress Ability.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class Excerpt_Generation extends Abstract_Ability {
 
 	/**
-	 * Returns the input schema of the ability.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array<string, mixed> The input schema of the ability.
+	 * @since x.x.x
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -50,31 +48,21 @@ class Excerpt_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the output schema of the ability.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array<string, mixed> The output schema of the ability.
+	 * @since x.x.x
 	 */
 	protected function output_schema(): array {
 		return array(
-			'type'       => 'object',
-			'properties' => array(
-				'excerpt' => array(
-					'type'        => 'string',
-					'description' => esc_html__( 'Generated excerpt.', 'ai' ),
-				),
-			),
+			'type'        => 'string',
+			'description' => esc_html__( 'Generated excerpt.', 'ai' ),
 		);
 	}
 
 	/**
-	 * Executes the ability with the given input arguments.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @param mixed $input The input arguments to the ability.
-	 * @return array{excerpt: string}|\WP_Error The result of the ability execution, or a WP_Error on failure.
+	 * @since x.x.x
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -136,18 +124,13 @@ class Excerpt_Generation extends Abstract_Ability {
 		}
 
 		// Return the excerpts in the format the Ability expects.
-		return array(
-			'excerpt' => sanitize_textarea_field( trim( $result[0], ' "\'' ) ),
-		);
+		return sanitize_textarea_field( trim( $result[0], ' "\'' ) );
 	}
 
 	/**
-	 * Returns the permission callback of the ability.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @param mixed $args The input arguments to the ability.
-	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
+	 * @since x.x.x
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
@@ -196,11 +179,9 @@ class Excerpt_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the meta of the ability.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array<string, mixed> The meta of the ability.
+	 * @since x.x.x
 	 */
 	protected function meta(): array {
 		return array(
@@ -211,10 +192,10 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * Generate an excerpt suggestion from the given content.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string|array<string, string> $context The context to generate an excerpt from.
-	 * @return array<string>|\WP_Error The generated excerpt, or a WP_Error if there was an error.
+	 * @return string|\WP_Error The generated excerpt, or a WP_Error if there was an error.
 	 */
 	protected function generate_excerpt( $context ) {
 		// Convert the context to a string if it's an array.
@@ -239,8 +220,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
-			->using_candidate_count( 1 )
 			->using_model_preference( ...get_preferred_models() )
-			->generate_texts();
+			->generate_text();
 	}
 }
