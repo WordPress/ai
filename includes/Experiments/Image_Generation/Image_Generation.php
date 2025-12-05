@@ -99,8 +99,9 @@ class Image_Generation extends Abstract_Experiment {
 			'image_generation',
 			'ImageGenerationData',
 			array(
-				'enabled' => $this->is_enabled(),
-				'path'    => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
+				'enabled'      => $this->is_enabled(),
+				'generatePath' => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
+				'importPath'   => 'wp-abilities/v1/abilities/ai/image-import/run',
 			)
 		);
 	}

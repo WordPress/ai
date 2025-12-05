@@ -17,6 +17,17 @@ import { store as noticesStore } from '@wordpress/notices';
 const { aiImageGenerationData } = window as any;
 
 /**
+ * TODO:
+ * - Save post meta with the generated image ID and update our code to use that
+ * - Add ability to see full image in a modal or lightbox (or link to media library view MediaUpload component)
+ * - Wire up the set button (or think about auto-setting as featured image when generated)
+ * - Wire up the remove button
+ * - Add regenerate button and wire it up
+ * - Add middleware ability to take post context and generate prompt we can pass to image gen
+ * - Styling to make generated image appear separate from featured image
+ */
+
+/**
  * Generates an image for the given post ID and content.
  *
  * @param {string} content The content of the post to generate an image for.
@@ -24,7 +35,7 @@ const { aiImageGenerationData } = window as any;
  */
 async function generateImage( content: string ): Promise< string > {
 	return apiFetch( {
-		path: aiImageGenerationData?.path ?? '',
+		path: aiImageGenerationData?.generatePath ?? '',
 		method: 'POST',
 		data: {
 			input: {
@@ -38,6 +49,47 @@ async function generateImage( content: string ): Promise< string > {
 			}
 
 			return '';
+		} )
+		.catch( ( error ) => {
+			throw new Error( error.message );
+		} );
+}
+
+/**
+ * Uploads an image to the media library.
+ *
+ * @param {string} image The image to upload.
+ * @return {Promise<{ id: number; url: string; title: string }>} A promise that resolves to the uploaded image data.
+ */
+async function uploadImage( image: string ): Promise< {
+	id: number;
+	url: string;
+	title: string;
+} > {
+	return apiFetch( {
+		path: aiImageGenerationData?.importPath ?? '',
+		method: 'POST',
+		data: {
+			input: {
+				data: image,
+				mime_type: 'image/png',
+			},
+		},
+	} )
+		.then( ( response: any ) => {
+			if (
+				response &&
+				typeof response === 'object' &&
+				'image' in response
+			) {
+				return response.image as {
+					id: number;
+					url: string;
+					title: string;
+				};
+			}
+
+			throw new Error( 'Invalid response from image import' );
 		} )
 		.catch( ( error ) => {
 			throw new Error( error.message );
@@ -68,7 +120,8 @@ export default function GenerateFeaturedImage(): JSX.Element {
 
 		try {
 			const generatedImage = await generateImage( content );
-			setImage( generatedImage );
+			const importedImage = await uploadImage( generatedImage );
+			setImage( importedImage.url );
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
 				id: 'ai_image_generation_error',
@@ -86,7 +139,7 @@ export default function GenerateFeaturedImage(): JSX.Element {
 				{ image && (
 					<div className="editor-post-featured-image__preview">
 						<img
-							src={ `data:image/png;base64,${ image }` }
+							src={ image }
 							alt={ __( 'Generated featured image', 'ai' ) }
 							className="ai-featured-image__image editor-post-featured-image__preview-image"
 						/>
