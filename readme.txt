@@ -18,7 +18,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 **Current Features:**
 
-* **Title Generation** - Generate multiple AI-powered title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google AI, and Anthropic.
 
