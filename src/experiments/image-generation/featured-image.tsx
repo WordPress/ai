@@ -19,8 +19,8 @@ const { aiImageGenerationData } = window as any;
 /**
  * Wraps the PostFeaturedImage component to add a generate featured image button.
  *
- * @param {React.ComponentType<any>} OriginalComponent - The original PostFeaturedImage component.
- * @return {React.ComponentType<any>} The wrapped component.
+ * @param OriginalComponent - The original PostFeaturedImage component.
+ * @return The wrapped component.
  */
 function wrapPostFeaturedImage(
 	OriginalComponent: React.ComponentType< any >
