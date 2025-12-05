@@ -100,6 +100,7 @@ class Image_Generation extends Abstract_Experiment {
 			'ImageGenerationData',
 			array(
 				'enabled' => $this->is_enabled(),
+				'path'    => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
 			)
 		);
 	}

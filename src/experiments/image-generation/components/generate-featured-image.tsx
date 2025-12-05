@@ -6,13 +6,15 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
-import { executeAbility } from '@wordpress/abilities';
+import apiFetch from '@wordpress/api-fetch';
 import { Button } from '@wordpress/components';
 import { dispatch, select } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
+
+const { aiImageGenerationData } = window as any;
 
 /**
  * Generates an image for the given post ID and content.
@@ -21,8 +23,14 @@ import { store as noticesStore } from '@wordpress/notices';
  * @return {Promise<string>} A promise that resolves to the generated image.
  */
 async function generateImage( content: string ): Promise< string > {
-	return executeAbility( 'ai/image-generation', {
-		prompt: content,
+	return apiFetch( {
+		path: aiImageGenerationData?.path ?? '',
+		method: 'POST',
+		data: {
+			input: {
+				prompt: content,
+			},
+		},
 	} )
 		.then( ( response ) => {
 			if ( response && typeof response === 'string' ) {
@@ -32,7 +40,7 @@ async function generateImage( content: string ): Promise< string > {
 			return '';
 		} )
 		.catch( ( error ) => {
-			throw new Error( `Error generating titles: ${ error.message }` );
+			throw new Error( error.message );
 		} );
 }
 
