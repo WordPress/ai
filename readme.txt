@@ -54,7 +54,7 @@ The AI Experiments plugin is designed to be studied, extended, and built upon. W
 * **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements
 * **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys
 
-**Key Developer Tools:**
+**Developer Tools Coming Soon:**
 
 * **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled)
 * **MCP Demo** - See how Model Context Protocol integration works with WordPress
