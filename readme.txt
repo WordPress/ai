@@ -27,8 +27,8 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 We're actively developing new features to enhance your WordPress workflow:
 
 * **Excerpt Generation** - Automatically create concise summaries for your posts
-* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility
 * **Image Generation** - Create images from text prompts directly in the block editor
+* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility
 * **Content Summarization** - Quickly summarize long-form content
 * **Contextual Tagging** - AI-suggested tags and categories to organize your content
 * **AI Playground** - Experiment with different AI models and prompts
@@ -76,17 +76,17 @@ We welcome contributions! Whether you want to build new experiments, improve exi
 
 This plugin brings AI-powered writing and editing tools directly into WordPress. It's also a reference implementation for developers who want to build their own AI features.
 
-= Do I need an API key to use the experiments? =
+= Is this safe to use on a production site? =
 
-Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic).
+This is an experimental plugin, so we recommend testing in a staging environment first. Features may change as we gather community feedback. All AI features are opt-in and require manual triggering - nothing happens automatically without your approval.
 
 = Which AI providers are supported? =
 
 The plugin supports OpenAI, Google AI (Gemini), and Anthropic (Claude). You can configure one or multiple providers in Settings -> AI Credentials.
 
-= Is this safe to use on a production site? =
+= Do I need an API key to use the experiments? =
 
-This is an experimental plugin, so we recommend testing in a staging environment first. Features may change as we gather community feedback. All AI features are opt-in and require manual triggering - nothing happens automatically without your approval.
+Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic).
 
 = How much does it cost? =
 
