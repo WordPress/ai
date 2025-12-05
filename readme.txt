@@ -33,7 +33,7 @@ We're actively developing new features to enhance your WordPress workflow:
 * **Contextual Tagging** - AI-suggested tags and categories to organize your content
 * **AI Playground** - Experiment with different AI models and prompts
 
-This is an experimental plugin - features may change as we gather feedback from the community. We recommend testing in a staging environment before using it on production sites.
+This is an experimental plugin; functionality may change as we gather feedback from the community.
 
 == Installation ==
 
