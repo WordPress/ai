@@ -7,7 +7,7 @@ import React from 'react';
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
-import { Button } from '@wordpress/components';
+import { Button, __experimentalHStack as HStack } from '@wordpress/components';
 import { dispatch, select } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -58,7 +58,7 @@ export default function GenerateFeaturedImage(): JSX.Element {
 	const [ image, setImage ] = useState< string >( '' );
 
 	/**
-	 * Handles the generate/re-generate button click.
+	 * Handles the generate button click.
 	 */
 	const handleGenerate = async () => {
 		setIsGenerating( true );
@@ -81,24 +81,50 @@ export default function GenerateFeaturedImage(): JSX.Element {
 	};
 
 	return (
-		<div className="ai-featured-image">
-			<div className="ai-featured-image__container">
+		<div className="ai-featured-image editor-post-featured-image">
+			<div className="ai-featured-image__container editor-post-featured-image__container">
 				{ image && (
-					<img
-						src={ `data:image/png;base64,${ image }` }
-						alt={ __( 'Generated featured image', 'ai' ) }
-						className="ai-featured-image__image"
-					/>
+					<div className="editor-post-featured-image__preview">
+						<img
+							src={ `data:image/png;base64,${ image }` }
+							alt={ __( 'Generated featured image', 'ai' ) }
+							className="ai-featured-image__image editor-post-featured-image__preview-image"
+						/>
+					</div>
 				) }
-				<Button
-					__next40pxDefaultSize
-					className="ai-generate-featured-image editor-post-featured-image__toggle"
-					onClick={ handleGenerate }
-					disabled={ isGenerating }
-					isBusy={ isGenerating }
-				>
-					{ __( 'Generate featured image', 'ai' ) }
-				</Button>
+				{ ! image && (
+					<Button
+						__next40pxDefaultSize
+						className="ai-generate-featured-image editor-post-featured-image__toggle"
+						onClick={ handleGenerate }
+						disabled={ isGenerating }
+						isBusy={ isGenerating }
+					>
+						{ __( 'Generate featured image', 'ai' ) }
+					</Button>
+				) }
+				{ !! image && (
+					<HStack className="editor-post-featured-image__actions">
+						<Button
+							__next40pxDefaultSize
+							className="editor-post-featured-image__action"
+							onClick={ () => {
+								console.log( 'set image' );
+							} }
+						>
+							{ __( 'Set', 'ai' ) }
+						</Button>
+						<Button
+							__next40pxDefaultSize
+							className="editor-post-featured-image__action"
+							onClick={ () => {
+								console.log( 'remove image' );
+							} }
+						>
+							{ __( 'Remove', 'ai' ) }
+						</Button>
+					</HStack>
+				) }
 			</div>
 		</div>
 	);
