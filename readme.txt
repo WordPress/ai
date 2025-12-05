@@ -75,7 +75,7 @@ We welcome contributions! Whether you want to build new experiments, improve exi
 
 This plugin brings AI-powered writing and editing tools directly into WordPress. It's also a reference implementation for developers who want to build their own AI features.
 
-= Do I need my own API key? =
+= Do I need an API key to use the experiments? =
 
 Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic).
 
