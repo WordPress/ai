@@ -58,7 +58,6 @@ The AI Experiments plugin is designed to be studied, extended, and built upon. W
 
 * **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled)
 * **MCP Demo** - See how Model Context Protocol integration works with WordPress
-* **Example Experiment** - Reference implementation showing best practices for building experiments
 * **Comprehensive Hooks** - Filters and actions throughout the codebase for customization
 
 
