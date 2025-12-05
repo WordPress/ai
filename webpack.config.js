@@ -24,6 +24,11 @@ module.exports = {
 			'src/experiments/example-experiment',
 			'index.tsx'
 		),
+		'experiments/image-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/image-generation',
+			'index.tsx'
+		),
 		'experiments/title-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/title-generation',
