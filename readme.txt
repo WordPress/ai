@@ -77,7 +77,7 @@ This plugin brings AI-powered writing and editing tools directly into WordPress.
 
 = Do I need my own API key? =
 
-Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic). Future versions may allow hosting providers to pre-configure this for you.
+Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic).
 
 = Which AI providers are supported? =
 
