@@ -14,13 +14,13 @@ The WordPress AI Experiments plugin brings experimental AI-powered features dire
 
 **What's Inside:**
 
-This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the PHP AI Client SDK, Abilities API, and MCP Adapter into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
+This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the WP AI Client SDK, Abilities API, and MCP Adapter into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
 
 **Current Features:**
 
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
-* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google AI, and Anthropic.
+* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 
 **Coming Soon:**
 
@@ -64,8 +64,9 @@ The AI Experiments plugin is designed to be studied, extended, and built upon. W
 **Get Started:**
 
 1. Read the [Contributing Guide](https://github.com/WordPress/ai/blob/trunk/CONTRIBUTING.md) for development setup
-2. Join the discussion in [#core-ai on WordPress Slack](https://wordpress.slack.com/archives/C08TJ8BPULS)
+2. Join the conversation in [#core-ai on WordPress Slack](https://wordpress.slack.com/archives/C08TJ8BPULS)
 3. Browse the [GitHub repository](https://github.com/WordPress/ai) to see how experiments are built
+4. Participate in [discussions](https://github.com/WordPress/ai/discussions) on how best the plugin should iterate.
 
 We welcome contributions! Whether you want to build new experiments, improve existing features, or help with documentation, check out our [GitHub repository](https://github.com/WordPress/ai) to get involved.
 
@@ -93,7 +94,7 @@ The plugin itself is free, but you'll need to pay for API usage from your chosen
 
 = Can I use this without coding knowledge? =
 
-Absolutely! The plugin is designed for content creators and site administrators. Once your API credentials are configured, you can use AI features directly from the post editor with simple button clicks.
+Absolutely! The plugin is designed for content creators and site administrators. Once your API credentials are configured, you can use AI experiments directly from the post editor.
 
 = Where can I get help or report issues? =
 
