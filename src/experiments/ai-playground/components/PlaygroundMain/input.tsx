@@ -143,8 +143,8 @@ export default function Input() {
 			messages: getMessages(),
 			canUploadMedia:
 				canUser( 'create', {
-					kind: 'root',
-					name: 'media',
+					kind: 'postType',
+					name: 'attachment',
 				} ) ?? true,
 		};
 	}, [] );
