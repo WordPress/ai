@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Includes;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_UnitTestCase;
+use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Registry;
 
 /**
  * Test experiment for loader tests.
@@ -59,14 +59,14 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	/**
 	 * Experiment registry instance.
 	 *
-	 * @var Experiment_Registry
+	 * @var \WordPress\AI\Experiment_Registry
 	 */
 	private $registry;
 
 	/**
 	 * Experiment loader instance.
 	 *
-	 * @var Experiment_Loader
+	 * @var \WordPress\AI\Experiment_Loader
 	 */
 	private $loader;
 
@@ -108,22 +108,17 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->loader->register_default_experiments();
 
 		$this->assertTrue(
-			$this->registry->has_experiment( 'example-experiment' ),
-			'Example experiment should be registered'
-		);
-
-		$this->assertTrue(
 			$this->registry->has_experiment( 'title-generation' ),
 			'Title generation experiment should be registered'
 		);
 
-		$experiment = $this->registry->get_experiment( 'example-experiment' );
-		$this->assertNotNull( $experiment, 'Example experiment should exist' );
-		$this->assertEquals( 'example-experiment', $experiment->get_id() );
-
 		$experiment = $this->registry->get_experiment( 'title-generation' );
 		$this->assertNotNull( $experiment, 'Title generation experiment should exist' );
 		$this->assertEquals( 'title-generation', $experiment->get_id() );
+
+		$experiment = $this->registry->get_experiment( 'excerpt-generation' );
+		$this->assertNotNull( $experiment, 'Excerpt generation experiment should exist' );
+		$this->assertEquals( 'excerpt-generation', $experiment->get_id() );
 	}
 
 	/**
@@ -234,7 +229,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 
 		add_action(
 			'ai_experiments_initialized',
-			function () use ( &$hook_fired ) {
+			static function () use ( &$hook_fired ) {
 				$hook_fired = true;
 			}
 		);
