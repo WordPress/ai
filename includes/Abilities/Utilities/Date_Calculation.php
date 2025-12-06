@@ -131,14 +131,6 @@ class Date_Calculation {
 	 * @return array<string, mixed>|\WP_Error The calculated dates or error.
 	 */
 	public function execute_calculate_dates( array $input ) {
-		// Validate pattern is provided.
-		if ( empty( $input['pattern'] ) ) {
-			return new WP_Error(
-				'pattern_required',
-				esc_html__( 'A date pattern is required.', 'ai' )
-			);
-		}
-
 		// Sanitize and set defaults.
 		$pattern     = sanitize_text_field( $input['pattern'] );
 		$start_date  = isset( $input['start_date'] ) ? sanitize_text_field( $input['start_date'] ) : 'now';
