@@ -21,11 +21,12 @@ import { UP, DOWN } from '@wordpress/keycodes';
 import { store as playgroundStore } from '../../store';
 import MediaModal from './media-modal';
 import { Capability } from '../../ai-client-enums';
-import type { ModelMetadata, SupportedOption } from '../../ai-client-types';
+import type { ModelMetadata } from '../../ai-client-types';
 import type { AiPlaygroundMessage, WordPressAttachment } from '../../types';
+import { optionsListToOptionsMap } from '../../helpers';
 
 const EMPTY_CAPABILITY_ARRAY: Capability[] = [];
-const EMPTY_OPTION_ARRAY: SupportedOption[] = [];
+const EMPTY_OPTION_MAP: Record< string, unknown[] > = {};
 
 const matchMessage = ( message: AiPlaygroundMessage, prompt: string ) => {
 	if ( message.type !== 'user' ) {
@@ -118,18 +119,16 @@ export default function Input() {
 		const currentModel = getModel();
 
 		let currentCapabilities = EMPTY_CAPABILITY_ARRAY;
-		let currentOptions = EMPTY_OPTION_ARRAY;
-		const currentOptionsMap: Record< string, unknown[] | undefined > = {};
+		let currentOptionsMap = EMPTY_OPTION_MAP;
 		if ( currentProvider && currentModel ) {
 			const modelMetadata = getProviderModel() as
 				| ModelMetadata
 				| undefined;
 			if ( modelMetadata ) {
 				currentCapabilities = modelMetadata.supportedCapabilities;
-				currentOptions = modelMetadata.supportedOptions;
-				currentOptions.forEach( ( option ) => {
-					currentOptionsMap[ option.name ] = option.supportedValues;
-				} );
+				currentOptionsMap = optionsListToOptionsMap(
+					modelMetadata.supportedOptions
+				);
 			}
 		}
 

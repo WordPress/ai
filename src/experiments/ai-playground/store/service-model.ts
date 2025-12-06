@@ -14,6 +14,7 @@ import { store as preferencesStore } from '@wordpress/preferences';
  * Internal dependencies
  */
 import { STORE_NAME } from './name';
+import { optionsListToOptionsMap } from '../helpers';
 import type { Capability } from '../ai-client-enums';
 import type { ProviderMetadata, ModelMetadata } from '../ai-client-types';
 import type { AiProviderOption, AiModelOption } from '../types';
@@ -39,10 +40,9 @@ const filterAvailableModels = memoize(
 	) => {
 		return registeredModels
 			.filter( ( modelMetadata ) => {
-				const nameValueMap: Record< string, unknown[] > = {};
-				modelMetadata.supportedOptions.forEach( ( option ) => {
-					nameValueMap[ option.name ] = option.supportedValues || [];
-				} );
+				const nameValueMap = optionsListToOptionsMap(
+					modelMetadata.supportedOptions
+				);
 				return (
 					modelMetadata.supportedCapabilities.includes(
 						requiredCapability

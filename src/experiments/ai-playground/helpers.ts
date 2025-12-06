@@ -1,4 +1,24 @@
 /**
+ * External dependencies
+ */
+import memoize from 'memize';
+
+/**
+ * Internal dependencies
+ */
+import type { SupportedOption } from './ai-client-types';
+
+export const optionsListToOptionsMap = memoize(
+	( options: SupportedOption[] ): Record< string, unknown[] > => {
+		const optionsMap: Record< string, unknown[] > = {};
+		options.forEach( ( option ) => {
+			optionsMap[ option.name ] = option.supportedValues || [];
+		} );
+		return optionsMap;
+	}
+);
+
+/**
  * Transforms an error object into a user-facing error message.
  *
  * @since n.e.x.t
