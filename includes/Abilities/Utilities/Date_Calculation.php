@@ -113,7 +113,6 @@ class Date_Calculation {
 				'execute_callback'    => array( $this, 'execute_calculate_dates' ),
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(
-					'show_in_rest' => true,
 					'mcp' => array(
 						'public' => true,
 						'type'   => 'tool',
