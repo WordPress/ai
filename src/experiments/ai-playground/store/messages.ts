@@ -145,18 +145,7 @@ const parsePlaygroundMessageFromCache = async (
 };
 
 const retrieveMessages = async (): Promise< AiPlaygroundMessage[] > => {
-	const history = await helpers
-		.historyPersistence()
-		.loadHistory( FEATURE_SLUG, HISTORY_SLUG );
-	if ( history && history.entries ) {
-		const entries = await Promise.all(
-			( history.entries as AiPlaygroundMessage[] ).map(
-				parsePlaygroundMessageFromCache
-			)
-		);
-
-		return entries;
-	}
+	// TODO: Handle retrieving history.
 	return EMPTY_MESSAGE_ARRAY;
 };
 
