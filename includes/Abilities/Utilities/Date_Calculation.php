@@ -17,14 +17,14 @@ use WP_Error;
 /**
  * Date calculation utility WordPress Abilities.
  *
- * @since 0.2.0
+ * @since x.x.x
  */
 class Date_Calculation {
 
 	/**
 	 * The default number of occurrences to calculate.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 * @var int
 	 */
 	private const OCCURRENCES_DEFAULT = 1;
@@ -32,7 +32,7 @@ class Date_Calculation {
 	/**
 	 * The maximum number of occurrences allowed.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 * @var int
 	 */
 	private const OCCURRENCES_MAX = 52;
@@ -40,7 +40,7 @@ class Date_Calculation {
 	/**
 	 * Register any needed hooks.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -49,7 +49,7 @@ class Date_Calculation {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
 		$this->register_calculate_dates_ability();
@@ -58,7 +58,7 @@ class Date_Calculation {
 	/**
 	 * Registers the calculate-dates ability.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 */
 	private function register_calculate_dates_ability(): void {
 		wp_register_ability(
@@ -126,7 +126,7 @@ class Date_Calculation {
 	/**
 	 * Execute the calculate-dates ability.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $input The input arguments.
 	 * @return array<string, mixed>|\WP_Error The calculated dates or error.
@@ -172,7 +172,7 @@ class Date_Calculation {
 	/**
 	 * Permission callback for date calculation.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $args The input arguments.
 	 * @return bool|\WP_Error True if permitted, WP_Error otherwise.
@@ -192,7 +192,7 @@ class Date_Calculation {
 	/**
 	 * Calculate dates from natural language pattern.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string $pattern The natural language date pattern.
 	 * @param string $start_date The starting date.
@@ -260,7 +260,7 @@ class Date_Calculation {
 	/**
 	 * Check if pattern is relative.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string $pattern The pattern to check.
 	 * @return bool True if pattern is relative.
@@ -272,7 +272,7 @@ class Date_Calculation {
 	/**
 	 * Check if pattern is nth weekday.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string $pattern The pattern to check.
 	 * @return bool True if pattern is nth weekday.
@@ -284,7 +284,7 @@ class Date_Calculation {
 	/**
 	 * Check if pattern is recurring.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string $pattern The pattern to check.
 	 * @return bool True if pattern is recurring.
@@ -296,7 +296,7 @@ class Date_Calculation {
 	/**
 	 * Check if pattern is interval.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string $pattern The pattern to check.
 	 * @return bool True if pattern is interval.
@@ -308,7 +308,7 @@ class Date_Calculation {
 	/**
 	 * Calculate relative dates.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string   $pattern The pattern.
 	 * @param DateTime $start_date The starting date.
@@ -350,7 +350,7 @@ class Date_Calculation {
 	/**
 	 * Calculate nth weekday dates.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string   $pattern The pattern.
 	 * @param DateTime $start_date The starting date.
@@ -403,7 +403,7 @@ class Date_Calculation {
 	/**
 	 * Calculate recurring dates.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string   $pattern The pattern.
 	 * @param DateTime $start_date The starting date.
@@ -440,7 +440,7 @@ class Date_Calculation {
 	/**
 	 * Calculate interval dates.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string   $pattern The pattern.
 	 * @param DateTime $start_date The starting date.
@@ -471,7 +471,7 @@ class Date_Calculation {
 	/**
 	 * Convert ordinal word to number.
 	 *
-	 * @since 0.2.0
+	 * @since x.x.x
 	 *
 	 * @param string $ordinal The ordinal word.
 	 * @return int The numeric value.
