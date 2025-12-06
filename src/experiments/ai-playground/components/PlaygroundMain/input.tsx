@@ -121,9 +121,10 @@ export default function Input() {
 		let currentCapabilities = EMPTY_CAPABILITY_ARRAY;
 		let currentOptionsMap = EMPTY_OPTION_MAP;
 		if ( currentProvider && currentModel ) {
-			const modelMetadata = getProviderModel() as
-				| ModelMetadata
-				| undefined;
+			const modelMetadata = getProviderModel(
+				currentProvider,
+				currentModel
+			) as ModelMetadata | undefined;
 			if ( modelMetadata ) {
 				currentCapabilities = modelMetadata.supportedCapabilities;
 				currentOptionsMap = optionsListToOptionsMap(
