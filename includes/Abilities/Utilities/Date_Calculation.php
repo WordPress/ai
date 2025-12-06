@@ -169,15 +169,7 @@ class Date_Calculation {
 	 * @return bool|\WP_Error True if permitted, WP_Error otherwise.
 	 */
 	public function permission_callback( array $args ) {
-		// Anyone who can edit posts can use date calculations.
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			return new WP_Error(
-				'insufficient_capabilities',
-				esc_html__( 'You do not have permission to calculate dates.', 'ai' )
-			);
-		}
-
-		return true;
+		return is_user_logged_in();
 	}
 
 	/**
