@@ -34,7 +34,6 @@ export type AiPlaygroundMessageAdditionalData = {
 		name: string;
 	};
 	capability?: Capability;
-	attachment?: WordPressAttachment;
 	attachments?: ( WordPressAttachment | null )[];
 };
 

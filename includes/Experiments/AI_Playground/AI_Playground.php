@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\AI_Playground;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI_Client\Capabilities\Capabilities_Manager;
 
 /**
  * AI Playground experiment.
@@ -40,7 +41,18 @@ class AI_Playground extends Abstract_Experiment {
 	 * @since n.e.x.t
 	 */
 	public function register(): void {
+		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 		add_action( 'admin_menu', array( $this, 'add_playground_screen' ) );
+	}
+
+	/**
+	 * Registers the REST routes for the AI Playground.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function register_rest_routes(): void {
+		$messages_controller = new AI_Playground_Messages_REST_Controller();
+		$messages_controller->register_routes();
 	}
 
 	/**
@@ -52,7 +64,7 @@ class AI_Playground extends Abstract_Experiment {
 		$hook_suffix = add_management_page(
 			__( 'AI Playground', 'ai' ),
 			__( 'AI Playground', 'ai' ),
-			'manage_options',
+			Capabilities_Manager::PROMPT_AI_CAPABILITY,
 			'ai-playground',
 			array( $this, 'render_playground_screen' )
 		);
@@ -106,6 +118,9 @@ class AI_Playground extends Abstract_Experiment {
 				// Enqueue AI Playground assets.
 				Asset_Loader::enqueue_script( 'playground', 'experiments/ai-playground' );
 				Asset_Loader::enqueue_style( 'playground', 'experiments/style-ai-playground' );
+
+				// Preload REST API data.
+				$this->preload_rest_api_data();
 			}
 		);
 	}
@@ -121,5 +136,33 @@ class AI_Playground extends Abstract_Experiment {
 			<?php esc_html_e( 'Loading…', 'ai' ); ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Preloads REST API data for the AI Playground.
+	 *
+	 * This avoids an extra round-trip when the admin screen is loaded.
+	 *
+	 * @since n.e.x.t
+	 */
+	private function preload_rest_api_data(): void {
+		$preload_paths = array(
+			'/ai/v1/playground-messages',
+		);
+
+		$preload_data = array_reduce(
+			$preload_paths,
+			'rest_preload_api_request',
+			array()
+		);
+
+		wp_add_inline_script(
+			'wp-api-fetch',
+			sprintf(
+				'wp.apiFetch.use( wp.apiFetch.createPreloadingMiddleware( %s ) );',
+				wp_json_encode( $preload_data )
+			),
+			'after'
+		);
 	}
 }

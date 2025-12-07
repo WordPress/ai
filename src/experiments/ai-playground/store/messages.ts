@@ -6,6 +6,7 @@ import type { StoreConfig, Action, ThunkArgs } from 'wp-store-utils';
 /**
  * WordPress dependencies
  */
+import apiFetch from '@wordpress/api-fetch';
 import { __, _x, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { uploadMedia } from '@wordpress/media-utils';
@@ -44,8 +45,6 @@ import type {
 
 const EMPTY_MESSAGE_ARRAY: AiPlaygroundMessage[] = [];
 
-const FEATURE_SLUG = 'ai-playground';
-const HISTORY_SLUG = 'default';
 const UPLOAD_ATTACHMENT_NOTICE_ID = 'UPLOAD_ATTACHMENT_NOTICE_ID';
 
 const prepareMessageForCache = (
@@ -145,23 +144,30 @@ const parsePlaygroundMessageFromCache = async (
 };
 
 const retrieveMessages = async (): Promise< AiPlaygroundMessage[] > => {
-	// TODO: Handle retrieving history.
-	return EMPTY_MESSAGE_ARRAY;
+	const messages: AiPlaygroundMessage[] = await apiFetch( {
+		path: '/ai/v1/playground-messages',
+	} );
+	if ( ! Array.isArray( messages ) ) {
+		return EMPTY_MESSAGE_ARRAY;
+	}
+	return await Promise.all( messages.map( parsePlaygroundMessageFromCache ) );
 };
 
 const storeMessages = async ( messages: AiPlaygroundMessage[] ) => {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const history = {
-		feature: FEATURE_SLUG,
-		slug: HISTORY_SLUG,
-		lastUpdated: '',
-		entries: messages.map( preparePlaygroundMessageForCache ),
-	};
-	// TODO: Handle storing history.
+	await apiFetch( {
+		path: '/ai/v1/playground-messages',
+		method: 'POST',
+		data: {
+			messages: messages.map( preparePlaygroundMessageForCache ),
+		},
+	} );
 };
 
 const clearMessages = async () => {
-	// TODO: Handle clearing history.
+	await apiFetch( {
+		path: '/ai/v1/playground-messages',
+		method: 'DELETE',
+	} );
 };
 
 const formatNewMessage = async (
