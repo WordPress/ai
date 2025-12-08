@@ -233,7 +233,7 @@ class AI_Playground_Messages_REST_Controller {
 				'attachments' => array(
 					'type'        => 'array',
 					'description' => __( 'Attachments associated with the message.', 'ai' ),
-					'items'       => array( 'type' => 'object' ),
+					'items'       => array( 'type' => array( 'object', 'null' ) ),
 				),
 			),
 			'required'   => array( 'type', 'content' ),

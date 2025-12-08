@@ -99,6 +99,9 @@ class AI_Playground extends Abstract_Experiment {
 				// Enqueue the WordPress AI Client.
 				wp_enqueue_script( 'wp-ai-client' );
 
+				// Enqueue the media library.
+				wp_enqueue_media();
+
 				// Enqueue foundational stylesheets for the UI.
 				wp_enqueue_style(
 					'ai_wp-interface',
