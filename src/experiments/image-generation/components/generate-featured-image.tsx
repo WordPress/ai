@@ -21,7 +21,6 @@ const { aiImageGenerationData } = window as any;
  * TODO:
  * - Add ability to see full image in a modal or lightbox (or link to media library view MediaUpload component)
  * - Wire up the set button (or think about auto-setting as featured image when generated)
- * - Wire up the remove button
  * - Add regenerate button and wire it up
  * - Add middleware ability to take post context and generate prompt we can pass to image gen
  * - Styling to make generated image appear separate from featured image
@@ -209,7 +208,18 @@ export default function GenerateFeaturedImage(): JSX.Element {
 							__next40pxDefaultSize
 							className="editor-post-featured-image__action"
 							onClick={ () => {
-								console.log( 'remove image' );
+								editPost( {
+									meta: {
+										...meta,
+										ai_featured_image: null,
+									},
+								} );
+								saveEditedEntityRecord(
+									'postType',
+									postType,
+									postId
+								);
+								setImage( '' );
 							} }
 						>
 							{ __( 'Remove', 'ai' ) }
