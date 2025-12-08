@@ -8,9 +8,10 @@ import React from 'react';
  */
 import apiFetch from '@wordpress/api-fetch';
 import { Button, __experimentalHStack as HStack } from '@wordpress/components';
-import { dispatch, select } from '@wordpress/data';
+import { store as coreStore } from '@wordpress/core-data';
+import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useState } from '@wordpress/element';
+import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -18,7 +19,6 @@ const { aiImageGenerationData } = window as any;
 
 /**
  * TODO:
- * - Save post meta with the generated image ID and update our code to use that
  * - Add ability to see full image in a modal or lightbox (or link to media library view MediaUpload component)
  * - Wire up the set button (or think about auto-setting as featured image when generated)
  * - Wire up the remove button
@@ -104,10 +104,41 @@ async function uploadImage( image: string ): Promise< {
  * @return {JSX.Element} The GenerateFeaturedImage component.
  */
 export default function GenerateFeaturedImage(): JSX.Element {
+	const { editPost } = useDispatch( editorStore );
+	const { saveEditedEntityRecord } = useDispatch( coreStore );
+
 	const content = select( editorStore ).getEditedPostContent();
+	const meta = select( editorStore ).getEditedPostAttribute( 'meta' );
+	const postId = select( editorStore ).getCurrentPostId();
+	const postType = select( editorStore ).getCurrentPostType();
+	const currentAiImageId = meta?.ai_featured_image;
+
+	// See if we have an existing image to display.
+	const aiImage = useSelect(
+		( selectStore ) => {
+			if ( ! currentAiImageId ) {
+				return null;
+			}
+			return selectStore( coreStore ).getEntityRecord(
+				'postType',
+				'attachment',
+				currentAiImageId
+			);
+		},
+		[ currentAiImageId ]
+	);
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 	const [ image, setImage ] = useState< string >( '' );
+
+	// Sync image state when entity record becomes available.
+	useEffect( () => {
+		if ( aiImage?.source_url ) {
+			setImage( aiImage.source_url );
+		} else if ( ! currentAiImageId ) {
+			setImage( '' );
+		}
+	}, [ aiImage, currentAiImageId ] );
 
 	/**
 	 * Handles the generate button click.
@@ -121,6 +152,13 @@ export default function GenerateFeaturedImage(): JSX.Element {
 		try {
 			const generatedImage = await generateImage( content );
 			const importedImage = await uploadImage( generatedImage );
+			editPost( {
+				meta: {
+					...meta,
+					ai_featured_image: importedImage.id,
+				},
+			} );
+			saveEditedEntityRecord( 'postType', postType, postId );
 			setImage( importedImage.url );
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
