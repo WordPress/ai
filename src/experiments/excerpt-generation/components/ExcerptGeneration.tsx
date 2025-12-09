@@ -10,7 +10,7 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
-import { executeAbility } from '@wordpress/abilities';
+import apiFetch from '@wordpress/api-fetch';
 import { Button } from '@wordpress/components';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
@@ -32,9 +32,15 @@ async function generateExcerpt(
 	postId: number,
 	content: string
 ): Promise< string > {
-	return executeAbility( 'ai/excerpt-generation', {
-		content,
-		post_id: postId,
+	return apiFetch( {
+		path: 'wp-abilities/v1/abilities/ai/excerpt-generation/run', // TODO: Use dynamic path when merged.
+		method: 'POST',
+		data: {
+			input: {
+				content,
+				post_id: postId,
+			},
+		},
 	} )
 		.then( ( response ) => {
 			if ( response && typeof response === 'string' ) {
