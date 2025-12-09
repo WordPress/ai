@@ -28,6 +28,9 @@ import { uploadImage } from '../functions/upload-image';
  * - Add middleware ability to take post context and generate prompt we can pass to image gen
  * - Styling to make generated image appear separate from featured image
  * - Look at creating functions for setting and removing the image.
+ * - Add meta to generated image to mark it as AI.
+ * - Add label below feaured image if AI generated (check if AI meta exists on that image).
+ * - When an image is generated, set that as featured image and show a regenerate icon overlay and remove generate button.
  */
 
 /**
@@ -84,7 +87,7 @@ export default function GenerateFeaturedImage(): JSX.Element {
 		);
 
 		try {
-			const generatedImage = await generateImage( content );
+			const generatedImage = await generateImage( postId, content );
 			const importedImage = await uploadImage( generatedImage );
 			editPost( {
 				meta: {

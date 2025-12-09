@@ -12,7 +12,7 @@ import { addFilter } from '@wordpress/hooks';
 /**
  * Internal dependencies
  */
-import GenerateFeaturedImage from './components/generate-featured-image';
+import GenerateFeaturedImage from './components/GenerateFeaturedImage';
 
 const { aiImageGenerationData } = window as any;
 

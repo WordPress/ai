@@ -6,12 +6,18 @@ import apiFetch from '@wordpress/api-fetch';
 const { aiImageGenerationData } = window as any;
 
 /**
- * Generates an image for the given content.
+ * Generates an image for the given post ID and content.
  *
+ * @param {number} postId  The ID of the post to generate a title for.
  * @param {string} content The content of the post to generate an image for.
  * @return {Promise<string>} A promise that resolves to the generated image.
  */
-export async function generateImage( content: string ): Promise< string > {
+export async function generateImage(
+	postId: number,
+	content: string
+): Promise< string > {
+	// TODO: add a call to generate a prompt first and then pass that to the generate image function.
+
 	return apiFetch( {
 		path: aiImageGenerationData?.generatePath ?? '',
 		method: 'POST',
