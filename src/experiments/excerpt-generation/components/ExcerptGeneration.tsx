@@ -44,7 +44,7 @@ async function generateExcerpt(
 			return '';
 		} )
 		.catch( ( error ) => {
-			throw new Error( `Error generating excerpt: ${ error.message }` );
+			throw new Error( error.message );
 		} );
 }
 
@@ -80,9 +80,43 @@ export default function ExcerptGeneration(): JSX.Element | null {
 
 		try {
 			const generatedExcerpt = await generateExcerpt( postId, content );
+
+			// Update the editor store first.
 			editPost( {
 				excerpt: generatedExcerpt,
 			} );
+
+			// Find the textarea element.
+			const excerptInput = document.querySelector(
+				'.editor-post-excerpt .editor-post-excerpt__textarea textarea'
+			) as HTMLTextAreaElement | null;
+
+			if ( ! excerptInput ) {
+				return;
+			}
+
+			// Set the value using the native setter to trigger React's change detection.
+			// This bypasses React's value tracking and forces it to recognize the change.
+			const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+				window.HTMLTextAreaElement.prototype,
+				'value'
+			)?.set;
+
+			if ( nativeInputValueSetter ) {
+				nativeInputValueSetter.call( excerptInput, generatedExcerpt );
+			} else {
+				excerptInput.value = generatedExcerpt;
+			}
+
+			// Focus the textarea.
+			excerptInput.focus();
+
+			// Dispatch change event.
+			const changeEvent = new Event( 'change', {
+				bubbles: true,
+				cancelable: true,
+			} );
+			excerptInput.dispatchEvent( changeEvent );
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
 				id: 'ai_excerpt_generation_error',
