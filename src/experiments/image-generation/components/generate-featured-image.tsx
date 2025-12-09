@@ -6,7 +6,6 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
-import apiFetch from '@wordpress/api-fetch';
 import { Button, __experimentalHStack as HStack } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
@@ -15,7 +14,11 @@ import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
-const { aiImageGenerationData } = window as any;
+/**
+ * Internal dependencies
+ */
+import { generateImage } from '../functions/generate-image';
+import { uploadImage } from '../functions/upload-image';
 
 /**
  * TODO:
@@ -24,76 +27,8 @@ const { aiImageGenerationData } = window as any;
  * - Add regenerate button and wire it up
  * - Add middleware ability to take post context and generate prompt we can pass to image gen
  * - Styling to make generated image appear separate from featured image
+ * - Look at creating functions for setting and removing the image.
  */
-
-/**
- * Generates an image for the given post ID and content.
- *
- * @param {string} content The content of the post to generate an image for.
- * @return {Promise<string>} A promise that resolves to the generated image.
- */
-async function generateImage( content: string ): Promise< string > {
-	return apiFetch( {
-		path: aiImageGenerationData?.generatePath ?? '',
-		method: 'POST',
-		data: {
-			input: {
-				prompt: content,
-			},
-		},
-	} )
-		.then( ( response ) => {
-			if ( response && typeof response === 'string' ) {
-				return response;
-			}
-
-			return '';
-		} )
-		.catch( ( error ) => {
-			throw new Error( error.message );
-		} );
-}
-
-/**
- * Uploads an image to the media library.
- *
- * @param {string} image The image to upload.
- * @return {Promise<{ id: number; url: string; title: string }>} A promise that resolves to the uploaded image data.
- */
-async function uploadImage( image: string ): Promise< {
-	id: number;
-	url: string;
-	title: string;
-} > {
-	return apiFetch( {
-		path: aiImageGenerationData?.importPath ?? '',
-		method: 'POST',
-		data: {
-			input: {
-				data: image,
-				mime_type: 'image/png',
-			},
-		},
-	} )
-		.then( ( response: any ) => {
-			if (
-				response &&
-				typeof response === 'object' &&
-				'image' in response
-			) {
-				return response.image as {
-					id: number;
-					url: string;
-					title: string;
-				};
-			}
-
-			throw new Error( 'Invalid response from image import' );
-		} )
-		.catch( ( error ) => {
-			throw new Error( error.message );
-		} );
-}
 
 /**
  * GenerateFeaturedImage component.
