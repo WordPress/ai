@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\Excerpt_Generation;
 
 use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation as Excerpt_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Asset_Loader;
 
 /**
  * Excerpt generation experiment.
@@ -39,6 +40,7 @@ class Excerpt_Generation extends Abstract_Experiment {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -54,6 +56,40 @@ class Excerpt_Generation extends Abstract_Experiment {
 				'description'   => $this->get_description(),
 				'ability_class' => Excerpt_Generation_Ability::class,
 			),
+		);
+	}
+
+	/**
+	 * Enqueues and localizes the admin script.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
+	public function enqueue_assets( string $hook_suffix ): void {
+		// Load asset in new post and edit post screens only.
+		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
+			return;
+		}
+
+		$screen = get_current_screen();
+
+		// Load the assets only if the post type supports excerpts and is not an attachment.
+		if (
+			! $screen ||
+			! post_type_supports( $screen->post_type, 'excerpt' ) ||
+			in_array( $screen->post_type, array( 'attachment' ), true )
+		) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script( 'excerpt_generation', 'experiments/excerpt-generation' );
+		Asset_Loader::localize_script(
+			'excerpt_generation',
+			'ExcerptGenerationData',
+			array(
+				'enabled' => $this->is_enabled(),
+			)
 		);
 	}
 }
