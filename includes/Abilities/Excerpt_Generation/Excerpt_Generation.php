@@ -216,7 +216,7 @@ class Excerpt_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Generate the excerpts using the AI client.
+		// Generate an excerpt using the AI client.
 		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )

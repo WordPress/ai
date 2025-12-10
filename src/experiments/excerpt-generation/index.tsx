@@ -20,10 +20,8 @@ import ExcerptGeneration from './components/ExcerptGeneration';
 
 /**
  * Plugin component that adds a generate button to the excerpt panel.
- *
- * @return {JSX.Element | null} The plugin component.
  */
-const ExcerptGenerationPlugin = () => {
+const ExcerptGenerationPlugin = (): JSX.Element | null => {
 	// __experimentalPluginPostExcerpt from @wordpress/edit-post is a function
 	// that returns the component (or null in site editor)
 	const PluginExcerptComponent = PluginPostExcerpt();
