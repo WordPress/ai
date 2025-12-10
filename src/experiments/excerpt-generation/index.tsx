@@ -17,6 +17,7 @@ import { registerPlugin } from '@wordpress/plugins';
  * Internal dependencies
  */
 import ExcerptGeneration from './components/ExcerptGeneration';
+import ExcerptInlineWrapper from './components/ExcerptInlineWrapper';
 
 /**
  * Plugin component that adds a generate button to the excerpt panel.
@@ -43,6 +44,12 @@ const ExcerptGenerationPlugin = (): JSX.Element | null => {
 	);
 };
 
+// Register plugin for the form area (after the textarea)
 registerPlugin( 'excerpt-generation', {
 	render: ExcerptGenerationPlugin,
+} );
+
+// Register plugin for the inline button (next to the excerpt link)
+registerPlugin( 'excerpt-generation-inline', {
+	render: ExcerptInlineWrapper,
 } );
