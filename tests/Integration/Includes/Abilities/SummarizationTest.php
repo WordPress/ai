@@ -124,15 +124,20 @@ class SummarizationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
-		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
+		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
+		$this->assertArrayHasKey( 'length', $schema['properties'], 'Schema should have length property' );
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['content']['sanitize_callback'], 'Content should use sanitize_text_field' );
 
-		// Verify post_id property.
-		$this->assertEquals( 'integer', $schema['properties']['post_id']['type'], 'Post ID should be integer type' );
-		$this->assertEquals( 'absint', $schema['properties']['post_id']['sanitize_callback'], 'Post ID should use absint' );
+		// Verify context property.
+		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'Context should be string type' );
+		$this->assertEquals( 'sanitize_text_field', $schema['properties']['context']['sanitize_callback'], 'Context should use sanitize_text_field' );
+
+		// Verify length property.
+		$this->assertEquals( 'enum', $schema['properties']['length']['type'], 'Length should be enum type' );
+		$this->assertEquals( array( 'short', 'medium', 'long' ), $schema['properties']['length']['enum'], 'Length should be enum with values short, medium, long' );
 	}
 
 	/**
@@ -197,11 +202,11 @@ class SummarizationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() handles post_id parameter correctly.
+	 * Test that execute_callback() handles context parameter with post ID correctly.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_execute_callback_with_post_id() {
+	public function test_execute_callback_with_context_as_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
@@ -215,7 +220,7 @@ class SummarizationTest extends WP_UnitTestCase {
 		);
 
 		$input = array(
-			'post_id' => $post_id,
+			'context' => (string) $post_id,
 		);
 
 		try {
@@ -236,17 +241,49 @@ class SummarizationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() returns error when post_id points to non-existent post.
+	 * Test that execute_callback() handles context parameter as string correctly.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_execute_callback_with_invalid_post_id() {
+	public function test_execute_callback_with_context_as_string() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$input = array(
+			'content' => 'This is some test content that needs to be summarized.',
+			'context' => 'This is additional context that should be included.',
+		);
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
+
+		// Result may be string (success) or WP_Error (if AI client unavailable).
+		if ( is_wp_error( $result ) ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
+			return;
+		}
+
+		$this->assertIsString( $result, 'Result should be a string' );
+		$this->assertNotEmpty( $result, 'Result should not be empty' );
+	}
+
+	/**
+	 * Test that execute_callback() returns error when context points to non-existent post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_with_invalid_post_id_in_context() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
 		$input  = array(
-			'post_id' => 99999, // Non-existent post ID.
+			'context' => '99999', // Non-existent post ID as string.
 		);
 		$result = $method->invoke( $this->ability, $input );
 
@@ -330,11 +367,11 @@ class SummarizationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns true for user with read_post capability.
+	 * Test that permission_callback() returns true for user with read_post capability when context is post ID.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_post_id_and_read_capability() {
+	public function test_permission_callback_with_context_as_post_id_and_read_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -351,17 +388,17 @@ class SummarizationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
 
 		$this->assertTrue( $result, 'Permission should be granted for user with read_post capability' );
 	}
 
 	/**
-	 * Test that permission_callback() returns error for user without read_post capability.
+	 * Test that permission_callback() returns error for user without read_post capability when context is post ID.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_post_id_without_read_capability() {
+	public function test_permission_callback_with_context_as_post_id_without_read_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -378,18 +415,18 @@ class SummarizationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
 	}
 
 	/**
-	 * Test that permission_callback() returns error for non-existent post.
+	 * Test that permission_callback() returns error for non-existent post when context is post ID.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_nonexistent_post_id() {
+	public function test_permission_callback_with_nonexistent_post_id_in_context() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -397,18 +434,18 @@ class SummarizationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => 99999 ) );
+		$result = $method->invoke( $this->ability, array( 'context' => '99999' ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'post_not_found', $result->get_error_code(), 'Error code should be post_not_found' );
 	}
 
 	/**
-	 * Test that permission_callback() returns false for post type without show_in_rest.
+	 * Test that permission_callback() returns false for post type without show_in_rest when context is post ID.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_post_type_without_show_in_rest() {
+	public function test_permission_callback_with_post_type_without_show_in_rest_when_context_is_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -434,7 +471,7 @@ class SummarizationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
 
 		$this->assertFalse( $result, 'Permission should be denied for post type without show_in_rest' );
 
