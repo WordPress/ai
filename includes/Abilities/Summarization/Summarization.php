@@ -123,8 +123,11 @@ class Summarization extends Abstract_Ability {
 			);
 		}
 
+		$content = $context['content'];
+		unset( $context['content'] );
+
 		// Generate the summary.
-		$result = $this->generate_summary( $context, $args['length'] );
+		$result = $this->generate_summary( $content, $context, $args['length'] );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -210,11 +213,12 @@ class Summarization extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string|array<string, string> $context The context to generate a title from.
+	 * @param string $content The content to summarize.
+	 * @param string|array<string, string> $context Additional context to use.
 	 * @param string $length The desired length of the summary.
 	 * @return string|\WP_Error The generated summary, or a WP_Error if there was an error.
 	 */
-	protected function generate_summary( $context, $length ) {
+	protected function generate_summary( string $content, $context, string $length ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -233,8 +237,10 @@ class Summarization extends Abstract_Ability {
 			);
 		}
 
+		$content = "## Content\n\n" . $content . "\n\n## Additional Context\n\n" . $context;
+
 		// Generate the summary using the AI client.
-		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
+		return AI_Client::prompt_with_wp_error( '"""' . $content . '"""' )
 			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
 			->using_temperature( 0.9 )
 			->using_model_preference( ...get_preferred_models() )
