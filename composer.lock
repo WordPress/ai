@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c55bab2aba22f24cd49e2e08a8ae0050",
+    "content-hash": "432f004d31516b4f3e60b39fc0861b03",
     "packages": [
         {
             "name": "automattic/jetpack-autoloader",
@@ -1380,16 +1380,16 @@
         },
         {
             "name": "php-stubs/wordpress-stubs",
-            "version": "v6.8.3",
+            "version": "v6.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-stubs/wordpress-stubs.git",
-                "reference": "abeb5a8b58fda7ac21f15ee596f302f2959a7114"
+                "reference": "5171cb6650e6c583a96943fd6ea0dfa3e1089a8a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-stubs/wordpress-stubs/zipball/abeb5a8b58fda7ac21f15ee596f302f2959a7114",
-                "reference": "abeb5a8b58fda7ac21f15ee596f302f2959a7114",
+                "url": "https://api.github.com/repos/php-stubs/wordpress-stubs/zipball/5171cb6650e6c583a96943fd6ea0dfa3e1089a8a",
+                "reference": "5171cb6650e6c583a96943fd6ea0dfa3e1089a8a",
                 "shasum": ""
             },
             "conflict": {
@@ -1425,9 +1425,9 @@
             ],
             "support": {
                 "issues": "https://github.com/php-stubs/wordpress-stubs/issues",
-                "source": "https://github.com/php-stubs/wordpress-stubs/tree/v6.8.3"
+                "source": "https://github.com/php-stubs/wordpress-stubs/tree/v6.9.0"
             },
-            "time": "2025-09-30T20:58:47+00:00"
+            "time": "2025-12-03T23:06:24+00:00"
         },
         {
             "name": "phpcompatibility/php-compatibility",
