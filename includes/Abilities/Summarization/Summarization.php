@@ -25,6 +25,15 @@ use function WordPress\AI\normalize_content;
 class Summarization extends Abstract_Ability {
 
 	/**
+	 * The default length of the summary.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	protected const LENGTH_DEFAULT = 'medium';
+
+	/**
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
@@ -42,6 +51,12 @@ class Summarization extends Abstract_Ability {
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Content from this post will be summarized. This overrides the content parameter if both are provided.', 'ai' ),
+				),
+				'length'  => array(
+					'type'        => 'enum',
+					'enum'        => array( 'short', 'medium', 'long' ),
+					'default'     => self::LENGTH_DEFAULT,
+					'description' => esc_html__( 'The length of the summary.', 'ai' ),
 				),
 			),
 		);
@@ -71,6 +86,7 @@ class Summarization extends Abstract_Ability {
 			array(
 				'content' => null,
 				'post_id' => null,
+				'length'  => self::LENGTH_DEFAULT,
 			),
 		);
 
@@ -108,7 +124,7 @@ class Summarization extends Abstract_Ability {
 		}
 
 		// Generate the summary.
-		$result = $this->generate_summary( $context );
+		$result = $this->generate_summary( $context, $args['length'] );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -195,9 +211,10 @@ class Summarization extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string|array<string, string> $context The context to generate a title from.
+	 * @param string $length The desired length of the summary.
 	 * @return string|\WP_Error The generated summary, or a WP_Error if there was an error.
 	 */
-	protected function generate_summary( $context ) {
+	protected function generate_summary( $context, $length ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -218,7 +235,7 @@ class Summarization extends Abstract_Ability {
 
 		// Generate the summary using the AI client.
 		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
-			->using_system_instruction( $this->get_system_instruction() )
+			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
 			->using_temperature( 0.9 )
 			->using_model_preference( ...get_preferred_models() )
 			->generate_text();
