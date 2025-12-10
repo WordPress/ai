@@ -85,6 +85,6 @@
     "format": "Automatically fix coding standards issues",
     "lint": "Check coding standards compliance",
     "test": "Run PHPUnit tests",
-    "stan": "Run static analysis with PHPStan"
+    "phpstan": "Run static analysis with PHPStan"
   }
 }
