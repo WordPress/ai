@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the Title_Generation Ability class.
+ * Integration tests for the Excerpt_Generation Ability class.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities
  */
@@ -9,15 +9,15 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
 use WP_Error;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Title_Generation\Title_Generation;
+use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
 /**
- * Test experiment for Title_Generation Ability tests.
+ * Test experiment for Excerpt_Generation Ability tests.
  *
  * @since 0.1.0
  */
-class Test_Title_Generation_Experiment extends Abstract_Experiment {
+class Test_Excerpt_Generation_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
@@ -27,9 +27,9 @@ class Test_Title_Generation_Experiment extends Abstract_Experiment {
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
-			'id'          => 'title-generation',
-			'label'       => 'Title Generation',
-			'description' => 'Generates title suggestions from content',
+			'id'          => 'excerpt-generation',
+			'label'       => 'Excerpt Generation',
+			'description' => 'Generates excerpt suggestions from content',
 		);
 	}
 
@@ -44,23 +44,23 @@ class Test_Title_Generation_Experiment extends Abstract_Experiment {
 }
 
 /**
- * Title_Generation Ability test case.
+ * Excerpt_Generation Ability test case.
  *
  * @since 0.1.0
  */
-class Title_GenerationTest extends WP_UnitTestCase {
+class Excerpt_GenerationTest extends WP_UnitTestCase {
 
 	/**
-	 * Title_Generation ability instance.
+	 * Excerpt_Generation ability instance.
 	 *
-	 * @var \WordPress\AI\Abilities\Title_Generation\Title_Generation
+	 * @var \WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Title_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Excerpt_Generation_Experiment
 	 */
 	private $experiment;
 
@@ -72,9 +72,9 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$this->experiment = new Test_Title_Generation_Experiment();
-		$this->ability    = new Title_Generation(
-			'ai/title-generation',
+		$this->experiment = new Test_Excerpt_Generation_Experiment();
+		$this->ability    = new Excerpt_Generation(
+			'ai/excerpt-generation',
 			array(
 				'label'       => $this->experiment->get_label(),
 				'description' => $this->experiment->get_description(),
@@ -124,7 +124,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
 		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
-		$this->assertArrayHasKey( 'candidates', $schema['properties'], 'Schema should have candidates property' );
+		$this->assertArrayNotHasKey( 'candidates', $schema['properties'], 'Schema should not have candidates property' );
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
@@ -133,11 +133,6 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		// Verify post_id property.
 		$this->assertEquals( 'integer', $schema['properties']['post_id']['type'], 'Post ID should be integer type' );
 		$this->assertEquals( 'absint', $schema['properties']['post_id']['sanitize_callback'], 'Post ID should use absint' );
-
-		// Verify candidates property.
-		$this->assertEquals( 'integer', $schema['properties']['candidates']['type'], 'candidates should be integer type' );
-		$this->assertEquals( 1, $schema['properties']['candidates']['minimum'], 'candidates minimum should be 1' );
-		$this->assertEquals( 10, $schema['properties']['candidates']['maximum'], 'candidates maximum should be 10' );
 	}
 
 	/**
@@ -153,12 +148,8 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$schema = $method->invoke( $this->ability );
 
 		$this->assertIsArray( $schema, 'Output schema should be an array' );
-		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
-		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
-		$this->assertArrayHasKey( 'titles', $schema['properties'], 'Schema should have titles property' );
-		$this->assertEquals( 'array', $schema['properties']['titles']['type'], 'Titles should be array type' );
-		$this->assertArrayHasKey( 'items', $schema['properties']['titles'], 'Titles should have items' );
-		$this->assertEquals( 'string', $schema['properties']['titles']['items']['type'], 'Title items should be string type' );
+		$this->assertEquals( 'string', $schema['type'], 'Schema type should be string' );
+		$this->assertArrayHasKey( 'description', $schema, 'Schema should have description' );
 	}
 
 	/**
@@ -185,8 +176,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$input = array(
-			'content'    => 'This is some test content.',
-			'candidates' => 3,
+			'content' => 'This is some test content.',
 		);
 
 		try {
@@ -203,9 +193,10 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
-		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		$this->assertCount( 3, $result['titles'], 'Should have 3 titles' );
+		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
+		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string' );
+		$this->assertNotEmpty( $result['excerpt'], 'Excerpt should not be empty' );
+		$this->assertArrayNotHasKey( 'excerpts', $result, 'Result should not have excerpts key' );
 	}
 
 	/**
@@ -227,8 +218,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		);
 
 		$input = array(
-			'post_id'    => $post_id,
-			'candidates' => 2,
+			'post_id' => $post_id,
 		);
 
 		try {
@@ -245,9 +235,9 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
-		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		$this->assertCount( 2, $result['titles'], 'Should have 2 titles' );
+		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
+		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string' );
+		$this->assertNotEmpty( $result['excerpt'], 'Excerpt should not be empty' );
 	}
 
 	/**
@@ -287,39 +277,6 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() uses default values.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_execute_callback_uses_defaults() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'execute_callback' );
-		$method->setAccessible( true );
-
-		$input = array(
-			'content' => 'Test content',
-		);
-
-		try {
-			$result = $method->invoke( $this->ability, $input );
-		} catch ( \Throwable $e ) {
-			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
-			return;
-		}
-
-		// Result may be array (success) or WP_Error (if AI client unavailable).
-		if ( is_wp_error( $result ) ) {
-			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
-			return;
-		}
-
-		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
-		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		$this->assertCount( 3, $result['titles'], 'Should have 3 titles by default' );
-	}
-
-	/**
 	 * Test that execute_callback() prioritizes post_id over content.
 	 *
 	 * @since 0.1.0
@@ -356,10 +313,82 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
-		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		// The feature's generate_titles uses the post content, verified by titles being generated.
-		$this->assertNotEmpty( $result['titles'], 'Should generate titles from post content' );
+		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
+		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string' );
+		// The feature's generate_excerpt uses the post content, verified by excerpt being generated.
+		$this->assertNotEmpty( $result['excerpt'], 'Should generate excerpt from post content' );
+	}
+
+	/**
+	 * Test that execute_callback() returns single excerpt.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_execute_callback_returns_single_excerpt() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$input = array(
+			'content' => 'This is test content for excerpt generation.',
+		);
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
+
+		// Result may be array (success) or WP_Error (if AI client unavailable).
+		if ( is_wp_error( $result ) ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
+			return;
+		}
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
+		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string, not an array' );
+		$this->assertArrayNotHasKey( 'excerpts', $result, 'Result should not have excerpts key' );
+	}
+
+	/**
+	 * Test that execute_callback() sanitizes and trims excerpt.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_execute_callback_sanitizes_and_trims_excerpt() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$input = array(
+			'content' => 'This is test content for excerpt generation.',
+		);
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
+
+		// Result may be array (success) or WP_Error (if AI client unavailable).
+		if ( is_wp_error( $result ) ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
+			return;
+		}
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
+		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string' );
+
+		// Verify excerpt doesn't start or end with quotes (should be trimmed).
+		$excerpt = $result['excerpt'];
+		$this->assertStringNotStartsWith( '"', $excerpt, 'Excerpt should not start with double quote' );
+		$this->assertStringNotEndsWith( '"', $excerpt, 'Excerpt should not end with double quote' );
+		$this->assertStringNotStartsWith( "'", $excerpt, 'Excerpt should not start with single quote' );
+		$this->assertStringNotEndsWith( "'", $excerpt, 'Excerpt should not end with single quote' );
 	}
 
 	/**
