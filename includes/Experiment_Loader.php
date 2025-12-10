@@ -106,6 +106,7 @@ final class Experiment_Loader {
 		$experiment_classes = array(
 			\WordPress\AI\Experiments\Summarization\Summarization::class,
 			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
+			\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 		);
 
 		/**

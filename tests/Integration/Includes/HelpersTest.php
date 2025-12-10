@@ -336,4 +336,3 @@ class HelpersTest extends WP_UnitTestCase {
 		remove_all_filters( 'ai_experiments_preferred_models' );
 	}
 }
-

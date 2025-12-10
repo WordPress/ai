@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Title_Generation;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiments\Title_Generation\Title_Generation;
 use WP_UnitTestCase;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiments\Title_Generation\Title_Generation;
 
 /**
  * Title_Generation test case.
