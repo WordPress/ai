@@ -47,10 +47,10 @@ class Summarization extends Abstract_Ability {
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'Content to summarize.', 'ai' ),
 				),
-				'post_id' => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'Content from this post will be summarized. This overrides the content parameter if both are provided.', 'ai' ),
+				'context' => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => esc_html__( 'Additional context to use when summarizing the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
 				),
 				'length'  => array(
 					'type'        => 'enum',
@@ -85,46 +85,44 @@ class Summarization extends Abstract_Ability {
 			$input,
 			array(
 				'content' => null,
-				'post_id' => null,
+				'context' => null,
 				'length'  => self::LENGTH_DEFAULT,
 			),
 		);
 
 		// If a post ID is provided, ensure the post exists before using its' content.
-		if ( $args['post_id'] ) {
-			$post = get_post( $args['post_id'] );
+		if ( is_numeric( $args['context'] ) ) {
+			$post = get_post( (int) $args['context'] );
 
 			if ( ! $post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['context'] ) )
 				);
 			}
 
 			// Get the post context.
-			$context = get_post_context( $args['post_id'] );
+			$context = get_post_context( $post->ID );
+			$content = $context['content'] ?? '';
+			unset( $context['content'] );
 
 			// Default to the passed in content if it exists.
 			if ( $args['content'] ) {
-				$context['content'] = normalize_content( $args['content'] );
+				$content = normalize_content( $args['content'] );
 			}
 		} else {
-			$context = array(
-				'content' => normalize_content( $args['content'] ?? '' ),
-			);
+			$content = normalize_content( $args['content'] ?? '' );
+			$context = $args['context'] ?? '';
 		}
 
 		// If we have no content, return an error.
-		if ( empty( $context['content'] ) ) {
+		if ( empty( $content ) ) {
 			return new WP_Error(
 				'content_not_provided',
 				esc_html__( 'Content is required to generate a summary.', 'ai' )
 			);
 		}
-
-		$content = $context['content'];
-		unset( $context['content'] );
 
 		// Generate the summary.
 		$result = $this->generate_summary( $content, $context, $args['length'] );
@@ -152,17 +150,17 @@ class Summarization extends Abstract_Ability {
 	 * @since x.x.x
 	 */
 	protected function permission_callback( $args ) {
-		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
+		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
 
 		if ( $post_id ) {
-			$post = get_post( $args['post_id'] );
+			$post = get_post( $post_id );
 
 			// Ensure the post exists.
 			if ( ! $post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $post_id ) )
 				);
 			}
 
@@ -237,7 +235,12 @@ class Summarization extends Abstract_Ability {
 			);
 		}
 
-		$content = "## Content\n\n" . $content . "\n\n## Additional Context\n\n" . $context;
+		$content = "## Content\n\n" . $content;
+
+		// If we have additional context, add it to the content.
+		if ( $context ) {
+			$content .= "\n\n## Additional Context\n\n" . $context;
+		}
 
 		// Generate the summary using the AI client.
 		return AI_Client::prompt_with_wp_error( '"""' . $content . '"""' )
