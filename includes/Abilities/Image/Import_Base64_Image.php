@@ -118,6 +118,14 @@ class Import_Base64_Image extends Abstract_Ability {
 			);
 		}
 
+		// Verify the data is a valid image.
+		if ( ! $file->isImage() ) {
+			return new WP_Error(
+				'invalid_data',
+				esc_html__( 'The data is not a valid image.', 'ai' )
+			);
+		}
+
 		// Get the base64 data.
 		$base64_data = $file->getBase64Data();
 
