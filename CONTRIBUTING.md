@@ -74,7 +74,7 @@ All code must be backward compatible with PHP 7.4, which is the minimum required
 
 ## WordPress Compatibility
 
-The plugin requires WordPress 6.8 or higher. Ensure all WordPress functions and hooks used are available in this version.
+The plugin requires WordPress 6.9 or higher. Ensure all WordPress functions and hooks used are available in this version.
 
 ## Branch naming conventions
 
