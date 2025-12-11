@@ -7,7 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Image\Import;
+use WordPress\AI\Abilities\Image\Import_Base64_Image as Import;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;

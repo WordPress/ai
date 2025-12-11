@@ -1,6 +1,6 @@
 <?php
 /**
- * Image import WordPress Ability implementation.
+ * Base64 encoded image import WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
@@ -15,11 +15,11 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AiClient\Files\DTO\File;
 
 /**
- * Image import WordPress Ability.
+ * Base64 encoded image import WordPress Ability.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
-class Import extends Abstract_Ability {
+class Import_Base64_Image extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
