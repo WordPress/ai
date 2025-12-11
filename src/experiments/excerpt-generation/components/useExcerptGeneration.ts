@@ -11,6 +11,8 @@ import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
 
+const { aiExcerptGenerationData } = window as any;
+
 /**
  * Generates an excerpt for the given post ID and content.
  *
@@ -23,7 +25,7 @@ async function generateExcerpt(
 	content: string
 ): Promise< string > {
 	return apiFetch( {
-		path: 'wp-abilities/v1/abilities/ai/excerpt-generation/run',
+		path: aiExcerptGenerationData?.path ?? '',
 		method: 'POST',
 		data: {
 			input: {
