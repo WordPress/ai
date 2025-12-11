@@ -1,15 +1,13 @@
 name: Pull Request Comments
 
+# Use workflow_run for privileged operations
+# Runs with write permissions and access to secrets
+# Operates on artifacts from the unprivileged build workflow
 on:
-  pull_request:
-    types: [ 'opened', 'synchronize', 'reopened', 'edited' ]
-
-# Cancels all previous workflow runs for pull requests that have not completed.
-concurrency:
-  # The concurrency group contains the workflow name and the branch name for pull requests
-  # or the commit hash for any other events.
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
-  cancel-in-progress: true
+  workflow_run:
+    workflows: ["Build Plugin Zip"]
+    types:
+      - completed
 
 # Disable permissions for all available scopes by default.
 # Any needed permissions should be configured at the job level.
@@ -17,120 +15,94 @@ permissions: {}
 
 jobs:
 
-  # Builds the plugin ZIP file.
-  build-plugin-zip:
-    name: Build plugin zip
-    uses: ./.github/workflows/build-plugin-zip.yml
-    permissions:
-      contents: read
-      pull-requests: read
-
   # Leaves a comment on a pull request with a link to test the changes in a WordPress Playground instance.
   playground-details:
     name: Comment on a pull request with Playground details
     runs-on: ubuntu-24.04
-    needs: build-plugin-zip
+    # Only run if the build workflow succeeded and was triggered by a pull_request
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      artifact-url: ${{ steps.expose.outputs.artifact-url }}
+      artifact-name: ${{ steps.expose.outputs.artifact-name }}
     permissions:
-      pull-requests: write
       contents: read
+      pull-requests: write
 
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-        with:
-          name: ${{ github.event.repository.name }}
-          path: ${{ github.event.repository.name }}
-
-      - name: Check if comment already exists
-        id: check-pr-contents
+      - name: Extract PR metadata from artifact name
+        id: pr-metadata
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
-            // Get the pull request details.
-            const { data: pr } = await github.rest.pulls.get({
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.issue.number
+              run_id: ${{ github.event.workflow_run.id }},
             });
 
-            // Define the string to search for.
-            const searchString = 'Test using WordPress Playground';
+            const artifact = artifacts.data.artifacts.find(a =>
+              a.name.startsWith("ai-plugin-zip-pr")
+            );
 
-            let foundString = false;
-
-            // Check PR body.
-            if (pr.body.includes(searchString)) {
-              foundString = true;
+            if (!artifact) {
+              throw new Error('Could not find plugin artifact');
             }
 
-            // Set outputs.
-            core.setOutput('string_found', foundString);
+            // Parse: ai-plugin-zip-pr123-abc123def...
+            const match = artifact.name.match(/^ai-plugin-zip-pr(\d+)-(.+)$/);
+            if (!match) {
+              throw new Error(`Could not parse artifact name: ${artifact.name}`);
+            }
 
-            console.log(`Search string "${searchString}" found: ${foundString}`);
+            const [, prNumber, commitSha] = match;
 
-      - name: Update PR body with a comment about testing with Playground
-        if: steps.check-pr-contents.outputs.string_found == 'false'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+            core.setOutput('pr-number', prNumber);
+            core.setOutput('commit-sha', commitSha);
+            core.setOutput('artifact-name', artifact.name);
+
+      - name: Expose built artifact
+        id: expose
+        uses: WordPress/action-wp-playground-pr-preview/.github/actions/expose-artifact-on-public-url@c8607529dac8d2bf9a1e8493865fc97cd1c3c87b # v2
         with:
-          script: |
-            const prNumber = context.issue.number;
-            const blueprint = {
-              preferredVersions: {
-                php: '7.4',
-                wp: 'latest',
+          artifact-name: ${{ steps.pr-metadata.outputs.artifact-name }}
+          artifact-filename: ai.zip
+          pr-number: ${{ steps.pr-metadata.outputs.pr-number }}
+          commit-sha: ${{ steps.pr-metadata.outputs.commit-sha }}
+          artifact-source-run-id: ${{ github.event.workflow_run.id }}
+          artifacts-to-keep: '2'
+
+      - name: Generate Playground blueprint JSON
+        id: blueprint
+        run: |
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const url = process.env.ARTIFACT_URL;
+          if (!url) {
+            throw new Error('ARTIFACT_URL is required');
+          }
+
+          const blueprint = {
+            steps: [
+              {
+                step: 'installPlugin',
+                pluginZipFile: {
+                  resource: 'url',
+                  url,
+                },
               },
-              steps: [
-                {
-                  step: 'mkdir',
-                  path: '/tmp/pr',
-                },
-                {
-                  step: 'writeFile',
-                  path: '/tmp/pr/pr.zip',
-                  data: {
-                    resource: 'url',
-                    url: `/plugin-proxy.php?org=WordPress&repo=ai&workflow=Pull%20Request%20Comments&artifact=ai&pr=${prNumber}`,
-                    caption: `Downloading AI Experiments PR ${prNumber}`,
-                  },
-                },
-                {
-                  step: 'unzip',
-                  zipPath: '/tmp/pr/pr.zip',
-                  extractToPath: '/tmp/pr',
-                },
-                {
-                  step: 'installPlugin',
-                  pluginData: {
-                    resource: 'vfs',
-                    path: '/tmp/pr/ai.zip',
-                  },
-                }
-              ]
-            };
-            const blueprintUrl = `https://playground.wordpress.net/#${encodeURI(JSON.stringify(blueprint))}`;
+            ],
+          };
 
-            // Get the current PR details.
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber
-            });
+          console.log(`blueprint=${JSON.stringify(blueprint)}`);
+          NODE
+        env:
+          ARTIFACT_URL: ${{ steps.expose.outputs.artifact-url }}
 
-            // Create the comment to append.
-            const playgroundComment = `## Test using WordPress Playground
-            The changes in this pull request can be previewed and tested using this [WordPress Playground](https://wordpress.github.io/wordpress-playground/) instance:
-
-            [Click here to test this pull request](${blueprintUrl}).`;
-
-            // Append the comment to the existing PR body.
-            const updatedBody = pr.body + '\n\n' + playgroundComment;
-
-            // Update the PR body.
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-              body: updatedBody
-            });
-
-            console.log('Successfully updated PR body with Playground comment');
+      - name: Post Playground preview button
+        uses: WordPress/action-wp-playground-pr-preview@c8607529dac8d2bf9a1e8493865fc97cd1c3c87b # v2
+        with:
+          mode: append-to-description
+          blueprint: ${{ steps.blueprint.outputs.blueprint }}
+          pr-number: ${{ steps.pr-metadata.outputs.pr-number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
