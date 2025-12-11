@@ -1,7 +1,8 @@
 name: Build Plugin Zip
 
 on:
-  workflow_call:
+  pull_request:
+    types: [ 'opened', 'synchronize', 'reopened', 'edited' ]
 
 # Disable permissions for all available scopes by default.
 # Any needed permissions should be configured at the job level.
@@ -54,5 +55,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ${{ github.event.repository.name }}
-          path: ${{ github.event.repository.name }}.zip
+          name: ai-plugin-zip-pr${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: ai.zip
+          if-no-files-found: error
