@@ -17,7 +17,6 @@ permissions: {}
 
 jobs:
   build:
-    name: Build Release Artifact
     runs-on: 'ubuntu-24.04'
     permissions:
       contents: read

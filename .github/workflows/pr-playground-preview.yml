@@ -1,4 +1,4 @@
-name: Pull Request Comments
+name: PR Playground Preview
 
 # Use workflow_run for privileged operations
 # Runs with write permissions and access to secrets
