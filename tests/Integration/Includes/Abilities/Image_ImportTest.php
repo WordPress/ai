@@ -187,7 +187,8 @@ class Image_ImportTest extends WP_UnitTestCase {
 		wp_set_current_user( $user_id );
 
 		$input = array(
-			'data' => $this->valid_base64_image,
+			'data'      => $this->valid_base64_image,
+			'mime_type' => 'image/png',
 		);
 
 		$result = $method->invoke( $this->ability, $input );
@@ -254,7 +255,8 @@ class Image_ImportTest extends WP_UnitTestCase {
 		wp_set_current_user( $user_id );
 
 		$input = array(
-			'data' => $this->valid_base64_image,
+			'data'      => $this->valid_base64_image,
+			'mime_type' => 'image/png',
 		);
 
 		$result = $method->invoke( $this->ability, $input );
