@@ -104,7 +104,7 @@ class Import_Base64_Image extends Abstract_Ability {
 				'filename'    => 'ai-generated-image-' . time(),
 				'title'       => '',
 				'description' => '',
-				'mime_type'   => 'image/png',
+				'mime_type'   => null,
 			),
 		);
 
