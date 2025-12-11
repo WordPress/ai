@@ -34,7 +34,7 @@ jobs:
             fail-fast: true
             matrix:
                 php:
-                    - '8.3' # Currently the wordpress/plugin-check-action always uses the latest PHP version anyway.
+                    - '8.4' # Currently the wordpress/plugin-check-action always uses the latest PHP version anyway.
                 wordpress: ['latest'] # Currently the wordpress/plugin-check-action only supports 'latest' or 'trunk'.
         steps:
             - uses: actions/checkout@v4
