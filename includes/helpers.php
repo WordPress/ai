@@ -174,6 +174,10 @@ function get_preferred_image_models(): array {
 			'gemini-2.5-flash-image',
 		),
 		array(
+			'google',
+			'imagen-4.0-generate-001',
+		),
+		array(
 			'openai',
 			'gpt-image-1',
 		),
