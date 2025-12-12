@@ -171,7 +171,10 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema['properties']['image'], 'Image should have properties' );
 		$this->assertArrayHasKey( 'id', $schema['properties']['image']['properties'], 'Image should have id property' );
 		$this->assertArrayHasKey( 'url', $schema['properties']['image']['properties'], 'Image should have url property' );
+		$this->assertArrayHasKey( 'filename', $schema['properties']['image']['properties'], 'Image should have filename property' );
 		$this->assertArrayHasKey( 'title', $schema['properties']['image']['properties'], 'Image should have title property' );
+		$this->assertArrayHasKey( 'description', $schema['properties']['image']['properties'], 'Image should have description property' );
+		$this->assertArrayHasKey( 'alt_text', $schema['properties']['image']['properties'], 'Image should have alt_text property' );
 	}
 
 	/**
@@ -201,7 +204,10 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result['image'], 'Image should be an array' );
 		$this->assertArrayHasKey( 'id', $result['image'], 'Image should have id' );
 		$this->assertArrayHasKey( 'url', $result['image'], 'Image should have url' );
+		$this->assertArrayHasKey( 'filename', $result['image'], 'Image should have filename' );
 		$this->assertArrayHasKey( 'title', $result['image'], 'Image should have title' );
+		$this->assertArrayHasKey( 'description', $result['image'], 'Image should have description' );
+		$this->assertArrayHasKey( 'alt_text', $result['image'], 'Image should have alt_text' );
 		$this->assertIsInt( $result['image']['id'], 'Image ID should be an integer' );
 		$this->assertIsString( $result['image']['url'], 'Image URL should be a string' );
 		$this->assertNotEmpty( $result['image']['url'], 'Image URL should not be empty' );
@@ -236,11 +242,15 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
 		$this->assertEquals( 'Custom Test Image', $result['image']['title'], 'Image title should match custom title' );
+		$this->assertStringStartsWith( 'custom-test-image', $result['image']['filename'], 'Image filename should match custom filename' );
+		$this->assertEquals( 'This is a custom test image description', $result['image']['description'], 'Image description should match custom description' );
+		$this->assertEquals( 'Custom Test Image Alt Text', $result['image']['alt_text'], 'Image alt text should match custom alt text' );
 
 		// Verify the attachment was created with the correct title.
 		$attachment = get_post( $result['image']['id'] );
 		$this->assertEquals( 'Custom Test Image', $attachment->post_title, 'Attachment title should match' );
 		$this->assertEquals( 'This is a custom test image description', $attachment->post_content, 'Attachment description should match' );
+		$this->assertEquals( 'Custom Test Image Alt Text', get_post_meta( $result['image']['id'], '_wp_attachment_image_alt', true ), 'Attachment alt text should match' );
 	}
 
 	/**
