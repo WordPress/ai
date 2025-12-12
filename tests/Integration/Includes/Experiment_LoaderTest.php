@@ -95,7 +95,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -111,10 +111,22 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 			$this->registry->has_experiment( 'title-generation' ),
 			'Title generation experiment should be registered'
 		);
+		$this->assertTrue(
+			$this->registry->has_experiment( 'image-generation' ),
+			'Image generation experiment should be registered'
+		);
+		$this->assertTrue(
+			$this->registry->has_experiment( 'excerpt-generation' ),
+			'Excerpt generation experiment should be registered'
+		);
 
-		$experiment = $this->registry->get_experiment( 'title-generation' );
-		$this->assertNotNull( $experiment, 'Title generation experiment should exist' );
-		$this->assertEquals( 'title-generation', $experiment->get_id() );
+		$title_experiment = $this->registry->get_experiment( 'title-generation' );
+		$this->assertNotNull( $title_experiment, 'Title generation experiment should exist' );
+		$this->assertEquals( 'title-generation', $title_experiment->get_id() );
+
+		$image_experiment = $this->registry->get_experiment( 'image-generation' );
+		$this->assertNotNull( $image_experiment, 'Image generation experiment should exist' );
+		$this->assertEquals( 'image-generation', $image_experiment->get_id() );
 
 		$experiment = $this->registry->get_experiment( 'excerpt-generation' );
 		$this->assertNotNull( $experiment, 'Excerpt generation experiment should exist' );
