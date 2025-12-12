@@ -7,7 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Image\Generate;
+use WordPress\AI\Abilities\Image\Generate_Image;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
@@ -74,7 +74,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->experiment = new Test_Image_Generation_Experiment();
-		$this->ability = new Generate(
+		$this->ability = new Generate_Image(
 			'ai/image-generation',
 			array(
 				'label'       => $this->experiment->get_label(),

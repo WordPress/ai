@@ -9,7 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Image_Generation;
 
-use WordPress\AI\Abilities\Image\Generate as Image_Generation_Ability;
+use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
 use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 

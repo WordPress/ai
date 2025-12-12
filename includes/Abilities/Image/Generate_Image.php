@@ -19,9 +19,9 @@ use function WordPress\AI\get_preferred_image_models;
 /**
  * Image generation WordPress Ability.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
-class Generate extends Abstract_Ability {
+class Generate_Image extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
@@ -116,7 +116,7 @@ class Generate extends Abstract_Ability {
 	 * @param string $prompt The prompt to generate an image from.
 	 * @return string|\WP_Error The generated image data, or a WP_Error if there was an error.
 	 */
-	protected function generate_image( string $prompt ) {
+	protected function generate_image( string $prompt ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
 		// Generate the image using the AI client.
 		$file = AI_Client::prompt_with_wp_error( $prompt )
 			->as_output_file_type( FileTypeEnum::inline() )
