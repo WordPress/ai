@@ -134,6 +134,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'filename', $schema['properties'], 'Schema should have filename property' );
 		$this->assertArrayHasKey( 'title', $schema['properties'], 'Schema should have title property' );
 		$this->assertArrayHasKey( 'description', $schema['properties'], 'Schema should have description property' );
+		$this->assertArrayHasKey( 'alt_text', $schema['properties'], 'Schema should have alt_text property' );
 		$this->assertArrayHasKey( 'mime_type', $schema['properties'], 'Schema should have mime_type property' );
 		$this->assertArrayHasKey( 'required', $schema, 'Schema should have required array' );
 		$this->assertContains( 'data', $schema['required'], 'Data should be required' );
@@ -146,6 +147,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertEquals( 'string', $schema['properties']['filename']['type'], 'Filename should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['title']['type'], 'Title should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['description']['type'], 'Description should be string type' );
+		$this->assertEquals( 'string', $schema['properties']['alt_text']['type'], 'Alt text should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['mime_type']['type'], 'MIME type should be string type' );
 	}
 
@@ -224,6 +226,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 			'filename'    => 'custom-test-image',
 			'title'       => 'Custom Test Image',
 			'description' => 'This is a custom test image description',
+			'alt_text'    => 'Custom Test Image Alt Text',
 			'mime_type'   => 'image/png',
 		);
 
@@ -420,4 +423,3 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
 }
-

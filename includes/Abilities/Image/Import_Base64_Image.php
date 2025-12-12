@@ -50,6 +50,11 @@ class Import_Base64_Image extends Abstract_Ability {
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'The description of the image.', 'ai' ),
 				),
+				'alt_text'    => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => esc_html__( 'The alt text of the image.', 'ai' ),
+				),
 				'mime_type'   => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
@@ -104,6 +109,7 @@ class Import_Base64_Image extends Abstract_Ability {
 				'filename'    => 'ai-generated-image-' . time(),
 				'title'       => '',
 				'description' => '',
+				'alt_text'    => '',
 				'mime_type'   => null,
 			),
 		);
@@ -144,6 +150,7 @@ class Import_Base64_Image extends Abstract_Ability {
 				'title'       => $args['title'],
 				'description' => $args['description'],
 				'filename'    => $args['filename'],
+				'alt_text'    => $args['alt_text'],
 			)
 		);
 
@@ -197,6 +204,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	 *                                   - title: The title of the image.
 	 *                                   - description: The description of the image.
 	 *                                   - filename: The filename of the image.
+	 *                                   - alt_text: The alt text of the image.
 	 * @return array<string, mixed>|\WP_Error The attachment data, or a WP_Error if there was an error.
 	 */
 	protected function import_image( string $data, array $args = array() ) {
@@ -245,9 +253,12 @@ class Import_Base64_Image extends Abstract_Ability {
 			0,
 			$args['description'],
 			array(
-				'post_title'     => $args['title'],
-				'post_content'   => $args['description'],
+				'post_title'     => sanitize_text_field( $args['title'] ),
+				'post_content'   => sanitize_text_field( $args['description'] ),
 				'post_mime_type' => $args['mime_type'],
+				'meta_input'     => array(
+					'_wp_attachment_image_alt' => sanitize_text_field( $args['alt_text'] ),
+				),
 			)
 		);
 
