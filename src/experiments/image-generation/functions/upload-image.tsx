@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
+import { __ } from '@wordpress/i18n';
 
 const { aiImageGenerationData } = window as any;
 
@@ -23,6 +24,14 @@ export async function uploadImage( image: string ): Promise< {
 			input: {
 				data: image,
 				mime_type: 'image/png',
+				title: __( 'AI Generated Image', 'ai' ),
+				description: __( 'This is an AI generated image.', 'ai' ),
+				meta: [
+					{
+						key: 'ai_generated',
+						value: '1',
+					},
+				],
 			},
 		},
 	} )

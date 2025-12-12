@@ -24,8 +24,6 @@ import { uploadImage } from '../functions/upload-image';
  * TODO:
  * - Show a regenerate icon overlay and wire it up
  * - Add middleware ability to take post context and generate prompt we can pass to image gen
- * - Add meta to generated image to mark it as AI.
- * - Add label below feaured image if AI generated (check if AI meta exists on that image).
  */
 
 /**

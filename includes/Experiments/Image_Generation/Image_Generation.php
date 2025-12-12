@@ -54,8 +54,8 @@ class Image_Generation extends Abstract_Experiment {
 	 */
 	public function register_post_meta(): void {
 		register_post_meta(
-			'post',
-			'ai_featured_image',
+			'attachment',
+			'ai_generated',
 			array(
 				'type'         => 'integer',
 				'single'       => true,

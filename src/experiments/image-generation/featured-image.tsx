@@ -8,11 +8,13 @@ import React from 'react';
  */
 import { createElement } from '@wordpress/element';
 import { addFilter } from '@wordpress/hooks';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import GenerateFeaturedImage from './components/GenerateFeaturedImage';
+import AILabel from './components/AILabel';
 
 const { aiImageGenerationData } = window as any;
 
@@ -34,7 +36,8 @@ function wrapPostFeaturedImage(
 			React.Fragment,
 			{},
 			<GenerateFeaturedImage />,
-			createElement( OriginalComponent, props )
+			createElement( OriginalComponent, props ),
+			<AILabel label={ __( 'AI Generated Featured Image', 'ai' ) } />
 		);
 	};
 }
