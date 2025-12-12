@@ -294,11 +294,14 @@ class Import_Base64_Image extends Abstract_Ability {
 			);
 		}
 
+		$attached_file = get_attached_file( $attachment_id );
+		$filename      = $attached_file ? basename( $attached_file ) : '';
+
 		// Return attachment data.
 		return array(
 			'id'          => $attachment_id,
 			'url'         => wp_get_attachment_url( $attachment_id ),
-			'filename'    => basename( get_attached_file( $attachment_id ) ),
+			'filename'    => $filename,
 			'title'       => $attachment->post_title,
 			'description' => $attachment->post_content,
 			'alt_text'    => get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ),
