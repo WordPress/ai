@@ -78,6 +78,7 @@ function get_post_context( int $post_id ): array {
 			$context = array_merge( $context, $details );
 
 			if ( isset( $context['content'] ) ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 				$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
 			}
 
@@ -172,6 +173,10 @@ function get_preferred_image_models(): array {
 		array(
 			'google',
 			'gemini-2.5-flash-image',
+		),
+		array(
+			'google',
+			'imagen-4.0-generate-001',
 		),
 		array(
 			'openai',

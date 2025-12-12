@@ -1,6 +1,6 @@
 <?php
 /**
- * Image import WordPress Ability implementation.
+ * Base64 encoded image import WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
@@ -15,11 +15,11 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AiClient\Files\DTO\File;
 
 /**
- * Image import WordPress Ability.
+ * Base64 encoded image import WordPress Ability.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
-class Import extends Abstract_Ability {
+class Import_Base64_Image extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
@@ -50,6 +50,11 @@ class Import extends Abstract_Ability {
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'The description of the image.', 'ai' ),
 				),
+				'alt_text'    => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => esc_html__( 'The alt text of the image.', 'ai' ),
+				),
 				'mime_type'   => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
@@ -73,17 +78,29 @@ class Import extends Abstract_Ability {
 					'type'        => 'object',
 					'description' => esc_html__( 'Imported image data.', 'ai' ),
 					'properties'  => array(
-						'id'    => array(
+						'id'          => array(
 							'type'        => 'integer',
 							'description' => esc_html__( 'Attachment ID.', 'ai' ),
 						),
-						'url'   => array(
+						'url'         => array(
 							'type'        => 'string',
 							'description' => esc_html__( 'Attachment URL.', 'ai' ),
 						),
-						'title' => array(
+						'filename'    => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'Attachment filename.', 'ai' ),
+						),
+						'title'       => array(
 							'type'        => 'string',
 							'description' => esc_html__( 'Attachment title.', 'ai' ),
+						),
+						'description' => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'Attachment description.', 'ai' ),
+						),
+						'alt_text'    => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'Attachment alt text.', 'ai' ),
 						),
 					),
 				),
@@ -104,7 +121,8 @@ class Import extends Abstract_Ability {
 				'filename'    => 'ai-generated-image-' . time(),
 				'title'       => '',
 				'description' => '',
-				'mime_type'   => 'image/png',
+				'alt_text'    => '',
+				'mime_type'   => null,
 			),
 		);
 
@@ -115,6 +133,14 @@ class Import extends Abstract_Ability {
 			return new WP_Error(
 				'invalid_data',
 				esc_html__( 'The data is not a valid base64 encoded string.', 'ai' )
+			);
+		}
+
+		// Verify the data is a valid image.
+		if ( ! $file->isImage() ) {
+			return new WP_Error(
+				'invalid_data',
+				esc_html__( 'The data is not a valid image.', 'ai' )
 			);
 		}
 
@@ -136,6 +162,7 @@ class Import extends Abstract_Ability {
 				'title'       => $args['title'],
 				'description' => $args['description'],
 				'filename'    => $args['filename'],
+				'alt_text'    => $args['alt_text'],
 			)
 		);
 
@@ -189,6 +216,7 @@ class Import extends Abstract_Ability {
 	 *                                   - title: The title of the image.
 	 *                                   - description: The description of the image.
 	 *                                   - filename: The filename of the image.
+	 *                                   - alt_text: The alt text of the image.
 	 * @return array<string, mixed>|\WP_Error The attachment data, or a WP_Error if there was an error.
 	 */
 	protected function import_image( string $data, array $args = array() ) {
@@ -237,9 +265,12 @@ class Import extends Abstract_Ability {
 			0,
 			$args['description'],
 			array(
-				'post_title'     => $args['title'],
-				'post_content'   => $args['description'],
+				'post_title'     => sanitize_text_field( $args['title'] ),
+				'post_content'   => sanitize_text_field( $args['description'] ),
 				'post_mime_type' => $args['mime_type'],
+				'meta_input'     => array(
+					'_wp_attachment_image_alt' => sanitize_text_field( $args['alt_text'] ),
+				),
 			)
 		);
 
@@ -263,11 +294,17 @@ class Import extends Abstract_Ability {
 			);
 		}
 
+		$attached_file = get_attached_file( $attachment_id );
+		$filename      = $attached_file ? basename( $attached_file ) : '';
+
 		// Return attachment data.
 		return array(
-			'id'    => $attachment_id,
-			'url'   => wp_get_attachment_url( $attachment_id ),
-			'title' => get_the_title( $attachment_id ),
+			'id'          => $attachment_id,
+			'url'         => wp_get_attachment_url( $attachment_id ),
+			'filename'    => $filename,
+			'title'       => $attachment->post_title,
+			'description' => $attachment->post_content,
+			'alt_text'    => get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ),
 		);
 	}
 }

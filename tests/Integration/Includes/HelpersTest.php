@@ -356,7 +356,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_image_models_returns_default_models() {
 		$result = \WordPress\AI\get_preferred_image_models();
 
-		$this->assertCount( 4, $result, 'Should have 4 preferred image models' );
+		$this->assertCount( 5, $result, 'Should have 5 preferred image models' );
 
 		// Check first model (google).
 		$this->assertIsArray( $result[0], 'First model should be an array' );
@@ -370,17 +370,23 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'google', $result[1][0], 'Second model provider should be google' );
 		$this->assertEquals( 'gemini-2.5-flash-image', $result[1][1], 'Second model name should be gemini-2.5-flash-image' );
 
-		// Check third model (openai).
+		// Check third model (google).
 		$this->assertIsArray( $result[2], 'Third model should be an array' );
 		$this->assertCount( 2, $result[2], 'Third model should have 2 elements' );
-		$this->assertEquals( 'openai', $result[2][0], 'Third model provider should be openai' );
-		$this->assertEquals( 'gpt-image-1', $result[2][1], 'Third model name should be gpt-image-1' );
+		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
+		$this->assertEquals( 'imagen-4.0-generate-001', $result[2][1], 'Third model name should be imagen-4.0-generate-001' );
 
-		// Check fourth model (openai).
+		// Check third model (openai).
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'dall-e-3', $result[3][1], 'Fourth model name should be dall-e-3' );
+		$this->assertEquals( 'gpt-image-1', $result[3][1], 'Fourth model name should be gpt-image-1' );
+
+		// Check fourth model (openai).
+		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
+		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
+		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
+		$this->assertEquals( 'dall-e-3', $result[4][1], 'Fifth model name should be dall-e-3' );
 	}
 
 	/**
@@ -403,9 +409,9 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$result = \WordPress\AI\get_preferred_image_models();
 
-		$this->assertCount( 5, $result, 'Should have 5 models after filter' );
-		$this->assertEquals( 'custom', $result[4][0], 'Fifth model provider should be custom' );
-		$this->assertEquals( 'custom-image-model', $result[4][1], 'Fifth model name should be custom-image-model' );
+		$this->assertCount( 6, $result, 'Should have 6 models after filter' );
+		$this->assertEquals( 'custom', $result[5][0], 'Sixth model provider should be custom' );
+		$this->assertEquals( 'custom-image-model', $result[5][1], 'Sixth model name should be custom-image-model' );
 
 		remove_all_filters( 'ai_experiments_preferred_image_models' );
 	}
@@ -438,4 +444,3 @@ class HelpersTest extends WP_UnitTestCase {
 		remove_all_filters( 'ai_experiments_preferred_image_models' );
 	}
 }
-
