@@ -25,23 +25,17 @@ permissions: {}
 
 jobs:
     plugin-check:
-        name: PHP ${{ matrix.php }} - WP ${{ matrix.wordpress }}
+        name: Run Plugin Check
         runs-on: 'ubuntu-24.04'
         permissions:
             contents: read
         timeout-minutes: 20
-        strategy:
-            fail-fast: true
-            matrix:
-                php:
-                    - '8.4' # Currently the wordpress/plugin-check-action always uses the latest PHP version anyway.
-                wordpress: ['latest'] # Currently the wordpress/plugin-check-action only supports 'latest' or 'trunk'.
         steps:
             - uses: actions/checkout@v4
 
             - uses: shivammathur/setup-php@v2
               with:
-                  php-version: ${{ matrix.php }}
+                  php-version: '8.3'
 
             - name: Install Composer dependencies
               run: composer install
@@ -61,7 +55,7 @@ jobs:
             - name: Run plugin check
               uses: wordpress/plugin-check-action@v1
               with:
-                  wp-version: ${{ matrix.wordpress }}
+                  wp-version: 'latest'
                   # Exclude file_type because of the dev files present in the repository.
                   exclude-checks: |
                       file_type
