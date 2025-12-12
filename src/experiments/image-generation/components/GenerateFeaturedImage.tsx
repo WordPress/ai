@@ -7,7 +7,6 @@ import React from 'react';
  * WordPress dependencies
  */
 import { Button } from '@wordpress/components';
-import { store as coreStore } from '@wordpress/core-data';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -35,12 +34,9 @@ import { uploadImage } from '../functions/upload-image';
  */
 export default function GenerateFeaturedImage(): JSX.Element {
 	const { editPost } = useDispatch( editorStore );
-	const { saveEditedEntityRecord } = useDispatch( coreStore );
 
 	const content = select( editorStore ).getEditedPostContent();
-	const meta = select( editorStore ).getEditedPostAttribute( 'meta' );
 	const postId = select( editorStore ).getCurrentPostId();
-	const postType = select( editorStore ).getCurrentPostType();
 	const featuredImage =
 		select( editorStore ).getEditedPostAttribute( 'featured_media' );
 
@@ -60,12 +56,7 @@ export default function GenerateFeaturedImage(): JSX.Element {
 			const importedImage = await uploadImage( generatedImage );
 			editPost( {
 				featured_media: importedImage.id,
-				meta: {
-					...meta,
-					ai_featured_image: importedImage.id,
-				},
 			} );
-			saveEditedEntityRecord( 'postType', postType, postId );
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
 				id: 'ai_image_generation_error',
