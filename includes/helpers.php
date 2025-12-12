@@ -78,6 +78,7 @@ function get_post_context( int $post_id ): array {
 			$context = array_merge( $context, $details );
 
 			if ( isset( $context['content'] ) ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 				$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
 			}
 
@@ -152,6 +153,48 @@ function get_preferred_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
 	return (array) apply_filters( 'ai_experiments_preferred_models', $preferred_models );
+}
+
+/**
+ * Returns the preferred image models.
+ *
+ * @since x.x.x
+ *
+ * @return array<int, array{string, string}> The preferred image models.
+ */
+function get_preferred_image_models(): array {
+	$preferred_models = array(
+		array(
+			'google',
+			'gemini-3-pro-image-preview',
+		),
+		array(
+			'google',
+			'gemini-2.5-flash-image',
+		),
+		array(
+			'google',
+			'imagen-4.0-generate-001',
+		),
+		array(
+			'openai',
+			'gpt-image-1',
+		),
+		array(
+			'openai',
+			'dall-e-3',
+		),
+	);
+
+	/**
+	 * Filters the preferred image models.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred image models.
+	 * @return array<int, array{string, string}> The filtered preferred image models.
+	 */
+	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
 }
 
 /**

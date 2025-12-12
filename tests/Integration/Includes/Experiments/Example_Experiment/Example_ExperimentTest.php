@@ -60,7 +60,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_example-experiment_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
