@@ -48,7 +48,7 @@
 		Tests for WordPress version compatibility.
 	https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards/wiki/Customizable-sniff-properties
 	-->
-	<config name="minimum_wp_version" value="6.8" />
+	<config name="minimum_wp_version" value="6.9" />
 
 	<!--
 		Load WordPress VIP Go standards
@@ -78,14 +78,6 @@
 		@see: https://github.com/PHPCompatibility/PHPCompatibilityWP
 	-->
 	<rule ref="PHPCompatibilityWP" />
-
-	<!--
-		Checks from PCP
-		@see https://github.com/wordpress/plugin-check
-	-->
-	<rule
-		ref="./vendor/wpackagist-plugin/plugin-check/vendor/plugin-check/phpcs-sniffs/PluginCheck/ruleset.xml" />
-	<rule ref="./vendor/wpackagist-plugin/plugin-check/phpcs-rulesets/plugin-check.ruleset.xml" />
 
 	<!-- Check for superfluous whitespace - These get suppressed in VIP-GO.-->
 	<rule ref="Squiz.WhiteSpace.SuperfluousWhitespace">
@@ -182,13 +174,6 @@
 		</properties>
 	</rule>
 	<rule ref="SlevomatCodingStandard.Variables.UselessVariable" />
-
-	<!--
-		Ignore Rules for Tests
-	-->
-	<rule ref="PluginCheck.CodeAnalysis.Offloading.OffloadedContent">
-		<exclude-pattern>/tests/*</exclude-pattern>
-	</rule>
 
 	<!-- Do not apply filename rules for unit tests -->
 	<rule ref="WordPress.Files.FileName.NotHyphenatedLowercase">

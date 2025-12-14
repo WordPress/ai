@@ -32,15 +32,23 @@ class Asset_Loader {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $handle The handle for the script.
-	 * @param string $file_name The script file name.
+	 * @param string                    $handle     The handle for the script.
+	 * @param string                    $file_name  The script file name.
+	 * @param array<string, mixed>|null $asset_data Optional asset metadata (dependencies and version).
 	 */
-	public static function enqueue_script( string $handle, string $file_name ): void {
+	public static function enqueue_script( string $handle, string $file_name, ?array $asset_data = null ): void {
 		$script_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.js';
 		$script_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.js';
-		$script_asset_path = $script_path . '.asset.php';
+		$script_asset_path = substr( $script_path, 0, -3 ) . '.asset.php';
 
-		if ( file_exists( $script_asset_path ) ) {
+		if ( is_array( $asset_data ) ) {
+			if ( ! isset( $asset_data['dependencies'] ) ) {
+				$asset_data['dependencies'] = array();
+			}
+			if ( ! isset( $asset_data['version'] ) ) {
+				$asset_data['version'] = filemtime( $script_path );
+			}
+		} elseif ( file_exists( $script_asset_path ) ) {
 			$asset_data = require $script_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 		} else {
 			$asset_data = array(
@@ -54,7 +62,7 @@ class Asset_Loader {
 			$script_url,
 			$asset_data['dependencies'],
 			$asset_data['version'],
-			true
+			array( 'strategy' => 'defer' )
 		);
 	}
 
@@ -63,15 +71,23 @@ class Asset_Loader {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $handle The handle for the style.
-	 * @param string $file_name The script file name.
+	 * @param string                    $handle     The handle for the style.
+	 * @param string                    $file_name  The script file name.
+	 * @param array<string, mixed>|null $asset_data Optional asset metadata (dependencies and version).
 	 */
-	public static function enqueue_style( string $handle, string $file_name ): void {
+	public static function enqueue_style( string $handle, string $file_name, ?array $asset_data = null ): void {
 		$style_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.css';
 		$style_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.css';
-		$style_asset_path = $style_path . '.asset.php';
+		$style_asset_path = substr( $style_path, 0, -4 ) . '.asset.php';
 
-		if ( file_exists( $style_asset_path ) ) {
+		if ( is_array( $asset_data ) ) {
+			if ( ! isset( $asset_data['dependencies'] ) ) {
+				$asset_data['dependencies'] = array();
+			}
+			if ( ! isset( $asset_data['version'] ) ) {
+				$asset_data['version'] = filemtime( $style_path );
+			}
+		} elseif ( file_exists( $style_asset_path ) ) {
 			$asset_data = require $style_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 		} else {
 			$asset_data = array(
@@ -86,6 +102,17 @@ class Asset_Loader {
 			array(),
 			$asset_data['version']
 		);
+		wp_style_add_data( 'ai_' . $handle, 'path', $style_path );
+
+		$rtl_style_path = str_replace( '.css', '-rtl.css', $style_path );
+		if ( ! file_exists( $rtl_style_path ) ) {
+			return;
+		}
+		wp_style_add_data( 'ai_' . $handle, 'rtl', 'replace' );
+		if ( ! is_rtl() ) {
+			return;
+		}
+		wp_style_add_data( 'ai_' . $handle, 'path', $rtl_style_path );
 	}
 
 	/**

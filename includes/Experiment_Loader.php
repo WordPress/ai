@@ -104,8 +104,9 @@ final class Experiment_Loader {
 	 */
 	private function get_default_experiments(): array {
 		$experiment_classes = array(
-			\WordPress\AI\Experiments\Example_Experiment\Example_Experiment::class,
+			\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
 			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
+			\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 			\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
 			\WordPress\AI\Experiments\Post_Table_Bulk\Post_Table_Bulk::class,
 			\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,

@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Includes;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_UnitTestCase;
+use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Registry;
 
 /**
  * Test experiment for loader tests.
@@ -59,14 +59,14 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	/**
 	 * Experiment registry instance.
 	 *
-	 * @var Experiment_Registry
+	 * @var \WordPress\AI\Experiment_Registry
 	 */
 	private $registry;
 
 	/**
 	 * Experiment loader instance.
 	 *
-	 * @var Experiment_Loader
+	 * @var \WordPress\AI\Experiment_Loader
 	 */
 	private $loader;
 
@@ -95,7 +95,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -107,51 +107,37 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	public function test_register_default_experiments() {
 		$this->loader->register_default_experiments();
 
-		$this->assertTrue(
-			$this->registry->has_experiment( 'example-experiment' ),
-			'Example experiment should be registered'
+		$expected_experiments = array(
+			'title-generation',
+			'image-generation',
+			'excerpt-generation',
+			'type-ahead',
+			'post-table-bulk',
+			'alt-text-generation',
+			'comment-moderation',
+			'mcp',
+			'ai-request-logging',
+			'extended-providers',
+			'writing-assistant',
 		);
 
-		$this->assertTrue(
-			$this->registry->has_experiment( 'title-generation' ),
-			'Title generation experiment should be registered'
-		);
+		foreach ( $expected_experiments as $experiment_id ) {
+			$this->assertTrue(
+				$this->registry->has_experiment( $experiment_id ),
+				sprintf( 'Experiment %s should be registered', $experiment_id )
+			);
 
-		$experiment = $this->registry->get_experiment( 'example-experiment' );
-		$this->assertNotNull( $experiment, 'Example experiment should exist' );
-		$this->assertEquals( 'example-experiment', $experiment->get_id() );
-
-		$experiment = $this->registry->get_experiment( 'title-generation' );
-		$this->assertNotNull( $experiment, 'Title generation experiment should exist' );
-		$this->assertEquals( 'title-generation', $experiment->get_id() );
-
-		$this->assertTrue(
-			$this->registry->has_experiment( 'alt-text-generation' ),
-			'Alt text generation experiment should be registered'
-		);
-
-		$experiment = $this->registry->get_experiment( 'alt-text-generation' );
-		$this->assertNotNull( $experiment, 'Alt text generation experiment should exist' );
-		$this->assertEquals( 'alt-text-generation', $experiment->get_id() );
-
-		$this->assertTrue(
-			$this->registry->has_experiment( 'type-ahead' ),
-			'Type ahead experiment should be registered'
-		);
-
-		$experiment = $this->registry->get_experiment( 'type-ahead' );
-		$this->assertNotNull( $experiment, 'Type ahead experiment should exist' );
-		$this->assertEquals( 'type-ahead', $experiment->get_id() );
-
-		$this->assertTrue(
-			$this->registry->has_experiment( 'post-table-bulk' ),
-			'Post table bulk experiment should be registered'
-		);
-
-		$experiment = $this->registry->get_experiment( 'post-table-bulk' );
-		$this->assertNotNull( $experiment, 'Post table bulk experiment should exist' );
-		$this->assertEquals( 'post-table-bulk', $experiment->get_id() );
-
+			$experiment = $this->registry->get_experiment( $experiment_id );
+			$this->assertNotNull(
+				$experiment,
+				sprintf( 'Experiment %s should exist', $experiment_id )
+			);
+			$this->assertEquals(
+				$experiment_id,
+				$experiment->get_id(),
+				sprintf( 'Experiment %s should have expected id', $experiment_id )
+			);
+		}
 	}
 
 	/**
@@ -262,7 +248,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 
 		add_action(
 			'ai_experiments_initialized',
-			function () use ( &$hook_fired ) {
+			static function () use ( &$hook_fired ) {
 				$hook_fired = true;
 			}
 		);

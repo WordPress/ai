@@ -181,13 +181,13 @@ class Settings_Page {
 				if ( ! has_ai_credentials() ) {
 					$error_message = sprintf(
 						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Before you can enable experiments, you need to ensure you have one or more AI credentials set <a href="%s">here</a>', 'ai' ),
+						__( 'Before you can enable experiments, you need to ensure you have one or more AI credentials set <a href="%s">here</a>.', 'ai' ),
 						admin_url( 'options-general.php?page=wp-ai-client' )
 					);
 				} else {
 					$error_message = sprintf(
 						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Before you can enable experiments, you need to ensure you have set valid AI credentials <a href="%s">here</a>', 'ai' ),
+						__( 'Before you can enable experiments, you need to ensure you have set valid AI credentials <a href="%s">here</a>.', 'ai' ),
 						admin_url( 'options-general.php?page=wp-ai-client' )
 					);
 				}
@@ -197,6 +197,7 @@ class Settings_Page {
 			}
 			?>
 
+			<?php settings_errors( 'ai_experiments' ); ?>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( Settings_Registration::OPTION_GROUP );

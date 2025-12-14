@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'AI_EXPERIMENTS_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_VERSION', '0.1.0' );
+	define( 'AI_EXPERIMENTS_VERSION', '0.1.1' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_FILE' ) ) {
 	define( 'AI_EXPERIMENTS_PLUGIN_FILE', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR . 'ai.php' : '' );
@@ -44,7 +44,7 @@ if ( ! defined( 'AI_EXPERIMENTS_MIN_PHP_VERSION' ) ) {
 	define( 'AI_EXPERIMENTS_MIN_PHP_VERSION', '7.4' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_MIN_WP_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '6.8' );
+	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '6.9' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
 	define( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
@@ -105,9 +105,7 @@ function check_php_version(): bool {
  * @return bool True if WordPress version is sufficient, false otherwise.
  */
 function check_wp_version(): bool {
-	global $wp_version;
-
-	if ( version_compare( $wp_version, AI_EXPERIMENTS_MIN_WP_VERSION, '<' ) ) {
+	if ( ! is_wp_version_compatible( AI_EXPERIMENTS_MIN_WP_VERSION ) ) {
 		add_action(
 			'admin_notices',
 			static function () {
@@ -166,6 +164,28 @@ function register_admin_settings(): void {
 }
 
 /**
+ * Adds action links to the plugin list table.
+ *
+ * This adds a "Settings" link to the plugin's action links on the Plugins page.
+ *
+ * @since 0.1.1
+ *
+ * @param array<string> $links Existing action links.
+ * @return array<string> Modified action links.
+ */
+function plugin_action_links( array $links ): array {
+	$settings_link = sprintf(
+		'<a href="%1$s">%2$s</a>',
+		admin_url( 'options-general.php?page=ai-experiments' ),
+		esc_html__( 'Settings', 'ai' )
+	);
+
+	array_unshift( $links, $settings_link );
+
+	return $links;
+}
+
+/**
  * Loads the plugin after checking requirements.
  *
  * @since 0.1.0
@@ -191,6 +211,9 @@ function load(): void {
 	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php';
 
 	$loaded = true;
+
+	// Add plugin action links.
+	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
 	// Hook experiment initialization early on init so abilities register before discovery.
 	add_action( 'init', __NAMESPACE__ . '\initialize_experiments', 1 );

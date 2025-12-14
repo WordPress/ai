@@ -1,6 +1,6 @@
 {
   "name": "ai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "AI experiments and capabilities for WordPress.",
   "license": "GPL-2.0-or-later",
@@ -25,7 +25,7 @@
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",
     "lint:php:stan": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script stan",
     "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit -c phpunit.xml.dist",
-    "format": "wp-scripts format",
+    "format:js": "wp-scripts format ./src",
     "lint:js": "wp-scripts lint-js"
   },
   "devDependencies": {
