@@ -27,6 +27,7 @@ class Image_Generation extends Abstract_Experiment {
 	 * @since x.x.x
 	 * @var string
 	 */
+	// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 	private static string $prompt_generation_purpose = <<<'INSTRUCTION'
 Analyze the information below and generate a single, self-contained image generation prompt suitable for use with an image generation model.
 

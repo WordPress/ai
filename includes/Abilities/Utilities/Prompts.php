@@ -26,6 +26,7 @@ class Prompts {
 	 * @since x.x.x
 	 * @var string
 	 */
+	// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 	private static string $prompt_generation_system_instruction = <<<'INSTRUCTION'
 You are a helpful assistant that generates LLM-ready system prompts for a specific downstream purpose.
 

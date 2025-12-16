@@ -118,9 +118,12 @@ class Generate_Image extends Abstract_Ability {
 	 */
 	protected function generate_image( string $prompt ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
 		// Increase the default timeout as image generation can take a while.
-		add_filter( 'wp_ai_client_default_request_timeout', static function () {
-			return 90;
-		} );
+		add_filter(
+			'wp_ai_client_default_request_timeout',
+			static function () {
+				return 90;
+			}
+		);
 
 		// Generate the image using the AI client.
 		$file = AI_Client::prompt_with_wp_error( $prompt )
