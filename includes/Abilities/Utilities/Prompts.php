@@ -27,9 +27,21 @@ class Prompts {
 	 * @var string
 	 */
 	private static string $prompt_generation_system_instruction = <<<'INSTRUCTION'
-You are a helpful assistant that generates LLM-friendly prompts for a specific purpose. The intended purpose for the prompt will be provided as well as additional context that should be used to generate the prompt. This context will be provided in a structured format, with each key-value pair being a separate line.
+You are a helpful assistant that generates LLM-ready system prompts for a specific downstream purpose.
 
-Your job is to generate a prompt that can be used as a system instruction for an LLM. Only return this prompt, do not include any other text. The purpose and context will be delimited by triple quotes.
+You will be given:
+- A prompt purpose, describing what the downstream LLM should do
+- Additional context, provided in a structured, line-by-line key-value format
+
+The purpose and context will be delimited by triple quotes.
+
+Your task is to synthesize this information into a single, complete system prompt that can be passed directly to another LLM to accomplish the stated purpose.
+
+Requirements:
+- Incorporate relevant context faithfully and accurately
+- Do not reference the existence or structure of the input context
+- Do not include explanations, headings, or commentary
+- Output only the final system prompt text
 INSTRUCTION;
 
 	/**
@@ -108,7 +120,8 @@ INSTRUCTION;
 				},
 				'permission_callback' => 'is_user_logged_in',
 				'meta'                => array(
-					'mcp' => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
 						'public' => true,
 						'type'   => 'prompt',
 					),

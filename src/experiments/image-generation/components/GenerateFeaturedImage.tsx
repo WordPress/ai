@@ -20,12 +20,6 @@ import { generateImage } from '../functions/generate-image';
 import { uploadImage } from '../functions/upload-image';
 
 /**
- * TODO:
- * - Show a regenerate icon overlay and wire it up
- * - Add middleware ability to take post context and generate prompt we can pass to image gen
- */
-
-/**
  * GenerateFeaturedImage component.
  *
  * Provides a button to generate a featured image.

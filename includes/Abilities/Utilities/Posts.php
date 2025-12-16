@@ -154,7 +154,8 @@ class Posts {
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(
-					'mcp' => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
 						'public' => true,
 						'type'   => 'tool',
 					),
