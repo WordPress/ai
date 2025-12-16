@@ -42,6 +42,10 @@ export default function GenerateFeaturedImage(): JSX.Element {
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 
+	const buttonLabel = featuredImage
+		? __( 'Generate new featured image', 'ai' )
+		: __( 'Generate featured image', 'ai' );
+
 	/**
 	 * Handles the generate button click.
 	 */
@@ -68,22 +72,18 @@ export default function GenerateFeaturedImage(): JSX.Element {
 	};
 
 	return (
-		<>
-			{ ! featuredImage && (
-				<div className="ai-featured-image editor-post-featured-image">
-					<div className="ai-featured-image__container editor-post-featured-image__container">
-						<Button
-							__next40pxDefaultSize
-							className="ai-generate-featured-image editor-post-featured-image__toggle"
-							onClick={ handleGenerate }
-							disabled={ isGenerating }
-							isBusy={ isGenerating }
-						>
-							{ __( 'Generate featured image', 'ai' ) }
-						</Button>
-					</div>
-				</div>
-			) }
-		</>
+		<div className="ai-featured-image editor-post-featured-image">
+			<div className="ai-featured-image__container editor-post-featured-image__container">
+				<Button
+					__next40pxDefaultSize
+					className="ai-generate-featured-image editor-post-featured-image__toggle"
+					onClick={ handleGenerate }
+					disabled={ isGenerating }
+					isBusy={ isGenerating }
+				>
+					{ buttonLabel }
+				</Button>
+			</div>
+		</div>
 	);
 }
