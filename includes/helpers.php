@@ -180,6 +180,10 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
+			'gpt-image-1.5',
+		),
+		array(
+			'openai',
 			'gpt-image-1',
 		),
 		array(
