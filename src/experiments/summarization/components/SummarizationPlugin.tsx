@@ -11,13 +11,61 @@ import React from 'react';
  * WordPress dependencies
  */
 import { Button, Flex, FlexItem } from '@wordpress/components';
-import { PluginPostStatusInfo } from '@wordpress/editor';
+import { dispatch, select } from '@wordpress/data';
+import { store as editorStore, PluginPostStatusInfo } from '@wordpress/editor';
+import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { update } from '@wordpress/icons';
+import { store as noticesStore } from '@wordpress/notices';
+
+/**
+ * Internal dependencies
+ */
+import { generateSummary } from '../functions/generate-summary';
+
+const { aiSummarizationData } = window as any;
 
 /**
  * Summarization plugin component.
  */
 export default function SummarizationPlugin() {
+	const [ isSummarizing, setIsSummarizing ] = useState< boolean >( false );
+	const [ summary, setSummary ] = useState< string >( '' );
+	const buttonLabel = summary
+		? __( 'Re-generate AI Summary', 'ai' )
+		: __( 'Generate AI Summary', 'ai' );
+
+	// Ensure the experiment is enabled.
+	if ( ! aiSummarizationData?.enabled ) {
+		return null;
+	}
+
+	const postId = select( editorStore ).getCurrentPostId();
+	const content = select( editorStore ).getEditedPostContent();
+
+	/**
+	 * Handles the summarization button click.
+	 */
+	const handleSummarize = async () => {
+		setIsSummarizing( true );
+		( dispatch( noticesStore ) as any ).removeNotice(
+			'ai_summarization_error'
+		);
+
+		try {
+			const generatedSummary = await generateSummary( postId, content );
+			setSummary( generatedSummary );
+		} catch ( error: any ) {
+			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
+				id: 'ai_summarization_error',
+				isDismissible: true,
+			} );
+			setSummary( '' );
+		} finally {
+			setIsSummarizing( false );
+		}
+	};
+
 	return (
 		<PluginPostStatusInfo>
 			<Flex
@@ -25,15 +73,22 @@ export default function SummarizationPlugin() {
 				className="ai-summarization-plugin-container"
 				gap={ 2 }
 			>
+				{ summary && (
+					<FlexItem>
+						<span className="summary">{ summary }</span>
+					</FlexItem>
+				) }
 				<FlexItem>
 					<Button
 						variant="secondary"
-						onClick={ () => {
-							console.log( 'Generate AI Summary' );
-						} }
+						label={ buttonLabel }
+						icon={ update }
+						onClick={ handleSummarize }
+						disabled={ isSummarizing }
+						isBusy={ isSummarizing }
 						__next40pxDefaultSize
 					>
-						{ __( 'Generate AI Summary', 'ai' ) }
+						{ buttonLabel }
 					</Button>
 				</FlexItem>
 				<FlexItem>
