@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\Summarization;
 
 use WordPress\AI\Abilities\Summarization\Summarization as Summarization_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Asset_Loader;
 
 /**
  * Content summarization experiment.
@@ -41,6 +42,7 @@ class Summarization extends Abstract_Experiment {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -56,6 +58,30 @@ class Summarization extends Abstract_Experiment {
 				'description'   => $this->get_description(),
 				'ability_class' => Summarization_Ability::class,
 			),
+		);
+	}
+
+	/**
+	 * Enqueues and localizes the admin script.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
+	public function enqueue_assets( string $hook_suffix ): void {
+		// Load asset in new post and edit post screens only.
+		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization' );
+		Asset_Loader::localize_script(
+			'summarization',
+			'SummarizationData',
+			array(
+				'enabled' => $this->is_enabled(),
+				'path'    => Summarization_Ability::path( $this->get_id() ),
+			)
 		);
 	}
 }
