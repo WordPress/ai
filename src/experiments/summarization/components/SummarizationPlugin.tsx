@@ -30,7 +30,6 @@ const { aiSummarizationData } = window as any;
 /**
  * TODO:
  * - Find way to persist summary between refreshes. We need to check if a summary block exists.
- * - Block variation maybe?
  * - Find a way to add a regenerate button to this block.
  * - Replace block when a regeneration button is clicked.
 */
@@ -77,7 +76,7 @@ export default function SummarizationPlugin() {
 			const generatedSummary = await generateSummary( postId, content );
 			setSummary( generatedSummary );
 
-			// Store the summary in the post meta.
+			// Store the summary in post meta (will require a manual save).
 			editPost( {
 				meta: {
 					...meta,
@@ -89,6 +88,7 @@ export default function SummarizationPlugin() {
 			const summaryBlock = createBlock( 'core/paragraph', {
 				content: generatedSummary,
 				className: 'ai-summarization-summary',
+				aiGeneratedSummary: true,
 			} );
 			dispatch( blockEditorStore ).insertBlock( summaryBlock, 0 );
 		} catch ( error: any ) {
