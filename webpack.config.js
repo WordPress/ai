@@ -29,6 +29,11 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'admin/mcp-server': path.resolve(
+			process.cwd(),
+			'src/admin/mcp-server',
+			'index.tsx'
+		),
 	},
 
 	plugins: [

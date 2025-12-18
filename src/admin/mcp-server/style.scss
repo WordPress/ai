@@ -1,0 +1,228 @@
+@use '../dataviews';
+@use '../common';
+
+.ai-mcp-server {
+	&__layout {
+		display: grid;
+		grid-template-columns: minmax( 0, 2fr ) minmax( 280px, 1fr );
+		gap: 24px;
+		align-items: flex-start;
+
+		@media ( max-width: 1200px ) {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	&__main,
+	&__sidebar {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+	}
+
+	&__server-description {
+		margin: 0;
+		color: #50575e;
+	}
+
+	&__header-switcher {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin-left: 16px;
+		flex-wrap: wrap;
+
+		.ai-mcp-server__status-text strong {
+			font-size: 12px;
+			font-weight: 500;
+		}
+	}
+
+	&__header-server-name {
+		font-size: 16px;
+		font-weight: 600;
+		color: #1e1e1e;
+	}
+
+	&__header-icon-button.components-button {
+		min-width: 28px;
+		height: 28px;
+		padding: 0;
+		border-radius: 999px;
+	}
+
+	&__header-dropdown {
+		.components-popover__content {
+			min-width: 220px;
+		}
+
+		.components-menu-item.is-selected {
+			font-weight: 600;
+		}
+	}
+
+	&__card {
+		code {
+			word-break: break-all;
+		}
+
+		// Card body flex layout for non-dataviews cards
+		.components-card__body:not(:has(> .dataviews-wrapper)) {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			align-items: flex-start;
+
+			// Allow button rows and form elements to stretch
+			.ai-mcp-server__button-row,
+			.components-select-control,
+			.components-textarea-control {
+				align-self: stretch;
+			}
+		}
+	}
+
+	&__card-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		width: 100%;
+
+		@media ( max-width: 600px ) {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+	}
+
+	&__server-name {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex: 1;
+		min-width: 0;
+
+		h3 {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 600;
+		}
+	}
+
+	&__status-text {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	&__status-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 999px;
+		background-color: #949494;
+
+		&--running {
+			background-color: #1a7f37;
+		}
+
+		&--disabled {
+			background-color: #d63638;
+		}
+	}
+
+	&__field {
+		margin-bottom: 16px;
+
+		label {
+			display: block;
+			font-weight: 600;
+			margin-bottom: 4px;
+		}
+	}
+
+	&__field-row {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		flex-wrap: wrap;
+
+		code {
+			flex: 1;
+			background: #f6f7f7;
+			padding: 6px 8px;
+			border-radius: 4px;
+		}
+	}
+
+	&__hint {
+		margin-top: 0;
+		color: #50575e;
+	}
+
+	&__button-row {
+		display: flex;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+
+	&__tools {
+		margin-bottom: 24px;
+
+		.dataviews__layout {
+			font-size: 13px;
+		}
+
+		.ai-mcp-server__tool-info {
+			max-width: 100%;
+			overflow: hidden;
+
+			strong {
+				display: block;
+				font-weight: 600;
+				margin-bottom: 2px;
+				line-height: 1.4;
+				color: #1e1e1e;
+			}
+
+			.description {
+				margin: 2px 0 4px;
+				color: #50575e;
+				font-size: 12px;
+				line-height: 1.4;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+				word-break: break-word;
+			}
+
+			code {
+				display: inline-block;
+				background: #f0f0f0;
+				padding: 2px 6px;
+				border-radius: 3px;
+				font-size: 11px;
+				color: #50575e;
+				word-break: break-all;
+			}
+		}
+	}
+
+	&__loading {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	&__test-result {
+		margin-top: 16px;
+
+		pre {
+			background: #f6f7f7;
+			padding: 12px;
+			border-radius: 4px;
+			max-height: 160px;
+			overflow: auto;
+		}
+	}
+}
