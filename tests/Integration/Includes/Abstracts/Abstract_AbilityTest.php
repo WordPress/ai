@@ -314,18 +314,18 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$test_content = <<<'PHP'
 <?php
 // Process the length variable if provided.
-$length_desc = 'medium length';
+$wpai_length_desc = 'medium length';
 if ( isset( $length ) ) {
 	if ( 'short' === $length ) {
-		$length_desc = 'short length';
+		$wpai_length_desc = 'short length';
 	} elseif ( 'long' === $length ) {
-		$length_desc = 'long length';
+		$wpai_length_desc = 'long length';
 	}
 }
 
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 return <<<INSTRUCTION
-You are a test assistant. The length is {$length_desc} and the tone is {$tone}. Max words: {$max_words}.
+You are a test assistant. The length is {$wpai_length_desc} and the tone is {$tone}. Max words: {$max_words}.
 INSTRUCTION;
 PHP;
 		file_put_contents( $test_file, $test_content );

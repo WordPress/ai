@@ -242,7 +242,7 @@ class Import_Base64_Image extends Abstract_Ability {
 		$bytes_written = file_put_contents( $temp_file, $decoded_data ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
 
 		if ( false === $bytes_written ) {
-			@unlink( $temp_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Generic.PHP.NoSilencedErrors.Forbidden, WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink
+			wp_delete_file( $temp_file );
 			return new WP_Error(
 				'write_failed',
 				esc_html__( 'Failed to write image data to temporary file.', 'ai' )
@@ -276,7 +276,7 @@ class Import_Base64_Image extends Abstract_Ability {
 
 		// Clean up temp file if it still exists.
 		if ( file_exists( $temp_file ) ) {
-			@unlink( $temp_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Generic.PHP.NoSilencedErrors.Forbidden, WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink
+			wp_delete_file( $temp_file );
 		}
 
 		// Ensure the import worked.
