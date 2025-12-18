@@ -29,7 +29,6 @@ use function apply_filters;
 use function class_exists;
 use function esc_attr;
 use function esc_html;
-use function esc_html_e;
 use function get_option;
 use function is_string;
 use function register_setting;
@@ -45,6 +44,12 @@ use function wp_kses_post;
  * experiment is enabled.
  */
 class Extended_Providers extends Abstract_Experiment {
+
+	/**
+	 * Default provider classes to register.
+	 *
+	 * @var array<int, class-string>
+	 */
 	private const DEFAULT_PROVIDER_CLASSES = array(
 		CloudflareWorkersAiProvider::class,
 		CohereProvider::class,
@@ -56,6 +61,12 @@ class Extended_Providers extends Abstract_Experiment {
 		OllamaProvider::class,
 		OpenRouterProvider::class,
 	);
+
+	/**
+	 * Field name for provider selection setting.
+	 *
+	 * @var string
+	 */
 	private const FIELD_PROVIDERS = 'providers';
 
 	/**
@@ -108,10 +119,12 @@ class Extended_Providers extends Abstract_Experiment {
 			if ( ! class_exists( $class_name ) ) {
 				_doing_it_wrong(
 					__METHOD__,
-					sprintf(
-						/* translators: %s: provider class name. */
-						__( 'Extended Providers experiment could not load "%s". Make sure the class is autoloadable.', 'ai' ),
-						esc_html( $class_name )
+					esc_html(
+						sprintf(
+							/* translators: %s: provider class name. */
+							__( 'Extended Providers experiment could not load "%s". Make sure the class is autoloadable.', 'ai' ),
+							$class_name
+						)
 					),
 					'0.1.0'
 				);
@@ -127,11 +140,13 @@ class Extended_Providers extends Abstract_Experiment {
 			} catch ( \Throwable $t ) {
 				_doing_it_wrong(
 					__METHOD__,
-					sprintf(
-						/* translators: 1: provider class, 2: error message. */
-						__( 'Failed to register provider "%1$s": %2$s', 'ai' ),
-						esc_html( $class_name ),
-						esc_html( $t->getMessage() )
+					esc_html(
+						sprintf(
+							/* translators: 1: provider class, 2: error message. */
+							__( 'Failed to register provider "%1$s": %2$s', 'ai' ),
+							$class_name,
+							$t->getMessage()
+						)
 					),
 					'0.1.0'
 				);
@@ -361,7 +376,8 @@ class Extended_Providers extends Abstract_Experiment {
 				$metadata = $class_name::metadata();
 				return $metadata->getName();
 			} catch ( \Throwable $t ) {
-				// Fallback below.
+				// Fallback to class name below.
+				unset( $t );
 			}
 		}
 
