@@ -10,62 +10,29 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
-import { createBlock, type BlockInstance } from '@wordpress/blocks';
-import { store as blockEditorStore } from '@wordpress/block-editor';
 import { Button, Flex, FlexItem } from '@wordpress/components';
-import { dispatch, useDispatch, useSelect } from '@wordpress/data';
-import { store as editorStore, PluginPostStatusInfo } from '@wordpress/editor';
-import { useState, useEffect } from '@wordpress/element';
+import { PluginPostStatusInfo } from '@wordpress/editor';
 import { __ } from '@wordpress/i18n';
 import { update } from '@wordpress/icons';
-import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
  */
-import { generateSummary } from '../functions/generate-summary';
+import { useSummaryGeneration } from '../functions/useSummaryGeneration';
 
 const { aiSummarizationData } = window as any;
-
-/**
- * TODO:
- * - Find a way to add a regenerate button to this block.
-*/
 
 /**
  * Summarization plugin component.
  */
 export default function SummarizationPlugin() {
-	const { editPost } = useDispatch( editorStore );
-	const [ isSummarizing, setIsSummarizing ] = useState< boolean >( false );
-	const [ summary, setSummary ] = useState< string >( '' );
+	const { isSummarizing, hasSummary, handleSummarize } =
+		useSummaryGeneration();
 
-	// Get blocks, post ID, content, and meta using useSelect hook.
-	const { allBlocks, postId, content, meta } = useSelect( ( select ) => {
-		return {
-			allBlocks: select( blockEditorStore ).getBlocks(),
-			postId: select( editorStore ).getCurrentPostId(),
-			content: select( editorStore ).getEditedPostContent(),
-			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
-		};
-	}, [] );
-
-	// Check if a summary block exists and update state accordingly.
-	useEffect( () => {
-		const summaryBlock = allBlocks.find(
-			( block: BlockInstance ) =>
-				block.name === 'core/paragraph' &&
-				block.attributes.aiGeneratedSummary === true
-		);
-		if ( summaryBlock && summaryBlock.attributes.content ) {
-			setSummary( summaryBlock.attributes.content );
-		}
-	}, [ allBlocks ] );
-
-	const buttonLabel = summary
+	const buttonLabel = hasSummary
 		? __( 'Re-generate AI Summary', 'ai' )
 		: __( 'Generate AI Summary', 'ai' );
-	const buttonDescription = summary
+	const buttonDescription = hasSummary
 		? __(
 				'This will update the AI generated summary block with a new summary of the content of this post.',
 				'ai'
@@ -79,61 +46,6 @@ export default function SummarizationPlugin() {
 	if ( ! aiSummarizationData?.enabled ) {
 		return null;
 	}
-
-	/**
-	 * Handles the summarization button click.
-	 */
-	const handleSummarize = async () => {
-		setIsSummarizing( true );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_summarization_error'
-		);
-
-		try {
-			const generatedSummary = await generateSummary( postId, content );
-			setSummary( generatedSummary );
-
-			// Store the summary in post meta (will require a manual save).
-			editPost( {
-				meta: {
-					...meta,
-					ai_generated_summary: generatedSummary,
-				},
-			} );
-
-			// Create the new summary block.
-			const summaryBlock = createBlock( 'core/paragraph', {
-				content: generatedSummary,
-				className: 'ai-summarization-summary',
-				aiGeneratedSummary: true,
-			} );
-
-			// Check if an existing AI summary block exists.
-			const existingSummaryBlock = allBlocks.find(
-				( block: BlockInstance ) =>
-					block.name === 'core/paragraph' &&
-					block.attributes.aiGeneratedSummary === true
-			);
-
-			// Replace existing block or insert at top if none exists.
-			if ( existingSummaryBlock ) {
-				dispatch( blockEditorStore ).replaceBlock(
-					existingSummaryBlock.clientId,
-					summaryBlock
-				);
-			} else {
-				dispatch( blockEditorStore ).insertBlock( summaryBlock, 0 );
-			}
-		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
-				id: 'ai_summarization_error',
-				isDismissible: true,
-			} );
-			setSummary( '' );
-		} finally {
-			setIsSummarizing( false );
-		}
-	};
 
 	return (
 		<PluginPostStatusInfo>

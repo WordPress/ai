@@ -13,16 +13,36 @@ import { __ } from '@wordpress/i18n';
 import { update } from '@wordpress/icons';
 
 /**
- * Controls component.
+ * Internal dependencies
+ */
+import { useSummaryGeneration } from '../functions/useSummaryGeneration';
+
+const { aiSummarizationData } = window as any;
+
+/**
+ * Block controls component.
  */
 const Controls = () => {
+	const { isSummarizing, hasSummary, handleSummarize } =
+		useSummaryGeneration();
+	const buttonLabel = hasSummary
+		? __( 'Re-generate AI Summary', 'ai' )
+		: __( 'Generate AI Summary', 'ai' );
+
+	// Ensure the experiment is enabled.
+	if ( ! aiSummarizationData?.enabled ) {
+		return null;
+	}
+
 	return (
 		<BlockControls>
 			<ToolbarGroup>
 				<ToolbarButton
+					label={ buttonLabel }
 					icon={ update }
-					label={ __( 'Regenerate', 'ai' ) }
-					onClick={ () => { console.log( 'Regenerate' ); } }
+					onClick={ handleSummarize }
+					disabled={ isSummarizing }
+					isBusy={ isSummarizing }
 				/>
 			</ToolbarGroup>
 		</BlockControls>
@@ -30,7 +50,7 @@ const Controls = () => {
 };
 
 /**
- * Add Custom Block Controls
+ * Add custom block controls to the summarization block.
  */
 const SummarizationBlockControls = createHigherOrderComponent(
 	( BlockEdit: React.ComponentType< any > ) => {
