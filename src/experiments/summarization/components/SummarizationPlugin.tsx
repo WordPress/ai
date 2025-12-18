@@ -10,12 +10,12 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
-import { createBlock } from '@wordpress/blocks';
+import { createBlock, type BlockInstance } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { Button, Flex, FlexItem } from '@wordpress/components';
-import { dispatch, select, useDispatch } from '@wordpress/data';
+import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PluginPostStatusInfo } from '@wordpress/editor';
-import { useState } from '@wordpress/element';
+import { useState, useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { update } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
@@ -29,9 +29,7 @@ const { aiSummarizationData } = window as any;
 
 /**
  * TODO:
- * - Find way to persist summary between refreshes. We need to check if a summary block exists.
  * - Find a way to add a regenerate button to this block.
- * - Replace block when a regeneration button is clicked.
 */
 
 /**
@@ -41,6 +39,29 @@ export default function SummarizationPlugin() {
 	const { editPost } = useDispatch( editorStore );
 	const [ isSummarizing, setIsSummarizing ] = useState< boolean >( false );
 	const [ summary, setSummary ] = useState< string >( '' );
+
+	// Get blocks, post ID, content, and meta using useSelect hook.
+	const { allBlocks, postId, content, meta } = useSelect( ( select ) => {
+		return {
+			allBlocks: select( blockEditorStore ).getBlocks(),
+			postId: select( editorStore ).getCurrentPostId(),
+			content: select( editorStore ).getEditedPostContent(),
+			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
+		};
+	}, [] );
+
+	// Check if a summary block exists and update state accordingly.
+	useEffect( () => {
+		const summaryBlock = allBlocks.find(
+			( block: BlockInstance ) =>
+				block.name === 'core/paragraph' &&
+				block.attributes.aiGeneratedSummary === true
+		);
+		if ( summaryBlock && summaryBlock.attributes.content ) {
+			setSummary( summaryBlock.attributes.content );
+		}
+	}, [ allBlocks ] );
+
 	const buttonLabel = summary
 		? __( 'Re-generate AI Summary', 'ai' )
 		: __( 'Generate AI Summary', 'ai' );
@@ -58,10 +79,6 @@ export default function SummarizationPlugin() {
 	if ( ! aiSummarizationData?.enabled ) {
 		return null;
 	}
-
-	const postId = select( editorStore ).getCurrentPostId();
-	const content = select( editorStore ).getEditedPostContent();
-	const meta = select( editorStore ).getEditedPostAttribute( 'meta' );
 
 	/**
 	 * Handles the summarization button click.
@@ -84,13 +101,29 @@ export default function SummarizationPlugin() {
 				},
 			} );
 
-			// Insert a new paragraph block with the generated summary.
+			// Create the new summary block.
 			const summaryBlock = createBlock( 'core/paragraph', {
 				content: generatedSummary,
 				className: 'ai-summarization-summary',
 				aiGeneratedSummary: true,
 			} );
-			dispatch( blockEditorStore ).insertBlock( summaryBlock, 0 );
+
+			// Check if an existing AI summary block exists.
+			const existingSummaryBlock = allBlocks.find(
+				( block: BlockInstance ) =>
+					block.name === 'core/paragraph' &&
+					block.attributes.aiGeneratedSummary === true
+			);
+
+			// Replace existing block or insert at top if none exists.
+			if ( existingSummaryBlock ) {
+				dispatch( blockEditorStore ).replaceBlock(
+					existingSummaryBlock.clientId,
+					summaryBlock
+				);
+			} else {
+				dispatch( blockEditorStore ).insertBlock( summaryBlock, 0 );
+			}
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
 				id: 'ai_summarization_error',
