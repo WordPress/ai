@@ -5,13 +5,15 @@
  * @package WordPress\AI\Abilities\Summarization
  */
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+
 // Determine the length from the passed in global.
-$ai_length_desc = '2-3 sentences; 25-80 words';
+$length_desc = '2-3 sentences; 25-80 words';
 if ( isset( $length ) ) {
 	if ( 'short' === $length ) {
-		$ai_length_desc = '1 sentence; <= 25 words';
+		$length_desc = '1 sentence; <= 25 words';
 	} elseif ( 'long' === $length ) {
-		$ai_length_desc = '4-6 sentences; 80-160 words';
+		$length_desc = '4-6 sentences; 80-160 words';
 	}
 }
 
@@ -23,7 +25,7 @@ Goal: You will be provided with content and optionally some additional context. 
 
 The summary should follow these requirements:
 
-- Target {$ai_length_desc}
+- Target {$length_desc}
 - Should not contain any markdown, bullets, numbering, or formatting - plain text only
 - Provide a high-level overview, not a list of details
 - Do not start with "This article is about..." or "This post explains..." or "This content describes..." or any other generic introduction
