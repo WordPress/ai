@@ -14,6 +14,7 @@ import { registerPlugin } from '@wordpress/plugins';
  * Internal dependencies
  */
 import SummarizationPlugin from './components/SummarizationPlugin';
+import SummarizationBlockControls from './components/SummarizationBlockControls';
 
 // Register the plugin.
 registerPlugin( 'classifai-plugin-summarization', {
@@ -57,3 +58,10 @@ registerBlockVariation( 'core/paragraph', {
 	scope: [ 'block' ],
 	isActive: [ 'aiGeneratedSummary' ],
 } );
+
+// Add the custom block controls.
+addFilter(
+	'editor.BlockEdit',
+	'ai/summarization-block-controls',
+	SummarizationBlockControls
+);
