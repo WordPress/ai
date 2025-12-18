@@ -29,6 +29,11 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'admin/provider-credentials': path.resolve(
+			process.cwd(),
+			'src/admin/provider-credentials',
+			'index.tsx'
+		),
 	},
 
 	plugins: [
