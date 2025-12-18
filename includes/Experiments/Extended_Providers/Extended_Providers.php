@@ -73,7 +73,9 @@ class Extended_Providers extends Abstract_Experiment {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		add_action( 'init', array( $this, 'register_providers' ), 20 );
+		// Register providers immediately so they're available when
+		// the WP AI Client collects provider metadata for the credentials screen.
+		$this->register_providers();
 	}
 
 	/**

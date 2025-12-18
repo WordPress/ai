@@ -12,9 +12,11 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Admin\Provider_Credentials_UI;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
+use WordPress\AI_Client\HTTP\WP_AI_Client_Discovery_Strategy;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -201,13 +203,18 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
-		// Initialize the WP AI Client.
-		AI_Client::init();
+		// Wire up the WordPress HTTP client first (needed by provider registration).
+		WP_AI_Client_Discovery_Strategy::init();
 
+		// Initialize experiments so extended providers are registered
+		// before the WP AI Client collects provider metadata.
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
 		$loader->initialize_experiments();
+
+		// Initialize the WP AI Client (collects providers for credentials screen).
+		AI_Client::init();
 
 		// Initialize settings registration.
 		$settings_registration = new Settings_Registration( $registry );
@@ -217,6 +224,9 @@ function initialize_experiments(): void {
 		if ( is_admin() ) {
 			$settings_page = new Settings_Page( $registry );
 			$settings_page->init();
+
+			// Initialize enhanced provider credentials UI.
+			Provider_Credentials_UI::init();
 		}
 
 		// Register our post-related WordPress Abilities.
