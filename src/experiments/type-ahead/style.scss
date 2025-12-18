@@ -1,0 +1,14 @@
+.ai-type-ahead-block {
+	position: relative;
+}
+
+.ai-type-ahead-overlay {
+	position: absolute;
+	pointer-events: none;
+	color: var(--ai-type-ahead-ghost-color, #8a8f98);
+	opacity: 1;
+	font-size: inherit;
+	line-height: inherit;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
