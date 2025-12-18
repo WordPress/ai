@@ -27,7 +27,7 @@ module.exports = {
 		'experiments/image-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/image-generation',
-			'index.tsx'
+			'index.ts'
 		),
 		'experiments/title-generation': path.resolve(
 			process.cwd(),
