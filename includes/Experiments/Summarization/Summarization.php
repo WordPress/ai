@@ -41,8 +41,26 @@ class Summarization extends Abstract_Experiment {
 	 * @since x.x.x
 	 */
 	public function register(): void {
+		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+	}
+
+	/**
+	 * Register any needed post meta.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_post_meta(): void {
+		register_post_meta(
+			'post',
+			'ai_generated_summary',
+			array(
+				'type'         => 'string',
+				'single'       => true,
+				'show_in_rest' => true,
+			)
+		);
 	}
 
 	/**

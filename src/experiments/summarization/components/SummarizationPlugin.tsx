@@ -13,7 +13,7 @@ import React from 'react';
 import { createBlock } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { Button, Flex, FlexItem } from '@wordpress/components';
-import { dispatch, select } from '@wordpress/data';
+import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore, PluginPostStatusInfo } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -33,13 +33,13 @@ const { aiSummarizationData } = window as any;
  * - Block variation maybe?
  * - Find a way to add a regenerate button to this block.
  * - Replace block when a regeneration button is clicked.
- * - Store the summary in the post meta.
 */
 
 /**
  * Summarization plugin component.
  */
 export default function SummarizationPlugin() {
+	const { editPost } = useDispatch( editorStore );
 	const [ isSummarizing, setIsSummarizing ] = useState< boolean >( false );
 	const [ summary, setSummary ] = useState< string >( '' );
 	const buttonLabel = summary
@@ -62,6 +62,7 @@ export default function SummarizationPlugin() {
 
 	const postId = select( editorStore ).getCurrentPostId();
 	const content = select( editorStore ).getEditedPostContent();
+	const meta = select( editorStore ).getEditedPostAttribute( 'meta' );
 
 	/**
 	 * Handles the summarization button click.
@@ -75,6 +76,14 @@ export default function SummarizationPlugin() {
 		try {
 			const generatedSummary = await generateSummary( postId, content );
 			setSummary( generatedSummary );
+
+			// Store the summary in the post meta.
+			editPost( {
+				meta: {
+					...meta,
+					ai_generated_summary: generatedSummary,
+				},
+			} );
 
 			// Insert a new paragraph block with the generated summary.
 			const summaryBlock = createBlock( 'core/paragraph', {
