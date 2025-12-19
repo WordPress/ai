@@ -22,28 +22,26 @@ use WordPress\AI\Experiments\MCP\REST\MCP_Controller;
 use function add_action;
 use function add_filter;
 use function array_key_exists;
-use function esc_html__;
 use function do_action;
+use function esc_html__;
 use function function_exists;
 use function get_option;
 use function is_array;
 use function reset;
-use function rest_get_server;
 use function rest_url;
 use function sanitize_key;
 use function sanitize_text_field;
 use function set_url_scheme;
 use function update_option;
 use function wp_generate_password;
-use function wp_get_ability;
-use function wp_get_ability_category;
 use function wp_get_abilities;
+use function wp_get_ability_category;
 use function wp_json_encode;
 use function wp_parse_url;
+use function wp_register_ability_category;
 use function wp_remote_request;
 use function wp_remote_retrieve_body;
 use function wp_remote_retrieve_response_code;
-use function wp_register_ability_category;
 
 /**
  * Coordinates MCP adapter bootstrapping, configuration persistence, and REST data.
@@ -52,10 +50,10 @@ use function wp_register_ability_category;
  */
 class Manager {
 
-	private const OPTION_ENABLED = 'ai_mcp_server_enabled';
-	private const OPTION_SERVERS = 'ai_mcp_servers';
+	private const OPTION_ENABLED      = 'ai_mcp_server_enabled';
+	private const OPTION_SERVERS      = 'ai_mcp_servers';
 	private const OPTION_LEGACY_TOOLS = 'ai_mcp_enabled_tools';
-	private const DEFAULT_VERSION = 'v1.0.0';
+	private const DEFAULT_VERSION     = 'v1.0.0';
 
 	/**
 	 * Bootstrap hooks.
@@ -254,13 +252,13 @@ class Manager {
 	public function add_server( array $data ): array {
 		$servers = $this->get_servers();
 
-		$name             = sanitize_text_field( $data['name'] ?? esc_html__( 'New MCP Server', 'ai' ) );
-		$route_namespace  = sanitize_key( $data['route_namespace'] ?? 'mcp' );
-		$route            = $this->unique_route_slug( $data['route'] ?? $name, $servers );
-		$id               = $this->unique_server_id( $route );
-		$description      = sanitize_text_field( $data['description'] ?? '' );
-		$transports       = $this->sanitize_transports( $data['transports'] ?? array( 'http' ) );
-		$server_config    = array(
+		$name            = sanitize_text_field( $data['name'] ?? esc_html__( 'New MCP Server', 'ai' ) );
+		$route_namespace = sanitize_key( $data['route_namespace'] ?? 'mcp' );
+		$route           = $this->unique_route_slug( $data['route'] ?? $name, $servers );
+		$id              = $this->unique_server_id( $route );
+		$description     = sanitize_text_field( $data['description'] ?? '' );
+		$transports      = $this->sanitize_transports( $data['transports'] ?? array( 'http' ) );
+		$server_config   = array(
 			'id'              => $id,
 			'name'            => $name,
 			'description'     => $description,
@@ -354,12 +352,12 @@ class Manager {
 		$runtime_map = $this->get_runtime_servers_map();
 
 		return array(
-			'enabled'        => $this->is_enabled(),
-			'servers'        => $this->summarize_servers( $servers, $runtime_map ),
-			'activeServerId' => $active_id,
-			'activeServer'   => $this->format_server_for_response( $active_server, $runtime_map[ $active_id ] ?? null ),
-			'tools'          => $this->get_available_tools( $active_server ),
-			'configTemplates'=> $this->get_client_templates( $active_server ),
+			'enabled'         => $this->is_enabled(),
+			'servers'         => $this->summarize_servers( $servers, $runtime_map ),
+			'activeServerId'  => $active_id,
+			'activeServer'    => $this->format_server_for_response( $active_server, $runtime_map[ $active_id ] ?? null ),
+			'tools'           => $this->get_available_tools( $active_server ),
+			'configTemplates' => $this->get_client_templates( $active_server ),
 		);
 	}
 
@@ -457,7 +455,7 @@ class Manager {
 					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 				),
 			),
-			'cursor' => array(
+			'cursor'         => array(
 				'id'       => 'cursor',
 				'fileName' => '.cursor/mcp.json',
 				'content'  => wp_json_encode(
@@ -465,7 +463,7 @@ class Manager {
 					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 				),
 			),
-			'windsurf' => array(
+			'windsurf'       => array(
 				'id'       => 'windsurf',
 				'fileName' => 'mcp_config.json (Windsurf)',
 				'content'  => wp_json_encode(
@@ -473,15 +471,15 @@ class Manager {
 					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 				),
 			),
-			'vscode' => array(
+			'vscode'         => array(
 				'id'       => 'vscode',
 				'fileName' => '.vscode/mcp.json',
 				'content'  => wp_json_encode(
 					array(
 						'servers' => array(
 							'wordpress' => array(
-								'type' => 'http',
-								'url'  => $endpoint,
+								'type'    => 'http',
+								'url'     => $endpoint,
 								'headers' => array(
 									'Authorization' => 'Basic <base64-credentials>',
 								),
@@ -491,7 +489,7 @@ class Manager {
 					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 				),
 			),
-			'jetbrains' => array(
+			'jetbrains'      => array(
 				'id'       => 'jetbrains',
 				'fileName' => 'mcp.json (JetBrains)',
 				'content'  => wp_json_encode(
@@ -499,7 +497,7 @@ class Manager {
 					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 				),
 			),
-			'generic' => array(
+			'generic'        => array(
 				'id'       => 'generic',
 				'fileName' => 'mcp-server.json (Generic)',
 				'content'  => wp_json_encode(
@@ -542,8 +540,8 @@ class Manager {
 			);
 		}
 
-		$method   = strtoupper( $args['method'] ?? 'GET' );
-		$headers  = is_array( $args['headers'] ?? null ) ? $args['headers'] : array();
+		$method            = strtoupper( $args['method'] ?? 'GET' );
+		$headers           = is_array( $args['headers'] ?? null ) ? $args['headers'] : array();
 		$sanitized_headers = array();
 
 		foreach ( $headers as $key => $value ) {
@@ -562,7 +560,7 @@ class Manager {
 		foreach ( $attempts as $url ) {
 			$request_args = array(
 				'method'    => $method,
-				'timeout'   => 10,
+				'timeout'   => 10, // phpcs:ignore WordPressVIPMinimum.Performance.RemoteRequestTimeout.timeout_timeout -- Intentional for connection testing.
 				'headers'   => $sanitized_headers,
 				'sslverify' => true,
 			);
@@ -612,7 +610,7 @@ class Manager {
 	 * Format servers for sidebar list.
 	 *
 	 * @param array<string,array<string,mixed>> $servers    Server configs.
-	 * @param array<string,McpServer>           $runtime_map Adapter runtime map.
+	 * @param array<string,\WP\MCP\Core\McpServer>           $runtime_map Adapter runtime map.
 	 * @return array<int,array<string,string>>
 	 */
 	private function summarize_servers( array $servers, array $runtime_map ): array {
@@ -636,7 +634,7 @@ class Manager {
 	 * Format a server for REST responses.
 	 *
 	 * @param array<string,mixed> $server  Configured server.
-	 * @param McpServer|null      $runtime Runtime instance.
+	 * @param \WP\MCP\Core\McpServer|null      $runtime Runtime instance.
 	 * @return array<string,mixed>
 	 */
 	private function format_server_for_response( array $server, ?McpServer $runtime ): array {
@@ -663,7 +661,7 @@ class Manager {
 	 * request) or it's still initializing. We return 'running' for enabled
 	 * servers since they will be running once the page reloads.
 	 */
-	private function determine_status( array $server, ?McpServer $runtime ): string {
+	private function determine_status( array $server, ?McpServer $_runtime ): string {
 		if ( empty( $server['enabled'] ) || ! $this->is_enabled() ) {
 			return 'disabled';
 		}
@@ -716,9 +714,11 @@ class Manager {
 		foreach ( wp_get_abilities() as $ability ) {
 			$meta = method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array();
 
-			if ( ! empty( $meta['mcp']['public'] ) ) {
-				$names[] = $ability->get_name();
+			if ( empty( $meta['mcp']['public'] ) ) {
+				continue;
 			}
+
+			$names[] = $ability->get_name();
 		}
 
 		return $names;
@@ -768,12 +768,14 @@ class Manager {
 		$classes = array();
 		foreach ( $transports as $transport ) {
 			$slug = strtolower( (string) $transport );
-			if ( isset( $map[ $slug ] ) ) {
-				$classes[] = $map[ $slug ];
+			if ( ! isset( $map[ $slug ] ) ) {
+				continue;
 			}
+
+			$classes[] = $map[ $slug ];
 		}
 
-		return $classes ?: array( HttpTransport::class );
+		return ! empty( $classes ) ? $classes : array( HttpTransport::class );
 	}
 
 	/**
@@ -792,7 +794,7 @@ class Manager {
 	/**
 	 * Get runtime servers keyed by ID.
 	 *
-	 * @return array<string,McpServer>
+	 * @return array<string,\WP\MCP\Core\McpServer>
 	 */
 	private function get_runtime_servers_map(): array {
 		if ( ! class_exists( McpAdapter::class ) ) {
@@ -825,12 +827,14 @@ class Manager {
 		$list = array();
 		foreach ( $transports as $transport ) {
 			$slug = strtolower( sanitize_key( (string) $transport ) );
-			if ( in_array( $slug, $valid, true ) ) {
-				$list[] = $slug;
+			if ( ! in_array( $slug, $valid, true ) ) {
+				continue;
 			}
+
+			$list[] = $slug;
 		}
 
-		return $list ?: array( 'http' );
+		return ! empty( $list ) ? $list : array( 'http' );
 	}
 
 	/**

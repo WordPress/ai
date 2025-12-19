@@ -42,10 +42,12 @@ class MCP extends Abstract_Experiment {
 		$this->manager = new Manager();
 		$this->manager->init();
 
-		if ( is_admin() ) {
-			$page = new Admin_Page( $this->manager );
-			$page->init();
+		if ( ! is_admin() ) {
+			return;
 		}
+
+		$page = new Admin_Page( $this->manager );
+		$page->init();
 	}
 
 	/**

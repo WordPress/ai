@@ -13,7 +13,6 @@ use WordPress\AI\Asset_Loader;
 
 use function __;
 use function add_action;
-use function add_options_page;
 use function admin_url;
 use function current_user_can;
 use function esc_html_e;
@@ -31,7 +30,21 @@ class Admin_Page {
 	private const PAGE_SLUG = 'ai-mcp';
 	private const MENU_ICON = 'data:image/svg+xml;base64,PHN2ZyBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0iZXZlbm9kZCIgaGVpZ2h0PSIxZW0iIHN0eWxlPSJmbGV4Om5vbmU7bGluZS1oZWlnaHQ6MSIgdmlld0JveD0iMCAwIDI0IDI0IiB3aWR0aD0iMWVtIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0aXRsZT5Nb2RlbENvbnRleHRQcm90b2NvbDwvdGl0bGU+PHBhdGggZD0iTTE1LjY4OCAyLjM0M2EyLjU4OCAyLjU4OCAwIDAwLTMuNjEgMGwtOS42MjYgOS40NGEuODYzLjg2MyAwIDAxLTEuMjAzIDAgLjgyMy44MjMgMCAwMTAtMS4xOGw5LjYyNi05LjQ0YTQuMzEzIDQuMzEzIDAgMDE2LjAxNiAwIDQuMTE2IDQuMTE2IDAgMDExLjIwNCAzLjU0IDQuMyA0LjMgMCAwMTMuNjA5IDEuMThsLjA1LjA1YTQuMTE1IDQuMTE1IDAgMDEwIDUuOWwtOC43MDYgOC41MzdhLjI3NC4yNzQgMCAwMDAgLjM5M2wxLjc4OCAxLjc1NGEuODIzLjgyMyAwIDAxMCAxLjE4Ljg2My44NjMgMCAwMS0xLjIwMyAwbC0xLjc4OC0xLjc1M2ExLjkyIDEuOTIgMCAwMTAtMi43NTRsOC43MDYtOC41MzhhMi40NyAyLjQ3IDAgMDAwLTMuNTRsLS4wNS0uMDQ5YTIuNTg4IDIuNTg4IDAgMDAtMy42MDctLjAwM2wtNy4xNzIgNy4wMzQtLjAwMi4wMDItLjA5OC4wOTdhLjg2My44NjMgMCAwMS0xLjIwNCAwIC44MjMuODIzIDAgMDEwLTEuMThsNy4yNzMtNy4xMzNhMi40NyAyLjQ3IDAgMDAtLjAwMy0zLjUzN3oiPjwvcGF0aD48cGF0aCBkPSJNMTQuNDg1IDQuNzAzYS44MjMuODIzIDAgMDAwLTEuMTguODYzLjg2MyAwIDAwLTEuMjA0IDBsLTcuMTE5IDYuOTgyYTQuMTE1IDQuMTE1IDAgMDAwIDUuOSA0LjMxNCA0LjMxNCAwIDAwNi4wMTYgMGw3LjEyLTYuOTgyYS44MjMuODIzIDAgMDAwLTEuMTguODYzLjg2MyAwIDAwLTEuMjA0IDBsLTcuMTE5IDYuOTgyYTIuNTg4IDIuNTg4IDAgMDEtMy42MSAwIDIuNDcgMi40NyAwIDAxMC0zLjU0bDcuMTItNi45ODJ6Ij48L3BhdGg+PC9zdmc+';
 
-	public function __construct( private Manager $manager ) {}
+	/**
+	 * Manager instance.
+	 *
+	 * @var \WordPress\AI\Experiments\MCP\Manager
+	 */
+	private Manager $manager;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param \WordPress\AI\Experiments\MCP\Manager $manager Manager instance.
+	 */
+	public function __construct( Manager $manager ) {
+		$this->manager = $manager;
+	}
 
 	/**
 	 * Hook admin actions.
@@ -54,9 +67,11 @@ class Admin_Page {
 			58
 		);
 
-		if ( $page_hook ) {
-			add_action( "load-{$page_hook}", array( $this, 'on_load' ) );
+		if ( ! $page_hook ) {
+			return;
 		}
+
+		add_action( "load-{$page_hook}", array( $this, 'on_load' ) );
 	}
 
 	/**
@@ -112,7 +127,7 @@ class Admin_Page {
 			'mcp_server',
 			'McpServerSettings',
 			array(
-				'rest' => array(
+				'rest'       => array(
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
 					'routes' => array(
