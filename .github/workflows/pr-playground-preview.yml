@@ -27,7 +27,7 @@ jobs:
       artifact-url: ${{ steps.expose.outputs.artifact-url }}
       artifact-name: ${{ steps.expose.outputs.artifact-name }}
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
 
     steps:
