@@ -107,6 +107,7 @@ final class Experiment_Loader {
 			\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
 			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 			\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
+			\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 		);
 
 		/**
