@@ -306,6 +306,10 @@ function get_ai_icon_data_uri(): string {
 
 		if ( file_exists( $svg_path ) ) {
 			$svg_content = file_get_contents( $svg_path );
+			if ( false === $svg_content ) {
+				$data_uri = '';
+				return $data_uri;
+			}
 			// Replace currentColor with a neutral color for admin menu compatibility.
 			$svg_content = str_replace( 'fill="currentColor"', 'fill="black"', $svg_content );
 			$data_uri    = 'data:image/svg+xml;base64,' . base64_encode( $svg_content );

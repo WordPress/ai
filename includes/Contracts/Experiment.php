@@ -68,4 +68,31 @@ interface Experiment {
 	 * @return bool True if enabled, false otherwise.
 	 */
 	public function is_enabled(): bool;
+
+	/**
+	 * Provides contextual entry points for the experiment.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array<int, array{label: string, url: string, type?: string}>
+	 */
+	public function get_entry_points(): array;
+
+	/**
+	 * Checks if the experiment has custom settings.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return bool True if the experiment has settings, false otherwise.
+	 */
+	public function has_settings(): bool;
+
+	/**
+	 * Renders experiment-specific settings fields.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	public function render_settings_fields(): void;
 }
