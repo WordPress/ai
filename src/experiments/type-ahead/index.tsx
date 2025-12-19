@@ -336,7 +336,7 @@ const TypeAheadOverlay: React.FC< {
 			lineHeight: 'inherit',
 			whiteSpace: 'pre-wrap',
 			wordBreak: 'break-word',
-			zIndex: 1000,
+			zIndex: 1,
 			top: rect.top + scrollY,
 			left: containerLeft + scrollX,
 			width: containerRect?.width,

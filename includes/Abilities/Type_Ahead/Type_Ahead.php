@@ -14,7 +14,6 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_preferred_models;
 use function WordPress\AI\normalize_content;
 
 /**
@@ -331,7 +330,12 @@ class Type_Ahead extends Abstract_Ability {
 		$response = AI_Client::prompt_with_wp_error( wp_json_encode( $context ) )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_candidate_count( 1 )
-			->using_model_preference( ...get_preferred_models() )
+			->using_model_preference(
+				array( 'openai', 'gpt-5.1-nano' ),
+				array( 'anthropic', 'claude-haiku-4-5' ),
+				array( 'google', 'gemini-2.5-flash' ),
+				array( 'openai', 'gpt-4o-mini' )
+			)
 			->generate_texts();
 
 		if ( is_wp_error( $response ) ) {
