@@ -31,36 +31,36 @@ class FalAiModelMetadataDirectory extends AbstractApiBasedModelMetadataDirectory
 	private $catalogue = array(
 		// FLUX.2 models.
 		array(
-			'id'    => 'fal-ai/flux-2',
-			'name'  => 'FLUX.2 Dev',
-			'mime'  => 'image/jpeg',
+			'id'   => 'fal-ai/flux-2',
+			'name' => 'FLUX.2 Dev',
+			'mime' => 'image/jpeg',
 		),
 		array(
-			'id'    => 'fal-ai/flux-2-pro',
-			'name'  => 'FLUX.2 Pro',
-			'mime'  => 'image/jpeg',
+			'id'   => 'fal-ai/flux-2-pro',
+			'name' => 'FLUX.2 Pro',
+			'mime' => 'image/jpeg',
 		),
 		array(
-			'id'    => 'fal-ai/flux-2-flex',
-			'name'  => 'FLUX.2 Flex',
-			'mime'  => 'image/jpeg',
+			'id'   => 'fal-ai/flux-2-flex',
+			'name' => 'FLUX.2 Flex',
+			'mime' => 'image/jpeg',
 		),
 		// FLUX.1 models.
 		array(
-			'id'    => 'fal-ai/flux/dev',
-			'name'  => 'FLUX.1 Dev',
-			'mime'  => 'image/jpeg',
+			'id'   => 'fal-ai/flux/dev',
+			'name' => 'FLUX.1 Dev',
+			'mime' => 'image/jpeg',
 		),
 		array(
-			'id'    => 'fal-ai/flux/schnell',
-			'name'  => 'FLUX.1 Schnell',
-			'mime'  => 'image/jpeg',
+			'id'   => 'fal-ai/flux/schnell',
+			'name' => 'FLUX.1 Schnell',
+			'mime' => 'image/jpeg',
 		),
 		// Other models.
 		array(
-			'id'    => 'fal-ai/fast-sdxl',
-			'name'  => 'Fast SDXL',
-			'mime'  => 'image/png',
+			'id'   => 'fal-ai/fast-sdxl',
+			'name' => 'Fast SDXL',
+			'mime' => 'image/png',
 		),
 	);
 
@@ -87,7 +87,7 @@ class FalAiModelMetadataDirectory extends AbstractApiBasedModelMetadataDirectory
 	/**
 	 * Returns baseline supported options.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function get_default_options(): array {
 		return array(
@@ -101,10 +101,10 @@ class FalAiModelMetadataDirectory extends AbstractApiBasedModelMetadataDirectory
 	/**
 	 * Adds MIME-specific option metadata.
 	 *
-	 * @param array<int, SupportedOption> $options Base option list.
+	 * @param array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption> $options Base option list.
 	 * @param string                      $mime_type MIME string.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function merge_options_with_mime( array $options, string $mime_type ): array {
 		$mime_option = new SupportedOption( OptionEnum::outputMimeType(), array( $mime_type ) );

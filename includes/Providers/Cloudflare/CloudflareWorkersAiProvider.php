@@ -18,10 +18,9 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Enums\ProviderTypeEnum;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
-
 use function apply_filters;
-use function getenv;
 use function get_option;
+use function getenv;
 use function is_string;
 
 /**
@@ -68,6 +67,7 @@ class CloudflareWorkersAiProvider extends AbstractApiProvider {
 		$account_id = apply_filters( 'ai_cloudflare_account_id', $account_id );
 
 		if ( ! $account_id || ! is_string( $account_id ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 			throw new RuntimeException(
 				'Cloudflare Workers AI requires a Cloudflare account ID. Set the CLOUDFLARE_ACCOUNT_ID environment variable or use the ai_cloudflare_account_id filter.'
 			);
@@ -86,6 +86,7 @@ class CloudflareWorkersAiProvider extends AbstractApiProvider {
 			}
 		}
 
+		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 		throw new RuntimeException(
 			'Unsupported Cloudflare Workers AI model capabilities: ' . implode(
 				', ',
@@ -97,6 +98,7 @@ class CloudflareWorkersAiProvider extends AbstractApiProvider {
 				)
 			)
 		);
+		// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**

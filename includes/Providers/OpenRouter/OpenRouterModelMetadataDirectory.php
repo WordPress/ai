@@ -46,7 +46,7 @@ class OpenRouterModelMetadataDirectory extends AbstractOpenAiCompatibleModelMeta
 			throw ResponseException::fromMissingData( 'OpenRouter', 'data' );
 		}
 
-		$options = $this->getTextOptions();
+		$options      = $this->getTextOptions();
 		$capabilities = array(
 			CapabilityEnum::textGeneration(),
 			CapabilityEnum::chatHistory(),
@@ -72,7 +72,7 @@ class OpenRouterModelMetadataDirectory extends AbstractOpenAiCompatibleModelMeta
 	/**
 	 * Returns supported options for OpenRouter chat models.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function getTextOptions(): array {
 		return array(

@@ -57,12 +57,12 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 	/**
 	 * Builds the HTTP request for the synchronous `fal.run` endpoint.
 	 *
-	 * @param HttpMethodEnum $method HTTP method.
+	 * @param \WordPress\AiClient\Providers\Http\Enums\HttpMethodEnum $method HTTP method.
 	 * @param string         $model_path Model identifier.
 	 * @param array<string, string|list<string>> $headers Headers.
 	 * @param array<string, mixed>|null $data Payload.
 	 *
-	 * @return Request
+	 * @return \WordPress\AiClient\Providers\Http\DTO\Request
 	 */
 	protected function createRequest(
 		HttpMethodEnum $method,
@@ -81,7 +81,7 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 	/**
 	 * Builds the Fal.ai payload from the prompt.
 	 *
-	 * @param list<Message> $prompt Prompt messages.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -94,32 +94,35 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 	/**
 	 * Converts Fal.ai responses to a GenerativeAiResult.
 	 *
-	 * @param Response $response Fal.ai response.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response Fal.ai response.
 	 *
-	 * @return GenerativeAiResult
+	 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 	 */
 	private function parseResponseToResult( Response $response ): GenerativeAiResult {
 		$response_data = $response->getData();
 		if ( ! isset( $response_data['images'] ) || ! is_array( $response_data['images'] ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 			throw ResponseException::fromMissingData( $this->providerMetadata()->getName(), 'images' );
 		}
 
 		$candidates = array();
 		foreach ( $response_data['images'] as $index => $image_data ) {
 			if ( ! is_array( $image_data ) || empty( $image_data['url'] ) ) {
+				// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 				throw ResponseException::fromInvalidData(
 					$this->providerMetadata()->getName(),
 					"images[{$index}]",
 					'Each image must include a URL.'
 				);
+				// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 
 			$mime_type = isset( $image_data['content_type'] ) && is_string( $image_data['content_type'] )
 				? $image_data['content_type']
 				: 'image/png';
 
-			$file = new File( (string) $image_data['url'], $mime_type );
-			$message = new Message(
+			$file         = new File( (string) $image_data['url'], $mime_type );
+			$message      = new Message(
 				MessageRoleEnum::model(),
 				array( new MessagePart( $file ) )
 			);
@@ -142,11 +145,12 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 	/**
 	 * Normalizes the prompt into a single user string.
 	 *
-	 * @param list<Message> $messages Prompt messages.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $messages Prompt messages.
 	 *
 	 * @return string
 	 */
 	private function preparePromptText( array $messages ): string {
+		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 		if ( count( $messages ) !== 1 ) {
 			throw new InvalidArgumentException(
 				__( 'Fal.ai models require a single user prompt.', 'ai' )
@@ -170,12 +174,13 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 		throw new InvalidArgumentException(
 			__( 'Fal.ai image prompts must include text content.', 'ai' )
 		);
+		// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**
 	 * Throws an exception if the response indicates failure.
 	 *
-	 * @param Response $response Fal.ai response.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response Fal.ai response.
 	 *
 	 * @return void
 	 */
@@ -186,9 +191,9 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 	/**
 	 * Converts Bearer auth headers into Fal.ai `Key` headers.
 	 *
-	 * @param Request $request Authenticated request.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Request $request Authenticated request.
 	 *
-	 * @return Request
+	 * @return \WordPress\AiClient\Providers\Http\DTO\Request
 	 */
 	private function ensureFalAuthorizationHeader( Request $request ): Request {
 		$authorization = $request->getHeader( 'Authorization' );

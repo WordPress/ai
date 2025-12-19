@@ -60,7 +60,7 @@ class OllamaTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Builds the request payload.
 	 *
-	 * @param list<Message> $prompt Prompt messages.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -69,15 +69,17 @@ class OllamaTextGenerationModel extends AbstractApiBasedModel implements TextGen
 		$messages = $this->convertPromptToMessages( $prompt );
 
 		if ( empty( $messages ) ) {
+			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 			throw new InvalidArgumentException(
 				__( 'Ollama chat requests require at least one user message.', 'ai' )
 			);
+			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		$payload = array(
-			'model'   => $this->metadata()->getId(),
-			'messages'=> $messages,
-			'stream'  => false,
+			'model'    => $this->metadata()->getId(),
+			'messages' => $messages,
+			'stream'   => false,
 		);
 
 		if ( null !== $config->getTemperature() ) {
@@ -100,7 +102,7 @@ class OllamaTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Converts prompt messages to Ollama format.
 	 *
-	 * @param list<Message> $prompt Prompt messages.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
 	 *
 	 * @return list<array{role:string,content:string}>
 	 */
@@ -113,7 +115,7 @@ class OllamaTextGenerationModel extends AbstractApiBasedModel implements TextGen
 				continue;
 			}
 
-			$role = $message->getRole()->isModel() ? 'assistant' : 'user';
+			$role       = $message->getRole()->isModel() ? 'assistant' : 'user';
 			$messages[] = array(
 				'role'    => $role,
 				'content' => $text,
@@ -126,7 +128,7 @@ class OllamaTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Extracts first text part from a message.
 	 *
-	 * @param Message $message Message instance.
+	 * @param \WordPress\AiClient\Messages\DTO\Message $message Message instance.
 	 *
 	 * @return string
 	 */
@@ -143,9 +145,9 @@ class OllamaTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Converts Ollama response to a GenerativeAiResult.
 	 *
-	 * @param Response $response Response instance.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response Response instance.
 	 *
-	 * @return GenerativeAiResult
+	 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 	 */
 	private function parseResponse( Response $response ): GenerativeAiResult {
 		$data = $response->getData();
@@ -176,7 +178,7 @@ class OllamaTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Validates response success.
 	 *
-	 * @param Response $response Response instance.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response Response instance.
 	 *
 	 * @return void
 	 */

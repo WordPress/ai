@@ -8,21 +8,18 @@
 namespace WordPress\AI\Admin;
 
 use WordPress\AiClient\AiClient;
-use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
-
-use function __;
 use function esc_html__;
 use function get_option;
 use function get_transient;
 use function is_array;
 use function is_string;
+use function md5;
+use function set_transient;
 use function sprintf;
 use function trim;
 use function wp_json_encode;
-use function set_transient;
-use function md5;
 
 /**
  * Provides a single source of truth for provider metadata and branding.
@@ -39,9 +36,9 @@ class Provider_Metadata_Registry {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function get_metadata(): array {
-		$registry  = AiClient::defaultRegistry();
-		$providers = array();
-		$overrides = self::get_branding_overrides();
+		$registry    = AiClient::defaultRegistry();
+		$providers   = array();
+		$overrides   = self::get_branding_overrides();
 		$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
 
 		foreach ( $registry->getRegisteredProviderIds() as $provider_id ) {
@@ -51,7 +48,7 @@ class Provider_Metadata_Registry {
 				continue;
 			}
 
-			/** @var ProviderMetadata $metadata */
+			/** @var \WordPress\AiClient\Providers\DTO\ProviderMetadata $metadata */
 			$metadata = $class_name::metadata();
 			$brand    = $overrides[ $metadata->getId() ] ?? array();
 
@@ -197,88 +194,89 @@ class Provider_Metadata_Registry {
 	 * @return array<string, array<string, mixed>>
 	 */
 	private static function get_branding_overrides(): array {
+		/* translators: %s: provider name (e.g., "OpenAI", "Anthropic"). */
 		$link_template = esc_html__( 'Create and manage your %s API keys in these account settings.', 'ai' );
 
 		return array(
-			'anthropic'     => array(
+			'anthropic'   => array(
 				'icon'     => 'anthropic',
 				'initials' => 'An',
 				'color'    => '#111111',
 				'url'      => 'https://console.anthropic.com/settings/keys',
 				'tooltip'  => sprintf( $link_template, 'Anthropic' ),
 			),
-			'cohere'        => array(
+			'cohere'      => array(
 				'color'   => '#6f2cff',
 				'url'     => 'https://dashboard.cohere.com/api-keys',
 				'tooltip' => sprintf( $link_template, 'Cohere' ),
 			),
-			'cloudflare'    => array(
+			'cloudflare'  => array(
 				'icon'    => 'cloudflare',
 				'color'   => '#f3801a',
 				'url'     => 'https://dash.cloudflare.com/profile/api-tokens',
 				'tooltip' => sprintf( $link_template, 'Cloudflare Workers AI' ),
 			),
-			'deepseek'      => array(
+			'deepseek'    => array(
 				'icon'    => 'deepseek',
 				'color'   => '#0f172a',
 				'url'     => 'https://platform.deepseek.com/api_keys',
 				'tooltip' => sprintf( $link_template, 'DeepSeek' ),
 			),
-			'fal'           => array(
+			'fal'         => array(
 				'icon'    => 'fal',
 				'color'   => '#0ea5e9',
 				'url'     => 'https://fal.ai/dashboard/keys',
 				'tooltip' => sprintf( $link_template, 'Fal.ai' ),
 			),
-			'fal-ai'        => array(
+			'fal-ai'      => array(
 				'icon'    => 'fal-ai',
 				'color'   => '#0ea5e9',
 				'url'     => 'https://fal.ai/dashboard/keys',
 				'tooltip' => sprintf( $link_template, 'Fal.ai' ),
 			),
-			'grok'          => array(
+			'grok'        => array(
 				'icon'    => 'grok',
 				'color'   => '#ff6f00',
 				'url'     => 'https://console.x.ai/api-keys',
 				'tooltip' => sprintf( $link_template, 'Grok' ),
 			),
-			'groq'          => array(
+			'groq'        => array(
 				'icon'    => 'groq',
 				'color'   => '#f43f5e',
 				'url'     => 'https://console.groq.com/keys',
 				'tooltip' => sprintf( $link_template, 'Groq' ),
 			),
-			'google'        => array(
+			'google'      => array(
 				'icon'    => 'google',
 				'color'   => '#4285f4',
 				'url'     => 'https://aistudio.google.com/app/api-keys',
 				'tooltip' => sprintf( $link_template, 'Google' ),
 			),
-			'huggingface'   => array(
+			'huggingface' => array(
 				'icon'    => 'huggingface',
 				'color'   => '#ffbe3c',
 				'url'     => 'https://huggingface.co/settings/tokens',
 				'tooltip' => sprintf( $link_template, 'Hugging Face' ),
 			),
-			'openai'        => array(
+			'openai'      => array(
 				'icon'    => 'openai',
 				'color'   => '#10a37f',
 				'url'     => 'https://platform.openai.com/api-keys',
 				'tooltip' => sprintf( $link_template, 'OpenAI' ),
 			),
-			'openrouter'    => array(
+			'openrouter'  => array(
 				'icon'    => 'openrouter',
 				'color'   => '#0f172a',
 				'url'     => 'https://openrouter.ai/settings/keys',
 				'tooltip' => sprintf( $link_template, 'OpenRouter' ),
 			),
-			'ollama'        => array(
+			'ollama'      => array(
 				'icon'            => 'ollama',
 				'color'           => '#111111',
 				'tooltip'         => esc_html__( 'Local Ollama instances at http://localhost:11434 do not require an API key. If you are calling https://ollama.com/api, create a key from your ollama.com account (for example via the dashboard or the `ollama signin` command) and paste it here.', 'ai' ),
 				'keepDescription' => true,
 			),
-			'xai'           => array(
+			'xai'         => array(
 				'icon'    => 'xai',
 				'color'   => '#000000',
 				'url'     => 'https://console.x.ai/api-keys',

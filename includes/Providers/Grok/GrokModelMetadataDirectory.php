@@ -31,11 +31,13 @@ class GrokModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 	/**
 	 * Known suffixes for image-only models.
 	 */
+	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition -- False positive: array values, not multiple constants.
 	private const IMAGE_MODEL_KEYWORDS = array( 'image', 'img' );
 
 	/**
 	 * Known suffixes for multimodal chat models.
 	 */
+	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition -- False positive: array values, not multiple constants.
 	private const MULTIMODAL_KEYWORDS = array( 'vision', '4.1', 'omni' );
 
 	/**
@@ -73,8 +75,8 @@ class GrokModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 				continue;
 			}
 
-			$model_id    = (string) $model_data['id'];
-			$metadata[]  = new ModelMetadata(
+			$model_id   = (string) $model_data['id'];
+			$metadata[] = new ModelMetadata(
 				$model_id,
 				$this->format_model_name( $model_id ),
 				$this->determine_capabilities( $model_id ),
@@ -102,7 +104,7 @@ class GrokModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 	 *
 	 * @param string $model_id Model identifier.
 	 *
-	 * @return array<int, CapabilityEnum>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\Enums\CapabilityEnum>
 	 */
 	private function determine_capabilities( string $model_id ): array {
 		foreach ( self::IMAGE_MODEL_KEYWORDS as $keyword ) {
@@ -122,7 +124,7 @@ class GrokModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 	 *
 	 * @param string $model_id Model identifier.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function determine_supported_options( string $model_id ): array {
 		foreach ( self::IMAGE_MODEL_KEYWORDS as $keyword ) {
@@ -157,7 +159,7 @@ class GrokModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 	 *
 	 * @param bool $supports_multimodal Whether the model supports image inputs.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function get_text_options( bool $supports_multimodal ): array {
 		$options = array(
@@ -194,7 +196,7 @@ class GrokModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 	/**
 	 * Returns supported options for Grok image generators.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function get_image_options(): array {
 		return array(

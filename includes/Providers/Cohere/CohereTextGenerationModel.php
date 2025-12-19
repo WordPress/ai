@@ -47,9 +47,9 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 			$payload
 		);
 
-		$request       = $this->getRequestAuthentication()->authenticateRequest( $request );
-		$httpTransport = $this->getHttpTransporter();
-		$response      = $httpTransport->send( $request );
+		$request        = $this->getRequestAuthentication()->authenticateRequest( $request );
+		$http_transport = $this->getHttpTransporter();
+		$response       = $http_transport->send( $request );
 		$this->throwIfNotSuccessful( $response );
 
 		return $this->parseResponseToResult( $response );
@@ -59,17 +59,19 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	 * {@inheritDoc}
 	 */
 	public function streamGenerateTextResult( array $prompt ): \Generator {
+		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 		throw ResponseException::fromInvalidData(
 			$this->providerMetadata()->getName(),
 			'stream',
 			__( 'Streaming is not yet implemented for the Cohere provider.', 'ai' )
 		);
+		// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**
 	 * Builds the Cohere `/chat` payload.
 	 *
-	 * @param list<Message> $prompt Prompt messages.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -79,17 +81,19 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 		$system_text = $config->getSystemInstruction();
 
 		if ( empty( $messages ) ) {
+			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 			throw new InvalidArgumentException(
 				__( 'Cohere chat requests require at least one user message.', 'ai' )
 			);
+			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		$current_message = $this->extractLatestUserMessage( $messages );
 		$chat_history    = $this->convertMessagesToChatHistory( $messages );
 
 		$payload = array(
-			'model'    => $this->metadata()->getId(),
-			'message'  => $current_message,
+			'model'   => $this->metadata()->getId(),
+			'message' => $current_message,
 		);
 
 		if ( $system_text ) {
@@ -121,6 +125,7 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 
 		foreach ( $config->getCustomOptions() as $key => $value ) {
 			if ( isset( $payload[ $key ] ) ) {
+				// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 				throw new InvalidArgumentException(
 					sprintf(
 						/* translators: %s: custom option key. */
@@ -128,6 +133,7 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 						$key
 					)
 				);
+				// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 			$payload[ $key ] = $value;
 		}
@@ -138,7 +144,7 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Converts the WP AI Client prompt into Cohere's messages array.
 	 *
-	 * @param list<Message> $prompt Prompt messages.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
 	 *
 	 * @return list<array{role:string,content:string}>
 	 */
@@ -165,7 +171,7 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Extracts the first text fragment from a message.
 	 *
-	 * @param Message $message Prompt message.
+	 * @param \WordPress\AiClient\Messages\DTO\Message $message Prompt message.
 	 *
 	 * @return string
 	 */
@@ -182,15 +188,16 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Converts Cohere API responses to standard results.
 	 *
-	 * @param Response $response Cohere response.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response Cohere response.
 	 *
-	 * @return GenerativeAiResult
+	 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 	 */
 	private function parseResponseToResult( Response $response ): GenerativeAiResult {
 		$data = $response->getData();
 
 		$text_candidates = $this->extractTextCandidates( $data );
 		if ( empty( $text_candidates ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 			throw ResponseException::fromMissingData( $this->providerMetadata()->getName(), 'text' );
 		}
 
@@ -241,9 +248,11 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 			$content = $data['message']['content'] ?? array();
 			if ( is_array( $content ) ) {
 				foreach ( $content as $block ) {
-					if ( isset( $block['text'] ) && is_string( $block['text'] ) ) {
-						$candidates[] = $block['text'];
+					if ( ! isset( $block['text'] ) || ! is_string( $block['text'] ) ) {
+						continue;
 					}
+
+					$candidates[] = $block['text'];
 				}
 			}
 		}
@@ -254,17 +263,21 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 
 		if ( isset( $data['response'] ) && is_array( $data['response'] ) ) {
 			foreach ( $data['response'] as $entry ) {
-				if ( isset( $entry['message'] ) && is_string( $entry['message'] ) ) {
-					$candidates[] = $entry['message'];
+				if ( ! isset( $entry['message'] ) || ! is_string( $entry['message'] ) ) {
+					continue;
 				}
+
+				$candidates[] = $entry['message'];
 			}
 		}
 
 		if ( isset( $data['generations'] ) && is_array( $data['generations'] ) ) {
 			foreach ( $data['generations'] as $generation ) {
-				if ( isset( $generation['text'] ) && is_string( $generation['text'] ) ) {
-					$candidates[] = $generation['text'];
+				if ( ! isset( $generation['text'] ) || ! is_string( $generation['text'] ) ) {
+					continue;
 				}
+
+				$candidates[] = $generation['text'];
 			}
 		}
 
@@ -274,7 +287,7 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * Ensures Cohere returned a successful response.
 	 *
-	 * @param Response $response Cohere response.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response Cohere response.
 	 *
 	 * @return void
 	 */
@@ -301,9 +314,11 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 			return $content;
 		}
 
+		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 		throw new InvalidArgumentException(
 			__( 'Cohere chat requests require at least one user message.', 'ai' )
 		);
+		// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**

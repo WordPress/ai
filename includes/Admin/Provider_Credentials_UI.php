@@ -23,7 +23,7 @@ class Provider_Credentials_UI {
 	 * Bootstraps the enhancements.
 	 */
 	public static function init(): void {
-		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( self::class, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -50,7 +50,7 @@ class Provider_Credentials_UI {
 			'ai_provider_credentials',
 			'aiProviderCredentialsConfig',
 			array(
-				'providers' => Provider_Metadata_Registry::get_metadata(),
+				'providers'           => Provider_Metadata_Registry::get_metadata(),
 				'cloudflareAccountId' => (string) get_option( 'ai_cloudflare_account_id', '' ),
 			)
 		);

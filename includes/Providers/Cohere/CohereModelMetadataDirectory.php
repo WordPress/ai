@@ -31,9 +31,9 @@ class CohereModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 	 * {@inheritDoc}
 	 */
 	protected function sendListModelsRequest(): array {
-		$request   = new Request( HttpMethodEnum::GET(), CohereProvider::url( 'models' ) );
-		$request   = $this->getRequestAuthentication()->authenticateRequest( $request );
-		$response  = $this->getHttpTransporter()->send( $request );
+		$request  = new Request( HttpMethodEnum::GET(), CohereProvider::url( 'models' ) );
+		$request  = $this->getRequestAuthentication()->authenticateRequest( $request );
+		$response = $this->getHttpTransporter()->send( $request );
 		ResponseUtil::throwIfNotSuccessful( $response );
 
 		return $this->parseResponseToModelMetadataMap( $response );
@@ -42,9 +42,9 @@ class CohereModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 	/**
 	 * Parses Cohere's `/models` response.
 	 *
-	 * @param Response $response Cohere response.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response Cohere response.
 	 *
-	 * @return array<string, ModelMetadata>
+	 * @return array<string, \WordPress\AiClient\Providers\Models\DTO\ModelMetadata>
 	 */
 	private function parseResponseToModelMetadataMap( Response $response ): array {
 		$data = $response->getData();
@@ -56,7 +56,7 @@ class CohereModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 			CapabilityEnum::textGeneration(),
 			CapabilityEnum::chatHistory(),
 		);
-		$options = $this->getTextOptions();
+		$options      = $this->getTextOptions();
 
 		$metadata = array();
 		foreach ( $data['models'] as $model ) {
@@ -88,7 +88,7 @@ class CohereModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 	/**
 	 * Returns baseline Cohere chat options.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function getTextOptions(): array {
 		return array(

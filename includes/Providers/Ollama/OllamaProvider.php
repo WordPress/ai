@@ -58,6 +58,7 @@ class OllamaProvider extends AbstractApiProvider {
 			}
 		}
 
+		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 		throw new RuntimeException(
 			'Unsupported Ollama model capabilities: ' . implode(
 				', ',
@@ -69,6 +70,7 @@ class OllamaProvider extends AbstractApiProvider {
 				)
 			)
 		);
+		// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**

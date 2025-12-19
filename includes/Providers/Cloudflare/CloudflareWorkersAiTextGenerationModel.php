@@ -37,7 +37,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 	 * {@inheritDoc}
 	 */
 	public function generateTextResult( array $prompt ): GenerativeAiResult {
-		$request = new Request(
+		$request  = new Request(
 			HttpMethodEnum::POST(),
 			CloudflareWorkersAiProvider::url( 'run/' . $this->metadata()->getId() ),
 			array( 'Content-Type' => 'application/json' ),
@@ -60,7 +60,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 	/**
 	 * Builds the Cloudflare payload.
 	 *
-	 * @param list<Message> $prompt Prompt messages.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -69,9 +69,11 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 		$messages = $this->convertPromptToMessages( $prompt );
 
 		if ( empty( $messages ) ) {
+			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 			throw new InvalidArgumentException(
 				__( 'Cloudflare Workers AI chat requests require at least one user message.', 'ai' )
 			);
+			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		$payload = array(
@@ -104,6 +106,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 
 		foreach ( $config->getCustomOptions() as $key => $value ) {
 			if ( isset( $payload[ $key ] ) ) {
+				// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 				throw new InvalidArgumentException(
 					sprintf(
 						/* translators: %s: custom option key. */
@@ -111,6 +114,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 						$key
 					)
 				);
+				// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 
 			$payload[ $key ] = $value;
@@ -122,7 +126,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 	/**
 	 * Converts the WP AI Client prompt into Cloudflare message objects.
 	 *
-	 * @param list<Message> $prompt Prompt messages.
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
 	 *
 	 * @return list<array{role:string,content:string}>
 	 */
@@ -135,7 +139,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 				continue;
 			}
 
-			$role = $message->getRole()->isModel() ? 'assistant' : 'user';
+			$role       = $message->getRole()->isModel() ? 'assistant' : 'user';
 			$messages[] = array(
 				'role'    => $role,
 				'content' => $text,
@@ -148,7 +152,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 	/**
 	 * Extracts text from a message.
 	 *
-	 * @param Message $message Message instance.
+	 * @param \WordPress\AiClient\Messages\DTO\Message $message Message instance.
 	 *
 	 * @return string
 	 */
@@ -165,9 +169,9 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 	/**
 	 * Parses the Workers AI response to a WP AI result.
 	 *
-	 * @param Response $response HTTP response.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response HTTP response.
 	 *
-	 * @return GenerativeAiResult
+	 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 	 */
 	private function parseResponse( Response $response ): GenerativeAiResult {
 		$data = $response->getData();
@@ -180,7 +184,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 			array( new MessagePart( $data['result']['response'] ) )
 		);
 
-		$candidate = new Candidate( $message, FinishReasonEnum::stop() );
+		$candidate     = new Candidate( $message, FinishReasonEnum::stop() );
 		$prompt_tokens = (int) ( $data['result']['input_tokens'] ?? 0 );
 		$output_tokens = (int) ( $data['result']['output_tokens'] ?? 0 );
 
@@ -197,7 +201,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 	/**
 	 * Ensures Workers AI returned a successful response.
 	 *
-	 * @param Response $response HTTP response.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response HTTP response.
 	 *
 	 * @return void
 	 */

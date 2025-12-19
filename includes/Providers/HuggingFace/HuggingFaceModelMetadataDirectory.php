@@ -51,7 +51,7 @@ class HuggingFaceModelMetadataDirectory extends AbstractOpenAiCompatibleModelMet
 			CapabilityEnum::textGeneration(),
 			CapabilityEnum::chatHistory(),
 		);
-		$options = $this->getTextOptions();
+		$options      = $this->getTextOptions();
 
 		$models = array();
 		foreach ( $data['data'] as $model ) {
@@ -73,7 +73,7 @@ class HuggingFaceModelMetadataDirectory extends AbstractOpenAiCompatibleModelMet
 	/**
 	 * Returns supported options for Hugging Face chat models.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function getTextOptions(): array {
 		return array(

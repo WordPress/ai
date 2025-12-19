@@ -50,6 +50,7 @@ class Extended_Providers extends Abstract_Experiment {
 	 *
 	 * @var array<int, class-string>
 	 */
+	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition -- False positive with ::class array.
 	private const DEFAULT_PROVIDER_CLASSES = array(
 		CloudflareWorkersAiProvider::class,
 		CohereProvider::class,
@@ -193,7 +194,7 @@ class Extended_Providers extends Abstract_Experiment {
 			</p>
 			<?php foreach ( $provider_classes as $class_name ) : ?>
 				<?php
-				$field_id = $option_name . '-' . md5( $class_name );
+				$field_id   = $option_name . '-' . md5( $class_name );
 				$is_checked = $this->is_provider_selected( $class_name, $selection );
 				?>
 				<div class="ai-experiment-settings__control components-toggle-control">
@@ -257,8 +258,8 @@ class Extended_Providers extends Abstract_Experiment {
 		return array_values(
 			array_filter(
 				array_map(
-					static function ( $class ) {
-						return is_string( $class ) ? trim( $class ) : '';
+					static function ( $class_name ) {
+						return is_string( $class_name ) ? trim( $class_name ) : '';
 					},
 					(array) $providers
 				)
@@ -283,8 +284,8 @@ class Extended_Providers extends Abstract_Experiment {
 		return array_values(
 			array_filter(
 				$provider_classes,
-				static function ( string $class ) use ( $selection ): bool {
-					return ! isset( $selection[ $class ] ) || true === $selection[ $class ];
+				static function ( string $class_name ) use ( $selection ): bool {
+					return ! isset( $selection[ $class_name ] ) || true === $selection[ $class_name ];
 				}
 			)
 		);

@@ -55,6 +55,7 @@ class FalAiProvider extends AbstractApiProvider {
 			}
 		}
 
+		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 		throw new RuntimeException(
 			'Unsupported Fal.ai model capabilities: ' . implode(
 				', ',
@@ -66,6 +67,7 @@ class FalAiProvider extends AbstractApiProvider {
 				)
 			)
 		);
+		// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**

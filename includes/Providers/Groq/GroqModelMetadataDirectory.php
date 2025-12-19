@@ -78,7 +78,7 @@ class GroqModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 	/**
 	 * Returns supported options for Groq chat models.
 	 *
-	 * @return array<int, SupportedOption>
+	 * @return array<int, \WordPress\AiClient\Providers\Models\DTO\SupportedOption>
 	 */
 	private function get_text_options(): array {
 		return array(

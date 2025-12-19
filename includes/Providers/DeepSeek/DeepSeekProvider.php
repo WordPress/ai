@@ -42,6 +42,7 @@ class DeepSeekProvider extends AbstractApiProvider {
 			}
 		}
 
+		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 		throw new RuntimeException(
 			'Unsupported DeepSeek model capabilities: ' . implode(
 				', ',
@@ -53,6 +54,7 @@ class DeepSeekProvider extends AbstractApiProvider {
 				)
 			)
 		);
+		// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**

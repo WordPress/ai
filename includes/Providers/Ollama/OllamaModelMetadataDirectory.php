@@ -43,9 +43,9 @@ class OllamaModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 	/**
 	 * Parses Ollama tags response.
 	 *
-	 * @param Response $response Ollama response.
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response Ollama response.
 	 *
-	 * @return array<string, ModelMetadata>
+	 * @return array<string, \WordPress\AiClient\Providers\Models\DTO\ModelMetadata>
 	 */
 	private function parseResponse( Response $response ): array {
 		$data = $response->getData();
