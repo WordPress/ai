@@ -260,3 +260,59 @@ function has_valid_ai_credentials(): bool {
 		return false;
 	}
 }
+
+/**
+ * Returns the AI icon as an inline SVG.
+ *
+ * @since 0.1.0
+ *
+ * @param string $width  The width of the icon.
+ * @param string $height The height of the icon.
+ * @return string The AI icon SVG markup.
+ */
+function get_ai_icon_svg( string $width = '1em', string $height = '1em' ): string {
+	static $svg_content = null;
+
+	if ( null === $svg_content ) {
+		$svg_path    = dirname( __DIR__ ) . '/assets/images/ai-icon.svg';
+		$svg_content = file_exists( $svg_path ) ? file_get_contents( $svg_path ) : '';
+	}
+
+	if ( empty( $svg_content ) ) {
+		return '';
+	}
+
+	// Add width and height attributes, and fill="currentColor" for theme compatibility.
+	return preg_replace(
+		'/<svg\b/',
+		sprintf( '<svg width="%s" height="%s" fill="currentColor"', esc_attr( $width ), esc_attr( $height ) ),
+		$svg_content,
+		1
+	);
+}
+
+/**
+ * Returns the AI icon as a base64 data URI for use in admin menu icons.
+ *
+ * @since 0.1.0
+ *
+ * @return string The base64-encoded data URI for the AI icon.
+ */
+function get_ai_icon_data_uri(): string {
+	static $data_uri = null;
+
+	if ( null === $data_uri ) {
+		$svg_path = dirname( __DIR__ ) . '/assets/images/ai-icon.svg';
+
+		if ( file_exists( $svg_path ) ) {
+			$svg_content = file_get_contents( $svg_path );
+			// Replace currentColor with a neutral color for admin menu compatibility.
+			$svg_content = str_replace( 'fill="currentColor"', 'fill="black"', $svg_content );
+			$data_uri    = 'data:image/svg+xml;base64,' . base64_encode( $svg_content );
+		} else {
+			$data_uri = '';
+		}
+	}
+
+	return $data_uri;
+}
