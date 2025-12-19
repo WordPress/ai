@@ -123,6 +123,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 			$this->registry->has_experiment( 'title-generation' ),
 			'Title generation experiment should be registered'
 		);
+		$this->assertTrue(
+			$this->registry->has_experiment( 'markdown-feeds' ),
+			'Markdown feeds experiment should be registered'
+		);
 
 		$excerpt_experiment = $this->registry->get_experiment( 'excerpt-generation' );
 		$this->assertNotNull( $excerpt_experiment, 'Excerpt generation experiment should exist' );
@@ -139,6 +143,9 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$title_experiment = $this->registry->get_experiment( 'title-generation' );
 		$this->assertNotNull( $title_experiment, 'Title generation experiment should exist' );
 		$this->assertEquals( 'title-generation', $title_experiment->get_id() );
+		$markdown_experiment = $this->registry->get_experiment( 'markdown-feeds' );
+		$this->assertNotNull( $markdown_experiment, 'Markdown feeds experiment should exist' );
+		$this->assertEquals( 'markdown-feeds', $markdown_experiment->get_id() );
 	}
 
 	/**
