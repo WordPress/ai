@@ -9,8 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Type_Ahead;
 
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Abilities\Type_Ahead\Type_Ahead as Type_Ahead_Ability;
+use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Settings\Settings_Registration;
 

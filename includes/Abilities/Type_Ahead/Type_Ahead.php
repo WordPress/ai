@@ -67,25 +67,25 @@ class Type_Ahead extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'post_id'            => array(
+				'post_id'             => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Post ID used to gather additional context.', 'ai' ),
 				),
-				'block_id'          => array(
+				'block_id'            => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_key',
 					'description'       => esc_html__( 'Unique identifier of the block requesting the suggestion.', 'ai' ),
 				),
-				'block_content'     => array(
+				'block_content'       => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'Full text content of the active block.', 'ai' ),
 				),
-				'preceding_text'    => array(
+				'preceding_text'      => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'Text that appears before the caret within the block.', 'ai' ),
 				),
-				'following_text'    => array(
+				'following_text'      => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'Text after the caret within the block.', 'ai' ),
 				),
@@ -93,19 +93,19 @@ class Type_Ahead extends Abstract_Ability {
 					'type'        => 'string',
 					'description' => esc_html__( 'Neighboring block content for additional context.', 'ai' ),
 				),
-				'cursor_position'  => array(
+				'cursor_position'     => array(
 					'type'        => 'integer',
 					'description' => esc_html__( 'Caret offset within the block plain text.', 'ai' ),
 				),
-				'mode'             => array(
+				'mode'                => array(
 					'type' => 'string',
 					'enum' => self::MODES,
 				),
-				'max_words'        => array(
+				'max_words'           => array(
 					'type'        => 'integer',
 					'description' => esc_html__( 'Maximum number of words in the suggestion.', 'ai' ),
 				),
-				'manual_trigger'   => array(
+				'manual_trigger'      => array(
 					'type' => 'boolean',
 				),
 			),
@@ -120,11 +120,11 @@ class Type_Ahead extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'suggestion' => array(
+				'suggestion'      => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'Suggested continuation.', 'ai' ),
 				),
-				'confidence' => array(
+				'confidence'      => array(
 					'type'        => 'number',
 					'description' => esc_html__( 'Confidence score between 0 and 1.', 'ai' ),
 				),
@@ -138,22 +138,22 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @return array{suggestion: string, confidence: float, cursor_position: int}|WP_Error
+	 * @return array{suggestion: string, confidence: float, cursor_position: int}|\WP_Error
 	 */
 	protected function execute_callback( $input ) {
 		$args = wp_parse_args(
 			$input,
 			array(
-				'post_id'            => null,
-				'block_id'          => '',
-				'block_content'     => '',
-				'preceding_text'    => '',
-				'following_text'    => '',
+				'post_id'             => null,
+				'block_id'            => '',
+				'block_content'       => '',
+				'preceding_text'      => '',
+				'following_text'      => '',
 				'surrounding_context' => '',
-				'cursor_position'  => 0,
-				'mode'             => 'smart',
-				'max_words'        => 20,
-				'manual_trigger'   => false,
+				'cursor_position'     => 0,
+				'mode'                => 'smart',
+				'max_words'           => 20,
+				'manual_trigger'      => false,
 			)
 		);
 
@@ -226,8 +226,8 @@ class Type_Ahead extends Abstract_Ability {
 			$this->log_debug(
 				'Type Ahead provider returned WP_Error',
 				array(
-					'code'    => $result->get_error_code(),
-					'message' => $result->get_error_message(),
+					'code'        => $result->get_error_code(),
+					'message'     => $result->get_error_message(),
 					'duration_ms' => (int) round( $duration ),
 				)
 			);
@@ -313,7 +313,7 @@ class Type_Ahead extends Abstract_Ability {
 	 * Generates the suggestion via the AI client.
 	 *
 	 * @param array<string, mixed> $context Prompt context payload.
-	 * @return array{suggestion: string, confidence: float}|WP_Error
+	 * @return array{suggestion: string, confidence: float}|\WP_Error
 	 */
 	private function generate_suggestion( array $context ) {
 		$this->log_debug(
@@ -425,15 +425,15 @@ class Type_Ahead extends Abstract_Ability {
 		}
 
 		return array(
-			'mode'               => $mode,
-			'max_words'          => $max_words,
-			'cursor_position'    => $cursor_position,
-			'block_content'      => $block_content,
-			'preceding_text'     => $preceding_text,
-			'following_text'     => $following_text,
+			'mode'                => $mode,
+			'max_words'           => $max_words,
+			'cursor_position'     => $cursor_position,
+			'block_content'       => $block_content,
+			'preceding_text'      => $preceding_text,
+			'following_text'      => $following_text,
 			'surrounding_context' => $surrounding_context,
-			'post_context'       => $post_context,
-			'manual_trigger'     => $manual_trigger,
+			'post_context'        => $post_context,
+			'manual_trigger'      => $manual_trigger,
 		);
 	}
 
