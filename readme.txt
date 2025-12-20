@@ -19,6 +19,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 **Current Features:**
 
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 
@@ -29,7 +30,6 @@ We're actively developing new features to enhance your WordPress workflow:
 * **Excerpt Generation** - Automatically create concise summaries for your posts
 * **Image Generation** - Create images from text prompts directly in the block editor
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility
-* **Content Summarization** - Quickly summarize long-form content
 * **Contextual Tagging** - AI-suggested tags and categories to organize your content
 * **AI Playground** - Experiment with different AI models and prompts
 
@@ -105,6 +105,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 1. Post editor showing `Generate` button above the post title field.
 2. Post editor showing generated title recommendations in a modal.
 3. Post editor showing generated title applied to the post and updated `Re-generate` button.
+#. Post editor showing (Re-)Generate AI Summary experiment summarizing content into an AI Summary block.
 4. AI Experiments settings screen showing toggles to enable specific experiments.
 5. AI Credentials settings screen showing API key fields for available AI service providers.
 
