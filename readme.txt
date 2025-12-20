@@ -19,6 +19,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 **Current Features:**
 
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Comment Moderation** - Analysis of comment toxicity and sentiment, bulk moderation features, and contextual AI reply suggestions in the Comments admin screen.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 
@@ -105,6 +106,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 1. Post editor showing `Generate` button above the post title field.
 2. Post editor showing generated title recommendations in a modal.
 3. Post editor showing generated title applied to the post and updated `Re-generate` button.
+#. Comments admin screen showing AI-powered comment moderation features, including color-coded badges for toxicity scoring and comment sentiment.
 4. AI Experiments settings screen showing toggles to enable specific experiments.
 5. AI Credentials settings screen showing API key fields for available AI service providers.
 
