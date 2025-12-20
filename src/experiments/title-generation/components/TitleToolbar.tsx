@@ -10,7 +10,7 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
-import { executeAbility } from '@wordpress/abilities';
+import apiFetch from '@wordpress/api-fetch';
 import {
 	Button,
 	Flex,
@@ -125,9 +125,15 @@ async function generateTitles(
 	postId: number,
 	content: string
 ): Promise< string[] > {
-	return executeAbility( 'ai/title-generation', {
-		content,
-		post_id: postId,
+	return apiFetch( {
+		path: aiTitleGenerationData?.path ?? '',
+		method: 'POST',
+		data: {
+			input: {
+				post_id: postId,
+				content,
+			},
+		},
 	} )
 		.then( ( response ) => {
 			if (

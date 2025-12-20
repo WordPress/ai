@@ -39,6 +39,7 @@
     "webpack-remove-empty-scripts": "^1.1.1"
   },
   "dependencies": {
+    "@wordpress/api-fetch": "^7.36.0",
     "@wordpress/block-editor": "^15.7.0",
     "@wordpress/components": "^30.7.0",
     "@wordpress/compose": "^7.34.0",

@@ -7,14 +7,13 @@
     "automattic/jetpack-autoloader": "^5.0",
     "ext-json": "*",
     "php": ">=7.4",
-    "wordpress/abilities-api": "^0.4.0",
     "wordpress/mcp-adapter": "^0.3.0",
     "wordpress/wp-ai-client": "dev-add/providers-models-js-api"
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
-    "phpcompatibility/phpcompatibility-wp": "^2.1",
+    "phpcompatibility/phpcompatibility-wp": "^3.0.0-alpha",
     "phpstan/extension-installer": "^1.3",
     "phpstan/phpstan-deprecation-rules": "^2.0.3",
     "phpstan/phpstan-phpunit": "^2.0.3",
@@ -24,7 +23,6 @@
     "szepeviktor/phpstan-wordpress": "^2.0.2",
     "wp-coding-standards/wpcs": "^3.2.0",
     "wp-phpunit/wp-phpunit": "^6.5",
-    "wpackagist-plugin/plugin-check": "^1.6",
     "yoast/phpunit-polyfills": "^4.0"
   },
   "autoload": {
@@ -52,27 +50,6 @@
     },
     "platform": {
       "php": "7.4"
-    }
-  },
-  "repositories": [
-    {
-      "type": "composer",
-      "url": "https://wpackagist.org",
-      "only": [
-        "wpackagist-plugin/*",
-        "wpackagist-theme/*"
-      ]
-    },
-    {
-      "type": "vcs",
-      "url": "https://github.com/WordPress/wp-ai-client"
-    }
-  ],
-  "extra": {
-    "installer-paths": {
-      "vendor/{$vendor}/{$name}/": [
-        "wpackagist-plugin/plugin-check"
-      ]
     }
   },
   "scripts": {
