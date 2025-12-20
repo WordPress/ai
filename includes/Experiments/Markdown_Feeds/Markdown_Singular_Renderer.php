@@ -21,10 +21,10 @@ use function get_post_field;
 use function get_post_modified_time;
 use function get_post_time;
 use function get_the_title;
-use function nocache_headers;
 use function sanitize_key;
 use function status_header;
 use function wp_strip_all_tags;
+use function wp_unslash;
 
 /**
  * Outputs a Markdown representation of a singular post.
@@ -40,7 +40,14 @@ final class Markdown_Singular_Renderer {
 	 * @param \WP_Post $post Post object.
 	 */
 	public function render( WP_Post $post ): void {
-		$this->send_headers( 200 );
+		$last_modified = strtotime( $post->post_modified_gmt );
+
+		// Check for conditional GET (304 Not Modified).
+		if ( $last_modified && $this->handle_conditional_get( $last_modified, $post ) ) {
+			return;
+		}
+
+		$this->send_headers( 200, $last_modified, $post );
 
 		if ( $this->is_head_request() ) {
 			return;
@@ -66,17 +73,75 @@ final class Markdown_Singular_Renderer {
 	}
 
 	/**
+	 * Writes a Markdown "password required" response.
+	 *
+	 * @since x.x.x
+	 */
+	public function render_password_required(): void {
+		$this->send_headers( 401 );
+
+		if ( $this->is_head_request() ) {
+			return;
+		}
+
+		echo '# ' . esc_html__( 'Password Required', 'ai' ) . "\n\n";
+		echo esc_html__( 'This content is password protected. Please provide the password to view the Markdown representation.', 'ai' ) . "\n";
+	}
+
+	/**
 	 * Sends HTTP headers for the Markdown response.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param int  $status_code HTTP status code.
+	 * @param int           $status_code   HTTP status code.
+	 * @param int|false     $last_modified Unix timestamp of last modification, or false.
+	 * @param \WP_Post|null $post          Post object for ETag generation.
 	 */
-	private function send_headers( int $status_code ): void {
+	private function send_headers( int $status_code, $last_modified = false, ?WP_Post $post = null ): void {
 		status_header( $status_code );
-		nocache_headers();
 		header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ), true );
 		header( 'X-Content-Type-Options: nosniff', true );
+
+		// Only add caching headers for successful responses with valid data.
+		if ( 200 !== $status_code || ! $last_modified || ! $post ) {
+			return;
+		}
+
+		header( 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s', $last_modified ) . ' GMT', true );
+
+		// Generate ETag from last modified time and post ID.
+		$etag = md5( $last_modified . '-' . $post->ID );
+		header( 'ETag: "' . $etag . '"', true );
+
+		// Allow caching for a short period.
+		header( 'Cache-Control: max-age=300, must-revalidate', true );
+	}
+
+	/**
+	 * Handles conditional GET requests (If-Modified-Since, If-None-Match).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int      $last_modified Unix timestamp of last modification.
+	 * @param \WP_Post $post          Post object.
+	 * @return bool True if 304 response was sent, false otherwise.
+	 */
+	private function handle_conditional_get( int $last_modified, WP_Post $post ): bool {
+		$client_etag          = isset( $_SERVER['HTTP_IF_NONE_MATCH'] ) ? trim( (string) wp_unslash( $_SERVER['HTTP_IF_NONE_MATCH'] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$client_last_modified = isset( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ? (string) wp_unslash( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		$etag = '"' . md5( $last_modified . '-' . $post->ID ) . '"';
+
+		$etag_match          = '' !== $client_etag && $client_etag === $etag;
+		$last_modified_match = '' !== $client_last_modified && strtotime( $client_last_modified ) >= $last_modified;
+
+		if ( $etag_match || $last_modified_match ) {
+			status_header( 304 );
+			header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ), true );
+			return true;
+		}
+
+		return false;
 	}
 
 	/**

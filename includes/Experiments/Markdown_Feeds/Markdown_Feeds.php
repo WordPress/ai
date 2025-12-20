@@ -13,14 +13,27 @@ use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Settings\Settings_Registration;
 
 use function __;
+use function add_query_arg;
+use function current_user_can;
 use function esc_attr;
 use function esc_html;
 use function esc_html__;
-use function esc_html_e;
+use function esc_url;
+use function get_bloginfo;
+use function get_feed_link;
 use function get_option;
+use function get_permalink;
+use function get_post_status;
+use function get_post_type_object;
+use function get_queried_object;
+use function get_the_title;
 use function is_admin;
+use function is_feed;
+use function is_singular;
+use function post_password_required;
 use function register_setting;
 use function sanitize_key;
+use function trailingslashit;
 use function wp_kses;
 
 /**
@@ -52,7 +65,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'markdown-feeds',
-			'label'       => esc_html__( 'Markdown', 'ai' ),
+			'label'       => esc_html__( 'Markdown Feeds', 'ai' ),
 			'description' => esc_html__( 'Adds Markdown representations of posts and pages via feeds, .md URLs, and Accept header negotiation.', 'ai' ),
 		);
 	}
@@ -62,10 +75,13 @@ class Markdown_Feeds extends Abstract_Experiment {
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_feed' ) );
-		add_filter( 'do_parse_request', array( $this, 'maybe_strip_markdown_extension' ), 1 );
+		add_filter( 'request', array( $this, 'filter_request_for_markdown_extension' ), 1 );
 		add_filter( 'redirect_canonical', array( $this, 'filter_redirect_canonical' ), 10, 2 );
 		add_filter( 'wp_headers', array( $this, 'filter_wp_headers' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_render_singular_markdown' ), 0 );
+
+		// Feed autodiscovery.
+		add_action( 'wp_head', array( $this, 'add_feed_autodiscovery_links' ) );
 	}
 
 	/**
@@ -80,6 +96,96 @@ class Markdown_Feeds extends Abstract_Experiment {
 		}
 
 		add_feed( self::FEED_NAME, array( $this, 'render_feed' ) );
+	}
+
+	/**
+	 * Outputs feed autodiscovery links in the HTML head.
+	 *
+	 * Mirrors the behavior of `feed_links()` and `feed_links_extra()` for RSS/Atom.
+	 *
+	 * @since x.x.x
+	 */
+	public function add_feed_autodiscovery_links(): void {
+		$settings = $this->get_settings();
+		if ( ! $settings['enable_feed'] ) {
+			return;
+		}
+
+		// Don't add discovery links on feeds themselves.
+		if ( is_feed() ) {
+			return;
+		}
+
+		$site_name = get_bloginfo( 'name' );
+
+		// Main site feed.
+		$feed_url = $this->get_markdown_feed_link();
+		/* translators: %s: Site name. */
+		$title = sprintf( __( '%s Markdown Feed', 'ai' ), $site_name );
+
+		printf(
+			'<link rel="alternate" type="text/markdown" title="%s" href="%s" />' . "\n",
+			esc_attr( $title ),
+			esc_url( $feed_url )
+		);
+
+		// Singular post/page: add link to .md version.
+		if ( ! is_singular() || ! $settings['enable_md_extension'] ) {
+			return;
+		}
+
+		$post = get_queried_object();
+		if ( ! ( $post instanceof \WP_Post ) || ! $this->is_post_accessible( $post ) ) {
+			return;
+		}
+
+		$md_url = $this->get_markdown_permalink( $post );
+		/* translators: %s: Post title. */
+		$md_title = sprintf( __( '%s (Markdown)', 'ai' ), get_the_title( $post ) );
+
+		printf(
+			'<link rel="alternate" type="text/markdown" title="%s" href="%s" />' . "\n",
+			esc_attr( $md_title ),
+			esc_url( $md_url )
+		);
+	}
+
+	/**
+	 * Gets the Markdown feed URL.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $context Optional. Feed context (empty for main feed, or 'category', 'tag', etc.).
+	 * @return string Feed URL.
+	 */
+	public function get_markdown_feed_link( string $context = '' ): string {
+		if ( '' === $context ) {
+			return get_feed_link( self::FEED_NAME );
+		}
+
+		// For archive feeds, use the base feed link with feed query parameter.
+		return add_query_arg( 'feed', self::FEED_NAME, $context );
+	}
+
+	/**
+	 * Gets the Markdown permalink for a post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post Post object.
+	 * @return string Markdown permalink.
+	 */
+	public function get_markdown_permalink( \WP_Post $post ): string {
+		$permalink = get_permalink( $post );
+		if ( ! $permalink ) {
+			return '';
+		}
+
+		// Remove trailing slash, add .md extension.
+		$permalink = trailingslashit( $permalink );
+		$permalink = rtrim( $permalink, '/' );
+
+		return $permalink . '.md';
 	}
 
 	/**
@@ -218,77 +324,51 @@ class Markdown_Feeds extends Abstract_Experiment {
 	}
 
 	/**
-	 * Removes the `.md` suffix from the request path so WordPress can resolve the
-	 * underlying resource via existing rewrite rules.
+	 * Filters parsed query vars to strip `.md` suffix from slug-based vars.
+	 *
+	 * This allows URLs like `/post-name.md` to resolve to the post with slug `post-name`.
+	 * Works with the `request` filter which fires after WordPress parses the URL.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param bool $do_parse Whether to parse the request.
-	 * @return bool
+	 * @param array<string,mixed> $query_vars Parsed query vars.
+	 * @return array<string,mixed>
 	 */
-	public function maybe_strip_markdown_extension( bool $do_parse ): bool {
+	public function filter_request_for_markdown_extension( array $query_vars ): array {
 		$settings = $this->get_settings();
 		if ( ! $settings['enable_md_extension'] ) {
-			return $do_parse;
+			return $query_vars;
 		}
 
 		if ( is_admin() ) {
-			return $do_parse;
+			return $query_vars;
 		}
 
 		$method = $this->get_request_method();
 		if ( 'get' !== $method && 'head' !== $method ) {
-			return $do_parse;
+			return $query_vars;
 		}
 
-		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-		if ( '' === $request_uri ) {
-			return $do_parse;
+		// Query vars that contain post/page slugs which may have .md suffix.
+		$slug_vars = array( 'name', 'pagename', 'attachment' );
+
+		foreach ( $slug_vars as $var ) {
+			if ( empty( $query_vars[ $var ] ) ) {
+				continue;
+			}
+
+			$value = (string) $query_vars[ $var ];
+			if ( '.md' !== substr( $value, -3 ) ) {
+				continue;
+			}
+
+			// Strip the .md suffix and mark this as a markdown request.
+			$query_vars[ $var ]               = substr( $value, 0, -3 );
+			$this->markdown_extension_request = true;
+			break;
 		}
 
-		$parts = wp_parse_url( $request_uri );
-		if ( ! is_array( $parts ) ) {
-			return $do_parse;
-		}
-		$path = isset( $parts['path'] ) ? (string) $parts['path'] : '';
-		if ( '' === $path ) {
-			return $do_parse;
-		}
-
-		if ( 0 === strpos( $path, '/wp-json/' ) ) {
-			return $do_parse;
-		}
-
-		$has_trailing_slash = '/' === substr( $path, -1 );
-		$path_trimmed       = $has_trailing_slash ? rtrim( $path, '/' ) : $path;
-
-		if ( '.md' !== substr( $path_trimmed, -3 ) ) {
-			return $do_parse;
-		}
-
-		$base_path = substr( $path_trimmed, 0, -3 );
-		if ( '' === $base_path ) {
-			$base_path = '/';
-		}
-
-		$new_path = $base_path;
-		if ( $has_trailing_slash ) {
-			$new_path .= '/';
-		}
-
-		$new_request_uri = $new_path;
-		if ( ! empty( $parts['query'] ) ) {
-			$new_request_uri .= '?' . $parts['query'];
-		}
-
-		$this->markdown_extension_request = true;
-
-		$_SERVER['REQUEST_URI'] = $new_request_uri;
-		if ( isset( $_SERVER['PATH_INFO'] ) ) {
-			$_SERVER['PATH_INFO'] = $new_path;
-		}
-
-		return $do_parse;
+		return $query_vars;
 	}
 
 	/**
@@ -358,9 +438,10 @@ class Markdown_Feeds extends Abstract_Experiment {
 			return;
 		}
 
+		$renderer = new Markdown_Singular_Renderer();
+
 		if ( ! is_singular() ) {
 			if ( $this->markdown_extension_request ) {
-				$renderer = new Markdown_Singular_Renderer();
 				$renderer->render_not_found();
 				exit;
 			}
@@ -370,14 +451,61 @@ class Markdown_Feeds extends Abstract_Experiment {
 
 		$post = get_queried_object();
 		if ( ! $post instanceof \WP_Post ) {
-			$renderer = new Markdown_Singular_Renderer();
 			$renderer->render_not_found();
 			exit;
 		}
 
-		$renderer = new Markdown_Singular_Renderer();
+		// Check post accessibility (status, password protection, etc.).
+		if ( ! $this->is_post_accessible( $post ) ) {
+			if ( post_password_required( $post ) ) {
+				$renderer->render_password_required();
+			} else {
+				$renderer->render_not_found();
+			}
+			exit;
+		}
+
+		// Send Link header pointing to canonical HTML version.
+		$canonical_url = get_permalink( $post );
+		if ( $canonical_url ) {
+			header( 'Link: <' . esc_url( $canonical_url ) . '>; rel="canonical"', false );
+		}
+
 		$renderer->render( $post );
 		exit;
+	}
+
+	/**
+	 * Checks whether a post is accessible for Markdown rendering.
+	 *
+	 * Validates post status and password protection similar to core feed behavior.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post Post object.
+	 * @return bool True if accessible, false otherwise.
+	 */
+	private function is_post_accessible( \WP_Post $post ): bool {
+		$status = get_post_status( $post );
+
+		// Published posts are accessible unless password-protected.
+		if ( 'publish' === $status ) {
+			return ! post_password_required( $post );
+		}
+
+		// Private posts require the read_private_posts capability.
+		if ( 'private' === $status ) {
+			$post_type_obj = get_post_type_object( $post->post_type );
+			if ( ! $post_type_obj ) {
+				return false;
+			}
+
+			$cap = $post_type_obj->cap->read_private_posts ?? 'read_private_posts';
+			return current_user_can( $cap );
+		}
+
+		// Draft, pending, future, trash, etc. are not accessible.
+		return false;
 	}
 
 	/**

@@ -104,11 +104,25 @@ final class HTML_To_Markdown_Converter {
 		$link_stack = array();
 		$list_stack = array();
 
+		// Table state.
+		$in_table        = false;
+		$current_row     = array();
+		$is_header_row   = false;
+		$header_row_done = false;
+
 		while ( $processor->next_token() ) {
 			$token_name = $processor->get_token_name();
 
 			if ( '#text' === $token_name ) {
 				$text = (string) $processor->get_modifiable_text();
+
+				// If we're in a table cell, collect text for the cell.
+				if ( $in_table && ! empty( $current_row ) ) {
+					$cell_index                  = count( $current_row ) - 1;
+					$current_row[ $cell_index ] .= trim( preg_replace( '/\s+/', ' ', $text ) );
+					continue;
+				}
+
 				$this->append_text( $markdown, $text, $at_line_start, $blockquote_depth, $in_pre );
 				continue;
 			}
@@ -211,6 +225,33 @@ final class HTML_To_Markdown_Converter {
 				continue;
 			}
 
+			// Figure element (contains image + optional caption).
+			if ( 'FIGURE' === $token_name ) {
+				$this->ensure_blank_line( $markdown, $at_line_start );
+				continue;
+			}
+
+			// Figure caption - render as italic text on new line.
+			if ( 'FIGCAPTION' === $token_name ) {
+				if ( ! $is_closer ) {
+					$this->ensure_newline( $markdown, $at_line_start );
+					$markdown     .= '*';
+					$at_line_start = false;
+				} else {
+					$markdown .= '*';
+				}
+				continue;
+			}
+
+			// Citation in blockquotes - prefix with em dash.
+			if ( 'CITE' === $token_name ) {
+				if ( ! $is_closer ) {
+					$markdown     .= '— ';
+					$at_line_start = false;
+				}
+				continue;
+			}
+
 			if ( 'UL' === $token_name || 'OL' === $token_name ) {
 				if ( $is_closer ) {
 					array_pop( $list_stack );
@@ -245,6 +286,59 @@ final class HTML_To_Markdown_Converter {
 					true
 				);
 
+				continue;
+			}
+
+			// Table handling.
+			if ( 'TABLE' === $token_name ) {
+				if ( $is_closer ) {
+					$in_table        = false;
+					$header_row_done = false;
+					$this->ensure_blank_line( $markdown, $at_line_start );
+				} else {
+					$in_table = true;
+					$this->ensure_blank_line( $markdown, $at_line_start );
+				}
+				continue;
+			}
+
+			if ( 'THEAD' === $token_name || 'TBODY' === $token_name || 'TFOOT' === $token_name ) {
+				// Skip these structural elements; we detect headers via TH tags.
+				continue;
+			}
+
+			if ( 'TR' === $token_name ) {
+				if ( $is_closer ) {
+					// Output the row.
+					if ( ! empty( $current_row ) ) {
+						$row_line = '| ' . implode( ' | ', $current_row ) . ' |';
+						$this->append_line( $markdown, $row_line, $at_line_start, $blockquote_depth );
+
+						// Add separator after header row.
+						if ( $is_header_row && ! $header_row_done ) {
+							$separator = '|' . str_repeat( ' --- |', count( $current_row ) );
+							$this->append_line( $markdown, $separator, $at_line_start, $blockquote_depth );
+							$header_row_done = true;
+						}
+					}
+					$current_row   = array();
+					$is_header_row = false;
+				}
+				continue;
+			}
+
+			if ( 'TH' === $token_name ) {
+				if ( ! $is_closer ) {
+					$current_row[] = '';
+					$is_header_row = true;
+				}
+				continue;
+			}
+
+			if ( 'TD' === $token_name ) {
+				if ( ! $is_closer ) {
+					$current_row[] = '';
+				}
 				continue;
 			}
 
@@ -369,7 +463,11 @@ final class HTML_To_Markdown_Converter {
 	 * @return string Cleaned buffer.
 	 */
 	private function cleanup( string $markdown ): string {
+		// Remove trailing whitespace from lines.
 		$markdown = preg_replace( "/[ \\t]+\\n/", "\n", $markdown );
+		// Remove leading whitespace from lines (except in code blocks).
+		$markdown = preg_replace( "/\\n[ \\t]+(?!\\s*```)/", "\n", $markdown );
+		// Collapse multiple blank lines.
 		$markdown = preg_replace( "/\\n{3,}/", "\n\n", $markdown );
 		return (string) $markdown;
 	}
