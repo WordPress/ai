@@ -9,13 +9,13 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Playground;
 
+use WP_Error;
+use WP_REST_Request;
+use WP_REST_Response;
+use WP_REST_Server;
 use WordPress\AI_Client\Capabilities\Capabilities_Manager;
 use WordPress\AI_Client\REST_API\JSON_Schema_To_WP_Schema_Converter;
 use WordPress\AiClient\Messages\DTO\Message;
-use WP_Error;
-use WP_REST_Server;
-use WP_REST_Request;
-use WP_REST_Response;
 
 /**
  * REST controller to manage message history for the AI Playground.
@@ -81,9 +81,10 @@ class AI_Playground_Messages_REST_Controller {
 	 *
 	 * @since n.e.x.t
 	 *
-	 * @return bool|WP_Error True if authorized, WP_Error otherwise.
+	 * @return bool|\WP_Error True if authorized, WP_Error otherwise.
 	 */
 	public function permissions_check_playground_access() {
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined
 		if ( current_user_can( Capabilities_Manager::PROMPT_AI_CAPABILITY ) ) {
 			return true;
 		}
@@ -100,7 +101,7 @@ class AI_Playground_Messages_REST_Controller {
 	 *
 	 * @since n.e.x.t
 	 *
-	 * @return WP_REST_Response|WP_Error The response object or error.
+	 * @return \WP_REST_Response|\WP_Error The response object or error.
 	 */
 	public function process_list_messages_request() {
 		$messages_history = get_user_option( 'ai_playground_messages_history', get_current_user_id() );
@@ -115,8 +116,8 @@ class AI_Playground_Messages_REST_Controller {
 	 *
 	 * @since n.e.x.t
 	 *
-	 * @param WP_REST_Request $request The request object.
-	 * @return WP_REST_Response|WP_Error The response object or error.
+	 * @param \WP_REST_Request $request The request object.
+	 * @return \WP_REST_Response|\WP_Error The response object or error.
 	 *
 	 * @phpstan-param WP_REST_Request<UpdateMessagesRequestParams> $request
 	 */
@@ -139,7 +140,7 @@ class AI_Playground_Messages_REST_Controller {
 	 *
 	 * @since n.e.x.t
 	 *
-	 * @return WP_REST_Response|WP_Error The response object or error.
+	 * @return \WP_REST_Response|\WP_Error The response object or error.
 	 */
 	public function process_delete_messages_request() {
 		$previous_messages = $this->process_list_messages_request();
@@ -161,7 +162,7 @@ class AI_Playground_Messages_REST_Controller {
 		$playground_message_schema = $this->get_message_schema();
 
 		return array(
-			'messages'    => array(
+			'messages' => array(
 				'type'        => 'array',
 				'description' => __( 'The list of AI Playground messages.', 'ai' ),
 				'items'       => array(

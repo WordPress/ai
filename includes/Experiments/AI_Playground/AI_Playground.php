@@ -64,6 +64,7 @@ class AI_Playground extends Abstract_Experiment {
 		$hook_suffix = add_management_page(
 			__( 'AI Playground', 'ai' ),
 			__( 'AI Playground', 'ai' ),
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined
 			Capabilities_Manager::PROMPT_AI_CAPABILITY,
 			'ai-playground',
 			array( $this, 'render_playground_screen' )
