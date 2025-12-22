@@ -19,11 +19,11 @@ use WordPress\AI\Experiment_Registry;
  */
 class Mock_Experiment extends Abstract_Experiment {
 	/**
-	 * Tracks if register was called.
+	 * Tracks if init was called.
 	 *
 	 * @var bool
 	 */
-	public $register_called = false;
+	public $init_called = false;
 
 	/**
 	 * Loads experiment metadata.
@@ -41,12 +41,12 @@ class Mock_Experiment extends Abstract_Experiment {
 	}
 
 	/**
-	 * Registers the experiment.
+	 * Initializes the experiment.
 	 *
 	 * @since 0.1.0
 	 */
-	public function register(): void {
-		$this->register_called = true;
+	public function init(): void {
+		$this->init_called = true;
 	}
 }
 
@@ -183,7 +183,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test initialize_experiments calls register on enabled experiments.
+	 * Test initialize_experiments calls init on enabled experiments.
 	 *
 	 * @since 0.1.0
 	 */
@@ -198,8 +198,8 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->loader->initialize_experiments();
 
 		$this->assertTrue(
-			$experiment->register_called,
-			'Experiment register() should be called'
+			$experiment->init_called,
+			'Experiment init() should be called'
 		);
 
 		// Cleanup.
@@ -220,14 +220,14 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->assertTrue( $this->loader->is_initialized(), 'Should be initialized' );
 
 		// Reset the flag to track second call.
-		$experiment->register_called = false;
+		$experiment->init_called = false;
 
 		// Try to initialize again.
 		$this->loader->initialize_experiments();
 
 		$this->assertFalse(
-			$experiment->register_called,
-			'Experiment register() should not be called twice'
+			$experiment->init_called,
+			'Experiment init() should not be called twice'
 		);
 	}
 
@@ -296,8 +296,8 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->loader->initialize_experiments();
 
 		$this->assertFalse(
-			$experiment->register_called,
-			'Disabled experiment register() should not be called'
+			$experiment->init_called,
+			'Disabled experiment init() should not be called'
 		);
 	}
 }

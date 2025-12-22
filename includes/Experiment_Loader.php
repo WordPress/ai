@@ -173,7 +173,7 @@ final class Experiment_Loader {
 	/**
 	 * Initializes all enabled experiments.
 	 *
-	 * Loops through all registered experiments and calls their register() method
+	 * Loops through all registered experiments and calls their init() method
 	 * if they are enabled.
 	 *
 	 * @since 0.1.0
@@ -203,8 +203,8 @@ final class Experiment_Loader {
 				continue;
 			}
 
-			// Register the experiment.
-			$experiment->register();
+			// Initialize the experiment.
+			$experiment->init();
 		}
 
 		/**

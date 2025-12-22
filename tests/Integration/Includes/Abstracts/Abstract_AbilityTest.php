@@ -122,11 +122,11 @@ class Test_Ability_Experiment extends Abstract_Experiment {
 	}
 
 	/**
-	 * Registers the experiment.
+	 * Initializes the experiment.
 	 *
 	 * @since 0.1.0
 	 */
-	public function register(): void {
+	public function init(): void {
 		// No-op for testing.
 	}
 }

@@ -144,12 +144,12 @@ class My_Experiment extends Abstract_Experiment {
 	}
 
 	/**
-	 * Registers the experiment's hooks and functionality.
+	 * Initializes the experiment's hooks and functionality.
 	 *
 	 * @since 0.1.0
 	 */
-	public function register(): void {
-		// Register your hooks here
+	public function init(): void {
+		// Initialize your hooks here
 		add_action( 'init', array( $this, 'initialize' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_filter( 'the_content', array( $this, 'filter_content' ) );

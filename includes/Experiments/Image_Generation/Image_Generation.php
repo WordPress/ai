@@ -40,7 +40,7 @@ class Image_Generation extends Abstract_Experiment {
 	 *
 	 * @since x.x.x
 	 */
-	public function register(): void {
+	public function init(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 	}
 

@@ -34,11 +34,11 @@ class Test_Image_Import_Experiment extends Abstract_Experiment {
 	}
 
 	/**
-	 * Registers the experiment.
+	 * Initializes the experiment.
 	 *
 	 * @since x.x.x
 	 */
-	public function register(): void {
+	public function init(): void {
 		// No-op for testing.
 	}
 

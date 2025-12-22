@@ -223,11 +223,11 @@ abstract class Abstract_Experiment implements Experiment {
 	}
 
 	/**
-	 * Registers the experiment.
+	 * Initializes the experiment.
 	 *
 	 * Must be implemented by child classes to set up hooks and functionality.
 	 *
 	 * @since 0.1.0
 	 */
-	abstract public function register(): void;
+	abstract public function init(): void;
 }

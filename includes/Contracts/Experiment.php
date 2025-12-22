@@ -51,14 +51,14 @@ interface Experiment {
 	public function get_description(): string;
 
 	/**
-	 * Registers the experiment's hooks and functionality.
+	 * Initializes the experiment's hooks and functionality.
 	 *
 	 * This method is called when the experiment is initialized.
 	 * Use this to add actions, filters, and set up the experiment.
 	 *
 	 * @since 0.1.0
 	 */
-	public function register(): void;
+	public function init(): void;
 
 	/**
 	 * Checks if the experiment is currently enabled.
