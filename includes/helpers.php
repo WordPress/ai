@@ -264,7 +264,7 @@ function has_valid_ai_credentials(): bool {
 /**
  * Returns the AI icon as an inline SVG.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @param string $width  The width of the icon.
  * @param string $height The height of the icon.
@@ -294,7 +294,7 @@ function get_ai_icon_svg( string $width = '1em', string $height = '1em' ): strin
 /**
  * Returns the AI icon as a base64 data URI for use in admin menu icons.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @return string The base64-encoded data URI for the AI icon.
  */

@@ -72,7 +72,7 @@ interface Experiment {
 	/**
 	 * Provides contextual entry points for the experiment.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return array<int, array{label: string, url: string, type?: string}>
 	 */
@@ -81,7 +81,7 @@ interface Experiment {
 	/**
 	 * Checks if the experiment has custom settings.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return bool True if the experiment has settings, false otherwise.
 	 */
@@ -90,7 +90,7 @@ interface Experiment {
 	/**
 	 * Renders experiment-specific settings fields.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return void
 	 */

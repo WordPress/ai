@@ -223,7 +223,7 @@ abstract class Abstract_Experiment implements Experiment {
 	 *     ),
 	 * );
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return array<int, array{label: string, url: string, type?: string}>
 	 */
@@ -236,7 +236,7 @@ abstract class Abstract_Experiment implements Experiment {
 	 *
 	 * Override this method in child classes that have settings to return true.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return bool True if the experiment has settings, false otherwise.
 	 */
