@@ -45,7 +45,7 @@ class Settings_Page {
 	/**
 	 * URL pointing to the plugin repository for contributions.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -54,7 +54,7 @@ class Settings_Page {
 	/**
 	 * URL pointing to the plugin documentation.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
