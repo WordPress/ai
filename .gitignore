@@ -4,7 +4,6 @@
 # Node
 node_modules/
 
-
 # IDE
 .idea/
 .vscode/
@@ -21,6 +20,7 @@ node_modules/
 /tests/_output/*
 !/tests/_output/.gitkeep
 /tests/.phpunit.result.cache
+/tests/e2e/test-results/
 /tmp/
 AGENTS.md
 

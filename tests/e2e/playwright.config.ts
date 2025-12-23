@@ -12,6 +12,7 @@ import baseConfig from '@wordpress/scripts/config/playwright.config.js';
 
 const config = defineConfig( {
 	...baseConfig,
+	outputDir: './test-results/report',
 	reporter: process.env.CI
 		? [ [ 'github' ], [ './config/flaky-tests-reporter.ts' ] ]
 		: 'list',
