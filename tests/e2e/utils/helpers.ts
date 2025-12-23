@@ -89,3 +89,51 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 		} )
 	).toHaveCount( 1 );
 };
+
+/**
+ * Enables a specific experiment.
+ *
+ * @param admin        The admin fixture from the test context.
+ * @param page         The page object.
+ * @param experimentId The ID of the experiment to enable.
+ */
+export const enableExperiment = async (
+	admin: Admin,
+	page: Page,
+	experimentId: string
+) => {
+	await visitSettingsPage( admin );
+	await page.locator( `#ai_experiment_${ experimentId }_enabled` ).check();
+	await page.locator( '#submit' ).click();
+
+	// Ensure the save was successful.
+	await expect(
+		page.locator( '.wrap .notice-success', {
+			hasText: 'Settings saved',
+		} )
+	).toHaveCount( 1 );
+};
+
+/**
+ * Disables a specific experiment.
+ *
+ * @param admin        The admin fixture from the test context.
+ * @param page         The page object.
+ * @param experimentId The ID of the experiment to disable.
+ */
+export const disableExperiment = async (
+	admin: Admin,
+	page: Page,
+	experimentId: string
+) => {
+	await visitSettingsPage( admin );
+	await page.locator( `#ai_experiment_${ experimentId }_enabled` ).uncheck();
+	await page.locator( '#submit' ).click();
+
+	// Ensure the save was successful.
+	await expect(
+		page.locator( '.wrap .notice-success', {
+			hasText: 'Settings saved',
+		} )
+	).toHaveCount( 1 );
+};
