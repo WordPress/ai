@@ -25,6 +25,8 @@
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",
     "lint:php:stan": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script stan",
     "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit -c phpunit.xml.dist",
+    "test:e2e:env:start": "node tests/bin/add-mocking-plugin.js && wp-env start",
+    "test:e2e:env:stop": "rm -f .wp-env.override.json && wp-env stop",
     "test:e2e": "wp-scripts test-playwright --config tests/e2e/playwright.config.ts",
     "test:e2e:debug": "wp-scripts test-playwright --config tests/e2e/playwright.config.ts --ui",
     "format:js": "wp-scripts format ./src",

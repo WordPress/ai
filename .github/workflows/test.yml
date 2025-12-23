@@ -333,7 +333,7 @@ jobs:
                   timeout_minutes: 10
                   max_attempts: 3
                   command: |
-                      npm run wp-env start
+                      npm run test:e2e:env:start
 
             - name: Run E2E tests
               run: npm run test:e2e
