@@ -4,7 +4,6 @@
 # Node
 node_modules/
 
-
 # IDE
 .idea/
 .vscode/
@@ -21,8 +20,11 @@ node_modules/
 /tests/_output/*
 !/tests/_output/.gitkeep
 /tests/.phpunit.result.cache
+/artifacts
+/tests/e2e/artifacts
 /tmp/
 AGENTS.md
+.wp-env.override.json
 
 # Logs
 *.log
