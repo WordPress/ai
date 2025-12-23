@@ -163,21 +163,21 @@ test.describe( 'Title Generation Experiment', () => {
 		await editor.saveDraft();
 	} );
 
-	test( 'Ensure the Title Generation Experiment UI is not visible when the experiment is disabled', async ( {
+	test( 'Ensure the Title Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
+		// Enable the Title Generation Experiment.
+		await enableExperiment( admin, page, 'title-generation' );
 
-		// Disable the Title Generation Experiment.
-		await disableExperiment( admin, page, 'title-generation' );
+		// Globally turn off Experiments.
+		await disableExperiments( admin, page );
 
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Title Generation Experiment Disabled',
+			title: 'Test Title Generation Experiment Globally Disabled',
 			content:
 				'This is some test content for the Title Generation Experiment.',
 		} );
@@ -194,18 +194,21 @@ test.describe( 'Title Generation Experiment', () => {
 		).not.toBeVisible();
 	} );
 
-	test( 'Ensure the Title Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
+	test( 'Ensure the Title Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Disable the Title Generation Experiment.
+		await disableExperiment( admin, page, 'title-generation' );
 
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Title Generation Experiment Globally Disabled',
+			title: 'Test Title Generation Experiment Disabled',
 			content:
 				'This is some test content for the Title Generation Experiment.',
 		} );
