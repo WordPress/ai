@@ -253,7 +253,6 @@ jobs:
     # - Checks out the repository.
     # - Sets up Node.js.
     # - Installs NPM dependencies.
-    # - Runs Prettier formatting check.
     # - Runs JavaScript linting.
     jslint:
         name: Run JavaScript code quality checks
@@ -280,3 +279,70 @@ jobs:
 
             - name: Run JavaScript linting
               run: npm run lint:js
+
+    # Runs E2E tests.
+    #
+    # Performs the following steps:
+    # - Checks out the repository.
+    # - Sets up PHP.
+    # - Installs Composer dependencies.
+    # - Sets up Node.js.
+    # - Installs NPM dependencies.
+    # - Builds assets.
+    # - Starts the Docker testing environment.
+    # - Runs E2E tests.
+    # - Uploads E2E test results as artifact.
+    e2e:
+        name: Run E2E tests
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: read
+        timeout-minutes: 20
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+              with:
+                  show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
+                  persist-credentials: false
+
+            - name: Set up PHP
+              uses: shivammathur/setup-php@ec406be512d7077f68eed36e63f4d91bc006edc4 # v2.35.4
+              with:
+                  php-version: 8.3
+                  coverage: none
+
+            - name: Install Composer dependencies
+              uses: ramsey/composer-install@3cf229dc2919194e9e36783941438d17239e8520 # v3.1.1
+
+            - name: Setup Node.js
+              uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+              with:
+                  cache: 'npm'
+                  node-version-file: '.nvmrc'
+
+            - name: Install NPM dependencies
+              run: npm ci
+
+            - name: Build assets
+              run: npm run build
+
+            - name: Start the Docker testing environment
+              uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
+              with:
+                  timeout_minutes: 10
+                  max_attempts: 3
+                  command: |
+                      npm run wp-env start
+
+            - name: Run E2E tests
+              run: npm run test:e2e
+
+            - name: Upload E2E test results as artifact
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              if: always()
+              with:
+                  name: playwright-report
+                  path: artifacts/test-results
+                  retention-days: 2
+                  if-no-files-found: ignore
