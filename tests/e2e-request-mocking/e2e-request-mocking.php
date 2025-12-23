@@ -28,6 +28,7 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 
 	// Mock the OpenAI models API response.
 	if ( str_contains( $url, 'https://api.openai.com/v1/models' ) ) {
+		// Handle invalid API key.
 		if (
 			isset( $parsed_args['headers']['Authorization'] ) &&
 			str_contains( $parsed_args['headers']['Authorization'], 'invalid-api-key' )
