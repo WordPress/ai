@@ -29,6 +29,7 @@
     "lint:js": "wp-scripts lint-js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@types/wordpress__blocks": "^12.5.18",
