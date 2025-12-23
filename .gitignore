@@ -20,7 +20,8 @@ node_modules/
 /tests/_output/*
 !/tests/_output/.gitkeep
 /tests/.phpunit.result.cache
-/tests/e2e/test-results/
+/artifacts
+/tests/e2e/artifacts
 /tmp/
 AGENTS.md
 
