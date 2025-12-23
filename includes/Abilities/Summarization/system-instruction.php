@@ -5,6 +5,8 @@
  * @package WordPress\AI\Abilities\Summarization
  */
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+
 // Determine the length from the passed in global.
 $length_desc = '2-3 sentences; 25-80 words';
 if ( isset( $length ) ) {
