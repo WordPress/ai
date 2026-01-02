@@ -44,6 +44,11 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 	}
 
+	// Mock the OpenAI images API response.
+	if ( str_contains( $url, 'https://api.openai.com/v1/images/generations' ) ) {
+		$response = file_get_contents( __DIR__ . '/responses/OpenAI/image.json' );
+	}
+
 	if ( ! empty( $response ) ) {
 		return array(
 			'headers'     => array(),
