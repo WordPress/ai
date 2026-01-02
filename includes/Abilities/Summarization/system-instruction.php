@@ -30,6 +30,4 @@ The summary should follow these requirements:
 - Provide a high-level overview, not a list of details
 - Do not start with "This article is about..." or "This post explains..." or "This content describes..." or any other generic introduction
 - Must reflect the actual content, not generic filler text
-
-The data you will be provided is delimited by triple quotes.
 INSTRUCTION;

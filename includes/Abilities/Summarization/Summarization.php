@@ -235,15 +235,15 @@ class Summarization extends Abstract_Ability {
 			);
 		}
 
-		$content = "## Content\n\n" . $content;
+		$content = '<content>' . $content . '</content>';
 
 		// If we have additional context, add it to the content.
 		if ( $context ) {
-			$content .= "\n\n## Additional Context\n\n" . $context;
+			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
 		// Generate the summary using the AI client.
-		return AI_Client::prompt_with_wp_error( '"""' . $content . '"""' )
+		return AI_Client::prompt_with_wp_error( $content )
 			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
 			->using_temperature( 0.9 )
 			->using_model_preference( ...get_preferred_models() )
