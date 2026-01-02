@@ -36,12 +36,12 @@ class Excerpt_Generation extends Abstract_Ability {
 				'content' => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Content to generate excerpt suggestions for.', 'ai' ),
+					'description'       => esc_html__( 'Content to generate an excerpt suggestion for.', 'ai' ),
 				),
-				'post_id' => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'Content from this post will be used to generate excerpt suggestions. This overrides the content parameter if both are provided.', 'ai' ),
+				'context' => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => esc_html__( 'Additional context to use when generating an excerpt suggestion for the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
 				),
 			),
 		);
@@ -70,45 +70,46 @@ class Excerpt_Generation extends Abstract_Ability {
 			$input,
 			array(
 				'content' => null,
-				'post_id' => null,
+				'context' => null,
 			),
 		);
 
 		// If a post ID is provided, ensure the post exists before using its' content.
-		if ( $args['post_id'] ) {
-			$post = get_post( $args['post_id'] );
+		if ( is_numeric( $args['context'] ) ) {
+			$post = get_post( (int) $args['context'] );
 
 			if ( ! $post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['context'] ) )
 				);
 			}
 
 			// Get the post context.
-			$context = get_post_context( $args['post_id'] );
+			$context = get_post_context( $post->ID );
+			$content = $context['content'] ?? '';
+			unset( $context['content'] );
 
 			// Default to the passed in content if it exists.
 			if ( $args['content'] ) {
-				$context['content'] = normalize_content( $args['content'] );
+				$content = normalize_content( $args['content'] );
 			}
 		} else {
-			$context = array(
-				'content' => normalize_content( $args['content'] ?? '' ),
-			);
+			$content = normalize_content( $args['content'] ?? '' );
+			$context = $args['context'] ?? '';
 		}
 
 		// If we have no content, return an error.
-		if ( empty( $context['content'] ) ) {
+		if ( empty( $content ) ) {
 			return new WP_Error(
 				'content_not_provided',
-				esc_html__( 'Content is required to generate excerpt suggestions.', 'ai' )
+				esc_html__( 'Content is required to generate an excerpt suggestion.', 'ai' )
 			);
 		}
 
-		// Generate the excerpts.
-		$result = $this->generate_excerpt( $context );
+		// Generate the excerpt.
+		$result = $this->generate_excerpt( $content, $context );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -119,7 +120,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		if ( empty( $result ) ) {
 			return new WP_Error(
 				'no_results',
-				esc_html__( 'No excerpt suggestions were generated.', 'ai' )
+				esc_html__( 'No excerpt suggestion was generated.', 'ai' )
 			);
 		}
 
@@ -133,17 +134,17 @@ class Excerpt_Generation extends Abstract_Ability {
 	 * @since x.x.x
 	 */
 	protected function permission_callback( $args ) {
-		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
+		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
 
 		if ( $post_id ) {
-			$post = get_post( $args['post_id'] );
+			$post = get_post( $post_id );
 
 			// Ensure the post exists.
 			if ( ! $post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $post_id ) )
 				);
 			}
 
@@ -194,10 +195,11 @@ class Excerpt_Generation extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string|array<string, string> $context The context to generate an excerpt from.
+	 * @param string $content The content to generate an excerpt from.
+	 * @param string|array<string, string> $context Additional context to use.
 	 * @return string|\WP_Error The generated excerpt, or a WP_Error if there was an error.
 	 */
-	protected function generate_excerpt( $context ) {
+	protected function generate_excerpt( string $content, $context ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -216,8 +218,15 @@ class Excerpt_Generation extends Abstract_Ability {
 			);
 		}
 
+		$content = '<content>' . $content . '</content>';
+
+		// If we have additional context, add it to the content.
+		if ( $context ) {
+			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
+		}
+
 		// Generate an excerpt using the AI client.
-		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
+		return AI_Client::prompt_with_wp_error( $content )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
 			->using_model_preference( ...get_preferred_models() )
