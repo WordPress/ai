@@ -11,6 +11,11 @@ namespace WordPress\AI\Experiments\Example_Experiment;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Reference experiment demonstrating hooks and REST endpoints.
  *

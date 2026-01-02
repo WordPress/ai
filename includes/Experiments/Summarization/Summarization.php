@@ -13,6 +13,11 @@ use WordPress\AI\Abilities\Summarization\Summarization as Summarization_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Content summarization experiment.
  *

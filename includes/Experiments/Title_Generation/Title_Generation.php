@@ -13,6 +13,11 @@ use WordPress\AI\Abilities\Title_Generation\Title_Generation as Title_Generation
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Title generation experiment.
  *

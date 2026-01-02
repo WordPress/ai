@@ -13,6 +13,11 @@ use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
 use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Image generation experiment.
  *
