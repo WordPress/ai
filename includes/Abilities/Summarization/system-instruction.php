@@ -5,6 +5,11 @@
  * @package WordPress\AI\Abilities\Summarization
  */
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 
 // Determine the length from the passed in global.
@@ -17,7 +22,7 @@ if ( isset( $length ) ) {
 	}
 }
 
-// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed, PluginCheck.CodeAnalysis.Heredoc.NotAllowed
 return <<<INSTRUCTION
 You are an editorial assistant that generates concise, factual, and neutral summaries of long-form content. Your summaries support both inline readability (e.g., top-of-post overview) and structured metadata use cases (search previews, featured cards, accessibility tools).
 

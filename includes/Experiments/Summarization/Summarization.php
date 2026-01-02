@@ -12,6 +12,11 @@ namespace WordPress\AI\Experiments\Summarization;
 use WordPress\AI\Abilities\Summarization\Summarization as Summarization_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Content summarization experiment.
  *
