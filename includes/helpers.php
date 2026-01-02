@@ -12,11 +12,6 @@ namespace WordPress\AI;
 use Throwable;
 use WordPress\AI_Client\AI_Client;
 
-// Exit if accessed directly.
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
-
 /**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
  *
