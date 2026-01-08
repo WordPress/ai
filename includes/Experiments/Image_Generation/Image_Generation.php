@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\Image_Generation;
 
 use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
 use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
+use WordPress\AI\Abilities\Image\Generate_Prompt as Generate_Prompt_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
@@ -107,6 +108,15 @@ INSTRUCTION;
 				'label'         => __( 'Base64 Image Import', 'ai' ),
 				'description'   => __( 'Imports a base64 encoded image into the media library', 'ai' ),
 				'ability_class' => Image_Import_Ability::class,
+			),
+		);
+
+		wp_register_ability(
+			'ai/image-prompt-generation',
+			array(
+				'label'         => __( 'Image Prompt Generation', 'ai' ),
+				'description'   => __( 'Generates a prompt from post content that can be used to generate an image', 'ai' ),
+				'ability_class' => Generate_Prompt_Ability::class,
 			),
 		);
 	}
