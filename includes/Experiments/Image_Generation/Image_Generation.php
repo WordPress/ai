@@ -11,7 +11,7 @@ namespace WordPress\AI\Experiments\Image_Generation;
 
 use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
 use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
-use WordPress\AI\Abilities\Image\Generate_Prompt as Generate_Prompt_Ability;
+use WordPress\AI\Abilities\Image\Generate_Image_Prompt as Generate_Image_Prompt_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
@@ -21,28 +21,6 @@ use WordPress\AI\Asset_Loader;
  * @since x.x.x
  */
 class Image_Generation extends Abstract_Experiment {
-
-	/**
-	 * The purpose used to generate a prompt.
-	 *
-	 * @since x.x.x
-	 * @var string
-	 */
-	// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
-	private static string $prompt_generation_purpose = <<<'INSTRUCTION'
-Analyze the information below and generate a single, self-contained image generation prompt suitable for use with an image generation model.
-
-The generated prompt should describe a featured image that visually represents the article's core topic and tone. Use the provided content as factual grounding, but do not include text, captions, logos, or branding in the image unless explicitly specified.
-
-The prompt should:
-- Be written as a direct instruction to an image generation model
-- Clearly describe the subject, setting, and visual style
-- Reflect the article's theme and context without being overly literal
-- Avoid mentioning the article, author, or website
-- Be concise but descriptive enough to produce a high-quality, editorial-style image
-
-Output only the final image prompt, with no explanations or additional commentary.
-INSTRUCTION;
 
 	/**
 	 * {@inheritDoc}
@@ -116,7 +94,7 @@ INSTRUCTION;
 			array(
 				'label'         => __( 'Image Prompt Generation', 'ai' ),
 				'description'   => __( 'Generates a prompt from post content that can be used to generate an image', 'ai' ),
-				'ability_class' => Generate_Prompt_Ability::class,
+				'ability_class' => Generate_Image_Prompt_Ability::class,
 			),
 		);
 	}
@@ -149,12 +127,11 @@ INSTRUCTION;
 			'image_generation',
 			'ImageGenerationData',
 			array(
-				'enabled'               => $this->is_enabled(),
-				'generatePath'          => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
-				'importPath'            => 'wp-abilities/v1/abilities/ai/image-import/run',
-				'getContextPath'        => 'wp-abilities/v1/abilities/ai/get-post-details/run',
-				'generatePromptPath'    => 'wp-abilities/v1/abilities/ai/generate-prompt/run',
-				'generatePromptPurpose' => self::$prompt_generation_purpose,
+				'enabled'            => $this->is_enabled(),
+				'generatePath'       => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
+				'importPath'         => 'wp-abilities/v1/abilities/ai/image-import/run',
+				'getContextPath'     => 'wp-abilities/v1/abilities/ai/get-post-details/run',
+				'generatePromptPath' => 'wp-abilities/v1/abilities/ai/generate-prompt/run',
 			)
 		);
 	}
