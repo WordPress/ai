@@ -21,15 +21,14 @@ When enabled, the Image Generation experiment adds a "Generate featured image" b
 
 ### For Developers
 
-The experiment consists of three main components:
+The experiment consists of four main components:
 
 1. **Experiment Class** (`WordPress\AI\Experiments\Image_Generation\Image_Generation`): Handles registration, asset enqueuing, UI integration, and post meta registration
-2. **Generate Image Ability** (`WordPress\AI\Abilities\Image\Generate_Image`): Generates base64-encoded images from prompts using AI models
-3. **Import Image Ability** (`WordPress\AI\Abilities\Image\Import_Base64_Image`): Imports base64-encoded images into the WordPress media library
+2. **Generate Image Prompt Ability** (`WordPress\AI\Abilities\Image\Generate_Image_Prompt`): Generates optimized image generation prompts from post content and context
+3. **Generate Image Ability** (`WordPress\AI\Abilities\Image\Generate_Image`): Generates base64-encoded images from prompts using AI models
+4. **Import Image Ability** (`WordPress\AI\Abilities\Image\Import_Base64_Image`): Imports base64-encoded images into the WordPress media library
 
-The experiment also leverages the `ai/generate-prompt` ability (from `WordPress\AI\Abilities\Utilities\Prompts`) to create optimized image generation prompts from post context.
-
-Both abilities can be called directly via REST API, making them useful for automation, bulk processing, or custom integrations.
+All three abilities can be called directly via REST API, making them useful for automation, bulk processing, or custom integrations.
 
 ## Architecture & Implementation
 
@@ -37,7 +36,7 @@ Both abilities can be called directly via REST API, making them useful for autom
 
 - `WordPress\AI\Experiments\Image_Generation\Image_Generation::register()` wires everything once the experiment is enabled:
   - `register_post_meta()` → registers `ai_generated` post meta for attachment post type
-  - `wp_abilities_api_init` → registers the `ai/image-generation` and `ai/image-import` abilities
+  - `wp_abilities_api_init` → registers the `ai/image-generation`, `ai/image-import`, and `ai/image-prompt-generation` abilities
   - `admin_enqueue_scripts` → enqueues the React bundle on `post.php` and `post-new.php` screens for post types that support featured images
 
 ### Assets & Data Flow
@@ -45,21 +44,20 @@ Both abilities can be called directly via REST API, making them useful for autom
 1. **PHP Side:**
    - `enqueue_assets()` loads `experiments/image-generation` (`src/experiments/image-generation/index.ts`) and localizes `window.aiImageGenerationData` with:
      - `enabled`: Whether the experiment is enabled
-     - `generatePath`: REST API path to image generation ability (`/wp-json/wp-abilities/v1/abilities/ai/image-generation/run`)
-     - `importPath`: REST API path to image import ability (`/wp-json/wp-abilities/v1/abilities/ai/image-import/run`)
-     - `getContextPath`: REST API path to get post details (`/wp-json/wp-abilities/v1/abilities/ai/get-post-details/run`)
-     - `generatePromptPath`: REST API path to prompt generation ability (`/wp-json/wp-abilities/v1/abilities/ai/generate-prompt/run`)
-     - `generatePromptPurpose`: System instruction for generating image prompts
+     - `generateImagePath`: REST API path to image generation ability (`wp-abilities/v1/abilities/ai/image-generation/run`)
+     - `importPath`: REST API path to image import ability (`wp-abilities/v1/abilities/ai/image-import/run`)
+     - `getContextPath`: REST API path to get post details (`wp-abilities/v1/abilities/ai/get-post-details/run`)
+     - `generatePromptPath`: REST API path to image prompt generation ability (`wp-abilities/v1/abilities/ai/image-prompt-generation/run`)
 
 2. **React Side:**
-   - The React entry point (`index.ts`) imports `featured-image.tsx` which hooks into the featured image panel using the `editor.PostFeaturedImage` filter
+   - The React entry point (`featured-image.tsx`) hooks into the featured image panel using the `editor.PostFeaturedImage` filter
    - `GenerateFeaturedImage` component renders a button that:
      - Gets current post ID and content from the editor store
      - Calls `generateImage()` function which:
        - Gets post context (title, type) via `getContext()`
-       - Strips HTML from content
-       - Formats context and calls `generatePrompt()` to create an image generation prompt
-       - Calls the image generation ability with the prompt
+       - Formats context using `formatContext()`
+       - Calls `generatePrompt()` to create an image generation prompt from content and context
+       - Calls the image generation ability with the generated prompt
        - Returns base64-encoded image data
      - Calls `uploadImage()` function which:
        - Calls the image import ability with the base64 data
@@ -70,13 +68,16 @@ Both abilities can be called directly via REST API, making them useful for autom
    - `AILabel` component displays a label for AI-generated images by checking the `ai_generated` meta
 
 3. **Ability Execution Flow:**
-   - **Prompt Generation** (via `ai/generate-prompt`):
-     - Accepts `purpose` (system instruction) and `context` (formatted post data)
-     - Uses AI to generate an optimized image generation prompt
-     - Returns a plain text prompt string
+   - **Image Prompt Generation** (via `ai/image-prompt-generation`):
+     - Accepts `content` (string), `context` (string or post ID), and optional `style` (string) as input
+     - If `context` is numeric, treats it as a post ID and fetches post context using `get_post_context()`
+     - Normalizes content using `normalize_content()` helper
+     - Uses AI with a dedicated system instruction to generate an optimized image generation prompt
+     - Returns a plain text prompt string suitable for image generation models
    - **Image Generation** (via `ai/image-generation`):
      - Accepts `prompt` (string) as input
      - Uses AI image generation models (via `get_preferred_image_models()`)
+     - Sets request timeout to 90 seconds for longer generation times
      - Returns base64-encoded image data
    - **Image Import** (via `ai/image-import`):
      - Accepts base64 image data and metadata (filename, title, description, alt_text, mime_type, meta)
@@ -86,6 +87,32 @@ Both abilities can be called directly via REST API, making them useful for autom
      - Returns attachment data (id, url, filename, title, description, alt_text)
 
 ### Input Schemas
+
+#### Image Prompt Generation Ability
+
+```php
+array(
+    'type'       => 'object',
+    'properties' => array(
+        'content' => array(
+            'type'              => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'description'       => 'The content to use as inspiration for the generated image.',
+        ),
+        'context' => array(
+            'type'              => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'description'       => 'Any additional context to help generate the prompt. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists).',
+        ),
+        'style'   => array(
+            'type'              => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'description'       => 'Any additional style instructions to apply to the generated image.',
+        ),
+    ),
+    'required'   => array( 'content' ),
+)
+```
 
 #### Image Generation Ability
 
@@ -167,7 +194,18 @@ array(
 
 ### Output Schemas
 
-#### Image Generation Ability
+#### Image Prompt Generation Ability Output
+
+The ability returns a plain text string containing the generated image prompt:
+
+```php
+array(
+    'type'        => 'string',
+    'description' => 'The image generation prompt.',
+)
+```
+
+#### Image Generation Ability Output
 
 The ability returns a plain text string containing base64-encoded image data:
 
@@ -178,7 +216,7 @@ array(
 )
 ```
 
-#### Image Import Ability
+#### Image Import Ability Output
 
 The ability returns an object with image data:
 
@@ -222,18 +260,20 @@ array(
 
 ### Permissions
 
-Both abilities check permissions:
+All abilities check permissions:
 
+- **Image Prompt Generation:** Requires user to be logged in (`is_user_logged_in()`)
 - **Image Generation:** Requires `current_user_can( 'upload_files' )`
 - **Image Import:** Requires `current_user_can( 'upload_files' )`
 
 ## Using the Abilities via REST API
 
-Both the image generation and image import abilities can be called directly via REST API, making them useful for automation, bulk processing, or custom integrations.
+All three abilities can be called directly via REST API, making them useful for automation, bulk processing, or custom integrations.
 
 ### Endpoints
 
 ```text
+POST /wp-json/wp-abilities/v1/abilities/ai/image-prompt-generation/run
 POST /wp-json/wp-abilities/v1/abilities/ai/image-generation/run
 POST /wp-json/wp-abilities/v1/abilities/ai/image-import/run
 ```
@@ -249,7 +289,28 @@ See [TESTING_REST_API.md](../TESTING_REST_API.md) for detailed authentication in
 
 ### Request Examples
 
-#### Example 1: Generate Image from Prompt
+#### Example 1: Generate Image Prompt from Content
+
+```bash
+curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-prompt-generation/run" \
+  -u "username:application-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": {
+      "content": "This article discusses the benefits of renewable energy and solar power installations.",
+      "context": "Title: Renewable Energy Solutions\nType: post",
+      "style": "Editorial style, professional photography"
+    }
+  }'
+```
+
+**Response:**
+
+```json
+"A professional editorial photograph of a modern solar panel installation in a sunny landscape, showcasing renewable energy technology with clean, bright lighting and a professional composition"
+```
+
+#### Example 2: Generate Image from Prompt
 
 ```bash
 curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-generation/run" \
@@ -270,7 +331,22 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-ge
 
 The response is a base64-encoded string of the image data.
 
-#### Example 2: Import Base64 Image into Media Library
+#### Example 3: Generate Image Prompt from Post ID
+
+```bash
+curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-prompt-generation/run" \
+  -u "username:application-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": {
+      "context": "123"
+    }
+  }'
+```
+
+This will automatically fetch the content from post ID 123 and generate an image prompt.
+
+#### Example 4: Import Base64 Image into Media Library
 
 ```bash
 curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-import/run" \
@@ -309,20 +385,31 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-im
 }
 ```
 
-#### Example 3: Complete Flow - Generate and Import Image
+#### Example 5: Complete Flow - Generate Prompt, Generate Image, and Import
 
 ```bash
-# Step 1: Generate the image
-GENERATED_IMAGE=$(curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-generation/run" \
+# Step 1: Generate the image prompt
+PROMPT=$(curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-prompt-generation/run" \
   -u "username:application-password" \
   -H "Content-Type: application/json" \
   -d '{
     "input": {
-      "prompt": "A modern office workspace with plants and natural lighting"
+      "content": "This article discusses modern office design trends and workspace productivity.",
+      "context": "Title: Modern Office Design\nType: post"
     }
   }')
 
-# Step 2: Import the image
+# Step 2: Generate the image using the prompt
+GENERATED_IMAGE=$(curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-generation/run" \
+  -u "username:application-password" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"input\": {
+      \"prompt\": \"$PROMPT\"
+    }
+  }")
+
+# Step 3: Import the image
 curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-import/run" \
   -u "username:application-password" \
   -H "Content-Type: application/json" \
@@ -344,11 +431,34 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/image-im
   }"
 ```
 
-#### Example 4: Using JavaScript (Fetch API)
+#### Example 6: Using JavaScript (Fetch API)
 
 ```javascript
-async function generateAndImportImage(prompt, filename, title) {
-  // Step 1: Generate image
+async function generateAndImportImage(content, context, filename, title) {
+  // Step 1: Generate image prompt
+  const promptResponse = await fetch(
+    '/wp-json/wp-abilities/v1/abilities/ai/image-prompt-generation/run',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-WP-Nonce': wpApiSettings.nonce,
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        input: { content, context },
+      }),
+    }
+  );
+
+  if (!promptResponse.ok) {
+    const error = await promptResponse.json();
+    throw new Error(error.message || 'Failed to generate prompt');
+  }
+
+  const prompt = await promptResponse.text();
+
+  // Step 2: Generate image
   const generateResponse = await fetch(
     '/wp-json/wp-abilities/v1/abilities/ai/image-generation/run',
     {
@@ -371,7 +481,7 @@ async function generateAndImportImage(prompt, filename, title) {
 
   const base64Image = await generateResponse.text();
 
-  // Step 2: Import image
+  // Step 3: Import image
   const importResponse = await fetch(
     '/wp-json/wp-abilities/v1/abilities/ai/image-import/run',
     {
@@ -411,7 +521,8 @@ async function generateAndImportImage(prompt, filename, title) {
 
 // Usage
 generateAndImportImage(
-  'A futuristic cityscape at night',
+  'This article discusses futuristic urban planning and smart cities.',
+  'Title: Future Cities\nType: post',
   'futuristic-city',
   'Futuristic Cityscape'
 )
@@ -419,14 +530,23 @@ generateAndImportImage(
   .catch(error => console.error('Error:', error));
 ```
 
-#### Example 5: Using WordPress API Fetch (in Gutenberg/Admin)
+#### Example 7: Using WordPress API Fetch (in Gutenberg/Admin)
 
 ```javascript
 import apiFetch from '@wordpress/api-fetch';
 
-async function generateAndImportImage(prompt, filename, title) {
+async function generateAndImportImage(content, context, filename, title) {
   try {
-    // Step 1: Generate image
+    // Step 1: Generate image prompt
+    const prompt = await apiFetch({
+      path: '/wp-abilities/v1/abilities/ai/image-prompt-generation/run',
+      method: 'POST',
+      data: {
+        input: { content, context },
+      },
+    });
+
+    // Step 2: Generate image
     const base64Image = await apiFetch({
       path: '/wp-abilities/v1/abilities/ai/image-generation/run',
       method: 'POST',
@@ -435,7 +555,7 @@ async function generateAndImportImage(prompt, filename, title) {
       },
     });
 
-    // Step 2: Import image
+    // Step 3: Import image
     const result = await apiFetch({
       path: '/wp-abilities/v1/abilities/ai/image-import/run',
       method: 'POST',
@@ -469,6 +589,12 @@ async function generateAndImportImage(prompt, filename, title) {
 
 The abilities may return the following error codes:
 
+**Image Prompt Generation:**
+
+- `post_not_found`: The provided post ID does not exist
+- `content_not_provided`: No content was provided and no valid post ID was found
+- `no_results`: The AI client did not return any results
+
 **Image Generation:**
 
 - `no_results`: The AI client did not return any results
@@ -498,15 +624,15 @@ Example error response:
 
 ## Extending the Experiment
 
-### Customizing the Prompt Generation Purpose
+### Customizing the Image Prompt Generation System Instruction
 
-The system instruction that guides prompt generation can be customized by modifying the `$prompt_generation_purpose` property in:
+The system instruction that guides image prompt generation can be customized by modifying:
 
 ```php
-includes/Experiments/Image_Generation/Image_Generation.php
+includes/Abilities/Image/image-prompt-system-instruction.php
 ```
 
-This instruction tells the AI how to create image generation prompts from post context. You can modify it to change the style, tone, or requirements for generated prompts.
+This instruction tells the AI how to create image generation prompts from post content and context. You can modify it to change the style, tone, or requirements for generated prompts. The system instruction is specifically designed for image generation prompts and differs from generic prompt generation.
 
 ### Filtering Preferred Image Models
 
@@ -539,6 +665,12 @@ The experiment uses `getContext()` to fetch post details (title, type). You can 
 
 ```typescript
 src/experiments/image-generation/functions/get-context.ts
+```
+
+The context is formatted using `formatContext()` which converts key-value pairs into a string format. You can customize this formatting by modifying:
+
+```typescript
+src/experiments/image-generation/functions/format-context.ts
 ```
 
 ### Adding Custom UI Elements
@@ -651,10 +783,17 @@ npm run test:php
 
 ### Prompt Generation
 
-- The experiment uses a two-step process:
-  1. First, it generates an optimized image generation prompt from post context using the `ai/generate-prompt` ability
-  2. Then, it uses that prompt to generate the actual image
-- The prompt generation purpose is defined in the experiment class and instructs the AI on how to create image prompts
+- The experiment uses a three-step process:
+  1. First, it gets post context (title, type) using the `ai/get-post-details` ability
+  2. Then, it generates an optimized image generation prompt from post content and context using the `ai/image-prompt-generation` ability
+  3. Finally, it uses that prompt to generate the actual image
+- The image prompt generation uses a dedicated system instruction (`image-prompt-system-instruction.php`) that is specifically designed for creating image generation prompts
+- The system instruction ensures the generated prompt:
+  - Is self-contained and can be passed directly to image generation models
+  - Incorporates content and context faithfully
+  - Describes the subject, setting, and visual style clearly
+  - Avoids text, captions, logos, or branding unless specified
+  - Reflects the content's theme without being overly literal
 - The generated prompt is designed to be suitable for image generation models and reflects the article's core topic and tone
 
 ### Image Metadata
@@ -684,10 +823,11 @@ npm run test:php
 ## Related Files
 
 - **Experiment:** `includes/Experiments/Image_Generation/Image_Generation.php`
+- **Generate Image Prompt Ability:** `includes/Abilities/Image/Generate_Image_Prompt.php`
+- **Generate Image Prompt System Instruction:** `includes/Abilities/Image/image-prompt-system-instruction.php`
 - **Generate Image Ability:** `includes/Abilities/Image/Generate_Image.php`
 - **Import Image Ability:** `includes/Abilities/Image/Import_Base64_Image.php`
-- **Prompt Generation Ability:** `includes/Abilities/Utilities/Prompts.php`
-- **React Entry:** `src/experiments/image-generation/index.ts`
+- **React Entry:** `src/experiments/image-generation/featured-image.tsx`
 - **React Components:** `src/experiments/image-generation/components/`
 - **React Functions:** `src/experiments/image-generation/functions/`
 - **Tests:** `tests/Integration/Includes/Abilities/Image_GenerationTest.php`
