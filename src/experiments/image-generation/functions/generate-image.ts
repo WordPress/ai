@@ -9,7 +9,6 @@ import apiFetch from '@wordpress/api-fetch';
 import { formatContext } from './format-context';
 import { getContext } from './get-context';
 import { generatePrompt } from './generate-prompt';
-import { stripHTML } from './strip-html';
 
 const { aiImageGenerationData } = window as any;
 
@@ -42,13 +41,10 @@ export async function generateImage(
 		);
 	}
 
-	// Remove HTML from the content to limit the amount of tokens we use.
-	context.content = stripHTML( content );
-
 	let prompt: string;
 
 	try {
-		prompt = await generatePrompt( formatContext( context ) );
+		prompt = await generatePrompt( content, formatContext( context ) );
 	} catch ( error: any ) {
 		throw new Error(
 			`Failed to generate prompt: ${ error.message || error }`
@@ -56,7 +52,7 @@ export async function generateImage(
 	}
 
 	return apiFetch( {
-		path: aiImageGenerationData?.generatePath ?? '',
+		path: aiImageGenerationData?.generateImagePath ?? '',
 		method: 'POST',
 		data: {
 			input: {

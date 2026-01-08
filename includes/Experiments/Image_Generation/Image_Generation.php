@@ -33,7 +33,7 @@ class Image_Generation extends Abstract_Experiment {
 		return array(
 			'id'          => 'image-generation',
 			'label'       => __( 'Image Generation', 'ai' ),
-			'description' => __( 'Generates an image from a passed in prompt', 'ai' ),
+			'description' => __( 'Generates a featured image from a passed in prompt', 'ai' ),
 		);
 	}
 
@@ -128,10 +128,10 @@ class Image_Generation extends Abstract_Experiment {
 			'ImageGenerationData',
 			array(
 				'enabled'            => $this->is_enabled(),
-				'generatePath'       => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
+				'generateImagePath'  => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
 				'importPath'         => 'wp-abilities/v1/abilities/ai/image-import/run',
 				'getContextPath'     => 'wp-abilities/v1/abilities/ai/get-post-details/run',
-				'generatePromptPath' => 'wp-abilities/v1/abilities/ai/generate-prompt/run',
+				'generatePromptPath' => 'wp-abilities/v1/abilities/ai/image-prompt-generation/run',
 			)
 		);
 	}
