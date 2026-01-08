@@ -53,7 +53,7 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that normalize_content() replaces HTML linebreaks with newlines.
+	 * Test that normalize_content() replaces HTML linebreaks and removes linebreaks.
 	 *
 	 * @since 0.1.0
 	 */
@@ -62,7 +62,30 @@ class HelpersTest extends WP_UnitTestCase {
 		$result  = \WordPress\AI\normalize_content( $content );
 
 		$this->assertStringNotContainsString( '<br>', $result, 'Should remove br tags' );
-		$this->assertStringContainsString( "\n\n", $result, 'Should replace br with newlines' );
+		$this->assertStringNotContainsString( "\n", $result, 'Should replace newlines with spaces' );
+		$this->assertStringNotContainsString( "\r", $result, 'Should replace carriage returns with spaces' );
+		$this->assertStringContainsString( 'Line 1', $result, 'Should preserve Line 1' );
+		$this->assertStringContainsString( 'Line 2', $result, 'Should preserve Line 2' );
+		$this->assertStringContainsString( 'Line 3', $result, 'Should preserve Line 3' );
+	}
+
+	/**
+	 * Test that normalize_content() removes linebreaks and replaces with spaces.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_normalize_content_removes_linebreaks() {
+		$content = "Line 1\nLine 2\rLine 3\r\nLine 4";
+		$result  = \WordPress\AI\normalize_content( $content );
+
+		$this->assertStringNotContainsString( "\n", $result, 'Should replace newlines with spaces' );
+		$this->assertStringNotContainsString( "\r", $result, 'Should replace carriage returns with spaces' );
+		$this->assertStringContainsString( 'Line 1', $result, 'Should preserve Line 1' );
+		$this->assertStringContainsString( 'Line 2', $result, 'Should preserve Line 2' );
+		$this->assertStringContainsString( 'Line 3', $result, 'Should preserve Line 3' );
+		$this->assertStringContainsString( 'Line 4', $result, 'Should preserve Line 4' );
+		// Verify lines are separated by spaces, not running together
+		$this->assertStringContainsString( 'Line 1 Line 2', $result, 'Lines should be separated by spaces' );
 	}
 
 	/**
