@@ -49,7 +49,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 					'description'       => esc_html__( 'Any additional style instructions to apply to the generated image.', 'ai' ),
 				),
 			),
-			'required'    => array( 'content' ),
+			'required'   => array( 'content' ),
 		);
 	}
 
@@ -139,6 +139,8 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
+	 *
+	 * @return bool True if the user is logged in, false otherwise.
 	 */
 	protected function permission_callback( $args ) {
 		// Ensure the user is logged in.
@@ -166,7 +168,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string $content The content to use as inspiration for the final generated image.
-	 * @param array|string $context The context to help generate the prompt.
+	 * @param string|array<string, string> $context The context to help generate the prompt.
 	 * @param string $style The style instructions to apply to the final generated image.
 	 * @return string|\WP_Error The generated image generation prompt, or a WP_Error if there was an error.
 	 */

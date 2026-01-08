@@ -10,10 +10,14 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Image_Generation;
 
 use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
-use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abilities\Image\Generate_Image_Prompt as Generate_Image_Prompt_Ability;
+use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * Image generation experiment.

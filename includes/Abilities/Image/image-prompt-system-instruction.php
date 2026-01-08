@@ -5,6 +5,10 @@
  * @package WordPress\AI\Abilities\Image
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 return <<<'INSTRUCTION'
 You are a helpful assistant that generates a single, self-contained image generation prompt suitable for use with an image generation LLM.
