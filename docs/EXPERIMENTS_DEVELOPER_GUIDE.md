@@ -4,8 +4,7 @@ Welcome to the WordPress AI Experiments plugin development guide. This document 
 
 ## Table of Contents
 
-- [Getting Started](#getting-started)
-- [Architecture Overview](#architecture-overview)
+- [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
 - [Creating a New Experiment](#creating-a-new-experiment)
 - [Plugin API](#plugin-api)
 - [Development Workflow](#development-workflow)
@@ -343,7 +342,8 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 ### Documentation
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
-- [Testing Strategy](TESTING.md) - Testing philosophy and guidelines
+- [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
+- [Testing rest API Strategy](TESTING_REST_API.md) – Testing Rest API philosophy and guidelines
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [WordPress AI Team](https://make.wordpress.org/ai/)
