@@ -5,7 +5,7 @@
  * Handles admin menu, pages, and UI rendering.
  *
  * @package WordPress\AI\Features\Abilities_Explorer
- * @since 0.1.0
+ * @since n.e.x.t
  */
 
 namespace WordPress\AI\Features\Abilities_Explorer;
@@ -19,14 +19,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Manages the admin interface for Abilities Explorer.
  *
- * @since 0.1.0
+ * @since n.e.x.t
  */
 class Admin_Page {
 
 	/**
 	 * Initialize admin functionality.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
@@ -36,7 +36,7 @@ class Admin_Page {
 	/**
 	 * Add admin menu item.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
 	public function add_admin_menu(): void {
 		// Add top-level menu
@@ -54,7 +54,7 @@ class Admin_Page {
 	/**
 	 * Render the main page.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
 	public function render_page(): void {
 		// Check user capabilities
@@ -95,9 +95,9 @@ class Admin_Page {
 	/**
 	 * Render statistics dashboard.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
-	private function render_statistics() {
+	private function render_statistics(): void {
 		$stats = Ability_Handler::get_statistics();
 
 		?>
@@ -128,9 +128,9 @@ class Admin_Page {
 	/**
 	 * Render list view.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
-	private function render_list_view() {
+	private function render_list_view(): void {
 		$table = new Ability_Table();
 		$table->prepare_items();
 
@@ -148,9 +148,9 @@ class Admin_Page {
 	/**
 	 * Render detail view.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
-	private function render_detail_view() {
+	private function render_detail_view(): void {
 		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : '';
 
 		if ( empty( $ability_slug ) ) {
@@ -206,7 +206,7 @@ class Admin_Page {
 				<div class="ability-detail-section">
 					<h3><?php esc_html_e( 'Input Schema', 'ai' ); ?></h3>
 					<button type="button" class="button button-small ability-copy-btn" data-copy="input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
 				</div>
 			<?php endif; ?>
 
@@ -214,14 +214,14 @@ class Admin_Page {
 				<div class="ability-detail-section">
 					<h3><?php esc_html_e( 'Output Schema', 'ai' ); ?></h3>
 					<button type="button" class="button button-small ability-copy-btn" data-copy="output-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
 				</div>
 			<?php endif; ?>
 
 			<div class="ability-detail-section">
 				<h3><?php esc_html_e( 'Raw Data', 'ai' ); ?></h3>
 				<button type="button" class="button button-small ability-copy-btn" data-copy="raw-data"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-				<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+				<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
 			</div>
 		</div>
 		<?php
@@ -230,9 +230,9 @@ class Admin_Page {
 	/**
 	 * Render test runner.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
-	private function render_test_runner() {
+	private function render_test_runner(): void {
 		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : '';
 
 		if ( empty( $ability_slug ) ) {
@@ -300,7 +300,7 @@ class Admin_Page {
 					</div>
 				<?php endif; ?>
 
-				<textarea id="ability-test-payload" rows="12"><?php echo esc_textarea( wp_json_encode( $example_input, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></textarea>
+				<textarea id="ability-test-payload" rows="12"><?php echo esc_textarea( (string) wp_json_encode( $example_input, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></textarea>
 
 				<div class="ability-test-actions">
 					<button type="button" id="ability-test-invoke" class="button button-primary" data-ability="<?php echo esc_attr( $ability_slug ); ?>">
@@ -325,7 +325,7 @@ class Admin_Page {
 			<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
 				<div class="ability-test-schema">
 					<h3><?php esc_html_e( 'Input Schema Reference', 'ai' ); ?></h3>
-					<pre><?php echo esc_html( wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<pre><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
 				</div>
 			<?php endif; ?>
 		</div>
@@ -339,12 +339,12 @@ class Admin_Page {
 	/**
 	 * Generate example input from input schema.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 *
 	 * @param array $schema Input schema.
 	 * @return array Example input.
 	 */
-	private function generate_example_input( $schema ) {
+	private function generate_example_input( $schema ): array {
 		if ( empty( $schema ) || ! isset( $schema['properties'] ) ) {
 			return array();
 		}
@@ -361,7 +361,7 @@ class Admin_Page {
 	/**
 	 * Get example value for a schema property.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 *
 	 * @param array $prop_schema Property schema.
 	 * @return mixed Example value.
@@ -397,9 +397,9 @@ class Admin_Page {
 	/**
 	 * AJAX handler for invoking abilities.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
-	public function ajax_invoke_ability() {
+	public function ajax_invoke_ability(): void {
 		// Verify nonce
 		check_ajax_referer( 'ai_ability_explorer_invoke', 'nonce' );
 

@@ -5,7 +5,7 @@
  * Extends WP_List_Table to display abilities in a searchable, filterable table.
  *
  * @package WordPress\AI\Features\Abilities_Explorer
- * @since 0.1.0
+ * @since n.e.x.t
  */
 
 namespace WordPress\AI\Features\Abilities_Explorer;
@@ -23,14 +23,14 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
  *
  * Displays abilities in a table with search and filter functionality.
  *
- * @since 0.1.0
+ * @since n.e.x.t
  */
 class Ability_Table extends \WP_List_Table {
 
 	/**
 	 * Constructor.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 */
 	public function __construct() {
 		parent::__construct(
@@ -43,13 +43,11 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Get table columns.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array Column definitions.
+	 * @return array<string,mixed> Column definitions.
 	 */
-	public function get_columns() {
+	public function get_columns(): array {
 		return array(
 			'cb'       => '<input type="checkbox" />',
 			'name'     => __( 'Name', 'ai' ),
@@ -60,13 +58,11 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Get sortable columns.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array Sortable column definitions.
+	 * @return array<string,mixed> Sortable column definitions.
 	 */
-	public function get_sortable_columns() {
+	public function get_sortable_columns(): array {
 		return array(
 			'name'     => array( 'name', false ),
 			'slug'     => array( 'slug', false ),
@@ -75,11 +71,9 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Prepare items for display.
-	 *
-	 * @since 0.1.0
+	 * {@inheritDoc}
 	 */
-	public function prepare_items() {
+	public function prepare_items(): void {
 		$columns  = $this->get_columns();
 		$hidden   = array();
 		$sortable = $this->get_sortable_columns();
@@ -147,27 +141,16 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Default column output.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param array  $item        Item data.
-	 * @param string $column_name Column name.
-	 * @return string Column output.
+	 * {@inheritDoc}
 	 */
-	public function column_default( $item, $column_name ) {
+	public function column_default( $item, $column_name ): string {
 		return isset( $item[ $column_name ] ) ? esc_html( $item[ $column_name ] ) : '—';
 	}
 
 	/**
-	 * Checkbox column.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param array $item Item data.
-	 * @return string Checkbox HTML.
+	 * {@inheritDoc}
 	 */
-	public function column_cb( $item ) {
+	public function column_cb( $item ): string {
 		return sprintf(
 			'<input type="checkbox" name="abilities[]" value="%s" />',
 			esc_attr( $item['slug'] )
@@ -175,14 +158,9 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Name column.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param array $item Item data.
-	 * @return string Name column HTML.
+	 * {@inheritDoc}
 	 */
-	public function column_name( $item ) {
+	public function column_name( $item ): string {
 		$detail_url = add_query_arg(
 			array(
 				'page'    => 'ai-abilities-explorer',
@@ -203,12 +181,12 @@ class Ability_Table extends \WP_List_Table {
 	/**
 	 * Slug column.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 *
 	 * @param array $item Item data.
 	 * @return string Slug column HTML.
 	 */
-	public function column_slug( $item ) {
+	public function column_slug( $item ): string {
 		return sprintf(
 			'<code>%s</code>',
 			esc_html( $item['slug'] )
@@ -218,12 +196,12 @@ class Ability_Table extends \WP_List_Table {
 	/**
 	 * Provider column.
 	 *
-	 * @since 0.1.0
+	 * @since n.e.x.t
 	 *
 	 * @param array $item Item data.
 	 * @return string Provider column HTML.
 	 */
-	public function column_provider( $item ) {
+	public function column_provider( $item ): string {
 		$provider = $item['provider'];
 		$class    = 'ability-provider ability-provider-' . strtolower( $provider );
 
@@ -235,14 +213,9 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Actions column.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param array $item Item data.
-	 * @return string Actions column HTML.
+	 * {@inheritDoc}
 	 */
-	public function column_actions( $item ) {
+	public function column_actions( $item ): string {
 		$detail_url = add_query_arg(
 			array(
 				'page'    => 'ai-abilities-explorer',
@@ -271,13 +244,9 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Display filter controls.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $which Top or bottom of the table.
+	 * {@inheritDoc}
 	 */
-	public function extra_tablenav( $which ) {
+	public function extra_tablenav( $which ): void {
 		if ( 'top' !== $which ) {
 			return;
 		}
