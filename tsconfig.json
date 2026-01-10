@@ -1,49 +1,64 @@
 {
 	"$schema": "https://json.schemastore.org/tsconfig.json",
+
 	"compilerOptions": {
 		"allowJs": true,
 		"checkJs": true,
-		"allowSyntheticDefaultImports": true,
-		"jsx": "preserve",
-		"target": "esnext",
-		"module": "esnext",
-		"lib": [ "DOM", "DOM.Iterable", "ESNext" ],
-		"declaration": true,
-		"declarationMap": true,
-		"composite": true,
-		"emitDeclarationOnly": true,
-		"isolatedModules": true,
 
-		"skipDefaultLibCheck": true,
-
-		/* Strict Type-Checking Options */
+		// Type checking.
 		"strict": true,
-
-		/* Additional Checks */
-		"noImplicitReturns": true,
+		"allowSyntheticDefaultImports": true,
+		"allowUnreachableCode": false,
+		"allowUnusedLabels": false,
+		"exactOptionalPropertyTypes": true,
 		"noFallthroughCasesInSwitch": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"noPropertyAccessFromIndexSignature": true,
+		"noUncheckedIndexedAccess": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"strictFunctionTypes": true,
 
-		/* Module Resolution Options */
-		"moduleResolution": "node",
-
-		/* This needs to be false so our types are possible to consume without setting this */
-		"esModuleInterop": false,
+		// Modules
+		"module": "nodenext",
 		"resolveJsonModule": true,
 
-		"typeRoots": [ "./typings", "./node_modules/@types" ],
-		"types": [],
+		// Emit
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
 
-		"rootDir": "${configDir}/src",
-		"declarationDir": "${configDir}/build-types"
+		// Interop Constraints
+		/* This needs to be false so our types are possible to consume without setting this */
+		"esModuleInterop": false,
+		"forceConsistentCasingInFileNames": true,
+		"isolatedModules": true,
+		// @todo: make true when we can use `type: "module"` in package.json
+		"verbatimModuleSyntax": false,
+
+		// Language and Environment
+		"jsx": "react-jsx",
+		"lib": ["ES2022", "DOM.Iterable", "DOM"],
+		"moduleDetection": "force",
+		"target": "ES2022",
+
+		// Projects
+		"composite": true,
+		"disableSourceOfProjectReferenceRedirect": true,
+		"incremental": true,
+
+		// Completeness
+		"skipLibCheck": true,
+		"typeRoots": ["./node_modules/@types"],
+
+		// File config
+		"baseUrl": "./src",
+		"outDir": "./build",
+		"paths": {
+			"@/*": ["./*"]
+		}
 	},
-	"include": [ "${configDir}/src" ],
-	"exclude": [
-		"packages/*/build-*/**",
-		"packages/*/build/**",
-		"**/test/**",
-		"**/__tests__/**",
-		"**/*.test.ts",
-		"**/*.test.tsx",
-		"**/*.test.js"
-	]
+	"include": ["**/*.cjs", "**/*.mjs", "**/*.ts", "**/*.tsx"],
+	"exclude": ["**/build/*", "**/tests/**", "vendor/*", "node_modules/*"]
 }
