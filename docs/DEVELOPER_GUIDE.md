@@ -7,6 +7,7 @@ Welcome to the WordPress AI Experiments plugin development guide. This document 
 - [Getting Started](#getting-started)
 - [Architecture Overview](#architecture-overview)
 - [Creating a New Experiment](#creating-a-new-experiment)
+  - [Experiment Settings](#experiment-settings)
 - [Plugin API](#plugin-api)
 - [Development Workflow](#development-workflow)
 - [Additional Resources](#additional-resources)
@@ -253,6 +254,119 @@ class My_Experiment extends Abstract_Experiment {
 
 		parent::__construct();
 	}
+}
+```
+
+### Experiment Settings
+
+Experiments can expose custom settings that appear in the AI Experiments settings page. Settings are rendered using the `@wordpress/dataviews` DataForm component and saved via the REST API.
+
+#### Enabling Settings
+
+Override `has_settings()` to indicate your experiment has configurable options:
+
+```php
+public function has_settings(): bool {
+	return true;
+}
+```
+
+#### Defining Settings Fields
+
+Override `get_settings_fields()` to define your settings schema. Each field follows the `@wordpress/dataviews` field format:
+
+```php
+public function get_settings_fields(): array {
+	return array(
+		array(
+			'id'          => 'tone',
+			'type'        => 'text',
+			'label'       => __( 'Tone', 'ai' ),
+			'description' => __( 'The tone to use when generating content.', 'ai' ),
+			'elements'    => array(
+				array(
+					'value' => 'professional',
+					'label' => __( 'Professional', 'ai' ),
+				),
+				array(
+					'value' => 'casual',
+					'label' => __( 'Casual', 'ai' ),
+				),
+				array(
+					'value' => 'creative',
+					'label' => __( 'Creative', 'ai' ),
+				),
+			),
+		),
+		array(
+			'id'          => 'max_suggestions',
+			'type'        => 'integer',
+			'label'       => __( 'Max Suggestions', 'ai' ),
+			'description' => __( 'Maximum number of suggestions to generate.', 'ai' ),
+		),
+	);
+}
+```
+
+**Supported field types:**
+
+- `text` - Text input (with optional `elements` for dropdown)
+- `integer` - Number input
+- `boolean` - Toggle/checkbox
+
+#### Getting Settings Values
+
+Override `get_settings_values()` to return current settings. Use `get_field_option_name()` to generate consistent option names:
+
+```php
+public function get_settings_values(): array {
+	return array(
+		'tone'            => get_option( $this->get_field_option_name( 'tone' ), 'professional' ),
+		'max_suggestions' => (int) get_option( $this->get_field_option_name( 'max_suggestions' ), 3 ),
+	);
+}
+```
+
+#### Saving Settings
+
+Override `update_settings()` to handle persistence. Always sanitize and validate input:
+
+```php
+public function update_settings( array $data ): bool {
+	// Handle 'tone' setting with allowlist validation.
+	if ( isset( $data['tone'] ) ) {
+		$allowed = array( 'professional', 'casual', 'creative' );
+		$tone    = sanitize_text_field( $data['tone'] );
+
+		if ( in_array( $tone, $allowed, true ) ) {
+			update_option( $this->get_field_option_name( 'tone' ), $tone );
+		}
+	}
+
+	// Handle 'max_suggestions' setting with range validation.
+	if ( isset( $data['max_suggestions'] ) ) {
+		$max = absint( $data['max_suggestions'] );
+		$max = max( 1, min( 10, $max ) ); // Clamp between 1-10
+
+		update_option( $this->get_field_option_name( 'max_suggestions' ), $max );
+	}
+
+	return true;
+}
+```
+
+#### Using Settings in Your Experiment
+
+Access your settings values anywhere in your experiment:
+
+```php
+public function get_tone(): string {
+	return get_option( $this->get_field_option_name( 'tone' ), 'professional' );
+}
+
+public function generate_content(): string {
+	$tone = $this->get_tone();
+	// Use $tone in your AI prompt...
 }
 ```
 
