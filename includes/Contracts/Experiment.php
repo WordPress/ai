@@ -88,11 +88,37 @@ interface Experiment {
 	public function has_settings(): bool;
 
 	/**
-	 * Renders experiment-specific settings fields.
+	 * Returns DataForm-compatible field definitions for experiment settings.
+	 *
+	 * Each field should be an associative array with at minimum:
+	 * - id: Unique field identifier
+	 * - type: Field type (text, boolean, integer, etc.)
+	 * - label: Human-readable label
 	 *
 	 * @since x.x.x
 	 *
-	 * @return void
+	 * @return array<int, array{id: string, type: string, label: string, description?: string, elements?: array<int, array{value: string, label: string}>}> DataForm fields.
 	 */
-	public function render_settings_fields(): void;
+	public function get_settings_fields(): array;
+
+	/**
+	 * Returns current values for experiment settings.
+	 *
+	 * Keys should match the field IDs from get_settings_fields().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> Settings values keyed by field ID.
+	 */
+	public function get_settings_values(): array;
+
+	/**
+	 * Updates experiment settings from DataForm data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $data Settings data from DataForm.
+	 * @return bool True on success, false on failure.
+	 */
+	public function update_settings( array $data ): bool;
 }

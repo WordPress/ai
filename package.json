@@ -18,8 +18,8 @@
   ],
   "scripts": {
     "plugin-zip": "wp-scripts plugin-zip",
-    "build": "wp-scripts build",
-    "start": "wp-scripts start",
+    "build": "wp-build",
+    "start": "wp-build --watch",
     "wp-env": "wp-env",
     "lint:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script lint",
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",
@@ -37,18 +37,20 @@
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@types/wordpress__blocks": "^12.5.18",
+    "@wordpress/build": "^0.5.0",
     "@wordpress/env": "^10.34.0",
     "@wordpress/scripts": "^31.0.0",
     "filenamify": "^7.0.1",
-    "typescript": "^5.9.3",
-    "webpack-remove-empty-scripts": "^1.1.1"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@wordpress/api-fetch": "^7.36.0",
     "@wordpress/block-editor": "^15.7.0",
+    "@wordpress/boot": "^0.3.0",
     "@wordpress/components": "^30.7.0",
     "@wordpress/compose": "^7.34.0",
     "@wordpress/data": "^10.34.0",
+    "@wordpress/dataviews": "^11.1.0",
     "@wordpress/editor": "^14.34.0",
     "@wordpress/element": "^6.34.0",
     "@wordpress/hooks": "^4.35.0",
@@ -56,6 +58,7 @@
     "@wordpress/icons": "^11.1.0",
     "@wordpress/notices": "^5.35.0",
     "@wordpress/plugins": "^7.34.0",
+    "@wordpress/url": "^4.34.0",
     "react": "^18.3.1"
   },
   "overrides": {
@@ -64,5 +67,16 @@
   "engines": {
     "node": ">=22.21.1",
     "npm": ">=10.9.4"
+  },
+  "wpPlugin": {
+    "scriptGlobal": "aiExperiments",
+    "packageNamespace": "ai-experiments",
+    "handlePrefix": "ai",
+    "pages": [
+      {
+        "id": "ai-experiments",
+        "init": ["@ai-experiments/settings-init"]
+      }
+    ]
   }
 }

@@ -11,10 +11,8 @@ declare(strict_types=1);
 
 namespace WordPress\AI\Settings;
 
-use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiment_Registry;
 
-use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
 /**
@@ -32,33 +30,6 @@ class Settings_Page {
 	 * @var \WordPress\AI\Experiment_Registry
 	 */
 	private Experiment_Registry $registry;
-
-	/**
-	 * The settings page slug.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @var string
-	 */
-	private const PAGE_SLUG = 'ai-experiments';
-
-	/**
-	 * URL pointing to the plugin repository for contributions.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private const CONTRIBUTION_URL = 'https://github.com/WordPress/ai';
-
-	/**
-	 * URL pointing to the plugin documentation.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private const DOCUMENTATION_URL = 'https://github.com/WordPress/ai/tree/develop/docs';
 
 	/**
 	 * Constructor.
@@ -85,290 +56,64 @@ class Settings_Page {
 	/**
 	 * Registers the admin menu item.
 	 *
+	 * Uses wp-build generated page registration.
+	 *
 	 * @since 0.1.0
 	 *
 	 * @return void
 	 */
 	public function register_menu(): void {
-		$page_hook = add_options_page(
+		// The build/index.php is loaded in bootstrap.php and provides the render function.
+		if ( ! function_exists( 'ai_experiments_wp_admin_render_page' ) ) {
+			return;
+		}
+
+		add_options_page(
 			__( 'AI Experiments', 'ai' ),
 			__( 'AI Experiments', 'ai' ),
 			'manage_options',
-			self::PAGE_SLUG,
-			array( $this, 'render_page' )
+			'ai-experiments-wp-admin',
+			'ai_experiments_wp_admin_render_page' // @phpstan-ignore argument.type (Dynamic function from wp-build)
 		);
-
-		// Hook into the specific page load to enqueue styles.
-		if ( ! $page_hook ) {
-			return;
-		}
-
-		add_action( "load-{$page_hook}", array( $this, 'init_page' ) );
 	}
 
 	/**
-	 * Handles the page load event for the settings page.
+	 * Gets the initial data for the React settings app.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
-	 * @return void
+	 * @return array<string, mixed> The initial settings data.
 	 */
-	public function init_page(): void {
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
-	}
+	public function get_initial_data(): array {
+		$experiments = array();
 
-	/**
-	 * Enqueues styles for the settings page.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function enqueue_styles(): void {
-		// Enqueue settings page styles.
-		Asset_Loader::enqueue_style( 'experiments-settings', 'admin/settings' );
-	}
+		foreach ( $this->registry->get_all_experiments() as $experiment ) {
+			$experiment_data = array(
+				'id'          => $experiment->get_id(),
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+				'enabled'     => (bool) get_option(
+					"ai_experiment_{$experiment->get_id()}_enabled",
+					false
+				),
+				'hasSettings' => $experiment->has_settings(),
+				'entryPoints' => $experiment->get_entry_points(),
+			);
 
-	/**
-	 * Renders the settings page.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function render_page(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
-		$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
-		?>
-		<div class="wrap ai-experiments-page">
-			<div class="ai-admin-header">
-				<div class="ai-admin-header__inner">
-					<div class="ai-admin-header__left">
-						<span class="ai-admin-header__icon">
-							<?php echo \WordPress\AI\get_ai_icon_svg(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-						</span>
-						<div class="ai-admin-header__title">
-							<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-						</div>
-					</div>
-					<div class="ai-admin-header__right">
-						<a
-							class="button button-secondary"
-							href="<?php echo esc_url( self::DOCUMENTATION_URL ); ?>"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<?php esc_html_e( 'Docs', 'ai' ); ?>
-						</a>
-						<a
-							class="button button-primary"
-							href="<?php echo esc_url( self::CONTRIBUTION_URL ); ?>"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<?php esc_html_e( 'Contribute', 'ai' ); ?>
-						</a>
-					</div>
-				</div>
-			</div>
-
-			<?php
-			// If we don't have proper credentials, show an error message and return early.
-			if ( ! has_valid_ai_credentials() ) {
-				if ( ! has_ai_credentials() ) {
-					$error_message = sprintf(
-						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Before you can enable experiments, you need to ensure you have one or more AI credentials set <a href="%s">here</a>.', 'ai' ),
-						admin_url( 'options-general.php?page=wp-ai-client' )
-					);
-				} else {
-					$error_message = sprintf(
-						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Before you can enable experiments, you need to ensure you have set valid AI credentials <a href="%s">here</a>.', 'ai' ),
-						admin_url( 'options-general.php?page=wp-ai-client' )
-					);
-				}
-
-				wp_admin_notice( $error_message, array( 'type' => 'error' ) );
-				return;
+			// Include settings fields and values if the experiment has settings.
+			if ( $experiment->has_settings() ) {
+				$experiment_data['settingsFields'] = $experiment->get_settings_fields();
+				$experiment_data['settingsValues'] = $experiment->get_settings_values();
 			}
-			?>
 
-			<?php settings_errors( 'ai_experiments' ); ?>
-			<form method="post" action="options.php">
-				<?php
-				settings_fields( Settings_Registration::OPTION_GROUP );
-				?>
+			$experiments[] = $experiment_data;
+		}
 
-				<div class="ai-experiments">
-					<!-- Global Toggle Section -->
-					<div class="ai-experiments__card ai-experiments__card--global">
-						<div class="ai-experiments__card-heading">
-							<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
-							<p class="description" id="ai-experiments-global-desc">
-								<?php esc_html_e( 'Control whether AI experiments are enabled for your site. When disabled, all experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
-							</p>
-						</div>
-
-						<div class="ai-experiments__toggle">
-							<label class="components-toggle-control" for="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>">
-								<input
-									type="checkbox"
-									name="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
-									id="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
-									value="1"
-									<?php checked( $global_enabled ); ?>
-									aria-describedby="ai-experiments-global-desc"
-								/>
-								<span class="ai-experiments__toggle-label">
-									<?php esc_html_e( 'Enable Experiments', 'ai' ); ?>
-								</span>
-							</label>
-						</div>
-					</div>
-
-					<!-- Individual Experiments Section -->
-					<?php if ( ! empty( $this->registry->get_all_experiments() ) ) : ?>
-						<div class="ai-experiments__card" role="region" aria-labelledby="ai-experiments-list-heading">
-							<div class="ai-experiments__card-heading">
-								<h2 id="ai-experiments-list-heading"><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
-								<p class="description" id="ai-experiments-list-desc">
-									<?php esc_html_e( 'Try out the following experiments to see how AI can help your site.', 'ai' ); ?>
-								</p>
-
-								<?php if ( ! $global_enabled ) : ?>
-									<div class="notice notice-info inline ai-experiments__notice" role="status" aria-live="polite">
-										<p id="ai-experiments-disabled-notice"><?php esc_html_e( 'Enable experiments above to configure individual experiment settings.', 'ai' ); ?></p>
-									</div>
-								<?php endif; ?>
-							</div>
-
-							<div class="ai-experiments__grid">
-								<?php foreach ( $this->registry->get_all_experiments() as $experiment ) : ?>
-									<?php
-									$experiment_id      = $experiment->get_id();
-									$experiment_option  = "ai_experiment_{$experiment_id}_enabled";
-									$experiment_enabled = (bool) get_option( $experiment_option, false );
-									$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
-									$desc_id            = "ai-experiment-{$experiment_id}-desc";
-									$settings_id        = "ai-experiment-{$experiment_id}-settings";
-									$has_settings       = $experiment->has_settings();
-									$entry_points       = $experiment->get_entry_points();
-									?>
-									<div class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
-										<div class="ai-experiments__item-header">
-											<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
-												<input
-													type="checkbox"
-													name="<?php echo esc_attr( $experiment_option ); ?>"
-													id="<?php echo esc_attr( $experiment_option ); ?>"
-													value="1"
-													<?php checked( $experiment_enabled ); ?>
-													<?php disabled( ! $global_enabled ); ?>
-													<?php if ( $experiment->get_description() ) : ?>
-														aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
-													<?php endif; ?>
-												/>
-												<span class="ai-experiments__item-title">
-													<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
-													<?php if ( ! empty( $entry_points ) ) : ?>
-														<span class="ai-experiments__item-links">
-															<?php
-															$links = array();
-															foreach ( $entry_points as $action ) {
-																if ( empty( $action['label'] ) || empty( $action['url'] ) ) {
-																	continue;
-																}
-																$links[] = sprintf(
-																	'<a href="%s">%s</a>',
-																	esc_url( $action['url'] ),
-																	esc_html( $action['label'] )
-																);
-															}
-
-															if ( ! empty( $links ) ) {
-																echo wp_kses_post( '(' . implode( ' · ', $links ) . ')' );
-															}
-															?>
-														</span>
-													<?php endif; ?>
-												</span>
-											</label>
-											<?php if ( $has_settings ) : ?>
-												<button
-													type="button"
-													class="ai-experiments__settings-toggle"
-													aria-expanded="false"
-													aria-controls="<?php echo esc_attr( $settings_id ); ?>"
-													title="<?php esc_attr_e( 'Toggle settings', 'ai' ); ?>"
-												>
-													<span class="dashicons dashicons-admin-generic"></span>
-													<span class="screen-reader-text"><?php esc_html_e( 'Settings', 'ai' ); ?></span>
-												</button>
-											<?php endif; ?>
-										</div>
-										<?php if ( $experiment->get_description() ) : ?>
-											<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
-												<?php
-												echo wp_kses(
-													$experiment->get_description(),
-													array(
-														'a'      => array(
-															'href'   => array(),
-															'title'  => array(),
-															'target' => array(),
-															'rel'    => array(),
-														),
-														'b'      => array(),
-														'strong' => array(),
-														'em'     => array(),
-														'i'      => array(),
-													)
-												);
-												?>
-											</p>
-										<?php endif; ?>
-										<?php if ( $has_settings ) : ?>
-											<div
-												id="<?php echo esc_attr( $settings_id ); ?>"
-												class="ai-experiments__settings-drawer"
-												hidden
-											>
-												<?php $experiment->render_settings_fields(); ?>
-											</div>
-										<?php endif; ?>
-									</div>
-								<?php endforeach; ?>
-							</div>
-							<script>
-								( function() {
-									document.querySelectorAll( '.ai-experiments__settings-toggle' ).forEach( function( btn ) {
-										btn.addEventListener( 'click', function() {
-											var expanded = btn.getAttribute( 'aria-expanded' ) === 'true';
-											var drawerId = btn.getAttribute( 'aria-controls' );
-											var drawer = document.getElementById( drawerId );
-											if ( drawer ) {
-												btn.setAttribute( 'aria-expanded', String( ! expanded ) );
-												if ( expanded ) {
-													drawer.setAttribute( 'hidden', '' );
-												} else {
-													drawer.removeAttribute( 'hidden' );
-												}
-											}
-										} );
-									} );
-								} )();
-							</script>
-						</div>
-					<?php endif; ?>
-				</div>
-
-				<?php submit_button(); ?>
-			</form>
-		</div>
-		<?php
+		return array(
+			'globalEnabled'       => (bool) get_option( Settings_Registration::GLOBAL_OPTION, false ),
+			'experiments'         => $experiments,
+			'hasValidCredentials' => has_valid_ai_credentials(),
+			'credentialsUrl'      => admin_url( 'options-general.php?page=wp-ai-client' ),
+		);
 	}
 }

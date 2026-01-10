@@ -1,147 +1,158 @@
 /**
  * AI Experiments Settings Page Styles
  *
- * Uses BEM (Block Element Modifier) naming convention.
- * Uses modern CSS with flexbox and gap for spacing.
- *
  * @package WordPress\AI
  * @since 0.1.0
  */
 
 @use '../common';
 
+/* Main page container */
+.ai-experiments-page {
+	position: relative;
+
+	/* Page header with title and action buttons */
+	&__header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 1.5rem;
+		border-bottom: 1px solid #ddd;
+		flex-wrap: wrap;
+
+		h1 {
+			margin: 0;
+			font-size: 1.5rem;
+			font-weight: 600;
+			line-height: 1.4;
+		}
+	}
+
+	/* Header left section (icon + title) */
+	&__header-left {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	/* Header right section (action buttons) */
+	&__header-right {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	/* Flask icon */
+	&__icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #1e1e1e;
+
+		svg {
+			display: block;
+		}
+	}
+
+	/* Main content wrapper with max-width */
+	&__content {
+		max-width: 50rem;
+		padding: 1.5rem;
+	}
+
+	/* Snackbar notifications container */
+	&__snackbar {
+		position: fixed;
+		bottom: 1rem;
+		right: 1rem;
+		z-index: 100000;
+
+		.components-snackbar-list {
+			position: static;
+			bottom: auto;
+			right: auto;
+		}
+
+		.components-snackbar {
+			margin-bottom: 0.5rem;
+		}
+	}
+
+	/* DataForm overrides for better integration */
+	.components-card {
+		margin-bottom: 0;
+	}
+
+	.components-card__body {
+		padding: 1rem;
+	}
+
+	.components-notice {
+		margin: 0;
+	}
+}
+
 /* Block: ai-experiments */
 .ai-experiments {
 	display: flex;
 	flex-direction: column;
 	gap: 1.25rem;
-	max-width: 50rem;
 
-	/* Element: card */
-	&__card {
-		display: flex;
-		flex-direction: column;
-		gap: 1.25rem;
+	/* Element: global settings section */
+	&__global {
 		padding: 1.25rem;
 		background: #fff;
 		border: 0.0625rem solid #ddd;
 		border-radius: 4px;
 	}
 
-	/* Element: card heading */
-	&__card-heading {
+	/* Element: list section */
+	&__list {
+		padding: 1.25rem;
+		background: #fff;
+		border: 0.0625rem solid #ddd;
+		border-radius: 4px;
+	}
+
+	/* Element: card (for individual experiments) */
+	&__card {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		background: #f9f9f9;
+		border: 0.0625rem solid #e0e0e0;
+		border-radius: 4px;
+		overflow: hidden;
 
-		h2 {
-			margin: 0;
-		}
-	}
-
-	/* Element: toggle */
-	&__toggle {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-
-		.components-toggle-control {
-			display: flex;
-			align-items: center;
-			margin: 0;
-
-			span {
-				margin-left: 0.5rem;
-			}
-		}
-
-		input[type="checkbox"] {
-			margin: 0;
-		}
-	}
-
-	/* Element: toggle label */
-	&__toggle-label {
-		font-weight: 500;
-	}
-
-	/* Element: notice */
-	&__notice {
-		margin: 0;
-	}
-
-	/* Element: grid */
-	&__grid {
-		display: flex;
-		flex-direction: column;
-		gap: 0;
-		margin: 0;
-		padding: 0;
-	}
-
-	/* Element: item */
-	&__item {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		padding: 1rem 0;
-		border-bottom: 0.0625rem solid #e0e0e0;
-		margin: 0;
-
-		&:first-child {
-			padding-top: 0;
-		}
-
-		&:last-child {
-			border-bottom: none;
-			padding-bottom: 0;
-		}
-
-		/* Modifier: disabled item */
+		/* Modifier: disabled card */
 		&--disabled {
 			opacity: 0.5;
-		}
-
-		.description {
-			margin: 0;
-			font-size: 0.8125rem;
-			color: #646970;
+			pointer-events: none;
 		}
 	}
 
-	/* Element: item header */
-	&__item-header {
+	/* Element: card header */
+	&__card-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.5rem;
-
-		.components-toggle-control {
-			display: flex;
-			align-items: center;
-			margin: 0;
-			flex: 1;
-
-			span {
-				margin-left: 0.5rem;
-			}
-		}
-
-		input[type="checkbox"] {
-			margin: 0;
-		}
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		background: #fff;
+		border-bottom: 0.0625rem solid #e0e0e0;
 	}
 
-	/* Element: item title */
-	&__item-title {
+	/* Element: card header content */
+	&__card-header-content {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		flex: 1;
 		flex-wrap: wrap;
 	}
 
-	/* Element: item links (entry points) */
-	&__item-links {
+	/* Element: entry points */
+	&__entry-points {
 		font-size: 0.8125rem;
 		font-weight: normal;
 		color: #646970;
@@ -156,78 +167,28 @@
 		}
 	}
 
-	/* Element: settings toggle button */
-	&__settings-toggle {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 2rem;
-		height: 2rem;
-		padding: 0;
-		border: 0.0625rem solid #ddd;
-		border-radius: 0.25rem;
-		background: #fff;
+	/* Element: description */
+	&__description {
+		margin: 0;
+		font-size: 0.8125rem;
 		color: #646970;
-		cursor: pointer;
-		transition: all 0.15s ease;
-		flex-shrink: 0;
-
-		&:hover {
-			background: #f0f0f0;
-			border-color: #c3c4c7;
-			color: #1d2327;
-		}
-
-		&:focus {
-			outline: 0.125rem solid var(--wp-admin-theme-color, #2271b1);
-			outline-offset: 0.0625rem;
-		}
-
-		&[aria-expanded="true"] {
-			background: var(--wp-admin-theme-color, #2271b1);
-			border-color: var(--wp-admin-theme-color, #2271b1);
-			color: #fff;
-
-			&:hover {
-				background: var(--wp-admin-theme-color-darker-20, #135e96);
-				border-color: var(--wp-admin-theme-color-darker-20, #135e96);
-			}
-		}
-
-		.dashicons {
-			font-size: 1rem;
-			width: 1rem;
-			height: 1rem;
-		}
 	}
 
-	/* Element: settings drawer */
-	&__settings-drawer {
-		padding-top: 0.75rem;
+	/* Element: settings panel (collapsible) */
+	&__settings-panel {
+		padding-top: 1rem;
 		margin-top: 0.5rem;
 		border-top: 0.0625rem solid #e0e0e0;
 		animation: ai-drawer-slide-down 0.2s ease-out;
-
-		&[hidden] {
-			display: none;
-		}
 	}
 
-	/* Element: item fields (custom experiment settings) */
-	&__item-fields {
-		padding-top: 0.75rem;
-		padding-right: 0.5rem;
-		border-top: 0.0625rem solid #f0f0f0;
-
-		ul {
-			list-style: disc;
-			margin-left: 1.5rem;
-		}
-
-		ol {
-			list-style: decimal;
-			margin-left: 1.5rem;
-		}
+	/* Element: grid */
+	&__grid {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin: 0;
+		padding: 0;
 	}
 }
 
@@ -240,30 +201,5 @@
 	to {
 		opacity: 1;
 		transform: translateY(0);
-	}
-}
-
-/* AI experiment settings container (used by individual experiments) */
-.ai-experiment-settings {
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
-
-	&__field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-
-		label {
-			font-weight: 500;
-		}
-
-		input[type="text"],
-		input[type="number"],
-		input[type="url"],
-		select,
-		textarea {
-			max-width: 25rem;
-		}
 	}
 }

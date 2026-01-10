@@ -1,0 +1,6 @@
+{
+  "route": {
+    "path": "/",
+    "page": "ai-experiments"
+  }
+}

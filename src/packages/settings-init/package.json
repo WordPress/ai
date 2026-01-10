@@ -1,0 +1,4 @@
+{
+  "name": "@ai-experiments/settings-init",
+  "wpScriptModuleExports": "./build-module/index.js"
+}

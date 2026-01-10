@@ -191,22 +191,6 @@ abstract class Abstract_Experiment implements Experiment {
 	}
 
 	/**
-	 * Renders experiment-specific settings fields.
-	 *
-	 * Override this method in child classes to render custom settings UI
-	 * that will appear within the experiment's card on the settings page.
-	 * This is called after the experiment's main toggle control.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function render_settings_fields(): void {
-		// Default implementation does nothing.
-		// Child classes can override to render custom settings UI.
-	}
-
-	/**
 	 * Provides contextual entry points for the experiment.
 	 *
 	 * Child classes can override to return an array of links, for example:
@@ -242,6 +226,47 @@ abstract class Abstract_Experiment implements Experiment {
 	 */
 	public function has_settings(): bool {
 		return false;
+	}
+
+	/**
+	 * Returns DataForm-compatible field definitions for experiment settings.
+	 *
+	 * Override in child classes to define custom settings fields.
+	 * Each field should follow the @wordpress/dataviews field schema.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<int, array{id: string, type: string, label: string, description?: string, elements?: array<int, array{value: string, label: string}>}> DataForm fields.
+	 */
+	public function get_settings_fields(): array {
+		return array();
+	}
+
+	/**
+	 * Returns current values for experiment settings.
+	 *
+	 * Override in child classes to return settings data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> Settings values keyed by field ID.
+	 */
+	public function get_settings_values(): array {
+		return array();
+	}
+
+	/**
+	 * Updates experiment settings from DataForm data.
+	 *
+	 * Override in child classes to handle settings persistence.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $data Settings data from DataForm.
+	 * @return bool True on success, false on failure.
+	 */
+	public function update_settings( array $data ): bool {
+		return true;
 	}
 
 	/**

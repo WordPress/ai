@@ -305,6 +305,7 @@ function get_ai_icon_data_uri(): string {
 		$svg_path = dirname( __DIR__ ) . '/assets/images/ai-icon.svg';
 
 		if ( file_exists( $svg_path ) ) {
+			// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown -- Local file, not remote.
 			$svg_content = file_get_contents( $svg_path );
 			if ( false === $svg_content ) {
 				$data_uri = '';

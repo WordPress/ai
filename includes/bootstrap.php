@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\REST\Settings_Controller;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
@@ -151,7 +152,7 @@ function display_composer_notice(): void {
 function plugin_action_links( array $links ): array {
 	$settings_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
-		admin_url( 'options-general.php?page=ai-experiments' ),
+		admin_url( 'options-general.php?page=ai-experiments-wp-admin' ),
 		esc_html__( 'Settings', 'ai' )
 	);
 
@@ -187,6 +188,14 @@ function load(): void {
 
 	$loaded = true;
 
+	// Load wp-build generated assets (modules, scripts, styles, routes, pages).
+	// This must be loaded early to ensure hooks are registered before they fire.
+	$build_index = AI_EXPERIMENTS_PLUGIN_DIR . 'build/index.php';
+	if ( file_exists( $build_index ) ) {
+		// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable -- Safe, controlled path within plugin.
+		require_once $build_index;
+	}
+
 	// Add plugin action links.
 	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
@@ -214,10 +223,36 @@ function initialize_experiments(): void {
 		$settings_registration->init();
 
 		// Initialize admin settings page.
+		$settings_page = new Settings_Page( $registry );
 		if ( is_admin() ) {
-			$settings_page = new Settings_Page( $registry );
 			$settings_page->init();
 		}
+
+		// Initialize REST API controller.
+		add_action(
+			'rest_api_init',
+			static function () use ( $registry ) {
+				$settings_controller = new Settings_Controller( $registry );
+				$settings_controller->register_routes();
+			}
+		);
+
+		// Localize settings data for the React app.
+		add_action(
+			'admin_enqueue_scripts',
+			static function ( string $hook_suffix ) use ( $settings_page ) {
+				// Only load on our settings page.
+				if ( strpos( $hook_suffix, 'ai-experiments' ) === false ) {
+					return;
+				}
+
+				wp_localize_script(
+					'ai-experiments-wp-admin-prerequisites',
+					'aiExperimentsSettings',
+					$settings_page->get_initial_data()
+				);
+			}
+		);
 
 		// Register our post-related WordPress Abilities.
 		$post_abilities = new Posts();
