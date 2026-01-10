@@ -1,10 +1,18 @@
 # WordPress AI Experiments
 
-Experimental AI features for WordPress. Modular framework for testing AI capabilities.
+![AI Experiments](https://github.com/WordPress/ai/blob/trunk/.wordpress-org/banner-1544x500.png)
+
+![Required PHP Version](https://img.shields.io/wordpress/plugin/required-php/ai?label=Requires%20PHP) ![Required WordPress Version](https://img.shields.io/wordpress/plugin/wp-version/ai?label=Requires%20WordPress) ![WordPress Tested Up To](https://img.shields.io/wordpress/plugin/tested/ai?label=WordPress) [![GPL-2.0-or-later License](https://img.shields.io/github/license/WordPress/ai.svg)](https://github.com/WordPress/ai/blob/trunk/LICENSE.md?label=License)
+
+![WordPress.org Rating](https://img.shields.io/wordpress/plugin/rating/ai?label=WP.org%20Rating) ![WordPress Plugin Downloads](https://img.shields.io/wordpress/plugin/dt/ai?label=WP.org%20Downloads) ![WordPress Plugin Active Installs](https://img.shields.io/wordpress/plugin/installs/ai?label=WP.org%20Active%20Installs) [![WordPress Playground Demo](https://img.shields.io/wordpress/plugin/v/ai?logo=wordpress&logoColor=FFFFFF&label=Live%20Demo&labelColor=3858E9&color=3858E9)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/WordPress/ai/trunk/.wordpress-org/blueprints/blueprint.json)
+
+[![Test](https://github.com/WordPress/ai/actions/workflows/test.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/test.yml) [![Dependency Review](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml)
+
+> AI experiments for WordPress. Modular framework for testing AI capabilities.
 
 ## Description
 
-The WordPress AI Experiments plugin provides a set of opt-in, experimental AI features for authors, editors, and admins directly inside WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using the building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
+The WordPress AI Experiments plugin provides a set of opt-in, experimental AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
 
 ## Overview
 
@@ -57,19 +65,17 @@ If you’re a plugin developer, you’ll be able to:
 | Milestone | State |
 |-----------|-------|
 | Placeholder repository | **created** |
-| Feature roadmap | **created** |
-| Initial prototype | planned |
+| [Feature roadmap](https://github.com/WordPress/ai/blob/add/wporg-reqs/ROADMAP.md) | **created** |
+| Initial prototype | **in progress** |
 | Community testing | planned |
 
 ## How to Get Involved
 
-We want your input especially if you’re an author, editor, educator, accessibility expert, or just someone with strong feelings about AI.
+We want everyone's input! Whether you're an author, editor, educator, researcher, accessibility expert, user, or just someone with strong feelings about AI, all are welcome.
+
+Anyone contributing to the AI Experiments plugin is expected to conduct themselves in accordance with the WordPress project's [Code of Conduct](https://github.com/WordPress/.github/blob/trunk/CODE_OF_CONDUCT.md).
 
 * **Discuss:** [`#core-ai` channel](https://wordpress.slack.com/archives/C08TJ8BPULS) on WordPress Slack.
 * **Ideate:** Propose and comment on [GitHub discussions](https://github.com/WordPress/ai/discussions).
 * **Design:** [Share feedback](https://github.com/WordPress/ai/issues) on UX flows and accessibility.
 * **Test:** Try features as they're [released](https://github.com/WordPress/ai/releases) and [report feedback](https://github.com/WordPress/ai/issues).
-
-## License
-
-This plugin is released under the [GNU General Public License v2 or later](https://spdx.org/licenses/GPL-2.0-or-later.html)

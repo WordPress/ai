@@ -1,6 +1,6 @@
 <?php
 /**
- * Bootstrap file for the AI plugin.
+ * Bootstrap file for the AI Experiments plugin.
  *
  * Handles plugin initialization, version checks, and feature loading.
  *
@@ -11,29 +11,37 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Settings\Settings_Page;
+use WordPress\AI\Settings\Settings_Registration;
+use WordPress\AI_Client\AI_Client;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 // Define plugin constants.
-if ( ! defined( 'AI_VERSION' ) ) {
-	define( 'AI_VERSION', '0.1.0' );
+if ( ! defined( 'AI_EXPERIMENTS_VERSION' ) ) {
+	define( 'AI_EXPERIMENTS_VERSION', '0.1.1' );
 }
-if ( ! defined( 'AI_PLUGIN_FILE' ) ) {
-	define( 'AI_PLUGIN_FILE', defined( 'WP_AI_DIR' ) ? WP_AI_DIR . 'ai.php' : '' );
+if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_FILE' ) ) {
+	define( 'AI_EXPERIMENTS_PLUGIN_FILE', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR . 'ai.php' : '' );
 }
-if ( ! defined( 'AI_PLUGIN_DIR' ) ) {
-	define( 'AI_PLUGIN_DIR', defined( 'WP_AI_DIR' ) ? WP_AI_DIR : '' );
+if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_DIR' ) ) {
+	define( 'AI_EXPERIMENTS_PLUGIN_DIR', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR : '' );
 }
-if ( ! defined( 'AI_PLUGIN_URL' ) ) {
-	define( 'AI_PLUGIN_URL', plugin_dir_url( AI_PLUGIN_FILE ) );
+if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_URL' ) ) {
+	define( 'AI_EXPERIMENTS_PLUGIN_URL', plugin_dir_url( AI_EXPERIMENTS_PLUGIN_FILE ) );
 }
-if ( ! defined( 'AI_MIN_PHP_VERSION' ) ) {
-	define( 'AI_MIN_PHP_VERSION', '7.4' );
+if ( ! defined( 'AI_EXPERIMENTS_MIN_PHP_VERSION' ) ) {
+	define( 'AI_EXPERIMENTS_MIN_PHP_VERSION', '7.4' );
 }
-if ( ! defined( 'AI_MIN_WP_VERSION' ) ) {
-	define( 'AI_MIN_WP_VERSION', '6.8' );
+if ( ! defined( 'AI_EXPERIMENTS_MIN_WP_VERSION' ) ) {
+	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '6.9' );
+}
+if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
+	define( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
 }
 
 /**
@@ -62,15 +70,15 @@ function version_notice( string $message ): void {
  * @return bool True if PHP version is sufficient, false otherwise.
  */
 function check_php_version(): bool {
-	if ( version_compare( phpversion(), AI_MIN_PHP_VERSION, '<' ) ) {
+	if ( version_compare( phpversion(), AI_EXPERIMENTS_MIN_PHP_VERSION, '<' ) ) {
 		add_action(
 			'admin_notices',
 			static function () {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required PHP version, 2: Current PHP version */
-						__( 'AI plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
-						AI_MIN_PHP_VERSION,
+						__( 'AI Experiments plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
+						AI_EXPERIMENTS_MIN_PHP_VERSION,
 						PHP_VERSION
 					)
 				);
@@ -89,9 +97,7 @@ function check_php_version(): bool {
  * @return bool True if WordPress version is sufficient, false otherwise.
  */
 function check_wp_version(): bool {
-	global $wp_version;
-
-	if ( version_compare( $wp_version, AI_MIN_WP_VERSION, '<' ) ) {
+	if ( ! is_wp_version_compatible( AI_EXPERIMENTS_MIN_WP_VERSION ) ) {
 		add_action(
 			'admin_notices',
 			static function () {
@@ -99,8 +105,8 @@ function check_wp_version(): bool {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required WordPress version, 2: Current WordPress version */
-						__( 'AI plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
-						AI_MIN_WP_VERSION,
+						__( 'AI Experiments plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
+						AI_EXPERIMENTS_MIN_WP_VERSION,
 						$wp_version
 					)
 				);
@@ -123,13 +129,35 @@ function display_composer_notice(): void {
 			<?php
 			printf(
 				/* translators: %s: composer install command */
-				esc_html__( 'Your installation of the AI plugin is incomplete. Please run %s.', 'ai' ),
+				esc_html__( 'Your installation of the AI Experiments plugin is incomplete. Please run %s.', 'ai' ),
 				'<code>composer install</code>'
 			);
 			?>
 		</p>
 	</div>
 	<?php
+}
+
+/**
+ * Adds action links to the plugin list table.
+ *
+ * This adds a "Settings" link to the plugin's action links on the Plugins page.
+ *
+ * @since 0.1.1
+ *
+ * @param array<string> $links Existing action links.
+ * @return array<string> Modified action links.
+ */
+function plugin_action_links( array $links ): array {
+	$settings_link = sprintf(
+		'<a href="%1$s">%2$s</a>',
+		admin_url( 'options-general.php?page=ai-experiments' ),
+		esc_html__( 'Settings', 'ai' )
+	);
+
+	array_unshift( $links, $settings_link );
+
+	return $links;
 }
 
 /**
@@ -151,29 +179,49 @@ function load(): void {
 	}
 
 	// Load the Jetpack autoloader.
-	if ( ! file_exists( AI_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
+	if ( ! file_exists( AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
 		add_action( 'admin_notices', __NAMESPACE__ . '\display_composer_notice' );
 		return;
 	}
-	require_once AI_PLUGIN_DIR . 'vendor/autoload_packages.php';
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php';
 
 	$loaded = true;
 
-	// Hook feature initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_features' );
+	// Add plugin action links.
+	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
+
+	// Hook experiment initialization to init.
+	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
 }
 
 /**
- * Initializes plugin features.
+ * Initializes plugin experiments.
  *
  * @since 0.1.0
  */
-function initialize_features(): void {
+function initialize_experiments(): void {
 	try {
-		$registry = new Feature_Registry();
-		$loader   = new Feature_Loader( $registry );
-		$loader->register_default_features();
-		$loader->initialize_features();
+		// Initialize the WP AI Client.
+		AI_Client::init();
+
+		$registry = new Experiment_Registry();
+		$loader   = new Experiment_Loader( $registry );
+		$loader->register_default_experiments();
+		$loader->initialize_experiments();
+
+		// Initialize settings registration.
+		$settings_registration = new Settings_Registration( $registry );
+		$settings_registration->init();
+
+		// Initialize admin settings page.
+		if ( is_admin() ) {
+			$settings_page = new Settings_Page( $registry );
+			$settings_page->init();
+		}
+
+		// Register our post-related WordPress Abilities.
+		$post_abilities = new Posts();
+		$post_abilities->register();
 
 		add_action(
 			'wp_abilities_api_categories_init',
@@ -184,17 +232,17 @@ function initialize_features(): void {
 				 * in the future if we need/want more specific categories.
 				 */
 				wp_register_ability_category(
-					'ai-experiments',
+					AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY,
 					array(
 						'label'       => __( 'AI Experiments', 'ai' ),
-						'description' => __( 'Various AI experiment features.', 'ai' ),
+						'description' => __( 'Various AI experiments.', 'ai' ),
 					),
 				);
 			}
 		);
 	} catch ( \Throwable $t ) {
 		_doing_it_wrong(
-			__NAMESPACE__ . '\initialize_features',
+			__NAMESPACE__ . '\initialize_experiments',
 			sprintf(
 				/* translators: %s: Error message. */
 				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),

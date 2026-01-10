@@ -468,5 +468,4 @@ class Admin_Page {
 			);
 		}
 	}
-
 }

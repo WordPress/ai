@@ -1,12 +1,12 @@
 # Developer Guide
 
-Welcome to the WordPress AI Experiments plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered features.
+Welcome to the WordPress AI Experiments plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered experiments.
 
 ## Table of Contents
 
 - [Getting Started](#getting-started)
 - [Architecture Overview](#architecture-overview)
-- [Creating a New Feature](#creating-a-new-feature)
+- [Creating a New Experiment](#creating-a-new-experiment)
 - [Plugin API](#plugin-api)
 - [Development Workflow](#development-workflow)
 - [Additional Resources](#additional-resources)
@@ -18,7 +18,7 @@ Welcome to the WordPress AI Experiments plugin development guide. This document 
 ### Prerequisites
 
 - PHP 7.4 or higher
-- WordPress 6.8 or higher
+- WordPress 6.9 or higher
 - Composer
 - Node.js and npm (for asset building)
 
@@ -31,10 +31,10 @@ git clone https://github.com/WordPress/ai.git
 cd ai
 ```
 
-2. **Install dependencies:**
+2. **Install dependencies and build assets:**
 
 ```bash
-composer install
+composer install && npm i && npm run build
 ```
 
 > **Note:** The `wordpress/wp-ai-client` package will be added to `composer.json` once it's officially released. For now, the plugin scaffolding is ready for integration.
@@ -51,25 +51,27 @@ wp plugin activate ai
 
 ## Architecture Overview
 
-The plugin follows a modular, feature-based architecture:
+The plugin follows a modular, experiment-based architecture:
 
 ```
 ai/
 ├── ai.php                            # Plugin bootstrap
+├── build/                            # Built assets
 ├── includes/                         # Core plugin code
+│   ├── Asset_Loader.php              # Asset loader utility class
 │   ├── bootstrap.php                 # Plugin initialization
-│   ├── Feature_Registry.php         # Feature registration system
-│   ├── Feature_Loader.php            # Feature loading and initialization
+│   ├── Experiment_Registry.php      # Experiment registration system
+│   ├── Experiment_Loader.php         # Experiment loading and initialization
 │   ├── Abstracts/                    # Base implementations
-│   │   └── Abstract_Feature.php      # Base feature class
-│   ├── Contracts/                    # Feature interfaces
-│   │   └── Feature.php               # Feature contract
+│   │   └── Abstract_Experiment.php   # Base experiment class
+│   ├── Contracts/                    # Experiment interfaces
+│   │   └── Experiment.php            # Experiment contract
 │   ├── Exception/                    # Custom exceptions
-│   │   ├── Invalid_Feature_Exception.php
-│   │   └── Invalid_Feature_Metadata_Exception.php
-│   └── Features/                     # Feature implementations
-│       └── Example_Feature/          # Each feature in own directory
-│           ├── Example_Feature.php
+│   │   ├── Invalid_Experiment_Exception.php
+│   │   └── Invalid_Experiment_Metadata_Exception.php
+│   └── Experiments/                  # Experiment implementations
+│       └── Example_Experiment/       # Each experiment in own directory
+│           ├── Example_Experiment.php
 │           └── README.md
 ├── admin/                            # Admin interface (planned)
 ├── assets/                           # CSS, JS, images
@@ -77,86 +79,107 @@ ai/
 │   ├── DEVELOPER_GUIDE.md            # This guide
 │   └── TESTING.md                    # Testing strategy
 ├── languages/                        # Translation files
+├── src/                              # Source asset files that will be built
 └── tests/                            # PHPUnit tests
     └── Unit/                         # Unit tests
 ```
 
 ### Key Design Principles
 
-1. **Encapsulation**: Each feature is self-contained and can be reviewed independently
-2. **Modularity**: Features can be added/removed without affecting core functionality
-3. **Extensibility**: Third-party developers can register custom features via hooks
+1. **Encapsulation**: Each experiment is self-contained and can be reviewed independently
+2. **Modularity**: Experiments can be added/removed without affecting core functionality
+3. **Extensibility**: Third-party developers can register custom experiments via hooks
 4. **Standards Compliance**: All code follows WordPress coding standards
 
 ---
 
-## Creating a New Feature
+## Creating a New Experiment
 
-Features are the core building blocks of the AI plugin. Each feature represents a distinct AI capability.
+Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct AI capability.
 
-### Step 1: Create Feature Directory
+### Step 1: Create Experiment Directory
 
-Create a new directory in `includes/Features/` for your feature:
+Create a new directory in `includes/Experiments/` for your experiment:
 
 ```bash
-mkdir -p includes/Features/My_Feature
+mkdir -p includes/Experiments/My_Experiment
 ```
 
-### Step 2: Create Feature Class
+### Step 2: Create Experiment Class
 
-Create your feature class by extending `Abstract_Feature`:
+Create your experiment class by extending `Abstract_Experiment`:
 
 ```php
 <?php
 /**
- * My Feature implementation.
+ * My Experiment implementation.
  *
- * @package WordPress\AI\Features
+ * @package WordPress\AI\Experiments
  */
 
-namespace WordPress\AI\Features\My_Feature;
+namespace WordPress\AI\Experiments\My_Experiment;
 
-use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Asset_Loader;
 
 /**
- * My Feature class.
+ * My Experiment class.
  *
  * @since 0.1.0
  */
-class My_Feature extends Abstract_Feature {
+class My_Experiment extends Abstract_Experiment {
 	/**
-	 * Loads feature metadata.
+	 * Loads experiment metadata.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array{id: string, label: string, description: string} Feature metadata.
+	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
-	protected function load_feature_metadata(): array {
+	protected function load_experiment_metadata(): array {
 		return array(
-			'id'          => 'my-feature',
-			'label'       => __( 'My Feature', 'ai' ),
-			'description' => __( 'Description of what my feature does.', 'ai' ),
+			'id'          => 'my-experiment',
+			'label'       => __( 'My Experiment', 'ai' ),
+			'description' => __( 'Description of what my experiment does.', 'ai' ),
 		);
 	}
 
 	/**
-	 * Registers the feature's hooks and functionality.
+	 * Registers the experiment's hooks and functionality.
 	 *
 	 * @since 0.1.0
 	 */
 	public function register(): void {
 		// Register your hooks here
 		add_action( 'init', array( $this, 'initialize' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_filter( 'the_content', array( $this, 'filter_content' ) );
 	}
 
 	/**
-	 * Initializes the feature.
+	 * Initializes the experiment.
 	 *
 	 * @since 0.1.0
 	 */
 	public function initialize(): void {
-		// Feature initialization logic
+		// Experiment initialization logic
+	}
+
+	/**
+	 * Enqueues and localizes the admin script.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
+	public function enqueue_assets( string $hook_suffix ): void {
+		Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
+		Asset_Loader::localize_script(
+			'my-experiment',
+			'MyExperimentData',
+			array(
+				'enabled' => $this->is_enabled(),
+			)
+		);
 	}
 
 	/**
@@ -168,63 +191,63 @@ class My_Feature extends Abstract_Feature {
 	 * @return string Modified content.
 	 */
 	public function filter_content( string $content ): string {
-		// Feature logic here
+		// Experiment logic here
 		return $content;
 	}
 }
 ```
 
-### Step 3: Register the Feature
+### Step 3: Register the Experiment
 
-Add your feature class name to the default features list in `Feature_Loader::get_default_features()`:
+Add your experiment class name to the default experiments list in `Experiment_Loader::get_default_experiments()`:
 
 ```php
-private function get_default_features(): array {
-	$feature_classes = array(
-		'WordPress\AI\Features\Example_Feature\Example_Feature',
-		'WordPress\AI\Features\My_Feature\My_Feature', // Add your feature
+private function get_default_experiments(): array {
+	$experiment_classes = array(
+		'WordPress\AI\Experiments\Example_Experiment\Example_Experiment',
+		'WordPress\AI\Experiments\My_Experiment\My_Experiment', // Add your experiment
 	);
 
 	// ... rest of the method
 }
 ```
 
-### Step 4: Add Feature Documentation
+### Step 4: Add Experiment Documentation
 
-Create a `README.md` in your feature directory:
+Create a `README.md` in your experiment directory:
 
 ```markdown
-# My Feature
+# My Experiment
 
-Brief description of the feature.
+Brief description of the experiment.
 
 ## Functionality
 
-- What the feature does
+- What the experiment does
 - How it works
 - Any requirements
 
 ## Usage
 
-Examples of how to use the feature.
+Examples of how to use the experiment.
 
 ## Configuration
 
 Any settings or filters available.
 ```
 
-### Conditional Features
+### Conditional Experiments
 
-If your feature has requirements (PHP extensions, other plugins, etc.), implement validation in your constructor:
+If your experiment has requirements (PHP extensions, other plugins, etc.), implement validation in your constructor:
 
 ```php
-use WordPress\AI\Exception\Invalid_Feature_Metadata_Exception;
+use WordPress\AI\Exception\Invalid_Experiment_Metadata_Exception;
 
-class My_Feature extends Abstract_Feature {
+class My_Experiment extends Abstract_Experiment {
 	public function __construct() {
 		if ( ! extension_loaded( 'gd' ) ) {
-			throw new Invalid_Feature_Metadata_Exception(
-				__( 'This feature requires the GD extension.', 'ai' )
+			throw new Invalid_Experiment_Metadata_Exception(
+				__( 'This experiment requires the GD extension.', 'ai' )
 			);
 		}
 
@@ -239,62 +262,103 @@ class My_Feature extends Abstract_Feature {
 
 The plugin provides a set of hooks and filters to allow third-party developers to extend its functionality.
 
-### Registering a Custom Feature
+### Registering a Custom Experiment
 
-Developers can register their own features using the `ai_register_features` action. This is the primary way to add new functionality to the plugin.
+Developers can register their own experiments using the `ai_experiments_register_experiments` action. This is the primary way to add new functionality to the plugin.
 
 ```php
-add_action( 'ai_register_features', function( $registry ) {
-	$registry->register_feature( new My_Custom_Feature() );
+add_action( 'ai_experiments_register_experiments', function( $registry ) {
+	$registry->register_experiment( new My_Custom_Experiment() );
 } );
 ```
 
-### Filtering Default Features
+### Filtering Default Experiments
 
-Modify the list of default feature classes before they are instantiated:
+Modify the list of default experiment classes before they are instantiated:
 
 ```php
-add_filter( 'ai_default_feature_classes', function( $feature_classes ) {
-	// Add a custom feature
-	$feature_classes[] = 'My_Namespace\My_Custom_Feature';
+add_filter( 'ai_experiments_default_experiment_classes', function( $experiment_classes ) {
+	// Add a custom experiment
+	$experiment_classes[] = 'My_Namespace\My_Custom_Experiment';
 
-	// Remove a default feature
-	$key = array_search( 'WordPress\AI\Features\Example_Feature\Example_Feature', $feature_classes );
+	// Remove a default experiment
+	$key = array_search( 'WordPress\AI\Experiments\Example_Experiment\Example_Experiment', $experiment_classes );
 	if ( false !== $key ) {
-		unset( $feature_classes[ $key ] );
+		unset( $experiment_classes[ $key ] );
 	}
 
-	return $feature_classes;
+	return $experiment_classes;
 } );
 ```
 
-### Disabling a Feature
+### Disabling an Experiment
 
-Features can be disabled using the `ai_feature_enabled` filter:
+Experiments can be disabled using the `ai_experiment_{$experiment_id}_enabled` filter:
 
 ```php
-add_filter( 'ai_feature_enabled', function( $enabled, $feature_id ) {
-	if ( 'example-feature' === $feature_id ) {
-		return false;
-	}
-	return $enabled;
-}, 10, 2 );
+add_filter( 'ai_experiments_experiment_example-experiment_enabled', '__return_false' );
 ```
 
-### Disabling All Features
+### Disabling All Experiments
 
-Disable all features at once:
+Disable all experiments at once:
 
 ```php
-add_filter( 'ai_features_enabled', '__return_false' );
+add_filter( 'ai_experiments_enabled', '__return_false' );
 ```
 
 ### Other Hooks
 
 The plugin also includes the following action hooks:
 
-- `ai_register_features`: Fires after default features are registered, receives `$registry` parameter
-- `ai_features_initialized`: Fires after all registered features have been initialized
+- `ai_experiments_register_experiments`: Fires after default experiments are registered, receives `$registry` parameter
+- `ai_experiments_initialized`: Fires after all registered experiments have been initialized
+
+### Asset Loading
+
+The plugin provides a utility class for loading assets. This uses `wp-scripts` to build assets which are expected to live within the `src/` directory. They will then be built into the `build/` directory, where the asset loader will look for the files, pulling in the proper dependencies and versioning.
+
+```php
+use WordPress\AI\Asset_Loader;
+
+/**
+ * Enqueue a script.
+ *
+ * First argument is the script handle.
+ * The second argument is the script file name.
+ * This script file name should be in the build/ directory.
+ * The source script files should be in the src/ directory. If needed,
+ * you can add the entry point to the webpack.config.js file.
+ */
+Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
+
+/**
+ * Enqueue a style.
+ *
+ * First argument is the style handle.
+ * The second argument is the style file name.
+ * This style file name should be in the build/ directory.
+ * The source style files should be in the src/ directory. If needed,
+ * you can add the entry point to the webpack.config.js file.
+ */
+Asset_Loader::enqueue_style( 'my-experiment', 'experiments/my-experiment' );
+
+/**
+ * Localize a script.
+ *
+ * First argument is the script handle.
+ * The second argument is the data object name.
+ * The third argument is the data to localize.
+ * In this example, the data will be available in the script as `aiMyExperimentData`.
+ */
+Asset_Loader::localize_script(
+	'my-experiment',
+	'MyExperimentData',
+	array(
+		'my_data' => 'my data',
+	)
+);
+```
 
 ---
 
@@ -306,26 +370,26 @@ The plugin also includes the following action hooks:
 git checkout -b feature/my-feature-name
 ```
 
-### 2. Implement Your Feature
+### 2. Implement Your Experiment
 
-Follow the steps in [Creating a New Feature](#creating-a-new-feature) above to build your feature.
+Follow the steps in [Creating a New Experiment](#creating-a-new-experiment) above to build your experiment.
 
 ### 3. Write Tests
 
-Create unit tests in `tests/Unit/` for your feature:
+Create unit tests in `tests/Unit/` for your experiment:
 
 ```php
 <?php
-namespace WordPress\AI\Tests\Unit\Features\My_Feature;
+namespace WordPress\AI\Tests\Unit\Experiments\My_Experiment;
 
-use WordPress\AI\Features\My_Feature\My_Feature;
+use WordPress\AI\Experiments\My_Experiment\My_Experiment;
 use PHPUnit\Framework\TestCase;
 
-class My_Feature_Test extends TestCase {
-	public function test_feature_metadata() {
-		$feature = new My_Feature();
-		$this->assertEquals( 'my-feature', $feature->get_id() );
-		$this->assertNotEmpty( $feature->get_label() );
+class My_Experiment_Test extends TestCase {
+	public function test_experiment_metadata() {
+		$experiment = new My_Experiment();
+		$this->assertEquals( 'my-experiment', $experiment->get_id() );
+		$this->assertNotEmpty( $experiment->get_label() );
 	}
 }
 ```
@@ -353,7 +417,7 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
 - [Testing Strategy](TESTING.md) - Testing philosophy and guidelines
-- [Example Feature](../includes/Features/Example_Feature/README.md) - Reference implementation
+- [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [WordPress AI Team](https://make.wordpress.org/ai/)
 

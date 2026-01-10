@@ -94,7 +94,7 @@ class Ability_Table extends \WP_List_Table {
 		if ( ! empty( $search ) ) {
 			$abilities = array_filter(
 				$abilities,
-				function ( $ability ) use ( $search ) {
+				static function ( $ability ) use ( $search ) {
 					return stripos( $ability['name'], $search ) !== false
 						|| stripos( $ability['slug'], $search ) !== false
 						|| stripos( $ability['description'], $search ) !== false;
@@ -107,7 +107,7 @@ class Ability_Table extends \WP_List_Table {
 		if ( ! empty( $provider_filter ) && 'all' !== $provider_filter ) {
 			$abilities = array_filter(
 				$abilities,
-				function ( $ability ) use ( $provider_filter ) {
+				static function ( $ability ) use ( $provider_filter ) {
 					return $ability['provider'] === $provider_filter;
 				}
 			);
@@ -119,14 +119,14 @@ class Ability_Table extends \WP_List_Table {
 
 		usort(
 			$abilities,
-			function ( $a, $b ) use ( $orderby, $order ) {
+			static function ( $a, $b ) use ( $orderby, $order ) {
 				$result = 0;
 
 				if ( isset( $a[ $orderby ] ) && isset( $b[ $orderby ] ) ) {
 					$result = strcasecmp( $a[ $orderby ], $b[ $orderby ] );
 				}
 
-				return ( 'asc' === $order ) ? $result : -$result;
+				return 'asc' === $order ? $result : -$result;
 			}
 		);
 
@@ -143,7 +143,7 @@ class Ability_Table extends \WP_List_Table {
 			)
 		);
 
-		$this->items = array_slice( $abilities, ( ( $current_page - 1 ) * $per_page ), $per_page );
+		$this->items = array_slice( $abilities, ( $current_page - 1 ) * $per_page, $per_page );
 	}
 
 	/**

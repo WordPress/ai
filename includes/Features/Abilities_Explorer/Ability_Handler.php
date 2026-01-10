@@ -92,7 +92,7 @@ class Ability_Handler {
 	 * @param \WP_Ability $ability Ability object.
 	 * @return array Formatted ability data.
 	 */
-	private static function format_single_ability( $ability ) : array {
+	private static function format_single_ability( $ability ): array {
 		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_name' ) ) {
 			return array();
 		}
@@ -101,19 +101,19 @@ class Ability_Handler {
 		$meta = method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array();
 
 		return array(
-			'slug'         => $name,
-			'name'         => $ability->get_label(),
-			'description'  => $ability->get_description(),
-			'provider'     => self::detect_provider( $name, $meta ),
-			'input_schema' => $ability->get_input_schema(),
+			'slug'          => $name,
+			'name'          => $ability->get_label(),
+			'description'   => $ability->get_description(),
+			'provider'      => self::detect_provider( $name, $meta ),
+			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
-			'raw_data'     => array(
-				'name'         => $name,
-				'label'        => $ability->get_label(),
-				'description'  => $ability->get_description(),
-				'input_schema' => $ability->get_input_schema(),
+			'raw_data'      => array(
+				'name'          => $name,
+				'label'         => $ability->get_label(),
+				'description'   => $ability->get_description(),
+				'input_schema'  => $ability->get_input_schema(),
 				'output_schema' => $ability->get_output_schema(),
-				'meta'         => $meta,
+				'meta'          => $meta,
 			),
 		);
 	}
@@ -225,25 +225,31 @@ class Ability_Handler {
 		// Basic JSON Schema validation
 		if ( isset( $schema['required'] ) && is_array( $schema['required'] ) ) {
 			foreach ( $schema['required'] as $required_field ) {
-				if ( ! isset( $input[ $required_field ] ) ) {
-					$errors[] = sprintf( 'Required field "%s" is missing', $required_field );
+				if ( isset( $input[ $required_field ] ) ) {
+					continue;
 				}
+
+				$errors[] = sprintf( 'Required field "%s" is missing', $required_field );
 			}
 		}
 
 		// Type validation for properties
 		if ( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
 			foreach ( $schema['properties'] as $prop_name => $prop_schema ) {
-				if ( isset( $input[ $prop_name ] ) && isset( $prop_schema['type'] ) ) {
-					$valid = self::validate_type( $input[ $prop_name ], $prop_schema['type'] );
-					if ( ! $valid ) {
-						$errors[] = sprintf(
-							'Field "%s" should be of type "%s"',
-							$prop_name,
-							$prop_schema['type']
-						);
-					}
+				if ( ! isset( $input[ $prop_name ] ) || ! isset( $prop_schema['type'] ) ) {
+					continue;
 				}
+
+				$valid = self::validate_type( $input[ $prop_name ], $prop_schema['type'] );
+				if ( $valid ) {
+					continue;
+				}
+
+				$errors[] = sprintf(
+					'Field "%s" should be of type "%s"',
+					$prop_name,
+					$prop_schema['type']
+				);
 			}
 		}
 
@@ -301,11 +307,15 @@ class Ability_Handler {
 
 		foreach ( $abilities as $ability ) {
 			// Count by provider
-			if ( isset( $ability['provider'] ) ) {
-				if ( isset( $stats['by_provider'][ $ability['provider'] ] ) ) {
-					++$stats['by_provider'][ $ability['provider'] ];
-				}
+			if ( ! isset( $ability['provider'] ) ) {
+				continue;
 			}
+
+			if ( ! isset( $stats['by_provider'][ $ability['provider'] ] ) ) {
+				continue;
+			}
+
+			++$stats['by_provider'][ $ability['provider'] ];
 		}
 
 		return $stats;

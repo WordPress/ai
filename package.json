@@ -1,10 +1,15 @@
 {
   "name": "ai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
-  "description": "WordPress AI Experiments",
+  "description": "AI experiments and capabilities for WordPress.",
   "license": "GPL-2.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WordPress/ai.git"
+  },
   "files": [
+    "build",
     "includes",
     "vendor",
     "README.md",
@@ -13,26 +18,51 @@
   ],
   "scripts": {
     "plugin-zip": "wp-scripts plugin-zip",
-    "build": "echo 'Building...'",
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
     "wp-env": "wp-env",
     "lint:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script lint",
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",
     "lint:php:stan": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script stan",
     "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai vendor/bin/phpunit -c phpunit.xml.dist",
-    "format": "wp-scripts format",
+    "test:e2e:env:start": "node tests/bin/add-mocking-plugin.js && wp-env start",
+    "test:e2e:env:stop": "rm -f .wp-env.override.json && wp-env stop",
+    "test:e2e": "wp-scripts test-playwright --config tests/e2e/playwright.config.ts",
+    "test:e2e:debug": "wp-scripts test-playwright --config tests/e2e/playwright.config.ts --ui",
+    "format:js": "wp-scripts format ./src",
     "lint:js": "wp-scripts lint-js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@types/wordpress__blocks": "^12.5.18",
     "@wordpress/env": "^10.34.0",
-    "@wordpress/eslint-plugin": "^22.20.0",
-    "@wordpress/prettier-config": "^4.34.0",
-    "@wordpress/scripts": "^30.27.0"
+    "@wordpress/scripts": "^31.0.0",
+    "filenamify": "^7.0.1",
+    "typescript": "^5.9.3",
+    "webpack-remove-empty-scripts": "^1.1.1"
+  },
+  "dependencies": {
+    "@wordpress/api-fetch": "^7.36.0",
+    "@wordpress/block-editor": "^15.7.0",
+    "@wordpress/components": "^30.7.0",
+    "@wordpress/compose": "^7.34.0",
+    "@wordpress/data": "^10.34.0",
+    "@wordpress/editor": "^14.34.0",
+    "@wordpress/element": "^6.34.0",
+    "@wordpress/hooks": "^4.35.0",
+    "@wordpress/i18n": "^6.7.0",
+    "@wordpress/icons": "^11.1.0",
+    "@wordpress/notices": "^5.35.0",
+    "@wordpress/plugins": "^7.34.0",
+    "react": "^18.3.1"
+  },
+  "overrides": {
+    "webpack-dev-server@<=5.2.0": ">=5.2.1"
   },
   "engines": {
     "node": ">=22.21.1",
     "npm": ">=10.9.4"
-  },
-  "overrides": {
-    "webpack-dev-server@<=5.2.0": ">=5.2.1"
   }
 }

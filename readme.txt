@@ -1,39 +1,132 @@
-=== WordPress AI Experiments ===
-Contributors: wordpressorg
-Tags: ai, artificial intelligence, experiments, features
-Requires at least: 6.8
-Tested up to: 6.8
-Stable tag: 0.1.0
-Requires PHP: 7.4
-License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+=== AI Experiments ===
+Contributors:      wordpressorg
+Tags:              ai, artificial intelligence, experiments, abilities, mcp
+Tested up to:      6.9
+Stable tag:        0.1.1
+License:           GPL-2.0-or-later
+License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
-Experimental AI features and capabilities for WordPress.
+AI experiments and capabilities for WordPress.
 
 == Description ==
 
-WordPress AI Experiments is a plugin for testing and developing AI-powered features for WordPress. This plugin provides a framework for building, testing, and deploying experimental AI capabilities.
+The WordPress AI Experiments plugin brings experimental AI-powered features directly into your WordPress admin and editing experience.
+
+**What's Inside:**
+
+This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the WP AI Client SDK, Abilities API, and MCP Adapter into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
+
+**Current Features:**
+
+* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
+* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+
+**Coming Soon:**
+
+We're actively developing new features to enhance your WordPress workflow:
+
+* **Excerpt Generation** - Automatically create concise summaries for your posts
+* **Image Generation** - Create images from text prompts directly in the block editor
+* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility
+* **Content Summarization** - Quickly summarize long-form content
+* **Contextual Tagging** - AI-suggested tags and categories to organize your content
+* **AI Playground** - Experiment with different AI models and prompts
+
+This is an experimental plugin; functionality may change as we gather feedback from the community.
 
 == Installation ==
 
 1. Upload the plugin files to the `/wp-content/plugins/ai` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Use the Settings->AI screen to configure the plugin.
+3. Go to `Settings -> AI Credentials` and add at least one valid AI credential.
+4. Go to `Settings -> AI Experiments` and globally enable experiments and then enable the individual experiments you want to test.
+5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Re-generate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
+
+== For Developers ==
+
+The AI Experiments plugin is designed to be studied, extended, and built upon. Whether you're a plugin developer, agency, or hosting provider, here's what you can do:
+
+**Extend the Plugin:**
+
+* **Build Custom Experiments** - Use the `Abstract_Experiment` base class to create your own AI-powered features
+* **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities
+* **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements
+* **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys
+
+**Developer Tools Coming Soon:**
+
+* **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled)
+* **MCP Demo** - See how Model Context Protocol integration works with WordPress
+* **Comprehensive Hooks** - Filters and actions throughout the codebase for customization
+
+
+**Get Started:**
+
+1. Read the [Contributing Guide](https://github.com/WordPress/ai/blob/trunk/CONTRIBUTING.md) for development setup
+2. Join the conversation in [#core-ai on WordPress Slack](https://wordpress.slack.com/archives/C08TJ8BPULS)
+3. Browse the [GitHub repository](https://github.com/WordPress/ai) to see how experiments are built
+4. Participate in [discussions](https://github.com/WordPress/ai/discussions) on how best the plugin should iterate.
+
+We welcome contributions! Whether you want to build new experiments, improve existing features, or help with documentation, check out our [GitHub repository](https://github.com/WordPress/ai) to get involved.
 
 == Frequently Asked Questions ==
 
 = What is this plugin for? =
 
-This plugin is for experimenting with AI features in WordPress. It provides a framework for building and testing AI-powered capabilities.
+This plugin brings AI-powered writing and editing tools directly into WordPress. It's also a reference implementation for developers who want to build their own AI features.
 
-= Is this production-ready? =
+= Is this safe to use on a production site? =
 
-No, this is an experimental plugin for testing and development purposes.
+This is an experimental plugin, so we recommend testing in a staging environment first. Features may change as we gather community feedback. All AI features are opt-in and require manual triggering - nothing happens automatically without your approval.
+
+= Which AI providers are supported? =
+
+The plugin supports OpenAI, Google AI (Gemini), and Anthropic (Claude). You can configure one or multiple providers in Settings -> AI Credentials.
+
+= Do I need an API key to use the experiments? =
+
+Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic).
+
+= How much does it cost? =
+
+The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started.
+
+= Can I use this without coding knowledge? =
+
+Absolutely! The plugin is designed for content creators and site administrators. Once your API credentials are configured, you can use AI experiments directly from the post editor.
+
+= Where can I get help or report issues? =
+
+You can ask questions in the [#core-ai channel on WordPress Slack](https://wordpress.slack.com/archives/C08TJ8BPULS) or report issues on the [GitHub repository](https://github.com/WordPress/ai/issues).
+
+== Screenshots ==
+
+1. Post editor showing (Re-)Generate button above the post title field and title recommendations in a modal.
+2. AI Experiments settings screen showing toggles to enable specific experiments.
+3. AI Credentials settings screen showing API key fields for available AI service providers.
 
 == Changelog ==
 
-= 0.1.0 =
-* Initial release
-* Feature registry and loader system
-* Abstract feature base class
-* Example feature implementation
+= 0.1.1 - 2025-12-01 =
+
+* **Added:** Link to the plugin settings screen from the plugin list table ([#98](https://github.com/WordPress/ai/pull/98)).
+* **Added:** WordPress Playground live preview integration ([#85](https://github.com/WordPress/ai/pull/85)).
+* **Added:** RTL language support and inlining for performance ([#113](https://github.com/WordPress/ai/pull/113)).
+* **Changed:** Updated namespace to `ai_experiments` ([#111](https://github.com/WordPress/ai/pull/111)).
+* **Changed:** Bumped WP AI Client from `dev-trunk` to 0.2.0 ([#118](https://github.com/WordPress/ai/pull/118), [#122](https://github.com/WordPress/ai/pull/122), [#125](https://github.com/WordPress/ai/pull/125)).
+* **Removed:** Valid AI credentials check from the Experiment `is_enabled` check ([#120](https://github.com/WordPress/ai/pull/120)).
+* **Removed:** Example Experiment registration ([#121](https://github.com/WordPress/ai/pull/121)).
+* **Fixed:** Bug in asset loader causing missing dependencies ([#113](https://github.com/WordPress/ai/pull/113)).
+* **Security:** Bumped `js-yaml` from 3.14.1 to 3.14.2 ([#105](https://github.com/WordPress/ai/pull/105)).
+
+= 0.1.0 - 2025-11-26 =
+
+First public release of the AI Experiments plugin, introducing a framework for exploring experimental AI-powered features in WordPress. 🎉
+
+* **Added:** Experiment registry and loader system for managing AI features
+* **Added:** Abstract experiment base class for consistent feature development
+* **Added:** Experiment: Title Generation
+* **Added:** Basic admin settings screen with toggle support
+* **Added:** Initial integration with WP AI Client SDK and Abilities API
+* **Added:** Utilities Ability for common AI tasks and testing
