@@ -133,7 +133,7 @@ class Ability_Table extends \WP_List_Table {
 			array(
 				'total_items' => $total_items,
 				'per_page'    => $per_page,
-				'total_pages' => ceil( $total_items / $per_page ),
+				'total_pages' => (int) ceil( $total_items / $per_page ),
 			)
 		);
 
@@ -142,6 +142,8 @@ class Ability_Table extends \WP_List_Table {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @param array<string,mixed> $item Item data.
 	 */
 	public function column_default( $item, $column_name ): string {
 		return isset( $item[ $column_name ] ) ? esc_html( $item[ $column_name ] ) : '—';
@@ -149,6 +151,8 @@ class Ability_Table extends \WP_List_Table {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @param array<string,mixed> $item Item data.
 	 */
 	public function column_cb( $item ): string {
 		return sprintf(
@@ -159,6 +163,8 @@ class Ability_Table extends \WP_List_Table {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @param array<string,mixed> $item Item data.
 	 */
 	public function column_name( $item ): string {
 		$detail_url = add_query_arg(
@@ -179,12 +185,9 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Slug column.
+	 * {@inheritDoc}
 	 *
-	 * @since n.e.x.t
-	 *
-	 * @param array $item Item data.
-	 * @return string Slug column HTML.
+	 * @param array<string,mixed> $item Item data.
 	 */
 	public function column_slug( $item ): string {
 		return sprintf(
@@ -194,12 +197,9 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Provider column.
+	 * {@inheritDoc}
 	 *
-	 * @since n.e.x.t
-	 *
-	 * @param array $item Item data.
-	 * @return string Provider column HTML.
+	 * @param array<string,mixed> $item Item data.
 	 */
 	public function column_provider( $item ): string {
 		$provider = $item['provider'];
@@ -214,6 +214,8 @@ class Ability_Table extends \WP_List_Table {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @param array<string,mixed> $item Item data.
 	 */
 	public function column_actions( $item ): string {
 		$detail_url = add_query_arg(

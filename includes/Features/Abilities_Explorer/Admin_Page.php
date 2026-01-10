@@ -456,14 +456,14 @@ class Admin_Page {
 			wp_send_json_success(
 				array(
 					'message' => __( 'Ability invoked successfully.', 'ai' ),
-					'data'    => $result['data'],
+					'data'    => $result['data'] ?? null,
 				)
 			);
 		} else {
 			wp_send_json_error(
 				array(
-					'message' => isset( $result['error'] ) ? $result['error'] : __( 'Unknown error occurred.', 'ai' ),
-					'trace'   => isset( $result['trace'] ) ? $result['trace'] : null,
+					'message' => $result['error'] ?? __( 'Unknown error occurred.', 'ai' ),
+					'trace'   => $result['trace'] ?? null,
 				)
 			);
 		}

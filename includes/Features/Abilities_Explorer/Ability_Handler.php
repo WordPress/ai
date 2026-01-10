@@ -144,7 +144,7 @@ class Ability_Handler {
 			}
 
 			// Check if namespace matches active theme
-			if ( $namespace === get_stylesheet() || $namespace === get_template() ) {
+			if ( get_stylesheet() === $namespace || get_template() === $namespace ) {
 				return 'Theme';
 			}
 		}
@@ -161,8 +161,15 @@ class Ability_Handler {
 	 * @param string $slug  Ability name.
 	 * @param array  $input Input data.
 	 * @return array Result with success status and data/error.
+	 *
+	 * @phpstan-return array{
+	 *   success: bool,
+	 *   code?: int|string,
+	 *   data?: mixed,
+	 *   error?: string,
+	 * }
 	 */
-	public static function invoke_ability( $slug, $input = array() ): string {
+	public static function invoke_ability( $slug, $input = array() ): array {
 		if ( ! function_exists( 'wp_get_ability' ) ) {
 			return array(
 				'success' => false,
