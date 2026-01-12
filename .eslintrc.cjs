@@ -1,8 +1,6 @@
 module.exports = {
 	root: true,
-	extends: [
-		'plugin:@wordpress/eslint-plugin/recommended',
-	],
+	extends: [ 'plugin:@wordpress/eslint-plugin/recommended' ],
 	plugins: [ 'import' ],
 	parserOptions: {
 		sourceType: 'module',
