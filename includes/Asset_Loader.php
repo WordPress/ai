@@ -85,24 +85,26 @@ class Asset_Loader {
 				$asset_data['dependencies'] = array();
 			}
 			if ( ! isset( $asset_data['version'] ) ) {
-				$asset_data['version'] = filemtime( $style_path );
+				$asset_data['version'] = file_exists( $style_path ) ? filemtime( $style_path ) : 0;
 			}
 		} elseif ( file_exists( $style_asset_path ) ) {
 			$asset_data = require $style_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
-		} else {
-			$asset_data = array(
+		} elseif ( file_exists( $style_path ) ) {
+				$asset_data = array(
 				'dependencies' => array(),
 				'version'      => filemtime( $style_path ),
 			);
 		}
 
-		wp_enqueue_style(
-			'ai_' . $handle,
-			$style_url,
-			array(),
-			$asset_data['version']
-		);
-		wp_style_add_data( 'ai_' . $handle, 'path', $style_path );
+		if( $asset_data !== null ) {
+			wp_enqueue_style(
+				'ai_' . $handle,
+				$style_url,
+				$asset_data['dependencies'],
+				$asset_data['version']
+			);
+			wp_style_add_data( 'ai_' . $handle, 'path', $style_path );
+		}
 
 		$rtl_style_path = str_replace( '.css', '-rtl.css', $style_path );
 		if ( ! file_exists( $rtl_style_path ) ) {
