@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Title_Generation\Title_Generation;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Title_Generation\Title_Generation;
+use WordPress\AI\Abstracts\Abstract_Experiment;
 
 /**
  * Test experiment for Title_Generation Ability tests.
@@ -41,7 +41,6 @@ class Test_Title_Generation_Experiment extends Abstract_Experiment {
 	public function register(): void {
 		// No-op for testing.
 	}
-
 }
 
 /**
@@ -54,14 +53,14 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Title_Generation ability instance.
 	 *
-	 * @var Title_Generation
+	 * @var \WordPress\AI\Abilities\Title_Generation\Title_Generation
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Title_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Title_Generation_Experiment
 	 */
 	private $experiment;
 
@@ -74,7 +73,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->experiment = new Test_Title_Generation_Experiment();
-		$this->ability = new Title_Generation(
+		$this->ability    = new Title_Generation(
 			'ai/title-generation',
 			array(
 				'label'       => $this->experiment->get_label(),
@@ -185,7 +184,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$input  = array(
+		$input = array(
 			'content'    => 'This is some test content.',
 			'candidates' => 3,
 		);
@@ -227,7 +226,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$input  = array(
+		$input = array(
 			'post_id'    => $post_id,
 			'candidates' => 2,
 		);
@@ -297,7 +296,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$input  = array(
+		$input = array(
 			'content' => 'Test content',
 		);
 
@@ -338,7 +337,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$input  = array(
+		$input = array(
 			'content' => 'This content should be ignored.',
 			'post_id' => $post_id,
 		);
@@ -551,4 +550,3 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
 }
-

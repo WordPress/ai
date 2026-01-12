@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Title_Generation;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiments\Title_Generation\Title_Generation;
 use WP_UnitTestCase;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiments\Title_Generation\Title_Generation;
 
 /**
  * Title_Generation test case.
@@ -30,7 +30,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable experiments globally and individually.
 		update_option( 'ai_experiments_enabled', true );
@@ -54,7 +54,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_title-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 

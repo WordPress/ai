@@ -51,7 +51,19 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return string The category of the ability.
 	 */
 	protected function category(): string {
-		return AI_DEFAULT_ABILITY_CATEGORY;
+		return AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY;
+	}
+
+	/**
+	 * Returns the REST API path of the ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $experiment_id The ID of the experiment.
+	 * @return string The REST API path of the ability.
+	 */
+	public static function path( string $experiment_id = '' ): string {
+		return 'wp-abilities/v1/abilities/ai/' . $experiment_id . '/run';
 	}
 
 	/**
