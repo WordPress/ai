@@ -1,13 +1,13 @@
 <?php
 /**
- * Excerpt generation WordPress Ability implementation.
+ * Content summarization WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities\Excerpt_Generation;
+namespace WordPress\AI\Abilities\Summarization;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
@@ -18,11 +18,20 @@ use function WordPress\AI\get_preferred_models;
 use function WordPress\AI\normalize_content;
 
 /**
- * Excerpt generation WordPress Ability.
+ * Content summarization WordPress Ability.
  *
  * @since x.x.x
  */
-class Excerpt_Generation extends Abstract_Ability {
+class Summarization extends Abstract_Ability {
+
+	/**
+	 * The default length of the summary.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	protected const LENGTH_DEFAULT = 'medium';
 
 	/**
 	 * {@inheritDoc}
@@ -36,12 +45,18 @@ class Excerpt_Generation extends Abstract_Ability {
 				'content' => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Content to generate an excerpt suggestion for.', 'ai' ),
+					'description'       => esc_html__( 'Content to summarize.', 'ai' ),
 				),
 				'context' => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Additional context to use when generating an excerpt suggestion for the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
+					'description'       => esc_html__( 'Additional context to use when summarizing the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
+				),
+				'length'  => array(
+					'type'        => 'enum',
+					'enum'        => array( 'short', 'medium', 'long' ),
+					'default'     => self::LENGTH_DEFAULT,
+					'description' => esc_html__( 'The length of the summary.', 'ai' ),
 				),
 			),
 		);
@@ -55,7 +70,7 @@ class Excerpt_Generation extends Abstract_Ability {
 	protected function output_schema(): array {
 		return array(
 			'type'        => 'string',
-			'description' => esc_html__( 'Generated excerpt.', 'ai' ),
+			'description' => esc_html__( 'The summary of the content.', 'ai' ),
 		);
 	}
 
@@ -71,6 +86,7 @@ class Excerpt_Generation extends Abstract_Ability {
 			array(
 				'content' => null,
 				'context' => null,
+				'length'  => self::LENGTH_DEFAULT,
 			),
 		);
 
@@ -104,12 +120,12 @@ class Excerpt_Generation extends Abstract_Ability {
 		if ( empty( $content ) ) {
 			return new WP_Error(
 				'content_not_provided',
-				esc_html__( 'Content is required to generate an excerpt suggestion.', 'ai' )
+				esc_html__( 'Content is required to generate a summary.', 'ai' )
 			);
 		}
 
-		// Generate the excerpt.
-		$result = $this->generate_excerpt( $content, $context );
+		// Generate the summary.
+		$result = $this->generate_summary( $content, $context, $args['length'] );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -120,12 +136,12 @@ class Excerpt_Generation extends Abstract_Ability {
 		if ( empty( $result ) ) {
 			return new WP_Error(
 				'no_results',
-				esc_html__( 'No excerpt suggestion was generated.', 'ai' )
+				esc_html__( 'No summary was generated.', 'ai' )
 			);
 		}
 
-		// Return the excerpts in the format the Ability expects.
-		return sanitize_textarea_field( trim( $result, ' "\'' ) );
+		// Return the summary in the format the Ability expects.
+		return sanitize_text_field( trim( $result ) );
 	}
 
 	/**
@@ -152,7 +168,7 @@ class Excerpt_Generation extends Abstract_Ability {
 			if ( ! current_user_can( 'read_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
-					esc_html__( 'You do not have permission to generate excerpts for this post.', 'ai' )
+					esc_html__( 'You do not have permission to summarize this post.', 'ai' )
 				);
 			}
 
@@ -172,7 +188,7 @@ class Excerpt_Generation extends Abstract_Ability {
 			// Ensure the user has permission to edit posts in general.
 			return new WP_Error(
 				'insufficient_capabilities',
-				esc_html__( 'You do not have permission to generate excerpts.', 'ai' )
+				esc_html__( 'You do not have permission to summarize content.', 'ai' )
 			);
 		}
 
@@ -191,15 +207,16 @@ class Excerpt_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Generate an excerpt suggestion from the given content.
+	 * Generates a summary from the given content.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $content The content to generate an excerpt from.
+	 * @param string $content The content to summarize.
 	 * @param string|array<string, string> $context Additional context to use.
-	 * @return string|\WP_Error The generated excerpt, or a WP_Error if there was an error.
+	 * @param string $length The desired length of the summary.
+	 * @return string|\WP_Error The generated summary, or a WP_Error if there was an error.
 	 */
-	protected function generate_excerpt( string $content, $context ) {
+	protected function generate_summary( string $content, $context, string $length ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -225,10 +242,10 @@ class Excerpt_Generation extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
-		// Generate an excerpt using the AI client.
+		// Generate the summary using the AI client.
 		return AI_Client::prompt_with_wp_error( $content )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.7 )
+			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
+			->using_temperature( 0.9 )
 			->using_model_preference( ...get_preferred_models() )
 			->generate_text();
 	}

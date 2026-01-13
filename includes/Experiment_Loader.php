@@ -104,9 +104,10 @@ final class Experiment_Loader {
 	 */
 	private function get_default_experiments(): array {
 		$experiment_classes = array(
-			\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
-			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 			\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
+			\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
+			\WordPress\AI\Experiments\Summarization\Summarization::class,
+			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 			// @todo: migrate to experiment after triaging existing comments.
 			\WordPress\AI\Features\Abilities_Explorer\Abilities_Explorer::class,
 		);
