@@ -376,13 +376,13 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
 		$this->assertEquals( 'imagen-4.0-generate-001', $result[2][1], 'Third model name should be imagen-4.0-generate-001' );
 
-		// Check third model (openai).
+		// Check fourth model (openai).
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
 		$this->assertEquals( 'gpt-image-1', $result[3][1], 'Fourth model name should be gpt-image-1' );
 
-		// Check fourth model (openai).
+		// Check fifth model (openai).
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
