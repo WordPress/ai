@@ -140,7 +140,7 @@ class Settings_Page {
 				} else {
 					$error_message = sprintf(
 						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Before you can run experiments, you need to ensure you have set valid AI credentials <a href="%s">here</a>.', 'ai' ),
+						__( 'Most experiments require valid AI credentials to function properly. Please <a href="%s">review</a> the AI credentials you have set to ensure they are valid.', 'ai' ),
 						admin_url( 'options-general.php?page=wp-ai-client' )
 					);
 				}
