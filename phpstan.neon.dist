@@ -25,6 +25,6 @@ parameters:
 		excludePaths:
 			analyse:
 				- tests/
-				- vendor/**/*
+				- vendor/
 			analyseAndScan:
 				- node_modules (?)
