@@ -13,6 +13,18 @@ use Throwable;
 use WordPress\AI_Client\AI_Client;
 
 /**
+ * Purposely using return instead of exit here.
+ *
+ * This file is loaded via the composer files directive.
+ * When tools like PHPCS and PHPStan run, they include
+ * our composer autoloader and that will then load this file,
+ * causing the script to exit and not function properly.
+ */
+if ( ! defined( 'ABSPATH' ) ) {
+	return;
+}
+
+/**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
  *
  * @since 0.1.0

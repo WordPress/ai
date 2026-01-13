@@ -296,7 +296,14 @@ add_filter( 'ai_experiments_default_experiment_classes', function( $experiment_c
 Experiments can be disabled using the `ai_experiment_{$experiment_id}_enabled` filter:
 
 ```php
-add_filter( 'ai_experiments_experiment_example-experiment_enabled', '__return_false' );
+// Disable a specific experiment by its ID
+add_filter( 'ai_experiment_example-experiment_enabled', '__return_false' );
+
+// Or with a custom callback
+add_filter( 'ai_experiment_example-experiment_enabled', function( $enabled ) {
+	// Your custom logic here
+	return false;
+} );
 ```
 
 ### Disabling All Experiments

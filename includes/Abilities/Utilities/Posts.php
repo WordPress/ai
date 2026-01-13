@@ -11,6 +11,10 @@ namespace WordPress\AI\Abilities\Utilities;
 
 use WP_Error;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Post utility WordPress Abilities.
  *
