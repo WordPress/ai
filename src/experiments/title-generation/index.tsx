@@ -3,11 +3,6 @@
  */
 
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
 import { BlockControls } from '@wordpress/block-editor';
