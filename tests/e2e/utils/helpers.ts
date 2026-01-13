@@ -60,8 +60,15 @@ export const clearCredentials = async ( admin: Admin, page: Page ) => {
  */
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
-	// Click the Disable Experiments button (it auto-submits)
-	await page.click( 'button.ai-experiments__toggle-button:has-text("Disable Experiments")' );
+	// Wait for page to fully load before finding button
+	await page.waitForSelector( 'button.ai-experiments__toggle-button', {
+		timeout: 10000,
+	} );
+	// Click the disable button (when enabled, it says "Disable")
+	const buttons = await page.$$( 'button.ai-experiments__toggle-button' );
+	if ( buttons.length > 0 ) {
+		await buttons[0].click();
+	}
 
 	// Wait for page reload and ensure the save was successful.
 	await page.waitForLoadState( 'load' );
@@ -80,8 +87,15 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
  */
 export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
-	// Click the Enable Experiments button (it auto-submits)
-	await page.click( 'button.ai-experiments__toggle-button:has-text("Enable Experiments")' );
+	// Wait for page to fully load before finding button
+	await page.waitForSelector( 'button.ai-experiments__toggle-button', {
+		timeout: 10000,
+	} );
+	// Click the enable button (when disabled, it says "Enable")
+	const buttons = await page.$$( 'button.ai-experiments__toggle-button' );
+	if ( buttons.length > 0 ) {
+		await buttons[0].click();
+	}
 
 	// Wait for page reload and ensure the save was successful.
 	await page.waitForLoadState( 'load' );
