@@ -191,8 +191,8 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$context = \WordPress\AI\get_post_context( $post_id );
 
-		$this->assertArrayHasKey( 'current_title', $context, 'Should have current_title' );
-		$this->assertEquals( 'Test Post Title', $context['current_title'], 'Title should match' );
+		$this->assertArrayHasKey( 'title', $context, 'Should have title' );
+		$this->assertEquals( 'Test Post Title', $context['title'], 'Title should match' );
 		$this->assertArrayHasKey( 'slug', $context, 'Should have slug' );
 		$this->assertEquals( 'test-post-slug', $context['slug'], 'Slug should match' );
 		$this->assertArrayHasKey( 'author', $context, 'Should have author' );
