@@ -11,7 +11,6 @@ namespace WordPress\AI\Abilities\Utilities;
 
 use WP_Error;
 
-// Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }

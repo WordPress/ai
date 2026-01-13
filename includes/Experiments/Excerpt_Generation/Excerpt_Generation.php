@@ -12,7 +12,6 @@ namespace WordPress\AI\Experiments\Excerpt_Generation;
 use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation as Excerpt_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
-// Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }

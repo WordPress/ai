@@ -17,7 +17,6 @@ use WordPress\AI\Experiment_Registry;
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
-// Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
