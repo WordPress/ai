@@ -343,7 +343,7 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
 - [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
-- [Testing rest API Strategy](TESTING_REST_API.md) – Testing Rest API philosophy and guidelines
+- [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [WordPress AI Team](https://make.wordpress.org/ai/)
