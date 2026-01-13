@@ -90,13 +90,13 @@ class Asset_Loader {
 		} elseif ( file_exists( $style_asset_path ) ) {
 			$asset_data = require $style_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 		} elseif ( file_exists( $style_path ) ) {
-				$asset_data = array(
+			$asset_data = array(
 				'dependencies' => array(),
 				'version'      => filemtime( $style_path ),
 			);
 		}
 
-		if( $asset_data !== null ) {
+		if ( null !== $asset_data ) {
 			wp_enqueue_style(
 				'ai_' . $handle,
 				$style_url,
