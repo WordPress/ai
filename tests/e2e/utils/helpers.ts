@@ -67,7 +67,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	// Click the disable button (when enabled, it says "Disable")
 	const buttons = await page.$$( 'button.ai-experiments__toggle-button' );
 	if ( buttons.length > 0 ) {
-		await buttons[0].click();
+		await buttons[ 0 ].click();
 	}
 
 	// Wait for page reload and ensure the save was successful.
@@ -94,7 +94,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	// Click the enable button (when disabled, it says "Enable")
 	const buttons = await page.$$( 'button.ai-experiments__toggle-button' );
 	if ( buttons.length > 0 ) {
-		await buttons[0].click();
+		await buttons[ 0 ].click();
 	}
 
 	// Wait for page reload and ensure the save was successful.
