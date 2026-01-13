@@ -60,10 +60,11 @@ export const clearCredentials = async ( admin: Admin, page: Page ) => {
  */
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
-	await page.locator( '#ai_experiments_enabled' ).uncheck();
-	await page.locator( '#submit' ).click();
+	// Click the Disable Experiments button (it auto-submits)
+	await page.click( 'button.ai-experiments__toggle-button:has-text("Disable Experiments")' );
 
-	// Ensure the save was successful.
+	// Wait for page reload and ensure the save was successful.
+	await page.waitForLoadState( 'load' );
 	await expect(
 		page.locator( '.wrap .notice-success', {
 			hasText: 'Settings saved',
@@ -79,10 +80,11 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
  */
 export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
-	await page.locator( '#ai_experiments_enabled' ).check();
-	await page.locator( '#submit' ).click();
+	// Click the Enable Experiments button (it auto-submits)
+	await page.click( 'button.ai-experiments__toggle-button:has-text("Enable Experiments")' );
 
-	// Ensure the save was successful.
+	// Wait for page reload and ensure the save was successful.
+	await page.waitForLoadState( 'load' );
 	await expect(
 		page.locator( '.wrap .notice-success', {
 			hasText: 'Settings saved',
