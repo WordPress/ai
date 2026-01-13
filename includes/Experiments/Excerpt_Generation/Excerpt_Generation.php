@@ -13,6 +13,10 @@ use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation as Excerpt_Gene
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Excerpt generation experiment.
  *

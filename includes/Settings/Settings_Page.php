@@ -17,6 +17,10 @@ use WordPress\AI\Experiment_Registry;
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Manages the admin settings page for AI experiments.
  *
