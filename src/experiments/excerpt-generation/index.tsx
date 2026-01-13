@@ -10,6 +10,7 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
+// @ts-expect-error - __experimentalPluginPostExcerpt is not in type definitions but exists at runtime
 import { __experimentalPluginPostExcerpt as PluginPostExcerpt } from '@wordpress/edit-post'; // eslint-disable-line @wordpress/no-unsafe-wp-apis
 import { registerPlugin } from '@wordpress/plugins';
 

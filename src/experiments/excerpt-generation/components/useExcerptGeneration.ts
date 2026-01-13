@@ -68,7 +68,10 @@ export function useExcerptGeneration(): {
 		);
 
 		try {
-			const generatedExcerpt = await generateExcerpt( postId, content );
+			const generatedExcerpt = await generateExcerpt(
+				postId as number,
+				content
+			);
 
 			// Update the editor store first.
 			editPost( {
