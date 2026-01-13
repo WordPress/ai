@@ -1,80 +1,81 @@
 <?php
 /**
- * Integration tests for the Excerpt_Generation Ability class.
+ * Integration tests for the Summarization Ability class.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities
  */
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
+use WordPress\AI\Abilities\Summarization\Summarization;
+use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 
 /**
- * Test experiment for Excerpt_Generation Ability tests.
+ * Test experiment for Summarization Ability tests.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
-class Test_Excerpt_Generation_Experiment extends Abstract_Experiment {
+class Test_Summarization_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
-			'id'          => 'excerpt-generation',
-			'label'       => 'Excerpt Generation',
-			'description' => 'Generates excerpt suggestions from content',
+			'id'          => 'summarization',
+			'label'       => 'Content Summarization',
+			'description' => 'Summarizes long-form content into digestible overviews',
 		);
 	}
 
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		// No-op for testing.
 	}
+
 }
 
 /**
- * Excerpt_Generation Ability test case.
+ * Summarization Ability test case.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
-class Excerpt_GenerationTest extends WP_UnitTestCase {
+class SummarizationTest extends WP_UnitTestCase {
 
 	/**
-	 * Excerpt_Generation ability instance.
+	 * Summarization ability instance.
 	 *
-	 * @var \WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation
+	 * @var Summarization
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Excerpt_Generation_Experiment
+	 * @var Test_Summarization_Experiment
 	 */
 	private $experiment;
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
 
-		$this->experiment = new Test_Excerpt_Generation_Experiment();
-		$this->ability    = new Excerpt_Generation(
-			'ai/excerpt-generation',
+		$this->experiment = new Test_Summarization_Experiment();
+		$this->ability    = new Summarization(
+			'ai/summarization',
 			array(
 				'label'       => $this->experiment->get_label(),
 				'description' => $this->experiment->get_description(),
@@ -85,7 +86,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -95,7 +96,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -110,7 +111,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -124,7 +125,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
 		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
-		$this->assertArrayNotHasKey( 'candidates', $schema['properties'], 'Schema should not have candidates property' );
+		$this->assertArrayHasKey( 'length', $schema['properties'], 'Schema should have length property' );
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
@@ -133,12 +134,16 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		// Verify context property.
 		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'Context should be string type' );
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['context']['sanitize_callback'], 'Context should use sanitize_text_field' );
+
+		// Verify length property.
+		$this->assertEquals( 'enum', $schema['properties']['length']['type'], 'Length should be enum type' );
+		$this->assertEquals( array( 'short', 'medium', 'long' ), $schema['properties']['length']['enum'], 'Length should be enum with values short, medium, long' );
 	}
 
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -155,7 +160,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() returns the system instruction.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_get_system_instruction_returns_system_instruction() {
 		$system_instruction = $this->ability->get_system_instruction();
@@ -168,7 +173,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles content parameter correctly.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_with_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -176,7 +181,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$input = array(
-			'content' => 'This is some test content.',
+			'content' => 'This is some test content that needs to be summarized. It contains multiple sentences to provide enough context for a meaningful summary.',
 		);
 
 		try {
@@ -193,15 +198,15 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsString( $result, 'Result should be a string' );
-		$this->assertNotEmpty( $result, 'Excerpt should not be empty' );
+		$this->assertNotEmpty( $result, 'Result should not be empty' );
 	}
 
 	/**
 	 * Test that execute_callback() handles context parameter with post ID correctly.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function test_execute_callback_with_post_id() {
+	public function test_execute_callback_with_context_as_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
@@ -209,7 +214,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		// Create a test post.
 		$post_id = $this->factory->post->create(
 			array(
-				'post_content' => 'This is post content.',
+				'post_content' => 'This is post content that needs to be summarized. It contains multiple sentences to provide enough context for a meaningful summary.',
 				'post_title'   => 'Test Post',
 			)
 		);
@@ -232,15 +237,47 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsString( $result, 'Result should be a string' );
-		$this->assertNotEmpty( $result, 'Excerpt should not be empty' );
+		$this->assertNotEmpty( $result, 'Result should not be empty' );
+	}
+
+	/**
+	 * Test that execute_callback() handles context parameter as string correctly.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_with_context_as_string() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$input = array(
+			'content' => 'This is some test content that needs to be summarized.',
+			'context' => 'This is additional context that should be included.',
+		);
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
+
+		// Result may be string (success) or WP_Error (if AI client unavailable).
+		if ( is_wp_error( $result ) ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
+			return;
+		}
+
+		$this->assertIsString( $result, 'Result should be a string' );
+		$this->assertNotEmpty( $result, 'Result should not be empty' );
 	}
 
 	/**
 	 * Test that execute_callback() returns error when context points to non-existent post.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function test_execute_callback_with_invalid_post_id() {
+	public function test_execute_callback_with_invalid_post_id_in_context() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
@@ -257,7 +294,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_without_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -272,122 +309,9 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() prioritizes context (post ID) over content.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_execute_callback_post_id_overrides_content() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'execute_callback' );
-		$method->setAccessible( true );
-
-		// Create a test post.
-		$post_id = $this->factory->post->create(
-			array(
-				'post_content' => 'Post content takes priority.',
-				'post_title'   => 'Test Post',
-			)
-		);
-
-		$input = array(
-			'content' => 'This content should be ignored.',
-			'context' => (string) $post_id,
-		);
-
-		try {
-			$result = $method->invoke( $this->ability, $input );
-		} catch ( \Throwable $e ) {
-			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
-			return;
-		}
-
-		// Result may be string (success) or WP_Error (if AI client unavailable).
-		if ( is_wp_error( $result ) ) {
-			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
-			return;
-		}
-
-		$this->assertIsString( $result, 'Result should be a string' );
-		// The feature's generate_excerpt uses the post content, verified by excerpt being generated.
-		$this->assertNotEmpty( $result, 'Should generate excerpt from post content' );
-	}
-
-	/**
-	 * Test that execute_callback() returns single excerpt.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_execute_callback_returns_single_excerpt() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'execute_callback' );
-		$method->setAccessible( true );
-
-		$input = array(
-			'content' => 'This is test content for excerpt generation.',
-		);
-
-		try {
-			$result = $method->invoke( $this->ability, $input );
-		} catch ( \Throwable $e ) {
-			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
-			return;
-		}
-
-		// Result may be array (success) or WP_Error (if AI client unavailable).
-		if ( is_wp_error( $result ) ) {
-			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
-			return;
-		}
-
-		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
-		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string, not an array' );
-		$this->assertArrayNotHasKey( 'excerpts', $result, 'Result should not have excerpts key' );
-	}
-
-	/**
-	 * Test that execute_callback() sanitizes and trims excerpt.
-	 *
-	 * @since 0.1.0
-	 */
-	public function test_execute_callback_sanitizes_and_trims_excerpt() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'execute_callback' );
-		$method->setAccessible( true );
-
-		$input = array(
-			'content' => 'This is test content for excerpt generation.',
-		);
-
-		try {
-			$result = $method->invoke( $this->ability, $input );
-		} catch ( \Throwable $e ) {
-			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
-			return;
-		}
-
-		// Result may be array (success) or WP_Error (if AI client unavailable).
-		if ( is_wp_error( $result ) ) {
-			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
-			return;
-		}
-
-		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
-		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string' );
-
-		// Verify excerpt doesn't start or end with quotes (should be trimmed).
-		$excerpt = $result['excerpt'];
-		$this->assertStringNotStartsWith( '"', $excerpt, 'Excerpt should not start with double quote' );
-		$this->assertStringNotEndsWith( '"', $excerpt, 'Excerpt should not end with double quote' );
-		$this->assertStringNotStartsWith( "'", $excerpt, 'Excerpt should not start with single quote' );
-		$this->assertStringNotEndsWith( "'", $excerpt, 'Excerpt should not end with single quote' );
-	}
-
-	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -406,7 +330,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_posts capability.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -426,7 +350,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -443,11 +367,11 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns true for user with read_post capability.
+	 * Test that permission_callback() returns true for user with read_post capability when context is post ID.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_post_id_and_read_capability() {
+	public function test_permission_callback_with_context_as_post_id_and_read_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -470,11 +394,11 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns error for user without read_post capability.
+	 * Test that permission_callback() returns error for user without read_post capability when context is post ID.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_post_id_without_read_capability() {
+	public function test_permission_callback_with_context_as_post_id_without_read_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -498,11 +422,11 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns error for non-existent post.
+	 * Test that permission_callback() returns error for non-existent post when context is post ID.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_nonexistent_post_id() {
+	public function test_permission_callback_with_nonexistent_post_id_in_context() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -517,11 +441,11 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns false for post type without show_in_rest.
+	 * Test that permission_callback() returns false for post type without show_in_rest when context is post ID.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_post_type_without_show_in_rest() {
+	public function test_permission_callback_with_post_type_without_show_in_rest_when_context_is_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -558,7 +482,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -572,3 +496,4 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
 }
+
