@@ -13,6 +13,10 @@ use WordPress\AI\Abilities\Title_Generation\Title_Generation as Title_Generation
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Title generation experiment.
  *
@@ -91,6 +95,7 @@ class Title_Generation extends Abstract_Experiment {
 			'TitleGenerationData',
 			array(
 				'enabled' => $this->is_enabled(),
+				'path'    => Title_Generation_Ability::path( $this->get_id() ),
 			)
 		);
 	}

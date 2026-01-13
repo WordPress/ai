@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Example_Experiment;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiments\Example_Experiment\Example_Experiment;
 use WP_UnitTestCase;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiments\Example_Experiment\Example_Experiment;
 
 /**
  * Example_Experiment test case.
@@ -60,7 +60,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_example-experiment_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -183,9 +183,9 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 	public function test_rest_endpoint_callback() {
 		$this->logInAsAdmin();
 
-		$request = new \WP_REST_Request( 'GET', '/ai/v1/example' );
+		$request  = new \WP_REST_Request( 'GET', '/ai/v1/example' );
 		$response = rest_get_server()->dispatch( $request );
-		$data = $response->get_data();
+		$data     = $response->get_data();
 
 		$this->assertEquals( 200, $response->get_status() );
 		$this->assertEquals( 'example-experiment', $data['experiment_id'] );
@@ -201,7 +201,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 	public function test_rest_permission_callback_with_manage_options() {
 		$this->logInAsAdmin();
 
-		$request = new \WP_REST_Request( 'GET', '/ai/v1/example' );
+		$request  = new \WP_REST_Request( 'GET', '/ai/v1/example' );
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertEquals( 200, $response->get_status() );
@@ -217,7 +217,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $subscriber_id );
 
-		$request = new \WP_REST_Request( 'GET', '/ai/v1/example' );
+		$request  = new \WP_REST_Request( 'GET', '/ai/v1/example' );
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertEquals( 403, $response->get_status() ); // 403 Forbidden

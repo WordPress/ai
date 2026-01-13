@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Includes;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_UnitTestCase;
+use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Registry;
 
 /**
  * Test experiment for registry tests.
@@ -52,7 +52,7 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	/**
 	 * Experiment registry instance.
 	 *
-	 * @var Experiment_Registry
+	 * @var \WordPress\AI\Experiment_Registry
 	 */
 	private $registry;
 
@@ -80,7 +80,7 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
