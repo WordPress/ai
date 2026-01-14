@@ -3,11 +3,6 @@
  */
 
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
 import { Button, Flex, FlexItem } from '@wordpress/components';

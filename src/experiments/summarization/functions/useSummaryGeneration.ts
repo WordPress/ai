@@ -23,7 +23,7 @@ import { generateSummary } from './generate-summary';
 export function useSummaryGeneration() {
 	const { allBlocks, postId, content, meta } = useSelect( ( select ) => {
 		return {
-			allBlocks: select( blockEditorStore ).getBlocks(),
+			allBlocks: select( blockEditorStore )[ 'getBlocks' ](), // eslint-disable-line dot-notation
 			postId: select( editorStore ).getCurrentPostId(),
 			content: select( editorStore ).getEditedPostContent(),
 			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
@@ -38,7 +38,7 @@ export function useSummaryGeneration() {
 		const summaryBlock = allBlocks.find(
 			( block: BlockInstance ) =>
 				block.name === 'core/paragraph' &&
-				block.attributes.aiGeneratedSummary === true
+				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 		);
 		if ( summaryBlock && summaryBlock.attributes.content ) {
 			setSummary( summaryBlock.attributes.content );
@@ -55,7 +55,10 @@ export function useSummaryGeneration() {
 		);
 
 		try {
-			const generatedSummary = await generateSummary( postId, content );
+			const generatedSummary = await generateSummary(
+				postId as number,
+				content
+			);
 			setSummary( generatedSummary );
 
 			// Store the summary in post meta (will require a manual save).
@@ -77,17 +80,22 @@ export function useSummaryGeneration() {
 			const existingSummaryBlock = allBlocks.find(
 				( block: BlockInstance ) =>
 					block.name === 'core/paragraph' &&
-					block.attributes.aiGeneratedSummary === true
+					block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 			);
 
 			// Replace existing block or insert at top if none exists.
 			if ( existingSummaryBlock ) {
-				dispatch( blockEditorStore ).replaceBlock(
+				// eslint-disable-next-line dot-notation
+				( dispatch( blockEditorStore ) as any )[ 'replaceBlock' ](
 					existingSummaryBlock.clientId,
 					summaryBlock
 				);
 			} else {
-				dispatch( blockEditorStore ).insertBlock( summaryBlock, 0 );
+				// eslint-disable-next-line dot-notation
+				( dispatch( blockEditorStore ) as any )[ 'insertBlock' ](
+					summaryBlock,
+					0
+				);
 			}
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice( error, {

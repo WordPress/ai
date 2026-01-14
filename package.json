@@ -37,7 +37,6 @@
     "@types/react": "^18.3.27",
     "@types/react-dom": "^18.3.7",
     "@types/wordpress__block-editor": "^15.0.0",
-    "@types/wordpress__blocks": "^12.5.18",
     "@wordpress/e2e-test-utils-playwright": "^1.37.0",
     "@wordpress/env": "^10.37.0",
     "@wordpress/scripts": "^31.2.0",
@@ -46,13 +45,14 @@
     "webpack-remove-empty-scripts": "^1.1.1"
   },
   "dependencies": {
+		"@types/wordpress__blocks": "^12.5.18",
     "@wordpress/api-fetch": "^7.36.0",
     "@wordpress/block-editor": "^15.9.0",
     "@wordpress/blocks": "^15.9.0",
     "@wordpress/components": "^30.9.0",
     "@wordpress/compose": "^7.36.0",
     "@wordpress/data": "^10.36.0",
-		"@wordpress/edit-post": "^8.36.0",
+    "@wordpress/edit-post": "^8.36.0",
     "@wordpress/editor": "^14.36.0",
     "@wordpress/element": "^6.36.0",
     "@wordpress/hooks": "^4.36.0",
