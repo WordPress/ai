@@ -1,28 +1,40 @@
-# Directories
-/.git export-ignore
-/.github export-ignore
-/.wordpress-org export-ignore
-/docs export-ignore
-/node_modules export-ignore
-/src export-ignore
-/tests export-ignore
-# /vendor export-ignore # do not ignore.
+# Automatically normalize line endings.
+* text=auto
 
-# Files
-/.* export-ignore
-/ai.zip export-ignore
-/CHANGELOG.md export-ignore
-/composer.json export-ignore
-/composer.lock export-ignore
-/CONTRIBUTING.md export-ignore
-/CREDITS.md export-ignore
-/LICENSE.md export-ignore
-/package-lock.json export-ignore
-/package.json export-ignore
+# Files and directories to exclude from the generated archive (export-ignore).
+# These will be omitted from GitHub/Packagist ZIP archives to keep packages small.
+
+/src export-ignore
+
+# Tests and test fixtures
+/tests/ export-ignore
+
+# PHP unit / static analysis configs.
 /phpcs.xml.dist export-ignore
 /phpstan.neon.dist export-ignore
 /phpunit.xml.dist export-ignore
-/README.md export-ignore
-/ROADMAP.md export-ignore
-/SECURITY.md export-ignore
+
+# Continuous Integration configs.
+/.github export-ignore
+/.wordpress-org export-ignore
+
+# Node and build artifacts.
+package.json export-ignore
+package-lock.json export-ignore
+/composer.lock export-ignore
 /webpack.config.js export-ignore
+
+# Don't include the dotfiles for distribution.
+/.* export-ignore
+
+# Mark docs as documentation for GitHub Linguist.
+/docs/ linguist-documentation export-ignore
+/CHANGELOG.md export-ignore
+/CONTRIBUTING.md linguist-documentation export-ignore
+/CREDITS.md linguist-documentation export-ignore
+/ROADMAP.md linguist-documentation export-ignore
+/SECURITY.md linguist-documentation export-ignore
+
+# Keep license and readme files.
+/LICENSE.md linguist-documentation
+/README.md linguist-documentation

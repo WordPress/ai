@@ -1,28 +1,28 @@
 <?php
 /**
- * Image generation experiment implementation.
+ * Content summarization experiment implementation.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Experiments\Image_Generation;
+namespace WordPress\AI\Experiments\Summarization;
 
-use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
-use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
+use WordPress\AI\Abilities\Summarization\Summarization as Summarization_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
+// Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Image generation experiment.
+ * Content summarization experiment.
  *
  * @since x.x.x
  */
-class Image_Generation extends Abstract_Experiment {
+class Summarization extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
@@ -33,9 +33,9 @@ class Image_Generation extends Abstract_Experiment {
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
-			'id'          => 'image-generation',
-			'label'       => __( 'Image Generation', 'ai' ),
-			'description' => __( 'Generates an image from a passed in prompt', 'ai' ),
+			'id'          => 'summarization',
+			'label'       => __( 'Content Summarization', 'ai' ),
+			'description' => __( 'Summarizes long-form content into digestible overviews', 'ai' ),
 		);
 	}
 
@@ -59,16 +59,7 @@ class Image_Generation extends Abstract_Experiment {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
-				'ability_class' => Image_Generation_Ability::class,
-			),
-		);
-
-		wp_register_ability(
-			'ai/image-import',
-			array(
-				'label'         => __( 'Base64 Image Import', 'ai' ),
-				'description'   => __( 'Imports a base64 encoded image into the media library', 'ai' ),
-				'ability_class' => Image_Import_Ability::class,
+				'ability_class' => Summarization_Ability::class,
 			),
 		);
 	}
