@@ -1,9 +1,4 @@
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
 import { Button } from '@wordpress/components';
@@ -50,7 +45,10 @@ export default function GenerateFeaturedImage(): JSX.Element {
 		);
 
 		try {
-			const generatedImage = await generateImage( postId, content );
+			const generatedImage = await generateImage(
+				postId as number,
+				content
+			);
 			const importedImage = await uploadImage( generatedImage );
 			editPost( {
 				featured_media: importedImage.id,

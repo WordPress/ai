@@ -1,9 +1,4 @@
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
 import { store as coreStore } from '@wordpress/core-data';
