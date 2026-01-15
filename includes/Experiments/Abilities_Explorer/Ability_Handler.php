@@ -5,11 +5,11 @@
  * Handles fetching and processing abilities from
  * the WordPress Abilities API.
  *
- * @package WordPress\AI\Features\Abilities_Explorer
+ * @package WordPress\AI\Experiments\Abilities_Explorer
  * @since x.x.x
  */
 
-namespace WordPress\AI\Features\Abilities_Explorer;
+namespace WordPress\AI\Experiments\Abilities_Explorer;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

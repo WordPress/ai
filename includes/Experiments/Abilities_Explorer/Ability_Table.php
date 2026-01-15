@@ -4,11 +4,11 @@
  *
  * Extends WP_List_Table to display abilities in a searchable, filterable table.
  *
- * @package WordPress\AI\Features\Abilities_Explorer
+ * @package WordPress\AI\Experiments\Abilities_Explorer
  * @since x.x.x
  */
 
-namespace WordPress\AI\Features\Abilities_Explorer;
+namespace WordPress\AI\Experiments\Abilities_Explorer;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

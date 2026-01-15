@@ -5,14 +5,18 @@
  * Discover, inspect, test, and document all abilities
  * registered via the WordPress Abilities API.
  *
- * @package WordPress\AI\Features\Abilities_Explorer
+ * @package WordPress\AI\Experiments\Abilities_Explorer
  * @since x.x.x
  */
 
-namespace WordPress\AI\Features\Abilities_Explorer;
+namespace WordPress\AI\Experiments\Abilities_Explorer;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * Abilities Explorer Experiment Class.
