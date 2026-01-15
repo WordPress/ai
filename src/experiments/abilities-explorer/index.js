@@ -2,14 +2,14 @@
  * Ability Explorer Admin JavaScript
  */
 
-/* global aiAbilityExplorer, navigator */
+const { aiAbilityExplorer, navigator } = window;
 
 /**
  * Internal dependencies
  */
 import './index.scss';
 
-(function () {
+( function () {
 	'use strict';
 
 	/**
@@ -32,33 +32,35 @@ import './index.scss';
 			const self = this;
 
 			// Invoke ability button
-			const invokeButton = document.getElementById('ability-test-invoke');
-			if (invokeButton) {
-				invokeButton.addEventListener('click', function () {
+			const invokeButton = document.getElementById(
+				'ability-test-invoke'
+			);
+			if ( invokeButton ) {
+				invokeButton.addEventListener( 'click', function () {
 					const abilitySlug = this.dataset.ability;
 					const payload = document.getElementById(
 						'ability-test-payload'
 					);
 					const input = payload ? payload.value : '';
 
-					self.invokeAbility(abilitySlug, input);
-				});
+					self.invokeAbility( abilitySlug, input );
+				} );
 			}
 
 			// Validate button
 			const validateButton = document.getElementById(
 				'ability-test-validate'
 			);
-			if (validateButton) {
-				validateButton.addEventListener('click', function () {
+			if ( validateButton ) {
+				validateButton.addEventListener( 'click', function () {
 					self.validateInput();
-				});
+				} );
 			}
 
 			// Clear result button
-			const clearButton = document.getElementById('ability-test-clear');
-			if (clearButton) {
-				clearButton.addEventListener('click', function () {
+			const clearButton = document.getElementById( 'ability-test-clear' );
+			if ( clearButton ) {
+				clearButton.addEventListener( 'click', function () {
 					const resultContainer = document.getElementById(
 						'ability-test-result-container'
 					);
@@ -69,24 +71,24 @@ import './index.scss';
 						'ability-test-validation'
 					);
 
-					if (resultContainer) {
+					if ( resultContainer ) {
 						resultContainer.style.display = 'none';
 					}
-					if (result) {
+					if ( result ) {
 						result.innerHTML = '';
 					}
-					if (validation) {
+					if ( validation ) {
 						validation.style.display = 'none';
 					}
-				});
+				} );
 			}
 
 			// Auto-format JSON on blur
-			const payload = document.getElementById('ability-test-payload');
-			if (payload) {
-				payload.addEventListener('blur', function () {
-					self.formatJSON(this);
-				});
+			const payload = document.getElementById( 'ability-test-payload' );
+			if ( payload ) {
+				payload.addEventListener( 'blur', function () {
+					self.formatJSON( this );
+				} );
 			}
 		},
 
@@ -95,18 +97,19 @@ import './index.scss';
 		 */
 		initCopyButtons() {
 			const self = this;
-			const copyButtons = document.querySelectorAll('.ability-copy-btn');
+			const copyButtons =
+				document.querySelectorAll( '.ability-copy-btn' );
 
-			copyButtons.forEach(function (button) {
-				button.addEventListener('click', function () {
+			copyButtons.forEach( function ( button ) {
+				button.addEventListener( 'click', function () {
 					const targetId = this.dataset.copy;
-					const target = document.getElementById(targetId);
+					const target = document.getElementById( targetId );
 
-					if (target) {
-						self.copyToClipboard(target.textContent, this);
+					if ( target ) {
+						self.copyToClipboard( target.textContent, this );
 					}
-				});
-			});
+				} );
+			} );
 		},
 
 		/**
@@ -114,23 +117,23 @@ import './index.scss';
 		 */
 		initValidation() {
 			// Real-time JSON validation
-			const payload = document.getElementById('ability-test-payload');
-			if (payload) {
-				payload.addEventListener('input', function () {
+			const payload = document.getElementById( 'ability-test-payload' );
+			if ( payload ) {
+				payload.addEventListener( 'input', function () {
 					const value = this.value.trim();
 
 					// Clear previous validation styling
-					this.classList.remove('json-valid', 'json-invalid');
+					this.classList.remove( 'json-valid', 'json-invalid' );
 
-					if (value) {
+					if ( value ) {
 						try {
-							JSON.parse(value);
-							this.classList.add('json-valid');
-						} catch (e) {
-							this.classList.add('json-invalid');
+							JSON.parse( value );
+							this.classList.add( 'json-valid' );
+						} catch ( e ) {
+							this.classList.add( 'json-invalid' );
 						}
 					}
-				});
+				} );
 			}
 		},
 
@@ -140,26 +143,26 @@ import './index.scss';
 		 * @param {string} abilitySlug - The ability slug to invoke.
 		 * @param {string} inputString - The input data as JSON string.
 		 */
-		invokeAbility(abilitySlug, inputString) {
+		invokeAbility( abilitySlug, inputString ) {
 			const self = this;
 
 			// Validate JSON
 			try {
-				JSON.parse(inputString);
-			} catch (e) {
-				self.showValidation(false, [
+				JSON.parse( inputString );
+			} catch ( e ) {
+				self.showValidation( false, [
 					aiAbilityExplorer.strings.invalidJson,
-				]);
+				] );
 				return;
 			}
 
 			// Show loading state
-			const button = document.getElementById('ability-test-invoke');
-			if (button) {
+			const button = document.getElementById( 'ability-test-invoke' );
+			if ( button ) {
 				button.disabled = true;
 				const originalText =
 					button.dataset.originalText || button.textContent;
-				if (!button.dataset.originalText) {
+				if ( ! button.dataset.originalText ) {
 					button.dataset.originalText = originalText;
 				}
 				button.innerHTML =
@@ -169,45 +172,45 @@ import './index.scss';
 
 			// Make AJAX request using fetch
 			const formData = new FormData();
-			formData.append('action', 'ai_ability_explorer_invoke');
-			formData.append('nonce', aiAbilityExplorer.nonce);
-			formData.append('ability', abilitySlug);
-			formData.append('input', inputString);
+			formData.append( 'action', 'ai_ability_explorer_invoke' );
+			formData.append( 'nonce', aiAbilityExplorer.nonce );
+			formData.append( 'ability', abilitySlug );
+			formData.append( 'input', inputString );
 
-			fetch(aiAbilityExplorer.ajaxUrl, {
+			fetch( aiAbilityExplorer.ajaxUrl, {
 				method: 'POST',
 				body: formData,
 				credentials: 'same-origin',
-			})
-				.then(function (response) {
+			} )
+				.then( function ( response ) {
 					return response.json();
-				})
-				.then(function (response) {
-					if (response.success) {
-						self.showResult(true, response.data);
+				} )
+				.then( function ( response ) {
+					if ( response.success ) {
+						self.showResult( true, response.data );
 					} else {
-						self.showResult(false, response.data);
+						self.showResult( false, response.data );
 					}
-				})
-				.catch(function (error) {
-					self.showResult(false, {
+				} )
+				.catch( function ( error ) {
+					self.showResult( false, {
 						message: error.message,
 						error: 'AJAX request failed',
-					});
-				})
-				.finally(function () {
+					} );
+				} )
+				.finally( function () {
 					// Reset button
-					if (button) {
+					if ( button ) {
 						button.disabled = false;
 						button.textContent = button.dataset.originalText;
 					}
-				});
+				} );
 
 			// Hide validation message
 			const validation = document.getElementById(
 				'ability-test-validation'
 			);
-			if (validation) {
+			if ( validation ) {
 				validation.style.display = 'none';
 			}
 		},
@@ -216,17 +219,17 @@ import './index.scss';
 		 * Validate input against schema
 		 */
 		validateInput() {
-			const payload = document.getElementById('ability-test-payload');
+			const payload = document.getElementById( 'ability-test-payload' );
 			const inputString = payload ? payload.value.trim() : '';
 
 			// Validate JSON syntax
 			let input;
 			try {
-				input = JSON.parse(inputString);
-			} catch (e) {
-				this.showValidation(false, [
+				input = JSON.parse( inputString );
+			} catch ( e ) {
+				this.showValidation( false, [
 					aiAbilityExplorer.strings.invalidJson + ': ' + e.message,
-				]);
+				] );
 				return;
 			}
 
@@ -234,29 +237,31 @@ import './index.scss';
 			const schemaElement = document.getElementById(
 				'ability-input-schema'
 			);
-			if (!schemaElement) {
-				this.showValidation(true, ['JSON syntax is valid']);
+			if ( ! schemaElement ) {
+				this.showValidation( true, [ 'JSON syntax is valid' ] );
 				return;
 			}
 
 			// Parse schema
 			let schema;
 			try {
-				schema = JSON.parse(schemaElement.textContent);
-			} catch (e) {
-				this.showValidation(false, ['Failed to parse input schema']);
+				schema = JSON.parse( schemaElement.textContent );
+			} catch ( e ) {
+				this.showValidation( false, [
+					'Failed to parse input schema',
+				] );
 				return;
 			}
 
 			// Validate against schema
-			const errors = this.validateAgainstSchema(input, schema);
+			const errors = this.validateAgainstSchema( input, schema );
 
-			if (errors.length === 0) {
-				this.showValidation(true, [
+			if ( errors.length === 0 ) {
+				this.showValidation( true, [
 					'Input is valid according to the schema',
-				]);
+				] );
 			} else {
-				this.showValidation(false, errors);
+				this.showValidation( false, errors );
 			}
 		},
 
@@ -267,34 +272,34 @@ import './index.scss';
 		 * @param {Object} schema - The JSON schema to validate against.
 		 * @return {Array} Array of error messages.
 		 */
-		validateAgainstSchema(input, schema) {
+		validateAgainstSchema( input, schema ) {
 			const errors = [];
 
 			// Check required fields
-			if (schema.required && Array.isArray(schema.required)) {
-				schema.required.forEach(function (field) {
-					if (!(field in input)) {
+			if ( schema.required && Array.isArray( schema.required ) ) {
+				schema.required.forEach( function ( field ) {
+					if ( ! ( field in input ) ) {
 						errors.push(
 							'Required field "' + field + '" is missing'
 						);
 					}
-				});
+				} );
 			}
 
 			// Check property types
-			if (schema.properties) {
-				Object.keys(schema.properties).forEach(
-					function (propName) {
-						if (propName in input) {
-							const propSchema = schema.properties[propName];
-							const value = input[propName];
+			if ( schema.properties ) {
+				Object.keys( schema.properties ).forEach(
+					function ( propName ) {
+						if ( propName in input ) {
+							const propSchema = schema.properties[ propName ];
+							const value = input[ propName ];
 
-							if (propSchema.type) {
+							if ( propSchema.type ) {
 								const isValid = this.validateType(
 									value,
 									propSchema.type
 								);
-								if (!isValid) {
+								if ( ! isValid ) {
 									errors.push(
 										'Field "' +
 											propName +
@@ -305,7 +310,7 @@ import './index.scss';
 								}
 							}
 						}
-					}.bind(this)
+					}.bind( this )
 				);
 			}
 
@@ -319,8 +324,8 @@ import './index.scss';
 		 * @param {string} expectedType - The expected type.
 		 * @return {boolean} True if valid, false otherwise.
 		 */
-		validateType(value, expectedType) {
-			switch (expectedType) {
+		validateType( value, expectedType ) {
+			switch ( expectedType ) {
 				case 'string':
 					return typeof value === 'string';
 				case 'number':
@@ -329,9 +334,11 @@ import './index.scss';
 				case 'boolean':
 					return typeof value === 'boolean';
 				case 'array':
-					return Array.isArray(value);
+					return Array.isArray( value );
 				case 'object':
-					return typeof value === 'object' && !Array.isArray(value);
+					return (
+						typeof value === 'object' && ! Array.isArray( value )
+					);
 				default:
 					return true;
 			}
@@ -343,11 +350,11 @@ import './index.scss';
 		 * @param {boolean} isValid  - Whether validation passed.
 		 * @param {Array}   messages - Array of validation messages.
 		 */
-		showValidation(isValid, messages) {
+		showValidation( isValid, messages ) {
 			const validation = document.getElementById(
 				'ability-test-validation'
 			);
-			if (!validation) {
+			if ( ! validation ) {
 				return;
 			}
 
@@ -359,12 +366,12 @@ import './index.scss';
 
 			let html = '<h4>' + iconHtml + ' ' + titleText + '</h4>';
 
-			if (messages.length > 0) {
+			if ( messages.length > 0 ) {
 				html += '<ul>';
 				messages.forEach(
-					function (message) {
-						html += '<li>' + this.escapeHtml(message) + '</li>';
-					}.bind(this)
+					function ( message ) {
+						html += '<li>' + this.escapeHtml( message ) + '</li>';
+					}.bind( this )
 				);
 				html += '</ul>';
 			}
@@ -374,7 +381,7 @@ import './index.scss';
 				'validation-success',
 				'validation-error'
 			);
-			validation.classList.add(className);
+			validation.classList.add( className );
 			validation.style.display = 'block';
 		},
 
@@ -384,13 +391,13 @@ import './index.scss';
 		 * @param {boolean} isSuccess - Whether the request was successful.
 		 * @param {Object}  data      - The result data.
 		 */
-		showResult(isSuccess, data) {
+		showResult( isSuccess, data ) {
 			const resultContainer = document.getElementById(
 				'ability-test-result-container'
 			);
-			const result = document.getElementById('ability-test-result');
+			const result = document.getElementById( 'ability-test-result' );
 
-			if (!resultContainer || !result) {
+			if ( ! resultContainer || ! result ) {
 				return;
 			}
 
@@ -404,7 +411,7 @@ import './index.scss';
 			let html = '<h4>' + titleText + '</h4>';
 			html +=
 				'<pre>' +
-				this.escapeHtml(JSON.stringify(data, null, 2)) +
+				this.escapeHtml( JSON.stringify( data, null, 2 ) ) +
 				'</pre>';
 
 			result.innerHTML = html;
@@ -412,7 +419,7 @@ import './index.scss';
 				'ability-test-result-success',
 				'ability-test-result-error'
 			);
-			result.classList.add(className);
+			result.classList.add( className );
 
 			resultContainer.style.display = 'block';
 
@@ -425,10 +432,10 @@ import './index.scss';
 				0;
 			const targetPosition = rect.top + scrollTop - 50;
 
-			window.scrollTo({
+			window.scrollTo( {
 				top: targetPosition,
 				behavior: 'smooth',
-			});
+			} );
 		},
 
 		/**
@@ -436,18 +443,18 @@ import './index.scss';
 		 *
 		 * @param {HTMLElement} textarea - The textarea element.
 		 */
-		formatJSON(textarea) {
+		formatJSON( textarea ) {
 			const value = textarea.value.trim();
 
-			if (!value) {
+			if ( ! value ) {
 				return;
 			}
 
 			try {
-				const parsed = JSON.parse(value);
-				const formatted = JSON.stringify(parsed, null, 2);
+				const parsed = JSON.parse( value );
+				const formatted = JSON.stringify( parsed, null, 2 );
 				textarea.value = formatted;
-			} catch (e) {
+			} catch ( e ) {
 				// Invalid JSON, don't format
 			}
 		},
@@ -458,32 +465,32 @@ import './index.scss';
 		 * @param {string}      text   - The text to copy.
 		 * @param {HTMLElement} button - The button element.
 		 */
-		copyToClipboard(text, button) {
+		copyToClipboard( text, button ) {
 			// Modern clipboard API
-			if (navigator.clipboard && window.isSecureContext) {
-				navigator.clipboard.writeText(text).then(
+			if ( navigator.clipboard && window.isSecureContext ) {
+				navigator.clipboard.writeText( text ).then(
 					function () {
-						this.showCopyFeedback(button, true);
-					}.bind(this),
+						this.showCopyFeedback( button, true );
+					}.bind( this ),
 					function () {
-						this.showCopyFeedback(button, false);
-					}.bind(this)
+						this.showCopyFeedback( button, false );
+					}.bind( this )
 				);
 			} else {
 				// Fallback for older browsers
-				const temp = document.createElement('textarea');
-				document.body.appendChild(temp);
+				const temp = document.createElement( 'textarea' );
+				document.body.appendChild( temp );
 				temp.value = text;
 				temp.select();
 
 				try {
-					const successful = document.execCommand('copy');
-					this.showCopyFeedback(button, successful);
-				} catch (err) {
-					this.showCopyFeedback(button, false);
+					const successful = document.execCommand( 'copy' );
+					this.showCopyFeedback( button, successful );
+				} catch ( err ) {
+					this.showCopyFeedback( button, false );
 				}
 
-				document.body.removeChild(temp);
+				document.body.removeChild( temp );
 			}
 		},
 
@@ -493,7 +500,7 @@ import './index.scss';
 		 * @param {HTMLElement} button  - The button element.
 		 * @param {boolean}     success - Whether copy was successful.
 		 */
-		showCopyFeedback(button, success) {
+		showCopyFeedback( button, success ) {
 			const originalText = button.textContent;
 			const feedbackText = success
 				? aiAbilityExplorer.strings.copySuccess
@@ -501,9 +508,9 @@ import './index.scss';
 
 			button.textContent = feedbackText;
 
-			setTimeout(function () {
+			setTimeout( function () {
 				button.textContent = originalText;
-			}, 2000);
+			}, 2000 );
 		},
 
 		/**
@@ -512,7 +519,7 @@ import './index.scss';
 		 * @param {string} text - The text to escape.
 		 * @return {string} The escaped text.
 		 */
-		escapeHtml(text) {
+		escapeHtml( text ) {
 			const map = {
 				'&': '&amp;',
 				'<': '&lt;',
@@ -521,11 +528,16 @@ import './index.scss';
 				"'": '&#039;',
 			};
 
-			return text.replace(/[&<>"']/g, function (m) {
-				return map[m];
-			});
+			return text.replace( /[&<>"']/g, function ( m ) {
+				return map[ m ];
+			} );
 		},
 	};
+
+	// Ensure the experiment is enabled.
+	if ( ! aiAbilityExplorer?.enabled ) {
+		return null;
+	}
 
 	// Initialize on document ready.
 	if ( document.readyState === 'loading' ) {

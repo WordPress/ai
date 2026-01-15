@@ -60,9 +60,20 @@ class Abilities_Explorer extends Abstract_Experiment {
 		Asset_Loader::enqueue_style( 'abilities_explorer', 'experiments/abilities-explorer' );
 		Asset_Loader::localize_script(
 			'abilities_explorer',
-			'AbilitiesExplorerData',
+			'AbilityExplorer',
 			array(
 				'enabled' => $this->is_enabled(),
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'ai_ability_explorer_invoke' ),
+				'strings' => array(
+					'invoking'      => esc_html__( 'Invoking ability...', 'ai' ),
+					'success'       => esc_html__( 'Success!', 'ai' ),
+					'error'         => esc_html__( 'Error', 'ai' ),
+					'invalidJson'   => esc_html__( 'Invalid JSON input', 'ai' ),
+					'confirmInvoke' => esc_html__( 'Are you sure you want to invoke this ability?', 'ai' ),
+					'copySuccess'   => esc_html__( 'Copied to clipboard!', 'ai' ),
+					'copyError'     => esc_html__( 'Failed to copy', 'ai' ),
+				),
 			)
 		);
 	}
