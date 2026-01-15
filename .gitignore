@@ -38,6 +38,7 @@ CLAUDE.md
 /tests/_output/*
 !/tests/_output/.gitkeep
 /tests/e2e/artifacts
+/artifacts
 
 # Configs
 /phpcs.xml
