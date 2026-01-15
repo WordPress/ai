@@ -2,6 +2,9 @@
  * Ability Explorer Admin JavaScript
  */
 
+/**
+ * Global dependencies
+ */
 const { aiAbilityExplorer, navigator } = window;
 
 /**

@@ -2,7 +2,8 @@
 /**
  * Ability Handler Class
  *
- * Handles fetching and processing abilities from the WordPress Abilities API.
+ * Handles fetching and processing abilities from
+ * the WordPress Abilities API.
  *
  * @package WordPress\AI\Features\Abilities_Explorer
  * @since x.x.x
@@ -17,7 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Ability Handler Class
  *
- * Provides methods for retrieving, formatting, and invoking WordPress abilities.
+ * Provides methods for retrieving, formatting,
+ * and invoking WordPress abilities.
  *
  * @since x.x.x
  */
@@ -28,7 +30,7 @@ class Ability_Handler {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array Array of abilities.
+	 * @return array<array<string,mixed>> Array of abilities.
 	 */
 	public static function get_all_abilities(): array {
 		if ( ! function_exists( 'wp_get_abilities' ) ) {
@@ -46,9 +48,9 @@ class Ability_Handler {
 	 * @since x.x.x
 	 *
 	 * @param string $slug Ability slug (name).
-	 * @return array|null Ability data or null if not found.
+	 * @return array<string,mixed>|null Ability data or null if not found.
 	 */
-	public static function get_ability( $slug ): ?array {
+	public static function get_ability( string $slug ): ?array {
 		if ( ! function_exists( 'wp_get_ability' ) ) {
 			return null;
 		}
@@ -67,11 +69,11 @@ class Ability_Handler {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array $abilities Raw abilities array (WP_Ability objects).
-	 * @return array Formatted abilities.
+	 * @param array<\WP_Ability> $abilities Raw abilities array (WP_Ability objects).
+	 * @return array<array<string,mixed>> Formatted abilities.
 	 */
-	private static function format_abilities( $abilities ): array {
-		if ( empty( $abilities ) || ! is_array( $abilities ) ) {
+	private static function format_abilities( array $abilities ): array {
+		if ( empty( $abilities ) ) {
 			return array();
 		}
 
@@ -90,15 +92,11 @@ class Ability_Handler {
 	 * @since x.x.x
 	 *
 	 * @param \WP_Ability $ability Ability object.
-	 * @return array Formatted ability data.
+	 * @return array<string,mixed> Formatted ability data.
 	 */
-	private static function format_single_ability( $ability ): array {
-		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_name' ) ) {
-			return array();
-		}
-
+	private static function format_single_ability( \WP_Ability $ability ): array {
 		$name = $ability->get_name();
-		$meta = method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array();
+		$meta = $ability->get_meta();
 
 		return array(
 			'slug'          => $name,
@@ -124,32 +122,32 @@ class Ability_Handler {
 	 * @since x.x.x
 	 *
 	 * @param string $name Ability name (slug).
-	 * @param array  $meta Ability metadata.
+	 * @param array<string,mixed>  $meta Ability metadata.
 	 * @return string Provider type.
 	 */
-	private static function detect_provider( $name, $meta ): string {
-		// Check if provider is explicitly set in meta
+	private static function detect_provider( string $name, array $meta ): string {
+		// Check if provider is explicitly set in meta.
 		if ( isset( $meta['provider'] ) ) {
 			return $meta['provider'];
 		}
 
-		// Detect based on name prefix (namespace/ability format)
+		// Detect based on name prefix (namespace/ability format).
 		$parts = explode( '/', $name );
 		if ( count( $parts ) === 2 ) {
 			$namespace = $parts[0];
 
-			// WordPress core abilities
+			// WordPress core abilities.
 			if ( in_array( $namespace, array( 'wordpress', 'wp', 'core' ), true ) ) {
 				return 'Core';
 			}
 
-			// Check if namespace matches active theme
+			// Check if namespace matches active theme.
 			if ( get_stylesheet() === $namespace || get_template() === $namespace ) {
 				return 'Theme';
 			}
 		}
 
-		// Default to Plugin
+		// Default to Plugin.
 		return 'Plugin';
 	}
 
@@ -159,7 +157,7 @@ class Ability_Handler {
 	 * @since x.x.x
 	 *
 	 * @param string $slug  Ability name.
-	 * @param array  $input Input data.
+	 * @param array<string,mixed>  $input Input data.
 	 * @return array Result with success status and data/error.
 	 *
 	 * @phpstan-return array{
@@ -169,7 +167,7 @@ class Ability_Handler {
 	 *   error?: string,
 	 * }
 	 */
-	public static function invoke_ability( $slug, $input = array() ): array {
+	public static function invoke_ability( string $slug, array $input = array() ): array {
 		if ( ! function_exists( 'wp_get_ability' ) ) {
 			return array(
 				'success' => false,
@@ -186,7 +184,7 @@ class Ability_Handler {
 			);
 		}
 
-		// If ability has no input schema, invoke without input
+		// If ability has no input schema, invoke without input.
 		$input_schema = $ability->get_input_schema();
 		if ( empty( $input_schema ) ) {
 			$result = $ability->execute();
@@ -194,7 +192,7 @@ class Ability_Handler {
 			$result = $ability->execute( $input );
 		}
 
-		// Check if result is WP_Error
+		// Check if result is WP_Error.
 		if ( is_wp_error( $result ) ) {
 			return array(
 				'success' => false,
@@ -215,11 +213,11 @@ class Ability_Handler {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array $schema Input schema.
-	 * @param array $input  Input data to validate.
-	 * @return array Validation result.
+	 * @param array<string,mixed> $schema Input schema.
+	 * @param array<string,mixed> $input  Input data to validate.
+	 * @return array<string,bool|array<string>> Validation result.
 	 */
-	public static function validate_input( $schema, $input ): array {
+	public static function validate_input( array $schema, array $input ): array {
 		$errors = array();
 
 		if ( empty( $schema ) ) {
@@ -229,7 +227,7 @@ class Ability_Handler {
 			);
 		}
 
-		// Basic JSON Schema validation
+		// Basic JSON Schema validation.
 		if ( isset( $schema['required'] ) && is_array( $schema['required'] ) ) {
 			foreach ( $schema['required'] as $required_field ) {
 				if ( isset( $input[ $required_field ] ) ) {
@@ -240,7 +238,7 @@ class Ability_Handler {
 			}
 		}
 
-		// Type validation for properties
+		// Type validation for properties.
 		if ( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
 			foreach ( $schema['properties'] as $prop_name => $prop_schema ) {
 				if ( ! isset( $input[ $prop_name ] ) || ! isset( $prop_schema['type'] ) ) {
@@ -275,7 +273,7 @@ class Ability_Handler {
 	 * @param string $expected_type Expected type.
 	 * @return bool Whether the value matches the expected type.
 	 */
-	private static function validate_type( $value, $expected_type ): bool {
+	private static function validate_type( $value, string $expected_type ): bool {
 		switch ( $expected_type ) {
 			case 'string':
 				return is_string( $value );
@@ -298,7 +296,7 @@ class Ability_Handler {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array Statistics about registered abilities.
+	 * @return array<string,int|array<string,int>> Statistics about registered abilities.
 	 */
 	public static function get_statistics(): array {
 		$abilities = self::get_all_abilities();
@@ -313,7 +311,7 @@ class Ability_Handler {
 		);
 
 		foreach ( $abilities as $ability ) {
-			// Count by provider
+			// Count by provider.
 			if ( ! isset( $ability['provider'] ) ) {
 				continue;
 			}

@@ -39,7 +39,7 @@ class Admin_Page {
 	 * @since x.x.x
 	 */
 	public function add_admin_menu(): void {
-		// Add top-level menu
+		// Add top-level menu.
 		add_menu_page(
 			__( 'Abilities Explorer', 'ai' ),
 			__( 'Abilities', 'ai' ),
@@ -57,23 +57,18 @@ class Admin_Page {
 	 * @since x.x.x
 	 */
 	public function render_page(): void {
-		// Check user capabilities
+		// Check user capabilities.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ai' ) );
 		}
 
-		// Get current action
-		$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : 'list';
+		// Get current action.
+		$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : 'list'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		echo '<div class="wrap ability-explorer-wrap">';
 		echo '<h1>' . esc_html__( 'Ability Explorer', 'ai' ) . '</h1>';
 
-		// Display statistics dashboard
-		if ( 'list' === $action ) {
-			$this->render_statistics();
-		}
-
-		// Render appropriate view based on action
+		// Render appropriate view based on action.
 		switch ( $action ) {
 			case 'view':
 				$this->render_detail_view();
@@ -85,6 +80,7 @@ class Admin_Page {
 
 			case 'list':
 			default:
+				$this->render_statistics();
 				$this->render_list_view();
 				break;
 		}
@@ -103,22 +99,22 @@ class Admin_Page {
 		?>
 		<div class="ability-explorer-stats">
 			<div class="ability-stat-card">
-				<div class="ability-stat-number"><?php echo esc_html( $stats['total'] ); ?></div>
+				<div class="ability-stat-number"><?php echo absint( $stats['total'] ); ?></div>
 				<div class="ability-stat-label"><?php esc_html_e( 'Total Abilities', 'ai' ); ?></div>
 			</div>
 
 			<div class="ability-stat-card">
-				<div class="ability-stat-number"><?php echo esc_html( $stats['by_provider']['Core'] ); ?></div>
+				<div class="ability-stat-number"><?php echo absint( $stats['by_provider']['Core'] ?? 0 ); ?></div>
 				<div class="ability-stat-label"><?php esc_html_e( 'Core', 'ai' ); ?></div>
 			</div>
 
 			<div class="ability-stat-card">
-				<div class="ability-stat-number"><?php echo esc_html( $stats['by_provider']['Plugin'] ); ?></div>
+				<div class="ability-stat-number"><?php echo absint( $stats['by_provider']['Plugin'] ?? 0 ); ?></div>
 				<div class="ability-stat-label"><?php esc_html_e( 'Plugins', 'ai' ); ?></div>
 			</div>
 
 			<div class="ability-stat-card">
-				<div class="ability-stat-number"><?php echo esc_html( $stats['by_provider']['Theme'] ); ?></div>
+				<div class="ability-stat-number"><?php echo absint( $stats['by_provider']['Theme'] ?? 0 ); ?></div>
 				<div class="ability-stat-label"><?php esc_html_e( 'Theme', 'ai' ); ?></div>
 			</div>
 		</div>
@@ -151,7 +147,7 @@ class Admin_Page {
 	 * @since x.x.x
 	 */
 	private function render_detail_view(): void {
-		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : '';
+		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		if ( empty( $ability_slug ) ) {
 			echo '<div class="notice notice-error"><p>' . esc_html__( 'No ability specified.', 'ai' ) . '</p></div>';
@@ -233,7 +229,7 @@ class Admin_Page {
 	 * @since x.x.x
 	 */
 	private function render_test_runner(): void {
-		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : '';
+		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		if ( empty( $ability_slug ) ) {
 			echo '<div class="notice notice-error"><p>' . esc_html__( 'No ability specified.', 'ai' ) . '</p></div>';
@@ -257,7 +253,7 @@ class Admin_Page {
 			admin_url( 'admin.php' )
 		);
 
-		// Generate example input from input schema
+		// Generate example input from input schema.
 		$example_input = $this->generate_example_input( $ability['input_schema'] );
 
 		?>
@@ -341,10 +337,10 @@ class Admin_Page {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array $schema Input schema.
-	 * @return array Example input.
+	 * @param array<string,mixed> $schema Input schema.
+	 * @return array<string,mixed> Example input.
 	 */
-	private function generate_example_input( $schema ): array {
+	private function generate_example_input( array $schema ): array {
 		if ( empty( $schema ) || ! isset( $schema['properties'] ) ) {
 			return array();
 		}
@@ -363,10 +359,10 @@ class Admin_Page {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array $prop_schema Property schema.
+	 * @param array<string,mixed> $prop_schema Property schema.
 	 * @return mixed Example value.
 	 */
-	private function get_example_value( $prop_schema ) {
+	private function get_example_value( array $prop_schema ) {
 		if ( isset( $prop_schema['default'] ) ) {
 			return $prop_schema['default'];
 		}
@@ -400,10 +396,10 @@ class Admin_Page {
 	 * @since x.x.x
 	 */
 	public function ajax_invoke_ability(): void {
-		// Verify nonce
+		// Verify nonce.
 		check_ajax_referer( 'ai_ability_explorer_invoke', 'nonce' );
 
-		// Check user capabilities
+		// Check user capabilities.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error(
 				array(
@@ -412,7 +408,7 @@ class Admin_Page {
 			);
 		}
 
-		// Get parameters
+		// Get parameters.
 		$ability_slug = isset( $_POST['ability'] ) ? sanitize_text_field( wp_unslash( $_POST['ability'] ) ) : '';
 		$input        = isset( $_POST['input'] ) ? json_decode( wp_unslash( $_POST['input'] ), true ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
@@ -424,7 +420,7 @@ class Admin_Page {
 			);
 		}
 
-		// Get ability to validate
+		// Get ability to validate.
 		$ability = Ability_Handler::get_ability( $ability_slug );
 
 		if ( ! $ability ) {
@@ -435,7 +431,7 @@ class Admin_Page {
 			);
 		}
 
-		// Validate input
+		// Validate input.
 		if ( ! empty( $ability['input_schema'] ) ) {
 			$validation = Ability_Handler::validate_input( $ability['input_schema'], $input );
 
@@ -449,7 +445,7 @@ class Admin_Page {
 			}
 		}
 
-		// Invoke the ability
+		// Invoke the ability.
 		$result = Ability_Handler::invoke_ability( $ability_slug, $input );
 
 		if ( $result['success'] ) {

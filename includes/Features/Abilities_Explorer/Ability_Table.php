@@ -80,11 +80,11 @@ class Ability_Table extends \WP_List_Table {
 
 		$this->_column_headers = array( $columns, $hidden, $sortable );
 
-		// Get abilities
+		// Get abilities.
 		$abilities = Ability_Handler::get_all_abilities();
 
-		// Apply search filter
-		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ) : '';
+		// Apply search filter.
+		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! empty( $search ) ) {
 			$abilities = array_filter(
 				$abilities,
@@ -96,8 +96,8 @@ class Ability_Table extends \WP_List_Table {
 			);
 		}
 
-		// Apply provider filter
-		$provider_filter = isset( $_REQUEST['provider'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['provider'] ) ) : '';
+		// Apply provider filter.
+		$provider_filter = isset( $_REQUEST['provider'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['provider'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! empty( $provider_filter ) && 'all' !== $provider_filter ) {
 			$abilities = array_filter(
 				$abilities,
@@ -107,9 +107,9 @@ class Ability_Table extends \WP_List_Table {
 			);
 		}
 
-		// Apply sorting
-		$orderby = isset( $_REQUEST['orderby'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['orderby'] ) ) : 'name';
-		$order   = isset( $_REQUEST['order'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['order'] ) ) : 'asc';
+		// Apply sorting.
+		$orderby = isset( $_REQUEST['orderby'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['orderby'] ) ) : 'name'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$order   = isset( $_REQUEST['order'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['order'] ) ) : 'asc'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		usort(
 			$abilities,
@@ -124,7 +124,7 @@ class Ability_Table extends \WP_List_Table {
 			}
 		);
 
-		// Pagination
+		// Pagination.
 		$per_page     = 20;
 		$current_page = $this->get_pagenum();
 		$total_items  = count( $abilities );
@@ -253,7 +253,7 @@ class Ability_Table extends \WP_List_Table {
 			return;
 		}
 
-		$provider_filter = isset( $_REQUEST['provider'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['provider'] ) ) : 'all';
+		$provider_filter = isset( $_REQUEST['provider'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['provider'] ) ) : 'all'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		?>
 		<div class="alignleft actions">

@@ -1,8 +1,9 @@
 <?php
 /**
- * Abilities Explorer Feature
+ * Abilities Explorer Experiment
  *
- * Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
+ * Discover, inspect, test, and document all abilities
+ * registered via the WordPress Abilities API.
  *
  * @package WordPress\AI\Features\Abilities_Explorer
  * @since x.x.x
@@ -14,9 +15,10 @@ use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
 /**
- * Abilities Explorer Feature Class
+ * Abilities Explorer Experiment Class.
  *
- * Provides a comprehensive interface for exploring the WordPress Abilities API.
+ * Provides a comprehensive interface for exploring
+ * the WordPress Abilities API.
  *
  * @since x.x.x
  */
