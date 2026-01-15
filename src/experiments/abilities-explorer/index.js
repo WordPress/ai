@@ -1,23 +1,16 @@
 /**
  * Ability Explorer Admin JavaScript
- *
- * @package
- * @since 0.1.0
  */
 
 /* global aiAbilityExplorer, navigator */
 
+/**
+ * Internal dependencies
+ */
+import './index.scss';
+
 (function () {
 	'use strict';
-
-	// Initialize on document ready
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', function () {
-			AiAbilityExplorer.init();
-		});
-	} else {
-		AiAbilityExplorer.init();
-	}
 
 	/**
 	 * Main AI Ability Explorer object
@@ -533,4 +526,13 @@
 			});
 		},
 	};
-})();
+
+	// Initialize on document ready.
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', function () {
+			AiAbilityExplorer.init();
+		} );
+	} else {
+		AiAbilityExplorer.init();
+	}
+} )();

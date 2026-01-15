@@ -11,6 +11,7 @@
 namespace WordPress\AI\Features\Abilities_Explorer;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Asset_Loader;
 
 /**
  * Abilities Explorer Feature Class
@@ -35,8 +36,34 @@ class Abilities_Explorer extends Abstract_Experiment {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+
 		// @todo: evaluate standardization after triaging existing comments.
 		$admin_page = new Admin_Page();
 		$admin_page->init();
+	}
+
+	/**
+	 * Enqueues and localizes the admin script and styles.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
+	public function enqueue_assets( string $hook_suffix ): void {
+		// Load asset in Abilities Explorer page only.
+		if ( 'toplevel_page_ai-abilities-explorer' !== $hook_suffix ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script( 'abilities_explorer', 'experiments/abilities-explorer' );
+		Asset_Loader::enqueue_style( 'abilities_explorer', 'experiments/abilities-explorer' );
+		Asset_Loader::localize_script(
+			'abilities_explorer',
+			'AbilitiesExplorerData',
+			array(
+				'enabled' => $this->is_enabled(),
+			)
+		);
 	}
 }
