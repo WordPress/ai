@@ -5,7 +5,7 @@
  * Handles fetching and processing abilities from the WordPress Abilities API.
  *
  * @package WordPress\AI\Features\Abilities_Explorer
- * @since n.e.x.t
+ * @since x.x.x
  */
 
 namespace WordPress\AI\Features\Abilities_Explorer;
@@ -19,14 +19,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Provides methods for retrieving, formatting, and invoking WordPress abilities.
  *
- * @since n.e.x.t
+ * @since x.x.x
  */
 class Ability_Handler {
 
 	/**
 	 * Get all registered abilities.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @return array Array of abilities.
 	 */
@@ -43,7 +43,7 @@ class Ability_Handler {
 	/**
 	 * Get a single ability by slug.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param string $slug Ability slug (name).
 	 * @return array|null Ability data or null if not found.
@@ -65,7 +65,7 @@ class Ability_Handler {
 	/**
 	 * Format abilities array.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param array $abilities Raw abilities array (WP_Ability objects).
 	 * @return array Formatted abilities.
@@ -87,7 +87,7 @@ class Ability_Handler {
 	/**
 	 * Format a single ability.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param \WP_Ability $ability Ability object.
 	 * @return array Formatted ability data.
@@ -121,7 +121,7 @@ class Ability_Handler {
 	/**
 	 * Detect ability provider (Core, Plugin, or Theme).
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param string $name Ability name (slug).
 	 * @param array  $meta Ability metadata.
@@ -156,7 +156,7 @@ class Ability_Handler {
 	/**
 	 * Invoke an ability.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param string $slug  Ability name.
 	 * @param array  $input Input data.
@@ -213,7 +213,7 @@ class Ability_Handler {
 	/**
 	 * Validate input against input schema.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param array $schema Input schema.
 	 * @param array $input  Input data to validate.
@@ -269,7 +269,7 @@ class Ability_Handler {
 	/**
 	 * Validate value type.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param mixed  $value         Value to validate.
 	 * @param string $expected_type Expected type.
@@ -296,7 +296,7 @@ class Ability_Handler {
 	/**
 	 * Get ability statistics.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @return array Statistics about registered abilities.
 	 */

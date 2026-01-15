@@ -5,7 +5,7 @@
  * Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
  *
  * @package WordPress\AI\Features\Abilities_Explorer
- * @since n.e.x.t
+ * @since x.x.x
  */
 
 namespace WordPress\AI\Features\Abilities_Explorer;
@@ -18,7 +18,7 @@ use WordPress\AI\Asset_Loader;
  *
  * Provides a comprehensive interface for exploring the WordPress Abilities API.
  *
- * @since n.e.x.t
+ * @since x.x.x
  */
 class Abilities_Explorer extends Abstract_Experiment {
 	/**

@@ -5,7 +5,7 @@
  * Handles admin menu, pages, and UI rendering.
  *
  * @package WordPress\AI\Features\Abilities_Explorer
- * @since n.e.x.t
+ * @since x.x.x
  */
 
 namespace WordPress\AI\Features\Abilities_Explorer;
@@ -19,14 +19,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Manages the admin interface for Abilities Explorer.
  *
- * @since n.e.x.t
+ * @since x.x.x
  */
 class Admin_Page {
 
 	/**
 	 * Initialize admin functionality.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
@@ -36,7 +36,7 @@ class Admin_Page {
 	/**
 	 * Add admin menu item.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function add_admin_menu(): void {
 		// Add top-level menu
@@ -54,7 +54,7 @@ class Admin_Page {
 	/**
 	 * Render the main page.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function render_page(): void {
 		// Check user capabilities
@@ -95,7 +95,7 @@ class Admin_Page {
 	/**
 	 * Render statistics dashboard.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	private function render_statistics(): void {
 		$stats = Ability_Handler::get_statistics();
@@ -128,7 +128,7 @@ class Admin_Page {
 	/**
 	 * Render list view.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	private function render_list_view(): void {
 		$table = new Ability_Table();
@@ -148,7 +148,7 @@ class Admin_Page {
 	/**
 	 * Render detail view.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	private function render_detail_view(): void {
 		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : '';
@@ -230,7 +230,7 @@ class Admin_Page {
 	/**
 	 * Render test runner.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	private function render_test_runner(): void {
 		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : '';
@@ -339,7 +339,7 @@ class Admin_Page {
 	/**
 	 * Generate example input from input schema.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param array $schema Input schema.
 	 * @return array Example input.
@@ -361,7 +361,7 @@ class Admin_Page {
 	/**
 	 * Get example value for a schema property.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param array $prop_schema Property schema.
 	 * @return mixed Example value.
@@ -397,7 +397,7 @@ class Admin_Page {
 	/**
 	 * AJAX handler for invoking abilities.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function ajax_invoke_ability(): void {
 		// Verify nonce
