@@ -45,16 +45,16 @@ function normalize_content( string $content ): string {
 	$content = (string) apply_filters( 'ai_experiments_pre_normalize_content', $content );
 
 	// Strip HTML entities.
-	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content );
+	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content ) ?? $content;
 
 	// Replace HTML linebreaks with newlines.
-	$content = preg_replace( '#<br\s?/?>#', "\n\n", (string) $content );
+	$content = preg_replace( '#<br\s?/?>#', "\n\n", $content ) ?? $content;
 
 	// Strip all HTML tags.
 	$content = wp_strip_all_tags( (string) $content );
 
 	// Remove unrendered shortcode tags.
-	$content = preg_replace( '#\[.+\](.+)\[/.+\]#', '$1', $content );
+	$content = preg_replace( '#\[.+\](.+)\[/.+\]#', '$1', $content ) ?? $content;
 
 	/**
 	 * Filters the normalized content to allow for additional cleanup.
