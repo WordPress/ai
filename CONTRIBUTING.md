@@ -78,6 +78,7 @@ All code must be backward compatible with PHP 7.4, which is the minimum required
 ### WordPress Compatibility
 
 The plugin requires WordPress 6.9 or higher. Ensure all WordPress functions and hooks used are available in this version.
+
 ### Documentation standards
 
 All code must be properly documented with PHPDoc blocks following these standards:
