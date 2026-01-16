@@ -51,8 +51,6 @@ composer format
 
 # Run tests
 composer test
-```
-### Branch naming conventions
 
 There are a few protected branch naming conventions:
 
