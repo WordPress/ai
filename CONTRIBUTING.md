@@ -44,7 +44,7 @@ Before submitting a pull request, run the following commands:
 composer lint
 
 # Run static analysis
-composer stan
+composer phpstan
 
 # Auto-fix coding standards issues
 composer format
