@@ -14,7 +14,7 @@ Welcome to the WordPress AI Experiments plugin development guide. This document 
 
 ## Creating a New Experiment
 
-Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct AI capability.
+Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct piece of functionality that may utilize AI capabilities.
 
 ### Key Design Principles
 
