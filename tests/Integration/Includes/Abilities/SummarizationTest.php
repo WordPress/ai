@@ -15,13 +15,13 @@ use WP_UnitTestCase;
 /**
  * Test experiment for Summarization Ability tests.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Test_Summarization_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
@@ -36,7 +36,7 @@ class Test_Summarization_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -47,7 +47,7 @@ class Test_Summarization_Experiment extends Abstract_Experiment {
 /**
  * Summarization Ability test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class SummarizationTest extends WP_UnitTestCase {
 
@@ -68,7 +68,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -86,7 +86,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -96,7 +96,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -111,7 +111,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -143,7 +143,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -160,7 +160,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() returns the system instruction.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_system_instruction_returns_system_instruction() {
 		$system_instruction = $this->ability->get_system_instruction();
@@ -173,7 +173,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles content parameter correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -204,7 +204,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles context parameter with post ID correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_context_as_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -243,7 +243,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles context parameter as string correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_context_as_string() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -275,7 +275,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when context points to non-existent post.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_invalid_post_id_in_context() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -294,7 +294,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_without_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -311,7 +311,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -330,7 +330,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -350,7 +350,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -369,7 +369,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with read_post capability when context is post ID.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_context_as_post_id_and_read_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -396,7 +396,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without read_post capability when context is post ID.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_context_as_post_id_without_read_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -424,7 +424,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for non-existent post when context is post ID.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_nonexistent_post_id_in_context() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -443,7 +443,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns false for post type without show_in_rest when context is post ID.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_post_type_without_show_in_rest_when_context_is_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -482,7 +482,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
