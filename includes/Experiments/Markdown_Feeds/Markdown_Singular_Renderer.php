@@ -158,16 +158,6 @@ final class Markdown_Singular_Renderer {
 		$published = (string) get_post_time( 'r', true, $post );
 		$modified  = (string) get_post_modified_time( 'r', true, $post );
 
-		echo '# ' . esc_html( $title ) . "\n\n";
-		echo esc_html__( 'URL:', 'ai' ) . ' <' . esc_url( $permalink ) . ">\n";
-		echo esc_html__( 'Published:', 'ai' ) . ' ' . esc_html( $published ) . "\n";
-
-		if ( $modified !== $published ) {
-			echo esc_html__( 'Updated:', 'ai' ) . ' ' . esc_html( $modified ) . "\n";
-		}
-
-		echo "\n";
-
 		$content = (string) get_post_field( 'post_content', $post );
 		$html    = (string) apply_filters( 'the_content', $content );
 
@@ -196,12 +186,43 @@ final class Markdown_Singular_Renderer {
 		$markdown = (string) apply_filters( 'ai_experiments_markdown_singular_markdown', $markdown, $html, $post );
 		$markdown = trim( $markdown );
 
-		if ( '' === $markdown ) {
+		$meta_lines = array(
+			esc_html__( 'URL:', 'ai' ) . ' <' . esc_url( $permalink ) . '>',
+			esc_html__( 'Published:', 'ai' ) . ' ' . esc_html( $published ),
+		);
+
+		if ( $modified !== $published ) {
+			$meta_lines[] = esc_html__( 'Updated:', 'ai' ) . ' ' . esc_html( $modified );
+		}
+
+		$sections = array(
+			'header' => '# ' . esc_html( $title ),
+			'meta'   => implode( "\n", $meta_lines ),
+		);
+
+		if ( '' !== $markdown ) {
+			$sections['content'] = $markdown;
+		}
+
+		/**
+		 * Filters the Markdown singular entry sections.
+		 *
+		 * Allows reordering or inserting custom sections before output is emitted.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<string,string> $sections Markdown sections keyed by role.
+		 * @param \WP_Post             $post     Post object.
+		 */
+		$sections = (array) apply_filters( 'ai_experiments_markdown_singular_post_sections', $sections, $post );
+
+		$entry = implode( "\n\n", $sections );
+		if ( '' === $entry ) {
 			return;
 		}
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markdown response.
-		echo $markdown . "\n";
+		echo $entry . "\n";
 	}
 
 	/**

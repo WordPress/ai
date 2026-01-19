@@ -19,8 +19,10 @@ The output is intended to be a lightweight, text-first format that is easier for
 - Filters:
   - `ai_experiments_markdown_feed_html` -> adjust HTML before conversion.
   - `ai_experiments_markdown_feed_markdown` -> adjust Markdown after conversion.
+  - `ai_experiments_markdown_feed_post_sections` -> reorder or inject sections in each feed entry.
   - `ai_experiments_markdown_singular_html` -> adjust HTML before conversion (singular).
   - `ai_experiments_markdown_singular_markdown` -> adjust Markdown after conversion (singular).
+  - `ai_experiments_markdown_singular_post_sections` -> reorder or inject sections in each singular response.
 
 ## Assets & Data Flow
 

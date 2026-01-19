@@ -204,21 +204,47 @@ final class Markdown_Feed_Renderer {
 		$permalink = esc_url_raw( get_permalink( $post ) );
 		$date_r    = (string) get_post_time( 'r', true, $post );
 
-		echo '## ' . esc_html( $title ) . "\n\n";
-		echo esc_html__( 'URL:', 'ai' ) . ' <' . esc_url( $permalink ) . ">\n";
-		echo esc_html__( 'Published:', 'ai' ) . ' ' . esc_html( $date_r ) . "\n\n";
-
 		$content = (string) get_post_field( 'post_content', $post );
 		$html    = (string) apply_filters( 'the_content', $content );
 
 		$markdown = $this->convert_html_to_markdown( $html );
 		$markdown = trim( $markdown );
+
+		$meta_lines = array(
+			esc_html__( 'URL:', 'ai' ) . ' <' . esc_url( $permalink ) . '>',
+			esc_html__( 'Published:', 'ai' ) . ' ' . esc_html( $date_r ),
+		);
+
+		$sections = array(
+			'header' => '## ' . esc_html( $title ),
+			'meta'   => implode( "\n", $meta_lines ),
+		);
+
 		if ( '' !== $markdown ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markdown response.
-			echo $markdown . "\n\n";
+			$sections['content'] = $markdown;
 		}
 
-		echo "---\n\n";
+		$sections['footer'] = '---';
+
+		/**
+		 * Filters the Markdown feed entry sections.
+		 *
+		 * Allows reordering or inserting custom sections before output is emitted.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<string,string> $sections Markdown sections keyed by role.
+		 * @param \WP_Post             $post     Post object.
+		 */
+		$sections = (array) apply_filters( 'ai_experiments_markdown_feed_post_sections', $sections, $post );
+
+		$entry = implode( "\n\n", $sections );
+		if ( '' === $entry ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markdown response.
+		echo $entry . "\n\n";
 	}
 
 	/**
