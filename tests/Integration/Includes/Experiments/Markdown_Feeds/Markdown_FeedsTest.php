@@ -113,19 +113,55 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_markdown_permalink(): void {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_title'  => 'Test Post',
-				'post_name'   => 'test-post',
-				'post_status' => 'publish',
-			)
-		);
+		global $wp_rewrite;
 
-		$post         = get_post( $post_id );
-		$md_permalink = $this->experiment->get_markdown_permalink( $post );
+		$original_structure = (string) get_option( 'permalink_structure' );
+		$wp_rewrite->set_permalink_structure( '/%postname%/' );
 
-		$this->assertStringEndsWith( '.md', $md_permalink );
-		$this->assertStringContainsString( 'test-post', $md_permalink );
+		try {
+			$post_id = self::factory()->post->create(
+				array(
+					'post_title'  => 'Test Post',
+					'post_name'   => 'test-post',
+					'post_status' => 'publish',
+				)
+			);
+
+			$post         = get_post( $post_id );
+			$md_permalink = $this->experiment->get_markdown_permalink( $post );
+
+			$this->assertStringEndsWith( '.md', $md_permalink );
+			$this->assertStringContainsString( 'test-post', $md_permalink );
+		} finally {
+			$wp_rewrite->set_permalink_structure( $original_structure );
+		}
+	}
+
+	/**
+	 * Test that get_markdown_permalink returns empty without pretty permalinks.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_markdown_permalink_returns_empty_with_plain_permalinks(): void {
+		global $wp_rewrite;
+
+		$original_structure = (string) get_option( 'permalink_structure' );
+		$wp_rewrite->set_permalink_structure( '' );
+
+		try {
+			$post_id = self::factory()->post->create(
+				array(
+					'post_title'  => 'Plain Post',
+					'post_name'   => 'plain-post',
+					'post_status' => 'publish',
+				)
+			);
+
+			$post = get_post( $post_id );
+			$this->assertSame( '', $this->experiment->get_markdown_permalink( $post ) );
+		} finally {
+			$wp_rewrite->set_permalink_structure( $original_structure );
+		}
 	}
 
 	/**

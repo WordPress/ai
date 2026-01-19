@@ -140,6 +140,9 @@ class Markdown_Feeds extends Abstract_Experiment {
 		}
 
 		$md_url = $this->get_markdown_permalink( $post );
+		if ( '' === $md_url ) {
+			return;
+		}
 		/* translators: %s: Post title. */
 		$md_title = sprintf( __( '%s (Markdown)', 'ai' ), get_the_title( $post ) );
 
@@ -176,8 +179,13 @@ class Markdown_Feeds extends Abstract_Experiment {
 	 * @return string Markdown permalink.
 	 */
 	public function get_markdown_permalink( \WP_Post $post ): string {
+		$permalink_structure = (string) get_option( 'permalink_structure' );
+		if ( '' === $permalink_structure ) {
+			return '';
+		}
+
 		$permalink = get_permalink( $post );
-		if ( ! $permalink ) {
+		if ( ! $permalink || false !== strpos( $permalink, '?' ) ) {
 			return '';
 		}
 

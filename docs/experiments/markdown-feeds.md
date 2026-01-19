@@ -40,3 +40,4 @@ The output is intended to be a lightweight, text-first format that is easier for
 
 - The HTML-to-Markdown conversion is intentionally conservative and based on WordPress core’s HTML API (`WP_HTML_Processor`) rather than a bundled third-party parser.
 - This experiment currently targets singular post content (title + metadata + content). It does not attempt to convert full theme templates or archive views.
+- `.md` permalinks require pretty permalinks (a non-empty permalink structure).
