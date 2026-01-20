@@ -37,15 +37,6 @@ class AI_Service {
 	private static ?self $instance = null;
 
 	/**
-	 * Whether the service has been initialized.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var bool
-	 */
-	private bool $initialized = false;
-
-	/**
 	 * Option key mapping from WordPress snake_case to SDK camelCase.
 	 *
 	 * @since x.x.x
@@ -86,30 +77,6 @@ class AI_Service {
 	 * @since x.x.x
 	 */
 	private function __construct() {}
-
-	/**
-	 * Initializes the AI service.
-	 *
-	 * This method should be called after AI_Client::init() on the WordPress 'init' hook.
-	 *
-	 * @since x.x.x
-	 */
-	public function init(): void {
-		if ( $this->initialized ) {
-			return;
-		}
-
-		$this->initialized = true;
-
-		/**
-		 * Fires when the AI service is initialized.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param \WordPress\AI\Services\AI_Service $service The AI service instance.
-		 */
-		do_action( 'ai_experiments_service_initialized', $this );
-	}
 
 	/**
 	 * Creates a text generation prompt builder with default configuration applied.

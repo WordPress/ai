@@ -133,7 +133,7 @@ function get_post_context( int $post_id ): array {
 /**
  * Returns the preferred models for text generation.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @return array<int, array{string, string}> The preferred models for text generation.
  */
@@ -160,7 +160,7 @@ function get_preferred_models_for_text_generation(): array {
 	/**
 	 * Filters the preferred models for text generation.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 * @hook ai_experiments_preferred_models_for_text_generation
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
