@@ -5,7 +5,7 @@
  * Handles admin menu, pages, and UI rendering.
  *
  * @package WordPress\AI\Experiments\Abilities_Explorer
- * @since x.x.x
+ * @since 0.2.0
  */
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
@@ -19,14 +19,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Manages the admin interface for Abilities Explorer.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Admin_Page {
 
 	/**
 	 * Initialize admin functionality.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
@@ -36,7 +36,7 @@ class Admin_Page {
 	/**
 	 * Add admin menu item.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function add_admin_menu(): void {
 		// Add menu item under the Tools menu.
@@ -53,7 +53,7 @@ class Admin_Page {
 	/**
 	 * Render the main page.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function render_page(): void {
 		// Check user capabilities.
@@ -90,7 +90,7 @@ class Admin_Page {
 	/**
 	 * Render statistics dashboard.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	private function render_statistics(): void {
 		$stats = Ability_Handler::get_statistics();
@@ -123,7 +123,7 @@ class Admin_Page {
 	/**
 	 * Render list view.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	private function render_list_view(): void {
 		$table = new Ability_Table();
@@ -143,7 +143,7 @@ class Admin_Page {
 	/**
 	 * Render detail view.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	private function render_detail_view(): void {
 		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -225,7 +225,7 @@ class Admin_Page {
 	/**
 	 * Render test runner.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	private function render_test_runner(): void {
 		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -334,7 +334,7 @@ class Admin_Page {
 	/**
 	 * Generate example input from input schema.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param array<string,mixed> $schema Input schema.
 	 * @return array<string,mixed> Example input.
@@ -356,7 +356,7 @@ class Admin_Page {
 	/**
 	 * Get example value for a schema property.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param array<string,mixed> $prop_schema Property schema.
 	 * @return mixed Example value.
@@ -392,7 +392,7 @@ class Admin_Page {
 	/**
 	 * AJAX handler for invoking abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function ajax_invoke_ability(): void {
 		// Verify nonce.

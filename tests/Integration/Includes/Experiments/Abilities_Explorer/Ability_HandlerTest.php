@@ -13,13 +13,13 @@ use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
 /**
  * Ability_Handler test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -32,7 +32,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -42,7 +42,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test get_all_abilities returns array.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_all_abilities_returns_array() {
 		$abilities = Ability_Handler::get_all_abilities();
@@ -53,7 +53,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test get_ability returns null for non-existent ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_ability_returns_null_for_nonexistent() {
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::get_registered' );
@@ -66,7 +66,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input returns valid for empty schema.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_validate_input_returns_valid_for_empty_schema() {
 		$result = Ability_Handler::validate_input( array(), array( 'foo' => 'bar' ) );
@@ -78,7 +78,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input detects missing required fields.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_validate_input_detects_missing_required_fields() {
 		$schema = array(
@@ -101,7 +101,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input passes when all required fields present.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_validate_input_passes_with_all_required_fields() {
 		$schema = array(
@@ -122,7 +122,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates string type.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_validate_input_validates_string_type() {
 		$schema = array(
@@ -143,7 +143,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates number type.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_validate_input_validates_number_type() {
 		$schema = array(
@@ -168,7 +168,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates boolean type.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_validate_input_validates_boolean_type() {
 		$schema = array(
@@ -192,7 +192,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates array type.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_validate_input_validates_array_type() {
 		$schema = array(
@@ -213,7 +213,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates object type.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_validate_input_validates_object_type() {
 		$schema = array(
@@ -238,7 +238,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test get_statistics returns expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_statistics_returns_expected_structure() {
 		$stats = Ability_Handler::get_statistics();
@@ -256,7 +256,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test invoke_ability returns error for non-existent ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_invoke_ability_returns_error_for_nonexistent() {
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::get_registered' );

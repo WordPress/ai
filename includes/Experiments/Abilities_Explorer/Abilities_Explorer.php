@@ -6,7 +6,7 @@
  * registered via the WordPress Abilities API.
  *
  * @package WordPress\AI\Experiments\Abilities_Explorer
- * @since x.x.x
+ * @since 0.2.0
  */
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Provides a comprehensive interface for exploring
  * the WordPress Abilities API.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Abilities_Explorer extends Abstract_Experiment {
 	/**
@@ -52,7 +52,7 @@ class Abilities_Explorer extends Abstract_Experiment {
 	/**
 	 * Enqueues and localizes the admin script and styles.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */

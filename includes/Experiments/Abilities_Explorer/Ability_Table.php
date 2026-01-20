@@ -5,7 +5,7 @@
  * Extends WP_List_Table to display abilities in a searchable, filterable table.
  *
  * @package WordPress\AI\Experiments\Abilities_Explorer
- * @since x.x.x
+ * @since 0.2.0
  */
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
@@ -23,14 +23,14 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
  *
  * Displays abilities in a table with search and filter functionality.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Ability_Table extends \WP_List_Table {
 
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function __construct() {
 		parent::__construct(

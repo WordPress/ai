@@ -15,7 +15,7 @@ use WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer;
 /**
  * Abilities_Explorer test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
@@ -35,7 +35,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -57,7 +57,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -71,7 +71,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment has correct metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_experiment_metadata() {
 		$experiment = new Abilities_Explorer();
@@ -84,7 +84,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is enabled when option is set.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_experiment_is_enabled_when_option_set() {
 		$experiment = new Abilities_Explorer();
@@ -95,7 +95,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is disabled when option is not set.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_experiment_is_disabled_when_option_not_set() {
 		delete_option( 'ai_experiment_abilities-explorer_enabled' );
@@ -108,7 +108,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Test that assets are not enqueued on wrong admin page.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_assets_not_enqueued_on_wrong_page() {
 		$experiment = new Abilities_Explorer();
@@ -123,7 +123,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment can be registered in the registry.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_experiment_registration_in_registry() {
 		$experiment = new Abilities_Explorer();
