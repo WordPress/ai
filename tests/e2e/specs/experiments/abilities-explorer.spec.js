@@ -36,12 +36,15 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiment( admin, page, 'abilities-explorer' );
 
 		// Ensure the Abilities Explorer page is visible in the admin sidebar.
+		await admin.visitAdminPage( 'tools.php' );
 		await expect(
-			page.locator( '#adminmenu .toplevel_page_ai-abilities-explorer a' )
+			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
+				hasText: 'Abilities Explorer',
+			} )
 		).toBeVisible();
 
 		// Visit the Abilities Explorer page.
-		await admin.visitAdminPage( 'admin.php?page=ai-abilities-explorer' );
+		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
 
 		// Ensure the abilities stats section is visible.
 		await expect(
@@ -65,7 +68,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiment( admin, page, 'abilities-explorer' );
 
 		// Visit the Abilities Explorer page.
-		await admin.visitAdminPage( 'admin.php?page=ai-abilities-explorer' );
+		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
 
 		// Find the Get Environment Info ability and click the View button.
 		const abilityRow = page
@@ -98,7 +101,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiment( admin, page, 'abilities-explorer' );
 
 		// Visit the Abilities Explorer page.
-		await admin.visitAdminPage( 'admin.php?page=ai-abilities-explorer' );
+		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
 
 		// Find the Get Environment Info ability and click the Test button.
 		const abilityRow = page
@@ -153,9 +156,12 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
 
-		// Ensure the Abilities Explorer page is not visible in the admin sidebar.
+		// Ensure the Abilities Explorer page is not visible in the admin Tools sidebar.
+		await admin.visitAdminPage( 'tools.php' );
 		await expect(
-			page.locator( '#adminmenu .toplevel_page_ai-abilities-explorer a' )
+			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
+				hasText: 'Abilities Explorer',
+			} )
 		).not.toBeVisible();
 	} );
 
@@ -169,9 +175,12 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		// Disable the Abilities Explorer Experiment.
 		await disableExperiment( admin, page, 'abilities-explorer' );
 
-		// Ensure the Abilities Explorer page is not visible in the admin sidebar.
+		// Ensure the Abilities Explorer page is not visible in the admin Tools sidebar.
+		await admin.visitAdminPage( 'tools.php' );
 		await expect(
-			page.locator( '#adminmenu .toplevel_page_ai-abilities-explorer a' )
+			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
+				hasText: 'Abilities Explorer',
+			} )
 		).not.toBeVisible();
 	} );
 } );

@@ -39,15 +39,14 @@ class Admin_Page {
 	 * @since x.x.x
 	 */
 	public function add_admin_menu(): void {
-		// Add top-level menu.
-		add_menu_page(
+		// Add menu item under the Tools menu.
+		add_submenu_page(
+			'tools.php',
 			__( 'Abilities Explorer', 'ai' ),
-			__( 'Abilities', 'ai' ),
+			__( 'Abilities Explorer', 'ai' ),
 			'manage_options',
 			'ai-abilities-explorer',
-			array( $this, 'render_page' ),
-			'dashicons-superhero',
-			30
+			array( $this, 'render_page' )
 		);
 	}
 
@@ -161,14 +160,14 @@ class Admin_Page {
 			return;
 		}
 
-		$back_url = admin_url( 'admin.php?page=ai-abilities-explorer' );
+		$back_url = admin_url( 'tools.php?page=ai-abilities-explorer' );
 		$test_url = add_query_arg(
 			array(
 				'page'    => 'ai-abilities-explorer',
 				'action'  => 'test',
 				'ability' => $ability_slug,
 			),
-			admin_url( 'admin.php' )
+			admin_url( 'tools.php' )
 		);
 
 		?>
@@ -243,14 +242,14 @@ class Admin_Page {
 			return;
 		}
 
-		$back_url   = admin_url( 'admin.php?page=ai-abilities-explorer' );
+		$back_url   = admin_url( 'tools.php?page=ai-abilities-explorer' );
 		$detail_url = add_query_arg(
 			array(
 				'page'    => 'ai-abilities-explorer',
 				'action'  => 'view',
 				'ability' => $ability_slug,
 			),
-			admin_url( 'admin.php' )
+			admin_url( 'tools.php' )
 		);
 
 		// Generate example input from input schema.

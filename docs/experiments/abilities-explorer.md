@@ -2,13 +2,13 @@
 
 ## Summary
 
-The Abilities Explorer experiment provides an admin interface for discovering, inspecting, testing, and documenting all abilities registered via the WordPress Abilities API. It adds a top-level "Abilities" menu in the WordPress admin that displays a searchable, filterable table of all registered abilities with the ability to view details and invoke abilities directly from the UI.
+The Abilities Explorer experiment provides an admin interface for discovering, inspecting, testing, and documenting all abilities registered via the WordPress Abilities API. It adds a menu item ("Abilities Explorer") under the "Tools" menu in the WordPress admin that displays a searchable, filterable table of all registered abilities with the ability to view details and invoke abilities directly from the UI.
 
 ## Overview
 
 ### For End Users
 
-When enabled, the Abilities Explorer adds an "Abilities" menu item to the WordPress admin sidebar. This provides:
+When enabled, the Abilities Explorer adds an "Abilities Explorer" menu item under the "Tools" menu in the WordPress admin sidebar. This provides:
 
 **Key Features:**
 
@@ -81,7 +81,7 @@ The experiment performs JSON Schema validation:
 
 ### Testing an Ability
 
-1. Navigate to **Abilities** in the admin menu
+1. Navigate to **Abilities Explorer** in the "Tools" menu in the admin menu
 2. Find the ability you want to test
 3. Click the **Test** button
 4. Edit the JSON input (pre-populated with example values from the schema)
@@ -111,7 +111,7 @@ The test runner automatically generates example input based on the ability's inp
    - Toggle **Abilities Explorer** to enabled
 
 2. **Test the list view:**
-   - Navigate to **Abilities** in the admin menu
+   - Navigate to **Abilities Explorer** in the "Tools" menu in the admin menu
    - Verify statistics are displayed
    - Search for abilities by name or description
    - Filter by provider type

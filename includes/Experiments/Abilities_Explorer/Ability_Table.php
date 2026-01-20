@@ -173,7 +173,7 @@ class Ability_Table extends \WP_List_Table {
 				'action'  => 'view',
 				'ability' => $item['slug'],
 			),
-			admin_url( 'admin.php' )
+			admin_url( 'tools.php' )
 		);
 
 		return sprintf(
@@ -224,7 +224,7 @@ class Ability_Table extends \WP_List_Table {
 				'action'  => 'view',
 				'ability' => $item['slug'],
 			),
-			admin_url( 'admin.php' )
+			admin_url( 'tools.php' )
 		);
 
 		$test_url = add_query_arg(
@@ -233,7 +233,7 @@ class Ability_Table extends \WP_List_Table {
 				'action'  => 'test',
 				'ability' => $item['slug'],
 			),
-			admin_url( 'admin.php' )
+			admin_url( 'tools.php' )
 		);
 
 		return sprintf(

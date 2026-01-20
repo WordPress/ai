@@ -58,7 +58,7 @@ class Abilities_Explorer extends Abstract_Experiment {
 	 */
 	public function enqueue_assets( string $hook_suffix ): void {
 		// Load asset in Abilities Explorer page only.
-		if ( 'toplevel_page_ai-abilities-explorer' !== $hook_suffix ) {
+		if ( 'tools_page_ai-abilities-explorer' !== $hook_suffix ) {
 			return;
 		}
 
