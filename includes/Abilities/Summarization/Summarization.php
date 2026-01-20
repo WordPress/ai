@@ -20,14 +20,14 @@ use function WordPress\AI\normalize_content;
 /**
  * Content summarization WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Summarization extends Abstract_Ability {
 
 	/**
 	 * The default length of the summary.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @var string
 	 */
@@ -36,7 +36,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -65,7 +65,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -77,7 +77,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -147,7 +147,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
@@ -198,7 +198,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -209,7 +209,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * Generates a summary from the given content.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $content The content to summarize.
 	 * @param string|array<string, string> $context Additional context to use.

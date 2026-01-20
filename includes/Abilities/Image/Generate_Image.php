@@ -19,14 +19,14 @@ use function WordPress\AI\get_preferred_image_models;
 /**
  * Image generation WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Generate_Image extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -45,7 +45,7 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -57,7 +57,7 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
 		// Generate the image.
@@ -83,7 +83,7 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function permission_callback( $args ) {
 		// Ensure the user has permission to upload files.
@@ -100,7 +100,7 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -111,7 +111,7 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * Generates an image from the given prompt.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $prompt The prompt to generate an image from.
 	 * @return string|\WP_Error The generated image data, or a WP_Error if there was an error.

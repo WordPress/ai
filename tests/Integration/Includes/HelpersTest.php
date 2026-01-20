@@ -339,7 +339,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_preferred_image_models() returns an array.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_preferred_image_models_returns_array() {
 		$result = \WordPress\AI\get_preferred_image_models();
@@ -351,7 +351,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_preferred_image_models() returns expected default models.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_preferred_image_models_returns_default_models() {
 		$result = \WordPress\AI\get_preferred_image_models();
@@ -392,7 +392,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_preferred_image_models() applies filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_preferred_image_models_applies_filter() {
 		add_filter(
@@ -419,7 +419,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_preferred_image_models() filter can replace models.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_preferred_image_models_filter_can_replace_models() {
 		add_filter(

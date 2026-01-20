@@ -32,7 +32,6 @@ package-lock.json export-ignore
 /CHANGELOG.md export-ignore
 /CONTRIBUTING.md linguist-documentation export-ignore
 /CREDITS.md linguist-documentation export-ignore
-/ROADMAP.md linguist-documentation export-ignore
 /SECURITY.md linguist-documentation export-ignore
 
 # Keep license and readme files.

@@ -170,7 +170,7 @@ function get_preferred_models(): array {
 /**
  * Returns the preferred image models.
  *
- * @since x.x.x
+ * @since 0.2.0
  *
  * @return array<int, array{string, string}> The preferred image models.
  */
@@ -201,7 +201,7 @@ function get_preferred_image_models(): array {
 	/**
 	 * Filters the preferred image models.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred image models.
 	 * @return array<int, array{string, string}> The filtered preferred image models.

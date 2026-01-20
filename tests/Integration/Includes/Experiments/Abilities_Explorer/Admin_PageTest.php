@@ -13,7 +13,7 @@ use WordPress\AI\Experiments\Abilities_Explorer\Admin_Page;
 /**
  * Admin_Page test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Admin_PageTest extends WP_UnitTestCase {
 	/**
@@ -26,7 +26,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -37,7 +37,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -47,7 +47,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Test that admin menu is registered under Tools.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_admin_menu_is_registered() {
 		global $submenu;
@@ -68,7 +68,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Test that AJAX action is registered.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_ajax_action_is_registered() {
 		$this->admin_page->init();
@@ -79,7 +79,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Test generate_example_input returns empty array for empty schema.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_generate_example_input_returns_empty_for_empty_schema() {
 		$reflection = new \ReflectionClass( $this->admin_page );
@@ -95,7 +95,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Test generate_example_input uses default values.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_generate_example_input_uses_default_values() {
 		$reflection = new \ReflectionClass( $this->admin_page );
@@ -119,7 +119,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Test generate_example_input uses example values.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_generate_example_input_uses_example_values() {
 		$reflection = new \ReflectionClass( $this->admin_page );
@@ -143,7 +143,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Test generate_example_input generates type-appropriate defaults.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_generate_example_input_generates_type_defaults() {
 		$reflection = new \ReflectionClass( $this->admin_page );
@@ -174,7 +174,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Test that page render requires manage_options capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_render_page_requires_manage_options() {
 		// Log in as subscriber (no manage_options).
@@ -189,7 +189,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Test that page renders for admin user.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_render_page_works_for_admin() {
 		// Log in as admin.

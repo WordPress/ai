@@ -6,7 +6,7 @@
  * the WordPress Abilities API.
  *
  * @package WordPress\AI\Experiments\Abilities_Explorer
- * @since x.x.x
+ * @since 0.2.0
  */
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
@@ -21,14 +21,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Provides methods for retrieving, formatting,
  * and invoking WordPress abilities.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Ability_Handler {
 
 	/**
 	 * Get all registered abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @return array<array<string,mixed>> Array of abilities.
 	 */
@@ -45,7 +45,7 @@ class Ability_Handler {
 	/**
 	 * Get a single ability by slug.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $slug Ability slug (name).
 	 * @return array<string,mixed>|null Ability data or null if not found.
@@ -67,7 +67,7 @@ class Ability_Handler {
 	/**
 	 * Format abilities array.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param array<\WP_Ability> $abilities Raw abilities array (WP_Ability objects).
 	 * @return array<array<string,mixed>> Formatted abilities.
@@ -89,7 +89,7 @@ class Ability_Handler {
 	/**
 	 * Format a single ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param \WP_Ability $ability Ability object.
 	 * @return array<string,mixed> Formatted ability data.
@@ -119,7 +119,7 @@ class Ability_Handler {
 	/**
 	 * Detect ability provider (Core, Plugin, or Theme).
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $name Ability name (slug).
 	 * @param array<string,mixed>  $meta Ability metadata.
@@ -154,7 +154,7 @@ class Ability_Handler {
 	/**
 	 * Invoke an ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $slug  Ability name.
 	 * @param array<string,mixed>  $input Input data.
@@ -211,7 +211,7 @@ class Ability_Handler {
 	/**
 	 * Validate input against input schema.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param array<string,mixed> $schema Input schema.
 	 * @param array<string,mixed> $input  Input data to validate.
@@ -267,7 +267,7 @@ class Ability_Handler {
 	/**
 	 * Validate value type.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param mixed  $value         Value to validate.
 	 * @param string $expected_type Expected type.
@@ -294,7 +294,7 @@ class Ability_Handler {
 	/**
 	 * Get ability statistics.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @return array<string,int|array<string,int>> Statistics about registered abilities.
 	 */
