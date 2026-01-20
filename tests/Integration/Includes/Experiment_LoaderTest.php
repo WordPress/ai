@@ -108,6 +108,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->loader->register_default_experiments();
 
 		$this->assertTrue(
+			$this->registry->has_experiment( 'abilities-explorer' ),
+			'Abilities explorer experiment should be registered'
+		);
+		$this->assertTrue(
 			$this->registry->has_experiment( 'excerpt-generation' ),
 			'Excerpt generation experiment should be registered'
 		);
@@ -123,6 +127,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 			$this->registry->has_experiment( 'title-generation' ),
 			'Title generation experiment should be registered'
 		);
+
+		$abilities_explorer_experiment = $this->registry->get_experiment( 'abilities-explorer' );
+		$this->assertNotNull( $abilities_explorer_experiment, 'Abilities explorer experiment should exist' );
+		$this->assertEquals( 'abilities-explorer', $abilities_explorer_experiment->get_id() );
 
 		$excerpt_experiment = $this->registry->get_experiment( 'excerpt-generation' );
 		$this->assertNotNull( $excerpt_experiment, 'Excerpt generation experiment should exist' );
