@@ -6,11 +6,6 @@
  */
 
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
 import { createRoot, useEffect } from '@wordpress/element';
@@ -339,7 +334,7 @@ function TitleToolbarWrapper(): JSX.Element {
 		const setupObserver = () => {
 			const editorDoc = getEditorDocument();
 			if ( editorDoc && ! observer ) {
-				observer = new MutationObserver( ( mutations, obs ) => {
+				observer = new MutationObserver( ( _mutations, obs ) => {
 					if (
 						! isAttached &&
 						! editorDoc.querySelector( '.ai-title-toolbar-wrapper' )

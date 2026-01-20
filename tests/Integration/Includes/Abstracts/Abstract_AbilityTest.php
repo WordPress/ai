@@ -7,9 +7,9 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
 
+use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
-use WP_UnitTestCase;
 
 /**
  * Test ability implementation for Abstract_Ability tests.
@@ -160,7 +160,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -171,7 +171,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_constructor_sets_up_ability() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -189,7 +189,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_constructor_calls_parent_with_properties() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -209,7 +209,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_label_delegates_to_experiment() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -235,7 +235,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_description_delegates_to_experiment() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -274,7 +274,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function test_get_system_instruction_returns_empty_when_no_file() {
 		$experiment = new Test_Ability_Experiment();
-		$ability = new Test_Ability(
+		$ability    = new Test_Ability(
 			'test-ability',
 			array(
 				'label'       => $experiment->get_label(),
@@ -288,5 +288,160 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
 		$this->assertEquals( '', $system_instruction, 'System instruction should be empty when no file exists' );
 	}
+
+	/**
+	 * Test that get_system_instruction() accepts optional data parameter and exposes it to the file.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_system_instruction_with_data_parameter() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		// Get the test ability's directory using reflection.
+		$reflection = new \ReflectionClass( $ability );
+		$file_name  = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+
+		// Create a temporary system instruction file that uses data variables.
+		$test_file = trailingslashit( $feature_dir ) . 'test-system-instruction.php';
+		$test_content = <<<'PHP'
+<?php
+// Process the length variable if provided.
+$length_desc = 'medium length';
+if ( isset( $length ) ) {
+	if ( 'short' === $length ) {
+		$length_desc = 'short length';
+	} elseif ( 'long' === $length ) {
+		$length_desc = 'long length';
+	}
 }
 
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
+return <<<INSTRUCTION
+You are a test assistant. The length is {$length_desc} and the tone is {$tone}. Max words: {$max_words}.
+INSTRUCTION;
+PHP;
+		file_put_contents( $test_file, $test_content );
+
+		try {
+			// Test with data parameter.
+			$data = array(
+				'length'   => 'short',
+				'tone'     => 'professional',
+				'max_words' => 100,
+			);
+
+			$system_instruction = $ability->get_system_instruction( 'test-system-instruction.php', $data );
+
+			// Verify the data was interpolated into the system instruction.
+			$this->assertIsString( $system_instruction, 'System instruction should be a string' );
+			$this->assertStringContainsString( 'short length', $system_instruction, 'System instruction should contain processed length value' );
+			$this->assertStringContainsString( 'professional', $system_instruction, 'System instruction should contain tone value' );
+			$this->assertStringContainsString( '100', $system_instruction, 'System instruction should contain max_words value' );
+		} finally {
+			// Clean up the test file.
+			if ( file_exists( $test_file ) ) {
+				unlink( $test_file );
+			}
+		}
+	}
+
+	/**
+	 * Test that get_system_instruction() works without data parameter (backward compatibility).
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_system_instruction_without_data_parameter() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		// Get the test ability's directory using reflection.
+		$reflection = new \ReflectionClass( $ability );
+		$file_name  = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+
+		// Create a temporary system instruction file without using data variables.
+		$test_file = trailingslashit( $feature_dir ) . 'test-system-instruction-simple.php';
+		$test_content = <<<'PHP'
+<?php
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
+return <<<INSTRUCTION
+You are a test assistant without data variables.
+INSTRUCTION;
+PHP;
+		file_put_contents( $test_file, $test_content );
+
+		try {
+			// Test without data parameter (should still work).
+			$system_instruction = $ability->get_system_instruction( 'test-system-instruction-simple.php' );
+
+			// Verify it returns the content.
+			$this->assertIsString( $system_instruction, 'System instruction should be a string' );
+			$this->assertStringContainsString( 'test assistant', $system_instruction, 'System instruction should contain expected content' );
+		} finally {
+			// Clean up the test file.
+			if ( file_exists( $test_file ) ) {
+				unlink( $test_file );
+			}
+		}
+	}
+
+	/**
+	 * Test that get_system_instruction() with empty data array works correctly.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_system_instruction_with_empty_data_array() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		// Get the test ability's directory using reflection.
+		$reflection = new \ReflectionClass( $ability );
+		$file_name  = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+
+		// Create a temporary system instruction file.
+		$test_file = trailingslashit( $feature_dir ) . 'test-system-instruction-empty.php';
+		$test_content = <<<'PHP'
+<?php
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
+return <<<INSTRUCTION
+You are a test assistant.
+INSTRUCTION;
+PHP;
+		file_put_contents( $test_file, $test_content );
+
+		try {
+			// Test with empty data array.
+			$system_instruction = $ability->get_system_instruction( 'test-system-instruction-empty.php', array() );
+
+			// Verify it returns the content.
+			$this->assertIsString( $system_instruction, 'System instruction should be a string' );
+			$this->assertStringContainsString( 'test assistant', $system_instruction, 'System instruction should contain expected content' );
+		} finally {
+			// Clean up the test file.
+			if ( file_exists( $test_file ) ) {
+				unlink( $test_file );
+			}
+		}
+	}
+}

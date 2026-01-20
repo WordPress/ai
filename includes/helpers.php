@@ -13,6 +13,18 @@ use Throwable;
 use WordPress\AI_Client\AI_Client;
 
 /**
+ * Purposely using return instead of exit here.
+ *
+ * This file is loaded via the composer files directive.
+ * When tools like PHPCS and PHPStan run, they include
+ * our composer autoloader and that will then load this file,
+ * causing the script to exit and not function properly.
+ */
+if ( ! defined( 'ABSPATH' ) ) {
+	return;
+}
+
+/**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
  *
  * @since 0.1.0
@@ -78,18 +90,17 @@ function get_post_context( int $post_id ): array {
 			$context = array_merge( $context, $details );
 
 			if ( isset( $context['content'] ) ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 				$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
-			}
-
-			if ( isset( $context['title'] ) ) {
-				$context['current_title'] = $context['title'];
-				unset( $context['title'] );
 			}
 
 			if ( isset( $context['type'] ) ) {
 				$context['content_type'] = $context['type'];
 				unset( $context['type'] );
 			}
+
+			// Remove any empty context values.
+			$context = array_filter( $context );
 		}
 	}
 
@@ -154,6 +165,48 @@ function get_preferred_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
 	return (array) apply_filters( 'ai_experiments_preferred_models', $preferred_models );
+}
+
+/**
+ * Returns the preferred image models.
+ *
+ * @since 0.2.0
+ *
+ * @return array<int, array{string, string}> The preferred image models.
+ */
+function get_preferred_image_models(): array {
+	$preferred_models = array(
+		array(
+			'google',
+			'gemini-3-pro-image-preview',
+		),
+		array(
+			'google',
+			'gemini-2.5-flash-image',
+		),
+		array(
+			'google',
+			'imagen-4.0-generate-001',
+		),
+		array(
+			'openai',
+			'gpt-image-1',
+		),
+		array(
+			'openai',
+			'dall-e-3',
+		),
+	);
+
+	/**
+	 * Filters the preferred image models.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred image models.
+	 * @return array<int, array{string, string}> The filtered preferred image models.
+	 */
+	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
 }
 
 /**

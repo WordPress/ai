@@ -7,10 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Includes;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_UnitTestCase;
+use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Registry;
 
 /**
  * Test experiment for loader tests.
@@ -59,14 +59,14 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	/**
 	 * Experiment registry instance.
 	 *
-	 * @var Experiment_Registry
+	 * @var \WordPress\AI\Experiment_Registry
 	 */
 	private $registry;
 
 	/**
 	 * Experiment loader instance.
 	 *
-	 * @var Experiment_Loader
+	 * @var \WordPress\AI\Experiment_Loader
 	 */
 	private $loader;
 
@@ -95,7 +95,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -108,13 +108,45 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->loader->register_default_experiments();
 
 		$this->assertTrue(
+			$this->registry->has_experiment( 'abilities-explorer' ),
+			'Abilities explorer experiment should be registered'
+		);
+		$this->assertTrue(
+			$this->registry->has_experiment( 'excerpt-generation' ),
+			'Excerpt generation experiment should be registered'
+		);
+		$this->assertTrue(
+			$this->registry->has_experiment( 'image-generation' ),
+			'Image generation experiment should be registered'
+		);
+		$this->assertTrue(
+			$this->registry->has_experiment( 'summarization' ),
+			'Summarization experiment should be registered'
+		);
+		$this->assertTrue(
 			$this->registry->has_experiment( 'title-generation' ),
 			'Title generation experiment should be registered'
 		);
 
-		$experiment = $this->registry->get_experiment( 'title-generation' );
-		$this->assertNotNull( $experiment, 'Title generation experiment should exist' );
-		$this->assertEquals( 'title-generation', $experiment->get_id() );
+		$abilities_explorer_experiment = $this->registry->get_experiment( 'abilities-explorer' );
+		$this->assertNotNull( $abilities_explorer_experiment, 'Abilities explorer experiment should exist' );
+		$this->assertEquals( 'abilities-explorer', $abilities_explorer_experiment->get_id() );
+
+		$excerpt_experiment = $this->registry->get_experiment( 'excerpt-generation' );
+		$this->assertNotNull( $excerpt_experiment, 'Excerpt generation experiment should exist' );
+		$this->assertEquals( 'excerpt-generation', $excerpt_experiment->get_id() );
+
+		$image_experiment = $this->registry->get_experiment( 'image-generation' );
+		$this->assertNotNull( $image_experiment, 'Image generation experiment should exist' );
+		$this->assertEquals( 'image-generation', $image_experiment->get_id() );
+
+		$summarization_experiment = $this->registry->get_experiment( 'summarization' );
+		$this->assertNotNull( $summarization_experiment, 'Summarization experiment should exist' );
+		$this->assertEquals( 'summarization', $summarization_experiment->get_id() );
+
+		$title_experiment = $this->registry->get_experiment( 'title-generation' );
+		$this->assertNotNull( $title_experiment, 'Title generation experiment should exist' );
+		$this->assertEquals( 'title-generation', $title_experiment->get_id() );
 	}
 
 	/**
@@ -225,7 +257,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 
 		add_action(
 			'ai_experiments_initialized',
-			function () use ( &$hook_fired ) {
+			static function () use ( &$hook_fired ) {
 				$hook_fired = true;
 			}
 		);

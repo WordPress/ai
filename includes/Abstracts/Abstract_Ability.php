@@ -55,6 +55,18 @@ abstract class Abstract_Ability extends WP_Ability {
 	}
 
 	/**
+	 * Returns the REST API path of the ability.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param string $experiment_id The ID of the experiment.
+	 * @return string The REST API path of the ability.
+	 */
+	public static function path( string $experiment_id = '' ): string {
+		return 'wp-abilities/v1/abilities/ai/' . $experiment_id . '/run';
+	}
+
+	/**
 	 * Returns the input schema of the ability.
 	 *
 	 * @since 0.1.0
@@ -106,12 +118,14 @@ abstract class Abstract_Ability extends WP_Ability {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
-	 *                              attempts to load `system-instruction.php` or `prompt.php`.
+	 * @param string|null            $filename Optional. Explicit filename to load. If not provided,
+	 *                                         attempts to load `system-instruction.php` or `prompt.php`.
+	 * @param array<string, mixed>   $data     Optional. Data to expose to the system instruction file.
+	 *                                         This data will be extracted as variables available in the file scope.
 	 * @return string The system instruction for the feature.
 	 */
-	public function get_system_instruction( ?string $filename = null ): string {
-		return $this->load_system_instruction_from_file( $filename );
+	public function get_system_instruction( ?string $filename = null, array $data = array() ): string {
+		return $this->load_system_instruction_from_file( $filename, $data );
 	}
 
 	/**
@@ -123,13 +137,19 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * return 'Your system instruction text here...';
 	 * ```
 	 *
+	 * If data is provided, it will be extracted as variables available in the file scope.
+	 * For example, if you pass `array( 'length' => 'short' )`, the variable `$length`
+	 * will be available in the system instruction file.
+	 *
 	 * @since 0.1.0
 	 *
-	 * @param string|null $filename Optional. Explicit filename to load. If not provided,
-	 *                              attempts to load `system-instruction.php`.
+	 * @param string|null          $filename Optional. Explicit filename to load. If not provided,
+	 *                                       attempts to load `system-instruction.php`.
+	 * @param array<string, mixed> $data     Optional. Data to expose to the system instruction file.
+	 *                                       This data will be extracted as variables available in the file scope.
 	 * @return string The contents of the file, or empty string if file not found.
 	 */
-	protected function load_system_instruction_from_file( ?string $filename = null ): string {
+	protected function load_system_instruction_from_file( ?string $filename = null, array $data = array() ): string {
 		// Get the feature's directory using reflection.
 		$reflection = new ReflectionClass( $this );
 		$file_name  = $reflection->getFileName();
@@ -139,6 +159,11 @@ abstract class Abstract_Ability extends WP_Ability {
 		}
 
 		$feature_dir = dirname( $file_name );
+
+		// Extract data into variables for use in the included file.
+		if ( ! empty( $data ) ) {
+			extract( $data, EXTR_SKIP ); // phpcs:ignore WordPress.PHP.DontExtract.extract_extract
+		}
 
 		// If explicit filename provided, use it.
 		if ( null !== $filename ) {

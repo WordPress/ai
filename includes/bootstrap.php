@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'AI_EXPERIMENTS_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_VERSION', '0.1.1' );
+	define( 'AI_EXPERIMENTS_VERSION', '0.2.0' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_FILE' ) ) {
 	define( 'AI_EXPERIMENTS_PLUGIN_FILE', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR . 'ai.php' : '' );
@@ -38,7 +38,7 @@ if ( ! defined( 'AI_EXPERIMENTS_MIN_PHP_VERSION' ) ) {
 	define( 'AI_EXPERIMENTS_MIN_PHP_VERSION', '7.4' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_MIN_WP_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '6.8' );
+	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '6.9' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
 	define( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
@@ -97,9 +97,7 @@ function check_php_version(): bool {
  * @return bool True if WordPress version is sufficient, false otherwise.
  */
 function check_wp_version(): bool {
-	global $wp_version;
-
-	if ( version_compare( $wp_version, AI_EXPERIMENTS_MIN_WP_VERSION, '<' ) ) {
+	if ( ! is_wp_version_compatible( AI_EXPERIMENTS_MIN_WP_VERSION ) ) {
 		add_action(
 			'admin_notices',
 			static function () {
