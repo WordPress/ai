@@ -45,12 +45,12 @@ class Admin_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that admin menu is registered.
+	 * Test that admin menu is registered under Tools.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_admin_menu_is_registered() {
-		global $menu;
+		global $submenu;
 
 		// Log in as admin.
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -59,9 +59,10 @@ class Admin_PageTest extends WP_UnitTestCase {
 		$this->admin_page->init();
 		do_action( 'admin_menu' );
 
-		// Check that menu page exists.
-		$menu_slugs = array_column( $menu ?? array(), 2 );
-		$this->assertContains( 'ai-abilities-explorer', $menu_slugs );
+		// Abilities Explorer is a submenu under Tools; submenu slugs are at index 2.
+		$tools_submenus = $submenu['tools.php'] ?? array();
+		$submenu_slugs  = array_column( $tools_submenus, 2 );
+		$this->assertContains( 'ai-abilities-explorer', $submenu_slugs );
 	}
 
 	/**
