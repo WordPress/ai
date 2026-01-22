@@ -124,7 +124,7 @@ class Posts {
 					$details = array();
 
 					if ( in_array( 'content', $fields, true ) ) {
-						$details['content'] = $post->post_content;
+						$details['content'] = post_password_required( $post ) ? '' : $post->post_content;
 					}
 
 					if ( in_array( 'title', $fields, true ) ) {
@@ -150,7 +150,7 @@ class Posts {
 					}
 
 					if ( in_array( 'excerpt', $fields, true ) ) {
-						$details['excerpt'] = $post->post_excerpt;
+						$details['excerpt'] = post_password_required( $post ) ? '' : $post->post_excerpt;
 					}
 
 					// Return the post details.
