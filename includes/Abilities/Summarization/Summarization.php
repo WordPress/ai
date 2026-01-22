@@ -164,8 +164,8 @@ class Summarization extends Abstract_Ability {
 				);
 			}
 
-			// Ensure the user has permission to read this particular post.
-			if ( ! current_user_can( 'read_post', $post_id ) ) {
+			// Ensure the user has permission to edit this particular post.
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
 					esc_html__( 'You do not have permission to summarize this post.', 'ai' )
