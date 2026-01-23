@@ -145,12 +145,11 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 ## [Release steps](https://github.com/wordpress/ai/blob/develop/CONTRIBUTING.md#release-instructions)
 
 - [ ] Branch: Starting from `develop`, cut a release branch named `release/X.Y.Z` for your changes.
-- [ ] Version bump: Bump the version number in `ai.php`, `package-lock.json` (twice), `package.json`, and `readme.txt` if it does not already reflect the version being released.  In `includes/bootstrap.php`, ensure you're updating the `AI_EXPERIMENTS_VERSION` version constant.
+- [ ] Version bump: Bump the version number in `ai.php`, `package-lock.json`, and `readme.txt` if it does not already reflect the version being released.  In `includes/bootstrap.php`, ensure you're updating the `AI_EXPERIMENTS_VERSION` version constant.
 - [ ] Update `@since`: Find all new `@since x.x.x` lines and update those with the new version number in place of `x.x.x`.
 - [ ] Changelog: Add/update the changelog in `CHANGELOG.md` and in `readme.txt`.
 - [ ] Props: update `CREDITS.md` file with any new contributors, confirm maintainers are accurate.
 - [ ] Readme updates: Make any other readme changes as necessary in `README.md` and `readme.txt`.
-- [ ] Roadmap updates: Update `ROADMAP.md` based on what's in/out of this release and planned for upcoming releases.
 - [ ] New files: Check to be sure any new files/paths that are unnecessary in the production version are included in `.gitattributes`.
 - [ ] Merge: Make a non-fast-forward merge from your release branch to `develop` (or merge the pull request), then do the same for `develop` into `trunk` (`git checkout trunk && git merge --no-ff develop`).  `trunk` now contains the stable development version.
 - [ ] Push: Push your trunk branch to GitHub (e.g. `git push origin trunk`).

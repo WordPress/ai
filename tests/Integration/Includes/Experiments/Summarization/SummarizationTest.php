@@ -15,13 +15,13 @@ use WP_UnitTestCase;
 /**
  * Summarization test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -48,7 +48,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -62,7 +62,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Summarization();

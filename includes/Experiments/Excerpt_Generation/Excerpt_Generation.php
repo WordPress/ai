@@ -20,14 +20,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Excerpt generation experiment.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Excerpt_Generation extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
@@ -40,7 +40,7 @@ class Excerpt_Generation extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -50,7 +50,7 @@ class Excerpt_Generation extends Abstract_Experiment {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -66,7 +66,7 @@ class Excerpt_Generation extends Abstract_Experiment {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
