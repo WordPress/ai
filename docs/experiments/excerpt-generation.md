@@ -376,7 +376,7 @@ npm run test:php
 
 ### AI Model Selection
 
-- The ability uses `get_preferred_models()` to determine which AI models to use
+- The ability uses `get_preferred_models_for_text_generation()` to determine which AI models to use
 - Models are tried in order until one succeeds
 - Temperature is set to 0.7 for consistent but creative results
 
