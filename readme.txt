@@ -121,9 +121,12 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 = 0.2.1 - 2026-01-26 =
 
 * **Added:** Introduced a shared `AI_Service` layer to standardize provider access across experiments ([#101](https://github.com/WordPress/ai/pull/101)).
+* **Changed:** Documentation updates ([#195](https://github.com/WordPress/ai/pull/195)).
 * **Fixed:** Guarded against `preg_replace()` returning `null` to prevent content corruption in `normalize_content()` ([#177](https://github.com/WordPress/ai/pull/177)).
 * **Security:** Bumped `diff` from 4.0.2 to 4.0.4 ([#196](https://github.com/WordPress/ai/pull/196)).
-* **Security:** Bumped lodash-es from 4.17.22 to 4.17.23 ([#198](https://github.com/WordPress/ai/pull/198)).
+* **Security:** Bumped `lodash-es` from 4.17.22 to 4.17.23 ([#198](https://github.com/WordPress/ai/pull/198)).
+* **Security:** Bumped `lodash` from 4.17.21 to 4.17.23 ([#199](https://github.com/WordPress/ai/pull/199)).
+
 
 = 0.2.0 – 2026-01-20 =
 
