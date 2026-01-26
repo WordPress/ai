@@ -133,7 +133,7 @@ function get_post_context( int $post_id ): array {
 /**
  * Returns the preferred models for text generation.
  *
- * @since x.x.x
+ * @since 0.2.1
  *
  * @return array<int, array{string, string}> The preferred models for text generation.
  */
@@ -160,7 +160,7 @@ function get_preferred_models_for_text_generation(): array {
 	/**
 	 * Filters the preferred models for text generation.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 * @hook ai_experiments_preferred_models_for_text_generation
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
@@ -197,7 +197,7 @@ function get_preferred_models_for_text_generation(): array {
  *     ->generate_texts();
  * ```
  *
- * @since x.x.x
+ * @since 0.2.1
  *
  * @return \WordPress\AI\Services\AI_Service The AI Service instance.
  */

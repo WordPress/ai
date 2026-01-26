@@ -23,14 +23,14 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
  * Manages AI provider configuration and provides a consistent interface
  * for experimental features to communicate with AI providers.
  *
- * @since x.x.x
+ * @since 0.2.1
  */
 class AI_Service {
 
 	/**
 	 * Singleton instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 *
 	 * @var \WordPress\AI\Services\AI_Service|null
 	 */
@@ -39,7 +39,7 @@ class AI_Service {
 	/**
 	 * Option key mapping from WordPress snake_case to SDK camelCase.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 *
 	 * @var array<string, string>
 	 */
@@ -60,7 +60,7 @@ class AI_Service {
 	/**
 	 * Gets the singleton instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 *
 	 * @return \WordPress\AI\Services\AI_Service The singleton instance.
 	 */
@@ -74,7 +74,7 @@ class AI_Service {
 	/**
 	 * Private constructor to enforce singleton pattern.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 */
 	private function __construct() {}
 
@@ -105,7 +105,7 @@ class AI_Service {
 	 * ) )->generate_texts();
 	 * ```
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 *
 	 * @param string|null          $prompt  Optional. Initial prompt content.
 	 * @param array<string, mixed> $options Optional. Configuration options. {
@@ -147,7 +147,7 @@ class AI_Service {
 	/**
 	 * Maps WordPress snake_case options to SDK camelCase config array.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 *
 	 * @param array<string, mixed> $options The options array with snake_case keys.
 	 * @return array<string, mixed> The mapped config array with camelCase keys.

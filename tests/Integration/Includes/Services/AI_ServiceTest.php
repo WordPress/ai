@@ -16,7 +16,7 @@ use function WordPress\AI\get_ai_service;
 /**
  * AI_Service test case.
  *
- * @since x.x.x
+ * @since 0.2.1
  */
 class AI_Service_Test extends WP_UnitTestCase {
 
@@ -30,7 +30,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Setup test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -40,7 +40,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Teardown test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 */
 	public function tearDown(): void {
 		parent::tearDown();
@@ -49,7 +49,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Test singleton instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 */
 	public function test_get_instance_returns_singleton(): void {
 		$instance1 = AI_Service::get_instance();
@@ -61,7 +61,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Test helper function returns service instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 */
 	public function test_get_ai_service_helper_returns_instance(): void {
 		$service = get_ai_service();
@@ -73,7 +73,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Test create_textgen_prompt returns prompt builder.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 */
 	public function test_create_textgen_prompt_returns_builder(): void {
 		$builder = $this->service->create_textgen_prompt( 'Test prompt' );
@@ -88,7 +88,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Test create_textgen_prompt with options applies configuration.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 */
 	public function test_create_textgen_prompt_with_options(): void {
 		$builder = $this->service->create_textgen_prompt(
@@ -110,7 +110,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Test ai_experiments_service_initialized action can be hooked.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.1
 	 */
 	public function test_init_action_is_hookable(): void {
 		$callback = static function () {};
