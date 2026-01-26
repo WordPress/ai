@@ -26,14 +26,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Image generation experiment.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Image_Generation extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
@@ -48,7 +48,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function register(): void {
 		$this->register_post_meta();
@@ -76,7 +76,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(

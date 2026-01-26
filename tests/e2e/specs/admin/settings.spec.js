@@ -38,7 +38,7 @@ test.describe( 'Plugin settings', () => {
 		await expect(
 			page.locator( '.wrap .notice-error', {
 				hasText:
-					'Before you can enable experiments, you need to ensure you have one or more AI credentials set',
+					'Most experiments require valid AI credentials to function properly. To ensure those work properly, you need to have one or more AI credentials set',
 			} )
 		).toHaveCount( 1 );
 	} );
@@ -82,7 +82,7 @@ test.describe( 'Plugin settings', () => {
 		await expect(
 			page.locator( '.wrap .notice-error', {
 				hasText:
-					'Before you can enable experiments, you need to ensure you have set valid AI credentials',
+					'Most experiments require valid AI credentials to function properly',
 			} )
 		).toHaveCount( 1 );
 	} );

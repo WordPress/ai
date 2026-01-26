@@ -17,14 +17,14 @@ use WordPress\AiClient\Files\DTO\File;
 /**
  * Base64 encoded image import WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Import_Base64_Image extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -89,7 +89,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -132,7 +132,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -207,7 +207,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function permission_callback( $args ) {
 		// Ensure the user has permission to upload files.
@@ -224,7 +224,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -235,7 +235,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * Imports an image from a base64 encoded string into the media library.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $data     The base64 encoded image data to import into the media library.
 	 * @param array<string, mixed> $args The arguments for the image import.

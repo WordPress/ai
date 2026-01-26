@@ -19,6 +19,11 @@ module.exports = {
 			'src/admin/settings',
 			'index.scss'
 		),
+		'experiments/abilities-explorer': path.resolve(
+			process.cwd(),
+			'src/experiments/abilities-explorer',
+			'index.js'
+		),
 		'experiments/example-experiment': path.resolve(
 			process.cwd(),
 			'src/experiments/example-experiment',

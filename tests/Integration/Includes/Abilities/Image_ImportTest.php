@@ -15,13 +15,13 @@ use WP_UnitTestCase;
 /**
  * Test experiment for Image_Import Ability tests.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Test_Image_Import_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
@@ -36,7 +36,7 @@ class Test_Image_Import_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -46,7 +46,7 @@ class Test_Image_Import_Experiment extends Abstract_Experiment {
 /**
  * Image_Import Ability test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Image_ImportTest extends WP_UnitTestCase {
 
@@ -74,7 +74,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -92,7 +92,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -102,7 +102,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -117,7 +117,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -164,7 +164,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -190,7 +190,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles valid base64 data correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_valid_data() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -226,7 +226,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles custom filename, title, and description.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_custom_metadata() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -275,7 +275,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() uses default values when optional parameters are not provided.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_uses_defaults() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -303,7 +303,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when data is invalid base64.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_invalid_base64() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -327,7 +327,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when data is missing.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_without_data() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -349,7 +349,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles different MIME types.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_different_mime_types() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -380,7 +380,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_upload_files_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -399,7 +399,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_without_upload_files_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -419,7 +419,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -438,7 +438,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
