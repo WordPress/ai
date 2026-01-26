@@ -94,7 +94,7 @@ The ability checks permissions based on the input:
 
 - **If `context` is a post ID:**
   - Verifies the post exists
-  - Checks `current_user_can( 'read_post', $post_id )`
+  - Checks `current_user_can( 'edit_post', $post_id )`
   - Ensures the post type has `show_in_rest` enabled
 
 - **If `context` is not a post ID:**
@@ -376,7 +376,7 @@ npm run test:php
 
 ### AI Model Selection
 
-- The ability uses `get_preferred_models()` to determine which AI models to use
+- The ability uses `get_preferred_models_for_text_generation()` to determine which AI models to use
 - Models are tried in order until one succeeds
 - Temperature is set to 0.7 for consistent but creative results
 

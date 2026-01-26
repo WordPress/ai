@@ -2,7 +2,7 @@
 Contributors:      wordpressorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      6.9
-Stable tag:        0.2.0
+Stable tag:        0.2.1
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -64,10 +64,10 @@ The AI Experiments plugin is designed to be studied, extended, and built upon. W
 * **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities
 * **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements
 * **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys
+* **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled)
 
 **Developer Tools Coming Soon:**
 
-* **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled)
 * **MCP Demo** - See how Model Context Protocol integration works with WordPress
 * **Comprehensive Hooks** - Filters and actions throughout the codebase for customization
 
@@ -117,6 +117,16 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 3. AI Credentials settings screen showing API key fields for available AI service providers.
 
 == Changelog ==
+
+= 0.2.1 - 2026-01-26 =
+
+* **Added:** Introduced a shared `AI_Service` layer to standardize provider access across experiments ([#101](https://github.com/WordPress/ai/pull/101)).
+* **Changed:** Documentation updates ([#195](https://github.com/WordPress/ai/pull/195)).
+* **Fixed:** Guarded against `preg_replace()` returning `null` to prevent content corruption in `normalize_content()` ([#177](https://github.com/WordPress/ai/pull/177)).
+* **Security:** Change our user permission checks to use `edit_post` instead of `read_post` ([GHSA-mxf5-gp98-93wv](https://github.com/WordPress/ai/security/advisories/GHSA-mxf5-gp98-93wv)).
+* **Security:** Bumped `diff` from 4.0.2 to 4.0.4 ([#196](https://github.com/WordPress/ai/pull/196)).
+* **Security:** Bumped `lodash-es` from 4.17.22 to 4.17.23 ([#198](https://github.com/WordPress/ai/pull/198)).
+* **Security:** Bumped `lodash` from 4.17.21 to 4.17.23 ([#199](https://github.com/WordPress/ai/pull/199)).
 
 = 0.2.0 – 2026-01-20 =
 
