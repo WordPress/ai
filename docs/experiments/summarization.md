@@ -126,7 +126,7 @@ The ability checks permissions based on the input:
 
 - **If `context` is a post ID:**
   - Verifies the post exists
-  - Checks `current_user_can( 'read_post', $post_id )`
+  - Checks `current_user_can( 'edit_post', $post_id )`
   - Ensures the post type has `show_in_rest` enabled
 
 - **If `context` is not a post ID:**
