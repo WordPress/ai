@@ -118,6 +118,13 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 == Changelog ==
 
+= 0.2.1 - 2026-01-26 =
+
+* **Added:** Introduced a shared `AI_Service` layer to standardize provider access across experiments ([#101](https://github.com/WordPress/ai/pull/101)).
+* **Fixed:** Guarded against `preg_replace()` returning `null` to prevent content corruption in `normalize_content()` ([#177](https://github.com/WordPress/ai/pull/177)).
+* **Security:** Bumped `diff` from 4.0.2 to 4.0.4 ([#196](https://github.com/WordPress/ai/pull/196)).
+* **Security:** Bumped lodash-es from 4.17.22 to 4.17.23 ([#198](https://github.com/WordPress/ai/pull/198)).
+
 = 0.2.0 – 2026-01-20 =
 
 * **Added:** Core excerpt generation support for AI-powered summaries, including a new Excerpt Generation Experiment with editor UI ([#96](https://github.com/WordPress/ai/pull/96), [#143](https://github.com/WordPress/ai/pull/143)).
