@@ -235,24 +235,24 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_preferred_models() returns an array.
+	 * Test that get_preferred_models_for_text_generation() returns an array.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_get_preferred_models_returns_array() {
-		$result = \WordPress\AI\get_preferred_models();
+	public function test_get_preferred_models_for_text_generation_returns_array() {
+		$result = \WordPress\AI\get_preferred_models_for_text_generation();
 
 		$this->assertIsArray( $result, 'Should return an array' );
 		$this->assertNotEmpty( $result, 'Should not be empty' );
 	}
 
 	/**
-	 * Test that get_preferred_models() returns expected default models.
+	 * Test that get_preferred_models_for_text_generation() returns expected default models.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_get_preferred_models_returns_default_models() {
-		$result = \WordPress\AI\get_preferred_models();
+	public function test_get_preferred_models_for_text_generation_returns_default_models() {
+		$result = \WordPress\AI\get_preferred_models_for_text_generation();
 
 		$this->assertCount( 4, $result, 'Should have 4 preferred models' );
 
@@ -282,13 +282,13 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_preferred_models() applies filter.
+	 * Test that get_preferred_models_for_text_generation() applies filter.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_get_preferred_models_applies_filter() {
+	public function test_get_preferred_models_for_text_generation_applies_filter() {
 		add_filter(
-			'ai_experiments_preferred_models',
+			'ai_experiments_preferred_models_for_text_generation',
 			function( $models ) {
 				// Add a custom model.
 				$models[] = array(
@@ -299,23 +299,23 @@ class HelpersTest extends WP_UnitTestCase {
 			}
 		);
 
-		$result = \WordPress\AI\get_preferred_models();
+		$result = \WordPress\AI\get_preferred_models_for_text_generation();
 
 		$this->assertCount( 5, $result, 'Should have 5 models after filter' );
 		$this->assertEquals( 'custom', $result[4][0], 'Fifth model provider should be custom' );
 		$this->assertEquals( 'custom-model', $result[4][1], 'Fifth model name should be custom-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_models' );
+		remove_all_filters( 'ai_experiments_preferred_models_for_text_generation' );
 	}
 
 	/**
-	 * Test that get_preferred_models() filter can replace models.
+	 * Test that get_preferred_models_for_text_generation() filter can replace models.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_get_preferred_models_filter_can_replace_models() {
+	public function test_get_preferred_models_for_text_generation_filter_can_replace_models() {
 		add_filter(
-			'ai_experiments_preferred_models',
+			'ai_experiments_preferred_models_for_text_generation',
 			function( $models ) {
 				// Replace with a single model.
 				return array(
@@ -327,13 +327,13 @@ class HelpersTest extends WP_UnitTestCase {
 			}
 		);
 
-		$result = \WordPress\AI\get_preferred_models();
+		$result = \WordPress\AI\get_preferred_models_for_text_generation();
 
 		$this->assertCount( 1, $result, 'Should have 1 model after filter replacement' );
 		$this->assertEquals( 'test', $result[0][0], 'Model provider should be test' );
 		$this->assertEquals( 'test-model', $result[0][1], 'Model name should be test-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_models' );
+		remove_all_filters( 'ai_experiments_preferred_models_for_text_generation' );
 	}
 
 	/**
