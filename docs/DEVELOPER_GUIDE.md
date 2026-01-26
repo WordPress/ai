@@ -37,8 +37,6 @@ cd ai
 composer install && npm i && npm run build
 ```
 
-> **Note:** The `wordpress/wp-ai-client` package will be added to `composer.json` once it's officially released. For now, the plugin scaffolding is ready for integration.
-
 3. **Activate the plugin:**
 
 Through WordPress admin or via WP-CLI:
