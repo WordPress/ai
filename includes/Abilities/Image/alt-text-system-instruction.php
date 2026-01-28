@@ -21,8 +21,6 @@ Requirements for the alt text:
 - Consider context: If context is provided, ensure the alt text is relevant to the surrounding content
 - Plain text only: No markdown, quotes, or special formatting
 
-For decorative images that convey no meaningful information, respond with an empty string.
-
 For images containing text, include the text in your description if it's essential to understanding the image.
 
 Respond with only the alt text, nothing else.
