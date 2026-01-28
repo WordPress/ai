@@ -278,7 +278,7 @@ function get_preferred_vision_models(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred vision models.
 	 * @return array<int, array{string, string}> The filtered preferred vision models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
+	return (array) apply_filters( 'ai_experiments_preferred_vision_models', $preferred_models );
 }
 
 /**
