@@ -20,7 +20,10 @@ import { store as noticesStore } from '@wordpress/notices';
 /**
  * Internal dependencies
  */
-import type { ImageBlockAttributes } from '../types';
+import type {
+	AltTextGenerationAbilityInput,
+	ImageBlockAttributes,
+} from '../types';
 import { runAbility } from '../../../utils/run-ability';
 
 interface AltTextControlsProps {
@@ -39,7 +42,7 @@ async function generateAltText(
 	attachmentId: number | undefined,
 	imageUrl: string | undefined
 ): Promise< string > {
-	const params: Record< string, any > = {};
+	const params: AltTextGenerationAbilityInput = {};
 
 	if ( attachmentId ) {
 		params.attachment_id = attachmentId;
@@ -76,6 +79,11 @@ function getButtonLabel( hasExistingAlt: boolean ): string {
  * AltTextControls component.
  *
  * Adds a "Generate Alt Text" button to the image block inspector panel.
+ *
+ * @param {AltTextControlsProps} props               The component props.
+ * @param {ImageBlockAttributes} props.attributes    The block attributes.
+ * @param {Function}             props.setAttributes The function to set the block attributes.
+ * @return {JSX.Element|null} The component.
  */
 export function AltTextControls( {
 	attributes,
@@ -150,7 +158,7 @@ export function AltTextControls( {
 		<InspectorControls>
 			<div className="ai-alt-text-controls" style={ { padding: '16px' } }>
 				<h3 style={ { marginTop: 0, marginBottom: '8px' } }>
-					{ __( 'AI Alt Text', 'ai' ) }
+					{ __( 'AI Alternative Text', 'ai' ) }
 				</h3>
 
 				{ /* Error display */ }
@@ -159,9 +167,8 @@ export function AltTextControls( {
 						status="error"
 						isDismissible
 						onRemove={ () => setError( null ) }
-						style={ { marginBottom: '12px' } }
 					>
-						{ error }
+						<div style={ { marginBottom: '12px' } }>{ error }</div>
 					</Notice>
 				) }
 

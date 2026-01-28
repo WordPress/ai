@@ -11,6 +11,7 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import type { AltTextGenerationAbilityInput } from './types';
 import { runAbility } from '../../utils/run-ability';
 
 type AbilityResponse = {
@@ -248,9 +249,10 @@ function createFieldContext(
 }
 
 function getAttachmentIdFromDetails( sidebar: HTMLElement ): number | null {
+	const data = sidebar.dataset as { id?: string; attachmentId?: string };
 	const datasetId =
-		sidebar.dataset?.id ??
-		sidebar.dataset?.attachmentId ??
+		data.id ??
+		data.attachmentId ??
 		sidebar.getAttribute( 'data-id' ) ??
 		sidebar.getAttribute( 'data-attachment-id' );
 	const parsedDataset = parseNumeric( datasetId );
@@ -383,7 +385,7 @@ function getIdFromUrl( url: string ): number | null {
 }
 
 async function requestAltText( context: FieldContext ): Promise< string > {
-	const params: Record< string, unknown > = {};
+	const params: AltTextGenerationAbilityInput = {};
 	const attachmentId = context.getAttachmentId();
 
 	if ( attachmentId ) {

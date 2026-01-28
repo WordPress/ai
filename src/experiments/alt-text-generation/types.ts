@@ -3,6 +3,16 @@
  */
 
 /**
+ * Input parameters for the ai/alt-text-generation ability.
+ */
+export interface AltTextGenerationAbilityInput {
+	attachment_id?: number;
+	image_url?: string;
+	context?: string;
+	[ key: string ]: string | number | undefined;
+}
+
+/**
  * Image block attributes interface.
  */
 export interface ImageBlockAttributes {
