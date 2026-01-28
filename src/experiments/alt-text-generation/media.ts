@@ -76,7 +76,8 @@ class AltTextMediaControls {
 			) ??
 			document.querySelector< HTMLTextAreaElement >(
 				'#attachment-details-alt-text'
-			);
+			) ??
+			document.querySelector< HTMLTextAreaElement >( '#attachment_alt' );
 		const container = document.querySelector< HTMLDivElement >(
 			'.ai-alt-text-media-actions'
 		);
@@ -269,6 +270,11 @@ window.jQuery?.( document ).ready( function () {
 
 	if ( ! data?.enabled ) {
 		return;
+	}
+
+	// When on the attachment edit screen.
+	if ( document.querySelector( '#ai_alt_text_generation' ) ) {
+		initAltTextMediaControls();
 	}
 
 	const { wp: wpMedia } = window;

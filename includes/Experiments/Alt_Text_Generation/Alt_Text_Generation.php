@@ -53,6 +53,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
 		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
+		add_action( 'add_meta_boxes_attachment', array( $this, 'setup_attachment_meta_box' ) );
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
 	}
 
@@ -145,6 +146,47 @@ class Alt_Text_Generation extends Abstract_Experiment {
 		);
 
 		$this->media_assets_enqueued = true;
+	}
+
+	/**
+	 * Sets up the attachment meta box.
+	 *
+	 * Adds a meta box to the attachment edit screen that contains
+	 * the Generate/Regenerate button.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post The attachment post.
+	 */
+	public function setup_attachment_meta_box( \WP_Post $post ): void {
+		if (
+			! $this->is_enabled() ||
+			! wp_attachment_is_image( $post )
+		) {
+			return;
+		}
+
+		add_meta_box(
+			'ai_alt_text_generation',
+			__( 'AI Alt Text', 'ai' ),
+			array( $this, 'render_attachment_meta_box' ),
+			'attachment',
+		);
+	}
+
+	/**
+	 * Renders the attachment meta box content.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post The attachment post.
+	 */
+	public function render_attachment_meta_box( \WP_Post $post ): void {
+		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
+
+		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 150px;">';
+		echo '<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . esc_attr( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
+		echo '</div>';
 	}
 
 	/**
