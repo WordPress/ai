@@ -7,11 +7,13 @@
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities\Alt_Text_Generation;
+namespace WordPress\AI\Abilities\Image;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
+
+use function WordPress\AI\get_preferred_vision_models;
 
 /**
  * Alt text generation WordPress Ability.
@@ -32,11 +34,9 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected const MAX_ALT_TEXT_LENGTH = 125;
 
 	/**
-	 * Returns the input schema of the ability.
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @return array<string, mixed> The input schema of the ability.
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -62,11 +62,9 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the output schema of the ability.
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @return array<string, mixed> The output schema of the ability.
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -81,14 +79,12 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Executes the ability with the given input arguments.
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @param mixed $input The input arguments to the ability.
-	 * @return array{alt_text: string}|\WP_Error The result of the ability execution, or a WP_Error on failure.
 	 */
 	protected function execute_callback( $input ) {
+		// Default arguments.
 		$args = wp_parse_args(
 			$input,
 			array(
@@ -98,12 +94,14 @@ class Alt_Text_Generation extends Abstract_Ability {
 			),
 		);
 
+		// Get the image reference.
 		$image_reference = $this->get_image_reference( $args );
 
 		if ( is_wp_error( $image_reference ) ) {
 			return $image_reference;
 		}
 
+		// Generate the alt text.
 		$result = $this->generate_alt_text( $image_reference, $args['context'] );
 
 		if ( is_wp_error( $result ) ) {
@@ -117,6 +115,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			);
 		}
 
+		// Return the alt text in the format the Ability expects.
 		return array(
 			'alt_text' => sanitize_text_field( $result ),
 		);
@@ -131,16 +130,19 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @return array{reference: string}|\WP_Error The prepared reference payload or WP_Error on failure.
 	 */
 	protected function get_image_reference( array $args ) {
+		// If an attachment ID is provided, get the attachment from the database.
 		if ( ! empty( $args['attachment_id'] ) ) {
 			return $this->get_attachment_reference( absint( $args['attachment_id'] ) );
 		}
 
+		// If an image URL is provided, get the image from the URL.
 		if ( ! empty( $args['image_url'] ) ) {
 			// Preserve data URIs as-is so the AI client can read the inline bytes.
 			if ( 0 === strpos( $args['image_url'], 'data:' ) ) {
 				return $this->prepare_reference_result( $args['image_url'] );
 			}
 
+			// Try to map the URL to a local path.
 			$path = $this->maybe_map_url_to_local_path( $args['image_url'] );
 
 			if ( $path ) {
@@ -150,6 +152,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 				}
 			}
 
+			// Download the remote image to a temporary file.
 			$downloaded = $this->download_remote_image_to_temp_file( $args['image_url'] );
 
 			if ( is_wp_error( $downloaded ) ) {
@@ -189,13 +192,9 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		$result = AI_Client::prompt_with_wp_error( $prompt )
 			->with_file( $image_reference['reference'] )
-			->using_system_instruction( $this->get_system_instruction() )
+			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
 			->using_temperature( 0.3 )
-			->using_model_preference(
-				array( 'anthropic', 'claude-haiku-4-5-20251001' ),
-				array( 'openai', 'gpt-5-nano' ),
-				array( 'google', 'gemini-2.5-flash' )
-			)
+			->using_model_preference( ...get_preferred_vision_models() )
 			->generate_text();
 
 		if ( is_wp_error( $result ) ) {
@@ -215,7 +214,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns a data URI for an attachment.
+	 * Converts an attachment to a data URI.
 	 *
 	 * @since x.x.x
 	 *
@@ -225,6 +224,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function get_attachment_reference( int $attachment_id ) {
 		$attachment = get_post( $attachment_id );
 
+		// Ensure the attachment is valid.
 		if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
 			return new WP_Error(
 				'invalid_attachment',
@@ -233,6 +233,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			);
 		}
 
+		// Ensure the attachment is an image.
 		if ( ! wp_attachment_is_image( $attachment_id ) ) {
 			return new WP_Error(
 				'not_an_image',
@@ -240,6 +241,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			);
 		}
 
+		// Try and get the data URI from the file path.
 		$file_path = get_attached_file( $attachment_id );
 		if ( $file_path && file_exists( $file_path ) ) {
 			$data_uri = $this->file_to_data_uri( $file_path );
@@ -248,6 +250,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			}
 		}
 
+		// If the file path doesn't exist, try and use the image src.
 		$image_src = wp_get_attachment_image_src( $attachment_id, 'large' );
 
 		if ( ! $image_src ) {
@@ -423,13 +426,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			return;
 		}
 
-		if ( function_exists( 'wp_delete_file' ) ) {
-			wp_delete_file( $file_path );
-			return;
-		}
-
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink, WordPress.PHP.NoSilencedErrors.Discouraged, Generic.PHP.NoSilencedErrors.Forbidden -- Fallback cleanup for temp files.
-		@unlink( $file_path );
+		wp_delete_file( $file_path );
 	}
 
 	/**
@@ -469,12 +466,9 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the permission callback of the ability.
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @param mixed $args The input arguments to the ability.
-	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	protected function permission_callback( $args ) {
 		$attachment_id = isset( $args['attachment_id'] ) ? absint( $args['attachment_id'] ) : null;
@@ -509,11 +503,9 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the meta of the ability.
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @return array<string, mixed> The meta of the ability.
 	 */
 	protected function meta(): array {
 		return array(

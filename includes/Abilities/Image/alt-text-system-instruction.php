@@ -2,7 +2,7 @@
 /**
  * System instruction for the Alt Text Generation ability.
  *
- * @package WordPress\AI\Abilities\Alt_Text_Generation
+ * @package WordPress\AI\Abilities\Image
  */
 
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
