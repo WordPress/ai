@@ -53,6 +53,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
 		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
+		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
 	}
 
 	/**
@@ -144,5 +145,35 @@ class Alt_Text_Generation extends Abstract_Experiment {
 		);
 
 		$this->media_assets_enqueued = true;
+	}
+
+	/**
+	 * Adds a button to the media modal to generate alt text.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $fields The attachment fields.
+	 * @param \WP_Post|null $post The attachment post.
+	 * @return array<string, mixed> The attachment fields with the button added.
+	 */
+	public function add_button_to_media_modal( array $fields, ?\WP_Post $post ): array {
+		if (
+			! $this->is_enabled() ||
+			null === $post ||
+			! wp_attachment_is_image( $post )
+		) {
+			return $fields;
+		}
+
+		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
+
+		$fields['ai_alt_text'] = array(
+			'label'        => __( 'AI Alt Text', 'ai' ),
+			'input'        => 'html',
+			'show_in_edit' => false,
+			'html'         => '<div class="ai-alt-text-media-actions"><button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . esc_attr( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p></div>',
+		);
+
+		return $fields;
 	}
 }

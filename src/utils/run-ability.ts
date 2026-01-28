@@ -27,7 +27,7 @@ type RunAbilityOptions = {
 };
 
 interface WindowWithAbilities extends Window {
-	wp?: {
+	wp?: Window[ 'wp' ] & {
 		abilities?: {
 			executeAbility?: (
 				ability: string,

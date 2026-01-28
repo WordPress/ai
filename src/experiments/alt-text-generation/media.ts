@@ -5,7 +5,6 @@
 /**
  * WordPress dependencies
  */
-import domReady from '@wordpress/dom-ready';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -27,147 +26,124 @@ type MediaData = {
 	enabled: boolean;
 };
 
+type WordPressMedia = {
+	media?: {
+		view?: {
+			Modal: {
+				prototype: {
+					on: ( event: string, cb: () => void ) => void;
+				};
+			};
+		};
+		frame?: { on: ( event: string, cb: unknown ) => void };
+	};
+	Uploader?: { queue?: { on: ( event: string, cb: unknown ) => void } };
+};
+
 declare global {
 	interface Window {
 		aiAltTextGenerationMediaData?: MediaData;
+		wp?: WordPressMedia;
+		jQuery?: ( selector: Document | Element | string ) => {
+			ready: ( fn: () => void ) => void;
+		};
 	}
 }
 
 const ABILITY_NAME = 'ai/alt-text-generation';
-const MEDIA_MODAL_SELECTOR =
-	'.media-sidebar .setting[data-setting="alt"] textarea';
-const ATTACHMENT_EDIT_SELECTOR = '#attachment_alt';
-
-class AltTextFieldObserver {
-	private processed = new WeakSet< HTMLTextAreaElement >();
-	private observer?: MutationObserver;
-
-	public start(): void {
-		this.scan( document );
-		this.observe();
-	}
-
-	private observe(): void {
-		if ( this.observer ) {
-			return;
-		}
-
-		if ( typeof MutationObserver === 'undefined' ) {
-			return;
-		}
-
-		this.observer = new MutationObserver( ( mutations ) => {
-			for ( const mutation of mutations ) {
-				mutation.addedNodes.forEach( ( node ) => {
-					if ( node instanceof HTMLElement ) {
-						this.scan( node );
-					}
-				} );
-			}
-		} );
-
-		this.observer.observe( document.body, {
-			childList: true,
-			subtree: true,
-		} );
-	}
-
-	private scan( root: ParentNode ): void {
-		this.queryAltTextFields( root ).forEach( ( textarea ) => {
-			if ( this.processed.has( textarea ) ) {
-				return;
-			}
-
-			const context = createFieldContext( textarea );
-
-			if ( ! context ) {
-				return;
-			}
-
-			this.processed.add( textarea );
-			new AltTextMediaControls( textarea, context );
-		} );
-	}
-
-	private queryAltTextFields(
-		root: ParentNode
-	): Array< HTMLTextAreaElement > {
-		const fields: Array< HTMLTextAreaElement > = [];
-		const selectors = [ MEDIA_MODAL_SELECTOR, ATTACHMENT_EDIT_SELECTOR ];
-
-		selectors.forEach( ( selector ) => {
-			root.querySelectorAll< HTMLTextAreaElement >( selector ).forEach(
-				( field ) => {
-					fields.push( field );
-				}
-			);
-		} );
-
-		return fields;
-	}
-}
 
 class AltTextMediaControls {
-	private textarea: HTMLTextAreaElement;
 	private context: FieldContext;
-	private container: HTMLDivElement;
-	private button: HTMLButtonElement;
-	private status: HTMLParagraphElement;
-	private spinner: HTMLSpanElement;
+	private textarea: HTMLTextAreaElement | null = null;
+	private button: HTMLButtonElement | null = null;
+	private spinner: HTMLSpanElement | null = null;
+	private status: HTMLParagraphElement | null = null;
 	private isGenerating = false;
 
-	public constructor( textarea: HTMLTextAreaElement, context: FieldContext ) {
-		this.textarea = textarea;
-		this.context = context;
-		this.container = document.createElement( 'div' );
-		this.container.className = 'ai-alt-text-media-actions';
-		this.container.style.marginTop = '8px';
+	/**
+	 * Constructs a new AltTextMediaControls instance.
+	 *
+	 * @since x.x.x
+	 */
+	public constructor() {
+		this.context = {
+			getAttachmentId: () => null,
+			getImageUrl: () => null,
+		};
+		const textarea =
+			document.querySelector< HTMLTextAreaElement >(
+				'#attachment-details-two-column-alt-text'
+			) ??
+			document.querySelector< HTMLTextAreaElement >(
+				'#attachment-details-alt-text'
+			);
+		const container = document.querySelector< HTMLDivElement >(
+			'.ai-alt-text-media-actions'
+		);
+		const button = document.querySelector< HTMLButtonElement >(
+			'#ai-alt-text-generate-button'
+		);
 
-		this.button = document.createElement( 'button' );
-		this.button.type = 'button';
-		this.button.className = 'button button-secondary';
-		this.button.addEventListener( 'click', () => {
-			void this.handleGenerate();
-		} );
-		this.container.appendChild( this.button );
-
-		this.spinner = document.createElement( 'span' );
-		this.spinner.className = 'spinner';
-		this.spinner.setAttribute( 'aria-hidden', 'true' );
-		this.spinner.style.marginLeft = '8px';
-		this.container.appendChild( this.spinner );
-
-		this.status = document.createElement( 'p' );
-		this.status.className = 'description';
-		this.status.style.marginTop = '6px';
-		this.status.style.fontSize = '12px';
-		this.status.setAttribute( 'aria-live', 'polite' );
-		this.container.appendChild( this.status );
-
-		const description = getDescriptionElement( textarea );
-
-		if ( description ) {
-			description.insertAdjacentElement( 'beforebegin', this.container );
-		} else {
-			textarea.insertAdjacentElement( 'afterend', this.container );
+		if ( ! textarea || ! container || ! button ) {
+			return;
 		}
 
-		this.updateButtonLabel();
+		this.textarea = textarea;
+		this.button = button;
+		this.spinner = container.querySelector< HTMLSpanElement >( '.spinner' );
+		this.status =
+			container.querySelector< HTMLParagraphElement >( '.description' );
+
+		button.addEventListener( 'click', ( e ) => {
+			const postID = ( e.target as HTMLButtonElement ).getAttribute(
+				'data-attachment-id'
+			);
+
+			if ( postID ) {
+				this.context = {
+					getAttachmentId: () => parseInt( postID, 10 ),
+					getImageUrl: () => null,
+				};
+			}
+
+			void this.handleGenerate();
+		} );
 
 		textarea.addEventListener( 'input', () => {
 			this.updateButtonLabel();
 		} );
 	}
 
+	/**
+	 * Updates the button label based on the textarea value.
+	 *
+	 * @since x.x.x
+	 */
 	private updateButtonLabel(): void {
+		if ( ! this.textarea || ! this.button ) {
+			return;
+		}
+
 		const hasAlt = this.textarea.value.trim().length > 0;
 		this.button.textContent = hasAlt
-			? __( 'Regenerate Alt Text', 'ai' )
-			: __( 'Generate Alt Text', 'ai' );
+			? __( 'Regenerate', 'ai' )
+			: __( 'Generate', 'ai' );
 	}
 
+	/**
+	 * Handles the generate button click.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return The generated alt text.
+	 */
 	private async handleGenerate(): Promise< void > {
-		if ( this.isGenerating ) {
+		if (
+			this.isGenerating ||
+			! this.textarea ||
+			! this.button ||
+			! this.spinner
+		) {
 			return;
 		}
 
@@ -197,193 +173,32 @@ class AltTextMediaControls {
 		}
 	}
 
+	/**
+	 * Sets the status message.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param message The message to set.
+	 * @param isError Whether the message is an error.
+	 */
 	private setStatus( message: string, isError = false ): void {
+		if ( ! this.status ) {
+			return;
+		}
+
 		this.status.textContent = message;
 		this.status.style.color = isError ? '#b32d2e' : '#646970';
 	}
 }
 
-function getDescriptionElement(
-	textarea: HTMLTextAreaElement
-): HTMLElement | null {
-	const describedBy = textarea.getAttribute( 'aria-describedby' );
-
-	if ( describedBy ) {
-		const firstId = describedBy.split( /\s+/ ).find( Boolean );
-		if ( firstId ) {
-			const described = document.getElementById( firstId );
-			if ( described ) {
-				return described;
-			}
-		}
-	}
-
-	return (
-		textarea.closest( '.setting' )?.querySelector( '.description' ) ?? null
-	);
-}
-
-function createFieldContext(
-	textarea: HTMLTextAreaElement
-): FieldContext | null {
-	const mediaSidebar = textarea.closest< HTMLElement >( '.media-sidebar' );
-
-	if ( mediaSidebar ) {
-		const fieldNameId = getAttachmentIdFromFieldName( textarea );
-
-		return {
-			getAttachmentId: () =>
-				fieldNameId ?? getAttachmentIdFromDetails( mediaSidebar ),
-			getImageUrl: () => getFileUrlFromDetails( mediaSidebar ),
-		};
-	}
-
-	if ( textarea.matches( ATTACHMENT_EDIT_SELECTOR ) ) {
-		return {
-			getAttachmentId: () => getAttachmentIdFromEditScreen(),
-			getImageUrl: () => getAttachmentUrlFromEditScreen(),
-		};
-	}
-
-	return null;
-}
-
-function getAttachmentIdFromDetails( sidebar: HTMLElement ): number | null {
-	const data = sidebar.dataset as { id?: string; attachmentId?: string };
-	const datasetId =
-		data.id ??
-		data.attachmentId ??
-		sidebar.getAttribute( 'data-id' ) ??
-		sidebar.getAttribute( 'data-attachment-id' );
-	const parsedDataset = parseNumeric( datasetId );
-
-	if ( parsedDataset ) {
-		return parsedDataset;
-	}
-
-	const details =
-		sidebar.querySelector< HTMLElement >( '.attachment-details' ) ??
-		sidebar;
-	const editLink =
-		details.querySelector< HTMLAnchorElement >( '.edit-attachment' );
-	const idFromLink = editLink ? getIdFromUrl( editLink.href ) : null;
-
-	if ( idFromLink ) {
-		return idFromLink;
-	}
-
-	const deleteButton =
-		details.querySelector< HTMLElement >( '.delete-attachment' );
-	const deleteId = deleteButton?.getAttribute( 'data-id' );
-
-	if ( deleteId ) {
-		const parsedDelete = parseNumeric( deleteId );
-		if ( parsedDelete ) {
-			return parsedDelete;
-		}
-	}
-
-	const hiddenId = sidebar.querySelector< HTMLInputElement >(
-		'input[name="id"], input[name="attachment[id]"]'
-	);
-	const parsedHidden = parseNumeric( hiddenId?.value ?? null );
-
-	if ( parsedHidden ) {
-		return parsedHidden;
-	}
-
-	const compatField = sidebar.querySelector< HTMLInputElement >(
-		'input[name^="attachments["]'
-	);
-
-	if ( compatField ) {
-		const match = compatField.name.match( /^attachments\[(\d+)\]/ );
-		if ( match ) {
-			return parseNumeric( match[ 1 ] );
-		}
-	}
-
-	return null;
-}
-
-function getFileUrlFromDetails( sidebar: HTMLElement ): string | null {
-	const copyField = sidebar.querySelector< HTMLInputElement >(
-		'.attachment-details-copy-link'
-	);
-	if ( copyField?.value ) {
-		return copyField.value;
-	}
-
-	const thumbnail = sidebar.querySelector< HTMLImageElement >(
-		'.thumbnail img, .thumbnail-image img'
-	);
-	if ( thumbnail?.src && ! thumbnail.src.startsWith( 'blob:' ) ) {
-		return thumbnail.src;
-	}
-
-	return null;
-}
-
-function getAttachmentIdFromEditScreen(): number | null {
-	const postIdInput = document.querySelector< HTMLInputElement >(
-		'#post_ID, input[name="post_ID"]'
-	);
-	return parseNumeric( postIdInput?.value ?? null );
-}
-
-function getAttachmentUrlFromEditScreen(): string | null {
-	const urlInput = document.querySelector< HTMLInputElement >(
-		'#attachment_url input[type="text"], #attachment_url textarea'
-	);
-	if ( urlInput?.value ) {
-		return urlInput.value;
-	}
-
-	const urlAnchor =
-		document.querySelector< HTMLAnchorElement >( '#attachment_url a' );
-	if ( urlAnchor?.href ) {
-		return urlAnchor.href;
-	}
-
-	return null;
-}
-
-function parseNumeric( value: string | null | undefined ): number | null {
-	if ( ! value ) {
-		return null;
-	}
-
-	const int = parseInt( value, 10 );
-
-	return Number.isFinite( int ) ? int : null;
-}
-
-function getAttachmentIdFromFieldName(
-	field: HTMLTextAreaElement
-): number | null {
-	const nameAttr = field.getAttribute( 'name' );
-
-	if ( ! nameAttr ) {
-		return null;
-	}
-
-	const match = nameAttr.match( /^attachments\[(\d+)\]/ );
-
-	return match ? parseNumeric( match[ 1 ] ) : null;
-}
-
-function getIdFromUrl( url: string ): number | null {
-	try {
-		const parsed = new URL( url, window.location.origin );
-		const postId =
-			parsed.searchParams.get( 'post' ) ||
-			parsed.searchParams.get( 'item' );
-		return parseNumeric( postId );
-	} catch ( error ) {
-		return null;
-	}
-}
-
+/**
+ * Requests alt text from the AI ability.
+ *
+ * @since x.x.x
+ *
+ * @param context The field context.
+ * @return The generated alt text.
+ */
 async function requestAltText( context: FieldContext ): Promise< string > {
 	const params: AltTextGenerationAbilityInput = {};
 	const attachmentId = context.getAttachmentId();
@@ -415,6 +230,14 @@ async function requestAltText( context: FieldContext ): Promise< string > {
 	throw new Error( __( 'Failed to generate alt text.', 'ai' ) );
 }
 
+/**
+ * Gets the error message from the error object.
+ *
+ * @since x.x.x
+ *
+ * @param error The error object.
+ * @return The error message.
+ */
 function getErrorMessage( error: unknown ): string {
 	if (
 		error &&
@@ -431,13 +254,40 @@ function getErrorMessage( error: unknown ): string {
 	);
 }
 
-domReady( () => {
+/**
+ * Initializes the AltTextMediaControls instance.
+ *
+ * @since x.x.x
+ */
+function initAltTextMediaControls(): void {
+	new AltTextMediaControls();
+}
+
+// Purposely using document.ready here as domReady fires before wp.media is fully loaded.
+window.jQuery?.( document ).ready( function () {
 	const data = window.aiAltTextGenerationMediaData;
 
 	if ( ! data?.enabled ) {
 		return;
 	}
 
-	const observer = new AltTextFieldObserver();
-	observer.start();
+	const { wp: wpMedia } = window;
+
+	if ( ! wpMedia?.media ) {
+		return;
+	}
+
+	// When selecting an image in the media modal.
+	wpMedia.media?.view?.Modal?.prototype?.on( 'open', function () {
+		wpMedia?.media?.frame?.on(
+			'selection:toggle',
+			initAltTextMediaControls
+		);
+	} );
+
+	// When editing an attachment in the media library.
+	wpMedia.media?.frame?.on( 'edit:attachment', initAltTextMediaControls );
+
+	// For newly uploaded media.
+	wpMedia.Uploader?.queue?.on( 'reset', initAltTextMediaControls );
 } );
