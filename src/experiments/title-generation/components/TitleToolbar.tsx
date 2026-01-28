@@ -3,11 +3,6 @@
  */
 
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
@@ -190,7 +185,10 @@ export default function TitleToolbar(): JSX.Element | null {
 		);
 
 		try {
-			const generatedTitles = await generateTitles( postId, content );
+			const generatedTitles = await generateTitles(
+				postId as number, // In the off case postId is null, apiFetch will handle it.
+				content
+			);
 			setTitles( generatedTitles );
 			openModal();
 		} catch ( error: any ) {
