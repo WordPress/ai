@@ -206,8 +206,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$alt_text = trim( $alt_text, '"\'.' );
 
 		// Truncate if too long.
-		if ( strlen( $alt_text ) > self::MAX_ALT_TEXT_LENGTH ) {
-			$alt_text = substr( $alt_text, 0, self::MAX_ALT_TEXT_LENGTH - 3 ) . '...';
+		if ( mb_strlen( $alt_text, 'UTF-8' ) > self::MAX_ALT_TEXT_LENGTH ) {
+			$alt_text = mb_substr( $alt_text, 0, self::MAX_ALT_TEXT_LENGTH - 3, 'UTF-8' ) . '...';
 		}
 
 		return $alt_text;
@@ -318,12 +318,34 @@ class Alt_Text_Generation extends Abstract_Ability {
 			return null;
 		}
 
-		$full_path = wp_normalize_path(
-			trailingslashit( $uploads['basedir'] ) . $relative_path
-		);
+		// Reject path traversal attempts in the relative path.
+		if (
+			'..' === $relative_path ||
+			0 === strpos( $relative_path, '../' ) ||
+			false !== strpos( $relative_path, '/..' )
+		) {
+			return null;
+		}
 
-		if ( file_exists( $full_path ) && is_file( $full_path ) ) {
-			return $full_path;
+		$base_dir       = wp_normalize_path(
+			trailingslashit( $uploads['basedir'] )
+		);
+		$full_path      = $base_dir . $relative_path;
+		$real_full_path = realpath( $full_path );
+
+		if ( false === $real_full_path ) {
+			return null;
+		}
+
+		$real_full_path = wp_normalize_path( $real_full_path );
+
+		// Ensure the resolved path is strictly within the uploads base directory.
+		if ( 0 !== strpos( $real_full_path, $base_dir ) ) {
+			return null;
+		}
+
+		if ( file_exists( $real_full_path ) && is_file( $real_full_path ) ) {
+			return $real_full_path;
 		}
 
 		return null;
