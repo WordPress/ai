@@ -12,14 +12,27 @@ import { createHigherOrderComponent } from '@wordpress/compose';
  * Internal dependencies
  */
 import { AltTextControls } from './components/AltTextControls';
+import type { ImageBlockAttributes } from './types';
 
-const { aiAltTextGenerationData } = window as any;
+interface BlockEditProps {
+	name: string;
+	attributes: ImageBlockAttributes;
+	setAttributes: ( attributes: Partial< ImageBlockAttributes > ) => void;
+}
+
+interface AltTextGenerationData extends Window {
+	aiAltTextGenerationData?: {
+		enabled?: boolean;
+	};
+}
+
+const { aiAltTextGenerationData } = window as AltTextGenerationData;
 
 /**
  * Higher-order component that adds alt text generation controls to the image block.
  */
 const withAltTextGeneration = createHigherOrderComponent( ( BlockEdit ) => {
-	return ( props: any ) => {
+	return ( props: BlockEditProps ) => {
 		// Only add controls to the image block.
 		if ( props.name !== 'core/image' ) {
 			return <BlockEdit { ...props } />;

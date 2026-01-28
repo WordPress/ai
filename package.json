@@ -52,6 +52,7 @@
     "@wordpress/components": "^30.7.0",
     "@wordpress/compose": "^7.34.0",
     "@wordpress/data": "^10.34.0",
+    "@wordpress/dom-ready": "^4.38.0",
     "@wordpress/edit-post": "^8.36.0",
     "@wordpress/editor": "^14.34.0",
     "@wordpress/element": "^6.34.0",
@@ -60,6 +61,7 @@
     "@wordpress/icons": "^11.1.0",
     "@wordpress/notices": "^5.35.0",
     "@wordpress/plugins": "^7.34.0",
+    "@wordpress/url": "^4.38.0",
     "react": "^18.3.1"
   },
   "overrides": {
