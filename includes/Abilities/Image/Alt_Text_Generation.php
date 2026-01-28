@@ -457,7 +457,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			return null;
 		}
 
-		$contents = file_get_contents( $file_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$contents = file_get_contents( $file_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents, WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		if ( false === $contents ) {
 			return null;
 		}
