@@ -154,8 +154,13 @@ function plugin_action_links( array $links ): array {
 		admin_url( 'options-general.php?page=ai-experiments' ),
 		esc_html__( 'Experiments', 'ai' )
 	);
+	$credentials_link = sprintf(
+		'<a href="%1$s">%2$s</a>',
+		admin_url( 'options-general.php?page=wp-ai-client' ),
+		esc_html__( 'Credentials', 'ai' )
+	);
 
-	array_unshift( $links, $experiments_link );
+	array_unshift( $links, $credentials_link, $experiments_link );
 
 	return $links;
 }
