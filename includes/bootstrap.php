@@ -141,7 +141,7 @@ function display_composer_notice(): void {
 /**
  * Adds action links to the plugin list table.
  *
- * This adds a "Settings" link to the plugin's action links on the Plugins page.
+ * This adds "Experiments" and "Credentials" links to the plugin's action links on the Plugins page.
  *
  * @since 0.1.1
  *
@@ -149,13 +149,13 @@ function display_composer_notice(): void {
  * @return array<string> Modified action links.
  */
 function plugin_action_links( array $links ): array {
-	$settings_link = sprintf(
+	$experiments_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
 		admin_url( 'options-general.php?page=ai-experiments' ),
-		esc_html__( 'Settings', 'ai' )
+		esc_html__( 'Experiments', 'ai' )
 	);
 
-	array_unshift( $links, $settings_link );
+	array_unshift( $links, $experiments_link );
 
 	return $links;
 }
