@@ -161,7 +161,6 @@ function get_preferred_models_for_text_generation(): array {
 	 * Filters the preferred models for text generation.
 	 *
 	 * @since 0.2.1
-	 * @hook ai_experiments_preferred_models_for_text_generation
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
 	 * @return array<int, array{string, string}> The filtered preferred models.

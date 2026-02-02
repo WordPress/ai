@@ -94,6 +94,8 @@ function check_php_version(): bool {
  *
  * @since 0.1.0
  *
+ * @global string $wp_version WordPress version.
+ *
  * @return bool True if WordPress version is sufficient, false otherwise.
  */
 function check_wp_version(): bool {
