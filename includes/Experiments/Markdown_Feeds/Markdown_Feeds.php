@@ -12,6 +12,10 @@ namespace WordPress\AI\Experiments\Markdown_Feeds;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Settings\Settings_Registration;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Registers Markdown representations for feeds and singular content.
  */
