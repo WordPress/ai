@@ -191,8 +191,8 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$context = \WordPress\AI\get_post_context( $post_id );
 
-		$this->assertArrayHasKey( 'current_title', $context, 'Should have current_title' );
-		$this->assertEquals( 'Test Post Title', $context['current_title'], 'Title should match' );
+		$this->assertArrayHasKey( 'title', $context, 'Should have title' );
+		$this->assertEquals( 'Test Post Title', $context['title'], 'Title should match' );
 		$this->assertArrayHasKey( 'slug', $context, 'Should have slug' );
 		$this->assertEquals( 'test-post-slug', $context['slug'], 'Slug should match' );
 		$this->assertArrayHasKey( 'author', $context, 'Should have author' );
@@ -235,24 +235,24 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_preferred_models() returns an array.
+	 * Test that get_preferred_models_for_text_generation() returns an array.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_get_preferred_models_returns_array() {
-		$result = \WordPress\AI\get_preferred_models();
+	public function test_get_preferred_models_for_text_generation_returns_array() {
+		$result = \WordPress\AI\get_preferred_models_for_text_generation();
 
 		$this->assertIsArray( $result, 'Should return an array' );
 		$this->assertNotEmpty( $result, 'Should not be empty' );
 	}
 
 	/**
-	 * Test that get_preferred_models() returns expected default models.
+	 * Test that get_preferred_models_for_text_generation() returns expected default models.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_get_preferred_models_returns_default_models() {
-		$result = \WordPress\AI\get_preferred_models();
+	public function test_get_preferred_models_for_text_generation_returns_default_models() {
+		$result = \WordPress\AI\get_preferred_models_for_text_generation();
 
 		$this->assertCount( 4, $result, 'Should have 4 preferred models' );
 
@@ -282,13 +282,13 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_preferred_models() applies filter.
+	 * Test that get_preferred_models_for_text_generation() applies filter.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_get_preferred_models_applies_filter() {
+	public function test_get_preferred_models_for_text_generation_applies_filter() {
 		add_filter(
-			'ai_experiments_preferred_models',
+			'ai_experiments_preferred_models_for_text_generation',
 			function( $models ) {
 				// Add a custom model.
 				$models[] = array(
@@ -299,23 +299,23 @@ class HelpersTest extends WP_UnitTestCase {
 			}
 		);
 
-		$result = \WordPress\AI\get_preferred_models();
+		$result = \WordPress\AI\get_preferred_models_for_text_generation();
 
 		$this->assertCount( 5, $result, 'Should have 5 models after filter' );
 		$this->assertEquals( 'custom', $result[4][0], 'Fifth model provider should be custom' );
 		$this->assertEquals( 'custom-model', $result[4][1], 'Fifth model name should be custom-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_models' );
+		remove_all_filters( 'ai_experiments_preferred_models_for_text_generation' );
 	}
 
 	/**
-	 * Test that get_preferred_models() filter can replace models.
+	 * Test that get_preferred_models_for_text_generation() filter can replace models.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_get_preferred_models_filter_can_replace_models() {
+	public function test_get_preferred_models_for_text_generation_filter_can_replace_models() {
 		add_filter(
-			'ai_experiments_preferred_models',
+			'ai_experiments_preferred_models_for_text_generation',
 			function( $models ) {
 				// Replace with a single model.
 				return array(
@@ -327,19 +327,19 @@ class HelpersTest extends WP_UnitTestCase {
 			}
 		);
 
-		$result = \WordPress\AI\get_preferred_models();
+		$result = \WordPress\AI\get_preferred_models_for_text_generation();
 
 		$this->assertCount( 1, $result, 'Should have 1 model after filter replacement' );
 		$this->assertEquals( 'test', $result[0][0], 'Model provider should be test' );
 		$this->assertEquals( 'test-model', $result[0][1], 'Model name should be test-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_models' );
+		remove_all_filters( 'ai_experiments_preferred_models_for_text_generation' );
 	}
 
 	/**
 	 * Test that get_preferred_image_models() returns an array.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_preferred_image_models_returns_array() {
 		$result = \WordPress\AI\get_preferred_image_models();
@@ -351,7 +351,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_preferred_image_models() returns expected default models.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_preferred_image_models_returns_default_models() {
 		$result = \WordPress\AI\get_preferred_image_models();
@@ -376,13 +376,13 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
 		$this->assertEquals( 'imagen-4.0-generate-001', $result[2][1], 'Third model name should be imagen-4.0-generate-001' );
 
-		// Check third model (openai).
+		// Check fourth model (openai).
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
 		$this->assertEquals( 'gpt-image-1', $result[3][1], 'Fourth model name should be gpt-image-1' );
 
-		// Check fourth model (openai).
+		// Check fifth model (openai).
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
@@ -392,7 +392,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_preferred_image_models() applies filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_preferred_image_models_applies_filter() {
 		add_filter(
@@ -419,7 +419,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_preferred_image_models() filter can replace models.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_get_preferred_image_models_filter_can_replace_models() {
 		add_filter(

@@ -14,7 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_preferred_models;
+use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
 
 /**
@@ -109,7 +109,7 @@ class Title_Generation extends Abstract_Ability {
 
 		// If a post ID is provided, ensure the post exists before using its' content.
 		if ( $args['post_id'] ) {
-			$post = get_post( $args['post_id'] );
+			$post = get_post( (int) $args['post_id'] );
 
 			if ( ! $post ) {
 				return new WP_Error(
@@ -120,7 +120,7 @@ class Title_Generation extends Abstract_Ability {
 			}
 
 			// Get the post context.
-			$context = get_post_context( $args['post_id'] );
+			$context = get_post_context( (int) $args['post_id'] );
 
 			// Default to the passed in content if it exists.
 			if ( $args['content'] ) {
@@ -190,8 +190,8 @@ class Title_Generation extends Abstract_Ability {
 				);
 			}
 
-			// Ensure the user has permission to read this particular post.
-			if ( ! current_user_can( 'read_post', $post_id ) ) {
+			// Ensure the user has permission to edit this particular post.
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
 					esc_html__( 'You do not have permission to generate titles for this post.', 'ai' )
@@ -267,7 +267,7 @@ class Title_Generation extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
 			->using_candidate_count( (int) $candidates )
-			->using_model_preference( ...get_preferred_models() )
+			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->generate_texts();
 	}
 }
