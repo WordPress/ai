@@ -50,7 +50,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		add_action( 'init', array( $this, 'register_feed' ) );
+		add_action( 'init', array( $this, 'register_feed' ), 11 );
 		add_filter( 'request', array( $this, 'filter_request_for_markdown_extension' ), 1 );
 		add_filter( 'redirect_canonical', array( $this, 'filter_redirect_canonical' ), 10, 2 );
 		add_filter( 'wp_headers', array( $this, 'filter_wp_headers' ) );
