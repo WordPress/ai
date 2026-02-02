@@ -135,4 +135,12 @@
 			margin-left: 1.5rem;
 		}
 	}
+
+	/* Element: item settings */
+	&__item-settings {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-left: 1.5rem;
+	}
 }

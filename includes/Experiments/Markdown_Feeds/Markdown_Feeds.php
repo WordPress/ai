@@ -172,9 +172,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 	}
 
 	/**
-	 * Registers experiment-specific settings.
-	 *
-	 * @since x.x.x
+	 * {@inheritDoc}
 	 */
 	public function register_settings(): void {
 		register_setting(
@@ -211,19 +209,10 @@ class Markdown_Feeds extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function has_settings(): bool {
-		return true;
-	}
-
-	/**
-	 * Renders settings controls on the Experiments screen.
-	 *
-	 * @since x.x.x
-	 */
 	public function render_settings_fields(): void {
 		$settings = $this->get_settings();
 		?>
-		<div class="ai-experiment-settings">
+		<div class="ai-experiments__item-settings">
 			<label class="components-toggle-control" for="<?php echo esc_attr( self::OPTION_ENABLE_FEED ); ?>">
 				<input
 					type="checkbox"
