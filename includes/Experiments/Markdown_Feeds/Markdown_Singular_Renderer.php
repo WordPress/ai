@@ -11,21 +11,6 @@ namespace WordPress\AI\Experiments\Markdown_Feeds;
 
 use WP_Post;
 
-use function apply_filters;
-use function esc_html;
-use function esc_html__;
-use function esc_url;
-use function get_option;
-use function get_permalink;
-use function get_post_field;
-use function get_post_modified_time;
-use function get_post_time;
-use function get_the_title;
-use function sanitize_key;
-use function status_header;
-use function wp_strip_all_tags;
-use function wp_unslash;
-
 /**
  * Outputs a Markdown representation of a singular post.
  *

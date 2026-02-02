@@ -12,30 +12,6 @@ namespace WordPress\AI\Experiments\Markdown_Feeds;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Settings\Settings_Registration;
 
-use function __;
-use function add_query_arg;
-use function current_user_can;
-use function esc_attr;
-use function esc_html;
-use function esc_html__;
-use function esc_url;
-use function get_bloginfo;
-use function get_feed_link;
-use function get_option;
-use function get_permalink;
-use function get_post_status;
-use function get_post_type_object;
-use function get_queried_object;
-use function get_the_title;
-use function is_admin;
-use function is_feed;
-use function is_singular;
-use function post_password_required;
-use function register_setting;
-use function sanitize_key;
-use function trailingslashit;
-use function wp_kses;
-
 /**
  * Registers Markdown representations for feeds and singular content.
  */
@@ -120,6 +96,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 
 		// Main site feed.
 		$feed_url = $this->get_markdown_feed_link();
+
 		/* translators: %s: Site name. */
 		$title = sprintf( __( '%s Markdown Feed', 'ai' ), $site_name );
 
@@ -143,6 +120,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 		if ( '' === $md_url ) {
 			return;
 		}
+
 		/* translators: %s: Post title. */
 		$md_title = sprintf( __( '%s (Markdown)', 'ai' ), get_the_title( $post ) );
 
@@ -190,10 +168,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 		}
 
 		// Remove trailing slash, add .md extension.
-		$permalink = trailingslashit( $permalink );
-		$permalink = rtrim( $permalink, '/' );
-
-		return $permalink . '.md';
+		return rtrim( trailingslashit( $permalink ), '/' ) . '.md';
 	}
 
 	/**
@@ -263,7 +238,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 						sprintf(
 							/* translators: %s: Markdown feed URL query string. */
 							__( 'Enable <code>%s</code>', 'ai' ),
-							esc_html( '/?feed=markdown' )
+							'/?feed=markdown'
 						),
 						array( 'code' => array() )
 					);
@@ -285,7 +260,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 						sprintf(
 							/* translators: %s: File extension used for Markdown permalinks. */
 							__( 'Enable <code>%s</code> permalinks for singular content', 'ai' ),
-							esc_html( '.md' )
+							'.md'
 						),
 						array( 'code' => array() )
 					);
@@ -307,7 +282,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 						sprintf(
 							/* translators: %s: HTTP Accept header value used for Markdown negotiation. */
 							__( 'Enable <code>%s</code> negotiation for singular content', 'ai' ),
-							esc_html( 'Accept: text/markdown' )
+							'Accept: text/markdown'
 						),
 						array( 'code' => array() )
 					);
@@ -508,8 +483,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 				return false;
 			}
 
-			$cap = $post_type_obj->cap->read_private_posts ?? 'read_private_posts';
-			return current_user_can( $cap );
+			return current_user_can( $post_type_obj->cap->read_private_posts ?? 'read_private_posts' );
 		}
 
 		// Draft, pending, future, trash, etc. are not accessible.

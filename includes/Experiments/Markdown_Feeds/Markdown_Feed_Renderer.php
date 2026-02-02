@@ -11,25 +11,6 @@ namespace WordPress\AI\Experiments\Markdown_Feeds;
 
 use WP_Post;
 use WP_Query;
-use function apply_filters;
-use function esc_html;
-use function esc_html__;
-use function esc_url;
-use function esc_url_raw;
-use function get_bloginfo;
-use function get_option;
-use function get_permalink;
-use function get_post;
-use function get_post_field;
-use function get_post_time;
-use function get_self_link;
-use function get_the_title;
-use function have_posts;
-use function sanitize_key;
-use function status_header;
-use function the_post;
-use function wp_strip_all_tags;
-use function wp_unslash;
 
 /**
  * Outputs a Markdown representation of the current feed query.

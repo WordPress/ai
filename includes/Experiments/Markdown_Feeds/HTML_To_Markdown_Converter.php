@@ -32,6 +32,7 @@ final class HTML_To_Markdown_Converter {
 		if ( ! $processor ) {
 			return trim( wp_strip_all_tags( $html ) );
 		}
+
 		$markdown = $this->convert_with_processor( $processor );
 
 		if (
