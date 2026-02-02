@@ -185,7 +185,7 @@ final class Markdown_Feed_Renderer {
 		$permalink = esc_url_raw( get_permalink( $post ) );
 		$date_r    = (string) get_post_time( 'r', true, $post );
 
-		$content = (string) get_post_field( 'post_content', $post );
+		$content = get_post_field( 'post_content', $post );
 		$html    = (string) apply_filters( 'the_content', $content );
 
 		$markdown = $this->convert_html_to_markdown( $html );

@@ -483,7 +483,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 				return false;
 			}
 
-			return current_user_can( $post_type_obj->cap->read_private_posts ?? 'read_private_posts' );
+			return current_user_can( $post_type_obj->cap->read_private_posts ?? 'read_private_posts' ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined
 		}
 
 		// Draft, pending, future, trash, etc. are not accessible.

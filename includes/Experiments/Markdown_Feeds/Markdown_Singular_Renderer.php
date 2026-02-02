@@ -143,7 +143,7 @@ final class Markdown_Singular_Renderer {
 		$published = (string) get_post_time( 'r', true, $post );
 		$modified  = (string) get_post_modified_time( 'r', true, $post );
 
-		$content = (string) get_post_field( 'post_content', $post );
+		$content = get_post_field( 'post_content', $post );
 		$html    = (string) apply_filters( 'the_content', $content );
 
 		/**

@@ -13,6 +13,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Markdown_Feeds;
 
+use WP_HTML_Processor;
+use WP_HTML_Tag_Processor;
+
 /**
  * Converts HTML fragments into Markdown.
  *
@@ -36,12 +39,11 @@ final class HTML_To_Markdown_Converter {
 		$markdown = $this->convert_with_processor( $processor );
 
 		if (
-			$processor instanceof \WP_HTML_Processor
-			&& method_exists( $processor, 'get_last_error' )
-			&& \WP_HTML_Processor::ERROR_UNSUPPORTED === $processor->get_last_error()
-			&& class_exists( \WP_HTML_Tag_Processor::class )
+			$processor instanceof WP_HTML_Processor
+			&& WP_HTML_Processor::ERROR_UNSUPPORTED === $processor->get_last_error()
+			&& class_exists( WP_HTML_Tag_Processor::class )
 		) {
-			$markdown = $this->convert_with_processor( new \WP_HTML_Tag_Processor( $html ) );
+			$markdown = $this->convert_with_processor( new WP_HTML_Tag_Processor( $html ) );
 		}
 
 		return trim( $this->cleanup( $markdown ) );
@@ -61,27 +63,14 @@ final class HTML_To_Markdown_Converter {
 	private function create_processor( string $html ) {
 		$processor = null;
 
-		if ( class_exists( \WP_HTML_Processor::class ) ) {
-			if ( method_exists( \WP_HTML_Processor::class, 'create_fragment' ) ) {
-				$processor = \WP_HTML_Processor::create_fragment( $html );
-			}
+		if ( class_exists( WP_HTML_Processor::class ) ) {
+			$processor = WP_HTML_Processor::create_fragment( $html );
 
 			if ( ! $processor ) {
-				$processor = new \WP_HTML_Processor( $html );
+				$processor = new WP_HTML_Processor( $html );
 			}
-		} elseif ( class_exists( \WP_HTML_Tag_Processor::class ) ) {
-			$processor = new \WP_HTML_Tag_Processor( $html );
-		}
-
-		if (
-			! $processor
-			|| ! method_exists( $processor, 'next_token' )
-			|| ! method_exists( $processor, 'get_token_name' )
-			|| ! method_exists( $processor, 'get_modifiable_text' )
-			|| ! method_exists( $processor, 'is_tag_closer' )
-			|| ! method_exists( $processor, 'get_attribute' )
-		) {
-			return null;
+		} elseif ( class_exists( WP_HTML_Tag_Processor::class ) ) {
+			$processor = new WP_HTML_Tag_Processor( $html );
 		}
 
 		return $processor;
@@ -92,7 +81,7 @@ final class HTML_To_Markdown_Converter {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param object $processor Processor instance.
+	 * @param \WP_HTML_Tag_Processor|\WP_HTML_Processor $processor Processor instance.
 	 * @return string Markdown output.
 	 */
 	private function convert_with_processor( $processor ): string {
@@ -120,7 +109,7 @@ final class HTML_To_Markdown_Converter {
 				// If we're in a table cell, collect text for the cell.
 				if ( $in_table && ! empty( $current_row ) ) {
 					$cell_index                  = count( $current_row ) - 1;
-					$current_row[ $cell_index ] .= trim( preg_replace( '/\s+/', ' ', $text ) );
+					$current_row[ $cell_index ] .= trim( (string) preg_replace( '/\s+/', ' ', $text ) );
 					continue;
 				}
 
@@ -343,7 +332,7 @@ final class HTML_To_Markdown_Converter {
 				continue;
 			}
 
-			if ( ! preg_match( '/^H([1-6])$/', $token_name, $matches ) ) {
+			if ( ! $token_name || ! preg_match( '/^H([1-6])$/', $token_name, $matches ) ) {
 				continue;
 			}
 
@@ -467,9 +456,9 @@ final class HTML_To_Markdown_Converter {
 		// Remove trailing whitespace from lines.
 		$markdown = preg_replace( "/[ \\t]+\\n/", "\n", $markdown );
 		// Remove leading whitespace from lines (except in code blocks).
-		$markdown = preg_replace( "/\\n[ \\t]+(?!\\s*```)/", "\n", $markdown );
+		$markdown = preg_replace( "/\\n[ \\t]+(?!\\s*```)/", "\n", (string) $markdown );
 		// Collapse multiple blank lines.
-		$markdown = preg_replace( "/\\n{3,}/", "\n\n", $markdown );
+		$markdown = preg_replace( "/\\n{3,}/", "\n\n", (string) $markdown );
 		return (string) $markdown;
 	}
 }
