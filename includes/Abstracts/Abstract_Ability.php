@@ -57,7 +57,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Returns the REST API path of the ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $experiment_id The ID of the experiment.
 	 * @return string The REST API path of the ability.

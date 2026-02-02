@@ -104,6 +104,7 @@ final class Experiment_Loader {
 	 */
 	private function get_default_experiments(): array {
 		$experiment_classes = array(
+			\WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer::class,
 			\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 			\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
 			\WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds::class,
