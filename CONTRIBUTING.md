@@ -26,8 +26,6 @@ cd ai
 composer install && npm i && npm run build
 ```
 
-> **Note:** The `wordpress/wp-ai-client` package will be added to `composer.json` once it's officially released. For now, the plugin scaffolding is ready for integration.
-
 3. **Activate the plugin:**
 
 Through WordPress admin or via WP-CLI:
@@ -35,6 +33,7 @@ Through WordPress admin or via WP-CLI:
 ```bash
 wp plugin activate ai
 ```
+
 ### Quality checks
 
 Before submitting a pull request, run the following commands:
@@ -51,19 +50,6 @@ composer format
 
 # Run tests
 composer test
-
-There are a few protected branch naming conventions:
-
-* `develop`: The main development branch.
-* `trunk`: The stable release branch.
-* `release/*`: A branch for a specific release, useful e.g. for applying a hotfix.
-* `feature/*`: A branch for a larger feature that takes multiple iterative PRs towards completion.
-
-These special branches are protected and are configured more strictly in regards to GitHub workflow configuration.
-
-Branches that you use for implementing a pull request or experimenting can use any naming convention you prefer, _except_ the above. Additionally, please do not use branch names that would easily cause confusion, such as other common main branch names like `main` or `develop`.
-
-Ideally, the branch name is in some form or shape descriptive of what it is for.
 
 ---
 
