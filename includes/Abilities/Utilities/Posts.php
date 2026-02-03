@@ -11,6 +11,10 @@ namespace WordPress\AI\Abilities\Utilities;
 
 use WP_Error;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Post utility WordPress Abilities.
  *
@@ -322,8 +326,8 @@ class Posts {
 			return $post;
 		}
 
-		// Return true if the user has permission to read the post.
-		return current_user_can( 'read_post', $post_id );
+		// Return true if the user has permission to edit the post.
+		return current_user_can( 'edit_post', $post_id );
 	}
 
 	/**

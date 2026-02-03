@@ -12,7 +12,7 @@
 
 ## Description
 
-The WordPress AI Experiments plugin provides a set of opt-in, experimental AI features for authors, editors, and admins directly inside WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using the building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
+The WordPress AI Experiments plugin provides a set of opt-in, experimental AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
 
 ## Overview
 
@@ -33,7 +33,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 
 ## Roadmap
 
-You can view the active plugin roadmap in [`ROADMAP.md`](./ROADMAP.md).  We are currently working toward a stable, user-friendly release aligned with [WordPress 6.9](https://make.wordpress.org/core/6-9/) (targeted for 2 December 2025).
+You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/7).
 
 Overview of planned features:
 
@@ -59,15 +59,6 @@ If you’re a plugin developer, you’ll be able to:
 *   Register new AI abilities
 *   Override default behavior with custom filters
 *   Reuse the same building blocks in your own plugins
-
-## Current Status
-
-| Milestone | State |
-|-----------|-------|
-| Placeholder repository | **created** |
-| [Feature roadmap](https://github.com/WordPress/ai/blob/add/wporg-reqs/ROADMAP.md) | **created** |
-| Initial prototype | **in progress** |
-| Community testing | planned |
 
 ## How to Get Involved
 
