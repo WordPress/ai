@@ -14,20 +14,20 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_preferred_models;
+use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
 
 /**
  * Content summarization WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Summarization extends Abstract_Ability {
 
 	/**
 	 * The default length of the summary.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @var string
 	 */
@@ -36,7 +36,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -65,7 +65,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -77,7 +77,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -147,7 +147,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
@@ -164,8 +164,8 @@ class Summarization extends Abstract_Ability {
 				);
 			}
 
-			// Ensure the user has permission to read this particular post.
-			if ( ! current_user_can( 'read_post', $post_id ) ) {
+			// Ensure the user has permission to edit this particular post.
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
 					esc_html__( 'You do not have permission to summarize this post.', 'ai' )
@@ -198,7 +198,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -209,7 +209,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * Generates a summary from the given content.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $content The content to summarize.
 	 * @param string|array<string, string> $context Additional context to use.
@@ -246,7 +246,7 @@ class Summarization extends Abstract_Ability {
 		return AI_Client::prompt_with_wp_error( $content )
 			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
 			->using_temperature( 0.9 )
-			->using_model_preference( ...get_preferred_models() )
+			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->generate_text();
 	}
 }

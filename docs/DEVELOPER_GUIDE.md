@@ -1,4 +1,4 @@
-# Experiments Developer Guide
+# Developer Guide
 
 Welcome to the WordPress AI Experiments plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered experiments.
 
@@ -366,3 +366,7 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 ## License
 
 GPL-2.0-or-later
+
+---
+
+<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
