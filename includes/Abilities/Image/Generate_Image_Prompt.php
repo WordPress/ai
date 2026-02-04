@@ -143,8 +143,49 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	 * @return bool True if the user is logged in, false otherwise.
 	 */
 	protected function permission_callback( $args ) {
-		// Ensure the user is logged in.
-		return is_user_logged_in();
+		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
+
+		if ( $post_id ) {
+			$post = get_post( $post_id );
+
+			// Ensure the post exists.
+			if ( ! $post ) {
+				return new WP_Error(
+					'post_not_found',
+					/* translators: %d: Post ID. */
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $post_id ) )
+				);
+			}
+
+			// Ensure the user has permission to edit this particular post.
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
+				return new WP_Error(
+					'insufficient_capabilities',
+					esc_html__( 'You do not have permission to generate excerpts for this post.', 'ai' )
+				);
+			}
+
+			// Ensure the post type is allowed in REST endpoints.
+			$post_type = get_post_type( $post_id );
+
+			if ( ! $post_type ) {
+				return false;
+			}
+
+			$post_type_obj = get_post_type_object( $post_type );
+
+			if ( ! $post_type_obj || empty( $post_type_obj->show_in_rest ) ) {
+				return false;
+			}
+		} elseif ( ! current_user_can( 'edit_posts' ) ) {
+			// Ensure the user has permission to edit posts in general.
+			return new WP_Error(
+				'insufficient_capabilities',
+				esc_html__( 'You do not have permission to generate image prompts.', 'ai' )
+			);
+		}
+
+		return true;
 	}
 
 	/**
