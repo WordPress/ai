@@ -139,8 +139,6 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @return bool True if the user is logged in, false otherwise.
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
