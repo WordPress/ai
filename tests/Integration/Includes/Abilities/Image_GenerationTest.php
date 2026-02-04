@@ -15,13 +15,13 @@ use WP_UnitTestCase;
 /**
  * Test experiment for Image_Generation Ability tests.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Test_Image_Generation_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
@@ -36,7 +36,7 @@ class Test_Image_Generation_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -47,7 +47,7 @@ class Test_Image_Generation_Experiment extends Abstract_Experiment {
 /**
  * Image_Generation Ability test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Image_GenerationTest extends WP_UnitTestCase {
 
@@ -68,7 +68,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -86,7 +86,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -96,7 +96,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -111,7 +111,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -135,7 +135,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -152,7 +152,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles prompt parameter correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_prompt() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -183,7 +183,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles empty prompt.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_empty_prompt() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -221,7 +221,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when no image is generated.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_handles_empty_result() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -259,7 +259,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_upload_files_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -278,7 +278,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_without_upload_files_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -298,7 +298,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -317,7 +317,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );

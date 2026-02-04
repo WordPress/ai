@@ -443,11 +443,11 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns true for user with read_post capability.
+	 * Test that permission_callback() returns true for user with edit_post capability.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_permission_callback_with_post_id_and_read_capability() {
+	public function test_permission_callback_with_post_id_and_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -460,34 +460,34 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		// Create a user with read capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		// Create a user with edit capability (editor role has edit_post for all posts).
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
 
-		$this->assertTrue( $result, 'Permission should be granted for user with read_post capability' );
+		$this->assertTrue( $result, 'Permission should be granted for user with edit_post capability' );
 	}
 
 	/**
-	 * Test that permission_callback() returns error for user without read_post capability.
+	 * Test that permission_callback() returns error for user without edit_post capability.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_permission_callback_with_post_id_without_read_capability() {
+	public function test_permission_callback_with_post_id_without_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
 
-		// Create a private test post.
+		// Create a test post.
 		$post_id = $this->factory->post->create(
 			array(
 				'post_content' => 'Test content',
-				'post_status'  => 'private',
+				'post_status'  => 'publish',
 			)
 		);
 
-		// Create a user without read capability for this post.
+		// Create a user with only read capability (subscriber role has read_post but not edit_post).
 		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
 
