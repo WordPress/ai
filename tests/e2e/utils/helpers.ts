@@ -67,8 +67,10 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	} );
 
 	// Click the disable button if it exists. Otherwise we assume the experiments are already disabled.
-	const button = page.locator( 'button.ai-experiments__toggle-button', { hasText: 'Disable Experiments' } );
-	if ( await button.count() === 0 ) {
+	const button = page.locator( 'button.ai-experiments__toggle-button', {
+		hasText: 'Disable Experiments',
+	} );
+	if ( ( await button.count() ) === 0 ) {
 		return;
 	}
 	await button.click();
@@ -97,8 +99,10 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	} );
 
 	// Click the enable button if it exists. Otherwise we assume the experiments are already enabled.
-	const button = page.locator( 'button.ai-experiments__toggle-button', { hasText: 'Enable Experiments' } );
-	if ( await button.count() === 0 ) {
+	const button = page.locator( 'button.ai-experiments__toggle-button', {
+		hasText: 'Enable Experiments',
+	} );
+	if ( ( await button.count() ) === 0 ) {
 		return;
 	}
 	await button.click();
