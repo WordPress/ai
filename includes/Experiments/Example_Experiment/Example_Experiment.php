@@ -11,6 +11,10 @@ namespace WordPress\AI\Experiments\Example_Experiment;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Reference experiment demonstrating hooks and REST endpoints.
  *
@@ -60,7 +64,7 @@ class Example_Experiment extends Abstract_Experiment {
 	 * @since 0.1.0
 	 *
 	 * @param array<string, string> $title Title parts.
-	 * @return array<string, string>
+	 * @return array<string, string> Modified title parts.
 	 */
 	public function modify_title( array $title ): array {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && isset( $title['site'] ) ) {
@@ -91,7 +95,7 @@ class Example_Experiment extends Abstract_Experiment {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array<string, mixed>
+	 * @return array<string, mixed> Response data.
 	 */
 	public function rest_endpoint_callback(): array {
 		return array(
@@ -108,7 +112,7 @@ class Example_Experiment extends Abstract_Experiment {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return bool
+	 * @return bool True if the user has permission, false otherwise.
 	 */
 	public function rest_permission_callback(): bool {
 		return current_user_can( 'manage_options' );
