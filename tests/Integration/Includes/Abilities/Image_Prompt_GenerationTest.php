@@ -422,7 +422,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns true for logged in user.
+	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
 	 * @since x.x.x
 	 */
@@ -431,17 +431,17 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
 
-		// Create a logged in user.
-		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		// User must have edit_posts capability when no post context is provided.
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$result = $method->invoke( $this->ability, array() );
 
-		$this->assertTrue( $result, 'Permission should be granted for logged in user' );
+		$this->assertTrue( $result, 'Permission should be granted for user with edit_posts capability' );
 	}
 
 	/**
-	 * Test that permission_callback() returns false for logged out user.
+	 * Test that permission_callback() returns WP_Error for logged out user.
 	 *
 	 * @since x.x.x
 	 */
@@ -455,7 +455,28 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $this->ability, array() );
 
-		$this->assertFalse( $result, 'Permission should be denied for logged out user' );
+		$this->assertInstanceOf( WP_Error::class, $result, 'Permission should be denied with WP_Error for logged out user' );
+		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
+	}
+
+	/**
+	 * Test that permission_callback() returns WP_Error for user without edit_posts capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_returns_error_for_user_without_edit_posts() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		// Subscriber role does not have edit_posts capability.
+		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array() );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Permission should be denied with WP_Error for user without edit_posts' );
+		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
 	}
 
 	/**
