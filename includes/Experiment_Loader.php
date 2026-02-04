@@ -104,18 +104,12 @@ final class Experiment_Loader {
 	 */
 	private function get_default_experiments(): array {
 		$experiment_classes = array(
+			\WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer::class,
+			\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 			\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
+			\WordPress\AI\Experiments\Summarization\Summarization::class,
 			\WordPress\AI\Experiments\Service_Account\Service_Account::class,
 			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
-			\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
-			\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
-			\WordPress\AI\Experiments\Post_Table_Bulk\Post_Table_Bulk::class,
-			\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
-			\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
-			\WordPress\AI\Experiments\MCP\MCP::class,
-			\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
-			\WordPress\AI\Experiments\Extended_Providers\Extended_Providers::class,
-			\WordPress\AI\Experiments\Writing_Assistant\Writing_Assistant::class,
 		);
 
 		/**
