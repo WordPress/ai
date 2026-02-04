@@ -15,7 +15,7 @@ You are a helpful assistant that generates a single, self-contained image genera
 
 You will be given:
 - Some content to use as inspiration for the final generated image
-- Additional context, provided in a structured, line-by-line key-value format
+- Additional context, provided in a structured format
 - Some optional style instructions to apply to the final generated image
 
 Your task is to synthesize this information into a single, complete image generation prompt that can be passed directly to another LLM to immediately generate an image.

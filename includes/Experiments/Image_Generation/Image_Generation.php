@@ -19,10 +19,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
-
 /**
  * Image generation experiment.
  *
@@ -41,7 +37,7 @@ class Image_Generation extends Abstract_Experiment {
 		return array(
 			'id'          => 'image-generation',
 			'label'       => __( 'Image Generation', 'ai' ),
-			'description' => __( 'Generates a featured image from a passed in prompt', 'ai' ),
+			'description' => __( 'Generates a featured image from a generated image prompt', 'ai' ),
 		);
 	}
 
