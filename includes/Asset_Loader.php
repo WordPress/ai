@@ -41,10 +41,16 @@ class Asset_Loader {
 		$script_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.js';
 		$script_asset_path = substr( $script_path, 0, -3 ) . '.asset.php';
 
+		// If the file doesn't exist, don't try to enqueue it.
+		if ( ! file_exists( $script_path ) ) {
+			return;
+		}
+
 		if ( is_array( $asset_data ) ) {
 			if ( ! isset( $asset_data['dependencies'] ) ) {
 				$asset_data['dependencies'] = array();
 			}
+
 			if ( ! isset( $asset_data['version'] ) ) {
 				$asset_data['version'] = filemtime( $script_path );
 			}
@@ -81,7 +87,7 @@ class Asset_Loader {
 		$style_asset_path = substr( $style_path, 0, -4 ) . '.asset.php';
 		$handle           = 'ai_' . $handle;
 
-		// If the style path doesn't exist, don't enqueue the style.
+		// If the file doesn't exist, don't try to enqueue it.
 		if ( ! file_exists( $style_path ) ) {
 			return;
 		}
