@@ -370,11 +370,7 @@ class Service_Account_Manager {
 
 		$capabilities = $this->get_default_role_capabilities();
 
-		if ( function_exists( 'wpcom_vip_add_role' ) ) {
-			wpcom_vip_add_role( self::ROLE, __( 'Service', 'ai' ), $capabilities );
-		} else {
-			add_role( self::ROLE, __( 'Service', 'ai' ), $capabilities );
-		}
+		add_role( self::ROLE, __( 'Service', 'ai' ), $capabilities ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.wpcom_vip_add_role -- core-compatible usage.
 
 		/**
 		 * Fires after the service account role is registered.
