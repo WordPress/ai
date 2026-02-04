@@ -57,7 +57,7 @@ class Summarization extends Abstract_Experiment {
 	 * @since x.x.x
 	 */
 	public function register_post_meta(): void {
-		register_post_meta(
+		register_meta(
 			'post',
 			'ai_generated_summary',
 			array(
