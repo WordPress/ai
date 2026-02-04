@@ -185,9 +185,6 @@ class Settings_Page {
 							>
 								<?php echo $global_enabled ? esc_html__( 'Disable Experiments', 'ai' ) : esc_html__( 'Enable Experiments', 'ai' ); ?>
 							</button>
-							<p class="description ai-experiments__toggle-help">
-								<?php esc_html_e( 'Clicking the button saves this setting immediately. Use Save Changes below for other updates.', 'ai' ); ?>
-							</p>
 						</div>
 					</div>
 
