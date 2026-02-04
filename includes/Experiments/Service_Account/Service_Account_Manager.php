@@ -173,18 +173,20 @@ class Service_Account_Manager {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param int    $user_id   User ID.
-	 * @param string $role      Role assigned.
-	 * @param array  $old_roles Previous roles.
+	 * @param int           $user_id   User ID.
+	 * @param string        $role      Role assigned.
+	 * @param array<string> $old_roles Previous roles.
 	 */
 	public function maybe_mark_service_account_role( int $user_id, string $role, array $old_roles = array() ): void {
 		if ( self::ROLE !== $role ) {
 			return;
 		}
 
-		if ( ! get_user_meta( $user_id, self::META_KEY, true ) ) {
-			update_user_meta( $user_id, self::META_KEY, true );
+		if ( get_user_meta( $user_id, self::META_KEY, true ) ) {
+			return;
 		}
+
+		update_user_meta( $user_id, self::META_KEY, true );
 	}
 
 	/**
@@ -207,9 +209,9 @@ class Service_Account_Manager {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param mixed $existing Existing meta query.
-	 * @param array $clause   Meta clause to append.
-	 * @return array Combined meta query.
+	 * @param mixed                $existing Existing meta query.
+	 * @param array<string, mixed> $clause   Meta clause to append.
+	 * @return array<int|string, mixed> Combined meta query.
 	 */
 	private function append_meta_query( $existing, array $clause ): array {
 		if ( ! is_array( $existing ) || empty( $existing ) ) {
@@ -248,12 +250,12 @@ class Service_Account_Manager {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param bool   $allowed   Whether access is allowed.
-	 * @param string $meta_key  Meta key.
-	 * @param int    $object_id Object ID.
-	 * @param int    $user_id   User ID.
-	 * @param string $cap       Capability name.
-	 * @param array  $caps      User capabilities.
+	 * @param bool              $allowed   Whether access is allowed.
+	 * @param string            $meta_key  Meta key.
+	 * @param int               $object_id Object ID.
+	 * @param int               $user_id   User ID.
+	 * @param string            $cap       Capability name.
+	 * @param array<int, string> $caps      User capabilities.
 	 * @return bool Whether access is allowed.
 	 */
 	public function authorize_service_account_meta( $allowed, $meta_key, $object_id, $user_id, $cap, $caps ): bool {
@@ -368,18 +370,18 @@ class Service_Account_Manager {
 
 		$capabilities = $this->get_default_role_capabilities();
 
-		add_role(
-			self::ROLE,
-			__( 'Service', 'ai' ),
-			$capabilities
-		);
+		if ( function_exists( 'wpcom_vip_add_role' ) ) {
+			wpcom_vip_add_role( self::ROLE, __( 'Service', 'ai' ), $capabilities );
+		} else {
+			add_role( self::ROLE, __( 'Service', 'ai' ), $capabilities );
+		}
 
 		/**
 		 * Fires after the service account role is registered.
 		 *
 		 * @since 0.3.0
 		 *
-		 * @param \WP_Role            $role         The newly created role.
+		 * @param \WP_Role|null       $role         The newly created role.
 		 * @param array<string, bool> $capabilities The capabilities assigned to the role.
 		 */
 		do_action( 'service_account_role_registered', get_role( self::ROLE ), $capabilities );
@@ -515,7 +517,7 @@ class Service_Account_Manager {
 	 * @param array<string, int>|null $result  The count result, or null to calculate.
 	 * @param string                  $strategy The counting strategy.
 	 * @param int|null                $site_id  The site ID, or null for current site.
-	 * @return array<string, int>|null Modified count or null.
+	 * @return array{total_users:int, avail_roles:array<string, int>}|null Modified count or null.
 	 */
 	public function filter_user_counts( $result, string $strategy, ?int $site_id ) {
 		// Only filter if we need to calculate.
@@ -614,9 +616,11 @@ class Service_Account_Manager {
 		}
 
 		foreach ( $avail_roles as $role_name => $count ) {
-			if ( $count <= 0 ) {
-				unset( $avail_roles[ $role_name ] );
+			if ( $count > 0 ) {
+				continue;
 			}
+
+			unset( $avail_roles[ $role_name ] );
 		}
 
 		if ( $total_users < 0 ) {
@@ -792,7 +796,8 @@ class Service_Account_Manager {
 		}
 
 		// Generate email: {username}@{site-domain}.
-		$site_domain = wp_parse_url( home_url(), PHP_URL_HOST ) ?: 'localhost';
+		$site_domain = wp_parse_url( home_url(), PHP_URL_HOST );
+		$site_domain = $site_domain ? $site_domain : 'localhost';
 		$email       = $username . '@' . $site_domain;
 
 		$display_name = $name;
@@ -834,6 +839,13 @@ class Service_Account_Manager {
 		update_user_meta( $user_id, '_service_account_created', time() );
 
 		$user = get_user_by( 'id', $user_id );
+
+		if ( ! $user instanceof \WP_User ) {
+			return new \WP_Error(
+				'service_account_create_failed',
+				__( 'Service account could not be loaded after creation.', 'ai' )
+			);
+		}
 
 		/**
 		 * Fires after a service account is created.
@@ -965,6 +977,13 @@ class Service_Account_Manager {
 		}
 
 		$updated_user = get_user_by( 'id', $user_id );
+
+		if ( ! $updated_user instanceof \WP_User ) {
+			return new \WP_Error(
+				'service_account_update_failed',
+				__( 'Service account could not be loaded after update.', 'ai' )
+			);
+		}
 
 		/**
 		 * Fires after a service account is updated.

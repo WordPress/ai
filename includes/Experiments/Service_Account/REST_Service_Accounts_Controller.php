@@ -28,7 +28,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * The service account manager instance.
 	 *
 	 * @since 0.3.0
-	 * @var Service_Account_Manager
+	 * @var \WordPress\AI\Experiments\Service_Account\Service_Account_Manager
 	 */
 	protected Service_Account_Manager $manager;
 
@@ -147,6 +147,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return true|\WP_Error True if the request has read access, WP_Error object otherwise.
 	 */
 	public function get_items_permissions_check( $request ) {
@@ -167,7 +168,8 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
-	 * @return \WP_REST_Response|\WP_Error Response object on success, or WP_Error object on failure.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
+	 * @return \WP_REST_Response Response object on success.
 	 */
 	public function get_items( $request ) {
 		$args = array(
@@ -189,7 +191,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 
 		$response_users = array();
 		foreach ( $users as $user ) {
-			$data = $this->prepare_item_for_response( $user, $request );
+			$data             = $this->prepare_item_for_response( $user, $request );
 			$response_users[] = $this->prepare_response_for_collection( $data );
 		}
 
@@ -198,8 +200,8 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 		// Add pagination headers.
 		$max_pages = (int) ceil( $total / $request->get_param( 'per_page' ) );
 
-		$response->header( 'X-WP-Total', $total );
-		$response->header( 'X-WP-TotalPages', $max_pages );
+		$response->header( 'X-WP-Total', (string) $total );
+		$response->header( 'X-WP-TotalPages', (string) $max_pages );
 
 		return $response;
 	}
@@ -210,6 +212,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return true|\WP_Error True if the request has read access for the item, WP_Error object otherwise.
 	 */
 	public function get_item_permissions_check( $request ) {
@@ -236,6 +239,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return \WP_REST_Response|\WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function get_item( $request ) {
@@ -255,6 +259,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return true|\WP_Error True if the request has access to create items, WP_Error object otherwise.
 	 */
 	public function create_item_permissions_check( $request ) {
@@ -275,6 +280,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return \WP_REST_Response|\WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function create_item( $request ) {
@@ -316,6 +322,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return true|\WP_Error True if the request has access to update the item, WP_Error object otherwise.
 	 */
 	public function update_item_permissions_check( $request ) {
@@ -342,6 +349,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return \WP_REST_Response|\WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function update_item( $request ) {
@@ -374,6 +382,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return true|\WP_Error True if the request has access to delete the item, WP_Error object otherwise.
 	 */
 	public function delete_item_permissions_check( $request ) {
@@ -400,6 +409,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return \WP_REST_Response|\WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function delete_item( $request ) {
@@ -416,7 +426,12 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 		}
 
 		// Get the user data before deletion for the response.
-		$user     = $this->manager->get_service_account( $user_id );
+		$user = $this->manager->get_service_account( $user_id );
+		if ( is_wp_error( $user ) ) {
+			$user->add_data( array( 'status' => 404 ) );
+			return $user;
+		}
+
 		$response = $this->prepare_item_for_response( $user, $request );
 
 		$result = $this->manager->delete_service_account( $user_id, $reassign );
@@ -426,7 +441,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 			return $result;
 		}
 
-		$data = $response->get_data();
+		$data            = $response->get_data();
 		$data['deleted'] = true;
 
 		return new \WP_REST_Response( $data );
@@ -438,6 +453,7 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 * @since 0.3.0
 	 *
 	 * @param \WP_REST_Request $request Full details about the request.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return \WP_REST_Response|\WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function regenerate_app_password( $request ) {
@@ -461,25 +477,26 @@ class REST_Service_Accounts_Controller extends \WP_REST_Controller {
 	 *
 	 * @param \WP_User         $user    User object.
 	 * @param \WP_REST_Request $request Request object.
+	 * @phpstan-param \WP_REST_Request<array<string, mixed>> $request
 	 * @return \WP_REST_Response Response object.
 	 */
 	public function prepare_item_for_response( $user, $request ) {
+		$registered_timestamp = strtotime( $user->user_registered );
+		$registered_timestamp = false !== $registered_timestamp ? $registered_timestamp : time();
+
 		$data = array(
-			'id'                => $user->ID,
-			'username'          => $user->user_login,
-			'name'              => $user->display_name,
-			'email'             => $user->user_email,
-			'description'       => $user->description,
-			'registered_date'   => gmdate( 'c', strtotime( $user->user_registered ) ),
-			'roles'             => array_values( $user->roles ),
-			'capabilities'      => $this->get_user_capabilities( $user ),
-			'meta'              => array(
+			'id'              => $user->ID,
+			'username'        => $user->user_login,
+			'name'            => $user->display_name,
+			'email'           => $user->user_email,
+			'description'     => $user->description,
+			'registered_date' => gmdate( 'c', $registered_timestamp ),
+			'roles'           => array_values( $user->roles ),
+			'capabilities'    => $this->get_user_capabilities( $user ),
+			'meta'            => array(
 				'is_service_account' => true,
 			),
 		);
-
-		// Add additional fields from the schema.
-		$context = $request->get_param( 'context' ) ?? 'view';
 
 		/**
 		 * Filters the service account data for the REST API response.

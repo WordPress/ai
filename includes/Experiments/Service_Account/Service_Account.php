@@ -52,7 +52,7 @@ class Service_Account extends Abstract_Experiment {
 	 * The manager instance.
 	 *
 	 * @since 0.3.0
-	 * @var Service_Account_Manager
+	 * @var \WordPress\AI\Experiments\Service_Account\Service_Account_Manager
 	 */
 	protected Service_Account_Manager $manager;
 
@@ -60,7 +60,7 @@ class Service_Account extends Abstract_Experiment {
 	 * The admin UI instance.
 	 *
 	 * @since 0.3.0
-	 * @var Admin_UI
+	 * @var \WordPress\AI\Experiments\Service_Account\Admin_UI
 	 */
 	protected Admin_UI $admin_ui;
 
@@ -68,7 +68,7 @@ class Service_Account extends Abstract_Experiment {
 	 * The REST controller instance.
 	 *
 	 * @since 0.3.0
-	 * @var REST_Service_Accounts_Controller
+	 * @var \WordPress\AI\Experiments\Service_Account\REST_Service_Accounts_Controller
 	 */
 	protected REST_Service_Accounts_Controller $rest_controller;
 
@@ -129,7 +129,7 @@ class Service_Account extends Abstract_Experiment {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @return Service_Account_Manager The manager instance.
+	 * @return \WordPress\AI\Experiments\Service_Account\Service_Account_Manager The manager instance.
 	 */
 	public function get_manager(): Service_Account_Manager {
 		return $this->manager;

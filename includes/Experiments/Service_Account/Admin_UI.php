@@ -140,7 +140,9 @@ class Admin_UI {
 	protected function enqueue_users_list_scripts(): void {
 		// Get service account IDs for row marking.
 		// Note: 'fields' => 'ID' returns an array of IDs directly, not user objects.
+		/** @var int[] $service_account_ids */
 		$service_account_ids = $this->manager->get_service_accounts( array( 'fields' => 'ID' ) );
+		$service_account_ids = array_values( array_filter( array_map( 'absint', $service_account_ids ) ) );
 
 		if ( empty( $service_account_ids ) ) {
 			return;
