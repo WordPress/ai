@@ -79,42 +79,50 @@ class Asset_Loader {
 		$style_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.css';
 		$style_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.css';
 		$style_asset_path = substr( $style_path, 0, -4 ) . '.asset.php';
+		$handle           = 'ai_' . $handle;
+
+		// If the style path doesn't exist, don't enqueue the style.
+		if ( ! file_exists( $style_path ) ) {
+			return;
+		}
 
 		if ( is_array( $asset_data ) ) {
 			if ( ! isset( $asset_data['dependencies'] ) ) {
 				$asset_data['dependencies'] = array();
 			}
+
 			if ( ! isset( $asset_data['version'] ) ) {
-				$asset_data['version'] = file_exists( $style_path ) ? filemtime( $style_path ) : 0;
+				$asset_data['version'] = filemtime( $style_path );
 			}
 		} elseif ( file_exists( $style_asset_path ) ) {
 			$asset_data = require $style_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
-		} elseif ( file_exists( $style_path ) ) {
+		} else {
 			$asset_data = array(
 				'dependencies' => array(),
 				'version'      => filemtime( $style_path ),
 			);
 		}
 
-		if ( null !== $asset_data ) {
-			wp_enqueue_style(
-				'ai_' . $handle,
-				$style_url,
-				$asset_data['dependencies'],
-				$asset_data['version']
-			);
-			wp_style_add_data( 'ai_' . $handle, 'path', $style_path );
-		}
+		wp_enqueue_style(
+			$handle,
+			$style_url,
+			$asset_data['dependencies'],
+			$asset_data['version']
+		);
+
+		wp_style_add_data( $handle, 'path', $style_path );
 
 		$rtl_style_path = str_replace( '.css', '-rtl.css', $style_path );
 		if ( ! file_exists( $rtl_style_path ) ) {
 			return;
 		}
-		wp_style_add_data( 'ai_' . $handle, 'rtl', 'replace' );
+
+		wp_style_add_data( $handle, 'rtl', 'replace' );
 		if ( ! is_rtl() ) {
 			return;
 		}
-		wp_style_add_data( 'ai_' . $handle, 'path', $rtl_style_path );
+
+		wp_style_add_data( $handle, 'path', $rtl_style_path );
 	}
 
 	/**
