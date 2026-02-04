@@ -43,6 +43,7 @@ const Controls = () => {
 					onClick={ handleSummarize }
 					disabled={ isSummarizing }
 					isBusy={ isSummarizing }
+					style={ { marginTop: '1px', height: '46px' } }
 				/>
 			</ToolbarGroup>
 		</BlockControls>
