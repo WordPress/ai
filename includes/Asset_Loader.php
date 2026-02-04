@@ -102,6 +102,9 @@ class Asset_Loader {
 			}
 		} elseif ( file_exists( $style_asset_path ) ) {
 			$asset_data = require $style_asset_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+
+			// Don't use the dependencies from the asset file as these are for JS files.
+			$asset_data['dependencies'] = array();
 		} else {
 			$asset_data = array(
 				'dependencies' => array(),
