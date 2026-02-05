@@ -443,4 +443,95 @@ class HelpersTest extends WP_UnitTestCase {
 
 		remove_all_filters( 'ai_experiments_preferred_image_models' );
 	}
+
+	/**
+	 * Test that get_preferred_vision_models() returns an array.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_preferred_vision_models_returns_array() {
+		$result = \WordPress\AI\get_preferred_vision_models();
+
+		$this->assertIsArray( $result, 'Should return an array' );
+		$this->assertNotEmpty( $result, 'Should not be empty' );
+	}
+
+	/**
+	 * Test that get_preferred_vision_models() returns expected default models.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_preferred_vision_models_returns_default_models() {
+		$result = \WordPress\AI\get_preferred_vision_models();
+
+		$this->assertCount( 3, $result, 'Should have 3 preferred vision models' );
+
+		$this->assertIsArray( $result[0], 'First model should be an array' );
+		$this->assertCount( 2, $result[0], 'First model should have 2 elements' );
+		$this->assertEquals( 'anthropic', $result[0][0], 'First model provider should be anthropic' );
+		$this->assertEquals( 'claude-haiku-4-5-20251001', $result[0][1], 'First model name should be claude-haiku-4-5-20251001' );
+
+		$this->assertIsArray( $result[1], 'Second model should be an array' );
+		$this->assertCount( 2, $result[1], 'Second model should have 2 elements' );
+		$this->assertEquals( 'google', $result[1][0], 'Second model provider should be google' );
+		$this->assertEquals( 'gemini-2.5-flash', $result[1][1], 'Second model name should be gemini-2.5-flash' );
+
+		$this->assertIsArray( $result[2], 'Third model should be an array' );
+		$this->assertCount( 2, $result[2], 'Third model should have 2 elements' );
+		$this->assertEquals( 'openai', $result[2][0], 'Third model provider should be openai' );
+		$this->assertEquals( 'gpt-5-nano', $result[2][1], 'Third model name should be gpt-5-nano' );
+	}
+
+	/**
+	 * Test that get_preferred_vision_models() applies filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_preferred_vision_models_applies_filter() {
+		add_filter(
+			'ai_experiments_preferred_vision_models',
+			function( $models ) {
+				$models[] = array(
+					'custom',
+					'custom-vision-model',
+				);
+				return $models;
+			}
+		);
+
+		$result = \WordPress\AI\get_preferred_vision_models();
+
+		$this->assertCount( 4, $result, 'Should have 4 models after filter' );
+		$this->assertEquals( 'custom', $result[3][0], 'Fourth model provider should be custom' );
+		$this->assertEquals( 'custom-vision-model', $result[3][1], 'Fourth model name should be custom-vision-model' );
+
+		remove_all_filters( 'ai_experiments_preferred_vision_models' );
+	}
+
+	/**
+	 * Test that get_preferred_vision_models() filter can replace models.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_preferred_vision_models_filter_can_replace_models() {
+		add_filter(
+			'ai_experiments_preferred_vision_models',
+			function( $models ) {
+				return array(
+					array(
+						'test',
+						'test-vision-model',
+					),
+				);
+			}
+		);
+
+		$result = \WordPress\AI\get_preferred_vision_models();
+
+		$this->assertCount( 1, $result, 'Should have 1 model after filter replacement' );
+		$this->assertEquals( 'test', $result[0][0], 'Model provider should be test' );
+		$this->assertEquals( 'test-vision-model', $result[0][1], 'Model name should be test-vision-model' );
+
+		remove_all_filters( 'ai_experiments_preferred_vision_models' );
+	}
 }
