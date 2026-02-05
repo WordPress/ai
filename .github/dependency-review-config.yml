@@ -38,6 +38,7 @@ allow-licenses:
 - LGPL-2.1
 - LGPL-2.1-only
 - MIT
+- MIT-0
 - MPL-2.0
 - NCSA
 - Sleepycat
