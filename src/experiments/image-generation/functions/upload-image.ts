@@ -4,6 +4,10 @@
 import apiFetch from '@wordpress/api-fetch';
 import { __, sprintf } from '@wordpress/i18n';
 
+/**
+ * Internal dependencies
+ */
+import { generateAltText } from '../../../utils/generate-alt-text';
 const { aiImageGenerationData } = window as any;
 
 /**
@@ -37,6 +41,20 @@ export async function uploadImage( {
 	url: string;
 	title: string;
 } > {
+	let altText = prompt;
+
+	// If alt text generation is enabled, try generating alt text.
+	if ( aiImageGenerationData?.altTextEnabled ) {
+		try {
+			altText = await generateAltText(
+				undefined,
+				`data:image/png;base64,${ image.data }`
+			);
+		} catch ( error ) {
+			altText = prompt;
+		}
+	}
+
 	return apiFetch( {
 		path: aiImageGenerationData?.importPath ?? '',
 		method: 'POST',
@@ -56,6 +74,7 @@ export async function uploadImage( {
 					new Date().toLocaleDateString(),
 					prompt
 				),
+				alt_text: altText,
 				meta: [
 					{
 						key: 'ai_generated',

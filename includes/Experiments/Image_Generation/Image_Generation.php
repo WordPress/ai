@@ -14,6 +14,7 @@ use WordPress\AI\Abilities\Image\Generate_Image_Prompt as Generate_Image_Prompt_
 use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -132,6 +133,7 @@ class Image_Generation extends Abstract_Experiment {
 			'ImageGenerationData',
 			array(
 				'enabled'            => $this->is_enabled(),
+				'altTextEnabled'     => ( new Alt_Text_Generation() )->is_enabled(),
 				'generateImagePath'  => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
 				'importPath'         => 'wp-abilities/v1/abilities/ai/image-import/run',
 				'getContextPath'     => 'wp-abilities/v1/abilities/ai/get-post-details/run',
