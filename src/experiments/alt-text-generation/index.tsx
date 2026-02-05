@@ -15,6 +15,7 @@ import { AltTextControls } from './components/AltTextControls';
 import type { ImageBlockAttributes } from './types';
 
 interface BlockEditProps {
+	clientId: string;
 	name: string;
 	attributes: ImageBlockAttributes;
 	setAttributes: ( attributes: Partial< ImageBlockAttributes > ) => void;
@@ -47,6 +48,7 @@ const withAltTextGeneration = createHigherOrderComponent( ( BlockEdit ) => {
 			<>
 				<BlockEdit { ...props } />
 				<AltTextControls
+					clientId={ props.clientId }
 					attributes={ props.attributes }
 					setAttributes={ props.setAttributes }
 				/>

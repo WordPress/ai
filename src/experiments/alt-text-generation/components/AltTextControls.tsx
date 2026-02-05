@@ -11,11 +11,17 @@ import {
 	Spinner,
 	Notice,
 } from '@wordpress/components';
-import { InspectorControls } from '@wordpress/block-editor';
+import {
+	InspectorControls,
+	store as blockEditorStore,
+} from '@wordpress/block-editor';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { dispatch } from '@wordpress/data';
+import { dispatch, select } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
+import { store as editorStore } from '@wordpress/editor';
+/* eslint-disable import/no-extraneous-dependencies -- @wordpress/blocks is in dependencies; types are in devDependencies */
+import { serialize } from '@wordpress/blocks';
 
 /**
  * Internal dependencies
@@ -26,9 +32,37 @@ import type {
 } from '../types';
 import { runAbility } from '../../../utils/run-ability';
 
+const IMAGE_PLACEHOLDER = '[[IMAGE_GOES_HERE]]';
+
 interface AltTextControlsProps {
+	clientId: string;
 	attributes: ImageBlockAttributes;
 	setAttributes: ( attributes: Partial< ImageBlockAttributes > ) => void;
+}
+
+/**
+ * Replaces the current image block markup in post content with a placeholder.
+ *
+ * @param {string} content  Full post content.
+ * @param {string} clientId Client ID of the current image block.
+ * @return {string} Content with this image block replaced by the placeholder.
+ */
+function replaceImageBlockWithPlaceholder(
+	content: string,
+	clientId: string
+): string {
+	// eslint-disable-next-line dot-notation -- getBlock from store index signature
+	const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
+	if ( ! block ) {
+		return content;
+	}
+
+	const serializedBlock = serialize( block );
+	if ( ! serializedBlock || ! content.includes( serializedBlock ) ) {
+		return content;
+	}
+
+	return content.replace( serializedBlock, IMAGE_PLACEHOLDER );
 }
 
 /**
@@ -36,11 +70,15 @@ interface AltTextControlsProps {
  *
  * @param {number|undefined} attachmentId The attachment ID.
  * @param {string|undefined} imageUrl     The image URL (fallback if no attachment ID).
+ * @param {string|undefined} content      The content of the post.
+ * @param {string|undefined} clientId     The client ID of the current image block.
  * @return {Promise<string>} The generated alt text.
  */
 async function generateAltText(
 	attachmentId: number | undefined,
-	imageUrl: string | undefined
+	imageUrl: string | undefined,
+	content: string | undefined,
+	clientId: string | undefined
 ): Promise< string > {
 	const params: AltTextGenerationAbilityInput = {};
 
@@ -52,6 +90,17 @@ async function generateAltText(
 		throw new Error(
 			__( 'No image available to generate alt text for.', 'ai' )
 		);
+	}
+
+	if ( content ) {
+		// Replace the image block with the placeholder.
+		const contentWithPlaceholder =
+			clientId !== undefined
+				? replaceImageBlockWithPlaceholder( content, clientId )
+				: content;
+
+		// Prepare the context.
+		params.context = `What follows is the full article content, where the image has been replaced with the placeholder ${ IMAGE_PLACEHOLDER }. Use the surrounding text to understand the purpose, subject, and relevance of the image within the article. Be sure to describe only information not already conveyed in nearby text. CONTENT: \n\n${ contentWithPlaceholder }`;
 	}
 
 	const response = await runAbility( 'ai/alt-text-generation', params );
@@ -81,11 +130,13 @@ function getButtonLabel( hasExistingAlt: boolean ): string {
  * Adds a "Generate Alt Text" button to the image block inspector panel.
  *
  * @param {AltTextControlsProps} props               The component props.
+ * @param {string}               props.clientId      The block client ID.
  * @param {ImageBlockAttributes} props.attributes    The block attributes.
  * @param {Function}             props.setAttributes The function to set the block attributes.
  * @return {JSX.Element|null} The component.
  */
 export function AltTextControls( {
+	clientId,
 	attributes,
 	setAttributes,
 }: AltTextControlsProps ): JSX.Element | null {
@@ -117,7 +168,13 @@ export function AltTextControls( {
 		);
 
 		try {
-			const result = await generateAltText( attachmentId, imageUrl );
+			const content = select( editorStore ).getEditedPostContent();
+			const result = await generateAltText(
+				attachmentId,
+				imageUrl,
+				content,
+				clientId
+			);
 			setGeneratedAlt( result );
 		} catch ( err: any ) {
 			const errorMessage =
