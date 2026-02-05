@@ -234,6 +234,7 @@ export function AltTextControls( {
 					<div style={ { marginBottom: '12px' } }>
 						<TextareaControl
 							label={ __( 'Generated Alt Text', 'ai' ) }
+							hideLabelFromVision
 							value={ generatedAlt || '' }
 							onChange={ ( value ) => setGeneratedAlt( value ) }
 							rows={ 3 }
