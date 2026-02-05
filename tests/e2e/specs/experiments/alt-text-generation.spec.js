@@ -192,13 +192,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			} )
 		).toBeVisible();
 
-		// Ensure the current alt text info is visible.
-		await expect(
-			page.locator( '.ai-alt-text-controls p' ).first()
-		).toHaveText(
-			'Current alt text: “Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure”'
-		);
-
 		// Remove alt text.
 		await page
 			.locator( '.components-tools-panel textarea' )

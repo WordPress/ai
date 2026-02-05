@@ -222,20 +222,6 @@ export function AltTextControls( {
 						) }
 					</Button>
 				) }
-
-				{ /* Current alt text info */ }
-				{ hasExistingAlt && ! hasGeneratedAlt && (
-					<p
-						style={ {
-							marginTop: '8px',
-							fontSize: '12px',
-							color: '#757575',
-						} }
-					>
-						{ __( 'Current alt text:', 'ai' ) } &ldquo;{ alt }
-						&rdquo;
-					</p>
-				) }
 			</div>
 		</InspectorControls>
 	);
