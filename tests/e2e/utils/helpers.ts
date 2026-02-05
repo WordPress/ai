@@ -60,10 +60,23 @@ export const clearCredentials = async ( admin: Admin, page: Page ) => {
  */
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
-	await page.locator( '#ai_experiments_enabled' ).uncheck();
-	await page.locator( '#submit' ).click();
 
-	// Ensure the save was successful.
+	// Wait for page to fully load before finding button
+	await page.waitForSelector( 'button.ai-experiments__toggle-button', {
+		timeout: 10000,
+	} );
+
+	// Click the disable button if it exists. Otherwise we assume the experiments are already disabled.
+	const button = page.locator( 'button.ai-experiments__toggle-button', {
+		hasText: 'Disable Experiments',
+	} );
+	if ( ( await button.count() ) === 0 ) {
+		return;
+	}
+	await button.click();
+
+	// Wait for page reload and ensure the save was successful.
+	await page.waitForLoadState( 'load' );
 	await expect(
 		page.locator( '.wrap .notice-success', {
 			hasText: 'Settings saved',
@@ -79,10 +92,23 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
  */
 export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
-	await page.locator( '#ai_experiments_enabled' ).check();
-	await page.locator( '#submit' ).click();
 
-	// Ensure the save was successful.
+	// Wait for page to fully load before finding button
+	await page.waitForSelector( 'button.ai-experiments__toggle-button', {
+		timeout: 10000,
+	} );
+
+	// Click the enable button if it exists. Otherwise we assume the experiments are already enabled.
+	const button = page.locator( 'button.ai-experiments__toggle-button', {
+		hasText: 'Enable Experiments',
+	} );
+	if ( ( await button.count() ) === 0 ) {
+		return;
+	}
+	await button.click();
+
+	// Wait for page reload and ensure the save was successful.
+	await page.waitForLoadState( 'load' );
 	await expect(
 		page.locator( '.wrap .notice-success', {
 			hasText: 'Settings saved',
