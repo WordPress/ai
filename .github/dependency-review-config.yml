@@ -17,10 +17,8 @@ allow-licenses:
 - Apache-2.0 WITH LLVM-exception
 - Artistic-2.0
 - BlueOak-1.0.0
-- BSD
 - BSD-2-Clause
 - BSD-3-Clause
-- BSD-3-Clause-W3C
 - BSL-1.0
 - CC0-1.0
 - CC-BY-4.0
@@ -41,7 +39,6 @@ allow-licenses:
 - LGPL-2.1
 - LGPL-2.1-only
 - MIT
-- MIT/X11
 - MIT-0
 - MPL-2.0
 - NCSA
