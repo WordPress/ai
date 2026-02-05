@@ -45,11 +45,11 @@ export default function GenerateFeaturedImage(): JSX.Element {
 		);
 
 		try {
-			const generatedImage = await generateImage(
+			const generatedImageData = await generateImage(
 				postId as number,
 				content
 			);
-			const importedImage = await uploadImage( generatedImage );
+			const importedImage = await uploadImage( generatedImageData );
 			editPost( {
 				featured_media: importedImage.id,
 			} );

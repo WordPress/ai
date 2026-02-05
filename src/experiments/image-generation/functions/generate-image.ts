@@ -17,12 +17,19 @@ const { aiImageGenerationData } = window as any;
  *
  * @param {number} postId  The ID of the post to generate a featured image for.
  * @param {string} content The content of the post to generate an image for.
- * @return {Promise<string>} A promise that resolves to the generated image.
+ * @return {Promise<{ image: { data: string; provider_metadata: { id: string; name: string; type: string; }; model_metadata: { id: string; name: string; }; }; prompt: string; }>} A promise that resolves to the generated image data.
  */
 export async function generateImage(
 	postId: number,
 	content: string
-): Promise< string > {
+): Promise< {
+	image: {
+		data: string;
+		provider_metadata: { id: string; name: string; type: string };
+		model_metadata: { id: string; name: string };
+	};
+	prompt: string;
+} > {
 	let context: {
 		title: string;
 		type: string;
@@ -61,11 +68,27 @@ export async function generateImage(
 		},
 	} )
 		.then( ( response ) => {
-			if ( response && typeof response === 'string' ) {
-				return response;
+			if ( response && typeof response === 'object' ) {
+				const result = response as { prompt?: string };
+				result.prompt = prompt;
+				return result as {
+					image: {
+						data: string;
+						provider_metadata: {
+							id: string;
+							name: string;
+							type: string;
+						};
+						model_metadata: {
+							id: string;
+							name: string;
+						};
+					};
+					prompt: string;
+				};
 			}
 
-			return '';
+			throw new Error( 'Invalid response from generate image' );
 		} )
 		.catch( ( error ) => {
 			throw new Error( error.message );
