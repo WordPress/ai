@@ -4,8 +4,7 @@ Welcome to the WordPress AI Experiments plugin development guide. This document 
 
 ## Table of Contents
 
-- [Getting Started](#getting-started)
-- [Architecture Overview](#architecture-overview)
+- [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
 - [Creating a New Experiment](#creating-a-new-experiment)
 - [Plugin API](#plugin-api)
 - [Development Workflow](#development-workflow)
@@ -13,74 +12,9 @@ Welcome to the WordPress AI Experiments plugin development guide. This document 
 
 ---
 
-## Getting Started
+## Creating a New Experiment
 
-### Prerequisites
-
-- PHP 7.4 or higher
-- WordPress 6.9 or higher
-- Composer
-- Node.js and npm (for asset building)
-
-### Local Development Setup
-
-1. **Clone the repository:**
-
-```bash
-git clone https://github.com/WordPress/ai.git
-cd ai
-```
-
-2. **Install dependencies and build assets:**
-
-```bash
-composer install && npm i && npm run build
-```
-
-3. **Activate the plugin:**
-
-Through WordPress admin or via WP-CLI:
-
-```bash
-wp plugin activate ai
-```
-
----
-
-## Architecture Overview
-
-The plugin follows a modular, experiment-based architecture:
-
-```
-ai/
-├── ai.php                            # Plugin bootstrap
-├── build/                            # Built assets
-├── includes/                         # Core plugin code
-│   ├── Asset_Loader.php              # Asset loader utility class
-│   ├── bootstrap.php                 # Plugin initialization
-│   ├── Experiment_Registry.php      # Experiment registration system
-│   ├── Experiment_Loader.php         # Experiment loading and initialization
-│   ├── Abstracts/                    # Base implementations
-│   │   └── Abstract_Experiment.php   # Base experiment class
-│   ├── Contracts/                    # Experiment interfaces
-│   │   └── Experiment.php            # Experiment contract
-│   ├── Exception/                    # Custom exceptions
-│   │   ├── Invalid_Experiment_Exception.php
-│   │   └── Invalid_Experiment_Metadata_Exception.php
-│   └── Experiments/                  # Experiment implementations
-│       └── Example_Experiment/       # Each experiment in own directory
-│           ├── Example_Experiment.php
-│           └── README.md
-├── admin/                            # Admin interface (planned)
-├── assets/                           # CSS, JS, images
-├── docs/                             # Documentation
-│   ├── DEVELOPER_GUIDE.md            # This guide
-│   └── TESTING.md                    # Testing strategy
-├── languages/                        # Translation files
-├── src/                              # Source asset files that will be built
-└── tests/                            # PHPUnit tests
-    └── Unit/                         # Unit tests
-```
+Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct piece of functionality that may utilize AI capabilities.
 
 ### Key Design Principles
 
@@ -88,12 +22,6 @@ ai/
 2. **Modularity**: Experiments can be added/removed without affecting core functionality
 3. **Extensibility**: Third-party developers can register custom experiments via hooks
 4. **Standards Compliance**: All code follows WordPress coding standards
-
----
-
-## Creating a New Experiment
-
-Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct AI capability.
 
 ### Step 1: Create Experiment Directory
 
@@ -421,7 +349,8 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 ### Documentation
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
-- [Testing Strategy](TESTING.md) - Testing philosophy and guidelines
+- [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
+- [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [WordPress AI Team](https://make.wordpress.org/ai/)
