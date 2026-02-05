@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_preferred_vision_models;
+use function WordPress\AI\normalize_content;
 
 /**
  * Alt text generation WordPress Ability.
@@ -102,7 +103,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		}
 
 		// Generate the alt text.
-		$result = $this->generate_alt_text( $image_reference, $args['context'] );
+		$result = $this->generate_alt_text( $image_reference, normalize_content( $args['context'] ) );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -188,9 +189,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @return string|\WP_Error The generated alt text or WP_Error on failure.
 	 */
 	protected function generate_alt_text( array $image_reference, string $context = '' ) {
-		$prompt = $this->build_prompt( $context );
-
-		$result = AI_Client::prompt_with_wp_error( $prompt )
+		$result = AI_Client::prompt_with_wp_error( $this->build_prompt( $context ) )
 			->with_file( $image_reference['reference'] )
 			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
 			->using_temperature( 0.3 )
@@ -376,12 +375,9 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function build_prompt( string $context = '' ): string {
 		$prompt = __( 'Generate alt text for this image.', 'ai' );
 
+		// If we have additional context, add it to the prompt.
 		if ( ! empty( $context ) ) {
-			$prompt .= ' ' . sprintf(
-				/* translators: %s: Context about the image. */
-				__( 'Context: %s', 'ai' ),
-				$context
-			);
+			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
 		return $prompt;
