@@ -247,6 +247,40 @@ function get_preferred_image_models(): array {
 }
 
 /**
+ * Returns the preferred vision models.
+ *
+ * @since x.x.x
+ *
+ * @return array<int, array{string, string}> The preferred vision models.
+ */
+function get_preferred_vision_models(): array {
+	$preferred_models = array(
+		array(
+			'anthropic',
+			'claude-haiku-4-5-20251001',
+		),
+		array(
+			'google',
+			'gemini-2.5-flash',
+		),
+		array(
+			'openai',
+			'gpt-5-nano',
+		),
+	);
+
+	/**
+	 * Filters the preferred vision models.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred vision models.
+	 * @return array<int, array{string, string}> The filtered preferred vision models.
+	 */
+	return (array) apply_filters( 'ai_experiments_preferred_vision_models', $preferred_models );
+}
+
+/**
  * Checks if we have AI credentials set.
  *
  * @since 0.1.0
