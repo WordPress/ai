@@ -16,8 +16,11 @@ allow-licenses:
 - Apache-2.0 AND Apache-2.0 WITH LLVM-exception
 - Apache-2.0 WITH LLVM-exception
 - Artistic-2.0
+- BlueOak-1.0.0
+- BSD
 - BSD-2-Clause
 - BSD-3-Clause
+- BSD-3-Clause-W3C
 - BSL-1.0
 - CC0-1.0
 - CC-BY-4.0
@@ -38,13 +41,17 @@ allow-licenses:
 - LGPL-2.1
 - LGPL-2.1-only
 - MIT
+- MIT/X11
 - MIT-0
 - MPL-2.0
 - NCSA
+- ODC-By-1.0
 - Sleepycat
 - Unlicense
 - UPL-1.0
+- WTFPL
 - W3C
+- W3C-20150513
 - Zlib
 - ZPL-2.0
 # The following licenses fit the above criteria except they are not marked as FSF Free/Libre on the SPDX License List (https://spdx.org/licenses/):  Unicode-DFS-2016
