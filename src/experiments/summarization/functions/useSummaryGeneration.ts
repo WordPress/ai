@@ -69,13 +69,6 @@ export function useSummaryGeneration() {
 				},
 			} );
 
-			// Create the new summary block.
-			const summaryBlock = createBlock( 'core/paragraph', {
-				content: generatedSummary,
-				className: 'ai-summarization-summary',
-				aiGeneratedSummary: true,
-			} );
-
 			// Check if an existing AI summary block exists.
 			const existingSummaryBlock = allBlocks.find(
 				( block: BlockInstance ) =>
@@ -83,14 +76,22 @@ export function useSummaryGeneration() {
 					block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 			);
 
-			// Replace existing block or insert at top if none exists.
 			if ( existingSummaryBlock ) {
-				// eslint-disable-next-line dot-notation
-				( dispatch( blockEditorStore ) as any )[ 'replaceBlock' ](
-					existingSummaryBlock.clientId,
-					summaryBlock
-				);
+				// Update only the content of the existing block to preserve styles and other attributes.
+				/* eslint-disable dot-notation -- updateBlockAttributes from store index signature */
+				( dispatch( blockEditorStore ) as any )[
+					'updateBlockAttributes'
+				]( existingSummaryBlock.clientId, {
+					content: generatedSummary,
+				} );
+				/* eslint-enable dot-notation */
 			} else {
+				// Insert a new summary block at the top.
+				const summaryBlock = createBlock( 'core/paragraph', {
+					content: generatedSummary,
+					className: 'ai-summarization-summary',
+					aiGeneratedSummary: true,
+				} );
 				// eslint-disable-next-line dot-notation
 				( dispatch( blockEditorStore ) as any )[ 'insertBlock' ](
 					summaryBlock,
