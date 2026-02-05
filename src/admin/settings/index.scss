@@ -42,25 +42,18 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-
-		.components-toggle-control {
-			display: flex;
-			align-items: center;
-			margin: 0;
-
-			span {
-				margin-left: 0.5rem;
-			}
-		}
-
-		input[type="checkbox"] {
-			margin: 0;
-		}
+		flex-wrap: wrap;
 	}
 
-	/* Element: toggle label */
-	&__toggle-label {
-		font-weight: 500;
+	/* Element: toggle button */
+	&__toggle-button {
+		margin: 0;
+	}
+
+	/* Element: toggle help text */
+	&__toggle-help {
+		margin: 0;
+		color: #555d66;
 	}
 
 	/* Element: notice */
