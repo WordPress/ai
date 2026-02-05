@@ -9,11 +9,13 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Image;
 
+use Throwable;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
-use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
+use WordPress\AiClient\Providers\DTO\ProviderMetadata;
+use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 
 use function WordPress\AI\get_preferred_image_models;
 
@@ -50,8 +52,51 @@ class Generate_Image extends Abstract_Ability {
 	 */
 	protected function output_schema(): array {
 		return array(
-			'type'        => 'string',
-			'description' => esc_html__( 'The base64 encoded image data.', 'ai' ),
+			'type'       => 'object',
+			'properties' => array(
+				'image' => array(
+					'type'        => 'object',
+					'description' => esc_html__( 'Generated image data.', 'ai' ),
+					'properties'  => array(
+						'data'              => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The base64 encoded image data.', 'ai' ),
+						),
+						'provider_metadata' => array(
+							'type'        => 'object',
+							'description' => esc_html__( 'Information about the provider that generated the image.', 'ai' ),
+							'properties'  => array(
+								'id'   => array(
+									'type'        => 'string',
+									'description' => esc_html__( 'The provider ID.', 'ai' ),
+								),
+								'name' => array(
+									'type'        => 'string',
+									'description' => esc_html__( 'The provider name.', 'ai' ),
+								),
+								'type' => array(
+									'type'        => 'string',
+									'description' => esc_html__( 'The provider type.', 'ai' ),
+								),
+							),
+						),
+						'model_metadata'    => array(
+							'type'        => 'object',
+							'description' => esc_html__( 'Information about the model that generated the image.', 'ai' ),
+							'properties'  => array(
+								'id'   => array(
+									'type'        => 'string',
+									'description' => esc_html__( 'The model ID.', 'ai' ),
+								),
+								'name' => array(
+									'type'        => 'string',
+									'description' => esc_html__( 'The model name.', 'ai' ),
+								),
+							),
+						),
+					),
+				),
+			),
 		);
 	}
 
@@ -78,7 +123,9 @@ class Generate_Image extends Abstract_Ability {
 		}
 
 		// Return the image data in the format the Ability expects.
-		return sanitize_text_field( trim( $result ) );
+		return array(
+			'image' => $result,
+		);
 	}
 
 	/**
@@ -115,31 +162,53 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.2.0
 	 *
 	 * @param string $prompt The prompt to generate an image from.
-	 * @return string|\WP_Error The generated image data, or a WP_Error if there was an error.
+	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, provider metadata, and model metadata, or a WP_Error if there was an error.
 	 */
 	protected function generate_image( string $prompt ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
-		$request_options = new RequestOptions();
-		$request_options->setTimeout( 90 );
-
 		// Generate the image using the AI client.
-		$file = AI_Client::prompt_with_wp_error( $prompt )
-			->using_request_options( $request_options )
+		$result = AI_Client::prompt_with_wp_error( $prompt )
 			->as_output_file_type( FileTypeEnum::inline() )
 			->using_model_preference( ...get_preferred_image_models() )
-			->generate_image();
+			->generate_image_result();
 
 		// If we have an error, return it.
-		if ( is_wp_error( $file ) ) {
-			return $file;
+		if ( is_wp_error( $result ) ) {
+			return $result;
 		}
 
-		// Return the base64 encoded image data.
-		$data = $file->getBase64Data();
+		$data = array(
+			'data'              => '',
+			'provider_metadata' => array(),
+			'model_metadata'    => array(),
+		);
 
-		if ( empty( $data ) ) {
+		try {
+			// Get the File from the result.
+			$file = $result->toImageFile();
+
+			// Return the base64 encoded image data.
+			$data['data'] = sanitize_text_field( trim( $file->getBase64Data() ?? '' ) );
+
+			if ( empty( $data['data'] ) ) {
+				return new WP_Error(
+					'no_image_data',
+					esc_html__( 'No image data was generated.', 'ai' )
+				);
+			}
+
+			// Get details about the provider and model that generated the image.
+			$data['provider_metadata'] = $result->getProviderMetadata()->toArray();
+			$data['model_metadata']    = $result->getModelMetadata()->toArray();
+
+			// Remove data we don't care about.
+			unset( $data['provider_metadata'][ ProviderMetadata::KEY_CREDENTIALS_URL ] );
+			unset( $data['model_metadata'][ ModelMetadata::KEY_SUPPORTED_OPTIONS ] );
+			unset( $data['model_metadata'][ ModelMetadata::KEY_SUPPORTED_CAPABILITIES ] );
+		} catch ( Throwable $t ) {
 			return new WP_Error(
 				'no_image_data',
-				esc_html__( 'No image data was generated.', 'ai' )
+				esc_html__( 'No image data was generated.', 'ai' ),
+				$t
 			);
 		}
 
