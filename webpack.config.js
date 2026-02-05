@@ -39,6 +39,16 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'experiments/alt-text-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'index.tsx'
+		),
+		'experiments/alt-text-generation-media': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'media.ts'
+		),
 	},
 
 	plugins: [
