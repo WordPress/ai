@@ -5,6 +5,11 @@
  * @package WordPress\AI\Abilities\Image
  */
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 return <<<'INSTRUCTION'
 You are an accessibility expert that generates alt text for images on websites.
