@@ -186,7 +186,7 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 
 For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
-- [Experiments Developer Guide](docs/EXPERIMENTS_DEVELOPER_GUIDE.md) - Comprehensive guide to plugin experiment development
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Comprehensive guide to plugin experiment development
 - [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
 - [Testing Strategy](docs/TESTING.md) - Testing philosophy and guidelines
 - [Testing API Strategy](docs/TESTING_REST_API.md) - Testing philosophy and guidelines
