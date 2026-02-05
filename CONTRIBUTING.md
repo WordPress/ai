@@ -40,16 +40,16 @@ Before submitting a pull request, run the following commands:
 
 ```bash
 # Check coding standards
-composer lint
+composer lint && npm run typecheck && npm run lint:js
 
 # Run static analysis
 composer phpstan
 
 # Auto-fix coding standards issues
-composer format
+composer format && npm run lint:js:fix
 
 # Run tests
-composer test
+npm run test:e2e:env:start && npm run test:e2e && npm run test:php && test:e2e:env:stop
 
 ---
 
