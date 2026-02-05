@@ -98,6 +98,7 @@ class Summarization extends Abstract_Experiment {
 		}
 
 		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization' );
+		Asset_Loader::enqueue_style( 'summarization', 'experiments/summarization' );
 		Asset_Loader::localize_script(
 			'summarization',
 			'SummarizationData',

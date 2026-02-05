@@ -15,6 +15,7 @@ import { registerPlugin } from '@wordpress/plugins';
  */
 import SummarizationPlugin from './components/SummarizationPlugin';
 import SummarizationBlockControls from './components/SummarizationBlockControls';
+import './index.scss';
 
 // Register the plugin.
 registerPlugin( 'classifai-plugin-summarization', {

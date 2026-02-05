@@ -63,12 +63,7 @@ export default function SummarizationPlugin() {
 					</Button>
 				</FlexItem>
 				<FlexItem>
-					<span
-						className="description"
-						style={ { color: '#757575' } }
-					>
-						{ buttonDescription }
-					</span>
+					<span className="description">{ buttonDescription }</span>
 				</FlexItem>
 			</Flex>
 		</PluginPostStatusInfo>
