@@ -348,7 +348,7 @@ PHP;
 		} finally {
 			// Clean up the test file.
 			if ( file_exists( $test_file ) ) {
-				unlink( $test_file );
+				wp_delete_file( $test_file );
 			}
 		}
 	}
@@ -394,7 +394,7 @@ PHP;
 		} finally {
 			// Clean up the test file.
 			if ( file_exists( $test_file ) ) {
-				unlink( $test_file );
+				wp_delete_file( $test_file );
 			}
 		}
 	}
@@ -440,7 +440,7 @@ PHP;
 		} finally {
 			// Clean up the test file.
 			if ( file_exists( $test_file ) ) {
-				unlink( $test_file );
+				wp_delete_file( $test_file );
 			}
 		}
 	}
