@@ -40,7 +40,7 @@
     "@types/wordpress__edit-post": "^8.4.2",
     "@wordpress/e2e-test-utils-playwright": "^1.39.0",
     "@wordpress/env": "^10.39.0",
-    "@wordpress/scripts": "^31.4.0",
+    "@wordpress/scripts": "^31.2.0",
     "filenamify": "^7.0.1",
     "typescript": "^5.9.3",
     "webpack-remove-empty-scripts": "^1.1.1"
