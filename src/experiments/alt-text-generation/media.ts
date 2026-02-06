@@ -63,7 +63,7 @@ class AltTextMediaControls {
 	/**
 	 * Constructs a new AltTextMediaControls instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public constructor() {
 		this.context = {
@@ -118,7 +118,7 @@ class AltTextMediaControls {
 	/**
 	 * Updates the button label based on the textarea value.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	private updateButtonLabel(): void {
 		if ( ! this.textarea || ! this.button ) {
@@ -134,7 +134,7 @@ class AltTextMediaControls {
 	/**
 	 * Handles the generate button click.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @return The generated alt text.
 	 */
@@ -177,7 +177,7 @@ class AltTextMediaControls {
 	/**
 	 * Sets the status message.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param message The message to set.
 	 * @param isError Whether the message is an error.
@@ -195,7 +195,7 @@ class AltTextMediaControls {
 /**
  * Requests alt text from the AI ability.
  *
- * @since x.x.x
+ * @since 0.3.0
  *
  * @param context The field context.
  * @return The generated alt text.
@@ -234,7 +234,7 @@ async function requestAltText( context: FieldContext ): Promise< string > {
 /**
  * Gets the error message from the error object.
  *
- * @since x.x.x
+ * @since 0.3.0
  *
  * @param error The error object.
  * @return The error message.
@@ -258,7 +258,7 @@ function getErrorMessage( error: unknown ): string {
 /**
  * Initializes the AltTextMediaControls instance.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 function initAltTextMediaControls(): void {
 	new AltTextMediaControls();

@@ -249,7 +249,7 @@ function get_preferred_image_models(): array {
 /**
  * Returns the preferred vision models.
  *
- * @since x.x.x
+ * @since 0.3.0
  *
  * @return array<int, array{string, string}> The preferred vision models.
  */
@@ -272,7 +272,7 @@ function get_preferred_vision_models(): array {
 	/**
 	 * Filters the preferred vision models.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred vision models.
 	 * @return array<int, array{string, string}> The filtered preferred vision models.

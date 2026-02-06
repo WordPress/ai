@@ -22,13 +22,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Generates descriptive alt text for images using AI vision models.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * Tracks whether the media-focused assets have already been enqueued.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @var bool
 	 */
@@ -37,7 +37,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
@@ -50,7 +50,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -64,7 +64,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -80,7 +80,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * Enqueues block editor assets.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function enqueue_editor_assets(): void {
 		Asset_Loader::enqueue_script( 'alt_text_generation', 'experiments/alt-text-generation' );
@@ -98,7 +98,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * Enqueues assets whenever the core media modal is registered.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function enqueue_media_frame_assets(): void {
 		$this->maybe_enqueue_media_script();
@@ -107,7 +107,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * Conditionally enqueues assets on media-related admin screens (e.g., upload.php).
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */
@@ -133,7 +133,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * Shared helper to enqueue and localize the media UI script once per request.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	private function maybe_enqueue_media_script(): void {
 		if ( $this->media_assets_enqueued || ! $this->is_enabled() ) {
@@ -158,7 +158,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	 * Adds a meta box to the attachment edit screen that contains
 	 * the Generate/Regenerate button.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param \WP_Post $post The attachment post.
 	 */
@@ -181,7 +181,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * Renders the attachment meta box content.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param \WP_Post $post The attachment post.
 	 */
@@ -196,7 +196,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	/**
 	 * Adds a button to the media modal to generate alt text.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param array<string, mixed> $fields The attachment fields.
 	 * @param \WP_Post|null $post The attachment post.

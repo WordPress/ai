@@ -15,13 +15,13 @@ use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
 /**
  * Alt_Text_Generation experiment test case.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -47,7 +47,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -61,7 +61,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Alt_Text_Generation();
@@ -74,7 +74,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment can be disabled via filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_experiment_can_be_disabled_via_filter() {
 		add_filter( 'ai_experiments_experiment_alt-text-generation_enabled', '__return_false' );
