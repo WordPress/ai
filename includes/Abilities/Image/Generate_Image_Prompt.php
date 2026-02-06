@@ -20,14 +20,14 @@ use function WordPress\AI\normalize_content;
 /**
  * Image prompt generation WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 class Generate_Image_Prompt extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -56,7 +56,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -68,7 +68,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -138,7 +138,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
@@ -189,7 +189,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -204,7 +204,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	/**
 	 * Generates an image generation prompt from the given content, context, and style.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $content The content to use as inspiration for the final generated image.
 	 * @param string|array<string, string> $context The context to help generate the prompt.

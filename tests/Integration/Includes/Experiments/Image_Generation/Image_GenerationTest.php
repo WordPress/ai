@@ -75,7 +75,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment registers all abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_experiment_registers_abilities() {
 		if ( ! function_exists( 'wp_get_ability' ) ) {
@@ -108,7 +108,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment registers post meta.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_experiment_registers_post_meta() {
 		$experiment = new Image_Generation();

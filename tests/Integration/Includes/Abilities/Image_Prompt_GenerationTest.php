@@ -15,13 +15,13 @@ use WP_UnitTestCase;
 /**
  * Test experiment for Image_Prompt_Generation Ability tests.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 class Test_Image_Prompt_Generation_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
@@ -36,7 +36,7 @@ class Test_Image_Prompt_Generation_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -46,7 +46,7 @@ class Test_Image_Prompt_Generation_Experiment extends Abstract_Experiment {
 /**
  * Image_Prompt_Generation Ability test case.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 
@@ -67,7 +67,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -85,7 +85,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -95,7 +95,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -110,7 +110,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -144,7 +144,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -162,7 +162,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles content parameter correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -193,7 +193,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles content with context.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_content_and_context() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -225,7 +225,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles content with context and style.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_content_context_and_style() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -258,7 +258,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles post ID in context.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_post_id_context() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -297,7 +297,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when post ID is invalid.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_invalid_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -317,7 +317,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_without_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -334,7 +334,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is empty.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_empty_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -354,7 +354,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() uses default values for optional parameters.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_uses_default_values() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -384,7 +384,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() prioritizes passed content over post content.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_content_overrides_post_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -424,7 +424,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_permission_callback_returns_true_for_logged_in_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -443,7 +443,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns WP_Error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_permission_callback_returns_false_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -462,7 +462,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns WP_Error for user without edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_permission_callback_returns_error_for_user_without_edit_posts() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -482,7 +482,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );

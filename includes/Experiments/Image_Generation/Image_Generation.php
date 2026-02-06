@@ -56,7 +56,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Register any needed post meta.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function register_post_meta(): void {
 		register_post_meta(
@@ -107,7 +107,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
