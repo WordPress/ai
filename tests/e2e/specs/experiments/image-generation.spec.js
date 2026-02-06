@@ -87,7 +87,7 @@ test.describe( 'Image Generation Experiment', () => {
 
 		await expect( imageContainer ).toHaveAttribute(
 			'aria-label',
-			'AI Generated Image'
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
 		);
 
 		await expect( imageContainer.locator( 'img' ) ).toBeVisible();
