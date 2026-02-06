@@ -1,16 +1,11 @@
 /**
- * WordPress dependencies
- */
-import apiFetch from '@wordpress/api-fetch';
-
-/**
  * Internal dependencies
  */
 import { formatContext } from './format-context';
 import { getContext } from './get-context';
 import { generatePrompt } from './generate-prompt';
-
-const { aiImageGenerationData } = window as any;
+import { runAbility } from '../../../utils/run-ability';
+import type { ImageGenerationAbilityInput } from '../types';
 
 /**
  * Generates an image for the given post ID and content.
@@ -58,15 +53,11 @@ export async function generateImage(
 		);
 	}
 
-	return apiFetch( {
-		path: aiImageGenerationData?.generateImagePath ?? '',
-		method: 'POST',
-		data: {
-			input: {
-				prompt,
-			},
-		},
-	} )
+	const params: ImageGenerationAbilityInput = {
+		prompt,
+	};
+
+	return runAbility( 'ai/image-generation', params )
 		.then( ( response ) => {
 			if ( response && typeof response === 'object' ) {
 				const result = response as { prompt?: string };
