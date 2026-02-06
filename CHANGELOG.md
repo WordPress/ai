@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [0.3.0] - 2026-02-09
+### Added
+- Content Summarization Experiment, allowing authors to generate and store AI-powered summaries directly in the post editor ([#147](https://github.com/WordPress/ai/pull/147)).
+- Featured Image Generation Experiment, enabling AI-generated featured images from the editor sidebar with optional alt text and AI attribution metadata ([#146](https://github.com/WordPress/ai/pull/146)).
+- Alt Text Generation Experiment, supporting images within Image blocks and Media Library workflows ([#156](https://github.com/WordPress/ai/pull/156)).
+- “Experiments” and “Credentials” quick action links to the Installed Plugins screen for faster configuration ([#206](https://github.com/WordPress/ai/pull/206)).
+
+### Changed
+- Replace the global “Enable Experiments” checkbox with an auto-submitting enable/disable button to reduce friction when toggling experiments ([#168](https://github.com/WordPress/ai/pull/168)).
+
+### Fixed
+- Improve robustness of asset loading to handle missing or invalid built files and prevent admin and editor warnings ([#175](https://github.com/WordPress/ai/pull/175)).
+- Add missing strict typing declarations in the Abilities Explorer to ensure consistency and correctness ([#208](https://github.com/WordPress/ai/pull/208)).
+
+### Developer
+- Streamline and clarify Contributor and Developer documentation to improve onboarding and reduce duplication ([#169](https://github.com/WordPress/ai/pull/169)).
+- Fix inline documentation issues, including missing `@global` tags, non-standard hook tags, and incomplete `@return` descriptions ([#207](https://github.com/WordPress/ai/pull/207), [#210](https://github.com/WordPress/ai/pull/210)).
+- Bump `phpunit/phpunit` from 9.6.31 to 9.6.33 as part of ongoing test and tooling maintenance ([#209](https://github.com/WordPress/ai/pull/209)).
+- Expand and align allowed open source licenses in dependency configuration to better match Gutenberg and ecosystem tooling ([#212](https://github.com/WordPress/ai/pull/212), [#213](https://github.com/WordPress/ai/pull/213), [#214](https://github.com/WordPress/ai/pull/214)).
+
 ## [0.2.1] - 2026-01-26
 ### Added
 - Introduced a shared `AI_Service` layer to standardize provider access across experiments ([#101](https://github.com/WordPress/ai/pull/101)).
@@ -21,7 +41,6 @@ All notable changes to this project will be documented in this file, per [the Ke
 - Bumped `lodash` from 4.17.21 to 4.17.23 ([#199](https://github.com/WordPress/ai/pull/199)).
 
 ## [0.2.0] – 2026-01-20
-
 ### Added
 - Core excerpt generation support for AI-powered summaries, including a new Excerpt Generation Experiment with editor UI ([#96](https://github.com/WordPress/ai/pull/96), [#143](https://github.com/WordPress/ai/pull/143)).
 - Abilities Explorer - a new admin screen to view and interact with registered AI abilities in the plugin ([#63](https://github.com/WordPress/ai/pull/63)).
@@ -79,8 +98,9 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Initial integration with WP AI Client SDK and Abilities API
 - Utilities Ability for common AI tasks and testing
 
-[Unreleased]: https://github.com/wordpress/ai/compare/trunk...develop
-[0.2.1]: https://github.com/wordpress/ai/compare/0.2.0...0.2.1
-[0.2.0]: https://github.com/wordpress/ai/compare/0.1.1...0.2.0
-[0.1.1]: https://github.com/wordpress/ai/compare/0.1.0...0.1.1
-[0.1.0]: https://github.com/wordpress/ai/tree/0.1.0
+[Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[0.3.0]: https://github.com/WordPress/ai/compare/0.2.1...0.3.0
+[0.2.1]: https://github.com/WordPress/ai/compare/0.2.0...0.2.1
+[0.2.0]: https://github.com/WordPress/ai/compare/0.1.1...0.2.0
+[0.1.1]: https://github.com/WordPress/ai/compare/0.1.0...0.1.1
+[0.1.0]: https://github.com/WordPress/ai/tree/0.1.0
