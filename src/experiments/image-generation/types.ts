@@ -23,11 +23,20 @@ export interface ImageImportAbilityInput {
 		| undefined;
 }
 
-
 /**
  * Input parameters for the ai/image-generation ability.
  */
 export interface ImageGenerationAbilityInput {
 	prompt: string;
+	[ key: string ]: string | undefined;
+}
+
+/**
+ * Input parameters for the ai/image-prompt-generation ability.
+ */
+export interface ImagePromptGenerationAbilityInput {
+	content: string;
+	context?: string;
+	style?: string;
 	[ key: string ]: string | undefined;
 }

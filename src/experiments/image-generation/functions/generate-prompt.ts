@@ -1,9 +1,8 @@
 /**
- * WordPress dependencies
+ * Internal dependencies
  */
-import apiFetch from '@wordpress/api-fetch';
-
-const { aiImageGenerationData } = window as any;
+import { runAbility } from '../../../utils/run-ability';
+import type { ImagePromptGenerationAbilityInput } from '../types';
 
 /**
  * Generates a featured image generation prompt for the given post ID and content.
@@ -16,16 +15,12 @@ export async function generatePrompt(
 	content: string,
 	context: string
 ): Promise< string > {
-	return apiFetch( {
-		path: aiImageGenerationData?.generatePromptPath ?? '',
-		method: 'POST',
-		data: {
-			input: {
-				content,
-				context,
-			},
-		},
-	} )
+	const params: ImagePromptGenerationAbilityInput = {
+		content,
+		context,
+	};
+
+	return await runAbility( 'ai/image-prompt-generation', params )
 		.then( ( response ) => {
 			if ( response && typeof response === 'string' ) {
 				return response;
