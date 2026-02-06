@@ -19,8 +19,10 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 **Current Features:**
 
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
-* **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
+* **Content Summarization** - Summarizes long-form content into digestible overviews.
+* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
+* **Image Generation** - Create images from text prompts directly in the block editor.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
@@ -29,17 +31,10 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 We're actively developing new features to enhance your WordPress workflow:
 
-* **Image Generation** - Create images from text prompts directly in the block editor.
-* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
-* **Content Summarization** - Quickly summarize long-form content.
 * **Contextual Tagging** - AI-suggested tags and categories to organize your content.
 * **Comment Moderation** – AI-assisted moderation tools to help classify or manage user comments.
-* **AI Playground** - Experiment with different AI models and prompts.
-* **Extended Providers** – Support for experimenting with additional or alternate AI providers.
-* **MCP (Model Context Protocol)** – Integrate and test Model Context Protocol capabilities in WordPress workflows.
-* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
 * **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
-* **Date Calculation Ability** – Natural-language date interpretation for AI workflows like “every 3rd Tuesday.”
+* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
 
 This is an experimental plugin; functionality may change as we gather feedback from the community.
 
@@ -61,16 +56,19 @@ The AI Experiments plugin is designed to be studied, extended, and built upon. W
 
 **Extend the Plugin:**
 
-* **Build Custom Experiments** - Use the `Abstract_Experiment` base class to create your own AI-powered features
-* **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities
-* **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements
-* **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys
-* **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled)
+* **Build Custom Experiments** - Use the `Abstract_Experiment` base class to create your own AI-powered features.
+* **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys.
+* **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled).
+* **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities.
+* **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements.
+* **Comprehensive Hooks** - Filters and actions throughout the codebase for customization.
 
 **Developer Tools Coming Soon:**
 
-* **MCP Demo** - See how Model Context Protocol integration works with WordPress
-* **Comprehensive Hooks** - Filters and actions throughout the codebase for customization
+* **AI Playground** - Experiment with different AI models and prompts.
+* **MCP (Model Context Protocol)** – Integrate and test Model Context Protocol capabilities in WordPress workflows.
+* **Extended Providers** – Support for experimenting with additional or alternate AI providers.
+* **Date Calculation Ability** – Natural-language date interpretation for AI workflows like “every 3rd Tuesday.”
 
 **Get Started:**
 
