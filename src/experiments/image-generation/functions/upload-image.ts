@@ -8,40 +8,24 @@ import { __, sprintf } from '@wordpress/i18n';
  */
 import { generateAltText } from '../../../utils/generate-alt-text';
 import { runAbility } from '../../../utils/run-ability';
-import type { ImageImportAbilityInput } from '../types';
+import type {
+	GeneratedImageData,
+	ImageImportAbilityInput,
+	UploadedImage,
+} from '../types';
+
 const { aiImageGenerationData } = window as any;
 
 /**
  * Uploads an image to the media library.
  *
- * @param {Object} image                              The image object.
- * @param {Object} image.image                        The image data.
- * @param {string} image.image.data                   The base64 encoded image data.
- * @param {Object} image.image.provider_metadata      The provider metadata.
- * @param {string} image.image.provider_metadata.id   The provider ID.
- * @param {string} image.image.provider_metadata.name The provider name.
- * @param {string} image.image.provider_metadata.type The provider type.
- * @param {Object} image.image.model_metadata         The model metadata.
- * @param {string} image.image.model_metadata.id      The model ID.
- * @param {string} image.image.model_metadata.name    The model name.
- * @param {string} image.prompt                       The prompt used to generate the image.
- * @return {Promise<{ id: number; url: string; title: string }>} A promise that resolves to the uploaded image data.
+ * @param {GeneratedImageData} imageData The generated image data (from generateImage).
+ * @return {Promise<UploadedImage>} A promise that resolves to the uploaded image data.
  */
 export async function uploadImage( {
 	image,
 	prompt,
-}: {
-	image: {
-		data: string;
-		provider_metadata: { id: string; name: string; type: string };
-		model_metadata: { id: string; name: string };
-	};
-	prompt: string;
-} ): Promise< {
-	id: number;
-	url: string;
-	title: string;
-} > {
+}: GeneratedImageData ): Promise< UploadedImage > {
 	const params: ImageImportAbilityInput = {
 		data: image.data,
 		mime_type: 'image/png',
@@ -83,11 +67,7 @@ export async function uploadImage( {
 				typeof response === 'object' &&
 				'image' in response
 			) {
-				return response.image as {
-					id: number;
-					url: string;
-					title: string;
-				};
+				return response.image as UploadedImage;
 			}
 
 			throw new Error( 'Invalid response from image import' );

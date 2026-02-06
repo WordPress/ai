@@ -1,12 +1,15 @@
 /**
+ * Internal dependencies
+ */
+import type { ContextRecord } from '../types';
+
+/**
  * Formats an object as a string with "Key: Value" pairs on separate lines.
  *
- * @param {Record<string, string | undefined>} obj The object to format.
+ * @param {ContextRecord} obj The object to format.
  * @return {string} The formatted string.
  */
-export function formatContext(
-	obj: Record< string, string | undefined >
-): string {
+export function formatContext( obj: ContextRecord ): string {
 	return Object.entries( obj )
 		.filter(
 			( [ , value ] ) =>

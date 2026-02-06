@@ -5,38 +5,27 @@ import { formatContext } from './format-context';
 import { getContext } from './get-context';
 import { generatePrompt } from './generate-prompt';
 import { runAbility } from '../../../utils/run-ability';
-import type { ImageGenerationAbilityInput } from '../types';
+import type {
+	GeneratedImageData,
+	ImageGenerationAbilityInput,
+	PostContext,
+} from '../types';
 
 /**
  * Generates an image for the given post ID and content.
  *
  * @param {number} postId  The ID of the post to generate a featured image for.
  * @param {string} content The content of the post to generate an image for.
- * @return {Promise<{ image: { data: string; provider_metadata: { id: string; name: string; type: string; }; model_metadata: { id: string; name: string; }; }; prompt: string; }>} A promise that resolves to the generated image data.
+ * @return {Promise<GeneratedImageData>} A promise that resolves to the generated image data.
  */
 export async function generateImage(
 	postId: number,
 	content: string
-): Promise< {
-	image: {
-		data: string;
-		provider_metadata: { id: string; name: string; type: string };
-		model_metadata: { id: string; name: string };
-	};
-	prompt: string;
-} > {
-	let context: {
-		title: string;
-		type: string;
-		content?: string;
-	};
+): Promise< GeneratedImageData > {
+	let context: PostContext;
 
 	try {
-		context = ( await getContext( postId ) ) as {
-			title: string;
-			type: string;
-			content?: string;
-		};
+		context = ( await getContext( postId ) ) as PostContext;
 	} catch ( error: any ) {
 		throw new Error(
 			`Failed to get post context: ${ error.message || error }`
@@ -57,26 +46,12 @@ export async function generateImage(
 		prompt,
 	};
 
-	return runAbility( 'ai/image-generation', params )
+	return runAbility< GeneratedImageData >( 'ai/image-generation', params )
 		.then( ( response ) => {
 			if ( response && typeof response === 'object' ) {
 				const result = response as { prompt?: string };
 				result.prompt = prompt;
-				return result as {
-					image: {
-						data: string;
-						provider_metadata: {
-							id: string;
-							name: string;
-							type: string;
-						};
-						model_metadata: {
-							id: string;
-							name: string;
-						};
-					};
-					prompt: string;
-				};
+				return result as GeneratedImageData;
 			}
 
 			throw new Error( 'Invalid response from generate image' );
