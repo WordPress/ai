@@ -114,3 +114,8 @@ export interface GetPostDetailsAbilityInput {
 	fields?: string[];
 	[ key: string ]: string | number | string[] | undefined;
 }
+
+/**
+ * Callback type for image generation progress messages.
+ */
+export type ImageProgressCallback = ( message: string ) => void;

@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
+import { Button, Spinner } from '@wordpress/components';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -30,6 +30,9 @@ export default function GenerateFeaturedImage(): JSX.Element {
 		select( editorStore ).getEditedPostAttribute( 'featured_media' );
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
+	const [ progressMessage, setProgressMessage ] = useState< string | null >(
+		null
+	);
 
 	const buttonLabel = featuredImage
 		? __( 'Generate new featured image', 'ai' )
@@ -40,6 +43,7 @@ export default function GenerateFeaturedImage(): JSX.Element {
 	 */
 	const handleGenerate = async () => {
 		setIsGenerating( true );
+		setProgressMessage( null );
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_image_generation_error'
 		);
@@ -47,9 +51,12 @@ export default function GenerateFeaturedImage(): JSX.Element {
 		try {
 			const generatedImageData = await generateImage(
 				postId as number,
-				content
+				content,
+				{ onProgress: setProgressMessage }
 			);
-			const importedImage = await uploadImage( generatedImageData );
+			const importedImage = await uploadImage( generatedImageData, {
+				onProgress: setProgressMessage,
+			} );
 			editPost( {
 				featured_media: importedImage.id,
 			} );
@@ -60,6 +67,7 @@ export default function GenerateFeaturedImage(): JSX.Element {
 			} );
 		} finally {
 			setIsGenerating( false );
+			setProgressMessage( null );
 		}
 	};
 
@@ -75,6 +83,24 @@ export default function GenerateFeaturedImage(): JSX.Element {
 				>
 					{ buttonLabel }
 				</Button>
+				{ progressMessage && (
+					<div
+						className="ai-featured-image__progress"
+						role="status"
+						aria-live="polite"
+						style={ { color: '#757575', marginTop: '10px' } }
+					>
+						{ progressMessage }
+						<Spinner
+							style={ {
+								marginLeft: '5px',
+								marginTop: '0',
+								position: 'inherit',
+								verticalAlign: 'text-top',
+							} }
+						/>
+					</div>
+				) }
 			</div>
 		</div>
 	);

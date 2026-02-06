@@ -11,6 +11,7 @@ import { runAbility } from '../../../utils/run-ability';
 import type {
 	GeneratedImageData,
 	ImageImportAbilityInput,
+	ImageProgressCallback,
 	UploadedImage,
 } from '../types';
 
@@ -19,13 +20,17 @@ const { aiImageGenerationData } = window as any;
 /**
  * Uploads an image to the media library.
  *
- * @param {GeneratedImageData} imageData The generated image data (from generateImage).
+ * @param {GeneratedImageData} imageData          The generated image data (from generateImage).
+ * @param {Object}             options            Optional settings.
+ * @param {Function}           options.onProgress Callback invoked with progress messages.
  * @return {Promise<UploadedImage>} A promise that resolves to the uploaded image data.
  */
-export async function uploadImage( {
-	image,
-	prompt,
-}: GeneratedImageData ): Promise< UploadedImage > {
+export async function uploadImage(
+	{ image, prompt }: GeneratedImageData,
+	options?: { onProgress?: ImageProgressCallback }
+): Promise< UploadedImage > {
+	const onProgress = options?.onProgress;
+
 	const params: ImageImportAbilityInput = {
 		data: image.data,
 		mime_type: 'image/png',
@@ -51,6 +56,7 @@ export async function uploadImage( {
 	// If alt text generation is enabled, try generating alt text.
 	if ( aiImageGenerationData?.altTextEnabled ) {
 		try {
+			onProgress?.( __( 'Generating alt text', 'ai' ) );
 			params.alt_text = await generateAltText(
 				undefined,
 				`data:image/png;base64,${ image.data }`
@@ -59,6 +65,8 @@ export async function uploadImage( {
 			params.alt_text = prompt;
 		}
 	}
+
+	onProgress?.( __( 'Importing image', 'ai' ) );
 
 	return await runAbility( 'ai/image-import', params )
 		.then( ( response: any ) => {
