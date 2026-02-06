@@ -134,10 +134,6 @@ class Image_Generation extends Abstract_Experiment {
 			array(
 				'enabled'            => $this->is_enabled(),
 				'altTextEnabled'     => ( new Alt_Text_Generation() )->is_enabled(),
-				'generateImagePath'  => 'wp-abilities/v1/abilities/ai/' . $this->get_id() . '/run',
-				'importPath'         => 'wp-abilities/v1/abilities/ai/image-import/run',
-				'getContextPath'     => 'wp-abilities/v1/abilities/ai/get-post-details/run',
-				'generatePromptPath' => 'wp-abilities/v1/abilities/ai/image-prompt-generation/run',
 			)
 		);
 	}
