@@ -132,8 +132,8 @@ class Image_Generation extends Abstract_Experiment {
 			'image_generation',
 			'ImageGenerationData',
 			array(
-				'enabled'            => $this->is_enabled(),
-				'altTextEnabled'     => ( new Alt_Text_Generation() )->is_enabled(),
+				'enabled'        => $this->is_enabled(),
+				'altTextEnabled' => ( new Alt_Text_Generation() )->is_enabled(),
 			)
 		);
 	}
