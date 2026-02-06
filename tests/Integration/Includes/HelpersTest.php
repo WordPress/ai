@@ -53,7 +53,7 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that normalize_content() replaces HTML linebreaks with newlines.
+	 * Test that normalize_content() replaces HTML linebreaks and removes linebreaks.
 	 *
 	 * @since 0.1.0
 	 */
@@ -62,7 +62,30 @@ class HelpersTest extends WP_UnitTestCase {
 		$result  = \WordPress\AI\normalize_content( $content );
 
 		$this->assertStringNotContainsString( '<br>', $result, 'Should remove br tags' );
-		$this->assertStringContainsString( "\n\n", $result, 'Should replace br with newlines' );
+		$this->assertStringNotContainsString( "\n", $result, 'Should replace newlines with spaces' );
+		$this->assertStringNotContainsString( "\r", $result, 'Should replace carriage returns with spaces' );
+		$this->assertStringContainsString( 'Line 1', $result, 'Should preserve Line 1' );
+		$this->assertStringContainsString( 'Line 2', $result, 'Should preserve Line 2' );
+		$this->assertStringContainsString( 'Line 3', $result, 'Should preserve Line 3' );
+	}
+
+	/**
+	 * Test that normalize_content() removes linebreaks and replaces with spaces.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_normalize_content_removes_linebreaks() {
+		$content = "Line 1\nLine 2\rLine 3\r\nLine 4";
+		$result  = \WordPress\AI\normalize_content( $content );
+
+		$this->assertStringNotContainsString( "\n", $result, 'Should replace newlines with spaces' );
+		$this->assertStringNotContainsString( "\r", $result, 'Should replace carriage returns with spaces' );
+		$this->assertStringContainsString( 'Line 1', $result, 'Should preserve Line 1' );
+		$this->assertStringContainsString( 'Line 2', $result, 'Should preserve Line 2' );
+		$this->assertStringContainsString( 'Line 3', $result, 'Should preserve Line 3' );
+		$this->assertStringContainsString( 'Line 4', $result, 'Should preserve Line 4' );
+		// Verify lines are separated by spaces, not running together
+		$this->assertStringContainsString( 'Line 1 Line 2', $result, 'Lines should be separated by spaces' );
 	}
 
 	/**
@@ -356,7 +379,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_image_models_returns_default_models() {
 		$result = \WordPress\AI\get_preferred_image_models();
 
-		$this->assertCount( 5, $result, 'Should have 5 preferred image models' );
+		$this->assertCount( 6, $result, 'Should have 5 preferred image models' );
 
 		// Check first model (google).
 		$this->assertIsArray( $result[0], 'First model should be an array' );
@@ -380,13 +403,19 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-1', $result[3][1], 'Fourth model name should be gpt-image-1' );
+		$this->assertEquals( 'gpt-image-1.5', $result[3][1], 'Fourth model name should be gpt-image-1.5' );
 
 		// Check fifth model (openai).
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'dall-e-3', $result[4][1], 'Fifth model name should be dall-e-3' );
+		$this->assertEquals( 'gpt-image-1', $result[4][1], 'Fifth model name should be gpt-image-1' );
+
+		// Check fifth model (openai).
+		$this->assertIsArray( $result[5], 'Fifth model should be an array' );
+		$this->assertCount( 2, $result[5], 'Fifth model should have 2 elements' );
+		$this->assertEquals( 'openai', $result[5][0], 'Fifth model provider should be openai' );
+		$this->assertEquals( 'dall-e-3', $result[5][1], 'Fifth model name should be dall-e-3' );
 	}
 
 	/**
@@ -409,9 +438,9 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$result = \WordPress\AI\get_preferred_image_models();
 
-		$this->assertCount( 6, $result, 'Should have 6 models after filter' );
-		$this->assertEquals( 'custom', $result[5][0], 'Sixth model provider should be custom' );
-		$this->assertEquals( 'custom-image-model', $result[5][1], 'Sixth model name should be custom-image-model' );
+		$this->assertCount( 7, $result, 'Should have 6 models after filter' );
+		$this->assertEquals( 'custom', $result[6][0], 'Sixth model provider should be custom' );
+		$this->assertEquals( 'custom-image-model', $result[6][1], 'Sixth model name should be custom-image-model' );
 
 		remove_all_filters( 'ai_experiments_preferred_image_models' );
 	}

@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Image Generation experiment adds AI-powered featured image generation to the WordPress post editor. It provides a "Generate featured image" button in the featured image panel that uses AI to create images based on post content. The experiment registers two WordPress Abilities (`ai/image-generation` and `ai/image-import`) that can be used both through the admin UI and directly via REST API requests.
+The Image Generation experiment adds AI-powered featured image generation to the WordPress post editor. It provides a "Generate featured image" button in the featured image panel that uses AI to create images based on post content. The experiment registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
 ## Overview
 
@@ -13,9 +13,11 @@ When enabled, the Image Generation experiment adds a "Generate featured image" b
 **Key Features:**
 
 - One-click featured image generation from post content
+- Step-by-step progress messages during generation (e.g. "Generating image prompt", "Generating image", "Generating alt text", "Importing image")
 - Automatically imports generated images into the media library
 - Sets generated images as featured images
 - Uses AI to create an image generation prompt from post context
+- Optional AI-generated alt text when the Alt Text Generation experiment is enabled
 - Works with any post type that supports featured images
 - Visual indicator for AI-generated images
 
@@ -44,27 +46,26 @@ All three abilities can be called directly via REST API, making them useful for 
 1. **PHP Side:**
    - `enqueue_assets()` loads `experiments/image-generation` (`src/experiments/image-generation/index.ts`) and localizes `window.aiImageGenerationData` with:
      - `enabled`: Whether the experiment is enabled
-     - `generateImagePath`: REST API path to image generation ability (`wp-abilities/v1/abilities/ai/image-generation/run`)
-     - `importPath`: REST API path to image import ability (`wp-abilities/v1/abilities/ai/image-import/run`)
-     - `getContextPath`: REST API path to get post details (`wp-abilities/v1/abilities/ai/get-post-details/run`)
-     - `generatePromptPath`: REST API path to image prompt generation ability (`wp-abilities/v1/abilities/ai/image-prompt-generation/run`)
+     - `altTextEnabled`: Whether the alt text generation experiment is enabled
 
 2. **React Side:**
    - The React entry point (`featured-image.tsx`) hooks into the featured image panel using the `editor.PostFeaturedImage` filter
-   - `GenerateFeaturedImage` component renders a button that:
+   - `GenerateFeaturedImage` component renders a button and progress UI that:
      - Gets current post ID and content from the editor store
-     - Calls `generateImage()` function which:
-       - Gets post context (title, type) via `getContext()`
+     - Tracks `progressMessage` state and passes an `onProgress` callback to `generateImage()` and `uploadImage()`
+     - Calls `generateImage( postId, content, { onProgress } )`, which:
+       - Gets post context (title, type) via `getContext()` (uses `ai/get-post-details` ability)
        - Formats context using `formatContext()`
-       - Calls `generatePrompt()` to create an image generation prompt from content and context
-       - Calls the image generation ability with the generated prompt
-       - Returns base64-encoded image data
-     - Calls `uploadImage()` function which:
-       - Calls the image import ability with the base64 data
-       - Sets `ai_generated` meta to mark the image
+       - Invokes `onProgress( 'Generating image prompt' )`, then calls `generatePrompt()` to create an image generation prompt from content and context
+       - Invokes `onProgress( 'Generating image' )`, then calls the `ai/image-generation` ability with the generated prompt
+       - Returns generated image data (base64 data, prompt, provider/model metadata)
+     - Calls `uploadImage( imageData, { onProgress } )`, which:
+       - If the Alt Text Generation experiment is enabled (`aiImageGenerationData.altTextEnabled`): invokes `onProgress( 'Generating alt text' )`, then calls `generateAltText()` and uses the result as `alt_text`; otherwise uses the prompt as fallback alt text
+       - Invokes `onProgress( 'Importing image' )`, then calls the `ai/image-import` ability with base64 data, metadata, and `ai_generated` meta
        - Returns attachment data (id, url, title)
      - Updates the editor store to set the imported image as featured image
-     - Handles loading states and error notifications
+     - Shows a loading state on the button and a progress message (with spinner) under the button while generating; clears both on success or error
+     - Handles error notifications via the notices store
    - `AILabel` component displays a label for AI-generated images by checking the `ai_generated` meta
 
 3. **Ability Execution Flow:**
@@ -657,7 +658,9 @@ You can customize what metadata is saved when importing images by modifying the 
 src/experiments/image-generation/functions/upload-image.ts
 ```
 
-Or by filtering the input before calling the import ability via REST API.
+`uploadImage( imageData, options? )` accepts generated image data and an optional `options` object with `onProgress?: ( message: string ) => void` for progress callbacks. When the Alt Text Generation experiment is enabled, it generates alt text via `generateAltText()` before importing; otherwise it uses the image prompt as alt text.
+
+You can also filter the input before calling the import ability via REST API.
 
 ### Customizing Post Context
 
@@ -677,8 +680,9 @@ src/experiments/image-generation/functions/format-context.ts
 
 You can extend the React components to add custom UI elements:
 
-1. **Modify the generate button component:**
+1. **Modify the generate button and progress UI:**
    - Edit `src/experiments/image-generation/components/GenerateFeaturedImage.tsx`
+   - The component renders a button and, while generating, a progress container (`.ai-featured-image__progress`) that displays the current step and a spinner; progress is driven by the `onProgress` callbacks passed to `generateImage()` and `uploadImage()`
 
 2. **Customize the AI label:**
    - Edit `src/experiments/image-generation/components/AILabel.tsx`
@@ -722,6 +726,7 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
    - Create or edit a post with content
    - Scroll to the featured image panel
    - Click the "Generate featured image" button
+   - Verify progress messages appear in order: "Generating image prompt", "Generating image", then "Generating alt text" (if Alt Text experiment is enabled), then "Importing image"
    - Verify the image is generated, imported, and set as featured image
    - Verify the "AI Generated Featured Image" label appears
    - Click "Generate new featured image" to test regeneration
@@ -763,7 +768,7 @@ npm run test:php
 ### Performance
 
 - Image generation is an AI operation and may take 30-90 seconds (timeout is set to 90 seconds)
-- The UI shows a loading state while generation is in progress
+- The UI shows a loading state on the button and step-by-step progress messages below it ("Generating image prompt" → "Generating image" → "Generating alt text" (if enabled) → "Importing image") so users know which step is running
 - Base64 image data can be large; ensure adequate memory and request timeout settings
 - Consider implementing caching for frequently accessed images if generating images in bulk
 
@@ -819,16 +824,3 @@ npm run test:php
 - Temporary files are properly cleaned up after import
 - User permissions are checked before allowing image generation or import
 - All input is sanitized using WordPress sanitization functions
-
-## Related Files
-
-- **Experiment:** `includes/Experiments/Image_Generation/Image_Generation.php`
-- **Generate Image Prompt Ability:** `includes/Abilities/Image/Generate_Image_Prompt.php`
-- **Generate Image Prompt System Instruction:** `includes/Abilities/Image/image-prompt-system-instruction.php`
-- **Generate Image Ability:** `includes/Abilities/Image/Generate_Image.php`
-- **Import Image Ability:** `includes/Abilities/Image/Import_Base64_Image.php`
-- **React Entry:** `src/experiments/image-generation/featured-image.tsx`
-- **React Components:** `src/experiments/image-generation/components/`
-- **React Functions:** `src/experiments/image-generation/functions/`
-- **Tests:** `tests/Integration/Includes/Abilities/Image_GenerationTest.php`
-- **Tests:** `tests/Integration/Includes/Experiments/Image_Generation/Image_GenerationTest.php`

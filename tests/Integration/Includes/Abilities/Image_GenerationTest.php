@@ -145,8 +145,16 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$schema = $method->invoke( $this->ability );
 
 		$this->assertIsArray( $schema, 'Output schema should be an array' );
-		$this->assertEquals( 'string', $schema['type'], 'Schema type should be string' );
-		$this->assertArrayHasKey( 'description', $schema, 'Schema should have description' );
+		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
+		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
+		$this->assertArrayHasKey( 'image', $schema['properties'], 'Schema should have image property' );
+
+		$image_schema = $schema['properties']['image'];
+		$this->assertEquals( 'object', $image_schema['type'], 'Image property should be object type' );
+		$this->assertArrayHasKey( 'properties', $image_schema, 'Image should have properties' );
+		$this->assertArrayHasKey( 'data', $image_schema['properties'], 'Image should have data property' );
+		$this->assertArrayHasKey( 'provider_metadata', $image_schema['properties'], 'Image should have provider_metadata property' );
+		$this->assertArrayHasKey( 'model_metadata', $image_schema['properties'], 'Image should have model_metadata property' );
 	}
 
 	/**
@@ -170,14 +178,17 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be string (success) or WP_Error (if AI client unavailable).
+		// Result may be array with image (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
 			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
 			return;
 		}
 
-		$this->assertIsString( $result, 'Result should be a string' );
-		$this->assertNotEmpty( $result, 'Result should not be empty' );
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
+		$this->assertIsArray( $result['image'], 'Result image should be an array' );
+		$this->assertArrayHasKey( 'data', $result['image'], 'Result image should have data' );
+		$this->assertNotEmpty( $result['image']['data'], 'Result image data should not be empty' );
 	}
 
 	/**
@@ -201,7 +212,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be string (success) or WP_Error (if AI client unavailable or no results).
+		// Result may be array with image (success) or WP_Error (if AI client unavailable or no results).
 		if ( is_wp_error( $result ) ) {
 			// If it's an error about no results, verify the error code.
 			if ( 'no_results' === $result->get_error_code() ) {
@@ -213,9 +224,10 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// If we get a result, it should be a non-empty string.
-		$this->assertIsString( $result, 'Result should be a string' );
-		$this->assertNotEmpty( $result, 'Result should not be empty' );
+		// If we get a result, it should be an array with image data.
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
+		$this->assertNotEmpty( $result['image']['data'] ?? '', 'Result image data should not be empty' );
 	}
 
 	/**
@@ -239,7 +251,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be string (success) or WP_Error (if AI client unavailable or no results).
+		// Result may be array with image (success) or WP_Error (if AI client unavailable or no results).
 		if ( is_wp_error( $result ) ) {
 			// If it's an error about no results, verify the error code.
 			if ( 'no_results' === $result->get_error_code() ) {
@@ -251,9 +263,10 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// If we get a result, it should be a non-empty string.
-		$this->assertIsString( $result, 'Result should be a string' );
-		$this->assertNotEmpty( $result, 'Result should not be empty' );
+		// If we get a result, it should be an array with image data.
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
+		$this->assertNotEmpty( $result['image']['data'] ?? '', 'Result image data should not be empty' );
 	}
 
 	/**

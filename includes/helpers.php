@@ -51,6 +51,9 @@ function normalize_content( string $content ): string {
 	// Replace HTML linebreaks with newlines.
 	$content = preg_replace( '#<br\s?/?>#', "\n\n", $content ) ?? $content;
 
+	// Remove linebreaks but replace with spaces to avoid sentences running together.
+	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
+
 	// Strip all HTML tags.
 	$content = wp_strip_all_tags( (string) $content );
 
@@ -224,6 +227,10 @@ function get_preferred_image_models(): array {
 		array(
 			'google',
 			'imagen-4.0-generate-001',
+		),
+		array(
+			'openai',
+			'gpt-image-1.5',
 		),
 		array(
 			'openai',
