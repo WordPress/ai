@@ -22,7 +22,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
-* **Image Generation** - Create images from text prompts directly in the block editor.
+* **Image Generation** - Create feature image from post content directly in the block editor.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
