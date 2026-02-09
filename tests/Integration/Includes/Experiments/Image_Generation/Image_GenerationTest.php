@@ -71,5 +71,54 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Image Generation', $experiment->get_label() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
+
+	/**
+	 * Test that the experiment registers all abilities.
+	 *
+	 * @since 0.3.0
+	 */
+	public function test_experiment_registers_abilities() {
+		if ( ! function_exists( 'wp_get_ability' ) ) {
+			$this->markTestSkipped( 'WP_Ability class not available' );
+			return;
+		}
+
+		// Expect warnings about already registered abilities from other tests.
+		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
+
+		// Trigger the hook to register abilities.
+		do_action( 'wp_abilities_api_init' );
+
+		// Verify image generation ability is registered.
+		$image_generation_ability = wp_get_ability( 'ai/image-generation' );
+		$this->assertNotNull( $image_generation_ability, 'Image generation ability should be registered' );
+		$this->assertInstanceOf( \WP_Ability::class, $image_generation_ability, 'Should be a WP_Ability instance' );
+
+		// Verify image import ability is registered.
+		$image_import_ability = wp_get_ability( 'ai/image-import' );
+		$this->assertNotNull( $image_import_ability, 'Image import ability should be registered' );
+		$this->assertInstanceOf( \WP_Ability::class, $image_import_ability, 'Should be a WP_Ability instance' );
+
+		// Verify image prompt generation ability is registered.
+		$image_prompt_ability = wp_get_ability( 'ai/image-prompt-generation' );
+		$this->assertNotNull( $image_prompt_ability, 'Image prompt generation ability should be registered' );
+		$this->assertInstanceOf( \WP_Ability::class, $image_prompt_ability, 'Should be a WP_Ability instance' );
+	}
+
+	/**
+	 * Test that the experiment registers post meta.
+	 *
+	 * @since 0.3.0
+	 */
+	public function test_experiment_registers_post_meta() {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		// Verify post meta is registered for attachment post type.
+		$meta = get_registered_meta_keys( 'post', 'attachment' );
+		$this->assertArrayHasKey( 'ai_generated', $meta, 'ai_generated meta should be registered for attachment post type' );
+		$this->assertEquals( 'integer', $meta['ai_generated']['type'], 'ai_generated meta type should be integer' );
+		$this->assertTrue( $meta['ai_generated']['show_in_rest'], 'ai_generated meta should be available in REST API' );
+	}
 }
 

@@ -155,7 +155,7 @@ class Settings_Page {
 
 			<?php settings_errors( 'ai_experiments' ); ?>
 
-			<form method="post" action="options.php">
+			<form method="post" action="options.php" id="ai-experiments-form">
 				<?php
 				settings_fields( Settings_Registration::OPTION_GROUP );
 				?>
@@ -171,19 +171,20 @@ class Settings_Page {
 						</div>
 
 						<div class="ai-experiments__toggle">
-							<label class="components-toggle-control" for="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>">
-								<input
-									type="checkbox"
-									name="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
-									id="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
-									value="1"
-									<?php checked( $global_enabled ); ?>
-									aria-describedby="ai-experiments-global-desc"
-								/>
-								<span class="ai-experiments__toggle-label">
-									<?php esc_html_e( 'Enable Experiments', 'ai' ); ?>
-								</span>
-							</label>
+							<input
+								type="hidden"
+								name="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
+								id="ai-experiments-enabled"
+								value="<?php echo $global_enabled ? '1' : '0'; ?>"
+							/>
+							<button
+								type="button"
+								class="button <?php echo $global_enabled ? 'button-secondary' : 'button-primary'; ?> ai-experiments__toggle-button"
+								data-ai-toggle-global="<?php echo $global_enabled ? '0' : '1'; ?>"
+								aria-describedby="ai-experiments-global-desc"
+							>
+								<?php echo $global_enabled ? esc_html__( 'Disable Experiments', 'ai' ) : esc_html__( 'Enable Experiments', 'ai' ); ?>
+							</button>
 						</div>
 					</div>
 
@@ -267,6 +268,29 @@ class Settings_Page {
 
 				<?php submit_button(); ?>
 			</form>
+
+			<script>
+				(function() {
+					const form = document.getElementById('ai-experiments-form');
+					const toggleButton = form ? form.querySelector('[data-ai-toggle-global]') : null;
+					const globalInput = document.getElementById('ai-experiments-enabled');
+
+					if (!form || !toggleButton || !globalInput) {
+						return;
+					}
+
+					toggleButton.addEventListener('click', function() {
+						globalInput.value = this.dataset.aiToggleGlobal || '';
+
+						if (form.requestSubmit) {
+							form.requestSubmit();
+							return;
+						}
+
+						form.submit();
+					});
+				})();
+			</script>
 		</div>
 		<?php
 	}

@@ -51,6 +51,9 @@ function normalize_content( string $content ): string {
 	// Replace HTML linebreaks with newlines.
 	$content = preg_replace( '#<br\s?/?>#', "\n\n", $content ) ?? $content;
 
+	// Remove linebreaks but replace with spaces to avoid sentences running together.
+	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
+
 	// Strip all HTML tags.
 	$content = wp_strip_all_tags( (string) $content );
 
@@ -161,7 +164,6 @@ function get_preferred_models_for_text_generation(): array {
 	 * Filters the preferred models for text generation.
 	 *
 	 * @since 0.2.1
-	 * @hook ai_experiments_preferred_models_for_text_generation
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
 	 * @return array<int, array{string, string}> The filtered preferred models.
@@ -228,6 +230,10 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
+			'gpt-image-1.5',
+		),
+		array(
+			'openai',
 			'gpt-image-1',
 		),
 		array(
@@ -245,6 +251,40 @@ function get_preferred_image_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred image models.
 	 */
 	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
+}
+
+/**
+ * Returns the preferred vision models.
+ *
+ * @since 0.3.0
+ *
+ * @return array<int, array{string, string}> The preferred vision models.
+ */
+function get_preferred_vision_models(): array {
+	$preferred_models = array(
+		array(
+			'anthropic',
+			'claude-haiku-4-5-20251001',
+		),
+		array(
+			'google',
+			'gemini-2.5-flash',
+		),
+		array(
+			'openai',
+			'gpt-5-nano',
+		),
+	);
+
+	/**
+	 * Filters the preferred vision models.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred vision models.
+	 * @return array<int, array{string, string}> The filtered preferred vision models.
+	 */
+	return (array) apply_filters( 'ai_experiments_preferred_vision_models', $preferred_models );
 }
 
 /**
