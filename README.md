@@ -70,3 +70,5 @@ Anyone contributing to the AI Experiments plugin is expected to conduct themselv
 * **Ideate:** Propose and comment on [GitHub discussions](https://github.com/WordPress/ai/discussions).
 * **Design:** [Share feedback](https://github.com/WordPress/ai/issues) on UX flows and accessibility.
 * **Test:** Try features as they're [released](https://github.com/WordPress/ai/releases) and [report feedback](https://github.com/WordPress/ai/issues).
+
+View the [Credits](CREDITS.md) file for maintainers, contributors, and libraries for the AI Experiments plugin.
