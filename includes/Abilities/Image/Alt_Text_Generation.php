@@ -21,14 +21,14 @@ use function WordPress\AI\normalize_content;
  *
  * Uses AI vision models to generate descriptive alt text for images.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 class Alt_Text_Generation extends Abstract_Ability {
 
 	/**
 	 * The maximum character length for generated alt text.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @var int
 	 */
@@ -37,7 +37,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -65,7 +65,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -82,7 +82,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -125,7 +125,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Gets the image as a data URI from the input arguments.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param array<string, mixed> $args The input arguments.
 	 * @return array{reference: string}|\WP_Error The prepared reference payload or WP_Error on failure.
@@ -182,7 +182,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Generates alt text for the given image reference.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param array{reference: string} $image_reference Prepared image reference containing a data URI.
 	 * @param string                   $context         Optional context to improve alt text relevance.
@@ -215,7 +215,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Converts an attachment to a data URI.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param int $attachment_id Attachment ID.
 	 * @return array{reference: string}|\WP_Error Data URI reference array or WP_Error on failure.
@@ -286,7 +286,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Attempts to map an uploads URL to a local filesystem path.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $url The URL to convert.
 	 * @return string|null The local path if found, otherwise null.
@@ -353,7 +353,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Normalizes an uploads URL for comparison.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $url URL to normalize.
 	 * @return string Normalized URL without scheme and trailing slashes.
@@ -367,7 +367,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Builds the prompt for alt text generation.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $context Optional context about the image.
 	 * @return string The prompt for the AI.
@@ -386,7 +386,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Sanitizes incoming image references while allowing data URIs.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param mixed $value Raw user input.
 	 * @return string Sanitized value.
@@ -412,7 +412,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Downloads a remote image to a temporary file for processing.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $url Remote image URL.
 	 * @return string|\WP_Error Path to the temporary file or WP_Error on failure.
@@ -434,7 +434,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Cleans up a temporary file if it exists.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $file_path The file path to clean up.
 	 * @return void
@@ -450,7 +450,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Helper to standardize the reference result.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $reference The data URI reference.
 	 * @return array{reference: string} Standardized reference array.
@@ -464,7 +464,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Converts a file to a data URI.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @param string $file_path Path to the file.
 	 * @return string|null Data URI or null on failure.
@@ -486,7 +486,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function permission_callback( $args ) {
 		$attachment_id = isset( $args['attachment_id'] ) ? absint( $args['attachment_id'] ) : null;
@@ -523,7 +523,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	protected function meta(): array {
 		return array(

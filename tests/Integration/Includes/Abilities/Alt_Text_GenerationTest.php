@@ -15,13 +15,13 @@ use WordPress\AI\Abstracts\Abstract_Experiment;
 /**
  * Test experiment for Alt_Text_Generation Ability tests.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 class Test_Alt_Text_Generation_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 *
 	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
@@ -36,7 +36,7 @@ class Test_Alt_Text_Generation_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -46,7 +46,7 @@ class Test_Alt_Text_Generation_Experiment extends Abstract_Experiment {
 /**
  * Alt_Text_Generation Ability test case.
  *
- * @since x.x.x
+ * @since 0.3.0
  */
 class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
@@ -67,7 +67,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -85,7 +85,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -95,7 +95,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -110,7 +110,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -139,7 +139,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -158,7 +158,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() returns the system instruction.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_get_system_instruction_returns_system_instruction() {
 		$system_instruction = $this->ability->get_system_instruction( 'alt-text-system-instruction.php' );
@@ -170,7 +170,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when neither attachment_id nor image_url provided.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_returns_no_image_provided() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -187,7 +187,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when attachment_id points to non-existent attachment.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_returns_invalid_attachment() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -206,7 +206,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when attachment is not an image.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_returns_not_an_image() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -241,7 +241,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with upload_files when using image_url only.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_permission_callback_with_image_url_and_upload_files() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -259,7 +259,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without upload_files when using image_url only.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_permission_callback_with_image_url_without_upload_files() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -278,7 +278,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_post for the attachment.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_permission_callback_with_attachment_id_and_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -303,7 +303,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_post on attachment.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_permission_callback_with_attachment_id_without_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -329,7 +329,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for non-existent attachment.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_permission_callback_with_nonexistent_attachment_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -348,7 +348,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -367,7 +367,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() with valid image attachment returns alt_text (or skips if AI unavailable).
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_attachment_id() {
 		$data_dir = dirname( __FILE__ ) . '/../../../data';
@@ -413,7 +413,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() accepts optional context.
 	 *
-	 * @since x.x.x
+	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_context() {
 		$reflection = new \ReflectionClass( $this->ability );
