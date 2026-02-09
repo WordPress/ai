@@ -31,6 +31,17 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 3. **Experimentation lab** – Test new AI capabilities and gather feedback.
 4. **Path to core** – Explore which features should become part of WordPress.
 
+## Current Features
+
+* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Automatically create concise summaries for your posts.
+* **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
+* **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generate descriptive alt text for images to improve accessibility.
+* **[Image Generation](docs/experiments/image-generation.md)** - Create feature image from post content directly in the block editor.
+* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
+* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Browse and interact with registered AI abilities from a dedicated admin screen.
+
 ## Roadmap
 
 You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/7).
