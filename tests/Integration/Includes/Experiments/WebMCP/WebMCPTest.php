@@ -307,7 +307,7 @@ class WebMCPTest extends WP_UnitTestCase {
 		$this->assertIsString( $output );
 		$this->assertStringContainsString( 'id="ai_experiment_webmcp-adapter_enabled"', $output );
 		$this->assertStringContainsString( 'disabled=\'disabled\'', $output );
-		$this->assertStringContainsString( 'Requires the WordPress Abilities API', $output );
+		$this->assertStringContainsString( 'Requires the Gutenberg plugin', $output );
 
 		remove_filter( 'ai_webmcp_adapter_is_available', $callback );
 	}
