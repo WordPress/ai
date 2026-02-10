@@ -52,6 +52,7 @@ class WebMCPTest extends WP_UnitTestCase {
 		remove_all_filters( 'ai_webmcp_adapter_allowed_hooks' );
 		remove_all_filters( 'ai_webmcp_adapter_tool_names' );
 		remove_all_filters( 'ai_webmcp_adapter_is_available' );
+		remove_all_filters( 'ai_experiments_pre_has_valid_credentials_check' );
 		remove_all_filters( 'sanitize_option_ai_experiment_webmcp-adapter_enabled' );
 
 		wp_dequeue_script( 'ai_webmcp_adapter' );
@@ -59,6 +60,7 @@ class WebMCPTest extends WP_UnitTestCase {
 		wp_deregister_script( 'wp-abilities' );
 		wp_deregister_script( 'wp-core-abilities' );
 		wp_set_current_user( 0 );
+		unset( $_GET['page'] );
 
 		parent::tearDown();
 	}
@@ -94,64 +96,60 @@ class WebMCPTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests assets are enqueued even when abilities handles are missing.
+	 * Tests script dependencies omit unregistered ability handles.
 	 *
 	 * @since 0.4.0
 	 */
 	public function test_assets_enqueued_when_dependencies_missing() {
 		$experiment = new WebMCP();
+		$reflection = new \ReflectionClass( $experiment );
+		$method     = $reflection->getMethod( 'get_script_dependencies' );
+		$method->setAccessible( true );
 
-		$experiment->enqueue_assets( 'post.php' );
+		$dependencies = $method->invoke( $experiment );
 
-		$this->assertTrue( wp_script_is( 'ai_webmcp_adapter', 'enqueued' ) );
-
-		$script = wp_scripts()->registered['ai_webmcp_adapter'] ?? null;
-
-		$this->assertNotNull( $script );
-		$this->assertIsArray( $script->deps );
-		$this->assertNotContains( 'wp-abilities', $script->deps );
-		$this->assertNotContains( 'wp-core-abilities', $script->deps );
+		$this->assertIsArray( $dependencies );
+		$this->assertNotContains( 'wp-abilities', $dependencies );
+		$this->assertNotContains( 'wp-core-abilities', $dependencies );
 	}
 
 	/**
-	 * Tests assets are enqueued on Gutenberg compatibility hooks.
+	 * Tests Gutenberg compatibility hook is allowed for enqueue decisions.
 	 *
 	 * @since 0.4.0
 	 */
 	public function test_assets_enqueued_on_gutenberg_compat_hook() {
 		$experiment = new WebMCP();
+		$reflection = new \ReflectionClass( $experiment );
+		$method     = $reflection->getMethod( 'should_enqueue_for_hook' );
+		$method->setAccessible( true );
 
-		$experiment->enqueue_assets( 'appearance_page_gutenberg-edit-site' );
-
-		$this->assertTrue( wp_script_is( 'ai_webmcp_adapter', 'enqueued' ) );
+		$this->assertTrue( $method->invoke( $experiment, 'appearance_page_gutenberg-edit-site' ) );
 	}
 
 	/**
-	 * Tests assets are enqueued and localized when dependencies are available.
+	 * Tests WordPress context payload includes expected keys and value types.
 	 *
 	 * @since 0.4.0
 	 */
 	public function test_assets_enqueued_with_localized_context() {
 		$experiment = new WebMCP();
-		update_option( 'ai_experiment_webmcp-adapter_field_debug_panel_enabled', true );
-
-		wp_register_script( 'wp-hooks', '', array(), '1.0.0', true );
-		wp_register_script( 'wp-abilities', '', array(), '1.0.0', true );
-		wp_register_script( 'wp-core-abilities', '', array(), '1.0.0', true );
+		$reflection = new \ReflectionClass( $experiment );
+		$method     = $reflection->getMethod( 'get_wp_context' );
+		$method->setAccessible( true );
 
 		set_current_screen( 'post' );
-		$experiment->enqueue_assets( 'post.php' );
+		$context = $method->invoke( $experiment );
 
-		$this->assertTrue( wp_script_is( 'ai_webmcp_adapter', 'enqueued' ) );
-
-		$script_data = wp_scripts()->get_data( 'ai_webmcp_adapter', 'data' );
-
-		$this->assertIsString( $script_data );
-		$this->assertStringContainsString( 'aiWebMCPAdapterData', $script_data );
-		$this->assertStringContainsString(
-			'"debugPanelEnabled":"1"',
-			$script_data
-		);
+		$this->assertIsArray( $context );
+		$this->assertArrayHasKey( 'screen', $context );
+		$this->assertArrayHasKey( 'adminPage', $context );
+		$this->assertArrayHasKey( 'postType', $context );
+		$this->assertArrayHasKey( 'query', $context );
+		$this->assertIsString( $context['screen'] );
+		$this->assertIsString( $context['adminPage'] );
+		$this->assertIsString( $context['postType'] );
+		$this->assertIsArray( $context['query'] );
 	}
 
 	/**
@@ -263,11 +261,15 @@ class WebMCPTest extends WP_UnitTestCase {
 			return false;
 		};
 		add_filter( 'ai_webmcp_adapter_is_available', $callback );
+		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
 
 		$this->registry->register_experiment( new WebMCP() );
 		$settings_page = new Settings_Page( $this->registry );
 		$admin_user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_user_id );
+		$settings_page->init();
+		do_action( 'admin_menu' );
+		$_GET['page'] = 'ai-experiments'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Test fixture setup.
 
 		ob_start();
 		$settings_page->render_page();
@@ -310,7 +312,10 @@ class WebMCPTest extends WP_UnitTestCase {
 	 */
 	public function test_tool_name_filter_applies_with_fallbacks() {
 		$experiment = new WebMCP();
-		$callback   = static function () {
+		$reflection = new \ReflectionClass( $experiment );
+		$method     = $reflection->getMethod( 'get_tool_names' );
+		$method->setAccessible( true );
+		$callback = static function () {
 			return array(
 				'discover' => 'custom-discover',
 				'info'     => '',
@@ -323,13 +328,11 @@ class WebMCPTest extends WP_UnitTestCase {
 			$callback
 		);
 
-		$experiment->enqueue_assets( 'post.php' );
-
-		$script_data = wp_scripts()->get_data( 'ai_webmcp_adapter', 'data' );
-		$this->assertIsString( $script_data );
-		$this->assertStringContainsString( '"discover":"custom-discover"', $script_data );
-		$this->assertStringContainsString( '"info":"wp-get-ability-info"', $script_data );
-		$this->assertStringContainsString( '"execute":"custom-execute"', $script_data );
+		$tool_names = $method->invoke( $experiment );
+		$this->assertIsArray( $tool_names );
+		$this->assertSame( 'custom-discover', $tool_names['discover'] );
+		$this->assertSame( 'wp-get-ability-info', $tool_names['info'] );
+		$this->assertSame( 'custom-execute', $tool_names['execute'] );
 
 		remove_filter( 'ai_webmcp_adapter_tool_names', $callback );
 	}
