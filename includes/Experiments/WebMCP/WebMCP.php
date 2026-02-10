@@ -113,6 +113,13 @@ class WebMCP extends Abstract_Experiment {
 				'sanitize_callback' => 'rest_sanitize_boolean',
 			)
 		);
+
+		add_filter(
+			"sanitize_option_{$this->get_enabled_option_name()}",
+			array( $this, 'sanitize_enabled_setting' ),
+			10,
+			3
+		);
 	}
 
 	/**
@@ -153,6 +160,72 @@ class WebMCP extends Abstract_Experiment {
 	 */
 	public function has_settings(): bool {
 		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since 0.4.0
+	 */
+	public function is_available(): bool {
+		$is_available = $this->has_abilities_api_support();
+
+		/**
+		 * Filters whether the WebMCP Adapter is available for enablement.
+		 *
+		 * @since 0.4.0
+		 *
+		 * @param bool $is_available True when dependencies are available.
+		 */
+		return (bool) apply_filters( 'ai_webmcp_adapter_is_available', $is_available );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since 0.4.0
+	 */
+	public function get_unavailable_reason(): string {
+		if ( $this->is_available() ) {
+			return '';
+		}
+
+		return __( 'Requires the WordPress Abilities API (currently provided by the Gutenberg plugin). Install and activate Gutenberg to enable this experiment.', 'ai' );
+	}
+
+	/**
+	 * Sanitizes the experiment enabled toggle.
+	 *
+	 * Prevents enabling the experiment when required dependencies are missing.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed  $value          Sanitized option value.
+	 * @param string $option         Option name.
+	 * @param mixed  $original_value Original submitted value.
+	 * @return bool True when enabled value is allowed, false otherwise.
+	 */
+	public function sanitize_enabled_setting( $value, string $option, $original_value ): bool {
+		if ( is_bool( $value ) ) {
+			$enabled = $value;
+		} elseif ( is_scalar( $value ) ) {
+			$enabled = rest_sanitize_boolean( (string) $value );
+		} else {
+			$enabled = false;
+		}
+
+		if ( ! $enabled || $this->is_available() ) {
+			return $enabled;
+		}
+
+		add_settings_error(
+			Settings_Registration::OPTION_GROUP,
+			"{$option}_unavailable",
+			$this->get_unavailable_reason(),
+			'error'
+		);
+
+		return false;
 	}
 
 	/**
@@ -354,6 +427,17 @@ class WebMCP extends Abstract_Experiment {
 	}
 
 	/**
+	 * Returns the experiment enabled option name.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return string Enabled option name.
+	 */
+	private function get_enabled_option_name(): string {
+		return "ai_experiment_{$this->get_id()}_enabled";
+	}
+
+	/**
 	 * Returns whether the debug panel is enabled by settings.
 	 *
 	 * @since 0.4.0
@@ -362,5 +446,16 @@ class WebMCP extends Abstract_Experiment {
 	 */
 	private function is_debug_panel_enabled(): bool {
 		return (bool) get_option( $this->get_debug_panel_option_name(), false );
+	}
+
+	/**
+	 * Checks whether required Abilities API functions are available.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return bool True when WebMCP can rely on the Abilities API.
+	 */
+	private function has_abilities_api_support(): bool {
+		return function_exists( 'wp_get_abilities' ) && function_exists( 'wp_register_ability' );
 	}
 }

@@ -10,6 +10,8 @@ namespace WordPress\AI\Tests\Integration\Experiments\WebMCP;
 use WP_UnitTestCase;
 use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\WebMCP\WebMCP;
+use WordPress\AI\Settings\Settings_Page;
+use WordPress\AI\Settings\Settings_Registration;
 
 /**
  * WebMCP test case.
@@ -49,6 +51,8 @@ class WebMCPTest extends WP_UnitTestCase {
 		delete_option( 'ai_experiment_webmcp-adapter_field_debug_panel_enabled' );
 		remove_all_filters( 'ai_webmcp_adapter_allowed_hooks' );
 		remove_all_filters( 'ai_webmcp_adapter_tool_names' );
+		remove_all_filters( 'ai_webmcp_adapter_is_available' );
+		remove_all_filters( 'sanitize_option_ai_experiment_webmcp-adapter_enabled' );
 
 		wp_dequeue_script( 'ai_webmcp_adapter' );
 		wp_deregister_script( 'wp-hooks' );
@@ -199,6 +203,82 @@ class WebMCPTest extends WP_UnitTestCase {
 		$experiment = new WebMCP();
 
 		$this->assertTrue( $experiment->has_settings() );
+	}
+
+	/**
+	 * Tests experiment cannot be enabled when dependencies are unavailable.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_experiment_is_disabled_when_unavailable() {
+		$callback = static function () {
+			return false;
+		};
+		add_filter( 'ai_webmcp_adapter_is_available', $callback );
+
+		$experiment = new WebMCP();
+		$this->assertFalse( $experiment->is_enabled() );
+
+		remove_filter( 'ai_webmcp_adapter_is_available', $callback );
+	}
+
+	/**
+	 * Tests enabled setting cannot be saved when dependencies are unavailable.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_enabled_setting_forced_off_when_unavailable() {
+		$experiment = new WebMCP();
+		$experiment->register_settings();
+
+		$callback = static function () {
+			return false;
+		};
+		add_filter( 'ai_webmcp_adapter_is_available', $callback );
+
+		// phpcs:disable WordPress.NamingConventions.ValidHookName.UseUnderscores -- Option name contains a required hyphen from experiment ID.
+		$sanitized_value = apply_filters(
+			'sanitize_option_ai_experiment_webmcp-adapter_enabled',
+			true,
+			'ai_experiment_webmcp-adapter_enabled',
+			true
+		);
+		// phpcs:enable WordPress.NamingConventions.ValidHookName.UseUnderscores
+
+		$this->assertFalse( $sanitized_value );
+		$errors = get_settings_errors( Settings_Registration::OPTION_GROUP );
+		$this->assertNotEmpty( $errors );
+		$this->assertStringContainsString( 'Abilities API', $errors[0]['message'] );
+
+		remove_filter( 'ai_webmcp_adapter_is_available', $callback );
+	}
+
+	/**
+	 * Tests settings page disables WebMCP toggle when dependencies are unavailable.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_settings_page_disables_toggle_when_unavailable() {
+		$callback = static function () {
+			return false;
+		};
+		add_filter( 'ai_webmcp_adapter_is_available', $callback );
+
+		$this->registry->register_experiment( new WebMCP() );
+		$settings_page = new Settings_Page( $this->registry );
+		$admin_user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_user_id );
+
+		ob_start();
+		$settings_page->render_page();
+		$output = ob_get_clean();
+
+		$this->assertIsString( $output );
+		$this->assertStringContainsString( 'id="ai_experiment_webmcp-adapter_enabled"', $output );
+		$this->assertStringContainsString( 'disabled=\'disabled\'', $output );
+		$this->assertStringContainsString( 'Requires the WordPress Abilities API', $output );
+
+		remove_filter( 'ai_webmcp_adapter_is_available', $callback );
 	}
 
 	/**

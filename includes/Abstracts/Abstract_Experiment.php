@@ -133,6 +133,33 @@ abstract class Abstract_Experiment implements Experiment {
 	}
 
 	/**
+	 * Checks if experiment can currently be enabled.
+	 *
+	 * Child classes can override this to enforce runtime dependencies
+	 * (for example required plugins or APIs).
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return bool True when available, false otherwise.
+	 */
+	public function is_available(): bool {
+		return true;
+	}
+
+	/**
+	 * Gets a human-readable reason for why the experiment is unavailable.
+	 *
+	 * Child classes can override this to provide contextual guidance in UI.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return string Availability message or an empty string when not provided.
+	 */
+	public function get_unavailable_reason(): string {
+		return '';
+	}
+
+	/**
 	 * Checks if experiment is enabled.
 	 *
 	 * Experiments require both the global toggle and individual experiment toggle to be enabled.
@@ -146,6 +173,12 @@ abstract class Abstract_Experiment implements Experiment {
 		// Return cached result if available.
 		if ( null !== $this->enabled_cache ) {
 			return $this->enabled_cache;
+		}
+
+		// Experiments cannot be enabled when runtime dependencies are unavailable.
+		if ( ! $this->is_available() ) {
+			$this->enabled_cache = false;
+			return false;
 		}
 
 		// Check global experiments toggle first.
