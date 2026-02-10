@@ -1,7 +1,7 @@
 === AI Experiments ===
 Contributors:      wordpressorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
-Tested up to:      6.9
+Tested up to:      6.9.1
 Stable tag:        0.3.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
