@@ -59,6 +59,11 @@ module.exports = {
 			'src/experiments/alt-text-generation',
 			'media.ts'
 		),
+		'experiments/webmcp-adapter': path.resolve(
+			process.cwd(),
+			'src/experiments/webmcp-adapter',
+			'index.js'
+		),
 	},
 
 	plugins: [

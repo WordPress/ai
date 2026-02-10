@@ -110,6 +110,7 @@ final class Experiment_Loader {
 			\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
 			\WordPress\AI\Experiments\Summarization\Summarization::class,
 			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
+			\WordPress\AI\Experiments\WebMCP\WebMCP::class,
 		);
 
 		/**

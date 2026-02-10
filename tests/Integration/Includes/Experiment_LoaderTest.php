@@ -131,6 +131,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 			$this->registry->has_experiment( 'title-generation' ),
 			'Title generation experiment should be registered'
 		);
+		$this->assertTrue(
+			$this->registry->has_experiment( 'webmcp-adapter' ),
+			'WebMCP adapter experiment should be registered'
+		);
 
 		$abilities_explorer_experiment = $this->registry->get_experiment( 'abilities-explorer' );
 		$this->assertNotNull( $abilities_explorer_experiment, 'Abilities explorer experiment should exist' );
@@ -155,6 +159,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$title_experiment = $this->registry->get_experiment( 'title-generation' );
 		$this->assertNotNull( $title_experiment, 'Title generation experiment should exist' );
 		$this->assertEquals( 'title-generation', $title_experiment->get_id() );
+
+		$webmcp_adapter_experiment = $this->registry->get_experiment( 'webmcp-adapter' );
+		$this->assertNotNull( $webmcp_adapter_experiment, 'WebMCP adapter experiment should exist' );
+		$this->assertEquals( 'webmcp-adapter', $webmcp_adapter_experiment->get_id() );
 	}
 
 	/**
