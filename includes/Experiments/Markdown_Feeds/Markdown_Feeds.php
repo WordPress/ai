@@ -16,6 +16,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use function __;
+use function add_query_arg;
+use function current_user_can;
+use function esc_attr;
+use function esc_html;
+use function esc_html__;
+use function esc_url;
+use function get_bloginfo;
+use function get_feed_link;
+use function get_option;
+use function get_permalink;
+use function get_post_status;
+use function get_post_type_object;
+use function get_queried_object;
+use function get_query_var;
+use function get_the_title;
+use function is_admin;
+use function is_feed;
+use function is_singular;
+use function post_password_required;
+use function register_setting;
+use function sanitize_key;
+use function str_contains;
+use function wp_kses;
+use function wp_parse_url;
+
 /**
  * Registers Markdown representations for feeds and singular content.
  */
@@ -23,11 +49,13 @@ class Markdown_Feeds extends Abstract_Experiment {
 	private const FEED_NAME = 'markdown';
 
 	private const OPTION_ENABLE_FEED           = 'ai_experiment_markdown_feeds_enable_feed';
+	private const OPTION_ENABLE_FORMAT_PARAM   = 'ai_experiment_markdown_feeds_enable_format_param';
 	private const OPTION_ENABLE_MD_EXTENSION   = 'ai_experiment_markdown_feeds_enable_md_extension';
 	private const OPTION_ENABLE_ACCEPT_HEADERS = 'ai_experiment_markdown_feeds_enable_accept_headers';
 
 	private const DEFAULT_ENABLE_FEED           = true;
-	private const DEFAULT_ENABLE_MD_EXTENSION   = true;
+	private const DEFAULT_ENABLE_FORMAT_PARAM   = true;
+	private const DEFAULT_ENABLE_MD_EXTENSION   = false;
 	private const DEFAULT_ENABLE_ACCEPT_HEADERS = true;
 
 	/**
@@ -55,7 +83,8 @@ class Markdown_Feeds extends Abstract_Experiment {
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_feed' ), 11 );
-		add_filter( 'request', array( $this, 'filter_request_for_markdown_extension' ), 1 );
+		add_filter( 'do_parse_request', array( $this, 'filter_request_for_markdown_extension' ), 1 );
+		add_filter( 'query_vars', array( $this, 'register_query_vars' ) );
 		add_filter( 'redirect_canonical', array( $this, 'filter_redirect_canonical' ), 10, 2 );
 		add_filter( 'wp_headers', array( $this, 'filter_wp_headers' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_render_singular_markdown' ), 0 );
@@ -76,6 +105,19 @@ class Markdown_Feeds extends Abstract_Experiment {
 		}
 
 		add_feed( self::FEED_NAME, array( $this, 'render_feed' ) );
+	}
+
+	/**
+	 * Registers the `format` query variable.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string[] $vars Public query variables.
+	 * @return string[]
+	 */
+	public function register_query_vars( array $vars ): array {
+		$vars[] = 'format';
+		return $vars;
 	}
 
 	/**
@@ -110,8 +152,7 @@ class Markdown_Feeds extends Abstract_Experiment {
 			esc_url( $feed_url )
 		);
 
-		// Singular post/page: add link to .md version.
-		if ( ! is_singular() || ! $settings['enable_md_extension'] ) {
+		if ( ! is_singular() || ! $settings['enable_format_param'] ) {
 			return;
 		}
 
@@ -120,18 +161,15 @@ class Markdown_Feeds extends Abstract_Experiment {
 			return;
 		}
 
-		$md_url = $this->get_markdown_permalink( $post );
-		if ( '' === $md_url ) {
-			return;
-		}
-
+		// Add the ?format=md alternate link for singular content.
+		$format_url = add_query_arg( 'format', 'md', get_permalink( $post ) );
 		/* translators: %s: Post title. */
 		$md_title = sprintf( __( '%s (Markdown)', 'ai' ), get_the_title( $post ) );
 
 		printf(
 			'<link rel="alternate" type="text/markdown" title="%s" href="%s" />' . "\n",
 			esc_attr( $md_title ),
-			esc_url( $md_url )
+			esc_url( $format_url )
 		);
 	}
 
@@ -155,24 +193,45 @@ class Markdown_Feeds extends Abstract_Experiment {
 	/**
 	 * Gets the Markdown permalink for a post.
 	 *
+	 * When the `.md` extension is enabled and the permalink structure supports
+	 * it, returns a `.md` suffixed URL.  Otherwise falls back to a
+	 * `?format=md` query-string URL.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post Post object.
-	 * @return string Markdown permalink.
+	 * @return string Markdown permalink (never empty).
 	 */
 	public function get_markdown_permalink( \WP_Post $post ): string {
-		$permalink_structure = (string) get_option( 'permalink_structure' );
-		if ( '' === $permalink_structure ) {
-			return '';
-		}
-
 		$permalink = get_permalink( $post );
-		if ( ! $permalink || false !== strpos( $permalink, '?' ) ) {
+		if ( ! $permalink ) {
 			return '';
 		}
 
-		// Remove trailing slash, add .md extension.
-		return rtrim( trailingslashit( $permalink ), '/' ) . '.md';
+		$settings = $this->get_settings();
+
+		// Try .md extension when enabled and the URL structure supports it.
+		if ( $settings['enable_md_extension'] ) {
+			$permalink_structure = (string) get_option( 'permalink_structure' );
+
+			// Only works with pretty permalinks and non-query-string URLs.
+			if ( '' !== $permalink_structure && false === strpos( $permalink, '?' ) ) {
+				$path = wp_parse_url( $permalink, PHP_URL_PATH );
+
+				// Guard against the homepage / site-root URL — appending .md
+				// to the bare domain produces an invalid hostname.
+				if ( is_string( $path ) && '/' !== $path ) {
+					return rtrim( $permalink, '/' ) . '.md';
+				}
+			}
+		}
+
+		// Fall back to query-string approach when format param is enabled.
+		if ( $settings['enable_format_param'] ) {
+			return add_query_arg( 'format', 'md', $permalink );
+		}
+
+		return '';
 	}
 
 	/**
@@ -185,6 +244,16 @@ class Markdown_Feeds extends Abstract_Experiment {
 			array(
 				'type'              => 'boolean',
 				'default'           => self::DEFAULT_ENABLE_FEED,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+			)
+		);
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			self::OPTION_ENABLE_FORMAT_PARAM,
+			array(
+				'type'              => 'boolean',
+				'default'           => self::DEFAULT_ENABLE_FORMAT_PARAM,
 				'sanitize_callback' => 'rest_sanitize_boolean',
 			)
 		);
@@ -230,8 +299,30 @@ class Markdown_Feeds extends Abstract_Experiment {
 					echo wp_kses(
 						sprintf(
 							/* translators: %s: Markdown feed URL query string. */
-							__( 'Enable <code>%s</code>', 'ai' ),
-							'/?feed=markdown'
+							__( 'Enable <code>%s</code> feed endpoint', 'ai' ),
+							esc_html( '/?feed=markdown' )
+						),
+						array( 'code' => array() )
+					);
+					?>
+				</span>
+			</label>
+
+			<label class="components-toggle-control" for="<?php echo esc_attr( self::OPTION_ENABLE_FORMAT_PARAM ); ?>">
+				<input
+					type="checkbox"
+					id="<?php echo esc_attr( self::OPTION_ENABLE_FORMAT_PARAM ); ?>"
+					name="<?php echo esc_attr( self::OPTION_ENABLE_FORMAT_PARAM ); ?>"
+					value="1"
+					<?php checked( (bool) $settings['enable_format_param'] ); ?>
+				/>
+				<span>
+					<?php
+					echo wp_kses(
+						sprintf(
+							/* translators: %s: Query parameter used for Markdown format. */
+							__( 'Enable <code>%s</code> query parameter for any page', 'ai' ),
+							esc_html( '?format=md' )
 						),
 						array( 'code' => array() )
 					);
@@ -300,51 +391,46 @@ class Markdown_Feeds extends Abstract_Experiment {
 	}
 
 	/**
-	 * Filters parsed query vars to strip `.md` suffix from slug-based vars.
+	 * Strips `.md` from the request URI before WordPress parses the URL.
 	 *
-	 * This allows URLs like `/post-name.md` to resolve to the post with slug `post-name`.
-	 * Works with the `request` filter which fires after WordPress parses the URL.
+	 * Hooked to `do_parse_request` (fires before `WP::parse_request()`), this
+	 * mangles `$_SERVER['REQUEST_URI']` so the rewrite engine sees the clean
+	 * slug.  This avoids issues with custom post type query vars, verbose page
+	 * rules, and rewrite-rule mis-matches that occur when filtering query vars
+	 * after the fact.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string,mixed> $query_vars Parsed query vars.
-	 * @return array<string,mixed>
+	 * @param bool $do_parse Whether to parse the request. Default true.
+	 * @return bool
 	 */
-	public function filter_request_for_markdown_extension( array $query_vars ): array {
+	public function filter_request_for_markdown_extension( bool $do_parse ): bool {
 		$settings = $this->get_settings();
 		if ( ! $settings['enable_md_extension'] ) {
-			return $query_vars;
+			return $do_parse;
 		}
 
 		if ( is_admin() ) {
-			return $query_vars;
+			return $do_parse;
 		}
 
 		$method = $this->get_request_method();
 		if ( 'get' !== $method && 'head' !== $method ) {
-			return $query_vars;
+			return $do_parse;
 		}
 
-		// Query vars that contain post/page slugs which may have .md suffix.
-		$slug_vars = array( 'name', 'pagename', 'attachment' );
+		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
+			return $do_parse;
+		}
 
-		foreach ( $slug_vars as $var ) {
-			if ( empty( $query_vars[ $var ] ) ) {
-				continue;
-			}
+		$uri = (string) $_SERVER['REQUEST_URI']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Used for routing only, not output.
 
-			$value = (string) $query_vars[ $var ];
-			if ( '.md' !== substr( $value, -3 ) ) {
-				continue;
-			}
-
-			// Strip the .md suffix and mark this as a markdown request.
-			$query_vars[ $var ]               = substr( $value, 0, -3 );
+		if ( str_contains( $uri, '.md' ) ) {
+			$_SERVER['REQUEST_URI']           = str_replace( '.md', '', $uri );
 			$this->markdown_extension_request = true;
-			break;
 		}
 
-		return $query_vars;
+		return $do_parse;
 	}
 
 	/**
@@ -391,7 +477,9 @@ class Markdown_Feeds extends Abstract_Experiment {
 	}
 
 	/**
-	 * Renders Markdown for singular content when requested via `.md` or `Accept: text/markdown`.
+	 * Renders Markdown when requested via `.md`, `?format=md`, or `Accept: text/markdown`.
+	 *
+	 * Works for both singular and non-singular (archive/homepage) requests.
 	 *
 	 * @since x.x.x
 	 */
@@ -406,6 +494,8 @@ class Markdown_Feeds extends Abstract_Experiment {
 		$wants_markdown = false;
 		if ( $settings['enable_md_extension'] && $this->markdown_extension_request ) {
 			$wants_markdown = true;
+		} elseif ( $settings['enable_format_param'] && 'md' === get_query_var( 'format' ) ) {
+			$wants_markdown = true;
 		} elseif ( $settings['enable_accept_headers'] && $this->client_accepts_markdown() ) {
 			$wants_markdown = true;
 		}
@@ -414,16 +504,21 @@ class Markdown_Feeds extends Abstract_Experiment {
 			return;
 		}
 
-		$renderer = new Markdown_Singular_Renderer();
-
+		// Non-singular pages (archives, homepage, category, etc.):
+		// render the current query as a markdown feed.
 		if ( ! is_singular() ) {
 			if ( $this->markdown_extension_request ) {
+				$renderer = new Markdown_Singular_Renderer();
 				$renderer->render_not_found();
 				exit;
 			}
 
-			return;
+			$feed_renderer = new Markdown_Feed_Renderer();
+			$feed_renderer->render();
+			exit;
 		}
+
+		$renderer = new Markdown_Singular_Renderer();
 
 		$post = get_queried_object();
 		if ( ! $post instanceof \WP_Post ) {
@@ -543,11 +638,12 @@ class Markdown_Feeds extends Abstract_Experiment {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array{enable_feed: bool, enable_md_extension: bool, enable_accept_headers: bool}
+	 * @return array{enable_feed: bool, enable_format_param: bool, enable_md_extension: bool, enable_accept_headers: bool}
 	 */
 	private function get_settings(): array {
 		return array(
 			'enable_feed'           => (bool) get_option( self::OPTION_ENABLE_FEED, self::DEFAULT_ENABLE_FEED ),
+			'enable_format_param'   => (bool) get_option( self::OPTION_ENABLE_FORMAT_PARAM, self::DEFAULT_ENABLE_FORMAT_PARAM ),
 			'enable_md_extension'   => (bool) get_option( self::OPTION_ENABLE_MD_EXTENSION, self::DEFAULT_ENABLE_MD_EXTENSION ),
 			'enable_accept_headers' => (bool) get_option( self::OPTION_ENABLE_ACCEPT_HEADERS, self::DEFAULT_ENABLE_ACCEPT_HEADERS ),
 		);
