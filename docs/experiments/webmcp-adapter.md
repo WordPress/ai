@@ -103,9 +103,10 @@ Arguments:
 ## Requirements
 
 - Browser must support `navigator.modelContext` to register tools.
+- The Gutenberg plugin must be active (WebMCP availability is gated on Gutenberg because it provides the Abilities API integration this experiment relies on).
 - WordPress abilities API must be available, either via:
   - `window.wp.abilities` globals, or
   - script modules (`@wordpress/core-abilities` + `@wordpress/abilities`).
-- The experiment toggle is only available when the Abilities API is loaded (currently via the Gutenberg plugin). If unavailable, the WebMCP toggle is disabled in settings and forced off server-side on save.
+- If dependencies are unavailable, the WebMCP toggle is disabled in settings and forced off server-side on save.
 
 For browsers without native WebMCP support, you can enable the local debug shim with `window.aiWebMCPDebug = { enabled: true, shimModelContext: true }` or `window.aiWebMCPAdapterDebug.installModelContextShim()`.

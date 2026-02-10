@@ -190,7 +190,7 @@ class WebMCP extends Abstract_Experiment {
 			return '';
 		}
 
-		return __( 'Requires the WordPress Abilities API (currently provided by the Gutenberg plugin). Install and activate Gutenberg to enable this experiment.', 'ai' );
+		return __( 'Requires the Gutenberg plugin (which provides the WordPress Abilities API). Install and activate Gutenberg to enable this experiment.', 'ai' );
 	}
 
 	/**
@@ -456,6 +456,38 @@ class WebMCP extends Abstract_Experiment {
 	 * @return bool True when WebMCP can rely on the Abilities API.
 	 */
 	private function has_abilities_api_support(): bool {
-		return function_exists( 'wp_get_abilities' ) && function_exists( 'wp_register_ability' );
+		return $this->is_gutenberg_active()
+			&& function_exists( 'wp_get_abilities' )
+			&& function_exists( 'wp_register_ability' );
+	}
+
+	/**
+	 * Checks whether Gutenberg is currently active.
+	 *
+	 * Uses lightweight checks only, avoiding loading admin-only plugin APIs.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return bool True when Gutenberg is active.
+	 */
+	private function is_gutenberg_active(): bool {
+		if ( defined( 'GUTENBERG_VERSION' ) ) {
+			return true;
+		}
+
+		$plugin_file    = 'gutenberg/gutenberg.php';
+		$active_plugins = get_option( 'active_plugins', array() );
+
+		if ( is_array( $active_plugins ) && in_array( $plugin_file, $active_plugins, true ) ) {
+			return true;
+		}
+
+		if ( ! is_multisite() ) {
+			return false;
+		}
+
+		$network_active_plugins = get_site_option( 'active_sitewide_plugins', array() );
+
+		return is_array( $network_active_plugins ) && isset( $network_active_plugins[ $plugin_file ] );
 	}
 }

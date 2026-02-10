@@ -221,6 +221,34 @@ class WebMCPTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests Gutenberg dependency check uses the active plugins list.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_gutenberg_dependency_uses_active_plugins_list() {
+		if ( defined( 'GUTENBERG_VERSION' ) ) {
+			$this->markTestSkipped( 'Environment already defines GUTENBERG_VERSION.' );
+		}
+
+		$experiment = new WebMCP();
+		$reflection = new \ReflectionClass( $experiment );
+		$method     = $reflection->getMethod( 'is_gutenberg_active' );
+		$method->setAccessible( true );
+
+		$original_active_plugins = get_option( 'active_plugins', array() );
+
+		try {
+			update_option( 'active_plugins', array() );
+			$this->assertFalse( $method->invoke( $experiment ) );
+
+			update_option( 'active_plugins', array( 'gutenberg/gutenberg.php' ) );
+			$this->assertTrue( $method->invoke( $experiment ) );
+		} finally {
+			update_option( 'active_plugins', $original_active_plugins );
+		}
+	}
+
+	/**
 	 * Tests enabled setting cannot be saved when dependencies are unavailable.
 	 *
 	 * @since 0.4.0
