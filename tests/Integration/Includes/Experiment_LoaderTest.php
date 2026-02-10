@@ -116,6 +116,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 			'alt-text-generation',
 			'comment-moderation',
 			'mcp',
+			'webmcp-adapter',
 			'ai-request-logging',
 			'extended-providers',
 			'writing-assistant',

@@ -112,6 +112,7 @@ final class Experiment_Loader {
 			\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
 			\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 			\WordPress\AI\Experiments\MCP\MCP::class,
+			\WordPress\AI\Experiments\WebMCP\WebMCP::class,
 			\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
 			\WordPress\AI\Experiments\Extended_Providers\Extended_Providers::class,
 			\WordPress\AI\Experiments\Writing_Assistant\Writing_Assistant::class,

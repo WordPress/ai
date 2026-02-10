@@ -69,6 +69,11 @@ module.exports = {
 			'src/experiments/comment-moderation',
 			'index.tsx'
 		),
+		'experiments/webmcp-adapter': path.resolve(
+			process.cwd(),
+			'src/experiments/webmcp-adapter',
+			'index.js'
+		),
 		'experiments/writing-assistant': path.resolve(
 			process.cwd(),
 			'src/experiments/writing-assistant',
