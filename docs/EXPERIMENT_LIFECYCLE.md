@@ -108,6 +108,7 @@ Acceptance into core is ultimately a core leadership decision and may require fu
 ## Important Notes
 
 * Experiments may be deprecated or removed at any time
+* Experiments may undergo breaking changes. Unless absolutely not feasible, those will occur in a Major version bump of the AI Experiments plugin to help signify those changes
 * Not all Experiments are intended to graduate to core, in fact most are never expected to and instead are expected to stay within the plugin
 * Learning and validation are considered successful outcomes
 
