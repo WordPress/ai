@@ -24,7 +24,7 @@ A good proposal usually includes:
 * Low-fidelity mockups, diagrams, or written flows where applicable
 * Known risks, unknowns, or open questions
 
-At this stage, rough clarity is more important than completeness.  The goal is to decide whether the idea is worth experimenting on at all.  [Here's an example of a particularly detailed propsoal issue](https://github.com/WordPress/ai/issues/10).
+At this stage, rough clarity is more important than completeness.  The goal is to decide whether the idea is worth experimenting on at all. [Here's an example of a particularly detailed proposal issue](https://github.com/WordPress/ai/issues/10).
 
 An additionally encouraged, though not required, step would be to open a PR that explores how the proposed feature could be implemented and function.  Here's an example of an [exploratory PR](https://github.com/WordPress/ai/pull/156) from its [proposal issue](https://github.com/WordPress/ai/issues/44); using a Draft PR state and the [`[Type] Proof of Concept` label](https://github.com/WordPress/ai/issues?q=state%3Aopen%20label%3A%22%5BType%5D%20Proof%20of%20Concept%22) will help separate these sorts of PRs from more actively planned and milestoned work.
 
