@@ -6,7 +6,7 @@ This is a descriptive guide, not a rigid policy.  The goal is to help contributo
 
 The process intentionally favors learning and iteration over certainty.
 
-## How an Experiment Gets Approved for the Plugin
+## How Experiments are Evaluated for the Plugin
 
 Each Experiment is evaluated independently.  Inclusion in the AI Experiments plugin does not imply endorsement for core, nor a guarantee of long-term support.
 
@@ -24,9 +24,17 @@ A good proposal usually includes:
 * Low-fidelity mockups, diagrams, or written flows where applicable
 * Known risks, unknowns, or open questions
 
-At this stage, rough clarity is more important than completeness.  The goal is to decide whether the idea is worth experimenting on at all.
+At this stage, rough clarity is more important than completeness.  The goal is to decide whether the idea is worth experimenting on at all.  [Here's an example of a particularly detailed propsoal issue](https://github.com/WordPress/ai/issues/10).
 
-### 2. Implementation via Pull Request
+An additionally encouraged, though not required, step would be to open a PR that explores how the proposed feature could be implemented and function.  Here's an example of an [exploratory PR](https://github.com/WordPress/ai/pull/156) from its [proposal issue](https://github.com/WordPress/ai/issues/44); using a Draft PR state and the [`[Type] Proof of Concept` label](https://github.com/WordPress/ai/issues?q=state%3Aopen%20label%3A%22%5BType%5D%20Proof%20of%20Concept%22) will help separate these sorts of PRs from more actively planned and milestoned work.
+
+### 2. Assessment of Proposed Experiment
+
+Once a proposal has been opened, the [AI Experiment maintainers](../CREDITS.md#maintainers) will work to assess viability and rationale for including the proposed experiment within the plugin as opposed to within a separate plugin, within Gutenberg or WordPress core directly, or perhaps generally "not likely a fit for the AI Experiments plugin" for described reasons.
+
+For proposals that are aligned to the AI Experiments purpose and roadmap, they'll be added to the [project board](https://github.com/orgs/WordPress/projects/240/views/7) and assigned a numbered milestone (or `Future Release` for those unlikely to be ready in the near future but still warranted within the plugin).
+
+### 4. Implementation via Pull Request
 
 Once there is general agreement on direction, a pull request can be opened to implement the Experiment.
 
@@ -40,9 +48,9 @@ Expectations for Experiments at this stage:
 
 Experiments are expected to evolve.  Early implementations do not need to be production-ready, but they should be reviewable, testable, and understandable by others.
 
-### 3. Review, Testing, and Inclusion
+### 5. Review, Testing, and Inclusion
 
-Final approval for inclusion in the plugin is handled by the plugin maintainers listed in the [Credits](../CREDITS.md) file.
+Final approval for inclusion in the plugin is handled by the [plugin maintainers](../CREDITS.md#maintainers).
 
 When reviewing an Experiment, maintainers typically consider:
 
