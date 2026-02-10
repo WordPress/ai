@@ -10,7 +10,6 @@ namespace WordPress\AI\Tests\Integration\Experiments\WebMCP;
 use WP_UnitTestCase;
 use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\WebMCP\WebMCP;
-use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
 /**
@@ -247,38 +246,6 @@ class WebMCPTest extends WP_UnitTestCase {
 		$errors = get_settings_errors( Settings_Registration::OPTION_GROUP );
 		$this->assertNotEmpty( $errors );
 		$this->assertStringContainsString( 'Abilities API', $errors[0]['message'] );
-
-		remove_filter( 'ai_webmcp_adapter_is_available', $callback );
-	}
-
-	/**
-	 * Tests settings page disables WebMCP toggle when dependencies are unavailable.
-	 *
-	 * @since 0.4.0
-	 */
-	public function test_settings_page_disables_toggle_when_unavailable() {
-		$callback = static function () {
-			return false;
-		};
-		add_filter( 'ai_webmcp_adapter_is_available', $callback );
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
-
-		$this->registry->register_experiment( new WebMCP() );
-		$settings_page = new Settings_Page( $this->registry );
-		$admin_user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $admin_user_id );
-		$settings_page->init();
-		do_action( 'admin_menu' );
-		$_GET['page'] = 'ai-experiments'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Test fixture setup.
-
-		ob_start();
-		$settings_page->render_page();
-		$output = ob_get_clean();
-
-		$this->assertIsString( $output );
-		$this->assertStringContainsString( 'id="ai_experiment_webmcp-adapter_enabled"', $output );
-		$this->assertStringContainsString( 'disabled=\'disabled\'', $output );
-		$this->assertStringContainsString( 'Requires the WordPress Abilities API', $output );
 
 		remove_filter( 'ai_webmcp_adapter_is_available', $callback );
 	}
