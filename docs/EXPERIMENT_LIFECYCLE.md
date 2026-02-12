@@ -48,7 +48,7 @@ Expectations for Experiments at this stage:
 
 Experiments are expected to evolve.  Early implementations do not need to be production-ready, but they should be reviewable, testable, and understandable by others.
 
-### 5. Review, Testing, and Inclusion
+### 4. Review, Testing, and Inclusion
 
 Final approval for inclusion in the plugin is handled by the [plugin maintainers](../CREDITS.md#maintainers).
 
