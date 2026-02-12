@@ -112,8 +112,8 @@ function TitleOptionsList( {
 /**
  * Generates titles for the given post ID and content.
  *
- * @param {number} postId  The ID of the post to generate a title for.
- * @param {string} content The content of the post to generate a title for.
+ * @param {number} postId  The ID of the post to generate titles for.
+ * @param {string} content The content of the post to generate titles for.
  * @return {Promise<string[]>} A promise that resolves to the generated titles.
  */
 async function generateTitles(
@@ -125,7 +125,7 @@ async function generateTitles(
 		method: 'POST',
 		data: {
 			input: {
-				post_id: postId,
+				context: postId.toString(),
 				content,
 			},
 		},
