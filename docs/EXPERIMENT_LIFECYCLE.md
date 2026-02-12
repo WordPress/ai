@@ -100,8 +100,16 @@ The proposal typically documents:
 * The exact feature being proposed
 * Why it belongs in core
 * How it aligns with WordPress project goals
+* What validation and testing has been performed, and what evidence demonstrates user value
+* AI-specific considerations such as data handling, model behavior, bias, privacy, and failure modes
 * Remaining risks or open questions
 * A clear ownership and maintenance plan
+
+For AI-driven features in particular, proposals are expected to go beyond traditional unit tests and documentation. They should clearly articulate:
+
+* How the feature was evaluated (qualitative feedback, usage data, structured testing, etc.)
+* What guardrails are in place to prevent misuse or harmful outputs
+* Why the behavior represents a net positive for users and aligns with WordPress best practices rather than hype
 
 Acceptance into core is ultimately a core leadership decision and may require further iteration or restructuring.
 
