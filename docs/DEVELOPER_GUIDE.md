@@ -353,6 +353,7 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
+- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [WordPress AI Team](https://make.wordpress.org/ai/)
 
 ### Getting Help
