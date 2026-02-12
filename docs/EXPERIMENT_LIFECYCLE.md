@@ -34,7 +34,7 @@ Once a proposal has been opened, the [AI Experiment maintainers](../CREDITS.md#m
 
 For proposals that are aligned to the AI Experiments purpose and roadmap, they'll be added to the [project board](https://github.com/orgs/WordPress/projects/240/views/7) and assigned a numbered milestone (or `Future Release` for those unlikely to be ready in the near future but still warranted within the plugin).
 
-### 4. Implementation via Pull Request
+### 3. Implementation via Pull Request
 
 Once there is general agreement on direction, a pull request can be opened to implement the Experiment.
 
