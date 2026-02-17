@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 ### Developer
 - Added Experiment lifecycle and contribution criteria documentation, plus general doc tidy-ups to better explain how experiments land in (and could eventually graduate from) the plugin ([#219](https://github.com/WordPress/ai/pull/219)).
 - Updated the Pull Request template to include an “AI tools usage” disclosure section, aligned with the [equivalent change in core](https://github.com/WordPress/wordpress-develop/pull/10850) ([#217](https://github.com/WordPress/ai/pull/217)).
+- Bump `qs` from 6.14.1 to 6.14.2 ([#229](https://github.com/WordPress/ai/pull/229)).
 
 ## [0.3.0] - 2026-02-09
 ### Added
