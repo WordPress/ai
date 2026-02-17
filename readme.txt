@@ -124,6 +124,10 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 == Changelog ==
 
+= 0.3.1 - 2026-02-18 =
+
+* **Fixed:** Increased image generation request timeout from 30s to 90s to reduce failed generations on slower providers/models ([#226](https://github.com/WordPress/ai/pull/226)).
+
 = 0.3.0 - 2026-02-09 =
 
 * **Added:** Content Summarization Experiment, allowing authors to generate and store AI-powered summaries directly in the post editor ([#147](https://github.com/WordPress/ai/pull/147)).
