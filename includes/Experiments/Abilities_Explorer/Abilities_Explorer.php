@@ -15,6 +15,7 @@ namespace WordPress\AI\Experiments\Abilities_Explorer;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiment_Area;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -37,6 +38,7 @@ class Abilities_Explorer extends Abstract_Experiment {
 			'id'          => 'abilities-explorer',
 			'label'       => __( 'Abilities Explorer', 'ai' ),
 			'description' => __( 'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.', 'ai' ),
+			'category'    => Experiment_Area::ADMIN,
 		);
 	}
 

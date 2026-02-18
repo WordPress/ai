@@ -14,6 +14,7 @@ use WordPress\AI\Abilities\Image\Generate_Image_Prompt as Generate_Image_Prompt_
 use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiment_Area;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -32,13 +33,14 @@ class Image_Generation extends Abstract_Experiment {
 	 *
 	 * @since 0.2.0
 	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'image-generation',
 			'label'       => __( 'Image Generation', 'ai' ),
 			'description' => __( 'Generates a featured image from a generated image prompt', 'ai' ),
+			'category'    => Experiment_Area::EDITOR,
 		);
 	}
 
