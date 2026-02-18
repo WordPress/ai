@@ -2,7 +2,7 @@
 Contributors:      wordpressorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      6.9
-Stable tag:        0.3.0
+Stable tag:        0.3.1
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -18,14 +18,14 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 **Current Features:**
 
-* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
-* **Excerpt Generation** - Automatically create concise summaries for your posts.
-* **Content Summarization** - Summarizes long-form content into digestible overviews.
-* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
-* **Image Generation** - Create images from text prompts directly in the block editor.
-* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
-* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
+* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
+* **Content Summarization** - Summarizes long-form content into digestible overviews.
+* **Excerpt Generation** - Automatically create concise summaries for your posts.
+* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
+* **Image Generation** - Create feature image from post content directly in the block editor.
+* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
 
 **Coming Soon:**
 
@@ -123,6 +123,10 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 10. AI Credentials settings screen showing API key fields for available AI service providers.
 
 == Changelog ==
+
+= 0.3.1 - 2026-02-18 =
+
+* **Fixed:** Increased image generation request timeout from 30s to 90s to reduce failed generations on slower providers/models ([#226](https://github.com/WordPress/ai/pull/226)).
 
 = 0.3.0 - 2026-02-09 =
 

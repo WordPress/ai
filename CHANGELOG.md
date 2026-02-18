@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [0.3.1] - 2026-02-18
+### Fixed
+- Increased image generation request timeout from 30s to 90s to reduce failed generations on slower providers/models ([#226](https://github.com/WordPress/ai/pull/226)).
+
+### Developer
+- Added Experiment lifecycle and contribution criteria documentation, plus general doc tidy-ups to better explain how experiments land in (and could eventually graduate from) the plugin ([#219](https://github.com/WordPress/ai/pull/219)).
+- Updated the Pull Request template to include an “AI tools usage” disclosure section, aligned with the [equivalent change in core](https://github.com/WordPress/wordpress-develop/pull/10850) ([#217](https://github.com/WordPress/ai/pull/217)).
+- Bump `qs` from 6.14.1 to 6.14.2 ([#229](https://github.com/WordPress/ai/pull/229)).
+
 ## [0.3.0] - 2026-02-09
 ### Added
 - Content Summarization Experiment, allowing authors to generate and store AI-powered summaries directly in the post editor ([#147](https://github.com/WordPress/ai/pull/147)).
@@ -99,6 +108,7 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[0.3.1]: https://github.com/WordPress/ai/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/WordPress/ai/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/WordPress/ai/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/WordPress/ai/compare/0.1.1...0.2.0

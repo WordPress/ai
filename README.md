@@ -31,6 +31,17 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 3. **Experimentation lab** – Test new AI capabilities and gather feedback.
 4. **Path to core** – Explore which features should become part of WordPress.
 
+## Current Features
+
+* **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Browse and interact with registered AI abilities from a dedicated admin screen.
+* * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generate descriptive alt text for images to improve accessibility.
+* **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
+* **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Automatically create concise summaries for your posts.
+* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
+* **[Image Generation](docs/experiments/image-generation.md)** - Create feature image from post content directly in the block editor.
+* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+
 ## Roadmap
 
 You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/7).
@@ -70,3 +81,5 @@ Anyone contributing to the AI Experiments plugin is expected to conduct themselv
 * **Ideate:** Propose and comment on [GitHub discussions](https://github.com/WordPress/ai/discussions).
 * **Design:** [Share feedback](https://github.com/WordPress/ai/issues) on UX flows and accessibility.
 * **Test:** Try features as they're [released](https://github.com/WordPress/ai/releases) and [report feedback](https://github.com/WordPress/ai/issues).
+
+View the [Credits](CREDITS.md) file for maintainers, contributors, and libraries for the AI Experiments plugin.

@@ -155,4 +155,5 @@ For more detailed information on plugin architecture, creating experiments, and 
 - [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
 - [Testing Strategy](docs/TESTING.md) - Testing philosophy and guidelines
 - [Testing API Strategy](docs/TESTING_REST_API.md) - Testing philosophy and guidelines
+- [Experiment Lifecycle](docs/EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [WordPress AI Team](https://make.wordpress.org/ai/) - Community and discussion
