@@ -19,7 +19,6 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 
-use function WordPress\AI\get_preferred_image_edit_models;
 use function WordPress\AI\get_preferred_image_models;
 
 /**
@@ -201,7 +200,7 @@ class Generate_Image extends Abstract_Ability {
 			);
 		}
 
-		return $this->run_image_generation( $prompt, get_preferred_image_edit_models(), $file );
+		return $this->run_image_generation( $prompt, get_preferred_image_models(), $file );
 	}
 
 	/**

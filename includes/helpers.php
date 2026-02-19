@@ -238,6 +238,10 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
+			'gpt-image-1-mini',
+		),
+		array(
+			'openai',
 			'dall-e-3',
 		),
 	);
@@ -251,44 +255,6 @@ function get_preferred_image_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred image models.
 	 */
 	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
-}
-
-/**
- * Returns the preferred image edit models.
- *
- * @since x.x.x
- *
- * @return array<int, array{string, string}> The preferred image edit models.
- */
-function get_preferred_image_edit_models(): array {
-	$preferred_models = array(
-		array(
-			'openai',
-			'gpt-image-1.5',
-		),
-		array(
-			'openai',
-			'gpt-image-1',
-		),
-		array(
-			'openai',
-			'gpt-image-1-mini',
-		),
-		array(
-			'openai',
-			'dall-e-2',
-		),
-	);
-
-	/**
-	 * Filters the preferred image edit models.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<int, array{string, string}> $preferred_models The preferred image edit models.
-	 * @return array<int, array{string, string}> The filtered preferred image edit models.
-	 */
-	return (array) apply_filters( 'ai_experiments_preferred_image_edit_models', $preferred_models );
 }
 
 /**
