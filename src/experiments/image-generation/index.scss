@@ -1,0 +1,33 @@
+.ai-generate-image-inline-modal {
+	&__actions {
+		margin-top: 15px;
+	}
+
+	&__preview {
+		.ai-generate-image-inline-modal__actions {
+			display: flex;
+			gap: 8px;
+		}
+	}
+
+	&__generating {
+		.ai-generate-image-inline-modal__preview-image {
+			margin-bottom: 15px;
+		}
+		.ai-generate-image-inline-modal__spinner-row {
+			.components-spinner {
+				vertical-align: middle;
+			}
+			span {
+				color: #757575;
+				vertical-align: bottom;
+			}
+		}
+	}
+
+	&__editing {
+		.ai-generate-image-inline-modal__preview-image {
+			margin-bottom: 15px;
+		}
+	}
+}

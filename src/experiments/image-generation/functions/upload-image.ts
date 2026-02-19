@@ -21,14 +21,15 @@ const { aiImageGenerationData } = window as any;
 /**
  * Uploads an image to the media library.
  *
- * @param {GeneratedImageData} imageData          The generated image data (from generateImage).
- * @param {Object}             options            Optional settings.
- * @param {Function}           options.onProgress Callback invoked with progress messages.
+ * @param {GeneratedImageData} imageData              The generated image data (from generateImage).
+ * @param {Object}             options                Optional settings.
+ * @param {Function}           options.onProgress     Callback invoked with progress messages.
+ * @param                      options.altTextEnabled
  * @return {Promise<UploadedImage>} A promise that resolves to the uploaded image data.
  */
 export async function uploadImage(
 	{ image, prompt }: GeneratedImageData,
-	options?: { onProgress?: ImageProgressCallback }
+	options?: { onProgress?: ImageProgressCallback; altTextEnabled?: boolean }
 ): Promise< UploadedImage > {
 	const onProgress = options?.onProgress;
 
@@ -55,9 +56,11 @@ export async function uploadImage(
 	params.alt_text = prompt;
 
 	// If alt text generation is enabled, try generating alt text.
-	if ( aiImageGenerationData?.altTextEnabled ) {
+	const isAltTextEnabled =
+		options?.altTextEnabled ?? aiImageGenerationData?.altTextEnabled;
+	if ( isAltTextEnabled ) {
 		try {
-			onProgress?.( __( 'Generating alt text', 'ai' ) );
+			onProgress?.( __( 'Generating alt text…', 'ai' ) );
 			params.alt_text = await generateAltText(
 				undefined,
 				`data:image/png;base64,${ image.data }`
@@ -70,7 +73,7 @@ export async function uploadImage(
 	// Set our image title to be a trimmed version of the alt text.
 	params.title = trimText( params.alt_text );
 
-	onProgress?.( __( 'Importing image', 'ai' ) );
+	onProgress?.( __( 'Importing image…', 'ai' ) );
 
 	return await runAbility( 'ai/image-import', params )
 		.then( ( response: any ) => {
