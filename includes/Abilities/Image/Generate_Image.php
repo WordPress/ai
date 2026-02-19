@@ -13,11 +13,13 @@ use Throwable;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
+use WordPress\AiClient\Files\DTO\File;
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 
+use function WordPress\AI\get_preferred_image_edit_models;
 use function WordPress\AI\get_preferred_image_models;
 
 /**
@@ -36,10 +38,15 @@ class Generate_Image extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'prompt' => array(
+				'prompt'          => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'Prompt used to generate an image.', 'ai' ),
+				),
+				'reference_image' => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => esc_html__( 'Optional base64-encoded image to use as a reference image for editing.', 'ai' ),
 				),
 			),
 			'required'   => array( 'prompt' ),
@@ -107,8 +114,14 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
-		// Generate the image.
-		$result = $this->generate_image( $input['prompt'] );
+		// Generate the image, routing to the image-edit path when a reference image is provided.
+		$reference_image = ! empty( $input['reference_image'] ) ? (string) $input['reference_image'] : '';
+
+		if ( '' === $reference_image ) {
+			$result = $this->generate_image( $input['prompt'] );
+		} else {
+			$result = $this->generate_image_edit( $input['prompt'], $reference_image );
+		}
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -163,20 +176,63 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.2.0
 	 *
 	 * @param string $prompt The prompt to generate an image from.
-	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, provider metadata, and model metadata, or a WP_Error if there was an error.
+	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
 	 */
 	protected function generate_image( string $prompt ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
+		return $this->run_image_generation( $prompt, get_preferred_image_models() );
+	}
+
+	/**
+	 * Generates an edited image from the given prompt and reference image.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt describing the desired edits.
+	 * @param string $reference_image Base64-encoded PNG to use as the reference image.
+	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
+	 */
+	protected function generate_image_edit( string $prompt, string $reference_image ) {
+		try {
+			$file = new File( $reference_image, 'image/png' );
+		} catch ( Throwable $t ) {
+			return new WP_Error(
+				'invalid_reference_image',
+				esc_html__( 'The reference image is not valid base64-encoded PNG data.', 'ai' )
+			);
+		}
+
+		return $this->run_image_generation( $prompt, get_preferred_image_edit_models(), $file );
+	}
+
+	/**
+	 * Runs an image generation prompt and extracts the result into a data array.
+	 *
+	 * Accepts an optional reference file; when provided it is attached to the prompt
+	 * so that models supporting image editing can use it as context.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The generation prompt.
+	 * @param array<int, array{string, string}> $models Model preference list.
+	 * @param \WordPress\AiClient\Files\DTO\File|null $reference_file Optional reference image for editing.
+	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error
+	 */
+	private function run_image_generation( string $prompt, array $models, ?File $reference_file = null ) {
 		$request_options = new RequestOptions();
 		$request_options->setTimeout( 90 );
 
-		// Generate the image using the AI client.
-		$result = AI_Client::prompt_with_wp_error( $prompt )
+		$builder = AI_Client::prompt_with_wp_error( $prompt )
 			->using_request_options( $request_options )
-			->as_output_file_type( FileTypeEnum::inline() )
-			->using_model_preference( ...get_preferred_image_models() )
+			->as_output_file_type( FileTypeEnum::inline() );
+
+		if ( null !== $reference_file ) {
+			$builder = $builder->with_file( $reference_file );
+		}
+
+		$result = $builder
+			->using_model_preference( ...$models )
 			->generate_image_result();
 
-		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
@@ -189,10 +245,10 @@ class Generate_Image extends Abstract_Ability {
 
 		try {
 			// Get the File from the result.
-			$file = $result->toImageFile();
+			$image_file = $result->toImageFile();
 
-			// Return the base64 encoded image data.
-			$data['data'] = sanitize_text_field( trim( $file->getBase64Data() ?? '' ) );
+			// Extract the base64 encoded image data.
+			$data['data'] = sanitize_text_field( trim( $image_file->getBase64Data() ?? '' ) );
 
 			if ( empty( $data['data'] ) ) {
 				return new WP_Error(
