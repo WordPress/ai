@@ -146,12 +146,6 @@ export function GenerateImageInlineModal( {
 			size="large"
 			className="ai-generate-image-inline-modal"
 		>
-			{ error && (
-				<Notice status="error" isDismissible={ false }>
-					{ error }
-				</Notice>
-			) }
-
 			{ /* IDLE — initial prompt input */ }
 			{ state === 'idle' && (
 				<div className="ai-generate-image-inline-modal__idle">
@@ -178,6 +172,11 @@ export function GenerateImageInlineModal( {
 							{ __( 'Generate', 'ai' ) }
 						</Button>
 					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
 				</div>
 			) }
 
@@ -195,6 +194,11 @@ export function GenerateImageInlineModal( {
 						<Spinner />
 						<span>{ progress }</span>
 					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
 				</div>
 			) }
 
@@ -225,11 +229,17 @@ export function GenerateImageInlineModal( {
 								setGeneratedData( null );
 								setPrompt( '' );
 								setState( 'idle' );
+								setError( null );
 							} }
 						>
 							{ __( 'Start Over', 'ai' ) }
 						</Button>
 					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
 				</div>
 			) }
 
@@ -266,11 +276,19 @@ export function GenerateImageInlineModal( {
 						</Button>
 						<Button
 							variant="tertiary"
-							onClick={ () => setState( 'preview' ) }
+							onClick={ () => {
+								setState( 'preview' );
+								setError( null );
+							} }
 						>
 							{ __( 'Back', 'ai' ) }
 						</Button>
 					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
 				</div>
 			) }
 		</Modal>
