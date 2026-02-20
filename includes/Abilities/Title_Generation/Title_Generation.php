@@ -141,15 +141,15 @@ class Title_Generation extends Abstract_Ability {
 		}
 
 		// Generate the titles.
-		$result = $this->generate_titles( $context, $args['candidates'] );
+		$results = $this->generate_titles( $context, $args['candidates'] );
 
 		// If we have an error, return it.
-		if ( is_wp_error( $result ) ) {
-			return $result;
+		if ( is_wp_error( $results ) ) {
+			return $results;
 		}
 
 		// If we have no results, return an error.
-		if ( empty( $result ) ) {
+		if ( empty( $results ) ) {
 			return new WP_Error(
 				'no_results',
 				esc_html__( 'No title suggestions were generated.', 'ai' )
@@ -162,7 +162,7 @@ class Title_Generation extends Abstract_Ability {
 				static function ( $title ) {
 					return sanitize_text_field( trim( $title, ' "\'' ) );
 				},
-				$result
+				$results
 			),
 		);
 	}
@@ -263,11 +263,22 @@ class Title_Generation extends Abstract_Ability {
 		}
 
 		// Generate the titles using the AI client.
-		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.7 )
-			->using_candidate_count( (int) $candidates )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->generate_texts();
+		$results = array();
+		for ( $i = 0; $i < $candidates; $i++ ) {
+			$result = AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
+				->using_system_instruction( $this->get_system_instruction() )
+				->using_temperature( 0.5 )
+				->using_model_preference( ...get_preferred_models_for_text_generation() )
+				->generate_text();
+
+			// Return immediately if we have an error.
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			$results[] = $result;
+		}
+
+		return $results;
 	}
 }
