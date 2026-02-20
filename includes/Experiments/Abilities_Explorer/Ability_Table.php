@@ -179,10 +179,10 @@ class Ability_Table extends \WP_List_Table {
 		);
 
 		return sprintf(
-			'<strong><a href="%s">%s</a></strong><br /><small>%s</small>',
+			'<strong><a href="%s">%s</a></strong><small>%s</small>',
 			esc_url( $detail_url ),
 			esc_html( $item['name'] ),
-			esc_html( wp_trim_words( $item['description'], 15 ) )
+			esc_html( wp_trim_words( $item['description'], 20 ) )
 		);
 	}
 
