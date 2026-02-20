@@ -7,6 +7,7 @@
     "automattic/jetpack-autoloader": "^5.0",
     "ext-json": "*",
     "php": ">=7.4",
+    "wordpress/anthropic-ai-provider": "^1.0",
     "wordpress/google-ai-provider": "^1.0",
     "wordpress/openai-ai-provider": "^1.0",
     "wordpress/mcp-adapter": "^0.3.0",
