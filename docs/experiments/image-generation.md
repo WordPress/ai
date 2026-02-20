@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Image Generation experiment adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" toolbar button on Image, Cover, Media & Text, and Gallery blocks. The experiment registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
+The Image Generation experiment adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" buttons on Image, Cover, Media & Text, and Gallery blocks. The experiment registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
 ## Overview
 
@@ -11,7 +11,7 @@ The Image Generation experiment adds AI-powered image generation to the WordPres
 When enabled, the Image Generation experiment adds:
 
 - **Featured image panel:** A "Generate featured image" button that creates AI images from post content. The image is imported into the media library and set as the featured image. Images are marked with an "AI Generated Featured Image" label.
-- **Block toolbar:** A "Generate Image" button on Image, Cover, Media & Text, and Gallery blocks. Clicking it opens a modal where you describe the image, generate it, preview it, optionally iterate (edit with follow-up prompts using the current image as reference), and insert it into the block.
+- **Block buttons:** A "Generate Image" inline and toolbar button on Image, Cover, Media & Text, and Gallery blocks. Clicking it opens a modal where you describe the image, generate it, preview it, optionally iterate (edit with follow-up prompts using the current image as reference), and insert it into the block.
 
 **Key Features:**
 
@@ -76,13 +76,15 @@ All three abilities can be called directly via REST API, making them useful for 
    - `AILabel` component displays a label for AI-generated images by checking the `ai_generated` meta
 
 3. **React Side (Inline Image Generation):**
-   - `inline.tsx` uses `addFilter( 'editor.BlockEdit', 'ai/image-generation-inline', withGenerateImageButton )` to add a "Generate Image" toolbar button to supported blocks: `core/image`, `core/cover`, `core/media-text`, `core/gallery`
-   - When the button is clicked, `GenerateImageInlineModal` opens with an idle state (prompt input). The user submits a prompt and the modal:
+   - `inline.tsx` registers two filters for supported blocks (`core/image`, `core/cover`, `core/media-text`, `core/gallery`):
+     - `editor.BlockEdit` with `withGenerateImageToolbarButton` (`ai/image-generation-inline-toolbar`): adds a "Generate Image" toolbar button in block controls
+     - `editor.MediaUpload` with `withGenerateImageInlineButton` (`ai/image-generation-inline-button`): adds an inline "Generate Image" button in the MediaUpload placeholder area (uses `updateBlockAttributes` from the block editor store since MediaUpload does not receive `setAttributes`)
+   - When either button is clicked, `GenerateImageInlineModal` opens with an idle state (prompt input). The user submits a prompt and the modal:
      - Calls `runAbility( 'ai/image-generation', { prompt } )` (or `{ prompt, reference_image }` when editing)
      - Shows preview with "Keep", "Edit", and "Start Over" actions
      - "Edit" switches to editing state: user enters a follow-up prompt; the current image is passed as `reference_image` so models supporting edits can use it
      - "Keep" calls `uploadImage()` (with optional alt text generation) and `insertIntoBlock()` to insert the imported image into the block
-   - `insertIntoBlock()` sets block attributes based on block type: `core/image` (id, url, alt), `core/cover` (id, url), `core/media-text` (mediaId, mediaUrl, mediaType), `core/gallery` (appends a new inner `core/image` block)
+   - `insertIntoBlock()` sets block attributes based on block type: `core/image` (id, url, alt), `core/cover` (id, url, alt, dimRatio: 50, isDark: false, sizeSlug: 'full'), `core/media-text` (mediaId, mediaUrl, mediaType), `core/gallery` (appends a new inner `core/image` block)
 
 4. **Ability Execution Flow:**
    - **Image Prompt Generation** (via `ai/image-prompt-generation`):
@@ -809,7 +811,7 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
 
 3. **Test inline image generation:**
    - Add an Image, Cover, Media & Text, or Gallery block
-   - Select the block and click the "Generate Image" toolbar button
+   - Select the block and click the "Generate Image" toolbar or inline button
    - Enter a prompt (e.g. "A sunset over mountains") and click Generate
    - Verify the preview appears with "Keep", "Edit", and "Start Over"
    - Click "Edit", add a follow-up prompt (e.g. "Add clouds"), and Generate; verify the image updates
