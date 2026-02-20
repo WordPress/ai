@@ -130,6 +130,28 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		// Verify prompt property.
 		$this->assertEquals( 'string', $schema['properties']['prompt']['type'], 'Prompt should be string type' );
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['prompt']['sanitize_callback'], 'Prompt should use sanitize_text_field' );
+
+		// Verify reference_image property.
+		$this->assertArrayHasKey( 'reference_image', $schema['properties'], 'Schema should have reference_image property' );
+		$this->assertEquals( 'string', $schema['properties']['reference_image']['type'], 'reference_image should be string type' );
+		$this->assertEquals( 'sanitize_text_field', $schema['properties']['reference_image']['sanitize_callback'], 'reference_image should use sanitize_text_field' );
+		$this->assertNotContains( 'reference_image', $schema['required'], 'reference_image should not be required' );
+	}
+
+	/**
+	 * Test that generate_image_edit() returns WP_Error for invalid base64.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_image_edit_with_invalid_base64(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_image_edit' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'a prompt', 'not-valid-base64!!!!' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'invalid_reference_image', $result->get_error_code() );
 	}
 
 	/**
