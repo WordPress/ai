@@ -14,8 +14,9 @@ namespace WordPress\AI;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
-use WordPress\AiClient\AiClient;
 use WordPress\AI_Client\AI_Client;
+use WordPress\AI_Client\HTTP\WP_AI_Client_Discovery_Strategy;
+use WordPress\AiClient\AiClient;
 use WordPress\AnthropicAiProvider\Provider\AnthropicProvider;
 use WordPress\GoogleAiProvider\Provider\GoogleProvider;
 use WordPress\OpenAiAiProvider\Provider\OpenAiProvider;
@@ -203,6 +204,9 @@ function load(): void {
 	// Add plugin action links.
 	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
+	// Initialize our default AI providers.
+	add_action( 'init', __NAMESPACE__ . '\initialize_ai_providers', 5 );
+
 	// Hook experiment initialization to init.
 	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
 }
@@ -214,9 +218,6 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
-		// Initialize our default AI providers.
-		initialize_ai_providers();
-
 		// Initialize the WP AI Client.
 		AI_Client::init();
 
@@ -279,6 +280,9 @@ function initialize_ai_providers(): void {
 		return;
 	}
 
+	// Ensure the HTTP transporter is initialized.
+	WP_AI_Client_Discovery_Strategy::init();
+
 	$default_providers = array(
 		AnthropicProvider::class,
 		GoogleProvider::class,
@@ -287,7 +291,7 @@ function initialize_ai_providers(): void {
 
 	$registry = AiClient::defaultRegistry();
 
-	foreach ($default_providers as $provider) {
+	foreach ( $default_providers as $provider ) {
 		if ( $registry->hasProvider( $provider ) ) {
 			continue;
 		}
