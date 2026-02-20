@@ -35,7 +35,14 @@ export function insertIntoBlock(
 			break;
 
 		case 'core/cover':
-			setAttributes( { id, url } );
+			setAttributes( {
+				id,
+				url,
+				alt,
+				dimRatio: 50,
+				isDark: false,
+				sizeSlug: 'full',
+			} );
 			break;
 
 		case 'core/media-text':
