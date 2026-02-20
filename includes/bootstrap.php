@@ -532,6 +532,46 @@ function maybe_apply_option_credentials_to_core_ai_client(): void {
 }
 
 /**
+ * Removes invalid AI client capability callbacks from the `user_has_cap` hook.
+ *
+ * Plugin Check currently ships an older wp-ai-client package, which can load a
+ * Capabilities_Manager class without newer methods expected by wp-ai-client
+ * 0.3+. If that class is loaded first, this callback becomes invalid and can
+ * fatally error when capabilities are evaluated.
+ *
+ * @since 0.3.1
+ *
+ * @return void
+ */
+function maybe_remove_invalid_ai_client_capability_callbacks(): void {
+	$capabilities_manager_class = (string) apply_filters(
+		'ai_experiments_ai_client_capabilities_manager_class',
+		'\WordPress\AI_Client\Capabilities\Capabilities_Manager'
+	);
+
+	if ( '' === $capabilities_manager_class ) {
+		return;
+	}
+
+	$callback = array(
+		ltrim( $capabilities_manager_class, '\\' ),
+		'grant_list_ai_providers_models_to_administrators',
+	);
+
+	if ( ! has_filter( 'user_has_cap', $callback ) ) {
+		return;
+	}
+
+	remove_filter( 'user_has_cap', $callback, 10 );
+
+	if ( ! class_exists( $callback[0] ) || ! method_exists( $callback[0], $callback[1] ) ) {
+		return;
+	}
+
+	add_filter( 'user_has_cap', $callback );
+}
+
+/**
  * Returns the AI credentials settings URL if available.
  *
  * @since 0.3.1
@@ -669,6 +709,8 @@ function initialize_experiments(): void {
 		if ( should_use_bundled_wp_ai_client() && class_exists( AI_Client::class ) ) {
 			AI_Client::init();
 		}
+
+		maybe_remove_invalid_ai_client_capability_callbacks();
 
 		maybe_apply_option_credentials_to_core_ai_client();
 
