@@ -41,6 +41,12 @@ interface Props {
  * Supports a generate → preview → edit flow. When editing, the current
  * preview image is sent as a reference to the generation ability so that
  * models supporting image editing can use it as context.
+ *
+ * @param {Props}    props               The props for the component.
+ * @param {string}   props.blockName     The name of the block.
+ * @param {string}   props.clientId      The client ID of the block.
+ * @param {Function} props.setAttributes The function to set the attributes of the block.
+ * @param {Function} props.onClose       The function to close the modal.
  */
 export function GenerateImageInlineModal( {
 	blockName,
