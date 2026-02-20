@@ -49,7 +49,7 @@ if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
 /**
  * Displays an admin notice for version requirement failures.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @param string $message The error message to display.
  */
@@ -67,7 +67,7 @@ function version_notice( string $message ): void {
 /**
  * Checks if the PHP version meets the minimum requirement.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @return bool True if PHP version is sufficient, false otherwise.
  */
@@ -171,7 +171,7 @@ function should_use_bundled_wp_ai_client(): bool {
 	/**
 	 * Filters whether to initialize the bundled WP AI Client package.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param bool $use_bundled_wp_ai_client Whether to use the bundled WP AI Client package.
 	 * @return bool True to use the bundled package, false to rely on core.
@@ -185,7 +185,7 @@ function should_use_bundled_wp_ai_client(): bool {
  * This allows relying on core-bundled AI client classes when available while
  * keeping the rest of the plugin dependencies managed by Jetpack autoloader.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @return void
  */
@@ -317,7 +317,7 @@ function maybe_disable_bundled_wp_ai_client_packages(): void {
  * This ensures provider classes are registered even when core ships the client API
  * but does not automatically register built-in providers.
  *
- * @since 0.3.1
+ * @since x.x.x
  *
  * @return void
  */
@@ -350,7 +350,7 @@ function maybe_register_available_ai_client_providers(): void {
 	/**
 	 * Filters provider implementation class name candidates by provider ID.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 *
 	 * @param array<string, array<int, string>|string> $provider_candidates Provider class candidates keyed by provider ID.
 	 * @return array<string, array<int, string>|string> Filtered provider class candidates.
@@ -426,7 +426,7 @@ function maybe_register_available_ai_client_providers(): void {
  * resolves provider credentials from environment variables/constants by default.
  * This bridge preserves existing installs by re-applying saved option values.
  *
- * @since 0.3.1
+ * @since x.x.x
  *
  * @return void
  */
@@ -438,7 +438,7 @@ function maybe_apply_option_credentials_to_core_ai_client(): void {
 	/**
 	 * Filters whether to apply option-based credentials to the core AI client.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 *
 	 * @param bool $should_apply True to apply option credentials to core providers.
 	 * @return bool Whether to apply option-based credentials.
@@ -539,7 +539,7 @@ function maybe_apply_option_credentials_to_core_ai_client(): void {
  * 0.3+. If that class is loaded first, this callback becomes invalid and can
  * fatally error when capabilities are evaluated.
  *
- * @since 0.3.1
+ * @since x.x.x
  *
  * @return void
  */
@@ -574,7 +574,7 @@ function maybe_remove_invalid_ai_client_capability_callbacks(): void {
 /**
  * Returns the AI credentials settings URL if available.
  *
- * @since 0.3.1
+ * @since x.x.x
  *
  * @return string|null The URL to the credentials settings screen, or null.
  */
@@ -582,7 +582,7 @@ function get_ai_credentials_settings_url(): ?string {
 	/**
 	 * Filters the AI credentials settings URL.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 *
 	 * @param string|null $url URL to the credentials settings screen, or null if unavailable.
 	 * @return string|null The URL to use, or null if unavailable.

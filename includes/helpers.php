@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Normalizes the content by cleaning it and removing unwanted HTML tags.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @param string $content The content to normalize.
  * @return string The normalized content.
@@ -77,7 +77,7 @@ function normalize_content( string $content ): string {
 /**
  * Returns the context for the given post ID.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @param int $post_id The ID of the post to get the context for.
  * @return array<string, string> The context for the given post ID.
@@ -301,7 +301,7 @@ function get_preferred_vision_models(): array {
  * Uses the core AI Client API when available, otherwise falls back to the
  * bundled WP AI Client package.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @param mixed $prompt Optional initial prompt content.
  * @return mixed Prompt builder instance.
@@ -324,7 +324,7 @@ function ai_client_prompt_with_wp_error( $prompt = null ) {
  * Uses the core AI Client API when available, otherwise falls back to the
  * bundled WP AI Client package.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @param mixed $prompt Optional initial prompt content.
  * @return mixed Prompt builder instance.
@@ -403,7 +403,7 @@ function get_ai_provider_ids(): array {
 	/**
 	 * Filters AI provider IDs used for credential discovery.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 * @hook ai_experiments_provider_ids
 	 *
 	 * @param array<int, string> $provider_ids Provider IDs.
@@ -418,7 +418,7 @@ function get_ai_provider_ids(): array {
  * The default format follows the core/provider registry convention:
  * `<PROVIDER_ID>_API_KEY`.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @return array<int, string> Environment variable / constant names.
  */
@@ -435,7 +435,7 @@ function get_ai_provider_api_key_variable_names(): array {
 	/**
 	 * Filters provider API key variable names used for credential discovery.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 * @hook ai_experiments_provider_api_key_variable_names
 	 *
 	 * @param array<int, string> $variable_names Variable names.
@@ -447,7 +447,7 @@ function get_ai_provider_api_key_variable_names(): array {
 /**
  * Checks whether any provider API key exists in env vars or constants.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @return bool True if an API key variable is set, otherwise false.
  */
