@@ -202,13 +202,23 @@ class Generate_Image extends Abstract_Ability {
 			}
 
 			// Get details about the provider and model that generated the image.
-			$data['provider_metadata'] = $result->getProviderMetadata()->toArray();
-			$data['model_metadata']    = $result->getModelMetadata()->toArray();
+			$provider_raw = $result->getProviderMetadata()->toArray();
+			$model_raw    = $result->getModelMetadata()->toArray();
 
 			// Remove data we don't care about.
-			unset( $data['provider_metadata'][ ProviderMetadata::KEY_CREDENTIALS_URL ] );
-			unset( $data['model_metadata'][ ModelMetadata::KEY_SUPPORTED_OPTIONS ] );
-			unset( $data['model_metadata'][ ModelMetadata::KEY_SUPPORTED_CAPABILITIES ] );
+			unset( $provider_raw[ ProviderMetadata::KEY_CREDENTIALS_URL ] );
+			unset( $model_raw[ ModelMetadata::KEY_SUPPORTED_OPTIONS ] );
+			unset( $model_raw[ ModelMetadata::KEY_SUPPORTED_CAPABILITIES ] );
+
+			// Coerce to array<string, string> (toArray() may include null/non-string values).
+			$data['provider_metadata'] = array_map(
+				static fn( $v ): string => (string) $v,
+				$provider_raw
+			);
+			$data['model_metadata']    = array_map(
+				static fn( $v ): string => (string) $v,
+				$model_raw
+			);
 		} catch ( Throwable $t ) {
 			return new WP_Error(
 				'no_image_data',
