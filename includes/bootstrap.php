@@ -14,7 +14,11 @@ namespace WordPress\AI;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
+use WordPress\AiClient\AiClient;
 use WordPress\AI_Client\AI_Client;
+use WordPress\AnthropicAiProvider\Provider\AnthropicProvider;
+use WordPress\GoogleAiProvider\Provider\GoogleProvider;
+use WordPress\OpenAiAiProvider\Provider\OpenAiProvider;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -210,6 +214,9 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
+		// Initialize our default AI providers.
+		initialize_ai_providers();
+
 		// Initialize the WP AI Client.
 		AI_Client::init();
 
@@ -259,6 +266,33 @@ function initialize_experiments(): void {
 			),
 			'0.1.0'
 		);
+	}
+}
+
+/**
+ * Initializes the default AI providers.
+ *
+ * @since x.x.x
+ */
+function initialize_ai_providers(): void {
+	if ( ! class_exists( AiClient::class ) ) {
+		return;
+	}
+
+	$default_providers = array(
+		AnthropicProvider::class,
+		GoogleProvider::class,
+		OpenAiProvider::class,
+	);
+
+	$registry = AiClient::defaultRegistry();
+
+	foreach ($default_providers as $provider) {
+		if ( $registry->hasProvider( $provider ) ) {
+			continue;
+		}
+
+		$registry->registerProvider( $provider );
 	}
 }
 
