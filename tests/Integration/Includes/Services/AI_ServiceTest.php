@@ -9,7 +9,6 @@ namespace WordPress\AI\Tests\Integration\Includes\Services;
 
 use WP_UnitTestCase;
 use WordPress\AI\Services\AI_Service;
-use WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error;
 
 use function WordPress\AI\get_ai_service;
 
@@ -78,10 +77,14 @@ class AI_Service_Test extends WP_UnitTestCase {
 	public function test_create_textgen_prompt_returns_builder(): void {
 		$builder = $this->service->create_textgen_prompt( 'Test prompt' );
 
-		$this->assertInstanceOf(
-			Prompt_Builder_With_WP_Error::class,
-			$builder,
-			'Should return Prompt_Builder_With_WP_Error instance'
+		$acceptable_classes = array(
+			'WordPress\\AI_Client\\Builders\\Prompt_Builder_With_WP_Error',
+			'WP_AI_Client_Prompt_Builder',
+		);
+
+		$this->assertTrue(
+			is_object( $builder ) && in_array( get_class( $builder ), $acceptable_classes, true ),
+			'Should return a supported prompt builder object'
 		);
 	}
 
@@ -100,10 +103,14 @@ class AI_Service_Test extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertInstanceOf(
-			Prompt_Builder_With_WP_Error::class,
-			$builder,
-			'Should return Prompt_Builder_With_WP_Error instance with options applied'
+		$acceptable_classes = array(
+			'WordPress\\AI_Client\\Builders\\Prompt_Builder_With_WP_Error',
+			'WP_AI_Client_Prompt_Builder',
+		);
+
+		$this->assertTrue(
+			is_object( $builder ) && in_array( get_class( $builder ), $acceptable_classes, true ),
+			'Should return a supported prompt builder object with options applied'
 		);
 	}
 

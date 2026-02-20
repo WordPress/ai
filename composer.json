@@ -8,7 +8,10 @@
     "ext-json": "*",
     "php": ">=7.4",
     "wordpress/mcp-adapter": "^0.3.0",
-    "wordpress/wp-ai-client": "^0.2.0"
+    "wordpress/wp-ai-client": "^0.3.0",
+    "wordpress/anthropic-ai-provider": "^1.0",
+    "wordpress/google-ai-provider": "^1.0",
+    "wordpress/openai-ai-provider": "^1.0"
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",

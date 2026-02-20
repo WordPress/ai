@@ -12,12 +12,12 @@ namespace WordPress\AI\Abilities\Image;
 use Throwable;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI_Client\AI_Client;
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 
+use function WordPress\AI\ai_client_prompt_with_wp_error;
 use function WordPress\AI\get_preferred_image_models;
 
 /**
@@ -170,7 +170,7 @@ class Generate_Image extends Abstract_Ability {
 		$request_options->setTimeout( 90 );
 
 		// Generate the image using the AI client.
-		$result = AI_Client::prompt_with_wp_error( $prompt )
+		$result = ai_client_prompt_with_wp_error( $prompt )
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() )
 			->using_model_preference( ...get_preferred_image_models() )
@@ -201,13 +201,27 @@ class Generate_Image extends Abstract_Ability {
 			}
 
 			// Get details about the provider and model that generated the image.
-			$data['provider_metadata'] = $result->getProviderMetadata()->toArray();
-			$data['model_metadata']    = $result->getModelMetadata()->toArray();
+				$provider_raw = $result->getProviderMetadata()->toArray();
+				$model_raw    = $result->getModelMetadata()->toArray();
 
-			// Remove data we don't care about.
-			unset( $data['provider_metadata'][ ProviderMetadata::KEY_CREDENTIALS_URL ] );
-			unset( $data['model_metadata'][ ModelMetadata::KEY_SUPPORTED_OPTIONS ] );
-			unset( $data['model_metadata'][ ModelMetadata::KEY_SUPPORTED_CAPABILITIES ] );
+				// Remove data we don't care about.
+				unset( $provider_raw[ ProviderMetadata::KEY_CREDENTIALS_URL ] );
+				unset( $model_raw[ ModelMetadata::KEY_SUPPORTED_OPTIONS ] );
+				unset( $model_raw[ ModelMetadata::KEY_SUPPORTED_CAPABILITIES ] );
+
+				$data['provider_metadata'] = array_map(
+					static function ( $value ): string {
+						return (string) $value;
+					},
+					$provider_raw
+				);
+
+				$data['model_metadata'] = array_map(
+					static function ( $value ): string {
+						return (string) $value;
+					},
+					$model_raw
+				);
 		} catch ( Throwable $t ) {
 			return new WP_Error(
 				'no_image_data',

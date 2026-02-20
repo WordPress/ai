@@ -296,6 +296,182 @@ function get_preferred_vision_models(): array {
 }
 
 /**
+ * Returns a prompt builder with WP_Error error handling.
+ *
+ * Uses the core AI Client API when available, otherwise falls back to the
+ * bundled WP AI Client package.
+ *
+ * @since 0.1.0
+ *
+ * @param mixed $prompt Optional initial prompt content.
+ * @return mixed Prompt builder instance.
+ */
+function ai_client_prompt_with_wp_error( $prompt = null ) {
+	if ( ! should_use_bundled_wp_ai_client() && function_exists( 'wp_ai_client_prompt' ) ) {
+		return wp_ai_client_prompt( $prompt );
+	}
+
+	if ( class_exists( AI_Client::class ) ) {
+		return AI_Client::prompt_with_wp_error( $prompt );
+	}
+
+	throw new \RuntimeException( 'No AI Client prompt builder is available.' );
+}
+
+/**
+ * Returns a prompt builder.
+ *
+ * Uses the core AI Client API when available, otherwise falls back to the
+ * bundled WP AI Client package.
+ *
+ * @since 0.1.0
+ *
+ * @param mixed $prompt Optional initial prompt content.
+ * @return mixed Prompt builder instance.
+ */
+function ai_client_prompt( $prompt = null ) {
+	if ( ! should_use_bundled_wp_ai_client() && function_exists( 'wp_ai_client_prompt' ) ) {
+		return wp_ai_client_prompt( $prompt );
+	}
+
+	if ( class_exists( AI_Client::class ) ) {
+		return AI_Client::prompt( $prompt );
+	}
+
+	throw new \RuntimeException( 'No AI Client prompt builder is available.' );
+}
+
+/**
+ * Converts a value to CONSTANT_CASE.
+ *
+ * @since 0.1.0
+ *
+ * @param string $value Value to convert.
+ * @return string CONSTANT_CASE value.
+ */
+function to_constant_case( string $value ): string {
+	$value = str_replace( '-', '_', $value );
+	$value = preg_replace( '/([a-z])([A-Z])/', '$1_$2', $value );
+	return strtoupper( (string) $value );
+}
+
+/**
+ * Returns registered provider IDs for the AI client.
+ *
+ * @since 0.1.0
+ *
+ * @return array<int, string> Provider IDs.
+ */
+function get_ai_provider_ids(): array {
+	$provider_ids = array();
+
+	if ( class_exists( '\WordPress\AiClient\AiClient' ) ) {
+		try {
+			$registry     = \WordPress\AiClient\AiClient::defaultRegistry();
+			$provider_ids = array_filter(
+				$registry->getRegisteredProviderIds(),
+				static function ( string $provider_id ): bool {
+					return '' !== $provider_id;
+				}
+			);
+		} catch ( Throwable $t ) {
+			$provider_ids = array();
+		}
+	}
+
+	$stored_credentials = get_option( 'wp_ai_client_provider_credentials', array() );
+	if ( is_array( $stored_credentials ) ) {
+		$provider_ids = array_merge( $provider_ids, array_keys( $stored_credentials ) );
+	}
+
+	$provider_ids = array_values(
+		array_unique(
+			array_filter(
+				$provider_ids,
+				static function ( $provider_id ): bool {
+					return is_string( $provider_id ) && '' !== $provider_id;
+				}
+			)
+		)
+	);
+
+	// Fall back to known cloud providers if IDs cannot be resolved at runtime.
+	if ( empty( $provider_ids ) ) {
+		$provider_ids = array( 'openai', 'anthropic', 'google' );
+	}
+
+	/**
+	 * Filters AI provider IDs used for credential discovery.
+	 *
+	 * @since 0.1.0
+	 * @hook ai_experiments_provider_ids
+	 *
+	 * @param array<int, string> $provider_ids Provider IDs.
+	 * @return array<int, string> Filtered provider IDs.
+	 */
+	return (array) apply_filters( 'ai_experiments_provider_ids', $provider_ids );
+}
+
+/**
+ * Returns provider API key environment variable / constant names.
+ *
+ * The default format follows the core/provider registry convention:
+ * `<PROVIDER_ID>_API_KEY`.
+ *
+ * @since 0.1.0
+ *
+ * @return array<int, string> Environment variable / constant names.
+ */
+function get_ai_provider_api_key_variable_names(): array {
+	$variable_names = array_map(
+		static function ( string $provider_id ): string {
+			return to_constant_case( $provider_id ) . '_API_KEY';
+		},
+		get_ai_provider_ids()
+	);
+
+	$variable_names = array_values( array_unique( $variable_names ) );
+
+	/**
+	 * Filters provider API key variable names used for credential discovery.
+	 *
+	 * @since 0.1.0
+	 * @hook ai_experiments_provider_api_key_variable_names
+	 *
+	 * @param array<int, string> $variable_names Variable names.
+	 * @return array<int, string> Filtered variable names.
+	 */
+	return (array) apply_filters( 'ai_experiments_provider_api_key_variable_names', $variable_names );
+}
+
+/**
+ * Checks whether any provider API key exists in env vars or constants.
+ *
+ * @since 0.1.0
+ *
+ * @return bool True if an API key variable is set, otherwise false.
+ */
+function has_ai_credentials_in_environment(): bool {
+	foreach ( get_ai_provider_api_key_variable_names() as $variable_name ) {
+		$env_value = getenv( $variable_name );
+		if ( false !== $env_value && '' !== trim( (string) $env_value ) ) {
+			return true;
+		}
+
+		if ( ! defined( $variable_name ) ) {
+			continue;
+		}
+
+		$constant_value = constant( $variable_name );
+		if ( is_scalar( $constant_value ) && '' !== trim( (string) $constant_value ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Checks if we have AI credentials set.
  *
  * @since 0.1.0
@@ -305,20 +481,23 @@ function get_preferred_vision_models(): array {
 function has_ai_credentials(): bool {
 	$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
 
-	// If there are no credentials, return false.
-	if ( ! is_array( $credentials ) || empty( $credentials ) ) {
-		return false;
+	if ( is_array( $credentials ) && ! empty( $credentials ) ) {
+		// If all of the AI keys are empty, return false; otherwise, return true.
+		$has_option_credentials = ! empty(
+			array_filter(
+				$credentials,
+				static function ( $api_key ): bool {
+					return is_string( $api_key ) && '' !== trim( $api_key );
+				}
+			)
+		);
+
+		if ( $has_option_credentials ) {
+			return true;
+		}
 	}
 
-	// If all of the AI keys are empty, return false; otherwise, return true.
-	return ! empty(
-		array_filter(
-			$credentials,
-			static function ( $api_key ): bool {
-				return is_string( $api_key ) && '' !== $api_key;
-			}
-		)
-	);
+	return has_ai_credentials_in_environment();
 }
 
 /**
@@ -351,7 +530,7 @@ function has_valid_ai_credentials(): bool {
 
 	// See if we have credentials that give us access to generate text.
 	try {
-		return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
+		return ai_client_prompt( 'Test' )->is_supported_for_text_generation();
 	} catch ( Throwable $t ) {
 		return false;
 	}
