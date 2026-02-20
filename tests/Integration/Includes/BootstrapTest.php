@@ -12,13 +12,13 @@ use WP_UnitTestCase;
 /**
  * Bootstrap test case.
  *
- * @since 0.3.1
+ * @since x.x.x
  */
 class BootstrapTest extends WP_UnitTestCase {
 	/**
 	 * Tracks original credentials option value for restoration.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 *
 	 * @var mixed
 	 */
@@ -27,7 +27,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	/**
 	 * Sets up test fixture.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -37,7 +37,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	/**
 	 * Tears down test fixture.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'ai_experiments_credentials_settings_url' );
@@ -54,7 +54,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	/**
 	 * Tests that credentials settings URL can be provided by filter.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 */
 	public function test_get_ai_credentials_settings_url_uses_filter(): void {
 		add_filter(
@@ -73,7 +73,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	/**
 	 * Tests that core provider registration runs without requiring bundled mode.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 */
 	public function test_maybe_register_available_ai_client_providers(): void {
 		if ( ! class_exists( '\WordPress\AiClient\AiClient' ) ) {
@@ -89,7 +89,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	/**
 	 * Tests that saved option credentials are applied to the AI client registry.
 	 *
-	 * @since 0.3.1
+	 * @since x.x.x
 	 */
 	public function test_maybe_apply_option_credentials_to_core_ai_client(): void {
 		if ( ! class_exists( '\WordPress\AiClient\AiClient' ) ) {
