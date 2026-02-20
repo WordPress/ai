@@ -157,7 +157,7 @@ class Ability_Table extends \WP_List_Table {
 	 * @deprecated x.x.x
 	 */
 	public function column_cb( $item ): string {
-		_deprecated_function( __FUNCTION__, '0.2.0', 'The checkbox column is no longer displayed.' );
+		_deprecated_function( __FUNCTION__, 'x.x.x', 'The checkbox column is no longer displayed.' );
 		return '';
 	}
 
