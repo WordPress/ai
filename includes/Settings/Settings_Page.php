@@ -14,6 +14,7 @@ namespace WordPress\AI\Settings;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiment_Registry;
 
+use function WordPress\AI\get_ai_provider_api_key_variable_names;
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
@@ -116,6 +117,45 @@ class Settings_Page {
 	}
 
 	/**
+	 * Returns the AI credentials settings URL if available.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return string|null The URL to the credentials settings screen, or null.
+	 */
+	private function get_ai_credentials_settings_url(): ?string {
+		return \WordPress\AI\get_ai_credentials_settings_url();
+	}
+
+	/**
+	 * Returns fallback help text for configuring AI credentials without a UI screen.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return string Human-readable setup help.
+	 */
+	private function get_ai_credentials_configuration_help(): string {
+		$variable_names = get_ai_provider_api_key_variable_names();
+		$example_names  = array_slice( $variable_names, 0, 3 );
+
+		if ( empty( $example_names ) ) {
+			return __(
+				'Set provider API keys via environment variables or constants in wp-config.php.',
+				'ai'
+			);
+		}
+
+		return sprintf(
+			/* translators: %s: Comma-separated credential variable names. */
+			__(
+				'Set provider API keys via environment variables or constants in wp-config.php, for example: %s.',
+				'ai'
+			),
+			implode( ', ', $example_names )
+		);
+	}
+
+	/**
 	 * Renders the settings page.
 	 *
 	 * @since 0.1.0
@@ -133,23 +173,49 @@ class Settings_Page {
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<?php
-			// If we don't have proper credentials, show an error message and return early.
+			// If credentials are missing or invalid, show a warning but keep the page usable.
 			if ( ! has_valid_ai_credentials() ) {
-				if ( ! has_ai_credentials() ) {
-					$error_message = sprintf(
-						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Most experiments require valid AI credentials to function properly. To ensure those work properly, you need to have one or more AI credentials set <a href="%s">here</a>.', 'ai' ),
-						admin_url( 'options-general.php?page=wp-ai-client' )
-					);
+				$credentials_settings_url = $this->get_ai_credentials_settings_url();
+
+				if ( is_string( $credentials_settings_url ) && '' !== $credentials_settings_url ) {
+					if ( ! has_ai_credentials() ) {
+						$warning_message = sprintf(
+							/* translators: 1: Link to the AI credentials settings page. */
+							__( 'AI credentials are not configured yet. AI features may not work until you add one or more credentials <a href="%s">here</a>.', 'ai' ),
+							esc_url( $credentials_settings_url )
+						);
+					} else {
+						$warning_message = sprintf(
+							/* translators: 1: Link to the AI credentials settings page. */
+							__( 'AI credentials appear invalid. AI features may fail until you update them <a href="%s">here</a>.', 'ai' ),
+							esc_url( $credentials_settings_url )
+						);
+					}
 				} else {
-					$error_message = sprintf(
-						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Most experiments require valid AI credentials to function properly. Please <a href="%s">review</a> the AI credentials you have set to ensure they are valid.', 'ai' ),
-						admin_url( 'options-general.php?page=wp-ai-client' )
-					);
+					$configuration_help = $this->get_ai_credentials_configuration_help();
+
+					if ( ! has_ai_credentials() ) {
+						$warning_message = sprintf(
+							/* translators: %s: Credential setup guidance. */
+							__(
+								'AI credentials are not configured yet. AI features may not work until credentials are added. This WordPress build does not currently expose an AI credentials settings screen. %s',
+								'ai'
+							),
+							$configuration_help
+						);
+					} else {
+						$warning_message = sprintf(
+							/* translators: %s: Credential setup guidance. */
+							__(
+								'AI credentials appear invalid. AI features may fail until credentials are corrected. This WordPress build does not currently expose an AI credentials settings screen. %s',
+								'ai'
+							),
+							$configuration_help
+						);
+					}
 				}
 
-				wp_admin_notice( $error_message, array( 'type' => 'error' ) );
+				wp_admin_notice( $warning_message, array( 'type' => 'warning' ) );
 			}
 			?>
 

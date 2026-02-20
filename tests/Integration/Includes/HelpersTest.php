@@ -563,4 +563,60 @@ class HelpersTest extends WP_UnitTestCase {
 
 		remove_all_filters( 'ai_experiments_preferred_vision_models' );
 	}
+
+	/**
+	 * Test that environment credentials are detected via provider variable filter.
+	 *
+	 * @since 0.3.1
+	 */
+	public function test_has_ai_credentials_in_environment_with_filtered_variable_names() {
+		$constant_name = 'AI_EXPERIMENTS_TEST_ENV_KEY';
+		if ( ! defined( $constant_name ) ) {
+			define( $constant_name, 'unit-test-key' );
+		}
+
+		add_filter(
+			'ai_experiments_provider_api_key_variable_names',
+			static function () use ( $constant_name ): array {
+				return array( $constant_name );
+			}
+		);
+
+		$this->assertTrue( \WordPress\AI\has_ai_credentials_in_environment() );
+
+		remove_all_filters( 'ai_experiments_provider_api_key_variable_names' );
+	}
+
+	/**
+	 * Test that has_ai_credentials() falls back to environment credentials.
+	 *
+	 * @since 0.3.1
+	 */
+	public function test_has_ai_credentials_falls_back_to_environment() {
+		$constant_name = 'AI_EXPERIMENTS_TEST_FALLBACK_KEY';
+		if ( ! defined( $constant_name ) ) {
+			define( $constant_name, 'fallback-key' );
+		}
+
+		$original = get_option( 'wp_ai_client_provider_credentials', null );
+
+		add_filter(
+			'ai_experiments_provider_api_key_variable_names',
+			static function () use ( $constant_name ): array {
+				return array( $constant_name );
+			}
+		);
+
+		update_option( 'wp_ai_client_provider_credentials', array() );
+
+		$this->assertTrue( \WordPress\AI\has_ai_credentials() );
+
+		remove_all_filters( 'ai_experiments_provider_api_key_variable_names' );
+
+		if ( null === $original ) {
+			delete_option( 'wp_ai_client_provider_credentials' );
+		} else {
+			update_option( 'wp_ai_client_provider_credentials', $original );
+		}
+	}
 }

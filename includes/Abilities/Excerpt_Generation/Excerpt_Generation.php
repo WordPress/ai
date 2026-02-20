@@ -11,8 +11,8 @@ namespace WordPress\AI\Abilities\Excerpt_Generation;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI_Client\AI_Client;
 
+use function WordPress\AI\ai_client_prompt_with_wp_error;
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
@@ -226,7 +226,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		}
 
 		// Generate an excerpt using the AI client.
-		return AI_Client::prompt_with_wp_error( $content )
+		return ai_client_prompt_with_wp_error( $content )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )

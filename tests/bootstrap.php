@@ -7,6 +7,108 @@
 
 define( 'TESTS_REPO_ROOT_DIR', dirname( __DIR__ ) );
 
+if ( ! defined( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH' ) ) {
+	define( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH', TESTS_REPO_ROOT_DIR . '/vendor/yoast/phpunit-polyfills' );
+}
+
+/**
+ * Preloads core AI client contracts to avoid test bootstrap interface conflicts.
+ *
+ * PHPUnit is invoked through Composer, which registers the plugin's Composer
+ * autoloader before WordPress core loads. On WordPress trunk/7.0, core ships a
+ * scoped AI client contract for `ClientWithOptionsInterface`. If that interface
+ * is first loaded from Composer dependencies, signature mismatch fatals can
+ * occur when core classes are declared.
+ *
+ * @return void
+ */
+function wp_ai_maybe_preload_core_ai_client_contracts(): void {
+	$core_roots = array(
+		'/var/www/html/wp-includes',
+		TESTS_REPO_ROOT_DIR . '/../../../../wp-includes',
+		TESTS_REPO_ROOT_DIR . '/../../../../../wp-includes',
+	);
+
+	$core_autoload_path = '';
+	foreach ( $core_roots as $core_root ) {
+		$autoload_path = rtrim( $core_root, '/\\' ) . '/php-ai-client/autoload.php';
+		if ( ! file_exists( $autoload_path ) ) {
+			continue;
+		}
+
+		$core_autoload_path = $autoload_path;
+		break;
+	}
+
+	if ( '' === $core_autoload_path ) {
+		return;
+	}
+
+	require_once $core_autoload_path;
+
+	// Move the core AI client autoloader ahead of Composer's autoloader for tests.
+	$autoloaders = spl_autoload_functions();
+	if ( ! is_array( $autoloaders ) ) {
+		return;
+	}
+
+	foreach ( $autoloaders as $autoloader ) {
+		if ( ! $autoloader instanceof \Closure ) {
+			continue;
+		}
+
+		$reflection = new \ReflectionFunction( $autoloader );
+		$file_name  = $reflection->getFileName();
+		if ( ! is_string( $file_name ) ) {
+			continue;
+		}
+
+		$normalized_file_name         = str_replace( '\\', '/', $file_name );
+		$normalized_core_autoload_path = str_replace( '\\', '/', $core_autoload_path );
+		if ( false === strpos( $normalized_file_name, $normalized_core_autoload_path ) ) {
+			continue;
+		}
+
+		spl_autoload_unregister( $autoloader );
+		spl_autoload_register( $autoloader, true, true );
+		break;
+	}
+
+	// Preload key classes/contracts from core to avoid mixed-version declarations.
+	$symbols_to_preload = array(
+		array(
+			'type' => 'class',
+			'name' => '\WordPress\AiClient\AiClient',
+		),
+		array(
+			'type' => 'interface',
+			'name' => '\WordPress\AiClient\Providers\Http\Contracts\ClientWithOptionsInterface',
+		),
+		array(
+			'type' => 'class',
+			'name' => '\WordPress\AiClient\Providers\Http\Abstracts\AbstractClientDiscoveryStrategy',
+		),
+	);
+
+	foreach ( $symbols_to_preload as $symbol ) {
+		if ( ! isset( $symbol['type'], $symbol['name'] ) || ! is_string( $symbol['type'] ) || ! is_string( $symbol['name'] ) ) {
+			continue;
+		}
+
+		if ( 'interface' === $symbol['type'] ) {
+			interface_exists( $symbol['name'] );
+			continue;
+		}
+
+		if ( 'class' === $symbol['type'] ) {
+			class_exists( $symbol['name'] );
+			continue;
+		}
+	}
+}
+
+wp_ai_maybe_preload_core_ai_client_contracts();
+
 /**
  * Check if WordPress core has the Abilities API (e.g., in trunk).
  *
@@ -38,10 +140,9 @@ if ( ! wp_ai_has_core_abilities_api() && file_exists( TESTS_REPO_ROOT_DIR . '/ve
 	require_once TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/abilities-api/class-wp-ability.php';
 }
 
-// Load Composer dependencies if applicable.
-if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/autoload.php' ) ) {
-	require_once TESTS_REPO_ROOT_DIR . '/vendor/autoload.php';
-}
+// Do not load Composer's regular autoloader in this bootstrap.
+// The plugin itself loads Jetpack autoloader from ai.php, and loading Composer
+// here can preload conflicting classes when core provides AI client packages.
 
 // Load Abilities API bootstrap for functions.
 // Only load from vendor if WordPress core doesn't already include it.
