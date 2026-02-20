@@ -157,7 +157,9 @@ test.describe( 'Title Generation Experiment', () => {
 		// Ensure the title is updated.
 		await expect(
 			editor.canvas.locator( '.editor-post-title__input' )
-		).toHaveText( 'Your First WordPress Post' );
+		).toHaveText(
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
+		);
 
 		// Save the post.
 		await editor.saveDraft();
