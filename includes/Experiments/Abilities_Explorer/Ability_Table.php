@@ -51,7 +51,6 @@ class Ability_Table extends \WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
-			'cb'       => '<input type="checkbox" />',
 			'name'     => __( 'Name', 'ai' ),
 			'slug'     => __( 'Slug', 'ai' ),
 			'provider' => __( 'Provider', 'ai' ),
@@ -155,12 +154,11 @@ class Ability_Table extends \WP_List_Table {
 	 * {@inheritDoc}
 	 *
 	 * @param array<string,mixed> $item Item data.
+	 * @deprecated x.x.x
 	 */
 	public function column_cb( $item ): string {
-		return sprintf(
-			'<input type="checkbox" name="abilities[]" value="%s" />',
-			esc_attr( $item['slug'] )
-		);
+		_deprecated_function( __FUNCTION__, '0.2.0', 'The checkbox column is no longer displayed.' );
+		return '';
 	}
 
 	/**
