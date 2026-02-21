@@ -11,7 +11,6 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Services\AI_Service;
-use WordPress\AI_Client\AI_Client;
 
 /**
  * Purposely using return instead of exit here.
@@ -343,7 +342,7 @@ function has_valid_ai_credentials(): bool {
 
 	// See if we have credentials that give us access to generate text.
 	try {
-		return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
+		return wp_ai_client_prompt( 'Test' )->is_supported_for_text_generation();
 	} catch ( Throwable $t ) {
 		return false;
 	}
