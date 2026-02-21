@@ -11,6 +11,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AiClient\AiClient;
 use WordPress\AI\Client_Loader;
 use WordPress\AI_Client\HTTP\WP_AI_Client_Discovery_Strategy;
 use WordPress\AnthropicAiProvider\Provider\AnthropicProvider;
@@ -57,7 +58,7 @@ final class Provider_Loader {
 		// Ensure the HTTP transporter is initialized.
 		WP_AI_Client_Discovery_Strategy::init();
 
-		$registry = \WordPress\AiClient\AiClient::defaultRegistry();
+		$registry = AiClient::defaultRegistry();
 
 		foreach ( $this->default_providers as $provider ) {
 			if ( $registry->hasProvider( $provider ) ) {

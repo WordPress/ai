@@ -14,12 +14,6 @@ namespace WordPress\AI;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
-use WordPress\AI_Client\AI_Client;
-use WordPress\AI_Client\HTTP\WP_AI_Client_Discovery_Strategy;
-use WordPress\AiClient\AiClient;
-use WordPress\AnthropicAiProvider\Provider\AnthropicProvider;
-use WordPress\GoogleAiProvider\Provider\GoogleProvider;
-use WordPress\OpenAiAiProvider\Provider\OpenAiProvider;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -207,8 +201,31 @@ function load(): void {
 	// Initialize our default AI providers.
 	add_action( 'init', __NAMESPACE__ . '\initialize_ai_providers', 5 );
 
+	// Initialize the WP AI Client if needed.
+	add_action( 'init', __NAMESPACE__ . '\initialize_ai_client', 10 );
+
 	// Hook experiment initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
+	add_action( 'init', __NAMESPACE__ . '\initialize_experiments', 15 );
+}
+
+/**
+ * Initializes the default AI providers.
+ *
+ * @since x.x.x
+ */
+function initialize_ai_providers(): void {
+	$provider_loader = new Provider_Loader();
+	$provider_loader->init();
+}
+
+/**
+ * Initializes the WP AI Client if needed.
+ *
+ * @since x.x.x
+ */
+function initialize_ai_client(): void {
+	$client_loader = new Client_Loader();
+	$client_loader->init();
 }
 
 /**
@@ -218,9 +235,6 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
-		// Initialize the WP AI Client.
-		AI_Client::init();
-
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
@@ -267,36 +281,6 @@ function initialize_experiments(): void {
 			),
 			'0.1.0'
 		);
-	}
-}
-
-/**
- * Initializes the default AI providers.
- *
- * @since x.x.x
- */
-function initialize_ai_providers(): void {
-	if ( ! class_exists( AiClient::class ) ) {
-		return;
-	}
-
-	// Ensure the HTTP transporter is initialized.
-	WP_AI_Client_Discovery_Strategy::init();
-
-	$default_providers = array(
-		AnthropicProvider::class,
-		GoogleProvider::class,
-		OpenAiProvider::class,
-	);
-
-	$registry = AiClient::defaultRegistry();
-
-	foreach ( $default_providers as $provider ) {
-		if ( $registry->hasProvider( $provider ) ) {
-			continue;
-		}
-
-		$registry->registerProvider( $provider );
 	}
 }
 
