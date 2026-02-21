@@ -36,7 +36,7 @@ final class Client_Loader {
 	 * @return bool True if the WP AI Client is loaded, false otherwise.
 	 */
 	public static function client_exists(): bool {
-		return function_exists( 'wp_ai_client_prompt' );
+		return function_exists( '\wp_ai_client_prompt' );
 	}
 
 	/**
@@ -50,6 +50,9 @@ final class Client_Loader {
 		}
 
 		AI_Client::init();
+
+		// Ensure the compat function is loaded.
+		require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/compat.php';
 
 		$this->initialized = true;
 	}
