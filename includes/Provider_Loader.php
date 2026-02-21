@@ -11,9 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
-use WordPress\AiClient\AiClient;
-use WordPress\AI\Client_Loader;
 use WordPress\AI_Client\HTTP\WP_AI_Client_Discovery_Strategy;
+use WordPress\AiClient\AiClient;
 use WordPress\AnthropicAiProvider\Provider\AnthropicProvider;
 use WordPress\GoogleAiProvider\Provider\GoogleProvider;
 use WordPress\OpenAiAiProvider\Provider\OpenAiProvider;

@@ -16,14 +16,14 @@ if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string|MessagePart|Message|array|list<string|MessagePart|array>|list<Message>|null $prompt Optional. Initial prompt content.
+	 * @param string|\MessagePart|\Message|array|list<string|\MessagePart|array>|list<\Message>|null $prompt Optional. Initial prompt content.
 	 *                                                                                                   A string for simple text prompts,
 	 *                                                                                                   a MessagePart or Message object for
 	 *                                                                                                   structured content, an array for a
 	 *                                                                                                   message array shape, or a list of
 	 *                                                                                                   parts or messages for multi-turn
 	 *                                                                                                   conversations. Default null.
-	 * @return \WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error|WP_AI_Client_Prompt_Builder The prompt builder instance.
+	 * @return \WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error|\WP_AI_Client_Prompt_Builder The prompt builder instance.
 	 */
 	function wp_ai_client_prompt( $prompt = null ) {
 		if ( ! class_exists( 'WP_AI_Client_Prompt_Builder' ) ) {

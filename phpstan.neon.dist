@@ -1,4 +1,17 @@
 parameters:
+		# Ignore WordPress 7.0 classes/methods not yet in PHPStan stubs (WP_AI_Client_Prompt_Builder, etc.)
+		ignoreErrors:
+			- '#WP_AI_Client_Prompt_Builder#'
+			- identifier: argument.type
+			  path: includes/Provider_Loader.php
+			# compat.php polyfill - WordPress 7.0 wp-ai-client types (Message, MessagePart, etc.)
+			- identifier: missingType.iterableValue
+			  path: includes/compat.php
+			- identifier: class.notFound
+			  path: includes/compat.php
+			- identifier: argument.type
+			  path: includes/compat.php
+
 		# Rules
 		treatPhpDocTypesAsCertain: false
 		inferPrivatePropertyTypeFromConstructor: true
