@@ -73,20 +73,30 @@ class AI_Service_Test extends WP_UnitTestCase {
 	/**
 	 * Test create_textgen_prompt returns prompt builder.
 	 *
+	 * On WordPress 6.9 and earlier, returns Prompt_Builder_With_WP_Error.
+	 * On WordPress 7.0+ (trunk), returns WP_AI_Client_Prompt_Builder when core has it.
+	 *
 	 * @since 0.2.1
 	 */
 	public function test_create_textgen_prompt_returns_builder(): void {
 		$builder = $this->service->create_textgen_prompt( 'Test prompt' );
 
-		$this->assertInstanceOf(
-			Prompt_Builder_With_WP_Error::class,
-			$builder,
-			'Should return Prompt_Builder_With_WP_Error instance'
+		$valid_builders = array( Prompt_Builder_With_WP_Error::class );
+		if ( class_exists( 'WP_AI_Client_Prompt_Builder' ) ) {
+			$valid_builders[] = 'WP_AI_Client_Prompt_Builder';
+		}
+		$this->assertContains(
+			get_class( $builder ),
+			$valid_builders,
+			'Should return a valid prompt builder instance'
 		);
 	}
 
 	/**
 	 * Test create_textgen_prompt with options applies configuration.
+	 *
+	 * On WordPress 6.9 and earlier, returns Prompt_Builder_With_WP_Error.
+	 * On WordPress 7.0+ (trunk), returns WP_AI_Client_Prompt_Builder when core has it.
 	 *
 	 * @since 0.2.1
 	 */
@@ -100,10 +110,14 @@ class AI_Service_Test extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertInstanceOf(
-			Prompt_Builder_With_WP_Error::class,
-			$builder,
-			'Should return Prompt_Builder_With_WP_Error instance with options applied'
+		$valid_builders = array( Prompt_Builder_With_WP_Error::class );
+		if ( class_exists( 'WP_AI_Client_Prompt_Builder' ) ) {
+			$valid_builders[] = 'WP_AI_Client_Prompt_Builder';
+		}
+		$this->assertContains(
+			get_class( $builder ),
+			$valid_builders,
+			'Should return a valid prompt builder instance with options applied'
 		);
 	}
 

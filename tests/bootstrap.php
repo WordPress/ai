@@ -8,19 +8,18 @@
 define( 'TESTS_REPO_ROOT_DIR', dirname( __DIR__ ) );
 
 /**
- * Check if WordPress core has the Abilities API (e.g., in trunk).
+ * Check if WordPress core has the AI Client (e.g., in trunk).
  *
- * @return bool True if WordPress core includes Abilities API, false otherwise.
+ * @return bool True if WordPress core includes AI Client, false otherwise.
  */
-function wp_ai_has_core_abilities_api(): bool {
-	// Check common WordPress core locations for the Abilities API file.
+function wp_ai_has_core_ai_client(): bool {
 	$possible_paths = array(
 		// wp-env location
-		'/var/www/html/wp-includes/abilities-api/class-wp-ability.php',
+		'/var/www/html/wp-includes/php-ai-client/autoload.php',
 		// Relative to tests directory (typical WordPress test setup)
-		TESTS_REPO_ROOT_DIR . '/../../../../wp-includes/abilities-api/class-wp-ability.php',
+		TESTS_REPO_ROOT_DIR . '/../../../../wp-includes/php-ai-client/autoload.php',
 		// Relative to plugin directory (alternative test setup)
-		TESTS_REPO_ROOT_DIR . '/../../../../../wp-includes/abilities-api/class-wp-ability.php',
+		TESTS_REPO_ROOT_DIR . '/../../../../../wp-includes/php-ai-client/autoload.php',
 	);
 
 	foreach ( $possible_paths as $path ) {
@@ -32,21 +31,55 @@ function wp_ai_has_core_abilities_api(): bool {
 	return false;
 }
 
-// Load Abilities API classes before autoloader to ensure WP_Ability class is available.
-// Only load from vendor if WordPress core doesn't already include it (e.g., when running against trunk).
-if ( ! wp_ai_has_core_abilities_api() && file_exists( TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/abilities-api/class-wp-ability.php' ) ) {
-	require_once TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/abilities-api/class-wp-ability.php';
-}
-
 // Load Composer dependencies if applicable.
 if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/autoload.php' ) ) {
 	require_once TESTS_REPO_ROOT_DIR . '/vendor/autoload.php';
 }
 
-// Load Abilities API bootstrap for functions.
-// Only load from vendor if WordPress core doesn't already include it.
-if ( ! wp_ai_has_core_abilities_api() && file_exists( TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/bootstrap.php' ) ) {
-	require_once TESTS_REPO_ROOT_DIR . '/vendor/wordpress/abilities-api/includes/bootstrap.php';
+// Load WordPress core's scoped AI Client autoloader AFTER Composer, with PREPEND so it takes precedence.
+// This prevents a fatal error: core's WP_AI_Client_HTTP_Client uses scoped PSR types
+// (WordPress\AiClientDependencies\Psr\*), while plugin's Composer uses unscoped Psr\*.
+// Composer prepends its autoloader, so we must prepend core's autoloader after Composer to win.
+if ( wp_ai_has_core_ai_client() ) {
+	$core_ai_client_paths = array(
+		'/var/www/html/wp-includes/php-ai-client/autoload.php',
+		TESTS_REPO_ROOT_DIR . '/../../../../wp-includes/php-ai-client/autoload.php',
+		TESTS_REPO_ROOT_DIR . '/../../../../../wp-includes/php-ai-client/autoload.php',
+	);
+	foreach ( $core_ai_client_paths as $path ) {
+		if ( file_exists( $path ) ) {
+			$wp_ai_client_base_dir = dirname( $path );
+			spl_autoload_register(
+				static function ( $class_name ) use ( $wp_ai_client_base_dir ) {
+					$client_prefix     = 'WordPress\\AiClient\\';
+					$client_prefix_len = 19;
+					$scoped_prefix     = 'WordPress\\AiClientDependencies\\';
+					$scoped_prefix_len = 31;
+
+					if ( 0 === strncmp( $class_name, $client_prefix, $client_prefix_len ) ) {
+						$relative_class = substr( $class_name, $client_prefix_len );
+						$file           = $wp_ai_client_base_dir . '/src/' . str_replace( '\\', '/', $relative_class ) . '.php';
+						if ( file_exists( $file ) ) {
+							require $file;
+							return true;
+						}
+					}
+					if ( 0 === strncmp( $class_name, $scoped_prefix, $scoped_prefix_len ) ) {
+						$relative_class = substr( $class_name, $scoped_prefix_len );
+						$file           = $wp_ai_client_base_dir . '/third-party/' . str_replace( '\\', '/', $relative_class ) . '.php';
+						if ( file_exists( $file ) ) {
+							require $file;
+							return true;
+						}
+					}
+					return false;
+				},
+				true,
+				true
+			);
+			break;
+		}
+	}
 }
 
 // Detect where to load the WordPress tests environment from.
