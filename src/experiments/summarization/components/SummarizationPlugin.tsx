@@ -58,6 +58,7 @@ export default function SummarizationPlugin() {
 						disabled={ isSummarizing }
 						isBusy={ isSummarizing }
 						__next40pxDefaultSize
+						style={ { width: '100%', justifyContent: 'center' } }
 					>
 						{ buttonLabel }
 					</Button>
