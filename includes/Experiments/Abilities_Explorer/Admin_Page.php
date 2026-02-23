@@ -50,9 +50,11 @@ class Admin_Page {
 			array( $this, 'render_page' )
 		);
 
-		if ( $hook ) {
-			add_action( "load-{$hook}", array( $this, 'add_help_tabs' ) );
+		if ( ! $hook ) {
+			return;
 		}
+
+		add_action( "load-{$hook}", array( $this, 'add_help_tabs' ) );
 	}
 
 	/**
