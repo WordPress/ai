@@ -140,7 +140,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Add a prompt and generate the image.
 		await page
 			.locator( '.ai-generate-image-inline-modal__idle textarea' )
-			.fill( 'A smiling face' );
+			.fill( 'A smiling face emoji' );
 		await page
 			.locator( '.ai-generate-image-inline-modal__idle button' )
 			.click();
@@ -150,37 +150,45 @@ test.describe( 'Image Generation Experiment', () => {
 			page.locator( '.ai-generate-image-inline-modal__preview-image' )
 		).toBeVisible();
 
-		// Ensure there are Keep, Edit, and Start Over buttons.
+		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
-		let keepButton = page.locator(
+		let useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
 			{
-				hasText: 'Keep',
+				hasText: 'Use Image',
 			}
 		);
-		await expect( keepButton ).toBeVisible();
+		await expect( useImageButton ).toBeVisible();
 
-		const editButton = page.locator(
+		const refineButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
 			{
-				hasText: 'Edit',
+				hasText: 'Refine Image',
 			}
 		);
-		await expect( editButton ).toBeVisible();
+		await expect( refineButton ).toBeVisible();
 
-		const startOverButton = page.locator(
+		const generateAnotherButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
 			{
-				hasText: 'Start Over',
+				hasText: 'Generate Another Image',
 			}
 		);
-		await expect( startOverButton ).toBeVisible();
+		await expect( generateAnotherButton ).toBeVisible();
 
-		// Click the Start Over button.
-		await startOverButton.click();
+		const editPromptButton = page.locator(
+			'.ai-generate-image-inline-modal__actions button',
+			{
+				hasText: 'Edit Prompt',
+			}
+		);
+		await expect( editPromptButton ).toBeVisible();
+
+		// Click the Edit Prompt button.
+		await editPromptButton.click();
 
 		// Ensure the modal is in the idle state.
 		await expect(
@@ -192,10 +200,10 @@ test.describe( 'Image Generation Experiment', () => {
 			page.locator( '.ai-generate-image-inline-modal__idle textarea' )
 		).toBeVisible();
 
-		// Ensure the prompt textarea is empty.
+		// Ensure the prompt textarea has the correct value.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__idle textarea' )
-		).toHaveValue( '' );
+		).toHaveValue( 'A smiling face emoji' );
 
 		// Add another prompt and generate the image.
 		await page
@@ -210,20 +218,20 @@ test.describe( 'Image Generation Experiment', () => {
 			page.locator( '.ai-generate-image-inline-modal__preview-image' )
 		).toBeVisible();
 
-		// Ensure there are Keep, Edit, and Start Over buttons.
+		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
-		keepButton = page.locator(
+		useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
 			{
-				hasText: 'Keep',
+				hasText: 'Use Image',
 			}
 		);
-		await expect( keepButton ).toBeVisible();
+		await expect( useImageButton ).toBeVisible();
 
-		keepButton.click();
+		useImageButton.click();
 
 		// Ensure the image is inserted into the block.
 		await expect(
@@ -272,13 +280,25 @@ test.describe( 'Image Generation Experiment', () => {
 			name: 'core/image',
 		} );
 
-		// Find the toolbar Generate Image button (aria-label is the accessible name).
-		const generateImageButton = page.getByRole( 'button', {
-			name: 'Generate Image',
+		// Find the toolbar Add image button (aria-label is the accessible name).
+		const addImageButton = page.getByRole( 'button', {
+			name: 'Add image',
 		} );
+		await expect( addImageButton ).toBeVisible();
+
+		// Click the Add image toolbar button.
+		await addImageButton.click();
+
+		// Ensure the menu dropdown shows with our Generate Image option.
+		const generateImageButton = page.locator(
+			'.block-editor-media-replace-flow__options button',
+			{
+				hasText: 'Generate Image',
+			}
+		);
 		await expect( generateImageButton ).toBeVisible();
 
-		// Click the generate image toolbar button.
+		// Click the Generate Image button.
 		await generateImageButton.click();
 
 		// Ensure the modal is visible.
@@ -299,34 +319,34 @@ test.describe( 'Image Generation Experiment', () => {
 			page.locator( '.ai-generate-image-inline-modal__preview-image' )
 		).toBeVisible();
 
-		// Ensure there are Keep, Edit, and Start Over buttons.
+		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
-		let keepButton = page.locator(
+		let useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
 			{
-				hasText: 'Keep',
+				hasText: 'Use Image',
 			}
 		);
-		await expect( keepButton ).toBeVisible();
+		await expect( useImageButton ).toBeVisible();
 
-		const editButton = page.locator(
+		const refineButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
 			{
-				hasText: 'Edit',
+				hasText: 'Refine Image',
 			}
 		);
-		await expect( editButton ).toBeVisible();
+		await expect( refineButton ).toBeVisible();
 
-		const startOverButton = page.locator(
+		const generateAnotherButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
 			{
-				hasText: 'Start Over',
+				hasText: 'Generate Another Image',
 			}
 		);
-		await expect( startOverButton ).toBeVisible();
+		await expect( generateAnotherButton ).toBeVisible();
 
 		// Ensure there's a close button in the modal.
 		const closeButton = page
@@ -358,20 +378,20 @@ test.describe( 'Image Generation Experiment', () => {
 			page.locator( '.ai-generate-image-inline-modal__preview-image' )
 		).toBeVisible();
 
-		// Ensure there are Keep, Edit, and Start Over buttons.
+		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
-		keepButton = page.locator(
+		useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
 			{
-				hasText: 'Keep',
+				hasText: 'Use Image',
 			}
 		);
-		await expect( keepButton ).toBeVisible();
+		await expect( useImageButton ).toBeVisible();
 
-		keepButton.click();
+		useImageButton.click();
 
 		// Ensure the image is inserted into the block.
 		await expect(
