@@ -111,7 +111,7 @@ export function GenerateImageInlineModal( {
 	/**
 	 * Uploads the generated image and inserts it into the block.
 	 */
-	async function handleKeep(): Promise< void > {
+	async function handleUseImage(): Promise< void > {
 		if ( ! generatedData ) {
 			return;
 		}
@@ -211,8 +211,8 @@ export function GenerateImageInlineModal( {
 						className="ai-generate-image-inline-modal__preview-image"
 					/>
 					<div className="ai-generate-image-inline-modal__actions">
-						<Button variant="primary" onClick={ handleKeep }>
-							{ __( 'Keep', 'ai' ) }
+						<Button variant="primary" onClick={ handleUseImage }>
+							{ __( 'Use Image', 'ai' ) }
 						</Button>
 						<Button
 							variant="secondary"
@@ -221,18 +221,17 @@ export function GenerateImageInlineModal( {
 								setState( 'editing' );
 							} }
 						>
-							{ __( 'Edit', 'ai' ) }
+							{ __( 'Refine Image', 'ai' ) }
 						</Button>
 						<Button
 							variant="tertiary"
 							onClick={ () => {
 								setGeneratedData( null );
-								setPrompt( '' );
 								setState( 'idle' );
 								setError( null );
 							} }
 						>
-							{ __( 'Start Over', 'ai' ) }
+							{ __( 'Edit Prompt', 'ai' ) }
 						</Button>
 					</div>
 					{ error && (
@@ -272,7 +271,7 @@ export function GenerateImageInlineModal( {
 								)
 							}
 						>
-							{ __( 'Generate', 'ai' ) }
+							{ __( 'Refine', 'ai' ) }
 						</Button>
 						<Button
 							variant="tertiary"
@@ -281,7 +280,7 @@ export function GenerateImageInlineModal( {
 								setError( null );
 							} }
 						>
-							{ __( 'Back', 'ai' ) }
+							{ __( 'Cancel Refinement', 'ai' ) }
 						</Button>
 					</div>
 					{ error && (
