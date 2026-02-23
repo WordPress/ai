@@ -200,8 +200,7 @@ class Admin_Page {
 					<tr>
 						<th><?php esc_html_e( 'Provider', 'ai' ); ?></th>
 						<?php
-						$provider_labels = Ability_Handler::get_provider_labels();
-						$provider_label  = $provider_labels[ $ability['provider'] ] ?? $ability['provider'];
+						$provider_label = Ability_Handler::get_provider_label( $ability['provider'] );
 						?>
 						<td><span class="ability-provider ability-provider-<?php echo esc_attr( strtolower( $ability['provider'] ) ); ?>"><?php echo esc_html( $provider_label ); ?></span></td>
 					</tr>
