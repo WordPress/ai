@@ -154,17 +154,6 @@ class Ability_Table extends \WP_List_Table {
 	 * {@inheritDoc}
 	 *
 	 * @param array<string,mixed> $item Item data.
-	 * @deprecated x.x.x
-	 */
-	public function column_cb( $item ): string {
-		_deprecated_function( __FUNCTION__, 'x.x.x', 'The checkbox column is no longer displayed.' );
-		return '';
-	}
-
-	/**
-	 * {@inheritDoc}
-	 *
-	 * @param array<string,mixed> $item Item data.
 	 */
 	public function column_name( $item ): string {
 		$detail_url = add_query_arg(
