@@ -240,6 +240,12 @@ export function GenerateImageInlineModal( {
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
 						<Button
+							variant="secondary"
+							onClick={ () => generate( prompt.trim() ) }
+						>
+							{ __( 'Generate Another Image', 'ai' ) }
+						</Button>
+						<Button
 							variant="tertiary"
 							onClick={ () => {
 								setGeneratedData( null );

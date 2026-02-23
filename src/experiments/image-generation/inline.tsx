@@ -20,7 +20,7 @@ import {
 } from '@wordpress/block-editor';
 import { Button, MenuItem } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { image } from '@wordpress/icons';
+import { create } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -84,7 +84,7 @@ const withGenerateImageInlineButton = createHigherOrderComponent(
 						render={ () =>
 							isToolbarContext ? (
 								<MenuItem
-									icon={ image }
+									icon={ create }
 									onClick={ () => setModalOpen( true ) }
 								>
 									{ __( 'Generate Image', 'ai' ) }
