@@ -41,8 +41,7 @@ class Admin_Page {
 	 * @since 0.2.0
 	 */
 	public function add_admin_menu(): void {
-		// Add menu item under the Tools menu.
-		add_submenu_page(
+		$hook = add_submenu_page(
 			'tools.php',
 			__( 'Abilities Explorer', 'ai' ),
 			__( 'Abilities Explorer', 'ai' ),
@@ -50,6 +49,12 @@ class Admin_Page {
 			'ai-abilities-explorer',
 			array( $this, 'render_page' )
 		);
+
+		if ( ! $hook ) {
+			return;
+		}
+
+		add_action( "load-{$hook}", array( $this, 'add_help_tabs' ) );
 	}
 
 	/**
@@ -474,5 +479,62 @@ class Admin_Page {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Add contextual help tabs to the screen.
+	 *
+	 * @since x.x.x
+	 */
+	public function add_help_tabs(): void {
+		$screen = get_current_screen();
+
+		if ( ! $screen ) {
+			return;
+		}
+
+		$screen->add_help_tab(
+			array(
+				'id'      => 'abilities-overview',
+				'title'   => __( 'Overview', 'ai' ),
+				'content' =>
+					'<p>' . esc_html__( 'Abilities are a standardized way for WordPress core, plugins, and themes to expose discrete units of functionality. Each ability has a name, optional input/output schemas, and can be invoked programmatically.', 'ai' ) . '</p>' .
+					'<p>' . esc_html__( 'The Abilities Explorer lets you browse every registered ability, inspect its schemas, and test it with custom input right from the admin.', 'ai' ) . '</p>',
+			)
+		);
+
+		$screen->add_help_tab(
+			array(
+				'id'      => 'abilities-providers',
+				'title'   => esc_html__( 'Providers', 'ai' ),
+				'content' =>
+					'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
+					'<ul>' .
+						'<li><strong>' . esc_html__( 'Core', 'ai' ) . '</strong>: ' . esc_html__( 'Built into WordPress itself.', 'ai' ) . '</li>' .
+						'<li><strong>' . esc_html__( 'Plugin', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by an active plugin.', 'ai' ) . '</li>' .
+						'<li><strong>' . esc_html__( 'Theme', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by the active theme.', 'ai' ) . '</li>' .
+					'</ul>',
+			)
+		);
+
+		$screen->add_help_tab(
+			array(
+				'id'      => 'abilities-testing',
+				'title'   => esc_html__( 'Testing', 'ai' ),
+				'content' =>
+					'<p>' . esc_html__( 'You can test any ability directly from this screen:', 'ai' ) . '</p>' .
+					'<ol>' .
+						'<li>' . __( 'Click "Test" next to an ability in the list.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Edit the pre-filled Input Data if the ability accepts JSON parameters.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Use "Validate Input" to check your JSON against the schema.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Click "Invoke Ability" to execute it and see the result.', 'ai' ) . '</li>' .
+					'</ol>',
+			)
+		);
+
+		$screen->set_help_sidebar(
+			'<p><strong>' . esc_html__( 'For more information:', 'ai' ) . '</strong></p>' .
+			'<p><a href="https://developer.wordpress.org/apis/abilities/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Abilities API Documentation', 'ai' ) . '</a></p>'
+		);
 	}
 }
