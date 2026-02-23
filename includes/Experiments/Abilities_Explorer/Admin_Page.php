@@ -519,7 +519,7 @@ class Admin_Page {
 					'<p>' . esc_html__( 'You can test any ability directly from this screen:', 'ai' ) . '</p>' .
 					'<ol>' .
 						'<li>' . __( 'Click "Test" next to an ability in the list.', 'ai' ) . '</li>' .
-						'<li>' . __( 'Edit the pre-filled JSON input if the ability accepts parameters.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Edit the pre-filled Input Data if the ability accepts JSON parameters.', 'ai' ) . '</li>' .
 						'<li>' . __( 'Use "Validate Input" to check your JSON against the schema.', 'ai' ) . '</li>' .
 						'<li>' . __( 'Click "Invoke Ability" to execute it and see the result.', 'ai' ) . '</li>' .
 					'</ol>',
