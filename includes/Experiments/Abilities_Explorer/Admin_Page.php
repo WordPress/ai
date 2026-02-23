@@ -199,10 +199,7 @@ class Admin_Page {
 				<table class="ability-detail-table">
 					<tr>
 						<th><?php esc_html_e( 'Provider', 'ai' ); ?></th>
-						<?php
-						$provider_label = Ability_Handler::get_provider_label( $ability['provider'] );
-						?>
-						<td><span class="ability-provider ability-provider-<?php echo esc_attr( strtolower( $ability['provider'] ) ); ?>"><?php echo esc_html( $provider_label ); ?></span></td>
+						<td><span class="ability-provider ability-provider-<?php echo esc_attr( strtolower( $ability['provider'] ) ); ?>"><?php echo esc_html( Ability_Handler::get_provider_label( $ability['provider'] ) ); ?></span></td>
 					</tr>
 				</table>
 			</div>
