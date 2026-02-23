@@ -18,6 +18,7 @@ import { image } from '@wordpress/icons';
 import { runAbility } from '../../../utils/run-ability';
 import { uploadImage } from '../functions/upload-image';
 import { insertIntoBlock } from '../functions/insert-into-block';
+import { openGalleryMediaLibraryWithImage } from '../functions/open-gallery-media-library';
 import type {
 	GeneratedImageData,
 	ImageGenerationAbilityInput,
@@ -126,7 +127,22 @@ export function GenerateImageInlineModal( {
 				altTextEnabled: aiImageGenerationData?.altTextEnabled,
 			} );
 
-			insertIntoBlock( blockName, clientId, setAttributes, uploaded );
+			if ( blockName === 'core/gallery' ) {
+				const openedMediaLibrary = openGalleryMediaLibraryWithImage(
+					clientId,
+					uploaded
+				);
+				if ( ! openedMediaLibrary ) {
+					insertIntoBlock(
+						blockName,
+						clientId,
+						setAttributes,
+						uploaded
+					);
+				}
+			} else {
+				insertIntoBlock( blockName, clientId, setAttributes, uploaded );
+			}
 			onClose();
 		} catch ( err: any ) {
 			setError( err?.message || __( 'Failed to upload image.', 'ai' ) );
