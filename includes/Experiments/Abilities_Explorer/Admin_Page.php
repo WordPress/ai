@@ -206,23 +206,29 @@ class Admin_Page {
 			<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
 				<div class="ability-detail-section">
 					<h3><?php esc_html_e( 'Input Schema', 'ai' ); ?></h3>
-					<button type="button" class="button button-small ability-copy-btn" data-copy="input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<div class="ability-schema-wrapper">
+						<button type="button" class="button button-small ability-copy-btn" data-copy="input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+						<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					</div>
 				</div>
 			<?php endif; ?>
 
 			<?php if ( ! empty( $ability['output_schema'] ) ) : ?>
 				<div class="ability-detail-section">
 					<h3><?php esc_html_e( 'Output Schema', 'ai' ); ?></h3>
-					<button type="button" class="button button-small ability-copy-btn" data-copy="output-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<div class="ability-schema-wrapper">
+						<button type="button" class="button button-small ability-copy-btn" data-copy="output-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+						<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					</div>
 				</div>
 			<?php endif; ?>
 
 			<div class="ability-detail-section">
 				<h3><?php esc_html_e( 'Raw Data', 'ai' ); ?></h3>
-				<button type="button" class="button button-small ability-copy-btn" data-copy="raw-data"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-				<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+				<div class="ability-schema-wrapper">
+					<button type="button" class="button button-small ability-copy-btn" data-copy="raw-data"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+					<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+				</div>
 			</div>
 		</div>
 		<?php

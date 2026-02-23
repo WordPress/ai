@@ -504,16 +504,20 @@ import './index.scss';
 		 * @param {boolean}     success - Whether copy was successful.
 		 */
 		showCopyFeedback( button, success ) {
-			const originalText = button.textContent;
+			const originalHTML = button.innerHTML;
 			const feedbackText = success
 				? aiAbilityExplorer.strings.copySuccess
 				: aiAbilityExplorer.strings.copyError;
+			const feedbackIcon = success
+				? '<span class="dashicons dashicons-yes"></span>'
+				: '<span class="dashicons dashicons-no-alt"></span>';
 
-			button.textContent = feedbackText;
+			button.innerHTML =
+				feedbackIcon + ' ' + this.escapeHtml( feedbackText );
 
 			setTimeout( function () {
-				button.textContent = originalText;
-			}, 2000 );
+				button.innerHTML = originalHTML;
+			}, 1500 );
 		},
 
 		/**
