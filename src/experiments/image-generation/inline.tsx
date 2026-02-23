@@ -15,11 +15,10 @@ import { dispatch } from '@wordpress/data';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import {
-	BlockControls,
 	store as blockEditorStore,
 	useBlockProps,
 } from '@wordpress/block-editor';
-import { Button, ToolbarGroup, ToolbarButton } from '@wordpress/components';
+import { Button, MenuItem } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { image } from '@wordpress/icons';
 
@@ -39,52 +38,8 @@ const TARGET_BLOCKS = [
 ];
 
 /**
- * Higher-order component that wraps each block edit component for targeted
- * blocks and injects the toolbar button + modal.
- */
-const withGenerateImageToolbarButton = createHigherOrderComponent(
-	( BlockEdit ) => {
-		// Only wrap the block edit component when the experiment is enabled.
-		if ( ! aiImageGenerationData?.enabled ) {
-			return BlockEdit;
-		}
-
-		return ( props: any ) => {
-			const [ isModalOpen, setModalOpen ] = useState( false );
-
-			return (
-				<>
-					<BlockEdit { ...props } />
-					{ TARGET_BLOCKS.includes( props.name ) && (
-						<BlockControls>
-							<ToolbarGroup>
-								<ToolbarButton
-									icon={ image }
-									label={ __( 'Generate Image', 'ai' ) }
-									onClick={ () => setModalOpen( true ) }
-								/>
-							</ToolbarGroup>
-						</BlockControls>
-					) }
-
-					{ isModalOpen && (
-						<GenerateImageInlineModal
-							blockName={ props.name }
-							clientId={ props.clientId }
-							setAttributes={ props.setAttributes }
-							onClose={ () => setModalOpen( false ) }
-						/>
-					) }
-				</>
-			);
-		};
-	},
-	'withGenerateImageToolbarButton'
-);
-
-/**
  * Higher-order component that wraps the MediaUpload component for targeted
- * blocks and injects the inline button + modal.
+ * blocks and injects the inline/toolbar button + modal.
  */
 const withGenerateImageInlineButton = createHigherOrderComponent(
 	( Component ) => {
@@ -95,7 +50,7 @@ const withGenerateImageInlineButton = createHigherOrderComponent(
 
 		return ( props: any ) => {
 			const [ isModalOpen, setModalOpen ] = useState( false );
-			const { render, ...rest } = props;
+			const { render, mode, ...rest } = props;
 			let blockProps;
 
 			try {
@@ -117,20 +72,33 @@ const withGenerateImageInlineButton = createHigherOrderComponent(
 					attrs
 				);
 
+			// MediaPlaceholder uses mode="browse" and expects Buttons. MediaReplaceFlow
+			// (toolbar Add/Replace dropdown) uses no mode and expects MenuItems.
+			const isToolbarContext = mode !== 'browse';
+
 			return (
 				<>
 					<Component
 						{ ...rest }
 						mode="generate"
-						render={ () => (
-							<Button
-								variant="secondary"
-								onClick={ () => setModalOpen( true ) }
-								__next40pxDefaultSize
-							>
-								{ __( 'Generate Image', 'ai' ) }
-							</Button>
-						) }
+						render={ () =>
+							isToolbarContext ? (
+								<MenuItem
+									icon={ image }
+									onClick={ () => setModalOpen( true ) }
+								>
+									{ __( 'Generate Image', 'ai' ) }
+								</MenuItem>
+							) : (
+								<Button
+									variant="secondary"
+									onClick={ () => setModalOpen( true ) }
+									__next40pxDefaultSize
+								>
+									{ __( 'Generate Image', 'ai' ) }
+								</Button>
+							)
+						}
 					/>
 
 					<Component { ...props } />
@@ -148,12 +116,6 @@ const withGenerateImageInlineButton = createHigherOrderComponent(
 		};
 	},
 	'withGenerateImageInlineButton'
-);
-
-addFilter(
-	'editor.BlockEdit',
-	'ai/image-generation-inline-toolbar',
-	withGenerateImageToolbarButton
 );
 
 addFilter(
