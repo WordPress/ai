@@ -206,13 +206,11 @@ class Ability_Table extends \WP_List_Table {
 	public function column_provider( $item ): string {
 		$provider = $item['provider'];
 		$class    = 'ability-provider ability-provider-' . strtolower( $provider );
-		$labels   = Ability_Handler::get_provider_labels();
-		$label    = $labels[ $provider ] ?? $provider;
 
 		return sprintf(
 			'<span class="%s">%s</span>',
 			esc_attr( $class ),
-			esc_html( $label )
+			esc_html( Ability_Handler::get_provider_label( $provider ) )
 		);
 	}
 

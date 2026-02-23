@@ -134,6 +134,18 @@ class Ability_Handler {
 	}
 
 	/**
+	 * Get the label for a provider.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $provider Provider slug.
+	 * @return string Provider label.
+	 */
+	public static function get_provider_label( string $provider ): string {
+		return self::get_provider_labels()[ $provider ] ?? $provider;
+	}
+
+	/**
 	 * Detect ability provider (Core, Plugin, or Theme).
 	 *
 	 * @since 0.2.0
