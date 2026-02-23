@@ -151,6 +151,25 @@ export function openGalleryMediaLibraryWithImage(
 
 	const { id } = uploadedImage;
 
+	// Get existing gallery image IDs so we can pre-select them along with the new image.
+	const { getBlock } = select( blockEditorStore );
+	const galleryBlock = getBlock( clientId );
+	const existingIds = ( galleryBlock?.innerBlocks ?? [] )
+		.map(
+			( block: { attributes?: { id?: number } } ) => block.attributes?.id
+		)
+		.filter(
+			( n: number | undefined ): n is number => typeof n === 'number'
+		);
+
+	// Close any open block toolbar dropdown by clearing selection. The toolbar
+	// (and its dropdown) only shows when a block is selected.
+	(
+		dispatch( blockEditorStore ) as unknown as {
+			clearSelectedBlock: () => void;
+		}
+	 ).clearSelectedBlock();
+
 	// Use frame: 'post' + state: 'gallery' to get the "Create gallery" UI with:
 	// - Additive multi-select (click to add, no Shift required)
 	// - Media Library tab (not Upload)
@@ -212,10 +231,18 @@ export function openGalleryMediaLibraryWithImage(
 			add: ( model: unknown ) => void;
 			reset: () => void;
 		};
-		const attachment = wpMedia.attachment( id );
-		attachment.fetch().then( () => {
+		// Pre-select: existing gallery images first, then the new generated image.
+		const idsToSelect = [ ...existingIds, id ];
+		Promise.all(
+			idsToSelect.map( ( attId ) =>
+				wpMedia
+					.attachment( attId )
+					.fetch()
+					.then( () => wpMedia.attachment( attId ) )
+			)
+		).then( ( attachments ) => {
 			selection.reset();
-			selection.add( attachment ? [ attachment ] : [] );
+			selection.add( attachments.filter( Boolean ) );
 		} );
 	} );
 
