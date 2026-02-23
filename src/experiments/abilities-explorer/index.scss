@@ -62,9 +62,11 @@
 
 /* Provider Badges - Using WordPress notice colors */
 .ability-provider {
-	display: inline-block;
-	padding: 4px 8px;
-	border-radius: 3px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px 8px;
+	border-radius: 2px;
 	font-size: 12px;
 	font-weight: 500;
 }

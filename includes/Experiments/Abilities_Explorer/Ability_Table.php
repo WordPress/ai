@@ -197,7 +197,7 @@ class Ability_Table extends \WP_List_Table {
 		return sprintf(
 			'<span class="%s">%s</span>',
 			esc_attr( $class ),
-			esc_html( $provider )
+			esc_html( Ability_Handler::get_provider_label( $provider ) )
 		);
 	}
 
