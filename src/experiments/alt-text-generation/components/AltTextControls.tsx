@@ -136,17 +136,6 @@ export function AltTextControls( {
 					{ __( 'AI Alternative Text', 'ai' ) }
 				</h3>
 
-				{ /* Error display */ }
-				{ error && (
-					<Notice
-						status="error"
-						isDismissible
-						onRemove={ () => setError( null ) }
-					>
-						<div style={ { marginBottom: '12px' } }>{ error }</div>
-					</Notice>
-				) }
-
 				{ /* Generated alt text preview */ }
 				{ hasGeneratedAlt && (
 					<div style={ { marginBottom: '12px' } }>
