@@ -335,7 +335,10 @@ class Admin_Page {
 			<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
 				<div class="ability-test-schema">
 					<h3><?php esc_html_e( 'Input Schema Reference', 'ai' ); ?></h3>
-					<pre><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<div class="ability-schema-wrapper">
+						<button type="button" class="button button-small ability-copy-btn" data-copy="test-input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+						<pre class="ability-schema-display" id="test-input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					</div>
 				</div>
 			<?php endif; ?>
 		</div>
