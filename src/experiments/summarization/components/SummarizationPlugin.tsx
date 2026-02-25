@@ -51,6 +51,7 @@ export default function SummarizationPlugin() {
 			>
 				<FlexItem>
 					<Button
+						className="ai-summarization-plugin-button"
 						variant="secondary"
 						label={ buttonLabel }
 						icon={ update }
@@ -58,7 +59,6 @@ export default function SummarizationPlugin() {
 						disabled={ isSummarizing }
 						isBusy={ isSummarizing }
 						__next40pxDefaultSize
-						style={ { width: '100%', justifyContent: 'center' } }
 					>
 						{ buttonLabel }
 					</Button>
