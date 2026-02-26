@@ -29,6 +29,14 @@ type ModalState = 'idle' | 'generating' | 'preview' | 'editing' | 'success';
 /**
  * Uploads an image to the media library locally to avoid relying on functions not
  * yet available in 'develop' until PR 235 merges.
+ *
+ * @param {GeneratedImageData} root0                    The generated image data containing the image and prompt.
+ * @param {Object}             root0.image              The generated image object.
+ * @param {string}             root0.prompt             The prompt used to generate the image.
+ * @param {Object}             [options]                Optional configuration for upload.
+ * @param {Function}           [options.onProgress]     Callback for progress messages.
+ * @param {boolean}            [options.altTextEnabled] Whether alt text generation is enabled.
+ * @return {Promise<UploadedImage>} The uploaded image data.
  */
 async function uploadImageLocal(
 	{ image, prompt }: GeneratedImageData,
@@ -242,10 +250,7 @@ export function GenerateImageStandalone() {
 					</div>
 					{ error && (
 						<div style={ { marginTop: '15px' } }>
-							<Notice
-								status="error"
-								isDismissible={ false }
-							>
+							<Notice status="error" isDismissible={ false }>
 								{ error }
 							</Notice>
 						</div>
@@ -281,10 +286,7 @@ export function GenerateImageStandalone() {
 					</div>
 					{ error && (
 						<div style={ { marginTop: '15px' } }>
-							<Notice
-								status="error"
-								isDismissible={ false }
-							>
+							<Notice status="error" isDismissible={ false }>
 								{ error }
 							</Notice>
 						</div>
@@ -344,10 +346,7 @@ export function GenerateImageStandalone() {
 					</div>
 					{ error && (
 						<div style={ { marginTop: '15px' } }>
-							<Notice
-								status="error"
-								isDismissible={ false }
-							>
+							<Notice status="error" isDismissible={ false }>
 								{ error }
 							</Notice>
 						</div>
@@ -410,10 +409,7 @@ export function GenerateImageStandalone() {
 					</div>
 					{ error && (
 						<div style={ { marginTop: '15px' } }>
-							<Notice
-								status="error"
-								isDismissible={ false }
-							>
+							<Notice status="error" isDismissible={ false }>
 								{ error }
 							</Notice>
 						</div>

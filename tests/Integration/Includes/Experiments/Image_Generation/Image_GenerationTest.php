@@ -7,11 +7,11 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Image_Generation;
 
+use WP_UnitTestCase;
+use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiments\Image_Generation\Image_Generation;
-use WP_UnitTestCase;
 
 /**
  * Image_Generation test case.
@@ -137,5 +137,80 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'integer', $meta['ai_generated']['type'], 'ai_generated meta type should be integer' );
 		$this->assertTrue( $meta['ai_generated']['show_in_rest'], 'ai_generated meta should be available in REST API' );
 	}
-}
 
+	/**
+	 * Test that register_admin_menu hooks are added.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_hooks_admin_menu() {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		$this->assertNotFalse( has_action( 'admin_menu', array( $experiment, 'register_admin_menu' ) ), 'admin_menu hook should be registered' );
+		$this->assertNotFalse( has_action( 'admin_footer-upload.php', array( $experiment, 'inject_generate_image_button' ) ), 'admin_footer-upload.php hook should be registered' );
+	}
+
+	/**
+	 * Test that render_admin_page outputs expected HTML.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_admin_page() {
+		$experiment = new Image_Generation();
+
+		ob_start();
+		$experiment->render_admin_page();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( '<div class="wrap">', $output, 'Output should contain wrap div' );
+		$this->assertStringContainsString( 'Generate Image by AI', $output, 'Output should contain page title' );
+		$this->assertStringContainsString( 'ai-image-generation-root', $output, 'Output should contain React root element' );
+	}
+
+	/**
+	 * Test that inject_generate_image_button outputs a script tag.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_inject_generate_image_button() {
+		$experiment = new Image_Generation();
+
+		ob_start();
+		$experiment->inject_generate_image_button();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( '<script type="text/javascript">', $output, 'Output should contain script tag' );
+		$this->assertStringContainsString( 'ai-generate-image-btn', $output, 'Output should contain button class name' );
+		$this->assertStringContainsString( 'page=ai-image-generation', $output, 'Output should contain link to admin page' );
+		$this->assertStringContainsString( 'stopImmediatePropagation', $output, 'Output should contain click handler that stops propagation' );
+	}
+
+	/**
+	 * Test that enqueue_assets does not load on irrelevant screens.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_skips_irrelevant_screens() {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		// Calling with an irrelevant hook suffix should not enqueue anything.
+		$experiment->enqueue_assets( 'options-general.php' );
+		$this->assertFalse( wp_script_is( 'wordpress-ai-image_generation', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
+	}
+
+	/**
+	 * Test that enqueue_assets loads on the media admin page.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_loads_on_media_page() {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		// The media page hook suffix should trigger asset loading.
+		$experiment->enqueue_assets( 'media_page_ai-image-generation' );
+		$this->assertTrue( wp_script_is( 'wordpress-ai-image_generation', 'enqueued' ), 'Script should be enqueued on media_page_ai-image-generation' );
+	}
+}
