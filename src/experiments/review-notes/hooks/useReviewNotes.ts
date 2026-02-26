@@ -298,6 +298,7 @@ async function createNote(
 			type: 'note',
 			status: 'hold',
 			parent: existingNoteId ?? 0,
+			meta: { ai_note: true },
 		},
 	} );
 
