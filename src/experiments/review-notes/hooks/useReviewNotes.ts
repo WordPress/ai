@@ -130,22 +130,32 @@ export function useReviewNotes(): {
 
 			setTotal( reviewableBlocks.length );
 
-			// Fetch existing notes for this post.
-			const existingNotes = await apiFetch< ExistingNote[] >( {
-				path: `/wp/v2/comments?type=note&status=hold&post=${ postId }&per_page=100`,
-				method: 'GET',
-			} ).catch( ( error ) => {
-				// eslint-disable-next-line no-console
-				console.warn(
-					'[AI Review Notes] Failed to fetch existing notes:',
-					error
-				);
-				return [] as ExistingNote[];
-			} );
+			// Fetch pending and resolved notes for this post in parallel.
+			// Pending (hold) notes are used as context to avoid repeating suggestions.
+			// Resolved (approve) note IDs are used to skip already-acknowledged blocks.
+			const [ pendingNotes, resolvedNoteIds ] = await Promise.all( [
+				apiFetch< ExistingNote[] >( {
+					path: `/wp/v2/comments?type=note&status=hold&post=${ postId }&per_page=100`,
+					method: 'GET',
+				} ).catch( ( error ) => {
+					// eslint-disable-next-line no-console
+					console.warn(
+						'[AI Review Notes] Failed to fetch pending notes:',
+						error
+					);
+					return [] as ExistingNote[];
+				} ),
+				apiFetch< ExistingNote[] >( {
+					path: `/wp/v2/comments?type=note&status=approve&post=${ postId }&per_page=100`,
+					method: 'GET',
+				} )
+					.then( ( notes ) => new Set( notes.map( ( n ) => n.id ) ) )
+					.catch( () => new Set< number >() ),
+			] );
 
-			// Build a lookup: noteId → note content text.
+			// Build a lookup: noteId → note content text (pending notes only).
 			const noteContentById = new Map< number, string >();
-			for ( const note of existingNotes ) {
+			for ( const note of pendingNotes ) {
 				noteContentById.set(
 					note.id,
 					stripHtml( note.content?.rendered ?? '' )
@@ -167,13 +177,21 @@ export function useReviewNotes(): {
 
 				await Promise.all(
 					batch.map( async ( block ) => {
-						const blockText = getBlockText( block );
-
 						// Look up any existing note thread on this block.
 						const existingNoteId =
 							block.attributes.metadata?.noteId ?? null;
 
-						// Collect existing note texts for this block's thread.
+						// Skip blocks whose note thread has been resolved.
+						if (
+							existingNoteId &&
+							resolvedNoteIds.has( existingNoteId )
+						) {
+							return;
+						}
+
+						const blockText = getBlockText( block );
+
+						// Collect pending note texts for this block's thread as context.
 						const existingNoteTexts: string[] = [];
 						if ( existingNoteId ) {
 							const rootText =
@@ -183,7 +201,7 @@ export function useReviewNotes(): {
 							}
 
 							// Also collect replies (notes with parent === existingNoteId).
-							for ( const note of existingNotes ) {
+							for ( const note of pendingNotes ) {
 								if ( note.parent === existingNoteId ) {
 									const replyText = noteContentById.get(
 										note.id
