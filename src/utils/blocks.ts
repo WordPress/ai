@@ -25,6 +25,11 @@ export interface BlockWithContent {
 	innerBlocks?: BlockWithContent[];
 }
 
+interface BlockWithClientId extends BlockWithContent {
+	clientId: string;
+	innerBlocks?: BlockWithClientId[];
+}
+
 /**
  * Extracts plain text content from a block's attributes.
  *
@@ -94,5 +99,49 @@ export function replaceBlockWithPlaceholder(
 		return content;
 	}
 
-	return content.replace( serializedBlock, placeholder );
+	// Resolve which duplicate instance this clientId corresponds to and only
+	// replace that occurrence in the serialized post content.
+	// eslint-disable-next-line dot-notation -- getBlocks from store index signature
+	const rootBlocks = select( blockEditorStore )[ 'getBlocks' ]();
+	const flatBlocks = flattenBlocks(
+		( rootBlocks ?? [] ) as BlockWithClientId[]
+	);
+
+	let targetOccurrence = 1;
+	let matchCount = 0;
+
+	for ( const flatBlock of flatBlocks ) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- block shape comes from editor store
+		const flatSerialized = serialize( flatBlock as any );
+		if ( flatSerialized !== serializedBlock ) {
+			continue;
+		}
+
+		matchCount += 1;
+		if ( flatBlock.clientId === clientId ) {
+			targetOccurrence = matchCount;
+			break;
+		}
+	}
+
+	let occurrence = 0;
+	let fromIndex = 0;
+
+	while ( true ) {
+		const index = content.indexOf( serializedBlock, fromIndex );
+		if ( index === -1 ) {
+			return content;
+		}
+
+		occurrence += 1;
+		if ( occurrence === targetOccurrence ) {
+			return (
+				content.slice( 0, index ) +
+				placeholder +
+				content.slice( index + serializedBlock.length )
+			);
+		}
+
+		fromIndex = index + serializedBlock.length;
+	}
 }

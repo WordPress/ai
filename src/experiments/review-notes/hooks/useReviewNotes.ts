@@ -40,6 +40,7 @@ const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 const MAX_BLOCKS = 25;
 const MIN_CONTENT_LENGTH = 20;
 const BATCH_SIZE = 4;
+const NOTES_PAGE_SIZE = 100;
 
 interface BlockAttributes {
 	content?: string;
@@ -80,6 +81,8 @@ interface ExistingNote {
 	content: { rendered: string };
 	[ key: string ]: unknown;
 }
+
+type NoteStatus = 'hold' | 'approve';
 
 /**
  * Hook for AI Review Notes functionality.
@@ -141,25 +144,13 @@ export function useReviewNotes(): {
 			// Fetch pending and resolved notes for this post in parallel.
 			// Pending (hold) notes are used as context to avoid repeating suggestions.
 			// Resolved (approve) note IDs are used to skip already-acknowledged blocks.
-			const [ pendingNotes, resolvedNoteIds ] = await Promise.all( [
-				apiFetch< ExistingNote[] >( {
-					path: `/wp/v2/comments?type=note&status=hold&post=${ postId }&per_page=100`,
-					method: 'GET',
-				} ).catch( ( error ) => {
-					// eslint-disable-next-line no-console
-					console.warn(
-						'[AI Review Notes] Failed to fetch pending notes:',
-						error
-					);
-					return [] as ExistingNote[];
-				} ),
-				apiFetch< ExistingNote[] >( {
-					path: `/wp/v2/comments?type=note&status=approve&post=${ postId }&per_page=100`,
-					method: 'GET',
-				} )
-					.then( ( notes ) => new Set( notes.map( ( n ) => n.id ) ) )
-					.catch( () => new Set< number >() ),
+			const [ pendingNotes, approvedNotes ] = await Promise.all( [
+				fetchAllNotesByStatus( postId, 'hold' ),
+				fetchAllNotesByStatus( postId, 'approve' ),
 			] );
+			const resolvedNoteIds = new Set(
+				approvedNotes.map( ( n ) => n.id )
+			);
 
 			// Build a lookup: noteId → note content text (pending notes only).
 			const noteContentById = new Map< number, string >();
@@ -278,6 +269,45 @@ export function useReviewNotes(): {
 	};
 
 	return { isReviewing, progress, total, lastRunCount, runReview };
+}
+
+/**
+ * Fetches all notes by status for a given post.
+ *
+ * @param postId The ID of the post to fetch notes for.
+ * @param status The status of the notes to fetch.
+ * @return An array of notes.
+ */
+async function fetchAllNotesByStatus(
+	postId: number,
+	status: NoteStatus
+): Promise< ExistingNote[] > {
+	const notes: ExistingNote[] = [];
+	let page = 1;
+
+	while ( true ) {
+		try {
+			const pageNotes = await apiFetch< ExistingNote[] >( {
+				path: `/wp/v2/comments?type=note&status=${ status }&post=${ postId }&per_page=${ NOTES_PAGE_SIZE }&page=${ page }`,
+				method: 'GET',
+			} );
+
+			notes.push( ...pageNotes );
+
+			if ( pageNotes.length < NOTES_PAGE_SIZE ) {
+				return notes;
+			}
+
+			page += 1;
+		} catch ( error ) {
+			// eslint-disable-next-line no-console
+			console.warn(
+				`[AI Review Notes] Failed to fetch ${ status } notes page ${ page }:`,
+				error
+			);
+			return notes;
+		}
+	}
 }
 
 /**
