@@ -292,7 +292,7 @@ class Review_Notes extends Abstract_Ability {
 	protected function generate_review(
 		string $block_type,
 		string $block_content,
-		string $context = '',
+		string $context,
 		array $existing_notes,
 		array $review_types
 	) {

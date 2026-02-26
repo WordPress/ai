@@ -114,6 +114,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'block_type', $schema['properties'], 'Schema should have block_type property' );
 		$this->assertArrayHasKey( 'block_content', $schema['properties'], 'Schema should have block_content property' );
 		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
+		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
 		$this->assertArrayHasKey( 'existing_notes', $schema['properties'], 'Schema should have existing_notes property' );
 		$this->assertArrayHasKey( 'review_types', $schema['properties'], 'Schema should have review_types property' );
 		$this->assertContains( 'block_type', $schema['required'], 'block_type should be required' );
@@ -459,7 +460,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 
 		$post_id = $this->factory->post->create( array( 'post_status' => 'publish' ) );
 
-		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
 
 		$this->assertTrue( $result, 'Permission should be granted for editor with a valid post' );
 	}
@@ -477,7 +478,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'context' => '999999' ) );
+		$result = $method->invoke( $this->ability, array( 'post_id' => 999999 ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error for missing post' );
 		$this->assertEquals( 'post_not_found', $result->get_error_code() );
@@ -498,7 +499,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error when user cannot edit the post' );
 		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code() );
@@ -527,36 +528,11 @@ class Review_NotesTest extends WP_UnitTestCase {
 
 		$post_id = $this->factory->post->create( array( 'post_type' => 'ai_test_private' ) );
 
-		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
 
 		unregister_post_type( 'ai_test_private' );
 
 		$this->assertFalse( $result, 'Permission should be false for post types not shown in REST' );
-	}
-
-	// -------------------------------------------------------------------------
-	// execute_callback() — numeric context (post ID) path
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Tests that execute_callback() returns WP_Error when the context post does not exist.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_execute_callback_returns_error_when_context_post_not_found() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'execute_callback' );
-		$method->setAccessible( true );
-
-		$input  = array(
-			'block_type'    => 'core/paragraph',
-			'block_content' => 'Some reviewable content here.',
-			'context'       => '999999',
-		);
-		$result = $method->invoke( $this->ability, $input );
-
-		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error for missing context post' );
-		$this->assertEquals( 'post_not_found', $result->get_error_code() );
 	}
 
 	// -------------------------------------------------------------------------
