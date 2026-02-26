@@ -15,7 +15,9 @@ import { store as noticesStore } from '@wordpress/notices';
 /**
  * Internal dependencies
  */
+import { flattenBlocks, getBlockText } from '../../../utils/blocks';
 import { runAbility } from '../../../utils/run-ability';
+import { stripHtml } from '../../../utils/text';
 
 const REVIEWABLE_BLOCK_TYPES = [
 	'core/paragraph',
@@ -72,68 +74,6 @@ interface ExistingNote {
 	parent: number;
 	content: { rendered: string };
 	[ key: string ]: unknown;
-}
-
-/**
- * Strips HTML tags and decodes basic HTML entities from a string.
- *
- * @param html The HTML string to strip.
- * @return The plain text content.
- */
-function stripHtml( html: string ): string {
-	return html
-		.replace( /<[^>]+>/g, ' ' )
-		.replace( /&amp;/g, '&' )
-		.replace( /&lt;/g, '<' )
-		.replace( /&gt;/g, '>' )
-		.replace( /&quot;/g, '"' )
-		.replace( /&#039;/g, "'" )
-		.replace( /&nbsp;/g, ' ' )
-		.replace( /\s+/g, ' ' )
-		.trim();
-}
-
-/**
- * Extracts plain text content from a block's attributes.
- *
- * @param block The block to extract text from.
- * @return The plain text content of the block.
- */
-function getBlockText( block: Block ): string {
-	const attrs = block.attributes;
-
-	switch ( block.name ) {
-		case 'core/image':
-			return [ attrs.alt ?? '', attrs.caption ?? '' ]
-				.filter( Boolean )
-				.join( ' ' );
-
-		case 'core/table':
-			// Tables don't have a simple text field; return empty to trigger
-			// the general HTML content path.
-			return '';
-
-		default:
-			// Most text blocks use `content` or `value`.
-			const html = ( attrs.content ?? attrs.value ?? '' ) as string;
-			return stripHtml( html );
-	}
-}
-
-/**
- * Recursively flattens a block tree into a flat array.
- *
- * @param blocks The top-level blocks array.
- * @return A flat array of all blocks including inner blocks.
- */
-function flattenBlocks( blocks: Block[] ): Block[] {
-	return blocks.reduce< Block[] >( ( acc, block ) => {
-		acc.push( block );
-		if ( block.innerBlocks?.length ) {
-			acc.push( ...flattenBlocks( block.innerBlocks ) );
-		}
-		return acc;
-	}, [] );
 }
 
 /**
