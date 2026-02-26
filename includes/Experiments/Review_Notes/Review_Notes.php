@@ -9,7 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Review_Notes;
 
-use WordPress\AI\Abilities\Review_Notes\Review_Notes_Ability;
+use WordPress\AI\Abilities\Review_Notes\Review_Notes as Review_Notes_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
 
