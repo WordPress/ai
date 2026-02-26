@@ -350,7 +350,7 @@ class Review_Notes extends Abstract_Ability {
 
 		$raw = AI_Client::prompt_with_wp_error( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.3 )
+			->using_temperature( 0.7 )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->suggestions_schema() )
 			->generate_text();
@@ -369,6 +369,8 @@ class Review_Notes extends Abstract_Ability {
 			return array();
 		}
 
+		$existing_types = $this->get_existing_review_types_from_notes( $existing_notes );
+
 		$suggestions = array();
 		foreach ( $decoded['suggestions'] as $item ) {
 			if (
@@ -381,12 +383,46 @@ class Review_Notes extends Abstract_Ability {
 				continue;
 			}
 
+			$review_type = sanitize_text_field( $item['review_type'] );
+			$text        = sanitize_text_field( $item['text'] );
+
+			// Skip if we already have a suggestion for this review type in existing notes.
+			if ( isset( $existing_types[ strtolower( $review_type ) ] ) ) {
+				continue;
+			}
+
 			$suggestions[] = array(
-				'review_type' => sanitize_text_field( $item['review_type'] ),
-				'text'        => sanitize_text_field( $item['text'] ),
+				'review_type' => $review_type,
+				'text'        => $text,
 			);
 		}
 
 		return $suggestions;
+	}
+
+	/**
+	 * Extracts review types already present in existing note texts.
+	 *
+	 * Notes use format [REVIEW_TYPE] text. Returns lowercase keys for case-insensitive comparison.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $existing_notes Note content strings.
+	 * @return array<string, true> Map of existing review types (lowercase) to true.
+	 */
+	private function get_existing_review_types_from_notes( array $existing_notes ): array {
+		$types = array();
+
+		foreach ( $existing_notes as $note ) {
+			if ( ! preg_match_all( '/\[([^\]]+)\]/', (string) $note, $matches ) ) {
+				continue;
+			}
+
+			foreach ( $matches[1] as $type ) {
+				$types[ strtolower( trim( $type ) ) ] = true;
+			}
+		}
+
+		return $types;
 	}
 }
