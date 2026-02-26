@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f1549bf549bb14740b6f48f85e03ee0a",
+    "content-hash": "876cda4099000c44b202a29ced69c7ac",
     "packages": [
         {
             "name": "automattic/jetpack-autoloader",
@@ -929,23 +929,24 @@
         },
         {
             "name": "wordpress/wp-ai-client",
-            "version": "dev-add/7-0-transition",
+            "version": "0.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/wp-ai-client.git",
-                "reference": "79559d4720c098ca5c6950f3106044ed9b3b88c5"
+                "reference": "ae559d9c6449f59b7d9a215be310655e131361f6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/79559d4720c098ca5c6950f3106044ed9b3b88c5",
-                "reference": "79559d4720c098ca5c6950f3106044ed9b3b88c5",
+                "url": "https://api.github.com/repos/WordPress/wp-ai-client/zipball/ae559d9c6449f59b7d9a215be310655e131361f6",
+                "reference": "ae559d9c6449f59b7d9a215be310655e131361f6",
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
+                "nyholm/psr7": "^1.5",
                 "php": ">=7.4",
                 "psr/simple-cache": "^1.0",
-                "wordpress/php-ai-client": "^1.1"
+                "wordpress/php-ai-client": "^1.0"
             },
             "require-dev": {
                 "automattic/vipwpcs": "^3.0",
@@ -987,7 +988,7 @@
                 "issues": "https://github.com/WordPress/wp-ai-client/issues",
                 "source": "https://github.com/WordPress/wp-ai-client"
             },
-            "time": "2026-02-26T20:19:19+00:00"
+            "time": "2026-02-17T02:53:42+00:00"
         }
     ],
     "packages-dev": [
@@ -4083,9 +4084,7 @@
     ],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {
-        "wordpress/wp-ai-client": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

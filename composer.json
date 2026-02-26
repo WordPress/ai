@@ -11,7 +11,7 @@
     "wordpress/ai-provider-for-anthropic": "^1.0",
     "wordpress/ai-provider-for-openai": "^1.0",
     "wordpress/mcp-adapter": "^0.3.0",
-    "wordpress/wp-ai-client": "dev-add/7-0-transition"
+    "wordpress/wp-ai-client": "^0.3.0"
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",
