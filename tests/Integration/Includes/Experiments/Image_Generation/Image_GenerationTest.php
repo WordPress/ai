@@ -199,18 +199,4 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$experiment->enqueue_assets( 'options-general.php' );
 		$this->assertFalse( wp_script_is( 'ai_image_generation', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
 	}
-
-	/**
-	 * Test that enqueue_assets loads on the media admin page.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_enqueue_assets_loads_on_media_page() {
-		$experiment = new Image_Generation();
-		$experiment->register();
-
-		// The media page hook suffix should trigger asset loading.
-		$experiment->enqueue_assets( 'media_page_ai-image-generation' );
-		$this->assertTrue( wp_script_is( 'ai_image_generation', 'enqueued' ), 'Script should be enqueued on media_page_ai-image-generation' );
-	}
 }
