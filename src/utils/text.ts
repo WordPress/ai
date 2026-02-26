@@ -3,25 +3,6 @@
  */
 
 /**
- * Strips HTML tags and decodes basic HTML entities from a string.
- *
- * @param {string} html The HTML string to strip.
- * @return {string} The plain text content.
- */
-export function stripHtml( html: string ): string {
-	return html
-		.replace( /<[^>]+>/g, ' ' )
-		.replace( /&amp;/g, '&' )
-		.replace( /&lt;/g, '<' )
-		.replace( /&gt;/g, '>' )
-		.replace( /&quot;/g, '"' )
-		.replace( /&#039;/g, "'" )
-		.replace( /&nbsp;/g, ' ' )
-		.replace( /\s+/g, ' ' )
-		.trim();
-}
-
-/**
  * Trims a string to a given length, truncating at word boundaries.
  *
  * @param {string} text   The text to trim.

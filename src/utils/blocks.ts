@@ -3,9 +3,12 @@
  */
 
 /**
- * Internal dependencies
+ * WordPress dependencies
  */
-import { stripHtml } from './text';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+import { select } from '@wordpress/data';
+/* eslint-disable import/no-extraneous-dependencies -- @wordpress/blocks is in dependencies; types are in devDependencies */
+import { serialize } from '@wordpress/blocks';
 
 /**
  * Minimal block shape for text extraction and flattening.
@@ -44,8 +47,7 @@ export function getBlockText( block: BlockWithContent ): string {
 
 		default:
 			// Most text blocks use `content` or `value`.
-			const html = ( attrs.content ?? attrs.value ?? '' ) as string;
-			return stripHtml( html );
+			return ( attrs.content ?? attrs.value ?? '' ) as string;
 	}
 }
 
@@ -66,4 +68,31 @@ export function flattenBlocks< T extends BlockWithContent >(
 		}
 		return acc;
 	}, [] );
+}
+
+/**
+ * Replaces a block with a placeholder in the content.
+ *
+ * @param {string} content     The content to replace the block in.
+ * @param {string} clientId    The client ID of the block to replace.
+ * @param {string} placeholder The placeholder to replace the block with.
+ * @return {string} The content with the block replaced by the placeholder.
+ */
+export function replaceBlockWithPlaceholder(
+	content: string,
+	clientId: string,
+	placeholder: string
+): string {
+	// eslint-disable-next-line dot-notation -- getBlock from store index signature
+	const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
+	if ( ! block ) {
+		return content;
+	}
+
+	const serializedBlock = serialize( block );
+	if ( ! serializedBlock || ! content.includes( serializedBlock ) ) {
+		return content;
+	}
+
+	return content.replace( serializedBlock, placeholder );
 }
