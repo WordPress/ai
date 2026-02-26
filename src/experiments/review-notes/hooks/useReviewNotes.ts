@@ -132,9 +132,16 @@ export function useReviewNotes(): {
 
 			// Fetch existing notes for this post.
 			const existingNotes = await apiFetch< ExistingNote[] >( {
-				path: `/wp/v2/comments?type=note&post=${ postId }&per_page=100`,
+				path: `/wp/v2/comments?type=note&status=hold&post=${ postId }&per_page=100`,
 				method: 'GET',
-			} ).catch( () => [] as ExistingNote[] );
+			} ).catch( ( error ) => {
+				// eslint-disable-next-line no-console
+				console.warn(
+					'[AI Review Notes] Failed to fetch existing notes:',
+					error
+				);
+				return [] as ExistingNote[];
+			} );
 
 			// Build a lookup: noteId → note content text.
 			const noteContentById = new Map< number, string >();

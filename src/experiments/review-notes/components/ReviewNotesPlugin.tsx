@@ -58,12 +58,15 @@ export default function ReviewNotesPlugin() {
 						<span className="description">
 							{ lastRunCount === 0
 								? __( 'No new suggestions found.', 'ai' )
-								: /* translators: %d: number of suggestions added. */
-								  _n(
-										'%d suggestion added.',
-										'%d suggestions added.',
-										lastRunCount,
-										'ai'
+								: sprintf(
+										/* translators: %d: number of suggestions added. */
+										_n(
+											'%d suggestion added.',
+											'%d suggestions added.',
+											lastRunCount,
+											'ai'
+										),
+										lastRunCount
 								  ) }
 						</span>
 					</FlexItem>
