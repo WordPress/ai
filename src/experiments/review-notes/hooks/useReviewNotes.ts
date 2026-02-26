@@ -15,9 +15,12 @@ import { store as noticesStore } from '@wordpress/notices';
 /**
  * Internal dependencies
  */
-import { flattenBlocks, getBlockText } from '../../../utils/blocks';
+import {
+	flattenBlocks,
+	getBlockText,
+	replaceBlockWithPlaceholder,
+} from '../../../utils/blocks';
 import { runAbility } from '../../../utils/run-ability';
-import { stripHtml } from '../../../utils/text';
 
 const REVIEWABLE_BLOCK_TYPES = [
 	'core/paragraph',
@@ -31,6 +34,8 @@ const REVIEWABLE_BLOCK_TYPES = [
 	'core/preformatted',
 	'core/pullquote',
 ];
+
+const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 
 const MAX_BLOCKS = 25;
 const MIN_CONTENT_LENGTH = 20;
@@ -107,6 +112,9 @@ export function useReviewNotes(): {
 			const postId = (
 				select( editorStore ) as any
 			 ).getCurrentPostId() as number;
+			const content = (
+				select( editorStore ) as any
+			 ).getEditedPostContent() as string;
 
 			// Get all blocks and flatten the tree.
 			const allBlocks = (
@@ -156,10 +164,7 @@ export function useReviewNotes(): {
 			// Build a lookup: noteId → note content text (pending notes only).
 			const noteContentById = new Map< number, string >();
 			for ( const note of pendingNotes ) {
-				noteContentById.set(
-					note.id,
-					stripHtml( note.content?.rendered ?? '' )
-				);
+				noteContentById.set( note.id, note.content?.rendered ?? '' );
 			}
 
 			let totalSuggestions = 0;
@@ -213,20 +218,28 @@ export function useReviewNotes(): {
 							}
 						}
 
+						// Replace the block with the placeholder.
+						const contentWithPlaceholder =
+							block.clientId !== undefined
+								? replaceBlockWithPlaceholder(
+										content,
+										block.clientId,
+										BLOCK_PLACEHOLDER
+								  )
+								: content;
+
+						// Prepare the context.
+						const context = `What follows is the full article content, where the block being reviewed has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the surrounding text to better understand the context of the block within the article. CONTENT: \n\n${ contentWithPlaceholder }`;
+
 						// Call the review ability.
 						const result = await runAbility< ReviewResult >(
 							'ai/review-notes',
 							{
 								block_type: block.name,
 								block_content: blockText,
-								context: postId.toString(),
+								context,
+								post_id: postId,
 								existing_notes: existingNoteTexts,
-								review_types: [
-									'accessibility',
-									'readability',
-									'grammar',
-									'seo',
-								],
 							}
 						).catch( () => null );
 

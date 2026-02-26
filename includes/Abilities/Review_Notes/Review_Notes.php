@@ -13,7 +13,6 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
-use function WordPress\AI\get_post_context;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 
 // Exit if accessed directly.
@@ -65,7 +64,12 @@ class Review_Notes extends Abstract_Ability {
 				'context'        => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Additional context to use when reviewing the block content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists).', 'ai' ),
+					'description'       => esc_html__( 'Surrounding content to improve review relevance.', 'ai' ),
+				),
+				'post_id'        => array(
+					'type'              => 'integer',
+					'sanitize_callback' => 'absint',
+					'description'       => esc_html__( 'ID of the post being reviewed.', 'ai' ),
 				),
 				'existing_notes' => array(
 					'type'        => 'array',
@@ -133,7 +137,8 @@ class Review_Notes extends Abstract_Ability {
 			array(
 				'block_type'     => '',
 				'block_content'  => '',
-				'context'        => null,
+				'context'        => '',
+				'post_id'        => null,
 				'existing_notes' => array(),
 				'review_types'   => self::SUPPORTED_REVIEW_TYPES,
 			)
@@ -165,28 +170,7 @@ class Review_Notes extends Abstract_Ability {
 			)
 		);
 
-		// If a post ID is provided, get the context from that.
-		if ( is_numeric( $args['context'] ) ) {
-			$post = get_post( (int) $args['context'] );
-
-			if ( ! $post ) {
-				return new WP_Error(
-					'post_not_found',
-					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['context'] ) )
-				);
-			}
-
-			// Get the post context.
-			$context = get_post_context( $post->ID );
-			unset( $context['author'] );
-			unset( $context['content'] );
-			unset( $context['slug'] );
-		} else {
-			$context = $args['context'] ?? '';
-		}
-
-		$result = $this->generate_review( $block_type, $block_content, $context, $existing_notes, $review_types );
+		$result = $this->generate_review( $block_type, $block_content, $args['context'], $existing_notes, $review_types );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -204,7 +188,7 @@ class Review_Notes extends Abstract_Ability {
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	protected function permission_callback( $input ) {
-		$post_id = isset( $input['context'] ) && is_numeric( $input['context'] ) ? absint( $input['context'] ) : null;
+		$post_id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : null;
 
 		if ( $post_id ) {
 			$post = get_post( $post_id );
@@ -298,17 +282,17 @@ class Review_Notes extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string                      $block_type     The block type identifier.
-	 * @param string                      $block_content  The plain-text block content.
-	 * @param string|array<string, mixed> $context        Additional context to use.
-	 * @param list<string>                $existing_notes Prior note texts to avoid repeating.
-	 * @param list<string>                $review_types   Review types to perform.
+	 * @param string $block_type The block type identifier.
+	 * @param string $block_content The plain-text block content.
+	 * @param string $context Optional context to improve review relevance.
+	 * @param list<string> $existing_notes Prior note texts to avoid repeating.
+	 * @param list<string> $review_types Review types to perform.
 	 * @return list<array{review_type: string, text: string}>|\WP_Error Suggestions array or WP_Error.
 	 */
 	protected function generate_review(
 		string $block_type,
 		string $block_content,
-		$context,
+		string $context = '',
 		array $existing_notes,
 		array $review_types
 	) {
@@ -317,24 +301,6 @@ class Review_Notes extends Abstract_Ability {
 
 		$prompt_parts[] = '<block-type>' . $block_type . '</block-type>';
 		$prompt_parts[] = '<block-content>' . $block_content . '</block-content>';
-
-		// Convert the context to a string if it's an array.
-		if ( is_array( $context ) ) {
-			$context = implode(
-				"\n",
-				array_map(
-					static function ( $key, $value ) {
-						return sprintf(
-							'%s: %s',
-							ucwords( str_replace( '_', ' ', $key ) ),
-							$value
-						);
-					},
-					array_keys( $context ),
-					$context
-				)
-			);
-		}
 
 		if ( $context ) {
 			$prompt_parts[] = '<additional-context>' . $context . '</additional-context>';
