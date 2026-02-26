@@ -7,11 +7,11 @@
     "automattic/jetpack-autoloader": "^5.0",
     "ext-json": "*",
     "php": ">=7.4",
-    "wordpress/anthropic-ai-provider": "^1.0",
-    "wordpress/google-ai-provider": "^1.0",
-    "wordpress/openai-ai-provider": "^1.0",
+    "wordpress/ai-provider-for-google": "^1.0",
+    "wordpress/ai-provider-for-anthropic": "^1.0",
+    "wordpress/ai-provider-for-openai": "^1.0",
     "wordpress/mcp-adapter": "^0.3.0",
-    "wordpress/wp-ai-client": "^0.3.0"
+    "wordpress/wp-ai-client": "dev-add/7-0-transition"
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",
