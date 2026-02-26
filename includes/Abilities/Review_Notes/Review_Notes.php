@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
+use function WordPress\AI\normalize_content;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -144,10 +145,7 @@ class Review_Notes extends Abstract_Ability {
 			)
 		);
 
-		$block_type    = sanitize_text_field( $args['block_type'] );
-		$block_content = sanitize_text_field( $args['block_content'] );
-
-		if ( empty( $block_content ) ) {
+		if ( empty( $args['block_content'] ) ) {
 			return new WP_Error(
 				'block_content_required',
 				esc_html__( 'Block content is required to perform a review.', 'ai' )
@@ -170,7 +168,7 @@ class Review_Notes extends Abstract_Ability {
 			)
 		);
 
-		$result = $this->generate_review( $block_type, $block_content, $args['context'], $existing_notes, $review_types );
+		$result = $this->generate_review( $args['block_type'], $args['block_content'], $args['context'], $existing_notes, $review_types );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -299,17 +297,17 @@ class Review_Notes extends Abstract_Ability {
 		// Build the prompt.
 		$prompt_parts = array();
 
-		$prompt_parts[] = '<block-type>' . $block_type . '</block-type>';
-		$prompt_parts[] = '<block-content>' . $block_content . '</block-content>';
+		$prompt_parts[] = '<block-type>' . sanitize_text_field( $block_type ) . '</block-type>';
+		$prompt_parts[] = '<block-content>' . normalize_content( $block_content ) . '</block-content>';
 
 		if ( $context ) {
-			$prompt_parts[] = '<additional-context>' . $context . '</additional-context>';
+			$prompt_parts[] = '<additional-context>' . normalize_content( $context ) . '</additional-context>';
 		}
 
 		$prompt_parts[] = '<review-types>' . implode( ', ', $review_types ) . '</review-types>';
 
 		if ( ! empty( $existing_notes ) ) {
-			$prompt_parts[] = '<existing-notes>' . implode( "\n\n", $existing_notes ) . '</existing-notes>';
+			$prompt_parts[] = '<existing-notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $existing_notes ) ) . '</existing-notes>';
 		}
 
 		$prompt = implode( "\n", $prompt_parts );

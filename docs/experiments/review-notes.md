@@ -40,8 +40,6 @@ The experiment consists of:
 
 - `wp_abilities_api_init` → registers the `ai/review-notes` ability
 - `enqueue_block_editor_assets` → enqueues the React bundle whenever the block editor loads
-- `deleted_comment` → `clear_block_note_meta()` — removes `metadata.noteId` from the associated block when a root note is permanently deleted
-- `trashed_comment` → `clear_block_note_meta()` — same cleanup when a root note is trashed
 - `rest_pre_insert_comment` (filter) → `maybe_set_ai_author()` — overrides the comment author to "AI Reviewer" when `meta.ai_note` is `true`, so AI-generated notes are not attributed to the authenticated user's account
 
 ### Assets & Data Flow
@@ -104,8 +102,14 @@ array(
         'description'       => 'The plain-text content of the block to review.',
     ),
     'context'        => array(
-        'type'        => 'string',
-        'description' => 'Additional context. Pass a post ID (as a string) to use that post\'s title, excerpt, categories, and tags as context. Pass any other string for free-form context.',
+        'type'              => 'string',
+        'sanitize_callback' => 'sanitize_text_field',
+        'description'       => 'Surrounding content to improve review relevance.',
+    ),
+    'post_id'        => array(
+        'type'              => 'integer',
+        'sanitize_callback' => 'absint',
+        'description' => 'ID of the post being reviewed.',
     ),
     'existing_notes' => array(
         'type'        => 'array',
@@ -144,8 +148,8 @@ array(
 
 The ability's `permission_callback` has two paths:
 
-- **With a numeric `context` (post ID):** Validates that the post exists, the current user has `edit_post` capability for that specific post, and the post type is registered with `show_in_rest => true`. Returns `false` if the post type is not REST-accessible.
-- **Without a post ID context:** Requires `current_user_can( 'edit_posts' )`.
+- **With a numeric `post_id` (post ID):** Validates that the post exists, the current user has `edit_post` capability for that specific post, and the post type is registered with `show_in_rest => true`. Returns `false` if the post type is not REST-accessible.
+- **Without a post ID:** Requires `current_user_can( 'edit_posts' )`.
 
 In both cases, users without the required capability receive an `insufficient_capabilities` WP_Error.
 
@@ -156,7 +160,6 @@ Notes are `WP_Comment` objects with `comment_type = 'note'` and `status = 'hold'
 - **New thread**: `POST /wp/v2/comments` with `parent: 0` → response `id` stored in `block.attributes.metadata.noteId` via `updateBlockAttributes`
 - **Reply**: `POST /wp/v2/comments` with `parent: existingNoteId` → block metadata unchanged (association already set)
 - **AI author**: All notes created by this experiment include `meta: { ai_note: true }`. The `rest_pre_insert_comment` filter intercepts this and sets the author to "AI Reviewer" with no email, URL, or user ID, so notes are not attributed to the authenticated user's account.
-- **Cleanup on deletion**: When a root note is permanently deleted or trashed, the `deleted_comment` / `trashed_comment` hooks parse the post's block content, remove `metadata.noteId` from the matching block, and save the updated post content.
 - **Resolved notes**: Notes with `status = 'approve'` (resolved) cause their associated block to be skipped entirely on the next review run.
 
 ## Using the Ability via REST API
@@ -185,7 +188,7 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/review-n
       "block_content": "The committee was formed by the director in order to study the problem and make recommendations.",
       "review_types": ["readability", "grammar"],
       "existing_notes": [],
-      "context": "42"
+      "post_id": 42
     }
   }'
 ```
@@ -261,7 +264,7 @@ async function reviewBlock( blockType, blockContent, existingNotes = [] ) {
 | Code | Meaning |
 |---|---|
 | `block_content_required` | `block_content` was empty |
-| `post_not_found` | The post ID passed as `context` does not exist |
+| `post_not_found` | The post ID passed does not exist |
 | `insufficient_capabilities` | User lacks `edit_posts` (or `edit_post` for the specific post) |
 
 ## Extending the Experiment
@@ -362,14 +365,12 @@ Covers:
 - Empty content validation
 - Mock-based suggestion return and structure
 - Content sanitization
-- Permission callbacks: no-context path (editor, subscriber, logged-out), and post-specific path (valid post, missing post, insufficient edit_post, non-REST post type)
-- `execute_callback` with missing context post → WP_Error
+- Permission callbacks: no post ID path (editor, subscriber, logged-out), and post-specific path (valid post, missing post, insufficient edit_post, non-REST post type)
+- `execute_callback` with missing post ID → WP_Error
 - `get_existing_review_types_from_notes()`: type extraction, case normalisation, multiple types per note, notes without brackets
-- Experiment hook registration (deleted_comment, trashed_comment, rest_pre_insert_comment)
+- Experiment hook registration (rest_pre_insert_comment)
 - `ai_note` comment meta registered with `show_in_rest`
 - `maybe_set_ai_author()`: overrides author when `ai_note` is true, passes through otherwise, handles WP_Error
-- `clear_block_note_meta()`: removes noteId on deletion, ignores non-note types, ignores replies, handles missing post
-- `clear_note_id_from_blocks()`: top-level match, empty metadata cleanup, inner block recursion, no-match case
 
 **Playwright E2E tests:**
 
@@ -395,7 +396,7 @@ Covers:
 
 - WordPress 6.9+ (Notes feature required for block-level comment association)
 - Valid AI credentials configured in `Settings → AI Client`
-- User must have `edit_posts` capability (or `edit_post` for the specific post when a post ID context is provided)
+- User must have `edit_posts` capability (or `edit_post` for the specific post when a post ID is provided)
 - The block editor must be active (classic editor is not supported)
 
 ### Performance
@@ -415,7 +416,6 @@ Covers:
 
 ### Limitations
 
-- The experiment reviews blocks independently without cross-block context (e.g., it cannot detect heading hierarchy issues that span multiple heading blocks)
 - Image block review is limited to alt text presence; it does not analyze the image itself
 - Block metadata (`noteId`) is only persisted after the post is saved
 - The 25-block cap means very long posts will have only the first 25 reviewable blocks analyzed per run
@@ -433,4 +433,3 @@ Covers:
 - **PHPUnit Tests (Experiment):** `tests/Integration/Includes/Experiments/Review_Notes/Review_NotesTest.php`
 - **E2E Tests:** `tests/e2e/review-notes.spec.ts`
 - **Mock Fixtures:** `tests/e2e-request-mocking/responses/OpenAI/review-notes-suggestions.json`
-- **Mock Fixtures (empty):** `tests/e2e-request-mocking/responses/OpenAI/review-notes-empty.json`

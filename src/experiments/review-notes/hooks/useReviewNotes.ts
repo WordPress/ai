@@ -41,6 +41,9 @@ const MAX_BLOCKS = 25;
 const MIN_CONTENT_LENGTH = 20;
 const BATCH_SIZE = 4;
 const NOTES_PAGE_SIZE = 100;
+const CONTEXT_WINDOW_SIZE = 2000;
+const TRUNCATED_BEFORE_MARKER = '[TRUNCATED BEFORE]';
+const TRUNCATED_AFTER_MARKER = '[TRUNCATED AFTER]';
 
 interface BlockAttributes {
 	content?: string;
@@ -219,8 +222,12 @@ export function useReviewNotes(): {
 								  )
 								: content;
 
-						// Prepare the context.
-						const context = `What follows is the full article content, where the block being reviewed has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the surrounding text to better understand the context of the block within the article. CONTENT: \n\n${ contentWithPlaceholder }`;
+						// Prepare a bounded context around the placeholder.
+						const contextWindow = buildContextWindow(
+							contentWithPlaceholder,
+							BLOCK_PLACEHOLDER
+						);
+						const context = `What follows is surrounding article content, where the block being reviewed has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the nearby text to better understand the context of the block within the article. CONTENT: \n\n${ contextWindow }`;
 
 						// Call the review ability.
 						const result = await runAbility< ReviewResult >(
@@ -308,6 +315,55 @@ async function fetchAllNotesByStatus(
 			return notes;
 		}
 	}
+}
+
+/**
+ * Returns a bounded context window around a placeholder token.
+ *
+ * @param content     The full content with placeholder.
+ * @param placeholder The placeholder token.
+ * @return A truncated content window centered around the placeholder.
+ */
+function buildContextWindow( content: string, placeholder: string ): string {
+	const placeholderIndex = content.indexOf( placeholder );
+
+	if (
+		placeholderIndex === -1 ||
+		content.length <= CONTEXT_WINDOW_SIZE * 2
+	) {
+		return content;
+	}
+
+	const roughStart = Math.max( 0, placeholderIndex - CONTEXT_WINDOW_SIZE );
+	const roughEnd = Math.min(
+		content.length,
+		placeholderIndex + placeholder.length + CONTEXT_WINDOW_SIZE
+	);
+
+	const isBoundaryChar = ( char: string ) => /\s/.test( char );
+
+	// Move inward to the nearest word boundary so we don't cut mid-word.
+	let start = roughStart;
+	if ( start > 0 && ! isBoundaryChar( content.charAt( start - 1 ) ) ) {
+		while (
+			start < roughEnd &&
+			! isBoundaryChar( content.charAt( start ) )
+		) {
+			start += 1;
+		}
+	}
+
+	let end = roughEnd;
+	if ( end < content.length && ! isBoundaryChar( content.charAt( end ) ) ) {
+		while ( end > start && ! isBoundaryChar( content.charAt( end - 1 ) ) ) {
+			end -= 1;
+		}
+	}
+
+	const prefix = start > 0 ? `${ TRUNCATED_BEFORE_MARKER }\n` : '';
+	const suffix = end < content.length ? `\n${ TRUNCATED_AFTER_MARKER }` : '';
+
+	return `${ prefix }${ content.slice( start, end ) }${ suffix }`;
 }
 
 /**
