@@ -197,7 +197,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		// Calling with an irrelevant hook suffix should not enqueue anything.
 		$experiment->enqueue_assets( 'options-general.php' );
-		$this->assertFalse( wp_script_is( 'wordpress-ai-image_generation', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
+		$this->assertFalse( wp_script_is( 'ai_image_generation', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
 	}
 
 	/**
@@ -211,6 +211,6 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		// The media page hook suffix should trigger asset loading.
 		$experiment->enqueue_assets( 'media_page_ai-image-generation' );
-		$this->assertTrue( wp_script_is( 'wordpress-ai-image_generation', 'enqueued' ), 'Script should be enqueued on media_page_ai-image-generation' );
+		$this->assertTrue( wp_script_is( 'ai_image_generation', 'enqueued' ), 'Script should be enqueued on media_page_ai-image-generation' );
 	}
 }
