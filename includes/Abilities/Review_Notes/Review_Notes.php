@@ -294,23 +294,7 @@ class Review_Notes extends Abstract_Ability {
 		array $existing_notes,
 		array $review_types
 	) {
-		// Build the prompt.
-		$prompt_parts = array();
-
-		$prompt_parts[] = '<block-type>' . sanitize_text_field( $block_type ) . '</block-type>';
-		$prompt_parts[] = '<block-content>' . normalize_content( $block_content ) . '</block-content>';
-
-		if ( $context ) {
-			$prompt_parts[] = '<additional-context>' . normalize_content( $context ) . '</additional-context>';
-		}
-
-		$prompt_parts[] = '<review-types>' . implode( ', ', $review_types ) . '</review-types>';
-
-		if ( ! empty( $existing_notes ) ) {
-			$prompt_parts[] = '<existing-notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $existing_notes ) ) . '</existing-notes>';
-		}
-
-		$prompt = implode( "\n", $prompt_parts );
+		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
 		$raw = AI_Client::prompt_with_wp_error( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
@@ -362,6 +346,38 @@ class Review_Notes extends Abstract_Ability {
 		}
 
 		return $suggestions;
+	}
+
+	/**
+	 * Creates the prompt for the review.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $block_type The block type identifier.
+	 * @param string $block_content The plain-text block content.
+	 * @param string $context Optional context to improve review relevance.
+	 * @param list<string> $existing_notes Prior note texts to avoid repeating.
+	 * @param list<string> $review_types Review types to perform.
+	 * @return string The generated prompt.
+	 */
+	private function create_prompt( string $block_type, string $block_content, string $context, array $existing_notes, array $review_types ): string {
+		// Build the prompt.
+		$prompt_parts = array();
+
+		$prompt_parts[] = '<block-type>' . sanitize_text_field( $block_type ) . '</block-type>';
+		$prompt_parts[] = '<block-content>' . normalize_content( $block_content ) . '</block-content>';
+
+		if ( $context ) {
+			$prompt_parts[] = '<additional-context>' . normalize_content( $context ) . '</additional-context>';
+		}
+
+		$prompt_parts[] = '<review-types>' . implode( ', ', $review_types ) . '</review-types>';
+
+		if ( ! empty( $existing_notes ) ) {
+			$prompt_parts[] = '<existing-notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $existing_notes ) ) . '</existing-notes>';
+		}
+
+		return implode( "\n", $prompt_parts );
 	}
 
 	/**

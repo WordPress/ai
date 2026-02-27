@@ -286,46 +286,27 @@ class Review_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that execute_callback() sanitizes the block_content input.
+	 * Tests that create_prompt() sanitizes the block_content input.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_execute_callback_sanitizes_block_content() {
-		$mock = $this->getMockBuilder( Review_Notes::class )
-			->setConstructorArgs(
-				array(
-					'ai/review-notes',
-					array(
-						'label'       => 'AI Review Notes',
-						'description' => 'Test',
-					),
-				)
-			)
-			->onlyMethods( array( 'generate_review' ) )
-			->getMock();
-
-		$box          = new \stdClass();
-		$box->content = null;
-		$mock->method( 'generate_review' )->willReturnCallback(
-			static function ( $block_type, $block_content ) use ( $box ) {
-				$box->content = $block_content;
-				return array();
-			}
-		);
-
-		$reflection = new \ReflectionClass( $mock );
-		$method     = $reflection->getMethod( 'execute_callback' );
+	public function test_create_prompt_sanitizes_block_content() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'create_prompt' );
 		$method->setAccessible( true );
 
-		$input = array(
-			'block_type'    => 'core/paragraph',
-			'block_content' => '<script>alert("xss")</script>This is legitimate content.',
+		$prompt = $method->invoke(
+			$this->ability,
+			'core/paragraph',
+			'<script>alert("xss")</script>This is legitimate content.',
+			'',
+			array(),
+			array( 'readability' )
 		);
-		$method->invoke( $mock, $input );
 
-		// The content should have been sanitized (HTML stripped via sanitize_text_field).
-		$this->assertNotNull( $box->content, 'generate_review should have been called' );
-		$this->assertStringNotContainsString( '<script>', $box->content, 'Script tags should be removed' );
+		$this->assertIsString( $prompt, 'Prompt should be a string' );
+		$this->assertStringContainsString( '<block-content>', $prompt, 'Prompt should contain the block-content section' );
+		$this->assertStringNotContainsString( '<script>', $prompt, 'Script tags should be removed from prompt content' );
 	}
 
 	/**
