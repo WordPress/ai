@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * AI Review Notes WordPress Ability.
  *
  * Reviews a single block's content and returns suggestions for the specified
- * review types (Accessibility, Readability, Grammar, SEO, Spellcheck, etc.).
+ * review types (Accessibility, Readability, Grammar, SEO, etc.).
  *
  * @since x.x.x
  */
@@ -39,7 +39,7 @@ class Review_Notes extends Abstract_Ability {
 	 * @var list<string>
 	 */
 	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition
-	protected const SUPPORTED_REVIEW_TYPES = array( 'accessibility', 'readability', 'grammar', 'seo', 'spellcheck' );
+	protected const SUPPORTED_REVIEW_TYPES = array( 'accessibility', 'readability', 'grammar', 'seo' );
 
 	/**
 	 * {@inheritDoc}

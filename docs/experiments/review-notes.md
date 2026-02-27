@@ -118,7 +118,7 @@ array(
     ),
     'review_types'   => array(
         'type'        => 'array',
-        'items'       => array( 'type' => 'string', 'enum' => array( 'accessibility', 'readability', 'grammar', 'seo', 'spellcheck' ) ),
+        'items'       => array( 'type' => 'string', 'enum' => array( 'accessibility', 'readability', 'grammar', 'seo' ) ),
         'description' => 'Review types to perform.',
     ),
 )

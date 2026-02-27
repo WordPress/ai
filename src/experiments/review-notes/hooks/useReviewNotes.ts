@@ -25,9 +25,7 @@ import { runAbility } from '../../../utils/run-ability';
 const REVIEWABLE_BLOCK_TYPES = [
 	'core/paragraph',
 	'core/heading',
-	'core/list',
 	'core/list-item',
-	'core/quote',
 	'core/verse',
 	'core/image',
 	'core/table',
@@ -37,8 +35,6 @@ const REVIEWABLE_BLOCK_TYPES = [
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 
-const MAX_BLOCKS = 25;
-const MIN_CONTENT_LENGTH = 20;
 const BATCH_SIZE = 4;
 const NOTES_PAGE_SIZE = 100;
 const CONTEXT_WINDOW_SIZE = 2000;
@@ -128,14 +124,10 @@ export function useReviewNotes(): {
 			 ).getBlocks() as Block[];
 			const flatBlocks = flattenBlocks( allBlocks );
 
-			// Filter to reviewable block types with sufficient content.
-			const reviewableBlocks = flatBlocks
-				.filter(
-					( block ) =>
-						REVIEWABLE_BLOCK_TYPES.includes( block.name ) &&
-						getBlockText( block ).length >= MIN_CONTENT_LENGTH
-				)
-				.slice( 0, MAX_BLOCKS );
+			// Filter to reviewable block types.
+			const reviewableBlocks = flatBlocks.filter( ( block ) =>
+				REVIEWABLE_BLOCK_TYPES.includes( block.name )
+			);
 
 			if ( reviewableBlocks.length === 0 ) {
 				setLastRunCount( 0 );
@@ -189,6 +181,10 @@ export function useReviewNotes(): {
 						}
 
 						const blockText = getBlockText( block );
+
+						if ( blockText.length === 0 ) {
+							return;
+						}
 
 						// Collect pending note texts for this block's thread as context.
 						const existingNoteTexts: string[] = [];
