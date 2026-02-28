@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace WordPress\AI\Settings;
 
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Contracts\Experiment;
 use WordPress\AI\Experiment_Registry;
 
 use function WordPress\AI\has_ai_credentials;
@@ -158,6 +159,22 @@ class Settings_Page {
 			<form method="post" action="options.php" id="ai-experiments-form">
 				<?php
 				settings_fields( Settings_Registration::OPTION_GROUP );
+
+				$all_experiments = $this->registry->get_all_experiments();
+
+				$editor_experiments = array_filter(
+					$all_experiments,
+					static function ( $experiment ) {
+						return 'editor' === $experiment->get_category();
+					}
+				);
+
+				$admin_experiments = array_filter(
+					$all_experiments,
+					static function ( $experiment ) {
+						return 'admin' === $experiment->get_category();
+					}
+				);
 				?>
 
 				<div class="ai-experiments">
@@ -188,13 +205,13 @@ class Settings_Page {
 						</div>
 					</div>
 
-					<!-- Individual Experiments Section -->
-					<?php if ( ! empty( $this->registry->get_all_experiments() ) ) : ?>
-						<div class="ai-experiments__card" role="region" aria-labelledby="ai-experiments-list-heading">
+					<!-- Editor Experiments Section -->
+					<?php if ( ! empty( $editor_experiments ) ) : ?>
+						<div class="ai-experiments__card" role="region" aria-labelledby="ai-experiments-editor-heading">
 							<div class="ai-experiments__card-heading">
-								<h2 id="ai-experiments-list-heading"><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
-								<p class="description" id="ai-experiments-list-desc">
-									<?php esc_html_e( 'Try out the following experiments to see how AI can help your site.', 'ai' ); ?>
+								<h2 id="ai-experiments-editor-heading"><?php esc_html_e( 'Editor Experiments', 'ai' ); ?></h2>
+								<p class="description" id="ai-experiments-editor-desc">
+									<?php esc_html_e( 'Try out the following experiments to see how AI can help in the editor.', 'ai' ); ?>
 								</p>
 
 								<?php if ( ! $global_enabled ) : ?>
@@ -205,61 +222,26 @@ class Settings_Page {
 							</div>
 
 							<ul class="ai-experiments__list">
-								<?php foreach ( $this->registry->get_all_experiments() as $experiment ) : ?>
-									<?php
-									$experiment_id      = $experiment->get_id();
-									$experiment_option  = "ai_experiment_{$experiment_id}_enabled";
-									$experiment_enabled = (bool) get_option( $experiment_option, false );
-									$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
-									$desc_id            = "ai-experiment-{$experiment_id}-desc";
-									?>
-									<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
-										<div class="ai-experiments__item-header">
-											<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
-												<input
-													type="checkbox"
-													name="<?php echo esc_attr( $experiment_option ); ?>"
-													id="<?php echo esc_attr( $experiment_option ); ?>"
-													value="1"
-													<?php checked( $experiment_enabled ); ?>
-													<?php disabled( ! $global_enabled ); ?>
-													<?php if ( $experiment->get_description() ) : ?>
-														aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
-													<?php endif; ?>
-												/>
-												<span>
-													<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
-												</span>
-											</label>
-										</div>
-										<?php if ( $experiment->get_description() ) : ?>
-											<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
-												<?php
-												echo wp_kses(
-													$experiment->get_description(),
-													array(
-														'a'      => array(
-															'href'   => array(),
-															'title'  => array(),
-															'target' => array(),
-															'rel'    => array(),
-														),
-														'b'      => array(),
-														'strong' => array(),
-														'em'     => array(),
-														'i'      => array(),
-													)
-												);
-												?>
-											</p>
-										<?php endif; ?>
-										<?php
-										// Allow experiments to render their own custom settings fields.
-										if ( method_exists( $experiment, 'render_settings_fields' ) ) {
-											$experiment->render_settings_fields();
-										}
-										?>
-									</li>
+								<?php foreach ( $editor_experiments as $experiment ) : ?>
+									<?php $this->render_experiment_item( $experiment, $global_enabled ); ?>
+								<?php endforeach; ?>
+							</ul>
+						</div>
+					<?php endif; ?>
+
+					<!-- Admin Experiments Section -->
+					<?php if ( ! empty( $admin_experiments ) ) : ?>
+						<div class="ai-experiments__card" role="region" aria-labelledby="ai-experiments-admin-heading">
+							<div class="ai-experiments__card-heading">
+								<h2 id="ai-experiments-admin-heading"><?php esc_html_e( 'Admin Experiments', 'ai' ); ?></h2>
+								<p class="description" id="ai-experiments-admin-desc">
+									<?php esc_html_e( 'Try out the following experiments for site administration, exploration, or developer experience.', 'ai' ); ?>
+								</p>
+							</div>
+
+							<ul class="ai-experiments__list">
+								<?php foreach ( $admin_experiments as $experiment ) : ?>
+									<?php $this->render_experiment_item( $experiment, $global_enabled ); ?>
 								<?php endforeach; ?>
 							</ul>
 						</div>
@@ -292,6 +274,73 @@ class Settings_Page {
 				})();
 			</script>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Renders a single experiment item in the settings list.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Contracts\Experiment $experiment      The experiment instance.
+	 * @param bool                               $global_enabled Whether experiments are globally enabled.
+	 *
+	 * @return void
+	 */
+	private function render_experiment_item( Experiment $experiment, bool $global_enabled ): void {
+		$experiment_id      = $experiment->get_id();
+		$experiment_option  = "ai_experiment_{$experiment_id}_enabled";
+		$experiment_enabled = (bool) get_option( $experiment_option, false );
+		$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
+		$desc_id            = "ai-experiment-{$experiment_id}-desc";
+		?>
+		<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
+			<div class="ai-experiments__item-header">
+				<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
+					<input
+						type="checkbox"
+						name="<?php echo esc_attr( $experiment_option ); ?>"
+						id="<?php echo esc_attr( $experiment_option ); ?>"
+						value="1"
+						<?php checked( $experiment_enabled ); ?>
+						<?php disabled( ! $global_enabled ); ?>
+						<?php if ( $experiment->get_description() ) : ?>
+							aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
+						<?php endif; ?>
+					/>
+					<span>
+						<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
+					</span>
+				</label>
+			</div>
+			<?php if ( $experiment->get_description() ) : ?>
+				<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
+					<?php
+					echo wp_kses(
+						$experiment->get_description(),
+						array(
+							'a'      => array(
+								'href'   => array(),
+								'title'  => array(),
+								'target' => array(),
+								'rel'    => array(),
+							),
+							'b'      => array(),
+							'strong' => array(),
+							'em'     => array(),
+							'i'      => array(),
+						)
+					);
+					?>
+				</p>
+			<?php endif; ?>
+			<?php
+			// Allow experiments to render their own custom settings fields.
+			if ( method_exists( $experiment, 'render_settings_fields' ) ) {
+				$experiment->render_settings_fields();
+			}
+			?>
+		</li>
 		<?php
 	}
 }

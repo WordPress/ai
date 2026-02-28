@@ -39,6 +39,7 @@ class Image_Generation extends Abstract_Experiment {
 			'id'          => 'image-generation',
 			'label'       => __( 'Image Generation', 'ai' ),
 			'description' => __( 'Generates a featured image from a generated image prompt', 'ai' ),
+			'category'    => 'editor',
 		);
 	}
 

@@ -34,6 +34,7 @@ class Excerpt_Generation extends Abstract_Experiment {
 			'id'          => 'excerpt-generation',
 			'label'       => __( 'Excerpt Generation', 'ai' ),
 			'description' => __( 'Generates excerpt suggestions from content', 'ai' ),
+			'category'    => 'editor',
 		);
 	}
 

@@ -36,6 +36,7 @@ class Title_Generation extends Abstract_Experiment {
 			'id'          => 'title-generation',
 			'label'       => __( 'Title Generation', 'ai' ),
 			'description' => __( 'Generates title suggestions from content', 'ai' ),
+			'category'    => 'editor',
 		);
 	}
 

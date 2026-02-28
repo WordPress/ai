@@ -37,6 +37,7 @@ class Summarization extends Abstract_Experiment {
 			'id'          => 'summarization',
 			'label'       => __( 'Content Summarization', 'ai' ),
 			'description' => __( 'Summarizes long-form content into digestible overviews', 'ai' ),
+			'category'    => 'editor',
 		);
 	}
 

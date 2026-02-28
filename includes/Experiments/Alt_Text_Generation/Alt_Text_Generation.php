@@ -44,6 +44,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 			'id'          => 'alt-text-generation',
 			'label'       => __( 'Alt Text Generation', 'ai' ),
 			'description' => __( 'Generates descriptive alt text for images using AI vision models.', 'ai' ),
+			'category'    => 'editor',
 		);
 	}
 

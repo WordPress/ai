@@ -51,6 +51,18 @@ interface Experiment {
 	public function get_description(): string;
 
 	/**
+	 * Gets the experiment category.
+	 *
+	 * Returns a category slug used to group experiments in the settings UI.
+	 * Built-in categories are 'editor' and 'admin'.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string Experiment category slug.
+	 */
+	public function get_category(): string;
+
+	/**
 	 * Registers the experiment's hooks and functionality.
 	 *
 	 * This method is called when the experiment is initialized.
