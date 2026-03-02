@@ -51,6 +51,7 @@ export default function SummarizationPlugin() {
 			>
 				<FlexItem>
 					<Button
+						className="ai-summarization-plugin-button"
 						variant="secondary"
 						label={ buttonLabel }
 						icon={ update }

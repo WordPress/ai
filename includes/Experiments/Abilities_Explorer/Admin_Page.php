@@ -300,10 +300,12 @@ class Admin_Page {
 					<div class="notice notice-info inline" style="margin: 10px 0;">
 						<p>
 							<strong><?php esc_html_e( 'How to test:', 'ai' ); ?></strong><br>
-							1. <?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?><br>
-							2. <?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?><br>
-							3. <?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?><br>
-							4. <?php esc_html_e( 'View the results below', 'ai' ); ?>
+							<ol>
+								<li><?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'View the results below', 'ai' ); ?></li>
+							</ol>
 						</p>
 					</div>
 				<?php endif; ?>
@@ -333,7 +335,10 @@ class Admin_Page {
 			<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
 				<div class="ability-test-schema">
 					<h3><?php esc_html_e( 'Input Schema Reference', 'ai' ); ?></h3>
-					<pre><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<div class="ability-schema-wrapper">
+						<button type="button" class="button button-small ability-copy-btn" data-copy="test-input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+						<pre class="ability-schema-display" id="test-input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					</div>
 				</div>
 			<?php endif; ?>
 		</div>

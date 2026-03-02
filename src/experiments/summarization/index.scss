@@ -1,4 +1,9 @@
 .ai-summarization-plugin-container {
+	.components-button.ai-summarization-plugin-button {
+		width: 100%;
+		justify-content: center;
+	}
+
 	.description {
 		color: #757575;
 	}
