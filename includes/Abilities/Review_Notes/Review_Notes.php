@@ -299,7 +299,6 @@ class Review_Notes extends Abstract_Ability {
 
 		$raw = AI_Client::prompt_with_wp_error( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.7 )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->suggestions_schema() )
 			->generate_text();
