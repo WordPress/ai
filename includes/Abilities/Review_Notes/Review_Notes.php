@@ -263,8 +263,9 @@ class Review_Notes extends Abstract_Ability {
 							'properties'           => array(
 								'review_type' => array( 'type' => 'string' ),
 								'text'        => array( 'type' => 'string' ),
+								'priority'    => array( 'type' => 'integer' ),
 							),
-							'required'             => array( 'review_type', 'text' ),
+							'required'             => array( 'review_type', 'text', 'priority' ),
 							'additionalProperties' => false,
 						),
 					),
@@ -333,9 +334,15 @@ class Review_Notes extends Abstract_Ability {
 
 			$review_type = sanitize_text_field( $item['review_type'] );
 			$text        = sanitize_text_field( $item['text'] );
+			$priority    = absint( $item['priority'] ?? 5 );
 
 			// Skip if we already have a suggestion for this review type in existing notes.
 			if ( isset( $existing_types[ strtolower( $review_type ) ] ) ) {
+				continue;
+			}
+
+			// Remove if priority is more than 2.
+			if ( $priority > 2 ) {
 				continue;
 			}
 
@@ -383,12 +390,13 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * Extracts review types already present in existing note texts.
 	 *
-	 * Notes use format [REVIEW_TYPE] text. Returns lowercase keys for case-insensitive comparison.
+	 * Notes use format [REVIEW_TYPE] text. Returns lowercase keys
+	 * for case-insensitive comparison.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param list<string> $existing_notes Note content strings.
-	 * @return array<string, true> Map of existing review types (lowercase) to true.
+	 * @return array<string, true> Map of existing review types to true.
 	 */
 	private function get_existing_review_types_from_notes( array $existing_notes ): array {
 		$types = array();
