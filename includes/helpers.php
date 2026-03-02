@@ -218,6 +218,10 @@ function get_preferred_image_models(): array {
 	$preferred_models = array(
 		array(
 			'google',
+			'gemini-3.1-flash-image-preview',
+		),
+		array(
+			'google',
 			'gemini-3-pro-image-preview',
 		),
 		array(
