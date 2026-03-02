@@ -8,6 +8,7 @@
 import apiFetch from '@wordpress/api-fetch';
 import { dispatch, select } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
+import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
@@ -258,6 +259,12 @@ export function useReviewNotes(): {
 			}
 
 			setLastRunCount( totalSuggestions );
+
+			if ( totalSuggestions > 0 ) {
+				(
+					dispatch( coreStore ) as any
+				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+			}
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				error?.message ?? String( error ),
@@ -384,18 +391,18 @@ async function createNote(
 		.map( ( s ) => `[${ s.review_type.toUpperCase() }] ${ s.text }` )
 		.join( '\n\n' );
 
-	const note = await apiFetch< NoteRecord >( {
-		path: '/wp/v2/comments',
-		method: 'POST',
-		data: {
+	const note = ( await ( dispatch( coreStore ) as any ).saveEntityRecord(
+		'root',
+		'comment',
+		{
 			post: postId,
 			content: noteContent,
 			type: 'note',
 			status: 'hold',
 			parent: existingNoteId ?? 0,
 			meta: { ai_note: true },
-		},
-	} );
+		}
+	) ) as NoteRecord | undefined;
 
 	// Only update block metadata when creating a new thread (not a reply).
 	if ( ! existingNoteId && note?.id ) {
