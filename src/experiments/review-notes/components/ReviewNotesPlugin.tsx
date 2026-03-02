@@ -39,6 +39,10 @@ export default function ReviewNotesPlugin() {
 	const buttonLabel = isReviewing
 		? reviewingLabel
 		: __( 'Review with AI', 'ai' );
+	const buttonDescription = __(
+		'This will review the content of this post block by block, and create notes attached to each block with suggestions.',
+		'ai'
+	);
 
 	return (
 		<PluginPostStatusInfo>
@@ -50,6 +54,7 @@ export default function ReviewNotesPlugin() {
 						onClick={ runReview }
 						isBusy={ isReviewing }
 						disabled={ isReviewing }
+						style={ { justifyContent: 'center', width: '100%' } }
 						__next40pxDefaultSize
 					>
 						{ buttonLabel }
@@ -73,6 +78,14 @@ export default function ReviewNotesPlugin() {
 						</span>
 					</FlexItem>
 				) }
+				<FlexItem>
+					<span
+						className="description"
+						style={ { color: '#757575' } }
+					>
+						{ buttonDescription }
+					</span>
+				</FlexItem>
 			</Flex>
 		</PluginPostStatusInfo>
 	);
