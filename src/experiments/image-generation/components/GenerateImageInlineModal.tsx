@@ -27,7 +27,7 @@ import type {
 
 const { aiImageGenerationData } = window as any;
 
-type ModalState = 'idle' | 'generating' | 'preview' | 'editing';
+type ModalState = 'idle' | 'generating' | 'preview';
 
 interface Props {
 	blockName: string;
@@ -39,9 +39,7 @@ interface Props {
 /**
  * Modal component for inline AI image generation in the block editor.
  *
- * Supports a generate → preview → edit flow. When editing, the current
- * preview image is sent as a reference to the generation ability so that
- * models supporting image editing can use it as context.
+ * Supports a generate → preview → insert flow.
  *
  * @param {Props}    props               The props for the component.
  * @param {string}   props.blockName     The name of the block.
@@ -57,32 +55,23 @@ export function GenerateImageInlineModal( {
 }: Props ) {
 	const [ state, setState ] = useState< ModalState >( 'idle' );
 	const [ prompt, setPrompt ] = useState( '' );
-	const [ editPrompt, setEditPrompt ] = useState( '' );
 	const [ generatedData, setGeneratedData ] =
 		useState< GeneratedImageData | null >( null );
 	const [ progress, setProgress ] = useState( '' );
 	const [ error, setError ] = useState< string | null >( null );
 
 	/**
-	 * Runs the image generation ability with the given prompt and optional
-	 * reference image for the edit flow.
+	 * Runs the image generation ability with the given prompt.
 	 *
-	 * @param {string}           activePrompt   The prompt to generate an image from.
-	 * @param {string|undefined} referenceImage Optional base64 image for editing.
+	 * @param {string} activePrompt The prompt to generate an image from.
 	 */
-	async function generate(
-		activePrompt: string,
-		referenceImage?: string
-	): Promise< void > {
+	async function generate( activePrompt: string ): Promise< void > {
 		setError( null );
 		setState( 'generating' );
 		setProgress( __( 'Generating image…', 'ai' ) );
 
 		try {
 			const input: ImageGenerationAbilityInput = { prompt: activePrompt };
-			if ( referenceImage ) {
-				input.reference_image = referenceImage;
-			}
 
 			const response = ( await runAbility(
 				'ai/image-generation',
@@ -105,7 +94,7 @@ export function GenerateImageInlineModal( {
 			setError( message );
 
 			// Return to the previous state so the user can try again.
-			setState( referenceImage ? 'editing' : 'idle' );
+			setState( 'idle' );
 		}
 	}
 
@@ -232,15 +221,6 @@ export function GenerateImageInlineModal( {
 						</Button>
 						<Button
 							variant="secondary"
-							onClick={ () => {
-								setEditPrompt( '' );
-								setState( 'editing' );
-							} }
-						>
-							{ __( 'Refine Image', 'ai' ) }
-						</Button>
-						<Button
-							variant="secondary"
 							onClick={ () => generate( prompt.trim() ) }
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
@@ -254,55 +234,6 @@ export function GenerateImageInlineModal( {
 							} }
 						>
 							{ __( 'Edit Prompt', 'ai' ) }
-						</Button>
-					</div>
-					{ error && (
-						<Notice status="error" isDismissible={ false }>
-							{ error }
-						</Notice>
-					) }
-				</div>
-			) }
-
-			{ /* EDITING — show current image + follow-up prompt */ }
-			{ state === 'editing' && previewSrc && (
-				<div className="ai-generate-image-inline-modal__editing">
-					<img
-						src={ previewSrc }
-						alt={ generatedData?.prompt ?? '' }
-						className="ai-generate-image-inline-modal__preview-image"
-					/>
-					<TextareaControl
-						label={ __(
-							'Describe the edits you want to make to the image.',
-							'ai'
-						) }
-						value={ editPrompt }
-						onChange={ setEditPrompt }
-						rows={ 3 }
-						__nextHasNoMarginBottom
-					/>
-					<div className="ai-generate-image-inline-modal__actions">
-						<Button
-							variant="primary"
-							disabled={ ! editPrompt.trim() }
-							onClick={ () =>
-								generate(
-									editPrompt.trim(),
-									generatedData?.image?.data
-								)
-							}
-						>
-							{ __( 'Refine', 'ai' ) }
-						</Button>
-						<Button
-							variant="tertiary"
-							onClick={ () => {
-								setState( 'preview' );
-								setError( null );
-							} }
-						>
-							{ __( 'Cancel Refinement', 'ai' ) }
 						</Button>
 					</div>
 					{ error && (

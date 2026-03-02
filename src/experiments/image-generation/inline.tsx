@@ -4,7 +4,7 @@
  * Registers block filters that add a "Generate Image" toolbar
  * button and inline button to supported core blocks. Clicking the
  * button opens a modal where the user can generate an image, preview
- * it, edit it, and insert it into the block with a single click.
+ * it, and insert it into the block with a single click.
  */
 
 /**
