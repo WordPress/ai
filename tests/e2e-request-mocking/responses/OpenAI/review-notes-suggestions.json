@@ -8,7 +8,7 @@
       "index": 0,
       "message": {
         "role": "assistant",
-        "content": "{\"suggestions\":[{\"review_type\":\"grammar\",\"text\":\"Fix this!\"}]}",
+        "content": "{\"suggestions\":[{\"review_type\":\"grammar\",\"text\":\"Fix this!\",\"priority\":1}]}",
         "refusal": null,
         "annotations": []
       },
