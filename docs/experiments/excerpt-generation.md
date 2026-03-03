@@ -40,7 +40,6 @@ The ability can be called directly via REST API, making it useful for automation
 1. **PHP Side:**
    - `enqueue_assets()` loads `experiments/excerpt-generation` (`src/experiments/excerpt-generation/index.tsx`) and localizes `window.aiExcerptGenerationData` with:
      - `enabled`: Whether the experiment is enabled
-     - `path`: The REST API path to the ability (`/wp-json/wp-abilities/v1/abilities/ai/excerpt-generation/run`)
 
 2. **React Side:**
    - The React entry point (`index.tsx`) registers a WordPress plugin that hooks into the excerpt panel using `__experimentalPluginPostExcerpt`
