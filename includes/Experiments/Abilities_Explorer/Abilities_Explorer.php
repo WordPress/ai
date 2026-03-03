@@ -81,7 +81,7 @@ class Abilities_Explorer extends Abstract_Experiment {
 					'error'         => esc_html__( 'Error', 'ai' ),
 					'invalidJson'   => esc_html__( 'Invalid JSON input', 'ai' ),
 					'confirmInvoke' => esc_html__( 'Are you sure you want to invoke this ability?', 'ai' ),
-					'copySuccess'   => esc_html__( 'Copied to clipboard!', 'ai' ),
+					'copySuccess'   => esc_html__( 'Copied!', 'ai' ),
 					'copyError'     => esc_html__( 'Failed to copy', 'ai' ),
 				),
 			)

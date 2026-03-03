@@ -5,13 +5,16 @@
 /**
  * WordPress dependencies
  */
-import apiFetch from '@wordpress/api-fetch';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
 
-const { aiExcerptGenerationData } = window as any;
+/**
+ * Internal dependencies
+ */
+import { runAbility } from '../../../utils/run-ability';
+import type { ExcerptGenerationAbilityInput } from '../types';
 
 /**
  * Generates an excerpt for the given post ID and content.
@@ -24,16 +27,12 @@ async function generateExcerpt(
 	postId: number,
 	content: string
 ): Promise< string > {
-	return apiFetch( {
-		path: aiExcerptGenerationData?.path ?? '',
-		method: 'POST',
-		data: {
-			input: {
-				content,
-				post_id: postId,
-			},
-		},
-	} )
+	const params: ExcerptGenerationAbilityInput = {
+		content,
+		post_id: postId,
+	};
+
+	return runAbility< string >( 'ai/excerpt-generation', params )
 		.then( ( response ) => {
 			if ( response && typeof response === 'string' ) {
 				return response;

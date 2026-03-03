@@ -97,7 +97,6 @@ class Title_Generation extends Abstract_Experiment {
 			'TitleGenerationData',
 			array(
 				'enabled' => $this->is_enabled(),
-				'path'    => Title_Generation_Ability::path( $this->get_id() ),
 			)
 		);
 	}

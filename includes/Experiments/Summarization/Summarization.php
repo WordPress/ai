@@ -106,7 +106,6 @@ class Summarization extends Abstract_Experiment {
 			'SummarizationData',
 			array(
 				'enabled' => $this->is_enabled(),
-				'path'    => Summarization_Ability::path( $this->get_id() ),
 			)
 		);
 	}
