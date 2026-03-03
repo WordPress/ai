@@ -44,4 +44,16 @@ class Experiment_Area {
 	 * @var string
 	 */
 	public const ADMIN = 'admin';
+
+	/**
+	 * Other/fallback area constant.
+	 *
+	 * Used as a fallback for experiments whose category does not match any
+	 * known area constant.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const OTHER = 'other';
 }
