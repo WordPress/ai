@@ -113,26 +113,45 @@ test.describe( 'Plugin settings', () => {
 			} )
 		).toHaveCount( 1 );
 
-		// Visit the settings page.
-		await visitSettingsPage( admin );
-
 		// Globally disable experiments.
 		await disableExperiments( admin, page );
 
 		// Ensure the experiments disabled notice is displayed.
 		await expect(
-			page.locator( '#ai-experiments-disabled-notice', {
-				hasText:
-					'Enable experiments above to configure individual experiment settings',
-			} )
+			page
+				.locator( '.ai-experiments__notice', {
+					hasText:
+						'Enable experiments above to configure individual experiment settings.',
+				} )
+				.first()
 		).toHaveCount( 1 );
 
 		// Globally turn on experiments.
 		await enableExperiments( admin, page );
 
 		// Ensure the experiments disabled notice is removed.
+		await expect( page.locator( '.ai-experiments__notice' ) ).toHaveCount(
+			0
+		);
+
+		// Ensure we see the editor experiments section.
 		await expect(
-			page.locator( '#ai-experiments-disabled-notice' )
-		).toHaveCount( 0 );
+			page.locator(
+				'.ai-experiments__card .ai-experiments__card-heading',
+				{
+					hasText: 'Editor Experiments',
+				}
+			)
+		).toHaveCount( 1 );
+
+		// Ensure we see the admin experiments section.
+		await expect(
+			page.locator(
+				'.ai-experiments__card .ai-experiments__card-heading',
+				{
+					hasText: 'Admin Experiments',
+				}
+			)
+		).toHaveCount( 1 );
 	} );
 } );
