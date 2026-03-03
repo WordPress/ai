@@ -134,7 +134,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Enqueues and localizes the inline block editor script.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function enqueue_inline_assets(): void {
 		$this->enqueue_shared_assets();
@@ -143,7 +143,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Enqueues the shared assets.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	private function enqueue_shared_assets(): void {
 		Asset_Loader::enqueue_script( 'image_generation', 'experiments/image-generation' );
