@@ -11,7 +11,6 @@ namespace WordPress\AI\Abstracts;
 
 use WordPress\AI\Contracts\Experiment;
 use WordPress\AI\Exception\Invalid_Experiment_Metadata_Exception;
-use WordPress\AI\Experiment_Area;
 use WordPress\AI\Settings\Settings_Registration;
 
 /**
@@ -47,7 +46,7 @@ abstract class Abstract_Experiment implements Experiment {
 	protected string $description;
 
 	/**
-	 * Experiment category/area.
+	 * Experiment category.
 	 *
 	 * @since x.x.x
 	 * @var string
@@ -93,9 +92,7 @@ abstract class Abstract_Experiment implements Experiment {
 		}
 
 		if ( empty( $metadata['category'] ) ) {
-			throw new Invalid_Experiment_Metadata_Exception(
-				esc_html__( 'Experiment category is required in load_experiment_metadata().', 'ai' )
-			);
+			$metadata['category'] = 'other';
 		}
 
 		$this->id          = $metadata['id'];
@@ -107,11 +104,11 @@ abstract class Abstract_Experiment implements Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * Must return an array with keys: id, label, description.
+	 * Must return an array with keys: id, label, description, category.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
 	 */
 	abstract protected function load_experiment_metadata(): array;
 
@@ -153,7 +150,7 @@ abstract class Abstract_Experiment implements Experiment {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string The experiment area (Experiment_Area::EDITOR or Experiment_Area::ADMIN).
+	 * @return string The experiment category.
 	 */
 	public function get_category(): string {
 		return $this->category;

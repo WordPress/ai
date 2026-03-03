@@ -9,8 +9,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Contracts;
 
-use WordPress\AI\Experiment_Area;
-
 /**
  * Interface for all experiments.
  *
@@ -53,6 +51,17 @@ interface Experiment {
 	public function get_description(): string;
 
 	/**
+	 * Gets the experiment category.
+	 *
+	 * Determines where the experiment appears in the settings UI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The experiment category.
+	 */
+	public function get_category(): string;
+
+	/**
 	 * Registers the experiment's hooks and functionality.
 	 *
 	 * This method is called when the experiment is initialized.
@@ -70,16 +79,4 @@ interface Experiment {
 	 * @return bool True if enabled, false otherwise.
 	 */
 	public function is_enabled(): bool;
-
-	/**
-	 * Gets the experiment category/area.
-	 *
-	 * Determines where the experiment appears in the settings UI.
-	 * Should return one of the Experiment_Area constants.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return string The experiment area (Experiment_Area::EDITOR or Experiment_Area::ADMIN).
-	 */
-	public function get_category(): string;
 }
