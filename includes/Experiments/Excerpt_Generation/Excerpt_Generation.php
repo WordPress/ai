@@ -93,7 +93,6 @@ class Excerpt_Generation extends Abstract_Experiment {
 			'ExcerptGenerationData',
 			array(
 				'enabled' => $this->is_enabled(),
-				'path'    => Excerpt_Generation_Ability::path( $this->get_id() ),
 			)
 		);
 	}
