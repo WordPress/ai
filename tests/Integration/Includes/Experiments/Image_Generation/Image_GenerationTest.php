@@ -106,6 +106,21 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that register() hooks enqueue_inline_assets to enqueue_block_editor_assets.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_hooks_enqueue_block_editor_assets(): void {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		$this->assertNotFalse(
+			has_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_inline_assets' ) ),
+			'enqueue_inline_assets should be hooked to enqueue_block_editor_assets'
+		);
+	}
+
+	/**
 	 * Test that the experiment registers post meta.
 	 *
 	 * @since 0.3.0
