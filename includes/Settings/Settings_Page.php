@@ -12,7 +12,7 @@ declare(strict_types=1);
 namespace WordPress\AI\Settings;
 
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Area;
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Registry;
 
 use function WordPress\AI\has_ai_credentials;
@@ -191,12 +191,12 @@ class Settings_Page {
 
 					<?php
 					// Group experiments by category, normalizing unknown categories to OTHER.
-					$known_categories        = array( Experiment_Area::EDITOR, Experiment_Area::ADMIN );
+					$known_categories        = array( Experiment_Category::EDITOR, Experiment_Category::ADMIN );
 					$experiments_by_category = array();
 					foreach ( $this->registry->get_all_experiments() as $experiment ) {
 						$category                               = in_array( $experiment->get_category(), $known_categories, true )
 							? $experiment->get_category()
-							: Experiment_Area::OTHER;
+							: Experiment_Category::OTHER;
 						$experiments_by_category[ $category ][] = $experiment;
 					}
 
@@ -204,7 +204,7 @@ class Settings_Page {
 						'ai-experiments-editor-heading',
 						__( 'Editor Experiments', 'ai' ),
 						__( 'AI-powered features for the block editor, including content generation and enhancement tools.', 'ai' ),
-						$experiments_by_category[ Experiment_Area::EDITOR ] ?? array(),
+						$experiments_by_category[ Experiment_Category::EDITOR ] ?? array(),
 						$global_enabled
 					);
 
@@ -212,7 +212,7 @@ class Settings_Page {
 						'ai-experiments-admin-heading',
 						__( 'Admin Experiments', 'ai' ),
 						__( 'AI-powered features for the WordPress admin area, including exploration and testing tools.', 'ai' ),
-						$experiments_by_category[ Experiment_Area::ADMIN ] ?? array(),
+						$experiments_by_category[ Experiment_Category::ADMIN ] ?? array(),
 						$global_enabled
 					);
 
@@ -220,7 +220,7 @@ class Settings_Page {
 						'ai-experiments-other-heading',
 						__( 'Other Experiments', 'ai' ),
 						__( 'Additional experiments that do not fit into a specific category.', 'ai' ),
-						$experiments_by_category[ Experiment_Area::OTHER ] ?? array(),
+						$experiments_by_category[ Experiment_Category::OTHER ] ?? array(),
 						$global_enabled
 					);
 					?>

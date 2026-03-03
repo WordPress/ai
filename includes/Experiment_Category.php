@@ -1,8 +1,8 @@
 <?php
 /**
- * Experiment area constants.
+ * Experiment category constants.
  *
- * Defines the categories/areas where experiments can be displayed.
+ * Defines the categories an experiment can belong to.
  *
  * @package WordPress\AI
  *
@@ -14,19 +14,19 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 /**
- * Experiment area constants.
+ * Experiment category constants.
  *
  * Provides type-safe-ish constants for experiment categorization.
  * These values correspond to where experiments are displayed in the settings UI.
  *
  * @since x.x.x
  */
-class Experiment_Area {
+class Experiment_Category {
 
 	/**
-	 * Editor area constant.
+	 * Editor category constant.
 	 *
-	 * Experiments in this area appear in the block editor context.
+	 * Experiments in this category appear in the Editor Experiments.
 	 *
 	 * @since x.x.x
 	 *
@@ -35,9 +35,9 @@ class Experiment_Area {
 	public const EDITOR = 'editor';
 
 	/**
-	 * Admin area constant.
+	 * Admin category constant.
 	 *
-	 * Experiments in this area appear in the WordPress admin context.
+	 * Experiments in this category appear in the WordPress admin context.
 	 *
 	 * @since x.x.x
 	 *
@@ -46,10 +46,11 @@ class Experiment_Area {
 	public const ADMIN = 'admin';
 
 	/**
-	 * Other/fallback area constant.
+	 * Other/fallback category constant.
 	 *
 	 * Used as a fallback for experiments whose category does not match any
-	 * known area constant.
+	 * known category constant. Experiments in this category appear in the
+	 * Other Experiments section.
 	 *
 	 * @since x.x.x
 	 *

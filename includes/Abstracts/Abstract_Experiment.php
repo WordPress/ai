@@ -11,7 +11,7 @@ namespace WordPress\AI\Abstracts;
 
 use WordPress\AI\Contracts\Experiment;
 use WordPress\AI\Exception\Invalid_Experiment_Metadata_Exception;
-use WordPress\AI\Experiment_Area;
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Settings\Settings_Registration;
 
 /**
@@ -93,7 +93,7 @@ abstract class Abstract_Experiment implements Experiment {
 		}
 
 		if ( empty( $metadata['category'] ) ) {
-			$metadata['category'] = Experiment_Area::OTHER;
+			$metadata['category'] = Experiment_Category::OTHER;
 		}
 
 		$this->id          = $metadata['id'];

@@ -10,7 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
-use WordPress\AI\Experiment_Area;
+use WordPress\AI\Experiment_Category;
 
 /**
  * Test ability implementation for Abstract_Ability tests.
@@ -119,7 +119,7 @@ class Test_Ability_Experiment extends Abstract_Experiment {
 			'id'          => 'test-ability-experiment',
 			'label'       => 'Test Ability Experiment',
 			'description' => 'A test experiment for ability testing',
-			'category'    => Experiment_Area::EDITOR,
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 

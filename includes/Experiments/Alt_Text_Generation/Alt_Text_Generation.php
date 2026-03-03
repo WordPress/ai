@@ -12,7 +12,7 @@ namespace WordPress\AI\Experiments\Alt_Text_Generation;
 use WordPress\AI\Abilities\Image\Alt_Text_Generation as Alt_Text_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Area;
+use WordPress\AI\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -45,7 +45,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 			'id'          => 'alt-text-generation',
 			'label'       => __( 'Alt Text Generation', 'ai' ),
 			'description' => __( 'Generates descriptive alt text for images using AI vision models.', 'ai' ),
-			'category'    => Experiment_Area::EDITOR,
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
