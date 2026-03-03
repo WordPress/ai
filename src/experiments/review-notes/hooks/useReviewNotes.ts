@@ -11,6 +11,7 @@ import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -23,7 +24,7 @@ import {
 } from '../../../utils/blocks';
 import { runAbility } from '../../../utils/run-ability';
 
-const REVIEWABLE_BLOCK_TYPES = [
+export const REVIEWABLE_BLOCK_TYPES = [
 	'core/paragraph',
 	'core/heading',
 	'core/list-item',
@@ -83,6 +84,92 @@ interface ExistingNote {
 }
 
 type NoteStatus = 'hold' | 'approve';
+
+/**
+ * Reviews a single block and creates/updates a note if suggestions are found.
+ *
+ * @param block           The block to review.
+ * @param postId          The current post ID.
+ * @param content         The full post content (HTML).
+ * @param resolvedNoteIds Set of note IDs that have been resolved (approved).
+ * @param noteContentById Map of note ID → rendered note content (pending only).
+ * @param pendingNotes    All pending notes for the post (for reply lookup).
+ * @return The number of suggestions created, or 0 if the block was skipped.
+ */
+async function reviewSingleBlock(
+	block: Block,
+	postId: number,
+	content: string,
+	resolvedNoteIds: Set< number >,
+	noteContentById: Map< number, string >,
+	pendingNotes: ExistingNote[]
+): Promise< number > {
+	// Look up any existing note thread on this block.
+	const existingNoteId = block.attributes.metadata?.noteId ?? null;
+
+	// Skip blocks whose note thread has been resolved.
+	if ( existingNoteId && resolvedNoteIds.has( existingNoteId ) ) {
+		return 0;
+	}
+
+	const blockText = getBlockText( block );
+
+	if ( blockText.length === 0 ) {
+		return 0;
+	}
+
+	// Collect pending note texts for this block's thread as context.
+	const existingNoteTexts: string[] = [];
+	if ( existingNoteId ) {
+		const rootText = noteContentById.get( existingNoteId );
+		if ( rootText ) {
+			existingNoteTexts.push( rootText );
+		}
+
+		// Also collect replies (notes with parent === existingNoteId).
+		for ( const note of pendingNotes ) {
+			if ( note.parent === existingNoteId ) {
+				const replyText = noteContentById.get( note.id );
+				if ( replyText ) {
+					existingNoteTexts.push( replyText );
+				}
+			}
+		}
+	}
+
+	// Replace the block with the placeholder.
+	const contentWithPlaceholder =
+		block.clientId !== undefined
+			? replaceBlockWithPlaceholder(
+					content,
+					block.clientId,
+					BLOCK_PLACEHOLDER
+			  )
+			: content;
+
+	// Prepare a bounded context around the placeholder.
+	const contextWindow = buildContextWindow(
+		contentWithPlaceholder,
+		BLOCK_PLACEHOLDER
+	);
+	const context = `What follows is surrounding article content, where the block being reviewed has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the nearby text to better understand the context of the block within the article. CONTENT: \n\n${ contextWindow }`;
+
+	// Call the review ability.
+	const result = await runAbility< ReviewResult >( 'ai/review-notes', {
+		block_type: block.name,
+		block_content: blockText,
+		context,
+		post_id: postId,
+		existing_notes: existingNoteTexts,
+	} ).catch( () => null );
+
+	if ( result?.suggestions && result.suggestions.length > 0 ) {
+		await createNote( block, postId, result.suggestions, existingNoteId );
+		return result.suggestions.length;
+	}
+
+	return 0;
+}
 
 /**
  * Hook for AI Review Notes functionality.
@@ -167,91 +254,19 @@ export function useReviewNotes(): {
 					batchStart + BATCH_SIZE
 				);
 
-				await Promise.all(
-					batch.map( async ( block ) => {
-						// Look up any existing note thread on this block.
-						const existingNoteId =
-							block.attributes.metadata?.noteId ?? null;
-
-						// Skip blocks whose note thread has been resolved.
-						if (
-							existingNoteId &&
-							resolvedNoteIds.has( existingNoteId )
-						) {
-							return;
-						}
-
-						const blockText = getBlockText( block );
-
-						if ( blockText.length === 0 ) {
-							return;
-						}
-
-						// Collect pending note texts for this block's thread as context.
-						const existingNoteTexts: string[] = [];
-						if ( existingNoteId ) {
-							const rootText =
-								noteContentById.get( existingNoteId );
-							if ( rootText ) {
-								existingNoteTexts.push( rootText );
-							}
-
-							// Also collect replies (notes with parent === existingNoteId).
-							for ( const note of pendingNotes ) {
-								if ( note.parent === existingNoteId ) {
-									const replyText = noteContentById.get(
-										note.id
-									);
-									if ( replyText ) {
-										existingNoteTexts.push( replyText );
-									}
-								}
-							}
-						}
-
-						// Replace the block with the placeholder.
-						const contentWithPlaceholder =
-							block.clientId !== undefined
-								? replaceBlockWithPlaceholder(
-										content,
-										block.clientId,
-										BLOCK_PLACEHOLDER
-								  )
-								: content;
-
-						// Prepare a bounded context around the placeholder.
-						const contextWindow = buildContextWindow(
-							contentWithPlaceholder,
-							BLOCK_PLACEHOLDER
-						);
-						const context = `What follows is surrounding article content, where the block being reviewed has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the nearby text to better understand the context of the block within the article. CONTENT: \n\n${ contextWindow }`;
-
-						// Call the review ability.
-						const result = await runAbility< ReviewResult >(
-							'ai/review-notes',
-							{
-								block_type: block.name,
-								block_content: blockText,
-								context,
-								post_id: postId,
-								existing_notes: existingNoteTexts,
-							}
-						).catch( () => null );
-
-						if (
-							result?.suggestions &&
-							result.suggestions.length > 0
-						) {
-							await createNote(
-								block,
-								postId,
-								result.suggestions,
-								existingNoteId
-							);
-							totalSuggestions += result.suggestions.length;
-						}
-					} )
+				const results = await Promise.all(
+					batch.map( ( block ) =>
+						reviewSingleBlock(
+							block,
+							postId,
+							content,
+							resolvedNoteIds,
+							noteContentById,
+							pendingNotes
+						)
+					)
 				);
+				totalSuggestions += results.reduce( ( sum, n ) => sum + n, 0 );
 
 				setProgress(
 					Math.min( batchStart + BATCH_SIZE, reviewableBlocks.length )
@@ -279,6 +294,103 @@ export function useReviewNotes(): {
 	};
 
 	return { isReviewing, progress, total, lastRunCount, runReview };
+}
+
+/**
+ * Hook for reviewing a single block with AI.
+ *
+ * @return Object with reviewing state and the reviewBlock handler.
+ */
+export function useReviewBlock(): {
+	isReviewing: boolean;
+	reviewBlock: ( clientId: string ) => Promise< void >;
+} {
+	const [ isReviewing, setIsReviewing ] = useState< boolean >( false );
+
+	const reviewBlock = async ( clientId: string ) => {
+		setIsReviewing( true );
+
+		( dispatch( noticesStore ) as any ).removeNotice(
+			'ai_review_block_error'
+		);
+
+		try {
+			const block = ( select( blockEditorStore ) as any ).getBlock(
+				clientId
+			) as Block | null;
+
+			if ( ! block ) {
+				return;
+			}
+
+			const postId = (
+				select( editorStore ) as any
+			 ).getCurrentPostId() as number;
+			const content = (
+				select( editorStore ) as any
+			 ).getEditedPostContent() as string;
+
+			// Fetch fresh note state for this invocation.
+			const [ pendingNotes, approvedNotes ] = await Promise.all( [
+				fetchAllNotesByStatus( postId, 'hold' ),
+				fetchAllNotesByStatus( postId, 'approve' ),
+			] );
+			const resolvedNoteIds = new Set(
+				approvedNotes.map( ( n ) => n.id )
+			);
+
+			const noteContentById = new Map< number, string >();
+			for ( const note of pendingNotes ) {
+				noteContentById.set( note.id, note.content?.rendered ?? '' );
+			}
+
+			const suggestionCount = await reviewSingleBlock(
+				block,
+				postId,
+				content,
+				resolvedNoteIds,
+				noteContentById,
+				pendingNotes
+			);
+
+			if ( suggestionCount > 0 ) {
+				(
+					dispatch( coreStore ) as any
+				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+				( dispatch( noticesStore ) as any ).createSuccessNotice(
+					sprintf(
+						/* translators: %d: number of suggestions added. */
+						_n(
+							'%d suggestion added.',
+							'%d suggestions added.',
+							suggestionCount,
+							'ai'
+						),
+						suggestionCount
+					),
+					{ type: 'snackbar' }
+				);
+			} else {
+				( dispatch( noticesStore ) as any ).createNotice(
+					'info',
+					__( 'No new suggestions found.', 'ai' ),
+					{ type: 'snackbar' }
+				);
+			}
+		} catch ( error: any ) {
+			( dispatch( noticesStore ) as any ).createErrorNotice(
+				error?.message ?? String( error ),
+				{
+					id: 'ai_review_block_error',
+					isDismissible: true,
+				}
+			);
+		} finally {
+			setIsReviewing( false );
+		}
+	};
+
+	return { isReviewing, reviewBlock };
 }
 
 /**
