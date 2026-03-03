@@ -109,6 +109,7 @@ final class Experiment_Loader {
 			\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
 			\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
 			\WordPress\AI\Experiments\Summarization\Summarization::class,
+			\WordPress\AI\Experiments\Service_Account\Service_Account::class,
 			\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		);
 
