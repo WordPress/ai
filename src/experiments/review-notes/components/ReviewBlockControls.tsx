@@ -14,7 +14,7 @@ import { BlockControls } from '@wordpress/block-editor';
 import { ToolbarGroup, ToolbarButton } from '@wordpress/components';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { __ } from '@wordpress/i18n';
-import { seen } from '@wordpress/icons';
+import { commentContent } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -39,7 +39,7 @@ function ReviewBlockButton( { clientId }: { clientId: string } ) {
 			<ToolbarGroup>
 				<ToolbarButton
 					label={ __( 'Review block with AI', 'ai' ) }
-					icon={ seen }
+					icon={ commentContent }
 					onClick={ () => reviewBlock( clientId ) }
 					isBusy={ isReviewing }
 					disabled={ isReviewing }
