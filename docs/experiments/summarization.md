@@ -42,7 +42,6 @@ The ability can be called directly via REST API, making it useful for automation
 1. **PHP Side:**
    - `enqueue_assets()` loads `experiments/summarization` (`src/experiments/summarization/index.tsx`) and localizes `window.aiSummarizationData` with:
      - `enabled`: Whether the experiment is enabled
-     - `path`: The REST API path to the ability (`/wp-json/wp-abilities/v1/abilities/ai/summarization/run`)
 
 2. **React Side:**
    - The React entry point (`index.tsx`) registers:
