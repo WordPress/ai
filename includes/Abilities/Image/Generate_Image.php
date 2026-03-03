@@ -163,7 +163,7 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.2.0
 	 *
 	 * @param string $prompt The prompt to generate an image from.
-	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, provider metadata, and model metadata, or a WP_Error if there was an error.
+	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
 	 */
 	protected function generate_image( string $prompt ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
 		$request_options = new RequestOptions();
@@ -176,7 +176,6 @@ class Generate_Image extends Abstract_Ability {
 			->using_model_preference( ...get_preferred_image_models() )
 			->generate_image_result();
 
-		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
@@ -189,10 +188,10 @@ class Generate_Image extends Abstract_Ability {
 
 		try {
 			// Get the File from the result.
-			$file = $result->toImageFile();
+			$image_file = $result->toImageFile();
 
-			// Return the base64 encoded image data.
-			$data['data'] = sanitize_text_field( trim( $file->getBase64Data() ?? '' ) );
+			// Extract the base64 encoded image data.
+			$data['data'] = sanitize_text_field( trim( $image_file->getBase64Data() ?? '' ) );
 
 			if ( empty( $data['data'] ) ) {
 				return new WP_Error(
