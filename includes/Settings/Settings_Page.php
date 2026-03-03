@@ -204,64 +204,79 @@ class Settings_Page {
 								<?php endif; ?>
 							</div>
 
-							<ul class="ai-experiments__list">
-								<?php foreach ( $this->registry->get_all_experiments() as $experiment ) : ?>
-									<?php
-									$experiment_id      = $experiment->get_id();
-									$experiment_option  = "ai_experiment_{$experiment_id}_enabled";
-									$experiment_enabled = (bool) get_option( $experiment_option, false );
-									$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
-									$desc_id            = "ai-experiment-{$experiment_id}-desc";
-									?>
-									<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
-										<div class="ai-experiments__item-header">
-											<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
-												<input
-													type="checkbox"
-													name="<?php echo esc_attr( $experiment_option ); ?>"
-													id="<?php echo esc_attr( $experiment_option ); ?>"
-													value="1"
-													<?php checked( $experiment_enabled ); ?>
-													<?php disabled( ! $global_enabled ); ?>
-													<?php if ( $experiment->get_description() ) : ?>
-														aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
-													<?php endif; ?>
-												/>
-												<span>
-													<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
-												</span>
-											</label>
-										</div>
-										<?php if ( $experiment->get_description() ) : ?>
-											<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
-												<?php
-												echo wp_kses(
-													$experiment->get_description(),
-													array(
-														'a'      => array(
-															'href'   => array(),
-															'title'  => array(),
-															'target' => array(),
-															'rel'    => array(),
-														),
-														'b'      => array(),
-														'strong' => array(),
-														'em'     => array(),
-														'i'      => array(),
-													)
-												);
-												?>
-											</p>
-										<?php endif; ?>
+								<ul class="ai-experiments__list">
+									<?php foreach ( $this->registry->get_all_experiments() as $experiment ) : ?>
 										<?php
-										// Allow experiments to render their own custom settings fields.
-										if ( method_exists( $experiment, 'render_settings_fields' ) ) {
-											$experiment->render_settings_fields();
+										$experiment_id                 = $experiment->get_id();
+										$experiment_option             = "ai_experiment_{$experiment_id}_enabled";
+										$experiment_enabled            = (bool) get_option( $experiment_option, false );
+										$experiment_available          = method_exists( $experiment, 'is_available' ) ? (bool) $experiment->is_available() : true;
+										$experiment_unavailable_reason = '';
+
+										if ( ! $experiment_available && method_exists( $experiment, 'get_unavailable_reason' ) ) {
+											$reason                        = $experiment->get_unavailable_reason();
+											$experiment_unavailable_reason = is_string( $reason ) ? $reason : '';
 										}
+
+										$is_toggle_disabled = ! $global_enabled || ! $experiment_available;
+										$is_toggle_checked  = $experiment_enabled && $experiment_available;
+										$disabled_class     = $is_toggle_disabled ? 'ai-experiments__item--disabled' : '';
+										$desc_id            = "ai-experiment-{$experiment_id}-desc";
 										?>
-									</li>
-								<?php endforeach; ?>
-							</ul>
+										<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
+											<div class="ai-experiments__item-header">
+												<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
+													<input
+														type="checkbox"
+														name="<?php echo esc_attr( $experiment_option ); ?>"
+														id="<?php echo esc_attr( $experiment_option ); ?>"
+														value="1"
+														<?php checked( $is_toggle_checked ); ?>
+														<?php disabled( $is_toggle_disabled ); ?>
+														<?php if ( $experiment->get_description() ) : ?>
+															aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
+														<?php endif; ?>
+													/>
+													<span>
+														<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
+													</span>
+												</label>
+											</div>
+											<?php if ( $experiment->get_description() ) : ?>
+												<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
+													<?php
+													echo wp_kses(
+														$experiment->get_description(),
+														array(
+															'a'      => array(
+																'href'   => array(),
+																'title'  => array(),
+																'target' => array(),
+																'rel'    => array(),
+															),
+															'b'      => array(),
+															'strong' => array(),
+															'em'     => array(),
+															'i'      => array(),
+														)
+													);
+													?>
+												</p>
+											<?php endif; ?>
+											<?php if ( $experiment_unavailable_reason ) : ?>
+												<p class="description ai-experiments__notice">
+													<?php echo esc_html( $experiment_unavailable_reason ); ?>
+												</p>
+											<?php endif; ?>
+											<?php
+											// Allow experiments to render their own custom settings fields.
+											if ( method_exists( $experiment, 'render_settings_fields' ) ) {
+												$experiment->render_settings_fields();
+											}
+											?>
+										</li>
+									<?php endforeach; ?>
+								</ul>
 						</div>
 					<?php endif; ?>
 				</div>
