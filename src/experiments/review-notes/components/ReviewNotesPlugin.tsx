@@ -8,7 +8,7 @@
 import { Button, Flex, FlexItem } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { __, _n, sprintf } from '@wordpress/i18n';
-import { seen } from '@wordpress/icons';
+import { commentContent } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -50,7 +50,7 @@ export default function ReviewNotesPlugin() {
 				<FlexItem>
 					<Button
 						variant="secondary"
-						icon={ seen }
+						icon={ commentContent }
 						onClick={ runReview }
 						isBusy={ isReviewing }
 						disabled={ isReviewing }
