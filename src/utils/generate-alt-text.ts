@@ -1,44 +1,16 @@
 /**
  * WordPress dependencies
  */
-import { store as blockEditorStore } from '@wordpress/block-editor';
-import { select } from '@wordpress/data';
-/* eslint-disable import/no-extraneous-dependencies -- @wordpress/blocks is in dependencies; types are in devDependencies */
-import { serialize } from '@wordpress/blocks';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import { runAbility } from './run-ability';
+import { replaceBlockWithPlaceholder } from '../utils/blocks';
 import type { AltTextGenerationAbilityInput } from '../experiments/alt-text-generation/types';
 
 const IMAGE_PLACEHOLDER = '[[IMAGE_GOES_HERE]]';
-
-/**
- * Replaces the current image block markup in post content with a placeholder.
- *
- * @param {string} content  Full post content.
- * @param {string} clientId Client ID of the current image block.
- * @return {string} Content with this image block replaced by the placeholder.
- */
-function replaceImageBlockWithPlaceholder(
-	content: string,
-	clientId: string
-): string {
-	// eslint-disable-next-line dot-notation -- getBlock from store index signature
-	const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
-	if ( ! block ) {
-		return content;
-	}
-
-	const serializedBlock = serialize( block );
-	if ( ! serializedBlock || ! content.includes( serializedBlock ) ) {
-		return content;
-	}
-
-	return content.replace( serializedBlock, IMAGE_PLACEHOLDER );
-}
 
 /**
  * Generates alt text for an image using the AI ability.
@@ -71,7 +43,11 @@ export async function generateAltText(
 		// Replace the image block with the placeholder.
 		const contentWithPlaceholder =
 			clientId !== undefined
-				? replaceImageBlockWithPlaceholder( content, clientId )
+				? replaceBlockWithPlaceholder(
+						content,
+						clientId,
+						IMAGE_PLACEHOLDER
+				  )
 				: content;
 
 		// Prepare the context.

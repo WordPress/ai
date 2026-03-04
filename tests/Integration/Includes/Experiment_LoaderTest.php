@@ -128,6 +128,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 			'Image generation experiment should be registered'
 		);
 		$this->assertTrue(
+			$this->registry->has_experiment( 'review-notes' ),
+			'Review Notes experiment should be registered'
+		);
+		$this->assertTrue(
 			$this->registry->has_experiment( 'summarization' ),
 			'Summarization experiment should be registered'
 		);
@@ -155,6 +159,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$this->assertNotNull( $image_experiment, 'Image generation experiment should exist' );
 		$this->assertEquals( 'image-generation', $image_experiment->get_id() );
 		$this->assertEquals( Experiment_Category::EDITOR, $image_experiment->get_category() );
+
+		$review_notes_experiment = $this->registry->get_experiment( 'review-notes' );
+		$this->assertNotNull( $review_notes_experiment, 'Review Notes experiment should exist' );
+		$this->assertEquals( 'review-notes', $review_notes_experiment->get_id() );
 
 		$summarization_experiment = $this->registry->get_experiment( 'summarization' );
 		$this->assertNotNull( $summarization_experiment, 'Summarization experiment should exist' );
