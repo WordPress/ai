@@ -120,6 +120,34 @@ function check_wp_version(): bool {
 }
 
 /**
+ * Checks whether the current WordPress environment supports AI.
+ *
+ * Displays an admin notice if not.
+ *
+ * @since n.e.x.t
+ *
+ * @return bool True if AI is supported, false otherwise.
+ */
+function check_ai_support(): bool {
+	if ( wp_supports_ai() ) {
+		return true;
+	}
+
+	foreach ( array( 'admin_notices', 'network_admin_notices' ) as $hook ) {
+		add_action(
+			$hook,
+			static function () {
+				version_notice(
+					__( 'Your WordPress environment has AI functionality disabled. The AI Experiments plugin will not work until AI support is enabled.', 'ai' )
+				);
+			}
+		);
+	}
+
+	return false;
+}
+
+/**
  * Displays admin notice about missing Composer autoload files.
  *
  * @since 0.1.0
@@ -199,7 +227,11 @@ function load(): void {
 	// Add plugin action links.
 	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
-	// Hook experiment initialization to init.
+	// Check for AI support before initializing experiments.
+	if ( ! check_ai_support() ) {
+		return;
+	}
+
 	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
 }
 
