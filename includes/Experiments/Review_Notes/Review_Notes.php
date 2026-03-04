@@ -33,8 +33,6 @@ class Review_Notes extends Abstract_Experiment {
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(

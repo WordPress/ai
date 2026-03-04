@@ -61,7 +61,6 @@
     "@wordpress/hooks": "^4.35.0",
     "@wordpress/i18n": "^6.7.0",
     "@wordpress/icons": "^11.1.0",
-    "@wordpress/interface": "^9.26.0",
     "@wordpress/notices": "^5.35.0",
     "@wordpress/plugins": "^7.34.0",
     "@wordpress/url": "^4.38.0",

@@ -7,11 +7,11 @@
  */
 import { Button, Flex, FlexItem } from '@wordpress/components';
 import { useDispatch } from '@wordpress/data';
+import { store as editPostStore } from '@wordpress/edit-post';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { commentContent } from '@wordpress/icons';
-import { store as interfaceStore } from '@wordpress/interface';
 
 /**
  * Internal dependencies
@@ -28,12 +28,9 @@ import { useReviewNotes } from '../hooks/useReviewNotes';
 export default function ReviewNotesPlugin() {
 	const { isReviewing, progress, total, lastRunCount, runReview } =
 		useReviewNotes();
-	const { enableComplementaryArea } = useDispatch( interfaceStore );
+	const { openGeneralSidebar } = useDispatch( editPostStore );
 	const openNotesPanel = () =>
-		( enableComplementaryArea as ( scope: string, area: string ) => void )(
-			'core',
-			'edit-post/collab-sidebar'
-		);
+		openGeneralSidebar?.( 'edit-post/collab-sidebar' );
 
 	if ( ! ( window as any ).aiReviewNotesData?.enabled ) {
 		return null;
