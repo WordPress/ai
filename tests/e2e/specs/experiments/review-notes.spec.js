@@ -56,9 +56,14 @@ test.describe( 'AI Review Notes Experiment', () => {
 			},
 		} );
 
+		// Click into the more menu for the block.
+		await editor.clickBlockToolbarButton( 'Options' );
+
 		// The button should be visible in the block toolbar.
 		await expect(
-			page.getByRole( 'button', { name: 'Review block with AI' } )
+			page.locator( 'button', {
+				hasText: 'Generate Review Note',
+			} )
 		).toBeVisible();
 	} );
 
@@ -118,9 +123,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		} );
 
 		// Run review on the single block.
-		await page
-			.getByRole( 'button', { name: 'Review block with AI' } )
-			.click();
+		await editor.clickBlockOptionsMenuItem( 'Generate Review Note' );
 
 		// Wait for completion and check for suggestion count feedback.
 		await expect(
@@ -184,10 +187,15 @@ test.describe( 'AI Review Notes Experiment', () => {
 			},
 		} );
 
+		// Click into the more menu for the block.
+		await editor.clickBlockToolbarButton( 'Options' );
+
 		// The button should not be visible in the block toolbar.
 		await expect(
-			page.getByRole( 'button', { name: 'Review block with AI' } )
-		).toHaveCount( 0 );
+			page.locator( 'button', {
+				hasText: 'Generate Review Note',
+			} )
+		).not.toBeVisible();
 	} );
 
 	test( 'Button is hidden when experiment is disabled', async ( {
@@ -217,9 +225,14 @@ test.describe( 'AI Review Notes Experiment', () => {
 			},
 		} );
 
-		// The button should not be visible in the block toolbar.
+		// Click into the more menu for the block.
+		await editor.clickBlockToolbarButton( 'Options' );
+
+		// The button should be visible in the block toolbar.
 		await expect(
-			page.getByRole( 'button', { name: 'Review block with AI' } )
-		).toHaveCount( 0 );
+			page.locator( 'button', {
+				hasText: 'Generate Review Note',
+			} )
+		).not.toBeVisible();
 	} );
 } );
