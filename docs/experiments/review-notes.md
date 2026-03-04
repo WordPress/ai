@@ -2,35 +2,35 @@
 
 ## Summary
 
-The AI Review Notes experiment adds a block-by-block AI editorial review to the WordPress post editor. Clicking "Review with AI" in the post sidebar triggers the AI to examine each reviewable block and create WordPress Notes directly on the relevant blocks with concise, actionable suggestions across four categories: **Accessibility**, **Readability**, **Grammar**, and **SEO**.
+The AI Review Notes experiment adds a block-by-block AI editorial review to the WordPress post editor. Clicking "Generate Review Notes" in the post sidebar triggers the AI to examine each reviewable block and create WordPress Notes directly on the relevant blocks with concise, actionable suggestions across four categories: **Accessibility**, **Readability**, **Grammar**, and **SEO**.
 
 ## Overview
 
 ### For End Users
 
-When enabled, a "Review with AI" button appears in the post status info panel (the sidebar area below the post status). Clicking it triggers a review pass:
+When enabled, a "Generate Review Notes" button appears in the post status info panel (the sidebar area below the post status). Clicking it triggers a review pass:
 
-1. The button label updates to show review progress (`Reviewing… (2/8)`)
+1. The button label updates to show review progress (`Reviewing blocks… (2 of 8)`)
 2. Each content block is sent individually to the AI for analysis
 3. Notes with suggestions appear directly on the blocks inside the Notes panel
 4. After completion, a count of new suggestions is shown beneath the button
 
 **Key Features:**
 
-- Block-level notes with suggestions scoped to each block's content and type
+- Block-level Notes with suggestions scoped to each block's content and type
 - Four review categories: Accessibility, Readability, Grammar, SEO
-- Accumulating history: subsequent review runs append replies to existing note threads rather than creating duplicate threads
+- Accumulating history: subsequent review runs append replies to existing Note threads rather than creating duplicate threads
 - Prior suggestions are sent back to the AI as context so it avoids repeating itself
-- Blocks whose note thread has been resolved (marked as approved) are skipped on re-run
+- Blocks whose Note thread has been resolved (marked as approved) are skipped on re-run
 - Works with common block types: paragraphs, headings, images, lists, tables, quotes, and more
 
 ### For Developers
 
 The experiment consists of:
 
-1. **Experiment Class** (`WordPress\AI\Experiments\Review_Notes\Review_Notes`): Registers the ability, enqueues the block editor asset, and wires server-side hooks for note author override and block metadata cleanup
+1. **Experiment Class** (`WordPress\AI\Experiments\Review_Notes\Review_Notes`): Registers the ability, enqueues the block editor asset, and wires server-side hooks for Note author override and block metadata cleanup
 2. **Ability Class** (`WordPress\AI\Abilities\Review_Notes\Review_Notes`): Receives a single block's content and returns structured JSON suggestions
-3. **React Plugin** (`src/experiments/review-notes/`): Drives the UI and orchestrates block traversal, note creation, and thread management via WordPress data stores
+3. **React Plugin** (`src/experiments/review-notes/`): Drives the UI and orchestrates block traversal, Note creation, and thread management via WordPress data stores
 
 ## Architecture & Implementation
 
@@ -40,7 +40,7 @@ The experiment consists of:
 
 - `wp_abilities_api_init` → registers the `ai/review-notes` ability
 - `enqueue_block_editor_assets` → enqueues the React bundle whenever the block editor loads
-- `rest_pre_insert_comment` (filter) → `maybe_set_ai_author()` — overrides the comment author to "AI Reviewer" when `meta.ai_note` is `true`, so AI-generated notes are not attributed to the authenticated user's account
+- `rest_pre_insert_comment` (filter) → `maybe_set_ai_author()` — overrides the comment author to "WordPress AI" when `meta.ai_note` is `true`, so AI-generated Notes are not attributed to the authenticated user's account
 
 ### Assets & Data Flow
 
@@ -54,19 +54,19 @@ The experiment consists of:
    - `useReviewNotes.ts` hook manages all state and orchestration:
      - Flattens the block tree to get all descendants
      - Filters to reviewable block types with sufficient content (≥ 20 chars), capped at 25 blocks
-     - Fetches notes in two parallel requests:
-       - `GET /wp/v2/comments?type=note&status=hold&post=<id>&per_page=100` — pending notes used as context to avoid repeating suggestions
-       - `GET /wp/v2/comments?type=note&status=approve&post=<id>&per_page=100` — resolved note IDs; blocks with a resolved note are skipped entirely
+     - Fetches Notes in two parallel requests:
+       - `GET /wp/v2/comments?type=note&status=hold&post=<id>&per_page=100` — pending Notes used as context to avoid repeating suggestions
+       - `GET /wp/v2/comments?type=note&status=approve&post=<id>&per_page=100` — resolved Note IDs; blocks with a resolved Note are skipped entirely
      - Processes blocks in parallel batches of 4, calling the ability for each
-     - Creates new note threads via `POST /wp/v2/comments` (with `meta: { ai_note: true }` to trigger the AI author override) and updates block `metadata.noteId`
-     - Subsequent runs append replies to existing note threads
+     - Creates new Note threads via `POST /wp/v2/comments` (with `meta: { ai_note: true }` to trigger the AI author override) and updates block `metadata.noteId`
+     - Subsequent runs append replies to existing Note threads
 
 3. **Ability Execution:**
-   - Receives one block's content at a time (block type, plain text, post context, prior notes, review types)
+   - Receives one block's content at a time (block type, plain text, post context, prior Notes, review types)
    - Builds a structured prompt and sends it to the AI with the system instruction and a JSON schema for structured output
    - Parses the JSON response, sanitizes each suggestion, and returns `{ suggestions: [...] }`
    - Returns `{ suggestions: [] }` when the AI finds no issues
-   - Deduplicates against `existing_notes`: if a note already contains a `[TYPE]` marker for a given review type, that type is skipped in the current run
+   - Deduplicates against `existing_notes`: if a Note already contains a `[TYPE]` marker for a given review type, that type is skipped in the current run
 
 ### Block Types Reviewed
 
@@ -114,7 +114,7 @@ array(
     'existing_notes' => array(
         'type'        => 'array',
         'items'       => array( 'type' => 'string' ),
-        'description' => 'Existing note texts for this block from prior review runs, used to avoid repeating suggestions.',
+        'description' => 'Existing Note texts for this block from prior review runs, used to avoid repeating suggestions.',
     ),
     'review_types'   => array(
         'type'        => 'array',
@@ -159,8 +159,8 @@ Notes are `WP_Comment` objects with `comment_type = 'note'` and `status = 'hold'
 
 - **New thread**: `POST /wp/v2/comments` with `parent: 0` → response `id` stored in `block.attributes.metadata.noteId` via `updateBlockAttributes`
 - **Reply**: `POST /wp/v2/comments` with `parent: existingNoteId` → block metadata unchanged (association already set)
-- **AI author**: All notes created by this experiment include `meta: { ai_note: true }`. The `rest_pre_insert_comment` filter intercepts this and sets the author to "AI Reviewer" with no email, URL, or user ID, so notes are not attributed to the authenticated user's account.
-- **Resolved notes**: Notes with `status = 'approve'` (resolved) cause their associated block to be skipped entirely on the next review run.
+- **AI author**: All Notes created by this experiment include `meta: { ai_note: true }`. The `rest_pre_insert_comment` filter intercepts this and sets the author to "WordPress AI" with no email, URL, or user ID, so Notes are not attributed to the authenticated user's account.
+- **Resolved Notes**: Notes with `status = 'approve'` (resolved) cause their associated block to be skipped entirely on the next review run.
 
 ## Using the Ability via REST API
 
@@ -321,30 +321,30 @@ Then add guidance for the `tone` type to `system-instruction.php`.
 2. **Run a review:**
    - Create or open a post with a mix of block types (headings, paragraphs, an image without alt text, a list)
    - Open the post sidebar (click the **Settings** button in the toolbar)
-   - Click **Review with AI** in the post info panel
-   - Watch the progress counter advance (`Reviewing… 2/8`)
+   - Click **Generate Review Notes** in the post info panel
+   - Watch the progress counter advance (`Reviewing blocks… 2 of 8`)
    - After completion, open the **Notes** panel (via the block toolbar or the comments icon)
-   - Verify notes appear on relevant blocks, formatted as `[REVIEW_TYPE] Suggestion text.`
-   - Verify notes show "AI Reviewer" as the author rather than your account name
+   - Verify Notes appear on relevant blocks, formatted as `[REVIEW_TYPE] Suggestion text.`
+   - Verify Notes show "WordPress AI" as the author rather than your account name
 
 3. **Re-run accumulation:**
-   - Click **Review with AI** a second time
-   - Verify existing note threads gain replies rather than new top-level notes
+   - Click **Generate Review Notes** a second time
+   - Verify existing Note threads gain replies rather than new top-level Notes
    - Verify prior suggestions are not repeated
 
-4. **Resolved notes:**
-   - Mark a note as resolved in the Notes panel
+4. **Resolved Notes:**
+   - Mark a Note as resolved in the Notes panel
    - Run the review again
    - Verify the resolved block is skipped entirely
 
 5. **Note deletion cleanup:**
-   - Delete a note from the Notes panel
+   - Delete a Note from the Notes panel
    - Save the post
    - Verify the deleted block no longer has a `noteId` in its block metadata (inspect via the Code Editor)
 
 6. **Edge cases:**
    - Post with only very short blocks → button completes instantly with "No new suggestions found."
-   - All blocks already have notes → second run skips repeats
+   - All blocks already have Notes → second run skips repeats
    - Disable experiment → button disappears from sidebar
 
 ### Automated Testing
@@ -367,7 +367,7 @@ Covers:
 - Content sanitization
 - Permission callbacks: no post ID path (editor, subscriber, logged-out), and post-specific path (valid post, missing post, insufficient edit_post, non-REST post type)
 - `execute_callback` with missing post ID → WP_Error
-- `get_existing_review_types_from_notes()`: type extraction, case normalisation, multiple types per note, notes without brackets
+- `get_existing_review_types_from_notes()`: type extraction, case normalisation, multiple types per Note, Notes without brackets
 - Experiment hook registration (rest_pre_insert_comment)
 - `ai_note` comment meta registered with `show_in_rest`
 - `maybe_set_ai_author()`: overrides author when `ai_note` is true, passes through otherwise, handles WP_Error
@@ -408,18 +408,18 @@ Covers:
 
 ### Note Storage
 
-- Notes are stored as WordPress comments with `comment_type = 'note'` and `comment_author = 'AI Reviewer'`
+- Notes are stored as WordPress comments with `comment_type = 'note'` and `comment_author = 'WordPress AI'`
 - Block association is stored in `block.attributes.metadata.noteId`
 - Block metadata is saved as part of the post content when the editor saves
 - Note threads accumulate across review runs by design
-- Deleting or trashing a root note automatically clears `metadata.noteId` from its associated block
+- Deleting or trashing a root Note automatically clears `metadata.noteId` from its associated block
 
 ### Limitations
 
 - Image block review is limited to alt text presence; it does not analyze the image itself
 - Block metadata (`noteId`) is only persisted after the post is saved
 - The 25-block cap means very long posts will have only the first 25 reviewable blocks analyzed per run
-- Resolved blocks (approved notes) are skipped in full; they will not receive new suggestions until the note is un-resolved or deleted
+- Resolved blocks (approved Notes) are skipped in full; they will not receive new suggestions until the Note is un-resolved or deleted
 
 ## Related Files
 

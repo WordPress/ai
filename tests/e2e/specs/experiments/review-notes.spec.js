@@ -24,7 +24,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await enableExperiment( admin, page, EXPERIMENT_ID );
 	} );
 
-	test( 'Shows the "Review with AI" button in the post editor sidebar', async ( {
+	test( 'Shows the "Generate Review Notes" button in the post editor sidebar', async ( {
 		admin,
 		editor,
 		page,
@@ -36,7 +36,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 
 		// The button should be visible in the post status info panel.
 		await expect(
-			page.getByRole( 'button', { name: 'Review with AI' } )
+			page.getByRole( 'button', { name: 'Generate Review Notes' } )
 		).toBeVisible();
 	} );
 
@@ -65,7 +65,9 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await editor.openDocumentSettingsSidebar();
 
 		// Run review.
-		await page.getByRole( 'button', { name: 'Review with AI' } ).click();
+		await page
+			.getByRole( 'button', { name: 'Generate Review Notes' } )
+			.click();
 
 		// Wait for completion and check for suggestion count feedback.
 		await expect(
@@ -87,7 +89,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await editor.openDocumentSettingsSidebar();
 
 		const reviewButton = page.getByRole( 'button', {
-			name: 'Review with AI',
+			name: 'Generate Review Notes',
 		} );
 		await expect( reviewButton ).toBeVisible();
 
@@ -117,7 +119,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await editor.openDocumentSettingsSidebar();
 
 		await expect(
-			page.getByRole( 'button', { name: 'Review with AI' } )
+			page.getByRole( 'button', { name: 'Generate Review Notes' } )
 		).toHaveCount( 0 );
 	} );
 
@@ -136,7 +138,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await editor.openDocumentSettingsSidebar();
 
 		await expect(
-			page.getByRole( 'button', { name: 'Review with AI' } )
+			page.getByRole( 'button', { name: 'Generate Review Notes' } )
 		).toHaveCount( 0 );
 	} );
 } );

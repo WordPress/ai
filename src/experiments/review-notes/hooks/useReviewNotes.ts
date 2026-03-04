@@ -137,9 +137,9 @@ export function useReviewNotes(): {
 
 			setTotal( reviewableBlocks.length );
 
-			// Fetch pending and resolved notes for this post in parallel.
-			// Pending (hold) notes are used as context to avoid repeating suggestions.
-			// Resolved (approve) note IDs are used to skip already-acknowledged blocks.
+			// Fetch pending and resolved Notes for this post in parallel.
+			// Pending (hold) Notes are used as context to avoid repeating suggestions.
+			// Resolved (approve) Note IDs are used to skip already-acknowledged blocks.
 			const [ pendingNotes, approvedNotes ] = await Promise.all( [
 				fetchAllNotesByStatus( postId, 'hold' ),
 				fetchAllNotesByStatus( postId, 'approve' ),
@@ -148,7 +148,7 @@ export function useReviewNotes(): {
 				approvedNotes.map( ( n ) => n.id )
 			);
 
-			// Build a lookup: noteId → note content text (pending notes only).
+			// Build a lookup: noteId → Note content text (pending Notes only).
 			const noteContentById = new Map< number, string >();
 			for ( const note of pendingNotes ) {
 				noteContentById.set( note.id, note.content?.rendered ?? '' );
@@ -169,11 +169,11 @@ export function useReviewNotes(): {
 
 				await Promise.all(
 					batch.map( async ( block ) => {
-						// Look up any existing note thread on this block.
+						// Look up any existing Note thread on this block.
 						const existingNoteId =
 							block.attributes.metadata?.noteId ?? null;
 
-						// Skip blocks whose note thread has been resolved.
+						// Skip blocks whose Note thread has been resolved.
 						if (
 							existingNoteId &&
 							resolvedNoteIds.has( existingNoteId )
@@ -187,7 +187,7 @@ export function useReviewNotes(): {
 							return;
 						}
 
-						// Collect pending note texts for this block's thread as context.
+						// Collect pending Note texts for this block's thread as context.
 						const existingNoteTexts: string[] = [];
 						if ( existingNoteId ) {
 							const rootText =
@@ -196,7 +196,7 @@ export function useReviewNotes(): {
 								existingNoteTexts.push( rootText );
 							}
 
-							// Also collect replies (notes with parent === existingNoteId).
+							// Also collect replies (Notes with parent === existingNoteId).
 							for ( const note of pendingNotes ) {
 								if ( note.parent === existingNoteId ) {
 									const replyText = noteContentById.get(
@@ -282,11 +282,11 @@ export function useReviewNotes(): {
 }
 
 /**
- * Fetches all notes by status for a given post.
+ * Fetches all Notes by status for a given post.
  *
  * @param postId The ID of the post to fetch notes for.
- * @param status The status of the notes to fetch.
- * @return An array of notes.
+ * @param status The status of the Notes to fetch.
+ * @return An array of Notes.
  */
 async function fetchAllNotesByStatus(
 	postId: number,
@@ -312,7 +312,7 @@ async function fetchAllNotesByStatus(
 		} catch ( error ) {
 			// eslint-disable-next-line no-console
 			console.warn(
-				`[AI Review Notes] Failed to fetch ${ status } notes page ${ page }:`,
+				`[AI Review Notes] Failed to fetch ${ status } Notes page ${ page }:`,
 				error
 			);
 			return notes;
@@ -370,16 +370,16 @@ function buildContextWindow( content: string, placeholder: string ): string {
 }
 
 /**
- * Creates a note (or appends a reply) for a reviewed block.
+ * Creates a Note (or appends a reply) for a reviewed block.
  *
- * When no existing note thread is present, creates a new note and updates
- * the block's metadata with the resulting note ID. When a thread already
+ * When no existing Note thread is present, creates a new Note and updates
+ * the block's metadata with the resulting Note ID. When a thread already
  * exists, appends a reply to preserve the conversation history.
  *
  * @param block          The block that received suggestions.
  * @param postId         The current post ID.
- * @param suggestions    The suggestions to include in the note.
- * @param existingNoteId The ID of an existing note thread, or null for a new thread.
+ * @param suggestions    The suggestions to include in the Note.
+ * @param existingNoteId The ID of an existing Note thread, or null for a new thread.
  */
 async function createNote(
 	block: Block,
