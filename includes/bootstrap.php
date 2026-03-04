@@ -124,7 +124,7 @@ function check_wp_version(): bool {
  *
  * Displays an admin notice if not.
  *
- * @since n.e.x.t
+ * @since x.x.x
  *
  * @return bool True if AI is supported, false otherwise.
  */
@@ -210,8 +210,8 @@ function load(): void {
 		return;
 	}
 
-	// Check version requirements.
-	if ( ! check_php_version() || ! check_wp_version() ) {
+	// Check plugin requirements.
+	if ( ! check_php_version() || ! check_wp_version() || ! check_ai_support() ) {
 		return;
 	}
 
@@ -226,11 +226,6 @@ function load(): void {
 
 	// Add plugin action links.
 	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
-
-	// Check for AI support before initializing experiments.
-	if ( ! check_ai_support() ) {
-		return;
-	}
 
 	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
 }
