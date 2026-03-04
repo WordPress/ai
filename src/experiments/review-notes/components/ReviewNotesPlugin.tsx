@@ -5,7 +5,13 @@
 /**
  * WordPress dependencies
  */
-import { Button, Flex, FlexItem, MenuItem } from '@wordpress/components';
+import {
+	Button,
+	Flex,
+	FlexItem,
+	MenuItem,
+	Spinner,
+} from '@wordpress/components';
 import { BlockSettingsMenuControls } from '@wordpress/block-editor';
 import { useDispatch } from '@wordpress/data';
 import { store as editPostStore } from '@wordpress/edit-post';
@@ -130,8 +136,9 @@ export default function ReviewNotesPlugin() {
 
 					return (
 						<MenuItem
-							icon={ commentContent }
-							isBusy={ isReviewingBlock }
+							icon={
+								isReviewingBlock ? <Spinner /> : commentContent
+							}
 							disabled={ isReviewingBlock }
 							onClick={ () => {
 								if ( clientId ) {
