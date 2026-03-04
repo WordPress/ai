@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\Summarization;
 use WordPress\AI\Abilities\Summarization\Summarization as Summarization_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiment_Category;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -29,14 +30,13 @@ class Summarization extends Abstract_Experiment {
 	 * {@inheritDoc}
 	 *
 	 * @since 0.2.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'summarization',
 			'label'       => __( 'Content Summarization', 'ai' ),
 			'description' => __( 'Summarizes long-form content into digestible overviews', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
@@ -104,7 +104,6 @@ class Summarization extends Abstract_Experiment {
 			'SummarizationData',
 			array(
 				'enabled' => $this->is_enabled(),
-				'path'    => Summarization_Ability::path( $this->get_id() ),
 			)
 		);
 	}

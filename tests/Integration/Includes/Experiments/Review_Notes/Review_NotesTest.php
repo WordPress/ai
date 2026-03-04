@@ -136,7 +136,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
 		$this->assertIsArray( $result );
-		$this->assertEquals( 'AI Reviewer', $result['comment_author'] );
+		$this->assertEquals( 'WordPress AI', $result['comment_author'] );
 		$this->assertSame( '', $result['comment_author_email'] );
 		$this->assertSame( '', $result['comment_author_url'] );
 		$this->assertSame( 0, $result['user_id'] );

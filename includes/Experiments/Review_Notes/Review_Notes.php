@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\Review_Notes;
 use WordPress\AI\Abilities\Review_Notes\Review_Notes as Review_Notes_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiment_Category;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -32,14 +33,13 @@ class Review_Notes extends Abstract_Experiment {
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'review-notes',
 			'label'       => __( 'Review Notes', 'ai' ),
 			'description' => __( 'Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
@@ -84,11 +84,11 @@ class Review_Notes extends Abstract_Experiment {
 	}
 
 	/**
-	 * Overrides the author fields for AI-generated notes before they are inserted.
+	 * Overrides the author fields for AI-generated Notes before they are inserted.
 	 *
 	 * Fires via the rest_pre_insert_comment filter. When the REST request includes
 	 * meta.ai_note = true, replaces the authenticated user's identity with a generic
-	 * "AI" author so notes are not attributed to a personal account.
+	 * "AI" author so Notes are not attributed to a personal account.
 	 *
 	 * @since x.x.x
 	 *
@@ -107,7 +107,7 @@ class Review_Notes extends Abstract_Experiment {
 			return $prepared_comment;
 		}
 
-		$prepared_comment['comment_author']       = __( 'AI Reviewer', 'ai' );
+		$prepared_comment['comment_author']       = __( 'WordPress AI', 'ai' );
 		$prepared_comment['comment_author_email'] = '';
 		$prepared_comment['comment_author_url']   = '';
 		$prepared_comment['user_id']              = 0;

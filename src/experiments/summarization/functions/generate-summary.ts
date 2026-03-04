@@ -1,9 +1,8 @@
 /**
- * WordPress dependencies
+ * Internal dependencies
  */
-import apiFetch from '@wordpress/api-fetch';
-
-const { aiSummarizationData } = window as any;
+import { runAbility } from '../../../utils/run-ability';
+import type { SummarizationAbilityInput } from '../types';
 
 /**
  * Generates a summary for the given post ID and content.
@@ -16,16 +15,12 @@ export async function generateSummary(
 	postId: number,
 	content: string
 ): Promise< string > {
-	return apiFetch( {
-		path: aiSummarizationData?.path ?? '',
-		method: 'POST',
-		data: {
-			input: {
-				context: postId.toString(),
-				content,
-			},
-		},
-	} )
+	const params: SummarizationAbilityInput = {
+		context: postId.toString(),
+		content,
+	};
+
+	return runAbility< string >( 'ai/summarization', params )
 		.then( ( response ) => {
 			if ( response && typeof response === 'string' ) {
 				return response as string;

@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Image_Generation;
 
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiments\Image_Generation\Image_Generation;
@@ -69,6 +70,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'image-generation', $experiment->get_id() );
 		$this->assertEquals( 'Image Generation', $experiment->get_label() );
+		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 
@@ -103,6 +105,21 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$image_prompt_ability = wp_get_ability( 'ai/image-prompt-generation' );
 		$this->assertNotNull( $image_prompt_ability, 'Image prompt generation ability should be registered' );
 		$this->assertInstanceOf( \WP_Ability::class, $image_prompt_ability, 'Should be a WP_Ability instance' );
+	}
+
+	/**
+	 * Test that register() hooks enqueue_inline_assets to enqueue_block_editor_assets.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_hooks_enqueue_block_editor_assets(): void {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		$this->assertNotFalse(
+			has_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_inline_assets' ) ),
+			'enqueue_inline_assets should be hooked to enqueue_block_editor_assets'
+		);
 	}
 
 	/**

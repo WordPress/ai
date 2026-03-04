@@ -28,8 +28,8 @@ class Test_Review_Notes_Experiment extends Abstract_Experiment {
 	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'review-notes',
-			'label'       => 'AI Review Notes',
-			'description' => 'Reviews post content block-by-block and adds notes with suggestions.',
+			'label'       => 'Review Notes',
+			'description' => 'Reviews post content block-by-block and adds Notes with suggestions.',
 		);
 	}
 
@@ -576,7 +576,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	public function test_get_existing_review_types_ignores_notes_without_brackets() {
 		$method = $this->get_existing_types_method();
 
-		$notes  = array( 'A note with no bracketed type at all.' );
+		$notes  = array( 'A Note with no bracketed type at all.' );
 		$result = $method->invoke( $this->ability, $notes );
 
 		$this->assertEmpty( $result, 'Notes without [TYPE] should produce empty result' );

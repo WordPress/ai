@@ -14,6 +14,7 @@ use WordPress\AI\Abilities\Image\Generate_Image_Prompt as Generate_Image_Prompt_
 use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -31,14 +32,13 @@ class Image_Generation extends Abstract_Experiment {
 	 * {@inheritDoc}
 	 *
 	 * @since 0.2.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'image-generation',
 			'label'       => __( 'Image Generation', 'ai' ),
-			'description' => __( 'Generates a featured image from a generated image prompt', 'ai' ),
+			'description' => __( 'Generate featured images and inline images using AI', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
@@ -51,6 +51,7 @@ class Image_Generation extends Abstract_Experiment {
 		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_inline_assets' ) );
 	}
 
 	/**
@@ -127,7 +128,26 @@ class Image_Generation extends Abstract_Experiment {
 			return;
 		}
 
+		$this->enqueue_shared_assets();
+	}
+
+	/**
+	 * Enqueues and localizes the inline block editor script.
+	 *
+	 * @since x.x.x
+	 */
+	public function enqueue_inline_assets(): void {
+		$this->enqueue_shared_assets();
+	}
+
+	/**
+	 * Enqueues the shared assets.
+	 *
+	 * @since x.x.x
+	 */
+	private function enqueue_shared_assets(): void {
 		Asset_Loader::enqueue_script( 'image_generation', 'experiments/image-generation' );
+		Asset_Loader::enqueue_style( 'image_generation', 'experiments/image-generation' );
 		Asset_Loader::localize_script(
 			'image_generation',
 			'ImageGenerationData',

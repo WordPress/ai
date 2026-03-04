@@ -77,7 +77,7 @@ class Review_Notes extends Abstract_Ability {
 					'items'       => array(
 						'type' => 'string',
 					),
-					'description' => esc_html__( 'Existing note texts for this block from prior review runs, used to avoid repeating suggestions.', 'ai' ),
+					'description' => esc_html__( 'Existing Note texts for this block from prior review runs, used to avoid repeating suggestions.', 'ai' ),
 				),
 				'review_types'   => array(
 					'type'        => 'array',
@@ -284,7 +284,7 @@ class Review_Notes extends Abstract_Ability {
 	 * @param string $block_type The block type identifier.
 	 * @param string $block_content The plain-text block content.
 	 * @param string $context Optional context to improve review relevance.
-	 * @param list<string> $existing_notes Prior note texts to avoid repeating.
+	 * @param list<string> $existing_notes Prior Note texts to avoid repeating.
 	 * @param list<string> $review_types Review types to perform.
 	 * @return list<array{review_type: string, text: string}>|\WP_Error Suggestions array or WP_Error.
 	 */
@@ -335,7 +335,7 @@ class Review_Notes extends Abstract_Ability {
 			$text        = sanitize_text_field( $item['text'] );
 			$priority    = absint( $item['priority'] ?? 5 );
 
-			// Skip if we already have a suggestion for this review type in existing notes.
+			// Skip if we already have a suggestion for this review type in existing Notes.
 			if ( isset( $existing_types[ strtolower( $review_type ) ] ) ) {
 				continue;
 			}
@@ -387,7 +387,7 @@ class Review_Notes extends Abstract_Ability {
 	}
 
 	/**
-	 * Extracts review types already present in existing note texts.
+	 * Extracts review types already present in existing Note texts.
 	 *
 	 * Notes use format [REVIEW_TYPE] text. Returns lowercase keys
 	 * for case-insensitive comparison.

@@ -26,8 +26,7 @@ import {
 
 /**
  * Inner button component — only mounts when a reviewable block is selected.
- * Keeping this as a separate component ensures the hook only runs for
- * reviewable blocks, not every block in the editor.
+ *
  * @param root0
  * @param root0.clientId
  */
@@ -38,7 +37,7 @@ function ReviewBlockButton( { clientId }: { clientId: string } ) {
 		<BlockControls>
 			<ToolbarGroup>
 				<ToolbarButton
-					label={ __( 'Review block with AI', 'ai' ) }
+					label={ __( 'Generate Review Note', 'ai' ) }
 					icon={ commentContent }
 					onClick={ () => reviewBlock( clientId ) }
 					isBusy={ isReviewing }
@@ -50,7 +49,7 @@ function ReviewBlockButton( { clientId }: { clientId: string } ) {
 }
 
 /**
- * HOC that adds the AI review toolbar button to reviewable blocks.
+ * HOC that adds the Review Notes toolbar button to reviewable blocks.
  */
 const ReviewBlockControls = createHigherOrderComponent(
 	( BlockEdit: ComponentType< any > ) => {

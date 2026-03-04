@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Title_Generation;
 
 use WP_UnitTestCase;
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\Title_Generation\Title_Generation;
@@ -68,6 +69,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'title-generation', $experiment->get_id() );
 		$this->assertEquals( 'Title Generation', $experiment->get_label() );
+		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 }
