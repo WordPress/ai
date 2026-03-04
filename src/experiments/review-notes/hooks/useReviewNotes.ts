@@ -9,6 +9,7 @@ import apiFetch from '@wordpress/api-fetch';
 import { dispatch, select } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreStore } from '@wordpress/core-data';
+import { store as editPostStore } from '@wordpress/edit-post';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
@@ -42,6 +43,7 @@ const NOTES_PAGE_SIZE = 100;
 const CONTEXT_WINDOW_SIZE = 2000;
 const TRUNCATED_BEFORE_MARKER = '[TRUNCATED BEFORE]';
 const TRUNCATED_AFTER_MARKER = '[TRUNCATED AFTER]';
+const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
 
 interface BlockAttributes {
 	content?: string;
@@ -357,6 +359,9 @@ export function useReviewBlock(): {
 				(
 					dispatch( coreStore ) as any
 				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+				( dispatch( editPostStore ) as any ).openGeneralSidebar?.(
+					NOTES_SIDEBAR_ID
+				);
 				( dispatch( noticesStore ) as any ).createSuccessNotice(
 					sprintf(
 						/* translators: %d: number of suggestions added. */

@@ -42,6 +42,7 @@ function ReviewBlockButton( { clientId }: { clientId: string } ) {
 					onClick={ () => reviewBlock( clientId ) }
 					isBusy={ isReviewing }
 					disabled={ isReviewing }
+					style={ { marginTop: '1px', height: '46px' } }
 				/>
 			</ToolbarGroup>
 		</BlockControls>
