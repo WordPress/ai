@@ -129,7 +129,8 @@ function check_wp_version(): bool {
  * @return bool True if AI is supported, false otherwise.
  */
 function check_ai_support(): bool {
-	if ( wp_supports_ai() ) {
+	// @todo Remove the function check once the minimum WordPress version is 7.0 or higher.
+	if ( ! function_exists( 'wp_supports_ai' ) || wp_supports_ai() ) {
 		return true;
 	}
 
