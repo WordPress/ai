@@ -24,7 +24,7 @@ import type {
 
 const { aiImageGenerationData } = window as any;
 
-type ModalState = 'idle' | 'generating' | 'preview' | 'editing' | 'success';
+type ModalState = 'idle' | 'generating' | 'preview' | 'success';
 
 /**
  * Uploads an image to the media library locally to avoid relying on functions not
@@ -106,7 +106,7 @@ async function uploadImageLocal(
 export function GenerateImageStandalone() {
 	const [ state, setState ] = useState< ModalState >( 'idle' );
 	const [ prompt, setPrompt ] = useState( '' );
-	const [ editPrompt, setEditPrompt ] = useState( '' );
+
 	const [ generatedData, setGeneratedData ] =
 		useState< GeneratedImageData | null >( null );
 	const [ uploadedData, setUploadedData ] = useState< UploadedImage | null >(
@@ -115,19 +115,13 @@ export function GenerateImageStandalone() {
 	const [ progress, setProgress ] = useState( '' );
 	const [ error, setError ] = useState< string | null >( null );
 
-	async function generate(
-		activePrompt: string,
-		referenceImage?: string
-	): Promise< void > {
+	async function generate( activePrompt: string ): Promise< void > {
 		setError( null );
 		setState( 'generating' );
 		setProgress( __( 'Generating image…', 'ai' ) );
 
 		try {
 			const input: any = { prompt: activePrompt };
-			if ( referenceImage ) {
-				input.reference_image = referenceImage;
-			}
 
 			const response = ( await runAbility(
 				'ai/image-generation',
@@ -148,7 +142,7 @@ export function GenerateImageStandalone() {
 				__( 'An error occurred during image generation.', 'ai' );
 
 			setError( message );
-			setState( referenceImage ? 'editing' : 'idle' );
+			setState( 'idle' );
 		}
 	}
 
@@ -202,29 +196,47 @@ export function GenerateImageStandalone() {
 							margin: '20px 0',
 						} }
 					/>
-					<Button
-						variant="secondary"
-						onClick={ () => {
-							setGeneratedData( null );
-							setUploadedData( null );
-							setPrompt( '' );
-							setState( 'idle' );
-							setError( null );
+					<div
+						style={ {
+							display: 'flex',
+							gap: '10px',
+							alignItems: 'center',
+							marginTop: '10px',
 						} }
 					>
-						{ __( 'Generate Another Image', 'ai' ) }
-					</Button>
+						<Button
+							variant="secondary"
+							onClick={ () => {
+								setGeneratedData( null );
+								setUploadedData( null );
+								setPrompt( '' );
+								setState( 'idle' );
+								setError( null );
+							} }
+						>
+							{ __( 'Generate Another Image', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							href={ `upload.php?item=${ uploadedData.id }` }
+						>
+							{ __( 'View in Media Library', 'ai' ) }
+						</Button>
+					</div>
 				</div>
 			) }
 
 			{ state === 'idle' && (
-				<div className="ai-generate-image-standalone__idle">
+				<div
+					className="ai-generate-image-standalone__idle"
+					style={ { maxWidth: '600px' } }
+				>
 					<p
 						className="description"
 						style={ { marginBottom: '10px' } }
 					>
 						{ __(
-							'Describe the image you want to generate. It will be saved directly to your Media Library.',
+							'Describe the image you want to generate.',
 							'ai'
 						) }
 					</p>
@@ -318,15 +330,7 @@ export function GenerateImageStandalone() {
 						<Button variant="primary" onClick={ handleSaveImage }>
 							{ __( 'Save to Media Library', 'ai' ) }
 						</Button>
-						<Button
-							variant="secondary"
-							onClick={ () => {
-								setEditPrompt( '' );
-								setState( 'editing' );
-							} }
-						>
-							{ __( 'Refine Image', 'ai' ) }
-						</Button>
+
 						<Button
 							variant="secondary"
 							onClick={ () => generate( prompt.trim() ) }
@@ -342,69 +346,6 @@ export function GenerateImageStandalone() {
 							} }
 						>
 							{ __( 'Cancel', 'ai' ) }
-						</Button>
-					</div>
-					{ error && (
-						<div style={ { marginTop: '15px' } }>
-							<Notice status="error" isDismissible={ false }>
-								{ error }
-							</Notice>
-						</div>
-					) }
-				</div>
-			) }
-
-			{ state === 'editing' && previewSrc && (
-				<div className="ai-generate-image-standalone__editing">
-					<img
-						src={ previewSrc }
-						alt={ generatedData?.prompt ?? '' }
-						className="ai-generate-image-standalone__preview-image"
-						style={ {
-							maxWidth: '600px',
-							display: 'block',
-							margin: '20px 0',
-							border: '1px solid #ddd',
-						} }
-					/>
-					<TextareaControl
-						label={ __(
-							'Describe the edits you want to make to the image.',
-							'ai'
-						) }
-						value={ editPrompt }
-						onChange={ setEditPrompt }
-						rows={ 3 }
-						__nextHasNoMarginBottom
-					/>
-					<div
-						className="ai-generate-image-standalone__actions"
-						style={ {
-							display: 'flex',
-							gap: '10px',
-							marginTop: '15px',
-						} }
-					>
-						<Button
-							variant="primary"
-							disabled={ ! editPrompt.trim() }
-							onClick={ () =>
-								generate(
-									editPrompt.trim(),
-									generatedData?.image?.data
-								)
-							}
-						>
-							{ __( 'Refine', 'ai' ) }
-						</Button>
-						<Button
-							variant="tertiary"
-							onClick={ () => {
-								setState( 'preview' );
-								setError( null );
-							} }
-						>
-							{ __( 'Cancel Refinement', 'ai' ) }
 						</Button>
 					</div>
 					{ error && (

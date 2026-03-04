@@ -164,7 +164,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( '<div class="wrap">', $output, 'Output should contain wrap div' );
-		$this->assertStringContainsString( 'Generate Image by AI', $output, 'Output should contain page title' );
+		$this->assertStringContainsString( 'Generate Image', $output, 'Output should contain page title' );
 		$this->assertStringContainsString( 'ai-image-generation-root', $output, 'Output should contain React root element' );
 	}
 
@@ -182,7 +182,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '<script type="text/javascript">', $output, 'Output should contain script tag' );
 		$this->assertStringContainsString( 'ai-generate-image-btn', $output, 'Output should contain button class name' );
-		$this->assertStringContainsString( 'page=ai-image-generation', $output, 'Output should contain link to admin page' );
+		$this->assertStringContainsString( 'page=generate-image', $output, 'Output should contain link to admin page' );
 		$this->assertStringContainsString( 'stopImmediatePropagation', $output, 'Output should contain click handler that stops propagation' );
 	}
 

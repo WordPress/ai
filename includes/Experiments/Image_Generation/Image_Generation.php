@@ -66,7 +66,7 @@ class Image_Generation extends Abstract_Experiment {
 			__( 'Generate Image', 'ai' ),
 			__( 'Generate Image', 'ai' ),
 			'upload_files',
-			'ai-image-generation',
+			'generate-image',
 			array( $this, 'render_admin_page' )
 		);
 	}
@@ -78,7 +78,7 @@ class Image_Generation extends Abstract_Experiment {
 	 */
 	public function render_admin_page(): void {
 		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__( 'Generate Image by AI', 'ai' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'Generate Image', 'ai' ) . '</h1>';
 		echo '<div id="ai-image-generation-root"></div>';
 		echo '</div>';
 	}
@@ -90,7 +90,7 @@ class Image_Generation extends Abstract_Experiment {
 	 * @since x.x.x
 	 */
 	public function inject_generate_image_button(): void {
-		$url = admin_url( 'upload.php?page=ai-image-generation' );
+		$url = admin_url( 'upload.php?page=generate-image' );
 		?>
 		<script type="text/javascript">
 		( function() {
@@ -98,9 +98,9 @@ class Image_Generation extends Abstract_Experiment {
 			if ( ! heading || ! heading.parentNode ) return;
 
 			var btn = document.createElement( 'a' );
-			btn.href = <?php echo wp_json_encode( $url ); ?>;
+			btn.href = <?php echo wp_json_encode( esc_url( $url ) ); ?>;
 			btn.className = 'page-title-action ai-generate-image-btn';
-			btn.textContent = <?php echo wp_json_encode( __( 'Generate Image', 'ai' ) ); ?>;
+			btn.textContent = <?php echo wp_json_encode( esc_html__( 'Generate Image', 'ai' ) ); ?>;
 
 			// Capture-phase listener fires before WP's bubbling delegation can intercept.
 			btn.addEventListener( 'click', function( e ) {
@@ -181,7 +181,7 @@ class Image_Generation extends Abstract_Experiment {
 	 */
 	public function enqueue_assets( string $hook_suffix ): void {
 		$is_post_screen  = in_array( $hook_suffix, array( 'post.php', 'post-new.php' ), true );
-		$is_media_screen = in_array( $hook_suffix, array( 'upload.php', 'media_page_ai-image-generation' ), true );
+		$is_media_screen = in_array( $hook_suffix, array( 'upload.php', 'media_page_generate-image' ), true );
 
 		if ( ! $is_post_screen && ! $is_media_screen ) {
 			return;
