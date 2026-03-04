@@ -137,8 +137,12 @@ function check_ai_support(): bool {
 		add_action(
 			$hook,
 			static function () {
-				version_notice(
-					__( 'Your WordPress environment has AI functionality disabled. The AI Experiments plugin will not work until AI support is enabled.', 'ai' )
+				wp_admin_notice(
+					esc_html__( 'Your WordPress environment has AI functionality disabled. The AI Experiments plugin will not work until AI support is enabled.', 'ai' ),
+					array(
+						'type'    => 'error',
+						'dismiss' => false,
+					)
 				);
 			}
 		);
