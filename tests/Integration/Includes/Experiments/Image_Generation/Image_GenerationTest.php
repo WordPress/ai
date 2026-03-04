@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Image_Generation;
 
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiments\Image_Generation\Image_Generation;
@@ -69,6 +70,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'image-generation', $experiment->get_id() );
 		$this->assertEquals( 'Image Generation', $experiment->get_label() );
+		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 

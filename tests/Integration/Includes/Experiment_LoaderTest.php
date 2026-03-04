@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiment_Registry;
 
@@ -28,9 +29,12 @@ class Mock_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
+	 * Intentionally omits the category key to exercise the fallback
+	 * to Experiment_Category::OTHER in Abstract_Experiment.
+	 *
 	 * @since 0.1.0
 	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
@@ -139,18 +143,22 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$abilities_explorer_experiment = $this->registry->get_experiment( 'abilities-explorer' );
 		$this->assertNotNull( $abilities_explorer_experiment, 'Abilities explorer experiment should exist' );
 		$this->assertEquals( 'abilities-explorer', $abilities_explorer_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::ADMIN, $abilities_explorer_experiment->get_category() );
 
 		$alt_text_generation_experiment = $this->registry->get_experiment( 'alt-text-generation' );
 		$this->assertNotNull( $alt_text_generation_experiment, 'Alt text generation experiment should exist' );
 		$this->assertEquals( 'alt-text-generation', $alt_text_generation_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $alt_text_generation_experiment->get_category() );
 
 		$excerpt_experiment = $this->registry->get_experiment( 'excerpt-generation' );
 		$this->assertNotNull( $excerpt_experiment, 'Excerpt generation experiment should exist' );
 		$this->assertEquals( 'excerpt-generation', $excerpt_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $excerpt_experiment->get_category() );
 
 		$image_experiment = $this->registry->get_experiment( 'image-generation' );
 		$this->assertNotNull( $image_experiment, 'Image generation experiment should exist' );
 		$this->assertEquals( 'image-generation', $image_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $image_experiment->get_category() );
 
 		$review_notes_experiment = $this->registry->get_experiment( 'review-notes' );
 		$this->assertNotNull( $review_notes_experiment, 'Review notes experiment should exist' );
@@ -159,10 +167,12 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		$summarization_experiment = $this->registry->get_experiment( 'summarization' );
 		$this->assertNotNull( $summarization_experiment, 'Summarization experiment should exist' );
 		$this->assertEquals( 'summarization', $summarization_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $summarization_experiment->get_category() );
 
 		$title_experiment = $this->registry->get_experiment( 'title-generation' );
 		$this->assertNotNull( $title_experiment, 'Title generation experiment should exist' );
 		$this->assertEquals( 'title-generation', $title_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $title_experiment->get_category() );
 	}
 
 	/**
