@@ -40,6 +40,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **[Image Generation](docs/experiments/image-generation.md)** - Generate featured images and inline images using AI.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** -  Generates title suggestions from content.
 
 ## Roadmap
