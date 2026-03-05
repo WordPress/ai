@@ -395,7 +395,7 @@ Covers:
 ### Requirements
 
 - WordPress 6.9+ (Notes feature required for block-level comment association)
-- Valid AI credentials configured in `Settings → AI Client`
+- Valid AI credentials configured in `Settings → Connectors`
 - User must have `edit_posts` capability (or `edit_post` for the specific post when a post ID is provided)
 - The block editor must be active (classic editor is not supported)
 

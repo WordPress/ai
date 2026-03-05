@@ -1,7 +1,7 @@
 {
   "$schema": "https://schemas.wp.org/trunk/wp-env.json",
   "core": null,
-  "plugins": [ "." ],
+  "plugins": [ ".", "https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip" ],
   "env": {
     "development": {
       "config": {
