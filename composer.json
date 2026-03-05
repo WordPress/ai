@@ -4,7 +4,6 @@
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
-    "automattic/jetpack-autoloader": "^5.0",
     "ext-json": "*",
     "php": ">=7.4"
   },
@@ -40,10 +39,8 @@
   "prefer-stable": true,
   "config": {
     "allow-plugins": {
-      "automattic/jetpack-autoloader": true,
       "composer/installers": true,
       "dealerdirect/phpcodesniffer-composer-installer": true,
-      "php-http/discovery": true,
       "phpstan/extension-installer": true
     },
     "platform": {
@@ -59,7 +56,7 @@
   "scripts-descriptions": {
     "format": "Automatically fix coding standards issues",
     "lint": "Check coding standards compliance",
-    "test": "Run PHPUnit tests",
-    "phpstan": "Run static analysis with PHPStan"
+    "phpstan": "Run static analysis with PHPStan",
+    "test": "Run PHPUnit tests"
   }
 }
