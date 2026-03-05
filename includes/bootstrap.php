@@ -14,7 +14,6 @@ namespace WordPress\AI;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
-use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -187,12 +186,12 @@ function load(): void {
 		return;
 	}
 
-	// Load the Jetpack autoloader.
-	if ( ! file_exists( AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
+	// Load the Composer autoloader.
+	if ( ! file_exists( AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 		add_action( 'admin_notices', __NAMESPACE__ . '\display_composer_notice' );
 		return;
 	}
-	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php';
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload.php';
 
 	$loaded = true;
 
@@ -200,7 +199,7 @@ function load(): void {
 	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
 	// Hook experiment initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
+	add_action( 'init', __NAMESPACE__ . '\initialize_experiments', 15 );
 }
 
 /**
@@ -210,9 +209,6 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
-		// Initialize the WP AI Client.
-		AI_Client::init();
-
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
