@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Example_Experiment;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -31,6 +32,7 @@ class Example_Experiment extends Abstract_Experiment {
 			'id'          => 'example-experiment',
 			'label'       => __( 'Example Experiment', 'ai' ),
 			'description' => __( 'Demonstrates the AI experiment system with example hooks and functionality.', 'ai' ),
+			'category'    => Experiment_Category::ADMIN,
 		);
 	}
 

@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Example_Experiment;
 
 use WP_UnitTestCase;
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\Example_Experiment\Example_Experiment;
@@ -74,6 +75,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'example-experiment', $experiment->get_id() );
 		$this->assertEquals( 'Example Experiment', $experiment->get_label() );
+		$this->assertEquals( Experiment_Category::ADMIN, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 

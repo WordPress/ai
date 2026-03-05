@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Abilities_Explorer;
 
 use WP_UnitTestCase;
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer;
@@ -79,6 +80,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 		$this->assertEquals( 'abilities-explorer', $experiment->get_id() );
 		$this->assertEquals( 'Abilities Explorer', $experiment->get_label() );
 		$this->assertNotEmpty( $experiment->get_description() );
+		$this->assertEquals( Experiment_Category::ADMIN, $experiment->get_category() );
 	}
 
 	/**

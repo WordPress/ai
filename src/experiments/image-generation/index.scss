@@ -1,0 +1,38 @@
+.ai-generate-image-inline-modal {
+	.components-notice {
+		margin-top: 15px;
+	}
+
+	&__actions {
+		margin-top: 15px;
+	}
+
+	&__preview {
+		.ai-generate-image-inline-modal__preview-image {
+			max-width: 100%;
+			height: auto;
+		}
+
+		.ai-generate-image-inline-modal__actions {
+			display: flex;
+			gap: 8px;
+		}
+	}
+
+	&__generating {
+		.ai-generate-image-inline-modal__preview-image {
+			margin-bottom: 15px;
+			max-width: 100%;
+			height: auto;
+		}
+		.ai-generate-image-inline-modal__spinner-row {
+			.components-spinner {
+				vertical-align: middle;
+			}
+			span {
+				color: #757575;
+				vertical-align: bottom;
+			}
+		}
+	}
+}

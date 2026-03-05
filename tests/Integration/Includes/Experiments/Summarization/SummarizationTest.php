@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Summarization;
 
+use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiment_Loader;
 use WordPress\AI\Experiments\Summarization\Summarization;
@@ -69,6 +70,7 @@ class SummarizationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'summarization', $experiment->get_id() );
 		$this->assertEquals( 'Content Summarization', $experiment->get_label() );
+		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 }
