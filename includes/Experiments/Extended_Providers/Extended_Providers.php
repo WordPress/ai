@@ -205,12 +205,12 @@ class Extended_Providers extends Abstract_Experiment {
 	 * @var array<string, list<string>>
 	 */
 	private const TEXT_GENERATION_MODELS = array(
-		'cohere'     => array( 'command-r-plus', 'command-r', 'command' ),
-		'deepseek'   => array( 'deepseek-chat', 'deepseek-reasoner' ),
-		'grok'       => array( 'grok-2', 'grok-3-mini' ),
-		'groq'       => array( 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant' ),
+		'cohere'      => array( 'command-r-08-2024', 'command-a-reasoning-08-2025', 'command-r7b-12-2024' ),
+		'deepseek'    => array( 'deepseek-chat', 'deepseek-reasoner' ),
+		'grok'        => array( 'grok-2', 'grok-3-mini' ),
+		'groq'        => array( 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant' ),
 		'huggingface' => array( 'meta-llama/Llama-3.3-70B-Instruct' ),
-		'openrouter' => array( 'openai/gpt-4o-mini', 'anthropic/claude-3.5-haiku' ),
+		'openrouter'  => array( 'openai/gpt-4o-mini', 'anthropic/claude-3.5-haiku' ),
 	);
 
 	/**
