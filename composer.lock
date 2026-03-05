@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8c7b4ffe92f2ad6287883af4d77ae819",
+    "content-hash": "8051a23807fd524ad6ba8d62fc3fbbe2",
     "packages": [
         {
             "name": "automattic/jetpack-autoloader",
@@ -551,80 +551,6 @@
                 "source": "https://github.com/php-fig/http-message/tree/2.0"
             },
             "time": "2023-04-04T09:54:51+00:00"
-        },
-        {
-            "name": "wordpress/mcp-adapter",
-            "version": "v0.3.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/WordPress/mcp-adapter.git",
-                "reference": "653ca8d95180b25809b1a1dc489d8305ec5beb63"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/mcp-adapter/zipball/653ca8d95180b25809b1a1dc489d8305ec5beb63",
-                "reference": "653ca8d95180b25809b1a1dc489d8305ec5beb63",
-                "shasum": ""
-            },
-            "require": {
-                "php": "^7.4 || ^8.0"
-            },
-            "require-dev": {
-                "automattic/vipwpcs": "^3.0",
-                "php-stubs/wp-cli-stubs": "^2.12",
-                "phpcompatibility/php-compatibility": "10.x-dev as 9.99.99",
-                "phpcompatibility/phpcompatibility-wp": "^2.1",
-                "phpstan/extension-installer": "^1.3",
-                "phpstan/php-8-stubs": "^0.4.24",
-                "phpstan/phpstan": "^2.1.22",
-                "phpstan/phpstan-deprecation-rules": "^2.0.3",
-                "phpunit/phpunit": "^9.6",
-                "slevomat/coding-standard": "^8.0",
-                "szepeviktor/phpstan-wordpress": "^2.0",
-                "wp-phpunit/wp-phpunit": "^6.5",
-                "wpackagist-plugin/plugin-check": "^1.6",
-                "yoast/phpunit-polyfills": "^4.0"
-            },
-            "type": "library",
-            "extra": {
-                "installer-paths": {
-                    "vendor/{$vendor}/{$name}/": [
-                        "wpackagist-plugin/plugin-check"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "WP\\MCP\\": "includes/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "GPL-2.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "WordPress AI Team",
-                    "homepage": "https://make.wordpress.org/ai/"
-                }
-            ],
-            "description": "Adapter for Abilities API, letting WordPress abilities to be used as MCP tools, resources or prompts",
-            "homepage": "https://github.com/wordpress/mcp-adapter",
-            "keywords": [
-                "abilities-api",
-                "adapter",
-                "ai",
-                "api",
-                "integration",
-                "mcp",
-                "model-context-protocol",
-                "wordpress"
-            ],
-            "support": {
-                "issues": "https://github.com/wordpress/mcp-adapter/issues",
-                "source": "https://github.com/wordpress/mcp-adapter"
-            },
-            "time": "2025-11-06T14:56:51+00:00"
         },
         {
             "name": "wordpress/php-ai-client",
@@ -3860,5 +3786,5 @@
     "platform-overrides": {
         "php": "7.4"
     },
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
