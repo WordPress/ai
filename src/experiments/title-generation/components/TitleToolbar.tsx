@@ -3,14 +3,8 @@
  */
 
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
-import apiFetch from '@wordpress/api-fetch';
 import {
 	Button,
 	Flex,
@@ -26,6 +20,15 @@ import { useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
+
+/**
+ * Internal dependencies
+ */
+import { runAbility } from '../../../utils/run-ability';
+import type {
+	TitleGenerationAbilityInput,
+	GeneratedTitlesData,
+} from '../types';
 
 const { aiTitleGenerationData } = window as any;
 
@@ -125,16 +128,12 @@ async function generateTitles(
 	postId: number,
 	content: string
 ): Promise< string[] > {
-	return apiFetch( {
-		path: aiTitleGenerationData?.path ?? '',
-		method: 'POST',
-		data: {
-			input: {
-				post_id: postId,
-				content,
-			},
-		},
-	} )
+	const params: TitleGenerationAbilityInput = {
+		post_id: postId,
+		content,
+	};
+
+	return runAbility< GeneratedTitlesData >( 'ai/title-generation', params )
 		.then( ( response ) => {
 			if (
 				response &&
@@ -190,7 +189,10 @@ export default function TitleToolbar(): JSX.Element | null {
 		);
 
 		try {
-			const generatedTitles = await generateTitles( postId, content );
+			const generatedTitles = await generateTitles(
+				postId as number,
+				content
+			);
 			setTitles( generatedTitles );
 			openModal();
 		} catch ( error: any ) {

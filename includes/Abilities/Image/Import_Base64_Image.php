@@ -17,14 +17,14 @@ use WordPress\AiClient\Files\DTO\File;
 /**
  * Base64 encoded image import WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Import_Base64_Image extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -60,6 +60,27 @@ class Import_Base64_Image extends Abstract_Ability {
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'The MIME type of the image.', 'ai' ),
 				),
+				'meta'        => array(
+					'type'        => 'array',
+					'description' => esc_html__( 'Optional meta data to save with the image.', 'ai' ),
+					'items'       => array(
+						'type'                 => 'object',
+						'properties'           => array(
+							'key'   => array(
+								'type'              => 'string',
+								'sanitize_callback' => 'sanitize_key',
+								'description'       => esc_html__( 'The key of the meta data.', 'ai' ),
+							),
+							'value' => array(
+								'type'              => 'string',
+								'sanitize_callback' => 'sanitize_text_field',
+								'description'       => esc_html__( 'The value of the meta data.', 'ai' ),
+							),
+						),
+						'required'             => array( 'key', 'value' ),
+						'additionalProperties' => false,
+					),
+				),
 			),
 			'required'   => array( 'data' ),
 		);
@@ -68,7 +89,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -111,7 +132,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -123,6 +144,7 @@ class Import_Base64_Image extends Abstract_Ability {
 				'description' => '',
 				'alt_text'    => '',
 				'mime_type'   => null,
+				'meta'        => array(),
 			),
 		);
 
@@ -171,6 +193,11 @@ class Import_Base64_Image extends Abstract_Ability {
 			return $result;
 		}
 
+		// Save the meta data.
+		foreach ( $args['meta'] as $meta ) {
+			update_post_meta( $result['id'], sanitize_key( $meta['key'] ), sanitize_text_field( $meta['value'] ) );
+		}
+
 		// Return the image data in the format the Ability expects.
 		return array(
 			'image' => $result,
@@ -180,7 +207,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function permission_callback( $args ) {
 		// Ensure the user has permission to upload files.
@@ -197,7 +224,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -208,7 +235,7 @@ class Import_Base64_Image extends Abstract_Ability {
 	/**
 	 * Imports an image from a base64 encoded string into the media library.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
 	 * @param string $data     The base64 encoded image data to import into the media library.
 	 * @param array<string, mixed> $args The arguments for the image import.
@@ -242,7 +269,7 @@ class Import_Base64_Image extends Abstract_Ability {
 		$bytes_written = file_put_contents( $temp_file, $decoded_data ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
 
 		if ( false === $bytes_written ) {
-			@unlink( $temp_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Generic.PHP.NoSilencedErrors.Forbidden, WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink
+			wp_delete_file( $temp_file );
 			return new WP_Error(
 				'write_failed',
 				esc_html__( 'Failed to write image data to temporary file.', 'ai' )
@@ -276,7 +303,7 @@ class Import_Base64_Image extends Abstract_Ability {
 
 		// Clean up temp file if it still exists.
 		if ( file_exists( $temp_file ) ) {
-			@unlink( $temp_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Generic.PHP.NoSilencedErrors.Forbidden, WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink
+			wp_delete_file( $temp_file );
 		}
 
 		// Ensure the import worked.

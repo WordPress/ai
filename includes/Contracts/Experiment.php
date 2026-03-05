@@ -51,6 +51,17 @@ interface Experiment {
 	public function get_description(): string;
 
 	/**
+	 * Gets the experiment category.
+	 *
+	 * Determines where the experiment appears in the settings UI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The experiment category.
+	 */
+	public function get_category(): string;
+
+	/**
 	 * Registers the experiment's hooks and functionality.
 	 *
 	 * This method is called when the experiment is initialized.
