@@ -651,7 +651,7 @@ function ExtendedProviderConnector( { label, description, slug } ) {
  * in insertion order.
  */
 window.wp.domReady( () => {
-	requestAnimationFrame( () => {
+	window.requestAnimationFrame( () => {
 		providers.forEach( ( provider ) => {
 			registerConnector( 'ai-experiments/' + provider.id, {
 				label: provider.label,
