@@ -173,7 +173,7 @@ abstract class Abstract_Ability extends WP_Ability {
 				// PHP files should return a string directly.
 				$content = require_once $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 
-				return is_string( $content ) ? wp_strip_all_tags( $content ) : '';
+				return is_string( $content ) ? esc_html( $content ) : '';
 			}
 
 			return '';
@@ -186,7 +186,7 @@ abstract class Abstract_Ability extends WP_Ability {
 			// PHP files should return a string directly.
 			$content = require $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 
-			return is_string( $content ) ? wp_strip_all_tags( $content ) : '';
+			return is_string( $content ) ? esc_html( $content ) : '';
 		}
 
 		return '';
