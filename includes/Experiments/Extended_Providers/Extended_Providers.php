@@ -158,14 +158,17 @@ class Extended_Providers extends Abstract_Experiment {
 		// the WP AI Client collects provider metadata for the credentials screen.
 		$this->register_providers();
 
-		// On WP 7.0+, register connector settings and enqueue the JS module
-		// for the Settings > Connectors screen.
+		// On WP 7.0+, core's _wp_register_default_connector_settings() (init:20)
+		// auto-discovers all registered providers and handles API key settings,
+		// mask filters, and key-to-registry passing. We only need to register
+		// non-standard settings (Cloudflare Account ID, Ollama endpoint) and
+		// enqueue the JS for custom icons/UI.
 		if ( ! $this->is_enabled() || ! $this->is_connectors_supported() ) {
 			return;
 		}
 
-		$this->register_connector_settings();
-		$this->pass_connector_keys_to_registry();
+		$this->register_extra_connector_settings();
+		$this->apply_endpoint_provider_urls();
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_connectors_script' ) );
 	}
 
@@ -175,7 +178,9 @@ class Extended_Providers extends Abstract_Experiment {
 	 * @return bool
 	 */
 	private function is_connectors_supported(): bool {
-		return function_exists( '_wp_connectors_get_provider_settings' );
+		// Trunk uses _wp_connectors_get_connector_settings; beta2 uses _wp_connectors_get_provider_settings.
+		return function_exists( '_wp_connectors_get_connector_settings' )
+			|| function_exists( '_wp_connectors_get_provider_settings' );
 	}
 
 	/**
@@ -205,79 +210,19 @@ class Extended_Providers extends Abstract_Experiment {
 	}
 
 	/**
-	 * Registers `connectors_ai_{id}_api_key` settings for extended providers.
+	 * Registers non-standard connector settings that core doesn't handle.
 	 *
-	 * Mirrors core's `_wp_register_default_connector_settings()` for our providers.
+	 * Core's `_wp_register_default_connector_settings()` (init:20) auto-registers
+	 * `connectors_ai_{id}_api_key` settings, mask filters, and key passing for all
+	 * registered providers. We only register settings core doesn't know about:
+	 * - Cloudflare Account ID (extra field alongside the API key)
+	 * - Ollama endpoint URL (endpoint-based, no API key)
 	 */
-	private function register_connector_settings(): void {
-		foreach ( $this->get_enabled_provider_ids() as $provider_id ) {
-			if ( ! isset( self::CONNECTOR_META[ $provider_id ] ) ) {
-				continue;
-			}
+	private function register_extra_connector_settings(): void {
+		$enabled_ids = $this->get_enabled_provider_ids();
 
-			$meta = self::CONNECTOR_META[ $provider_id ];
-			$type = $meta['type'] ?? 'api_key';
-
-			// Ollama is endpoint-based (no API key).
-			if ( 'endpoint' === $type ) {
-				register_setting(
-					'connectors',
-					"ai_{$provider_id}_endpoint",
-					array(
-						'type'              => 'string',
-						'label'             => sprintf(
-							/* translators: %s: AI provider name. */
-							__( '%s Endpoint URL', 'ai' ),
-							$meta['label']
-						),
-						'description'       => sprintf(
-							/* translators: %s: AI provider name. */
-							__( 'Endpoint URL for the %s provider.', 'ai' ),
-							$meta['label']
-						),
-						'default'           => '',
-						'show_in_rest'      => true,
-						'sanitize_callback' => 'sanitize_url',
-					)
-				);
-				continue;
-			}
-
-			$setting_name = "connectors_ai_{$provider_id}_api_key";
-
-			register_setting(
-				'connectors',
-				$setting_name,
-				array(
-					'type'              => 'string',
-					'label'             => sprintf(
-						/* translators: %s: AI provider name. */
-						__( '%s API Key', 'ai' ),
-						$meta['label']
-					),
-					'description'       => sprintf(
-						/* translators: %s: AI provider name. */
-						__( 'API key for the %s AI provider.', 'ai' ),
-						$meta['label']
-					),
-					'default'           => '',
-					'show_in_rest'      => true,
-					'sanitize_callback' => static function ( $value ): string {
-						return sanitize_text_field( (string) $value );
-					},
-				)
-			);
-
-			// Mask stored keys in option reads.
-			if ( function_exists( '_wp_connectors_mask_api_key' ) ) {
-				add_filter( "option_{$setting_name}", '_wp_connectors_mask_api_key' );
-			}
-
-			// Cloudflare also needs an Account ID field.
-			if ( 'cloudflare' !== $provider_id ) {
-				continue;
-			}
-
+		// Cloudflare needs an Account ID in addition to the API key that core handles.
+		if ( in_array( 'cloudflare', $enabled_ids, true ) ) {
 			register_setting(
 				'connectors',
 				'ai_cloudflare_account_id',
@@ -291,62 +236,47 @@ class Extended_Providers extends Abstract_Experiment {
 				)
 			);
 		}
+
+		// Ollama is endpoint-based (local provider, no API key).
+		if ( in_array( 'ollama', $enabled_ids, true ) ) {
+			register_setting(
+				'connectors',
+				'ai_ollama_endpoint',
+				array(
+					'type'              => 'string',
+					'label'             => __( 'Ollama Endpoint URL', 'ai' ),
+					'description'       => __( 'Endpoint URL for the Ollama provider.', 'ai' ),
+					'default'           => '',
+					'show_in_rest'      => true,
+					'sanitize_callback' => 'sanitize_url',
+				)
+			);
+		}
 	}
 
 	/**
-	 * Passes stored connector API keys to the AI client registry.
+	 * Applies endpoint URLs for providers that use a custom base URL instead of API keys.
 	 */
-	private function pass_connector_keys_to_registry(): void {
-		if ( ! class_exists( AiClient::class ) ) {
-			return;
-		}
-
-		try {
-			$registry = AiClient::defaultRegistry();
-		} catch ( \Throwable $t ) {
-			return;
-		}
-
+	private function apply_endpoint_provider_urls(): void {
 		foreach ( $this->get_enabled_provider_ids() as $provider_id ) {
 			$meta = self::CONNECTOR_META[ $provider_id ] ?? array();
 			$type = $meta['type'] ?? 'api_key';
 
-			// Ollama: apply endpoint URL via filter, no API key needed.
-			if ( 'endpoint' === $type ) {
-				$endpoint = (string) get_option( "ai_{$provider_id}_endpoint", '' );
-				if ( '' !== $endpoint ) {
-					add_filter(
-						"ai_{$provider_id}_base_url",
-						static function () use ( $endpoint ): string {
-							return rtrim( $endpoint, '/' ) . '/api';
-						}
-					);
+			if ( 'endpoint' !== $type ) {
+				continue;
+			}
+
+			$endpoint = (string) get_option( "ai_{$provider_id}_endpoint", '' );
+			if ( '' === $endpoint ) {
+				continue;
+			}
+
+			add_filter(
+				"ai_{$provider_id}_base_url",
+				static function () use ( $endpoint ): string {
+					return rtrim( $endpoint, '/' ) . '/api';
 				}
-				continue;
-			}
-
-			$setting_name  = "connectors_ai_{$provider_id}_api_key";
-			$mask_callback = '_wp_connectors_mask_api_key';
-
-			// Read the unmasked value.
-			if ( function_exists( '_wp_connectors_get_real_api_key' ) && function_exists( '_wp_connectors_mask_api_key' ) ) {
-				$api_key = _wp_connectors_get_real_api_key( $setting_name, $mask_callback );
-			} else {
-				$api_key = (string) get_option( $setting_name, '' );
-			}
-
-			if ( '' === $api_key || ! $registry->hasProvider( $provider_id ) ) {
-				continue;
-			}
-
-			try {
-				$registry->setProviderRequestAuthentication(
-					$provider_id,
-					new \WordPress\AiClient\Providers\Http\DTO\ApiKeyRequestAuthentication( $api_key )
-				);
-			} catch ( \Throwable $t ) {
-				continue;
-			}
+			);
 		}
 	}
 
