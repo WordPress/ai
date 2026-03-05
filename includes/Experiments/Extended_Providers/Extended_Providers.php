@@ -413,7 +413,7 @@ class Extended_Providers extends Abstract_Experiment {
 			return;
 		}
 
-		$script_path = AI_EXPERIMENTS_DIR . 'build/connectors-extended.js';
+		$script_path = AI_EXPERIMENTS_DIR . 'assets/js/connectors-extended.js';
 		if ( ! file_exists( $script_path ) ) {
 			return;
 		}
@@ -428,7 +428,7 @@ class Extended_Providers extends Abstract_Experiment {
 
 		wp_register_script_module(
 			$module_id,
-			AI_EXPERIMENTS_PLUGIN_URL . 'build/connectors-extended.js',
+			AI_EXPERIMENTS_PLUGIN_URL . 'assets/js/connectors-extended.js',
 			$deps,
 			(string) filemtime( $script_path )
 		);
