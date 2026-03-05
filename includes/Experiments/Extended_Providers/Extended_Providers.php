@@ -33,8 +33,11 @@ use function get_option;
 use function is_string;
 use function register_setting;
 use function rest_sanitize_boolean;
+use function sanitize_text_field;
 use function sprintf;
+use function wp_enqueue_script_module;
 use function wp_kses_post;
+use function wp_register_script_module;
 
 /**
  * Registers additional AI providers with the WP AI Client registry.
@@ -82,12 +85,346 @@ class Extended_Providers extends Abstract_Experiment {
 	}
 
 	/**
+	 * Provider metadata for connectors integration.
+	 *
+	 * Maps provider ID => [ label, description, helpUrl, helpLabel ].
+	 *
+	 * @var array<string, array{label: string, description: string, helpUrl: string, helpLabel: string}>
+	 */
+	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition -- False positive with array constant.
+	private const CONNECTOR_META = array(
+		'cloudflare'  => array(
+			'label'       => 'Cloudflare Workers AI',
+			'description' => "Run AI models on Cloudflare\u{2019}s global edge network.",
+			'helpUrl'     => 'https://dash.cloudflare.com/',
+			'helpLabel'   => 'dash.cloudflare.com',
+		),
+		'cohere'      => array(
+			'label'       => 'Cohere',
+			'description' => 'Enterprise-grade language models for text generation and embeddings.',
+			'helpUrl'     => 'https://dashboard.cohere.com/',
+			'helpLabel'   => 'dashboard.cohere.com',
+		),
+		'deepseek'    => array(
+			'label'       => 'DeepSeek',
+			'description' => 'Advanced reasoning and code generation with DeepSeek models.',
+			'helpUrl'     => 'https://platform.deepseek.com/',
+			'helpLabel'   => 'platform.deepseek.com',
+		),
+		'fal'         => array(
+			'label'       => 'Fal.ai',
+			'description' => 'Fast image generation and media models.',
+			'helpUrl'     => 'https://fal.ai/dashboard/',
+			'helpLabel'   => 'fal.ai',
+		),
+		'grok'        => array(
+			'label'       => 'Grok (xAI)',
+			'description' => "Text generation with xAI\u{2019}s Grok models.",
+			'helpUrl'     => 'https://console.x.ai/',
+			'helpLabel'   => 'console.x.ai',
+		),
+		'groq'        => array(
+			'label'       => 'Groq',
+			'description' => 'Ultra-fast inference for open-source language models.',
+			'helpUrl'     => 'https://console.groq.com/',
+			'helpLabel'   => 'console.groq.com',
+		),
+		'huggingface' => array(
+			'label'       => 'Hugging Face',
+			'description' => 'Access thousands of open-source models via the Inference API.',
+			'helpUrl'     => 'https://huggingface.co/settings/tokens',
+			'helpLabel'   => 'huggingface.co',
+		),
+		'ollama'      => array(
+			'label'       => 'Ollama',
+			'description' => 'Run large language models locally on your own hardware.',
+			'helpUrl'     => 'https://ollama.com/',
+			'helpLabel'   => 'ollama.com',
+			'type'        => 'endpoint',
+		),
+		'openrouter'  => array(
+			'label'       => 'OpenRouter',
+			'description' => 'Unified API gateway for hundreds of AI models.',
+			'helpUrl'     => 'https://openrouter.ai/keys',
+			'helpLabel'   => 'openrouter.ai',
+		),
+	);
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
 		// Register providers immediately so they're available when
 		// the WP AI Client collects provider metadata for the credentials screen.
 		$this->register_providers();
+
+		// On WP 7.0+, register connector settings and enqueue the JS module
+		// for the Settings > Connectors screen.
+		if ( ! $this->is_enabled() || ! $this->is_connectors_supported() ) {
+			return;
+		}
+
+		$this->register_connector_settings();
+		$this->pass_connector_keys_to_registry();
+		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_connectors_script' ) );
+	}
+
+	/**
+	 * Checks whether the WP 7.0 Connectors screen is available.
+	 *
+	 * @return bool
+	 */
+	private function is_connectors_supported(): bool {
+		return function_exists( '_wp_connectors_get_provider_settings' );
+	}
+
+	/**
+	 * Returns the provider IDs that are currently enabled in the experiment.
+	 *
+	 * @return string[]
+	 */
+	private function get_enabled_provider_ids(): array {
+		$provider_classes = $this->filter_enabled_provider_classes(
+			$this->get_provider_classes()
+		);
+
+		$ids = array();
+		foreach ( $provider_classes as $class_name ) {
+			if ( ! class_exists( $class_name ) || ! method_exists( $class_name, 'metadata' ) ) {
+				continue;
+			}
+
+			try {
+				$ids[] = $class_name::metadata()->getId();
+			} catch ( \Throwable $t ) {
+				continue;
+			}
+		}
+
+		return $ids;
+	}
+
+	/**
+	 * Registers `connectors_ai_{id}_api_key` settings for extended providers.
+	 *
+	 * Mirrors core's `_wp_register_default_connector_settings()` for our providers.
+	 */
+	private function register_connector_settings(): void {
+		foreach ( $this->get_enabled_provider_ids() as $provider_id ) {
+			if ( ! isset( self::CONNECTOR_META[ $provider_id ] ) ) {
+				continue;
+			}
+
+			$meta = self::CONNECTOR_META[ $provider_id ];
+			$type = $meta['type'] ?? 'api_key';
+
+			// Ollama is endpoint-based (no API key).
+			if ( 'endpoint' === $type ) {
+				register_setting(
+					'connectors',
+					"ai_{$provider_id}_endpoint",
+					array(
+						'type'              => 'string',
+						'label'             => sprintf(
+							/* translators: %s: AI provider name. */
+							__( '%s Endpoint URL', 'ai' ),
+							$meta['label']
+						),
+						'description'       => sprintf(
+							/* translators: %s: AI provider name. */
+							__( 'Endpoint URL for the %s provider.', 'ai' ),
+							$meta['label']
+						),
+						'default'           => '',
+						'show_in_rest'      => true,
+						'sanitize_callback' => 'sanitize_url',
+					)
+				);
+				continue;
+			}
+
+			$setting_name = "connectors_ai_{$provider_id}_api_key";
+
+			register_setting(
+				'connectors',
+				$setting_name,
+				array(
+					'type'              => 'string',
+					'label'             => sprintf(
+						/* translators: %s: AI provider name. */
+						__( '%s API Key', 'ai' ),
+						$meta['label']
+					),
+					'description'       => sprintf(
+						/* translators: %s: AI provider name. */
+						__( 'API key for the %s AI provider.', 'ai' ),
+						$meta['label']
+					),
+					'default'           => '',
+					'show_in_rest'      => true,
+					'sanitize_callback' => static function ( $value ): string {
+						return sanitize_text_field( (string) $value );
+					},
+				)
+			);
+
+			// Mask stored keys in option reads.
+			if ( function_exists( '_wp_connectors_mask_api_key' ) ) {
+				add_filter( "option_{$setting_name}", '_wp_connectors_mask_api_key' );
+			}
+
+			// Cloudflare also needs an Account ID field.
+			if ( 'cloudflare' !== $provider_id ) {
+				continue;
+			}
+
+			register_setting(
+				'connectors',
+				'ai_cloudflare_account_id',
+				array(
+					'type'              => 'string',
+					'label'             => __( 'Cloudflare Account ID', 'ai' ),
+					'description'       => __( 'Cloudflare account ID for Workers AI API requests.', 'ai' ),
+					'default'           => '',
+					'show_in_rest'      => true,
+					'sanitize_callback' => 'sanitize_text_field',
+				)
+			);
+		}
+	}
+
+	/**
+	 * Passes stored connector API keys to the AI client registry.
+	 */
+	private function pass_connector_keys_to_registry(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			return;
+		}
+
+		try {
+			$registry = AiClient::defaultRegistry();
+		} catch ( \Throwable $t ) {
+			return;
+		}
+
+		foreach ( $this->get_enabled_provider_ids() as $provider_id ) {
+			$meta = self::CONNECTOR_META[ $provider_id ] ?? array();
+			$type = $meta['type'] ?? 'api_key';
+
+			// Ollama: apply endpoint URL via filter, no API key needed.
+			if ( 'endpoint' === $type ) {
+				$endpoint = (string) get_option( "ai_{$provider_id}_endpoint", '' );
+				if ( '' !== $endpoint ) {
+					add_filter(
+						"ai_{$provider_id}_base_url",
+						static function () use ( $endpoint ): string {
+							return rtrim( $endpoint, '/' ) . '/api';
+						}
+					);
+				}
+				continue;
+			}
+
+			$setting_name  = "connectors_ai_{$provider_id}_api_key";
+			$mask_callback = '_wp_connectors_mask_api_key';
+
+			// Read the unmasked value.
+			if ( function_exists( '_wp_connectors_get_real_api_key' ) && function_exists( '_wp_connectors_mask_api_key' ) ) {
+				$api_key = _wp_connectors_get_real_api_key( $setting_name, $mask_callback );
+			} else {
+				$api_key = (string) get_option( $setting_name, '' );
+			}
+
+			if ( '' === $api_key || ! $registry->hasProvider( $provider_id ) ) {
+				continue;
+			}
+
+			try {
+				$registry->setProviderRequestAuthentication(
+					$provider_id,
+					new \WordPress\AiClient\Providers\Http\DTO\ApiKeyRequestAuthentication( $api_key )
+				);
+			} catch ( \Throwable $t ) {
+				continue;
+			}
+		}
+	}
+
+	/**
+	 * Enqueues the connectors script module on the Connectors admin page.
+	 *
+	 * @param string $hook_suffix Admin page hook suffix.
+	 */
+	public function maybe_enqueue_connectors_script( string $hook_suffix ): void {
+		if ( 'settings_page_connectors-wp-admin' !== $hook_suffix ) {
+			return;
+		}
+
+		if ( ! function_exists( 'wp_register_script_module' ) ) {
+			return;
+		}
+
+		$script_path = AI_EXPERIMENTS_DIR . 'build/connectors-extended.js';
+		if ( ! file_exists( $script_path ) ) {
+			return;
+		}
+
+		$module_id = 'ai-experiments/connectors-extended';
+		$deps      = array(
+			array(
+				'id'     => '@wordpress/connectors',
+				'import' => 'static',
+			),
+		);
+
+		wp_register_script_module(
+			$module_id,
+			AI_EXPERIMENTS_PLUGIN_URL . 'build/connectors-extended.js',
+			$deps,
+			(string) filemtime( $script_path )
+		);
+
+		wp_enqueue_script_module( $module_id );
+
+		// Pass provider data to JS.
+		$provider_data = array();
+		foreach ( $this->get_enabled_provider_ids() as $provider_id ) {
+			if ( ! isset( self::CONNECTOR_META[ $provider_id ] ) ) {
+				continue;
+			}
+
+			$meta = self::CONNECTOR_META[ $provider_id ];
+			$type = $meta['type'] ?? 'api_key';
+
+			$entry = array(
+				'id'          => $provider_id,
+				'label'       => $meta['label'],
+				'description' => $meta['description'],
+				'helpUrl'     => $meta['helpUrl'],
+				'helpLabel'   => $meta['helpLabel'],
+				'type'        => $type,
+			);
+
+			if ( 'endpoint' === $type ) {
+				$entry['settingName'] = "ai_{$provider_id}_endpoint";
+			} else {
+				$entry['settingName'] = "connectors_ai_{$provider_id}_api_key";
+			}
+
+			$provider_data[] = $entry;
+		}
+
+		// Output data as a global before the module loads.
+		add_action(
+			'admin_print_footer_scripts',
+			static function () use ( $provider_data ): void {
+				printf(
+					'<script>window.wpAiExtendedConnectors = %s;</script>',
+					wp_json_encode( $provider_data )
+				);
+			},
+			1
+		);
 	}
 
 	/**

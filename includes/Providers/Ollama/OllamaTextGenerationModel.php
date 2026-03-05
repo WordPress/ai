@@ -39,7 +39,7 @@ class OllamaTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	public function generateTextResult( array $prompt ): GenerativeAiResult {
 		$request = new Request(
 			HttpMethodEnum::POST(),
-			rtrim( OllamaProvider::get_base_url(), '/api' ) . '/api/chat',
+			preg_replace( '#/api$#', '', OllamaProvider::get_base_url() ) . '/api/chat',
 			array( 'Content-Type' => 'application/json' ),
 			$this->buildPayload( $prompt )
 		);

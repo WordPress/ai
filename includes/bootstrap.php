@@ -225,7 +225,9 @@ function maybe_disable_bundled_wp_ai_client_packages(): void {
 
 		if ( $reflection->hasProperty( 'psr4_map' ) ) {
 			$psr4_property = $reflection->getProperty( 'psr4_map' );
-			$psr4_property->setAccessible( true );
+			if ( PHP_VERSION_ID < 80100 ) {
+				$psr4_property->setAccessible( true );
+			}
 			$psr4_map = $psr4_property->getValue( $jetpack_autoloader_loader );
 
 			if ( is_array( $psr4_map ) ) {
@@ -257,7 +259,9 @@ function maybe_disable_bundled_wp_ai_client_packages(): void {
 
 		if ( $reflection->hasProperty( 'classmap' ) ) {
 			$classmap_property = $reflection->getProperty( 'classmap' );
-			$classmap_property->setAccessible( true );
+			if ( PHP_VERSION_ID < 80100 ) {
+				$classmap_property->setAccessible( true );
+			}
 			$classmap = $classmap_property->getValue( $jetpack_autoloader_loader );
 
 			if ( is_array( $classmap ) ) {
@@ -279,7 +283,9 @@ function maybe_disable_bundled_wp_ai_client_packages(): void {
 
 		if ( $reflection->hasProperty( 'filemap' ) ) {
 			$filemap_property = $reflection->getProperty( 'filemap' );
-			$filemap_property->setAccessible( true );
+			if ( PHP_VERSION_ID < 80100 ) {
+				$filemap_property->setAccessible( true );
+			}
 			$filemap = $filemap_property->getValue( $jetpack_autoloader_loader );
 
 			if ( is_array( $filemap ) ) {
