@@ -37,7 +37,7 @@ if ( ! defined( 'AI_EXPERIMENTS_MIN_PHP_VERSION' ) ) {
 	define( 'AI_EXPERIMENTS_MIN_PHP_VERSION', '7.4' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_MIN_WP_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '6.9' );
+	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '7.0' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
 	define( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );

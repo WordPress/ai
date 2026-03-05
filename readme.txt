@@ -1,7 +1,7 @@
 === AI Experiments ===
 Contributors:      wordpressorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
-Tested up to:      6.9
+Tested up to:      7.0
 Stable tag:        0.3.1
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
@@ -14,7 +14,7 @@ The WordPress AI Experiments plugin brings experimental AI-powered features dire
 
 **What's Inside:**
 
-This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the WP AI Client SDK, Abilities API, and MCP Adapter into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
+This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the AI Client library and Abilities API into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
 
 **Current Features:**
 
@@ -46,7 +46,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 1. Upload the plugin files to the `/wp-content/plugins/ai` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Go to `Settings -> AI Credentials` and add at least one valid AI credential.
+3. Go to `Settings -> Connectors` and setup at least one AI connector.
 4. Go to `Settings -> AI Experiments` and globally enable experiments and then enable the individual experiments you want to test.
 5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Re-generate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
 
@@ -91,7 +91,7 @@ This is an experimental plugin, so we recommend testing in a staging environment
 
 = Which AI providers are supported? =
 
-The plugin supports OpenAI, Google AI (Gemini), and Anthropic (Claude). You can configure one or multiple providers in Settings -> AI Credentials.
+The plugin supports OpenAI, Google AI (Gemini), and Anthropic (Claude). You can configure one or multiple providers in Settings -> Connectors.
 
 = Do I need an API key to use the experiments? =
 

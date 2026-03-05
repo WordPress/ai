@@ -16,7 +16,7 @@ The WordPress AI Experiments plugin provides a set of opt-in, experimental AI fe
 
 ## Overview
 
-* **Purpose:** Demonstrate and deliver AI features by combining all AI Building Blocks ([PHP AI Client SDK](https://github.com/WordPress/php-ai-client), [Abilities API](https://github.com/WordPress/abilities-api), and [MCP Adapter](https://github.com/WordPress/mcp-adapter)) into a unified WordPress experience.
+* **Purpose:** Demonstrate and deliver AI features by combining the AI Building Blocks ([PHP AI Client SDK](https://github.com/WordPress/php-ai-client), [Abilities API](https://github.com/WordPress/abilities-api)) into a unified WordPress experience.
 * **Scope:** Reference implementations, user-facing AI features, and experimental capabilities for testing and feedback.
 * **Audience:** WordPress users, content creators, site administrators, and developers learning the AI APIs.
 
