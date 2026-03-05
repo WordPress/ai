@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\Cloudflare;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Common\Exception\InvalidArgumentException;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
@@ -53,6 +57,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 	/**
 	 * {@inheritDoc}
 	 */
+	/** @phpstan-ignore missingType.iterableValue */
 	public function streamGenerateTextResult( array $prompt ): \Generator {
 		throw ResponseException::fromInvalidData( 'Cloudflare Workers AI', 'stream', 'Streaming is not implemented.' );
 	}
@@ -174,7 +179,7 @@ class CloudflareWorkersAiTextGenerationModel extends AbstractApiBasedModel imple
 	 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 	 */
 	private function parseResponse( Response $response ): GenerativeAiResult {
-		$data = $response->getData();
+		$data = $response->getData() ?? array();
 		if ( ! isset( $data['result']['response'] ) || ! is_string( $data['result']['response'] ) ) {
 			throw ResponseException::fromMissingData( 'Cloudflare Workers AI', 'result.response' );
 		}

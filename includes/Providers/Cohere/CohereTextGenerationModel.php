@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\Cohere;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Common\Exception\InvalidArgumentException;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
@@ -58,6 +62,7 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	/**
 	 * {@inheritDoc}
 	 */
+	/** @phpstan-ignore missingType.iterableValue */
 	public function streamGenerateTextResult( array $prompt ): \Generator {
 		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 		throw ResponseException::fromInvalidData(
@@ -193,7 +198,7 @@ class CohereTextGenerationModel extends AbstractApiBasedModel implements TextGen
 	 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 	 */
 	private function parseResponseToResult( Response $response ): GenerativeAiResult {
-		$data = $response->getData();
+		$data = $response->getData() ?? array();
 
 		$text_candidates = $this->extractTextCandidates( $data );
 		if ( empty( $text_candidates ) ) {

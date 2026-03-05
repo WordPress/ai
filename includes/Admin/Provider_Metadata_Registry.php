@@ -79,24 +79,29 @@ class Provider_Metadata_Registry {
 	private static function get_initials( string $name ): string {
 		$parts = preg_split( '/\s+/', trim( $name ) );
 		if ( empty( $parts ) ) {
-			return strtoupper( substr( $name, 0, 2 ) );
+			$fallback = substr( $name, 0, 2 );
+			return strtoupper( false !== $fallback ? $fallback : '' );
 		}
 
 		$initials = '';
 		foreach ( $parts as $part ) {
-			$initials .= strtoupper( substr( $part, 0, 1 ) );
+			$char      = substr( $part, 0, 1 );
+			$initials .= strtoupper( false !== $char ? $char : '' );
 			if ( strlen( $initials ) >= 2 ) {
 				break;
 			}
 		}
 
-		return substr( $initials, 0, 2 );
+		$result = substr( $initials, 0, 2 );
+		return false !== $result ? $result : '';
 	}
 
 	/**
 	 * Retrieves model metadata for a provider.
 	 *
-	 * @param string $provider_class Provider class name.
+	 * @param string                $provider_class Provider class name.
+	 * @param string                $provider_id    Provider identifier.
+	 * @param array<string, mixed>  $credentials    Provider credentials.
 	 * @return array<int, array<string, mixed>>
 	 */
 	private static function get_models_for_provider( string $provider_class, string $provider_id, array $credentials ): array {
@@ -107,7 +112,7 @@ class Provider_Metadata_Registry {
 		$cache_key = self::get_models_cache_key( $provider_id, $credentials[ $provider_id ] ?? '' );
 		if ( $cache_key ) {
 			$cached = get_transient( $cache_key );
-			if ( false !== $cached ) {
+			if ( false !== $cached && is_array( $cached ) ) {
 				return $cached;
 			}
 		}

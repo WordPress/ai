@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\Groq;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Messages\Enums\ModalityEnum;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\DTO\Response;
@@ -42,7 +46,7 @@ class GroqModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 	 * {@inheritDoc}
 	 */
 	protected function parseResponseToModelMetadataList( Response $response ): array {
-		$response_data = $response->getData();
+		$response_data = $response->getData() ?? array();
 		if ( ! isset( $response_data['data'] ) || ! is_array( $response_data['data'] ) ) {
 			throw ResponseException::fromMissingData( 'Groq', 'data' );
 		}
@@ -68,7 +72,7 @@ class GroqModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 				$model_id,
 				$model_name,
 				$capabilities,
-				$options
+				$options // @phpstan-ignore argument.type
 			);
 		}
 

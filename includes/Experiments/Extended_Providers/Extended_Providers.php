@@ -81,6 +81,7 @@ class Extended_Providers extends Abstract_Experiment {
 			'id'          => 'extended-providers',
 			'label'       => __( 'Extended Providers', 'ai' ),
 			'description' => __( 'Registers additional AI providers for experimentation without affecting the core set.', 'ai' ),
+			'category'    => '',
 		);
 	}
 
@@ -204,6 +205,7 @@ class Extended_Providers extends Abstract_Experiment {
 	 *
 	 * @var array<string, list<string>>
 	 */
+	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition -- False positive with array constant.
 	private const TEXT_GENERATION_MODELS = array(
 		'cohere'      => array( 'command-r-08-2024', 'command-a-reasoning-08-2025', 'command-r7b-12-2024' ),
 		'deepseek'    => array( 'deepseek-chat', 'deepseek-reasoner' ),
@@ -290,20 +292,22 @@ class Extended_Providers extends Abstract_Experiment {
 		}
 
 		// Ollama is endpoint-based (local provider, no API key).
-		if ( in_array( 'ollama', $enabled_ids, true ) ) {
-			register_setting(
-				'connectors',
-				'ai_ollama_endpoint',
-				array(
-					'type'              => 'string',
-					'label'             => __( 'Ollama Endpoint URL', 'ai' ),
-					'description'       => __( 'Endpoint URL for the Ollama provider.', 'ai' ),
-					'default'           => '',
-					'show_in_rest'      => true,
-					'sanitize_callback' => 'sanitize_url',
-				)
-			);
+		if ( ! in_array( 'ollama', $enabled_ids, true ) ) {
+			return;
 		}
+
+		register_setting(
+			'connectors',
+			'ai_ollama_endpoint',
+			array(
+				'type'              => 'string',
+				'label'             => __( 'Ollama Endpoint URL', 'ai' ),
+				'description'       => __( 'Endpoint URL for the Ollama provider.', 'ai' ),
+				'default'           => '',
+				'show_in_rest'      => true,
+				'sanitize_callback' => 'sanitize_url',
+			)
+		);
 	}
 
 	/**
@@ -380,9 +384,12 @@ class Extended_Providers extends Abstract_Experiment {
 			);
 
 			// Add mask filter (only one instance since we checked core didn't register).
-			if ( function_exists( '_wp_connectors_mask_api_key' ) ) {
-				add_filter( "option_{$setting_name}", '_wp_connectors_mask_api_key' );
+			if ( ! function_exists( '_wp_connectors_mask_api_key' ) ) {
+				continue;
 			}
+
+			// @phpstan-ignore-next-line -- Function name string is a valid callable for add_filter.
+			add_filter( "option_{$setting_name}", '_wp_connectors_mask_api_key' );
 		}
 	}
 
@@ -411,14 +418,16 @@ class Extended_Providers extends Abstract_Experiment {
 			}
 
 			// Skip if already configured (core handled it at init:20).
-			if ( $registry->hasProvider( $provider_id ) ) {
-				try {
-					if ( $registry->isProviderConfigured( $provider_id ) ) {
-						continue;
-					}
-				} catch ( \Throwable $t ) {
-					// isProviderConfigured may throw; continue to try setting key.
+			if ( ! $registry->hasProvider( $provider_id ) ) {
+				continue;
+			}
+
+			try {
+				if ( $registry->isProviderConfigured( $provider_id ) ) {
+					continue;
 				}
+			} catch ( \Throwable $t ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch -- isProviderConfigured may throw; continue to try setting key.
+				unset( $t );
 			}
 
 			$setting_name = "connectors_ai_{$provider_id}_api_key";
@@ -430,7 +439,7 @@ class Extended_Providers extends Abstract_Experiment {
 				$api_key = (string) get_option( $setting_name, '' );
 			}
 
-			if ( '' === $api_key || ! $registry->hasProvider( $provider_id ) ) {
+			if ( '' === $api_key ) {
 				continue;
 			}
 
@@ -545,7 +554,7 @@ class Extended_Providers extends Abstract_Experiment {
 		$registry = AiClient::defaultRegistry();
 
 		foreach ( $provider_classes as $class_name ) {
-			if ( ! is_string( $class_name ) || '' === $class_name ) {
+			if ( '' === $class_name ) {
 				continue;
 			}
 
@@ -569,6 +578,7 @@ class Extended_Providers extends Abstract_Experiment {
 			}
 
 			try {
+				/** @var class-string<\WordPress\AiClient\Providers\Contracts\ProviderInterface> $class_name */
 				$registry->registerProvider( $class_name );
 			} catch ( \Throwable $t ) {
 				_doing_it_wrong(
@@ -658,6 +668,8 @@ class Extended_Providers extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @return array<int, array{label: string, url: string, type: string}>
 	 */
 	public function get_entry_points(): array {
 		return array(
@@ -691,7 +703,7 @@ class Extended_Providers extends Abstract_Experiment {
 			array_filter(
 				array_map(
 					static function ( $class_name ) {
-						return is_string( $class_name ) ? trim( $class_name ) : '';
+						return is_string( $class_name ) ? trim( $class_name ) : ''; // @phpstan-ignore function.alreadyNarrowedType
 					},
 					(array) $providers
 				)
@@ -789,6 +801,7 @@ class Extended_Providers extends Abstract_Experiment {
 				continue;
 			}
 
+			// @phpstan-ignore-next-line -- Template type T in rest_sanitize_boolean cannot be resolved statically.
 			$sanitized[ $class ] = rest_sanitize_boolean( $enabled );
 		}
 

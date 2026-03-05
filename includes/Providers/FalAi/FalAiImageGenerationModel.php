@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\FalAi;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Common\Exception\InvalidArgumentException;
 use WordPress\AiClient\Files\DTO\File;
 use WordPress\AiClient\Messages\DTO\Message;
@@ -99,7 +103,7 @@ class FalAiImageGenerationModel extends AbstractApiBasedModel implements ImageGe
 	 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 	 */
 	private function parseResponseToResult( Response $response ): GenerativeAiResult {
-		$response_data = $response->getData();
+		$response_data = $response->getData() ?? array();
 		if ( ! isset( $response_data['images'] ) || ! is_array( $response_data['images'] ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are for developers.
 			throw ResponseException::fromMissingData( $this->providerMetadata()->getName(), 'images' );

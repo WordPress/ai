@@ -5,16 +5,26 @@
  * Provider data is injected by PHP into window.wpAiExtendedConnectors.
  *
  * @since 0.4.0
- * @package WordPress\AI\Experiments\Extended_Providers
+ * @package
  */
 
+/* eslint-disable @wordpress/no-unsafe-wp-apis, import/no-unresolved */
+/**
+ * WordPress dependencies
+ */
 import {
 	__experimentalRegisterConnector as registerConnector,
 	__experimentalConnectorItem as ConnectorItem,
 	__experimentalDefaultConnectorSettings as DefaultConnectorSettings,
 } from '@wordpress/connectors';
+/* eslint-enable @wordpress/no-unsafe-wp-apis, import/no-unresolved */
 
-const { createElement: h, useState, useEffect, useCallback } = window.wp.element;
+const {
+	createElement: h,
+	useState,
+	useEffect,
+	useCallback,
+} = window.wp.element;
 const {
 	Button,
 	TextControl,
@@ -23,7 +33,7 @@ const {
 	ExternalLink,
 } = window.wp.components;
 const apiFetch = window.wp.apiFetch;
-const { __, sprintf } = window.wp.i18n;
+const { __ } = window.wp.i18n;
 
 /**
  * Provider data injected from PHP.
@@ -198,7 +208,7 @@ function ConnectedBadge() {
 				whiteSpace: 'nowrap',
 			},
 		},
-		__( 'Connected' )
+		__( 'Connected', 'ai' )
 	);
 }
 
@@ -214,7 +224,6 @@ function CloudflareConnectorSettings( {
 	helpUrl,
 	helpLabel,
 	readOnly = false,
-	accountIdSettingName,
 } ) {
 	const [ apiKey, setApiKey ] = useState( initialApiKey );
 	const [ accountId, setAccountId ] = useState( initialAccountId );
@@ -233,7 +242,8 @@ function CloudflareConnectorSettings( {
 				error instanceof Error
 					? error.message
 					: __(
-							'It was not possible to connect to the provider using this key.'
+							'It was not possible to connect to the provider using this key.',
+							'ai'
 					  )
 			);
 		} finally {
@@ -247,7 +257,8 @@ function CloudflareConnectorSettings( {
 				window.wp.element.Fragment,
 				null,
 				__(
-					'Your API key is stored securely. You can reset it at'
+					'Your API key is stored securely. You can reset it at',
+					'ai'
 				),
 				' ',
 				helpUrl
@@ -256,17 +267,13 @@ function CloudflareConnectorSettings( {
 			);
 		}
 		if ( saveError ) {
-			return h(
-				'span',
-				{ style: { color: '#cc1818' } },
-				saveError
-			);
+			return h( 'span', { style: { color: '#cc1818' } }, saveError );
 		}
 		if ( helpUrl ) {
 			return h(
 				window.wp.element.Fragment,
 				null,
-				__( 'Get your API key at' ),
+				__( 'Get your API key at', 'ai' ),
 				' ',
 				h( ExternalLink, { href: helpUrl }, helpLinkLabel )
 			);
@@ -286,7 +293,7 @@ function CloudflareConnectorSettings( {
 		h( TextControl, {
 			__nextHasNoMarginBottom: true,
 			__next40pxDefaultSize: true,
-			label: __( 'Account ID' ),
+			label: __( 'Account ID', 'ai' ),
 			value: accountId,
 			onChange: ( v ) => {
 				if ( ! readOnly ) {
@@ -297,13 +304,14 @@ function CloudflareConnectorSettings( {
 			placeholder: 'YOUR_ACCOUNT_ID',
 			disabled: readOnly || isSaving,
 			help: __(
-				'Found in the Cloudflare dashboard under Workers & Pages.'
+				'Found in the Cloudflare dashboard under Workers & Pages.',
+				'ai'
 			),
 		} ),
 		h( TextControl, {
 			__nextHasNoMarginBottom: true,
 			__next40pxDefaultSize: true,
-			label: __( 'API Key' ),
+			label: __( 'API Key', 'ai' ),
 			value: apiKey,
 			onChange: ( v ) => {
 				if ( ! readOnly ) {
@@ -323,7 +331,7 @@ function CloudflareConnectorSettings( {
 						isDestructive: true,
 						onClick: onRemove,
 					},
-					__( 'Remove and replace' )
+					__( 'Remove and replace', 'ai' )
 			  )
 			: h(
 					HStack,
@@ -338,7 +346,7 @@ function CloudflareConnectorSettings( {
 							isBusy: isSaving,
 							onClick: handleSave,
 						},
-						__( 'Save' )
+						__( 'Save', 'ai' )
 					)
 			  )
 	);
@@ -352,8 +360,6 @@ function OllamaConnectorSettings( {
 	onSave,
 	onRemove,
 	initialEndpoint = '',
-	helpUrl,
-	helpLabel,
 	readOnly = false,
 } ) {
 	const [ endpoint, setEndpoint ] = useState( initialEndpoint );
@@ -369,7 +375,7 @@ function OllamaConnectorSettings( {
 			setSaveError(
 				error instanceof Error
 					? error.message
-					: __( 'Could not save the endpoint.' )
+					: __( 'Could not save the endpoint.', 'ai' )
 			);
 		} finally {
 			setIsSaving( false );
@@ -378,13 +384,14 @@ function OllamaConnectorSettings( {
 
 	const getHelp = () => {
 		if ( readOnly ) {
-			return __( 'Your endpoint is configured.' );
+			return __( 'Your endpoint is configured.', 'ai' );
 		}
 		if ( saveError ) {
 			return h( 'span', { style: { color: '#cc1818' } }, saveError );
 		}
 		return __(
-			'Enter the URL where Ollama is running. Default is http://localhost:11434'
+			'Enter the URL where Ollama is running. Default is http://localhost:11434',
+			'ai'
 		);
 	};
 
@@ -400,7 +407,7 @@ function OllamaConnectorSettings( {
 		h( TextControl, {
 			__nextHasNoMarginBottom: true,
 			__next40pxDefaultSize: true,
-			label: __( 'Endpoint URL' ),
+			label: __( 'Endpoint URL', 'ai' ),
 			value: endpoint,
 			onChange: ( v ) => {
 				if ( ! readOnly ) {
@@ -420,7 +427,7 @@ function OllamaConnectorSettings( {
 						isDestructive: true,
 						onClick: onRemove,
 					},
-					__( 'Remove and replace' )
+					__( 'Remove and replace', 'ai' )
 			  )
 			: h(
 					HStack,
@@ -435,7 +442,7 @@ function OllamaConnectorSettings( {
 							isBusy: isSaving,
 							onClick: handleSave,
 						},
-						__( 'Save' )
+						__( 'Save', 'ai' )
 					)
 			  )
 	);
@@ -449,11 +456,13 @@ function ExtendedProviderConnector( { label, description, slug } ) {
 	const provider = providers.find(
 		( p ) => 'ai-experiments/' + p.id === slug
 	);
-	if ( ! provider ) {
-		return null;
-	}
 
-	const { id, settingName, helpUrl, helpLabel, type } = provider;
+	const providerData = provider || {};
+	const id = providerData.id || '';
+	const settingName = providerData.settingName || '';
+	const helpUrl = providerData.helpUrl || '';
+	const helpLabel = providerData.helpLabel || '';
+	const type = providerData.type || '';
 	const isCloudflare = id === 'cloudflare';
 	const isEndpoint = type === 'endpoint';
 	const accountIdSetting = isCloudflare ? 'ai_cloudflare_account_id' : null;
@@ -463,8 +472,7 @@ function ExtendedProviderConnector( { label, description, slug } ) {
 	const [ currentAccountId, setCurrentAccountId ] = useState( '' );
 	const [ isLoading, setIsLoading ] = useState( true );
 
-	const isConnected =
-		currentValue !== '' && currentValue !== 'invalid_key';
+	const isConnected = currentValue !== '' && currentValue !== 'invalid_key';
 
 	const fetchValue = useCallback( async () => {
 		try {
@@ -490,6 +498,10 @@ function ExtendedProviderConnector( { label, description, slug } ) {
 		fetchValue();
 	}, [ fetchValue ] );
 
+	if ( ! provider ) {
+		return null;
+	}
+
 	const saveValue = async ( value, accountId ) => {
 		const data = { [ settingName ]: value };
 		let fields = settingName;
@@ -505,9 +517,7 @@ function ExtendedProviderConnector( { label, description, slug } ) {
 		// If the key was submitted but the response is empty, the save failed.
 		if ( ! isEndpoint && value && ! result[ settingName ] ) {
 			throw new Error(
-				__(
-					'It was not possible to save the API key.'
-				)
+				__( 'It was not possible to save the API key.', 'ai' )
 			);
 		}
 		setCurrentValue( result[ settingName ] || '' );
@@ -536,15 +546,15 @@ function ExtendedProviderConnector( { label, description, slug } ) {
 
 	const getButtonLabel = () => {
 		if ( isLoading ) {
-			return __( 'Checking\u2026' );
+			return __( 'Checking\u2026', 'ai' );
 		}
 		if ( isExpanded ) {
-			return __( 'Cancel' );
+			return __( 'Cancel', 'ai' );
 		}
 		if ( isConnected ) {
-			return __( 'Edit' );
+			return __( 'Edit', 'ai' );
 		}
-		return __( 'Set up' );
+		return __( 'Set up', 'ai' );
 	};
 
 	const IconComponent = ICONS[ id ];
@@ -558,8 +568,6 @@ function ExtendedProviderConnector( { label, description, slug } ) {
 			return h( OllamaConnectorSettings, {
 				key: isConnected ? 'connected' : 'setup',
 				initialEndpoint: currentValue,
-				helpUrl,
-				helpLabel,
 				readOnly: isConnected,
 				onRemove: removeValue,
 				onSave: async ( endpoint ) => {
@@ -577,7 +585,6 @@ function ExtendedProviderConnector( { label, description, slug } ) {
 				helpUrl,
 				helpLabel,
 				readOnly: isConnected,
-				accountIdSettingName: accountIdSetting,
 				onRemove: removeValue,
 				onSave: async ( apiKey, accountId ) => {
 					await saveValue( apiKey, accountId );
@@ -617,10 +624,7 @@ function ExtendedProviderConnector( { label, description, slug } ) {
 							isExpanded || isConnected
 								? 'tertiary'
 								: 'secondary',
-						size:
-							isExpanded || isConnected
-								? undefined
-								: 'compact',
+						size: isExpanded || isConnected ? undefined : 'compact',
 						onClick: handleButtonClick,
 						disabled: isLoading,
 						'aria-expanded': isExpanded,

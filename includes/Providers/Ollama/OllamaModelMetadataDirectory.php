@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\Ollama;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiBasedModelMetadataDirectory;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\DTO\Response;
@@ -35,7 +39,7 @@ class OllamaModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 		);
 
 		$response = $this->getHttpTransporter()->send( $request );
-		$this->throwIfNotSuccessful( $response );
+		$this->throwIfNotSuccessful( $response ); // @phpstan-ignore method.notFound
 
 		return $this->parseResponse( $response );
 	}
@@ -48,7 +52,7 @@ class OllamaModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 	 * @return array<string, \WordPress\AiClient\Providers\Models\DTO\ModelMetadata>
 	 */
 	private function parseResponse( Response $response ): array {
-		$data = $response->getData();
+		$data = $response->getData() ?? array();
 		if ( ! isset( $data['models'] ) || ! is_array( $data['models'] ) ) {
 			throw ResponseException::fromMissingData( 'Ollama', 'models' );
 		}

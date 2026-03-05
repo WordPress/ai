@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\DeepSeek;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Messages\Enums\ModalityEnum;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\DTO\Response;
@@ -42,7 +46,7 @@ class DeepSeekModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetada
 	 * {@inheritDoc}
 	 */
 	protected function parseResponseToModelMetadataList( Response $response ): array {
-		$data = $response->getData();
+		$data = $response->getData() ?? array();
 		if ( ! isset( $data['data'] ) || ! is_array( $data['data'] ) ) {
 			throw ResponseException::fromMissingData( 'DeepSeek', 'data' );
 		}
@@ -67,17 +71,19 @@ class DeepSeekModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetada
 			new SupportedOption( OptionEnum::outputModalities(), array( array( ModalityEnum::text() ) ) ),
 		);
 
-		return array_map(
-			static function ( array $model ) use ( $capabilities, $options ): ModelMetadata {
-				$model_id = (string) $model['id'];
-				return new ModelMetadata(
-					$model_id,
-					$model['id'],
-					$capabilities,
-					$options
-				);
-			},
-			$data['data']
+		return array_values(
+			array_map(
+				static function ( array $model ) use ( $capabilities, $options ): ModelMetadata {
+					$model_id = (string) $model['id'];
+					return new ModelMetadata(
+						$model_id,
+						$model['id'],
+						$capabilities,
+						$options
+					);
+				},
+				$data['data']
+			)
 		);
 	}
 }

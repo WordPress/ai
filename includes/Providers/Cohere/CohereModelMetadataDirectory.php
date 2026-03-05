@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\Cohere;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Messages\Enums\ModalityEnum;
 use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiBasedModelMetadataDirectory;
 use WordPress\AiClient\Providers\Http\DTO\Request;
@@ -47,7 +51,7 @@ class CohereModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 	 * @return array<string, \WordPress\AiClient\Providers\Models\DTO\ModelMetadata>
 	 */
 	private function parseResponseToModelMetadataMap( Response $response ): array {
-		$data = $response->getData();
+		$data = $response->getData() ?? array();
 		if ( ! isset( $data['models'] ) || ! is_array( $data['models'] ) ) {
 			throw ResponseException::fromMissingData( 'Cohere', 'models' );
 		}
@@ -78,7 +82,7 @@ class CohereModelMetadataDirectory extends AbstractApiBasedModelMetadataDirector
 				$model_id,
 				$model_name,
 				$capabilities,
-				$options
+				$options // @phpstan-ignore argument.type
 			);
 		}
 

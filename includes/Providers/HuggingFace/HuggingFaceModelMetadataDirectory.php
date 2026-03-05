@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\HuggingFace;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Messages\Enums\ModalityEnum;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\DTO\Response;
@@ -42,7 +46,7 @@ class HuggingFaceModelMetadataDirectory extends AbstractOpenAiCompatibleModelMet
 	 * {@inheritDoc}
 	 */
 	protected function parseResponseToModelMetadataList( Response $response ): array {
-		$data = $response->getData();
+		$data = $response->getData() ?? array();
 		if ( ! isset( $data['data'] ) || ! is_array( $data['data'] ) ) {
 			throw ResponseException::fromMissingData( 'Hugging Face', 'data' );
 		}
@@ -63,7 +67,7 @@ class HuggingFaceModelMetadataDirectory extends AbstractOpenAiCompatibleModelMet
 				$model['id'],
 				$model['id'],
 				$capabilities,
-				$options
+				$options // @phpstan-ignore argument.type
 			);
 		}
 

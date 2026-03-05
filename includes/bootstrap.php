@@ -16,7 +16,6 @@ use WordPress\AI\Admin\Provider_Credentials_UI;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI_Client\AI_Client;
-use WordPress\AI_Client\HTTP\WP_AI_Client_Discovery_Strategy;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {

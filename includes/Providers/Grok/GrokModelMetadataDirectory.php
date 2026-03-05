@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\Grok;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
 use WordPress\AiClient\Files\Enums\MediaOrientationEnum;
 use WordPress\AiClient\Messages\Enums\ModalityEnum;
@@ -56,7 +60,7 @@ class GrokModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 	 * {@inheritDoc}
 	 */
 	protected function parseResponseToModelMetadataList( Response $response ): array {
-		$response_data = $response->getData();
+		$response_data = $response->getData() ?? array();
 		$models_data   = array();
 
 		if ( isset( $response_data['data'] ) && is_array( $response_data['data'] ) ) {
@@ -79,8 +83,8 @@ class GrokModelMetadataDirectory extends AbstractOpenAiCompatibleModelMetadataDi
 			$metadata[] = new ModelMetadata(
 				$model_id,
 				$this->format_model_name( $model_id ),
-				$this->determine_capabilities( $model_id ),
-				$this->determine_supported_options( $model_id )
+				$this->determine_capabilities( $model_id ), // @phpstan-ignore argument.type
+				$this->determine_supported_options( $model_id ) // @phpstan-ignore argument.type
 			);
 		}
 

@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\OpenRouter;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\DTO\Response;
 use WordPress\AiClient\Providers\Http\Enums\HttpMethodEnum;
@@ -41,7 +45,7 @@ class OpenRouterModelMetadataDirectory extends AbstractOpenAiCompatibleModelMeta
 	 * {@inheritDoc}
 	 */
 	protected function parseResponseToModelMetadataList( Response $response ): array {
-		$data = $response->getData();
+		$data = $response->getData() ?? array();
 		if ( ! isset( $data['data'] ) || ! is_array( $data['data'] ) ) {
 			throw ResponseException::fromMissingData( 'OpenRouter', 'data' );
 		}
@@ -62,7 +66,7 @@ class OpenRouterModelMetadataDirectory extends AbstractOpenAiCompatibleModelMeta
 				$model['id'],
 				$model['name'] ?? $model['id'],
 				$capabilities,
-				$options
+				$options // @phpstan-ignore argument.type
 			);
 		}
 

@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Providers\FalAi;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
 use WordPress\AiClient\Messages\Enums\ModalityEnum;
 use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiBasedModelMetadataDirectory;
@@ -77,7 +81,7 @@ class FalAiModelMetadataDirectory extends AbstractApiBasedModelMetadataDirectory
 				$model['id'],
 				$model['name'],
 				$capabilities,
-				$this->merge_options_with_mime( $options, $model['mime'] )
+				$this->merge_options_with_mime( $options, $model['mime'] ) // @phpstan-ignore argument.type
 			);
 		}
 
