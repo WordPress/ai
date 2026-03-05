@@ -141,7 +141,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that register_admin_menu hooks are added.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_register_hooks_admin_menu() {
 		$experiment = new Image_Generation();
@@ -154,7 +154,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that render_admin_page outputs expected HTML.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_render_admin_page() {
 		$experiment = new Image_Generation();
@@ -171,7 +171,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that inject_generate_image_button outputs a script tag.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_inject_generate_image_button() {
 		$experiment = new Image_Generation();
@@ -189,7 +189,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that enqueue_assets does not load on irrelevant screens.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_enqueue_assets_skips_irrelevant_screens() {
 		$experiment = new Image_Generation();
