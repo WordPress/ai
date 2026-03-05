@@ -16,6 +16,7 @@ use WordPress\AiClient\Providers\Contracts\ModelMetadataDirectoryInterface;
 use WordPress\AiClient\Providers\Contracts\ProviderAvailabilityInterface;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Enums\ProviderTypeEnum;
+use WordPress\AiClient\Providers\Http\Enums\RequestAuthenticationMethod;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 use function apply_filters;
@@ -108,7 +109,9 @@ class CloudflareWorkersAiProvider extends AbstractApiProvider {
 		return new ProviderMetadata(
 			'cloudflare',
 			'Cloudflare Workers AI',
-			ProviderTypeEnum::cloud()
+			ProviderTypeEnum::cloud(),
+			null,
+			RequestAuthenticationMethod::from( 'api_key' )
 		);
 	}
 

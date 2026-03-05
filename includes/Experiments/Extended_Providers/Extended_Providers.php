@@ -158,22 +158,29 @@ class Extended_Providers extends Abstract_Experiment {
 		// the WP AI Client collects provider metadata for the credentials screen.
 		$this->register_providers();
 
-		// On WP 7.0+, core's _wp_register_default_connector_settings() (init:20)
-		// auto-discovers all registered providers and handles API key settings,
-		// mask filters, and key-to-registry passing. We only need to register
-		// non-standard settings (Cloudflare Account ID, Ollama endpoint) and
-		// enqueue the JS for custom icons/UI.
-		if ( ! $this->is_enabled() || ! $this->is_connectors_supported() ) {
+		// Add extended provider models to the preferred models list so that
+		// experiments like title generation can use them.
+		add_filter( 'ai_experiments_preferred_models_for_text_generation', array( $this, 'add_extended_model_preferences' ) );
+
+		if ( ! $this->is_enabled() ) {
+			return;
+		}
+
+		// Always pass keys to the registry so text generation works,
+		// regardless of whether the Connectors screen exists.
+		$this->apply_endpoint_provider_urls();
+		add_action( 'init', array( $this, 'maybe_pass_keys_to_registry' ), 22 );
+
+		// Connectors-specific UI and settings only on WP 7.0+.
+		if ( ! $this->is_connectors_supported() ) {
 			return;
 		}
 
 		$this->register_extra_connector_settings();
-		$this->apply_endpoint_provider_urls();
 
-		// Register API key settings and pass keys to registry AFTER core's init:20
+		// Register API key settings AFTER core's init:20
 		// so we only fill in what core didn't handle (beta2 vs trunk differences).
 		add_action( 'init', array( $this, 'maybe_register_api_key_settings' ), 21 );
-		add_action( 'init', array( $this, 'maybe_pass_keys_to_registry' ), 22 );
 
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_connectors_script' ) );
 	}
@@ -187,6 +194,45 @@ class Extended_Providers extends Abstract_Experiment {
 		// Trunk uses _wp_connectors_get_connector_settings; beta2 uses _wp_connectors_get_provider_settings.
 		return function_exists( '_wp_connectors_get_connector_settings' )
 			|| function_exists( '_wp_connectors_get_provider_settings' );
+	}
+
+	/**
+	 * Well-known text generation models for each extended provider.
+	 *
+	 * These are added to the preferred models list so that AI experiments
+	 * (title generation, summarization, etc.) can use extended providers.
+	 *
+	 * @var array<string, list<string>>
+	 */
+	private const TEXT_GENERATION_MODELS = array(
+		'cohere'     => array( 'command-r-plus', 'command-r', 'command' ),
+		'deepseek'   => array( 'deepseek-chat', 'deepseek-reasoner' ),
+		'grok'       => array( 'grok-2', 'grok-3-mini' ),
+		'groq'       => array( 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant' ),
+		'huggingface' => array( 'meta-llama/Llama-3.3-70B-Instruct' ),
+		'openrouter' => array( 'openai/gpt-4o-mini', 'anthropic/claude-3.5-haiku' ),
+	);
+
+	/**
+	 * Adds extended provider models to the preferred text generation models list.
+	 *
+	 * @param array<int, array{string, string}> $models The current preferred models.
+	 * @return array<int, array{string, string}> The filtered preferred models.
+	 */
+	public function add_extended_model_preferences( array $models ): array {
+		$enabled_ids = $this->get_enabled_provider_ids();
+
+		foreach ( self::TEXT_GENERATION_MODELS as $provider_id => $model_ids ) {
+			if ( ! in_array( $provider_id, $enabled_ids, true ) ) {
+				continue;
+			}
+
+			foreach ( $model_ids as $model_id ) {
+				$models[] = array( $provider_id, $model_id );
+			}
+		}
+
+		return $models;
 	}
 
 	/**
