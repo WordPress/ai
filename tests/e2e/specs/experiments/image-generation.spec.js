@@ -397,6 +397,138 @@ test.describe( 'Image Generation Experiment', () => {
 		await expect( imageContainer.locator( 'img' ) ).toBeVisible();
 	} );
 
+	test( 'Can generate an image directly in the Media Library', async ( {
+		admin,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Image Generation Experiment.
+		await enableExperiment( admin, page, 'image-generation' );
+
+		// Visit the Media Library.
+		await visitAdminPage( admin, 'upload.php' );
+
+		// Ensure there's a Generate Image link in the sidebar.
+		await expect(
+			page.locator( '.wp-menu-open .wp-submenu a', {
+				hasText: 'Generate Image',
+			} )
+		).toBeVisible();
+
+		// Ensure the Generate Image button is visible.
+		await expect(
+			page.locator( '.ai-generate-image-btn', {
+				hasText: 'Generate Image',
+			} )
+		).toBeVisible();
+
+		// Click the Generate Image button.
+		await page.locator( '.ai-generate-image-btn' ).click();
+
+		// Ensure the page loads.
+		await expect( page.locator( '.wrap h1' ) ).toHaveText(
+			'Generate Image'
+		);
+
+		// Add a prompt and generate the image.
+		await page
+			.locator( '.ai-generate-image-standalone__idle textarea' )
+			.fill( 'A smiley face' );
+		await page
+			.locator( '.ai-generate-image-standalone__actions button' )
+			.click();
+
+		// Ensure the image is visible.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__preview-image' )
+		).toBeVisible();
+
+		// Ensure the buttons we want are there.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__actions button' )
+		).toHaveCount( 3 );
+
+		let saveImageButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Save to Media Library',
+			}
+		);
+		await expect( saveImageButton ).toBeVisible();
+
+		const generateAnotherButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Regenerate',
+			}
+		);
+		await expect( generateAnotherButton ).toBeVisible();
+
+		// Ensure there's a cancel button.
+		const cancelButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Cancel',
+			}
+		);
+		await expect( cancelButton ).toBeVisible();
+
+		// Click the cancel button.
+		await cancelButton.click();
+
+		// Add another prompt and generate the image.
+		await page
+			.locator( '.ai-generate-image-standalone__idle textarea' )
+			.fill( 'A smiley face' );
+		await page
+			.locator( '.ai-generate-image-standalone__idle button' )
+			.click();
+
+		// Ensure the image is visible.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__preview-image' )
+		).toBeVisible();
+
+		// Ensure the buttons we want are there.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__actions button' )
+		).toHaveCount( 3 );
+
+		saveImageButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Save to Media Library',
+			}
+		);
+		await expect( saveImageButton ).toBeVisible();
+
+		saveImageButton.click();
+
+		// Ensure a success message is visible.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__success' )
+		).toBeVisible();
+
+		// Ensure we have two new buttons.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__success button' )
+		).toHaveCount( 1 );
+
+		await expect(
+			page.locator( '.ai-generate-image-standalone__success a' )
+		).toHaveCount( 1 );
+
+		// View the image in the Media Library.
+		page.locator( '.ai-generate-image-standalone__success a' ).click();
+
+		// Ensure alt text is set.
+		await expect(
+			page.locator( '#attachment-details-two-column-alt-text' )
+		).toHaveValue( 'A smiley face' );
+	} );
+
 	test( 'Ensure the Image Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
 		admin,
 		editor,
@@ -427,6 +559,21 @@ test.describe( 'Image Generation Experiment', () => {
 			page.locator(
 				'.ai-featured-image .ai-featured-image__container button'
 			)
+		).not.toBeVisible();
+
+		// Visit the Media Library.
+		await visitAdminPage( admin, 'upload.php' );
+
+		// Ensure there's not a Generate Image link in the sidebar.
+		await expect(
+			page.locator( '.wp-menu-open .wp-submenu a', {
+				hasText: 'Generate Image',
+			} )
+		).not.toBeVisible();
+
+		// Ensure the Generate Image button is not visible.
+		await expect(
+			page.locator( '.ai-generate-image-btn' )
 		).not.toBeVisible();
 	} );
 
@@ -460,6 +607,21 @@ test.describe( 'Image Generation Experiment', () => {
 			page.locator(
 				'.ai-featured-image .ai-featured-image__container button'
 			)
+		).not.toBeVisible();
+
+		// Visit the Media Library.
+		await visitAdminPage( admin, 'upload.php' );
+
+		// Ensure there's not a Generate Image link in the sidebar.
+		await expect(
+			page.locator( '.wp-menu-open .wp-submenu a', {
+				hasText: 'Generate Image',
+			} )
+		).not.toBeVisible();
+
+		// Ensure the Generate Image button is not visible.
+		await expect(
+			page.locator( '.ai-generate-image-btn' )
 		).not.toBeVisible();
 	} );
 } );
