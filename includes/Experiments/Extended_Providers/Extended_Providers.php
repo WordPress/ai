@@ -169,6 +169,12 @@ class Extended_Providers extends Abstract_Experiment {
 
 		$this->register_extra_connector_settings();
 		$this->apply_endpoint_provider_urls();
+
+		// Register API key settings and pass keys to registry AFTER core's init:20
+		// so we only fill in what core didn't handle (beta2 vs trunk differences).
+		add_action( 'init', array( $this, 'maybe_register_api_key_settings' ), 21 );
+		add_action( 'init', array( $this, 'maybe_pass_keys_to_registry' ), 22 );
+
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_connectors_script' ) );
 	}
 
@@ -277,6 +283,119 @@ class Extended_Providers extends Abstract_Experiment {
 					return rtrim( $endpoint, '/' ) . '/api';
 				}
 			);
+		}
+	}
+
+	/**
+	 * Registers API key settings for extended providers that core didn't handle.
+	 *
+	 * Runs at init:21 (after core's init:20) so we can check which settings
+	 * core already registered and only fill in the gaps. This avoids duplicate
+	 * mask filters that would break key retrieval.
+	 */
+	public function maybe_register_api_key_settings(): void {
+		foreach ( $this->get_enabled_provider_ids() as $provider_id ) {
+			$meta = self::CONNECTOR_META[ $provider_id ] ?? array();
+			$type = $meta['type'] ?? 'api_key';
+
+			if ( 'endpoint' === $type ) {
+				continue;
+			}
+
+			$setting_name = "connectors_ai_{$provider_id}_api_key";
+
+			// Skip if core already registered this setting (trunk behavior).
+			$registered = get_registered_settings();
+			if ( isset( $registered[ $setting_name ] ) ) {
+				continue;
+			}
+
+			register_setting(
+				'connectors',
+				$setting_name,
+				array(
+					'type'              => 'string',
+					'label'             => sprintf(
+						/* translators: %s: AI provider name. */
+						__( '%s API Key', 'ai' ),
+						$meta['label'] ?? ucwords( $provider_id )
+					),
+					'description'       => sprintf(
+						/* translators: %s: AI provider name. */
+						__( 'API key for the %s AI provider.', 'ai' ),
+						$meta['label'] ?? ucwords( $provider_id )
+					),
+					'default'           => '',
+					'show_in_rest'      => true,
+					'sanitize_callback' => static function ( $value ): string {
+						return sanitize_text_field( (string) $value );
+					},
+				)
+			);
+
+			// Add mask filter (only one instance since we checked core didn't register).
+			if ( function_exists( '_wp_connectors_mask_api_key' ) ) {
+				add_filter( "option_{$setting_name}", '_wp_connectors_mask_api_key' );
+			}
+		}
+	}
+
+	/**
+	 * Passes stored API keys to the AI client registry for providers that core didn't handle.
+	 *
+	 * Runs at init:22 (after core's init:20 and our settings registration at init:21).
+	 */
+	public function maybe_pass_keys_to_registry(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			return;
+		}
+
+		try {
+			$registry = AiClient::defaultRegistry();
+		} catch ( \Throwable $t ) {
+			return;
+		}
+
+		foreach ( $this->get_enabled_provider_ids() as $provider_id ) {
+			$meta = self::CONNECTOR_META[ $provider_id ] ?? array();
+			$type = $meta['type'] ?? 'api_key';
+
+			if ( 'endpoint' === $type ) {
+				continue;
+			}
+
+			// Skip if already configured (core handled it at init:20).
+			if ( $registry->hasProvider( $provider_id ) ) {
+				try {
+					if ( $registry->isProviderConfigured( $provider_id ) ) {
+						continue;
+					}
+				} catch ( \Throwable $t ) {
+					// isProviderConfigured may throw; continue to try setting key.
+				}
+			}
+
+			$setting_name = "connectors_ai_{$provider_id}_api_key";
+
+			// Read unmasked value.
+			if ( function_exists( '_wp_connectors_get_real_api_key' ) && function_exists( '_wp_connectors_mask_api_key' ) ) {
+				$api_key = _wp_connectors_get_real_api_key( $setting_name, '_wp_connectors_mask_api_key' );
+			} else {
+				$api_key = (string) get_option( $setting_name, '' );
+			}
+
+			if ( '' === $api_key || ! $registry->hasProvider( $provider_id ) ) {
+				continue;
+			}
+
+			try {
+				$registry->setProviderRequestAuthentication(
+					$provider_id,
+					new \WordPress\AiClient\Providers\Http\DTO\ApiKeyRequestAuthentication( $api_key )
+				);
+			} catch ( \Throwable $t ) {
+				continue;
+			}
 		}
 	}
 
