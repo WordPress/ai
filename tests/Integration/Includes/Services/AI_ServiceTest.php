@@ -78,7 +78,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 		$builder = $this->service->create_textgen_prompt( 'Test prompt' );
 
 		$this->assertInstanceOf(
-			WP_AI_Client_Prompt_Builder::class,
+			\WP_AI_Client_Prompt_Builder::class,
 			$builder,
 			'Should return WP_AI_Client_Prompt_Builder instance'
 		);
@@ -100,7 +100,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 		);
 
 		$this->assertInstanceOf(
-			WP_AI_Client_Prompt_Builder::class,
+			\WP_AI_Client_Prompt_Builder::class,
 			$builder,
 			'Should return WP_AI_Client_Prompt_Builder instance with options applied'
 		);
