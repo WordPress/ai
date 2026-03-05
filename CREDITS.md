@@ -16,12 +16,4 @@ Thank you to all the people who have already contributed to this repository via 
 
 ## Libraries
 
-The following software libraries are utilized in this repository.
-
-[Abilities API](https://github.com/wordpress/abilities-api) by [WordPress](https://github.com/WordPress) and licensed [GPL-2.0-or-later](https://github.com/WordPress/abilities-api/blob/trunk/LICENSE.md).
-
-[Autoloader for Jetpack](https://github.com/automattic/jetpack-autoloader) by [Automattic](https://github.com/Automattic) and licensed [GPL-2.0-or-later](https://github.com/Automattic/jetpack-autoloader/blob/trunk/LICENSE.txt).
-
-[MCP Adapter](https://github.com/wordpress/mcp-adapter) by [WordPress](https://github.com/WordPress) and licensed [GPL-2.0-or-later](https://github.com/wordpress/mcp-adapter/blob/trunk/LICENSE.md).
-
-[WordPress AI Client](https://github.com/wordpress/wp-ai-client) by [WordPress](https://github.com/WordPress) and licensed [GPL-2.0-or-later](https://github.com/WordPress/wp-ai-client/blob/trunk/LICENSE.md).
+n/a
