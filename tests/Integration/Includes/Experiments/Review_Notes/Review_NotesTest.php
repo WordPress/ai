@@ -15,14 +15,14 @@ use WP_UnitTestCase;
 /**
  * Review_Notes test case.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Review_NotesTest extends WP_UnitTestCase {
 
 	/**
 	 * The experiment instance under test.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @var Review_Notes
 	 */
@@ -31,7 +31,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -60,7 +60,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -78,7 +78,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_experiment_registration() {
 		$this->assertEquals( 'review-notes', $this->experiment->get_id() );
@@ -93,7 +93,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the required hooks are registered after the experiment initialises.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_hooks_are_registered() {
 		$this->assertNotFalse(
@@ -105,7 +105,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the ai_note comment meta is registered with show_in_rest.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_ai_note_comment_meta_is_registered() {
 		$registered = get_registered_meta_keys( 'comment' );
@@ -120,7 +120,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_set_ai_author() overrides author fields when meta.ai_note is true.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_maybe_set_ai_author_overrides_author_when_ai_note_true() {
 		$prepared = array(
@@ -145,7 +145,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_set_ai_author() leaves data unchanged when meta.ai_note is absent.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_maybe_set_ai_author_passes_through_without_ai_note() {
 		$prepared = array(
@@ -166,7 +166,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_set_ai_author() passes through when meta.ai_note is false.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_maybe_set_ai_author_passes_through_when_ai_note_false() {
 		$prepared = array(
@@ -186,7 +186,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_set_ai_author() returns a WP_Error unchanged.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_maybe_set_ai_author_returns_wp_error_unchanged() {
 		$error   = new \WP_Error( 'test_error', 'Test error message' );

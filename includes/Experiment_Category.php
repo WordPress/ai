@@ -6,7 +6,7 @@
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 
 declare( strict_types=1 );
@@ -19,7 +19,7 @@ namespace WordPress\AI;
  * Provides type-safe-ish constants for experiment categorization.
  * These values correspond to where experiments are displayed in the settings UI.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Experiment_Category {
 
@@ -28,7 +28,7 @@ class Experiment_Category {
 	 *
 	 * Experiments in this category appear in the Editor Experiments.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @var string
 	 */
@@ -39,7 +39,7 @@ class Experiment_Category {
 	 *
 	 * Experiments in this category appear in the WordPress admin context.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @var string
 	 */
@@ -52,7 +52,7 @@ class Experiment_Category {
 	 * known category constant. Experiments in this category appear in the
 	 * Other Experiments section.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @var string
 	 */

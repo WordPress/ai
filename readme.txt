@@ -2,7 +2,7 @@
 Contributors:      wordpressorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      6.9
-Stable tag:        0.3.1
+Stable tag:        0.4.1
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -23,8 +23,9 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
-* **Image Generation** - Create feature image from post content directly in the block editor.
+* **Image Generation** - Create images from post content in the editor, also via the Media Library.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
 
 **Coming Soon:**
@@ -124,6 +125,24 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 == Changelog ==
 
+= 0.4.1 - 2026-03-06 =
+* **Fixed:** Issues with 0.4.0 release merge and deploy ([#266](https://github.com/WordPress/ai/pull/266)).
+
+= 0.4.0 - 2026-03-05 =
+
+* **Added:** Inline Image Generation directly in the post editor, enabling users to generate images without leaving authoring/editing flows ([#235](https://github.com/WordPress/ai/pull/235)).
+* **Added:** Generate Image within the Media Library with prompt-based image generation workflows ([#258](https://github.com/WordPress/ai/pull/258)).
+* **Added:** Generate Review Notes experiment to analyze post content or individual blocks and suggest refinements via Notes comments in the editor ([#260](https://github.com/WordPress/ai/pull/260), [#267](https://github.com/WordPress/ai/pull/267)).
+* **Added:** Split editor and admin experiments within the settings page ([#232](https://github.com/WordPress/ai/pull/232)).
+* **Added:** Contextual help text to the Abilities Explorer screen to assist users in understanding what Abilities are and how to use them ([#243](https://github.com/WordPress/ai/pull/243)).
+* **Changed:** Update “Generate Summary” button style to use consistent UI with other buttons in the ediot ([#253](https://github.com/WordPress/ai/pull/253)).
+* **Changed:** Standardize Abilities invocation using the `runAbility` helper to improve consistency across API calls ([#228](https://github.com/WordPress/ai/pull/228)).
+* **Changed:** Make provider labels in the Abilities Explorer translatable and adjust badge styling for clarity ([#247](https://github.com/WordPress/ai/pull/247)).
+* **Changed:** Improve Abilities Explorer table layout by aligning spacing and styles with WordPress admin table conventions ([#248](https://github.com/WordPress/ai/pull/248)).
+* **Changed:** Improve the Ability test page with better internationalization and add copy-to-clipboard functionality ([#256](https://github.com/WordPress/ai/pull/256)).
+* **Removed:** Remove unused checkbox column from the Abilities Explorer table, as it was not tied to any bulk actions ([#246](https://github.com/WordPress/ai/pull/246)).
+* **Fixed:** Fix the position and behavior of the “Copy” button in code blocks within the Abilities Explorer ([#245](https://github.com/WordPress/ai/pull/245)).
+
 = 0.3.1 - 2026-02-18 =
 
 * **Fixed:** Increased image generation request timeout from 30s to 90s to reduce failed generations on slower providers/models ([#226](https://github.com/WordPress/ai/pull/226)).
@@ -137,10 +156,6 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 * **Changed:** Replace the global “Enable Experiments” checkbox with an auto-submitting enable/disable button to reduce friction when toggling experiments ([#168](https://github.com/WordPress/ai/pull/168)).
 * **Fixed:** Improve robustness of asset loading to handle missing or invalid built files and prevent admin and editor warnings ([#175](https://github.com/WordPress/ai/pull/175)).
 * **Fixed:** Add missing strict typing declarations in the Abilities Explorer to ensure consistency and correctness ([#208](https://github.com/WordPress/ai/pull/208)).
-* **Developer:** Streamline and clarify Contributor and Developer documentation to improve onboarding and reduce duplication ([#169](https://github.com/WordPress/ai/pull/169)).
-* **Developer:** Fix inline documentation issues, including missing `@global` tags, non-standard hook tags, and incomplete `@return` descriptions ([#207](https://github.com/WordPress/ai/pull/207), [#210](https://github.com/WordPress/ai/pull/210)).
-* **Developer:** Bump `phpunit/phpunit` from 9.6.31 to 9.6.33 as part of ongoing test and tooling maintenance ([#209](https://github.com/WordPress/ai/pull/209)).
-* **Developer:** Expand and align allowed open source licenses in dependency configuration to better match Gutenberg and ecosystem tooling ([#212](https://github.com/WordPress/ai/pull/212), [#213](https://github.com/WordPress/ai/pull/213), [#214](https://github.com/WordPress/ai/pull/214)).
 
 = 0.2.1 - 2026-01-26 =
 
@@ -148,9 +163,6 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 * **Changed:** Documentation updates ([#195](https://github.com/WordPress/ai/pull/195)).
 * **Fixed:** Guarded against `preg_replace()` returning `null` to prevent content corruption in `normalize_content()` ([#177](https://github.com/WordPress/ai/pull/177)).
 * **Security:** Change our user permission checks to use `edit_post` instead of `read_post` ([GHSA-mxf5-gp98-93wv](https://github.com/WordPress/ai/security/advisories/GHSA-mxf5-gp98-93wv)).
-* **Security:** Bumped `diff` from 4.0.2 to 4.0.4 ([#196](https://github.com/WordPress/ai/pull/196)).
-* **Security:** Bumped `lodash-es` from 4.17.22 to 4.17.23 ([#198](https://github.com/WordPress/ai/pull/198)).
-* **Security:** Bumped `lodash` from 4.17.21 to 4.17.23 ([#199](https://github.com/WordPress/ai/pull/199)).
 
 = 0.2.0 – 2026-01-20 =
 
@@ -167,7 +179,6 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 * **Fixed:** Resolve UI and messaging issues on the AI Experiments settings screen ([#130](https://github.com/WordPress/ai/pull/130), [#132](https://github.com/WordPress/ai/pull/132)).
 * **Fixed:** Ensure AI Experiments are visible even when no credentials are configured ([#173](https://github.com/WordPress/ai/pull/173)).
 * **Fixed:** Fix Plugin Check, linting, and CI failures introduced by updated tooling and workflows ([#150](https://github.com/WordPress/ai/pull/150), [#163](https://github.com/WordPress/ai/pull/163), [#167](https://github.com/WordPress/ai/pull/167), [#176](https://github.com/WordPress/ai/pull/176)).
-* **Developer:** Cleanup and standardize scaffold, linting, TypeScript, and CI configuration to better align with WordPress Coding Standards ([#172](https://github.com/WordPress/ai/pull/172)).
 
 = 0.1.1 - 2025-12-01 =
 
@@ -179,7 +190,6 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 * **Removed:** Valid AI credentials check from the Experiment `is_enabled` check ([#120](https://github.com/WordPress/ai/pull/120)).
 * **Removed:** Example Experiment registration ([#121](https://github.com/WordPress/ai/pull/121)).
 * **Fixed:** Bug in asset loader causing missing dependencies ([#113](https://github.com/WordPress/ai/pull/113)).
-* **Security:** Bumped `js-yaml` from 3.14.1 to 3.14.2 ([#105](https://github.com/WordPress/ai/pull/105)).
 
 = 0.1.0 - 2025-11-26 =
 

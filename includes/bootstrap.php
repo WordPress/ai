@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'AI_EXPERIMENTS_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_VERSION', '0.3.1' );
+	define( 'AI_EXPERIMENTS_VERSION', '0.4.1' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_FILE' ) ) {
 	define( 'AI_EXPERIMENTS_PLUGIN_FILE', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR . 'ai.php' : '' );

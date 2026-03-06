@@ -121,7 +121,7 @@ class Ability_Handler {
 	/**
 	 * Get translatable provider labels keyed by provider slug.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return array<string,string> Map of provider slug to translated label.
 	 */
@@ -136,7 +136,7 @@ class Ability_Handler {
 	/**
 	 * Get the label for a provider.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param string $provider Provider slug.
 	 * @return string Provider label.

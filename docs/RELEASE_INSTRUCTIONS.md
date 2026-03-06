@@ -19,7 +19,8 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 - [ ] Props: update `CREDITS.md` file with any new contributors, confirm maintainers are accurate.
 - [ ] Readme updates: Make any other readme changes as necessary in `README.md` and `readme.txt`.
 - [ ] New files: Check to be sure any new files/paths that are unnecessary in the production version are included in `.gitattributes`.
-- [ ] Merge: Make a non-fast-forward merge from your release branch to `develop` (or merge the pull request), then do the same for `develop` into `trunk` (`git checkout trunk && git merge --no-ff develop`).  `trunk` now contains the stable development version.
+- [ ] Merge release PR: Make a non-fast-forward merge from your release branch to `develop` (or merge the pull request).
+- [ ] Merge develop to trunk: Do the same for `develop` into `trunk` (`git checkout trunk && git merge --no-ff develop`).  `trunk` now contains the stable development version.
 - [ ] Push: Push your trunk branch to GitHub (e.g. `git push origin trunk`).
 - [ ] [Wait for build](https://xkcd.com/303/): Head to the [Actions](https://github.com/WordPress/ai/actions) tab in the repo and wait for it to finish if it hasn't already.  If it doesn't succeed, figure out why and start over.
 - [ ] Check the build: Check out the `trunk` branch and test for functionality locally.
