@@ -2,7 +2,7 @@
 Contributors:      wordpressorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      6.9
-Stable tag:        0.4.0
+Stable tag:        0.4.1
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -124,6 +124,9 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 10. AI Credentials settings screen showing API key fields for available AI service providers.
 
 == Changelog ==
+
+= 0.4.1 - 2026-03-06 =
+* **Fixed:** Issues with 0.4.0 release merge and deploy ([#266](https://github.com/WordPress/ai/pull/266)).
 
 = 0.4.0 - 2026-03-05 =
 
