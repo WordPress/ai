@@ -22,7 +22,11 @@ test.describe( 'Plugin settings', () => {
 	test( 'Can visit the settings page and see error message', async ( {
 		admin,
 		page,
+		requestUtils,
 	} ) => {
+		// Activate the request mocking plugin.
+		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+
 		// Clear out any existing Connectors.
 		await clearConnectors( admin, page );
 

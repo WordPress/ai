@@ -45,23 +45,29 @@ export const visitConnectorsPage = async ( admin: Admin ) => {
 export const clearConnectors = async ( admin: Admin, page: Page ) => {
 	await visitConnectorsPage( admin );
 
-	const setupBtn = page
+	// Wait for page to fully load before finding button
+	await page.waitForTimeout( 1000 );
+
+	const editBtn = page
 		.locator(
 			'.connector-item--ai-provider-for-openai button', {
-				hasText: 'Set up'
+				hasText: 'Edit'
 			}
 		);
 
-	if ( ( await setupBtn.count() ) === 0 ) {
+	if ( ( await editBtn.count() ) === 0 ) {
 		return;
 	}
 
-	await setupBtn.click();
+	await editBtn.click();
 	await page
 		.locator(
 			'.connector-item--ai-provider-for-openai .connector-settings button'
 		)
 		.click();
+
+	// Wait for save.
+	await page.waitForTimeout( 1000 );
 };
 
 /**
