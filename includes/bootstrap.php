@@ -14,7 +14,6 @@ namespace WordPress\AI;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
-use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -120,27 +119,6 @@ function check_wp_version(): bool {
 }
 
 /**
- * Displays admin notice about missing Composer autoload files.
- *
- * @since 0.1.0
- */
-function display_composer_notice(): void {
-	?>
-	<div class="notice notice-error">
-		<p>
-			<?php
-			printf(
-				/* translators: %s: composer install command */
-				esc_html__( 'Your installation of the AI Experiments plugin is incomplete. Please run %s.', 'ai' ),
-				'<code>composer install</code>'
-			);
-			?>
-		</p>
-	</div>
-	<?php
-}
-
-/**
  * Adds action links to the plugin list table.
  *
  * This adds "Experiments" and "Credentials" links to
@@ -187,12 +165,9 @@ function load(): void {
 		return;
 	}
 
-	// Load the Jetpack autoloader.
-	if ( ! file_exists( AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
-		add_action( 'admin_notices', __NAMESPACE__ . '\display_composer_notice' );
-		return;
-	}
-	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php';
+	// Load required files.
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/autoload.php';
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/helpers.php';
 
 	$loaded = true;
 
@@ -200,7 +175,7 @@ function load(): void {
 	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
 	// Hook experiment initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
+	add_action( 'init', __NAMESPACE__ . '\initialize_experiments', 15 );
 }
 
 /**
@@ -210,9 +185,6 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
-		// Initialize the WP AI Client.
-		AI_Client::init();
-
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();
