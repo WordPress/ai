@@ -119,27 +119,6 @@ function check_wp_version(): bool {
 }
 
 /**
- * Displays admin notice about missing Composer autoload files.
- *
- * @since 0.1.0
- */
-function display_composer_notice(): void {
-	?>
-	<div class="notice notice-error">
-		<p>
-			<?php
-			printf(
-				/* translators: %s: composer install command */
-				esc_html__( 'Your installation of the AI Experiments plugin is incomplete. Please run %s.', 'ai' ),
-				'<code>composer install</code>'
-			);
-			?>
-		</p>
-	</div>
-	<?php
-}
-
-/**
  * Adds action links to the plugin list table.
  *
  * This adds "Experiments" and "Credentials" links to
@@ -186,12 +165,9 @@ function load(): void {
 		return;
 	}
 
-	// Load the Composer autoloader.
-	if ( ! file_exists( AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
-		add_action( 'admin_notices', __NAMESPACE__ . '\display_composer_notice' );
-		return;
-	}
-	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload.php';
+	// Load required files.
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/autoload.php';
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/helpers.php';
 
 	$loaded = true;
 
