@@ -44,9 +44,19 @@ export const visitConnectorsPage = async ( admin: Admin ) => {
  */
 export const clearConnectors = async ( admin: Admin, page: Page ) => {
 	await visitConnectorsPage( admin );
-	await page
-		.locator( '.connector-item--ai-provider-for-openai button' )
-		.click();
+
+	const setupBtn = page
+		.locator(
+			'.connector-item--ai-provider-for-openai button', {
+				hasText: 'Set up'
+			}
+		);
+
+	if ( ( await setupBtn.count() ) === 0 ) {
+		return;
+	}
+
+	await setupBtn.click();
 	await page
 		.locator(
 			'.connector-item--ai-provider-for-openai .connector-settings button'

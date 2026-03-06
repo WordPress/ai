@@ -38,7 +38,7 @@ test.describe( 'Plugin settings', () => {
 		await expect(
 			page.locator( '.wrap .notice-error', {
 				hasText:
-					'Most experiments require a valid AI Connector to function properly. To ensure those work properly, you need to have one or more AI Connectors configured',
+					'Most experiments require a valid AI Connector to function properly',
 			} )
 		).toHaveCount( 1 );
 	} );

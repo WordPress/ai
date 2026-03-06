@@ -273,9 +273,11 @@ test.describe( 'Image Generation Experiment', () => {
 		} );
 
 		// Find the toolbar Add image button (aria-label is the accessible name).
-		const addImageButton = page.getByRole( 'button', {
-			name: 'Add image',
-		} );
+		const addImageButton = page
+			.locator( '.block-editor-block-toolbar' )
+			.getByRole( 'button', {
+				name: 'Add image',
+			} );
 		await expect( addImageButton ).toBeVisible();
 
 		// Click the Add image toolbar button.
