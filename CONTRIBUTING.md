@@ -6,8 +6,6 @@ Welcome to the WordPress AI Experiments Plugin! Here you find some information o
 
 ### Prerequisites
 
-- PHP 7.4 or higher
-- WordPress 7.0 or higher
 - Composer
 - Node.js and npm (for asset building)
 
