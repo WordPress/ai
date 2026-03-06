@@ -16,14 +16,14 @@ use WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation;
 /**
  * Excerpt_Generation experiment test case.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Excerpt_GenerationTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -49,7 +49,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -63,7 +63,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment reports correct metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_experiment_registration(): void {
 		$experiment = new Excerpt_Generation();
@@ -77,7 +77,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment can be disabled via the filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_experiment_can_be_disabled_via_filter(): void {
 		add_filter( 'ai_experiments_experiment_excerpt-generation_enabled', '__return_false' );

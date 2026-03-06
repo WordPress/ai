@@ -14,13 +14,13 @@ use WordPress\AI\Experiment_Category;
 /**
  * Test experiment with an explicit category.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Test_Categorized_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
 	 */
@@ -36,7 +36,7 @@ class Test_Categorized_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -46,13 +46,13 @@ class Test_Categorized_Experiment extends Abstract_Experiment {
 /**
  * Test experiment without a category key in metadata.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Test_Uncategorized_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
 	 */
@@ -67,7 +67,7 @@ class Test_Uncategorized_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -77,13 +77,13 @@ class Test_Uncategorized_Experiment extends Abstract_Experiment {
 /**
  * Test experiment with an empty string category.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Test_Empty_Category_Experiment extends Abstract_Experiment {
 	/**
 	 * Loads experiment metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
 	 */
@@ -99,7 +99,7 @@ class Test_Empty_Category_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -109,14 +109,14 @@ class Test_Empty_Category_Experiment extends Abstract_Experiment {
 /**
  * Abstract_Experiment test case.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Abstract_ExperimentTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -130,7 +130,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
 		delete_option( 'ai_experiments_enabled' );
@@ -143,7 +143,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_category() returns the value declared in metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_get_category_returns_set_value(): void {
 		$experiment = new Test_Categorized_Experiment();
@@ -158,7 +158,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_category() falls back to OTHER when the category key is absent from metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_get_category_defaults_to_other_when_missing(): void {
 		$experiment = new Test_Uncategorized_Experiment();
@@ -173,7 +173,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_category() falls back to OTHER when category is an empty string.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_get_category_defaults_to_other_when_empty(): void {
 		$experiment = new Test_Empty_Category_Experiment();
@@ -188,7 +188,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the EDITOR constant has the expected string value.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_experiment_category_editor_constant_value(): void {
 		$this->assertSame( 'editor', Experiment_Category::EDITOR );
@@ -197,7 +197,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the ADMIN constant has the expected string value.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_experiment_category_admin_constant_value(): void {
 		$this->assertSame( 'admin', Experiment_Category::ADMIN );
@@ -206,7 +206,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the OTHER constant has the expected string value.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_experiment_category_other_constant_value(): void {
 		$this->assertSame( 'other', Experiment_Category::OTHER );
