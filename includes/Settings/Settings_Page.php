@@ -258,7 +258,7 @@ class Settings_Page {
 	/**
 	 * Renders a section card containing a list of experiments.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param string $heading_id HTML ID for the heading element.
 	 * @param string $heading_text Translated section heading.

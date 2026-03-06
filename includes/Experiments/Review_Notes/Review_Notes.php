@@ -25,14 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Runs a block-by-block AI review pass on post content, creating WordPress Notes
  * with actionable suggestions for Accessibility, Readability, Grammar, and SEO.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Review_Notes extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
@@ -46,7 +46,7 @@ class Review_Notes extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -70,7 +70,7 @@ class Review_Notes extends Abstract_Experiment {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -90,7 +90,7 @@ class Review_Notes extends Abstract_Experiment {
 	 * meta.ai_note = true, replaces the authenticated user's identity with a generic
 	 * "AI" author so Notes are not attributed to a personal account.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param array<string, mixed>|\WP_Error $prepared_comment The prepared comment data for wp_insert_comment().
 	 * @param \WP_REST_Request<array<string, mixed>> $request The REST API request.
@@ -118,7 +118,7 @@ class Review_Notes extends Abstract_Experiment {
 	/**
 	 * Enqueues and localizes the block editor script.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'review_notes', 'experiments/review-notes' );
