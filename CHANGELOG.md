@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [0.4.1] - 2026-03-06
+### Fixed
+- Issues with 0.4.0 release merge and deploy ([#266](https://github.com/WordPress/ai/pull/266)).
+
+### Developer
+- Bump `immutable` from 5.1.4 to 5.1.5 ([#273](https://github.com/WordPress/ai/pull/273)).
+- Bump `svgo` from 3.3.2 to 3.3.3 ([#274](https://github.com/WordPress/ai/pull/274)).
+- Updated Release Instructions documentation ([#277](https://github.com/WordPress/ai/pull/277)).
+
 ## [0.4.0] - 2026-03-05
 ### Added
 - Inline Image Generation directly in the post editor, enabling users to generate images without leaving authoring/editing flows ([#235](https://github.com/WordPress/ai/pull/235)).
@@ -132,6 +141,7 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[0.4.1]: https://github.com/WordPress/ai/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/WordPress/ai/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/WordPress/ai/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/WordPress/ai/compare/0.2.1...0.3.0
