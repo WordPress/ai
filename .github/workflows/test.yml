@@ -164,7 +164,7 @@ jobs:
                 coverage: [false]
                 include:
                     - php: '8.4'
-                      wp: latest
+                      wp: trunk
                       coverage: true
         env:
             WP_ENV_PHP_VERSION: ${{ matrix.php }}
