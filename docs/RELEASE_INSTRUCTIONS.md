@@ -22,6 +22,7 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 - [ ] Merge release PR: Make a non-fast-forward merge from your release branch to `develop` (or merge the pull request).
 - [ ] Merge develop to trunk: Do the same for `develop` into `trunk` (`git checkout trunk && git merge --no-ff develop`).  `trunk` now contains the stable development version.
 - [ ] Push: Push your trunk branch to GitHub (e.g. `git push origin trunk`).
+- [ ] Compare: Check that no results show in [comparing a merge from develop into trunk](https://github.com/WordPress/ai/compare/trunk...develop) as that means the prior steps completed successfully.
 - [ ] [Wait for build](https://xkcd.com/303/): Head to the [Actions](https://github.com/WordPress/ai/actions) tab in the repo and wait for it to finish if it hasn't already.  If it doesn't succeed, figure out why and start over.
 - [ ] Check the build: Check out the `trunk` branch and test for functionality locally.
 - [ ] Test: Check the [end-to-end tests](https://github.com/WordPress/ai/actions/workflows/test.yml) are passing.  Only proceed if everything tests successfully.
