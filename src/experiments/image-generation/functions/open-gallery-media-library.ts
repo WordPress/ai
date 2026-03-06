@@ -5,7 +5,7 @@
  * media library modal where they can add more images before confirming, matching the
  * native "Add to gallery" experience.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 
 /**

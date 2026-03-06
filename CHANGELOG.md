@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [0.4.0] - 2026-03-05
+### Added
+- Inline Image Generation directly in the post editor, enabling users to generate images without leaving authoring/editing flows ([#235](https://github.com/WordPress/ai/pull/235)).
+- Generate Image within the Media Library with prompt-based image generation workflows ([#258](https://github.com/WordPress/ai/pull/258)).
+- Generate Review Notes experiment to analyze post content or individual blocks and suggest refinements via Notes comments in the editor ([#260](https://github.com/WordPress/ai/pull/260), [#267](https://github.com/WordPress/ai/pull/267)).
+- Split editor and admin experiments within the settings page ([#232](https://github.com/WordPress/ai/pull/232)).
+- Contextual help text to the Abilities Explorer screen to assist users in understanding what Abilities are and how to use them ([#243](https://github.com/WordPress/ai/pull/243)).
+
+### Changed
+- Update “Generate Summary” button style to use consistent UI with other buttons in the ediot ([#253](https://github.com/WordPress/ai/pull/253)).
+- Standardize Abilities invocation using the `runAbility` helper to improve consistency across API calls ([#228](https://github.com/WordPress/ai/pull/228)).
+- Make provider labels in the Abilities Explorer translatable and adjust badge styling for clarity ([#247](https://github.com/WordPress/ai/pull/247)).
+- Improve Abilities Explorer table layout by aligning spacing and styles with WordPress admin table conventions ([#248](https://github.com/WordPress/ai/pull/248)).
+- Improve the Ability test page with better internationalization and add copy-to-clipboard functionality ([#256](https://github.com/WordPress/ai/pull/256)).
+
+### Removed
+- Remove unused checkbox column from the Abilities Explorer table, as it was not tied to any bulk actions ([#246](https://github.com/WordPress/ai/pull/246)).
+
+### Fixed
+- Fix the position and behavior of the “Copy” button in code blocks within the Abilities Explorer ([#245](https://github.com/WordPress/ai/pull/245)).
+
+### Developer
+- Bump `basic-ftp` from 5.1.0 to 5.2.0 ([#259](https://github.com/WordPress/ai/pull/259)).
+
 ## [0.3.1] - 2026-02-18
 ### Fixed
 - Increased image generation request timeout from 30s to 90s to reduce failed generations on slower providers/models ([#226](https://github.com/WordPress/ai/pull/226)).
@@ -45,6 +69,8 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ### Security
 - Change our user permission checks to use `edit_post` instead of `read_post` ([GHSA-mxf5-gp98-93wv](https://github.com/WordPress/ai/security/advisories/GHSA-mxf5-gp98-93wv)).
+
+### Developer
 - Bumped `diff` from 4.0.2 to 4.0.4 ([#196](https://github.com/WordPress/ai/pull/196)).
 - Bumped `lodash-es` from 4.17.22 to 4.17.23 ([#198](https://github.com/WordPress/ai/pull/198)).
 - Bumped `lodash` from 4.17.21 to 4.17.23 ([#199](https://github.com/WordPress/ai/pull/199)).
@@ -89,10 +115,8 @@ All notable changes to this project will be documented in this file, per [the Ke
 ### Fixed
 - Bug in asset loader causing missing dependencies ([#113](https://github.com/WordPress/ai/pull/113)).
 
-### Security
-- Bumped `js-yaml` from 3.14.1 to 3.14.2 ([#105](https://github.com/WordPress/ai/pull/105)).
-
 ### Developer
+- Bumped `js-yaml` from 3.14.1 to 3.14.2 ([#105](https://github.com/WordPress/ai/pull/105)).
 - Updated format script to only format JS to avoid random JSON file changes ([#114](https://github.com/WordPress/ai/pull/114)).
 - Updated documentation ([#108](https://github.com/WordPress/ai/pull/108), [#112](https://github.com/WordPress/ai/pull/112)).
 
@@ -108,6 +132,7 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[0.4.0]: https://github.com/WordPress/ai/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/WordPress/ai/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/WordPress/ai/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/WordPress/ai/compare/0.2.0...0.2.1

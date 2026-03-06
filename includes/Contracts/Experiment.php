@@ -55,7 +55,7 @@ interface Experiment {
 	 *
 	 * Determines where the experiment appears in the settings UI.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return string The experiment category.
 	 */

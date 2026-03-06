@@ -485,7 +485,7 @@ class Admin_Page {
 	/**
 	 * Add contextual help tabs to the screen.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function add_help_tabs(): void {
 		$screen = get_current_screen();

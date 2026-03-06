@@ -49,7 +49,7 @@ abstract class Abstract_Experiment implements Experiment {
 	/**
 	 * Experiment category.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 * @var string
 	 */
 	protected string $category;
@@ -149,7 +149,7 @@ abstract class Abstract_Experiment implements Experiment {
 	/**
 	 * Gets the experiment category.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return string The experiment category.
 	 */
