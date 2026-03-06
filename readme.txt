@@ -116,12 +116,15 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 2. Post editor sidebar showing Generate Excerpt button and generated excerpt.
 3. Post editor sidebar showing Generate AI Summary button and the generated content summary within an AI Summary block.
 4. Post editor sidebar showing Generate featured image button and the generated featured image preview with Alt Text, Title, and Description.
-5. Image block settings showing Generate Alt Text button and the generated alt text.
-6. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
-7. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
-8. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
-9. AI Experiments settings screen showing toggles to enable specific experiments.
-10. AI Credentials settings screen showing API key fields for available AI service providers.
+5. Post editor showing Generate Image flows.
+6. Media Library showing Generate Image flows.
+7. Image block settings showing Generate Alt Text button and the generated alt text.
+8. Post editor sidebar showing Generate Review Notes flows.
+9. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
+10. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
+11. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
+12. AI Experiments settings screen showing toggles to enable specific experiments.
+13. AI Credentials settings screen showing API key fields for available AI service providers.
 
 == Changelog ==
 
