@@ -44,6 +44,11 @@ module.exports = {
 			'src/experiments/review-notes',
 			'index.tsx'
 		),
+		'experiments/refine-notes': path.resolve(
+			process.cwd(),
+			'src/experiments/refine-notes',
+			'index.tsx'
+		),
 		'experiments/summarization': path.resolve(
 			process.cwd(),
 			'src/experiments/summarization',
