@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-Welcome to the WordPress AI Experiments Plugin! Here you find some information on how to get started contributing to the plugin.
+Welcome to the WordPress AI Plugin! Here you find some information on how to get started contributing to the plugin.
 
 ## Getting Started
 
@@ -142,13 +142,13 @@ echo 'Hello World';
 ## Guidelines
 
 - As with all WordPress projects, we want to ensure a welcoming environment for everyone. With that in mind, all contributors are expected to follow our [Code of Conduct](https://make.wordpress.org/handbook/community-code-of-conduct/).
-- All WordPress projects are licensed under the GPLv2+, and all contributions to the WordPress AI Experiments Plugin will be released under the GPLv2+ license. You maintain copyright over any contribution you make, and by submitting a pull request, you are agreeing to release that contribution under the GPLv2+ license.
+- All WordPress projects are licensed under the GPLv2+, and all contributions to the WordPress AI Plugin will be released under the GPLv2+ license. You maintain copyright over any contribution you make, and by submitting a pull request, you are agreeing to release that contribution under the GPLv2+ license.
 
 ## Additional resources
 
 For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
-- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Comprehensive guide to plugin experiment development
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Comprehensive guide to plugin development
 - [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
 - [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
 - [Testing Strategy](docs/TESTING.md) - Testing philosophy and guidelines

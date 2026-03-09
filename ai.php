@@ -8,9 +8,9 @@
  * @license     GPL-2.0-or-later
  *
  * @wordpress-plugin
- * Plugin Name:       AI Experiments
+ * Plugin Name:       AI
  * Plugin URI:        https://github.com/WordPress/ai
- * Description:       AI experiments and capabilities for WordPress.
+ * Description:       AI feature, experiments and capabilities for WordPress.
  * Version:           0.4.1
  * Requires at least: 7.0
  * Requires PHP:      7.4
