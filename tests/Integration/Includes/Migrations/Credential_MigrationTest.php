@@ -13,14 +13,14 @@ use WordPress\AI\Migrations\Credential_Migration;
 /**
  * Credential_Migration test case.
  *
- * @since 0.5.0
+ * @since x.x.x
  */
 class Credential_MigrationTest extends WP_UnitTestCase {
 
 	/**
 	 * Returns the new-style Connectors option names under test.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @return list<string>
 	 */
@@ -40,7 +40,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	 * filter that masks values on read. Both are removed here so the tests can
 	 * write and read raw values directly.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -54,7 +54,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	/**
 	 * Deletes all options written during a test and restores the mask filters.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
@@ -71,7 +71,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() migrates all provider credentials to the new options.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_run_migrates_credentials() {
 		update_option(
@@ -93,7 +93,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() stores the current plugin version after migrating.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_run_stores_version_after_migration() {
 		( new Credential_Migration() )->run();
@@ -104,7 +104,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() is a no-op when the stored version is already at the target.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_run_skips_when_version_already_current() {
 		update_option( 'ai_experiments_version', '0.5.0' );
@@ -124,7 +124,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() writes no new options when no old credentials exist (fresh install).
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_run_does_nothing_on_fresh_install() {
 		( new Credential_Migration() )->run();
@@ -140,7 +140,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() does not overwrite an already-set new-style credential.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_run_does_not_overwrite_existing_new_credentials() {
 		update_option( 'connectors_ai_openai_api_key', 'sk-already-set' );
@@ -161,7 +161,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() only migrates providers whose new credential option is empty.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_run_migrates_only_providers_missing_new_credentials() {
 		update_option( 'connectors_ai_openai_api_key', 'sk-already-set' );
@@ -190,7 +190,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a second call to run() after migration is already complete is a no-op.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_run_is_idempotent() {
 		update_option(
@@ -221,7 +221,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	 *
 	 * Returns null if the option row does not exist.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @param string $option_name The option name to look up.
 	 * @return string|null The raw value, or null if the row is absent.
