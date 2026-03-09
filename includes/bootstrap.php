@@ -1,6 +1,6 @@
 <?php
 /**
- * Bootstrap file for the AI Experiments plugin.
+ * Bootstrap file for the AI plugin.
  *
  * Handles plugin initialization, version checks, and feature loading.
  *
@@ -76,7 +76,7 @@ function check_php_version(): bool {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required PHP version, 2: Current PHP version */
-						__( 'AI Experiments plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
+						__( 'AI plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
 						AI_EXPERIMENTS_MIN_PHP_VERSION,
 						PHP_VERSION
 					)
@@ -106,7 +106,7 @@ function check_wp_version(): bool {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required WordPress version, 2: Current WordPress version */
-						__( 'AI Experiments plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
+						__( 'AI plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
 						AI_EXPERIMENTS_MIN_WP_VERSION,
 						$wp_version
 					)
@@ -121,7 +121,7 @@ function check_wp_version(): bool {
 /**
  * Adds action links to the plugin list table.
  *
- * This adds "Experiments" and "Connectors" links to
+ * This adds "Settings" and "Connectors" links to
  * the plugin's action links on the Plugins page.
  *
  * @since 0.1.1
@@ -130,10 +130,10 @@ function check_wp_version(): bool {
  * @return array<string> Modified action links.
  */
 function plugin_action_links( array $links ): array {
-	$experiments_link = sprintf(
+	$settings_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
-		admin_url( 'options-general.php?page=ai-experiments' ),
-		esc_html__( 'Experiments', 'ai' )
+		admin_url( 'options-general.php?page=ai' ),
+		esc_html__( 'Settings', 'ai' )
 	);
 
 	$connectors_link = sprintf(
@@ -142,7 +142,7 @@ function plugin_action_links( array $links ): array {
 		esc_html__( 'Connectors', 'ai' )
 	);
 
-	array_unshift( $links, $connectors_link, $experiments_link );
+	array_unshift( $links, $connectors_link, $settings_link );
 
 	return $links;
 }
@@ -215,8 +215,8 @@ function initialize_experiments(): void {
 				wp_register_ability_category(
 					AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY,
 					array(
-						'label'       => __( 'AI Experiments', 'ai' ),
-						'description' => __( 'Various AI experiments.', 'ai' ),
+						'label'       => __( 'AI', 'ai' ),
+						'description' => __( 'Various AI features and experiments.', 'ai' ),
 					),
 				);
 			}

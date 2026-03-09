@@ -1,7 +1,7 @@
 <?php
 
 /**
- * PSR-4 autoloader for the AI Experiments plugin.
+ * PSR-4 autoloader for the AI plugin.
  *
  * @since x.x.x
  *
