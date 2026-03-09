@@ -93,6 +93,7 @@ export interface ImageImportAbilityInput {
  */
 export interface ImageGenerationAbilityInput {
 	prompt: string;
+	reference?: string;
 	[ key: string ]: string | undefined;
 }
 
