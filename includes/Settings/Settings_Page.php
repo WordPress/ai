@@ -82,7 +82,8 @@ class Settings_Page {
 			__( 'AI', 'ai' ),
 			'manage_options',
 			self::PAGE_SLUG,
-			array( $this, 'render_page' )
+			array( $this, 'render_page' ),
+			2
 		);
 
 		// Hook into the specific page load to enqueue styles.
