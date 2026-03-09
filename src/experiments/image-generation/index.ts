@@ -1,5 +1,5 @@
 /**
- * Image generation experiment.
+ * Image generation.
  */
 
 /**

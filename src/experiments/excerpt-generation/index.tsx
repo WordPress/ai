@@ -1,5 +1,5 @@
 /**
- * Excerpt generation experiment plugin registration.
+ * Excerpt generation plugin registration.
  */
 
 /**
