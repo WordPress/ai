@@ -67,10 +67,10 @@ test.describe( 'Title Generation Experiment', () => {
 			page.locator( '.ai-title-generation-modal' )
 		).toBeVisible();
 
-		// Ensure there are three title options.
+		// Ensure there is one title option.
 		await expect(
 			page.locator( '.ai-title-generation-modal .ai-title textarea' )
-		).toHaveCount( 3 );
+		).toHaveCount( 1 );
 
 		// Click the first title option.
 		await page
@@ -137,15 +137,15 @@ test.describe( 'Title Generation Experiment', () => {
 			page.locator( '.ai-title-generation-modal' )
 		).toBeVisible();
 
-		// Ensure there are three title options.
+		// Ensure there is one title option.
 		await expect(
 			page.locator( '.ai-title-generation-modal .ai-title textarea' )
-		).toHaveCount( 3 );
+		).toHaveCount( 1 );
 
-		// Click the third title option.
+		// Click the first title option.
 		await page
 			.locator(
-				'.ai-title-generation-modal .ai-title:nth-child(3) button'
+				'.ai-title-generation-modal .ai-title:first-child button'
 			)
 			.click();
 
@@ -157,7 +157,9 @@ test.describe( 'Title Generation Experiment', () => {
 		// Ensure the title is updated.
 		await expect(
 			editor.canvas.locator( '.editor-post-title__input' )
-		).toHaveText( 'Your First WordPress Post' );
+		).toHaveText(
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
+		);
 
 		// Save the post.
 		await editor.saveDraft();

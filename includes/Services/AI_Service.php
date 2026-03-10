@@ -11,8 +11,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Services;
 
-use WordPress\AI_Client\AI_Client;
-use WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
@@ -121,10 +119,10 @@ class AI_Service {
 	 *     @type bool         $logprobs           Whether to return log probabilities.
 	 *     @type int          $top_logprobs       Top log probabilities to return.
 	 * }
-	 * @return \WordPress\AI_Client\Builders\Prompt_Builder_With_WP_Error The prompt builder instance.
+	 * @return \WP_AI_Client_Prompt_Builder The prompt builder instance.
 	 */
-	public function create_textgen_prompt( ?string $prompt = null, array $options = array() ): Prompt_Builder_With_WP_Error {
-		$builder = AI_Client::prompt_with_wp_error( $prompt );
+	public function create_textgen_prompt( ?string $prompt = null, array $options = array() ) {
+		$builder = wp_ai_client_prompt( $prompt );
 
 		// Apply default model preferences.
 		$models = get_preferred_models_for_text_generation();

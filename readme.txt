@@ -104,7 +104,7 @@ The plugin itself is free, but you'll need to pay for API usage from your chosen
 
 = Can I use this without coding knowledge? =
 
-Absolutely! The plugin is designed for content creators and site administrators. Once your API credentials are configured, you can use AI experiments directly from the post editor.
+Absolutely! The plugin is designed for content creators and site administrators. Once your AI Connectors are configured, you can use AI experiments directly from the post editor.
 
 = Where can I get help or report issues? =
 

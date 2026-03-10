@@ -121,7 +121,7 @@ function check_wp_version(): bool {
 /**
  * Adds action links to the plugin list table.
  *
- * This adds "Experiments" and "Credentials" links to
+ * This adds "Experiments" and "Connectors" links to
  * the plugin's action links on the Plugins page.
  *
  * @since 0.1.1
@@ -136,13 +136,13 @@ function plugin_action_links( array $links ): array {
 		esc_html__( 'Experiments', 'ai' )
 	);
 
-	$credentials_link = sprintf(
+	$connectors_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
-		admin_url( 'options-general.php?page=wp-ai-client' ),
-		esc_html__( 'Credentials', 'ai' )
+		admin_url( 'options-connectors.php' ),
+		esc_html__( 'Connectors', 'ai' )
 	);
 
-	array_unshift( $links, $credentials_link, $experiments_link );
+	array_unshift( $links, $connectors_link, $experiments_link );
 
 	return $links;
 }

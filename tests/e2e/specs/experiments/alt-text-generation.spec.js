@@ -160,6 +160,20 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.locator( '.media-frame-toolbar button', { hasText: 'Select' } )
 			.click();
 
+		// Clear the alt text textarea.
+		await page
+			.locator( '.components-tools-panel textarea' )
+			.first()
+			.fill( '' );
+
+		// Click into the block settings sidebar.
+		const blockSettingsBtn = page
+			.locator( '.block-editor-block-inspector__tabs' )
+			.getByRole( 'tab', {
+				name: 'Settings',
+			} );
+		await blockSettingsBtn.click();
+
 		// Ensure the Generate button is visible in the sidebar.
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
@@ -180,12 +194,21 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.locator( '.ai-alt-text-controls button', { hasText: 'Apply' } )
 			.click();
 
+		// Click back to the block content sidebar.
+		const blockContentBtn = page
+			.locator( '.block-editor-block-inspector__tabs' )
+			.getByRole( 'tab', {
+				name: 'Content',
+			} );
+		await blockContentBtn.click();
+
 		// Ensure the generated alt text shows in the textarea.
 		await expect(
 			page.locator( '.components-tools-panel textarea' ).first()
 		).toHaveValue( /Edit or Delete Your First WordPress Post/ );
 
 		// Ensure the generate button text is updated.
+		await blockSettingsBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
 				hasText: 'Regenerate Alt Text',
@@ -193,12 +216,14 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		).toBeVisible();
 
 		// Remove alt text.
+		await blockContentBtn.click();
 		await page
 			.locator( '.components-tools-panel textarea' )
 			.first()
 			.fill( '' );
 
 		// Ensure the generate button text is updated.
+		await blockSettingsBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
 				hasText: 'Generate Alt Text',
@@ -206,12 +231,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		).toBeVisible();
 
 		// Generate alt text again.
-		await expect(
-			page.locator( '.ai-alt-text-controls button', {
-				hasText: 'Generate Alt Text',
-			} )
-		).toBeVisible();
-
 		await page.locator( '.ai-alt-text-controls button' ).click();
 
 		// Click the Dismiss button.
@@ -220,6 +239,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.click();
 
 		// Ensure the generated alt text is not visible.
+		await blockContentBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls textarea' )
 		).not.toBeVisible();

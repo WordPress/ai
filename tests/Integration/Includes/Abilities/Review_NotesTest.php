@@ -398,28 +398,27 @@ class Review_NotesTest extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Tests that suggestions_schema() returns the OpenAI-required wrapper structure.
+	 * Tests that suggestions_schema() returns a top-level JSON Schema object.
 	 *
-	 * The schema must include 'name', 'strict', and 'schema' keys; the inner
-	 * 'schema' must be type 'object' (OpenAI rejects top-level array schemas).
+	 * The Responses API expects the schema itself at the top level with
+	 * type object.
 	 *
 	 * @since 0.4.0
 	 */
-	public function test_suggestions_schema_has_openai_wrapper_structure() {
+	public function test_suggestions_schema_has_top_level_object_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'suggestions_schema' );
 		$method->setAccessible( true );
 
 		$schema = $method->invoke( $this->ability );
 
-		$this->assertArrayHasKey( 'name', $schema, 'Schema should have a name key' );
-		$this->assertEquals( 'suggestions', $schema['name'], 'Schema name should be suggestions' );
-		$this->assertArrayHasKey( 'strict', $schema, 'Schema should have a strict key' );
-		$this->assertTrue( $schema['strict'], 'Schema strict should be true' );
-		$this->assertArrayHasKey( 'schema', $schema, 'Schema should have a schema key' );
-		$this->assertEquals( 'object', $schema['schema']['type'], 'Inner schema type must be object (not array)' );
-		$this->assertArrayHasKey( 'suggestions', $schema['schema']['properties'], 'Inner schema should have suggestions property' );
-		$this->assertEquals( 'array', $schema['schema']['properties']['suggestions']['type'], 'suggestions property should be array type' );
+		$this->assertArrayHasKey( 'type', $schema, 'Schema should have a top-level type key' );
+		$this->assertEquals( 'object', $schema['type'], 'Top-level schema type must be object' );
+		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties key' );
+		$this->assertArrayHasKey( 'suggestions', $schema['properties'], 'Schema should have suggestions property' );
+		$this->assertEquals( 'array', $schema['properties']['suggestions']['type'], 'suggestions property should be array type' );
+		$this->assertArrayHasKey( 'required', $schema, 'Schema should define required keys' );
+		$this->assertContains( 'suggestions', $schema['required'], 'suggestions should be required' );
 	}
 
 	// -------------------------------------------------------------------------
