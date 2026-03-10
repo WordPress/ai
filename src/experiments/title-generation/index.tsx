@@ -13,6 +13,7 @@ import { registerPlugin } from '@wordpress/plugins';
 /**
  * Internal dependencies
  */
+import './index.scss';
 import TitleToolbar from './components/TitleToolbar';
 import { TitleToolbarWrapper } from './components/TitleToolbarWrapper';
 

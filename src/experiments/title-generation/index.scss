@@ -1,0 +1,53 @@
+.ai-title-generation-modal {
+	.ai-title-generation-actions {
+		margin-top: 24px;
+	}
+
+	.ai-title-generation-options {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.ai-title-generation-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		padding: 10px 12px;
+		border: 1px solid #ddd;
+		border-radius: 2px;
+		cursor: pointer;
+
+		&.is-selected:not(.is-disabled) {
+			background-color: color-mix(in srgb, var(--wp-components-color-accent, var(--wp-admin-theme-color, #3858e9)) 4%, transparent);
+			border-color: var(--wp-components-color-accent, var(--wp-admin-theme-color, #3858e9));
+		}
+
+		&__radio {
+			margin-top: 3px;
+			flex-shrink: 0;
+			cursor: pointer;
+		}
+
+		.components-base-control {
+			flex: 1;
+		}
+
+		.components-textarea-control__input {
+			border: none;
+			box-shadow: none;
+			padding: 0;
+			background: transparent;
+			resize: none;
+			cursor: text;
+
+			&:focus {
+				box-shadow: none;
+			}
+		}
+
+		&.is-selected:not(.is-disabled) .components-textarea-control__input {
+			color: var(--wp-components-color-accent, var(--wp-admin-theme-color, #3858e9));
+		}
+	}
+}
