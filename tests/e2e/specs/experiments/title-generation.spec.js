@@ -67,16 +67,19 @@ test.describe( 'Title Generation Experiment', () => {
 			page.locator( '.ai-title-generation-modal' )
 		).toBeVisible();
 
-		// Ensure there is one title option.
+		// Ensure there is at least one title option.
 		await expect(
-			page.locator( '.ai-title-generation-modal .ai-title textarea' )
-		).toHaveCount( 1 );
+			page
+				.locator(
+					'.ai-title-generation-modal .ai-title-generation-option textarea'
+				)
+				.first()
+		).toBeVisible();
 
-		// Click the first title option.
+		// Click Insert to apply the first (auto-selected) title.
 		await page
-			.locator(
-				'.ai-title-generation-modal .ai-title:first-child button'
-			)
+			.locator( '.ai-title-generation-modal' )
+			.getByRole( 'button', { name: 'Insert' } )
 			.click();
 
 		// Ensure the title modal is closed.
@@ -137,16 +140,19 @@ test.describe( 'Title Generation Experiment', () => {
 			page.locator( '.ai-title-generation-modal' )
 		).toBeVisible();
 
-		// Ensure there is one title option.
+		// Ensure there is at least one title option.
 		await expect(
-			page.locator( '.ai-title-generation-modal .ai-title textarea' )
-		).toHaveCount( 1 );
+			page
+				.locator(
+					'.ai-title-generation-modal .ai-title-generation-option textarea'
+				)
+				.first()
+		).toBeVisible();
 
-		// Click the first title option.
+		// Click Insert to apply the first (auto-selected) title.
 		await page
-			.locator(
-				'.ai-title-generation-modal .ai-title:first-child button'
-			)
+			.locator( '.ai-title-generation-modal' )
+			.getByRole( 'button', { name: 'Insert' } )
 			.click();
 
 		// Ensure the title modal is closed.
