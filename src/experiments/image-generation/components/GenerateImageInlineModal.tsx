@@ -60,6 +60,9 @@ export function GenerateImageInlineModal( {
 	const [ refinePrompt, setRefinePrompt ] = useState( '' );
 	const [ generatedData, setGeneratedData ] =
 		useState< GeneratedImageData | null >( null );
+	const [ originalImageSrc, setOriginalImageSrc ] = useState< string | null >(
+		null
+	);
 	const [ progress, setProgress ] = useState( '' );
 	const [ error, setError ] = useState< string | null >( null );
 
@@ -82,6 +85,8 @@ export function GenerateImageInlineModal( {
 			const input: ImageGenerationAbilityInput = { prompt: activePrompt };
 			if ( referenceImage ) {
 				input.reference = referenceImage;
+			} else {
+				setOriginalImageSrc( null );
 			}
 
 			const response = ( await runAbility(
@@ -165,6 +170,11 @@ export function GenerateImageInlineModal( {
 	const previewSrc = generatedData?.image?.data
 		? `data:image/png;base64,${ generatedData.image.data }`
 		: null;
+	const hasRefinedResult = Boolean(
+		originalImageSrc &&
+			generatedData?.prompts &&
+			generatedData.prompts.length > 1
+	);
 
 	return (
 		<Modal
@@ -233,11 +243,39 @@ export function GenerateImageInlineModal( {
 			{ /* PREVIEW — show the generated image with action buttons */ }
 			{ state === 'preview' && previewSrc && (
 				<div className="ai-generate-image-inline-modal__preview">
-					<img
-						src={ previewSrc }
-						alt={ generatedData?.prompt ?? '' }
-						className="ai-generate-image-inline-modal__preview-image"
-					/>
+					{ hasRefinedResult ? (
+						<div className="ai-generate-image-inline-modal__comparison">
+							<div className="ai-generate-image-inline-modal__comparison-item">
+								<p className="ai-generate-image-inline-modal__comparison-label">
+									{ __( 'Original image', 'ai' ) }
+								</p>
+								<img
+									src={ originalImageSrc ?? '' }
+									alt={ __(
+										'Original generated image',
+										'ai'
+									) }
+									className="ai-generate-image-inline-modal__preview-image"
+								/>
+							</div>
+							<div className="ai-generate-image-inline-modal__comparison-item">
+								<p className="ai-generate-image-inline-modal__comparison-label">
+									{ __( 'Refined image', 'ai' ) }
+								</p>
+								<img
+									src={ previewSrc }
+									alt={ generatedData?.prompt ?? '' }
+									className="ai-generate-image-inline-modal__preview-image"
+								/>
+							</div>
+						</div>
+					) : (
+						<img
+							src={ previewSrc }
+							alt={ generatedData?.prompt ?? '' }
+							className="ai-generate-image-inline-modal__preview-image"
+						/>
+					) }
 					<div className="ai-generate-image-inline-modal__actions">
 						<Button variant="primary" onClick={ handleUseImage }>
 							{ __( 'Use Image', 'ai' ) }
@@ -245,6 +283,7 @@ export function GenerateImageInlineModal( {
 						<Button
 							variant="secondary"
 							onClick={ () => {
+								setOriginalImageSrc( previewSrc );
 								setRefinePrompt( '' );
 								setState( 'refining' );
 							} }
@@ -253,7 +292,17 @@ export function GenerateImageInlineModal( {
 						</Button>
 						<Button
 							variant="secondary"
-							onClick={ () => generate( prompt.trim() ) }
+							onClick={ () => {
+								if ( hasRefinedResult ) {
+									setOriginalImageSrc( originalImageSrc );
+									generate(
+										refinePrompt.trim(),
+										originalImageSrc ?? undefined
+									);
+								} else {
+									generate( prompt.trim() );
+								}
+							} }
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
 						</Button>
@@ -261,6 +310,7 @@ export function GenerateImageInlineModal( {
 							variant="tertiary"
 							onClick={ () => {
 								setGeneratedData( null );
+								setOriginalImageSrc( null );
 								setState( 'idle' );
 								setError( null );
 							} }
