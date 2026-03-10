@@ -104,13 +104,15 @@ export function GenerateImageInlineModal( {
 				const previousPrompts = referenceImage
 					? previousData?.prompts ?? [ previousData?.prompt ?? '' ]
 					: [];
+				const promptHistory = previousPrompts.filter( Boolean );
+				const lastPrompt = promptHistory[ promptHistory.length - 1 ];
 				return {
 					...response,
 					prompt: activePrompt,
-					prompts: [
-						...previousPrompts.filter( Boolean ),
-						activePrompt,
-					],
+					prompts:
+						lastPrompt === activePrompt
+							? promptHistory
+							: [ ...promptHistory, activePrompt ],
 				};
 			} );
 			setState( 'preview' );
