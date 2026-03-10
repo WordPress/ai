@@ -145,7 +145,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function test_generate_image_edit_with_invalid_base64(): void {
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'generate_image_edit' );
+		$method     = $reflection->getMethod( 'generate_image' );
 		$method->setAccessible( true );
 
 		$result = $method->invoke( $this->ability, 'a prompt', 'not-valid-base64!!!!' );
