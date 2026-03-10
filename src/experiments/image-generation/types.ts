@@ -34,6 +34,7 @@ export interface GeneratedImage {
 export interface GeneratedImageData {
 	image: GeneratedImage;
 	prompt: string;
+	prompts?: string[];
 }
 
 /**

@@ -68,7 +68,11 @@ export function GenerateImageStandalone() {
 				);
 			}
 
-			setGeneratedData( { ...response, prompt: activePrompt } );
+			setGeneratedData( {
+				...response,
+				prompt: activePrompt,
+				prompts: [ activePrompt ],
+			} );
 			setState( 'preview' );
 		} catch ( err: any ) {
 			const message: string =

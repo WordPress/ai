@@ -63,8 +63,12 @@ export async function generateImage(
 	return runAbility< GeneratedImageData >( 'ai/image-generation', params )
 		.then( ( response ) => {
 			if ( response && typeof response === 'object' ) {
-				const result = response as { prompt?: string };
+				const result = response as {
+					prompt?: string;
+					prompts?: string[];
+				};
 				result.prompt = prompt;
+				result.prompts = [ prompt ];
 				return result as GeneratedImageData;
 			}
 

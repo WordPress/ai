@@ -95,7 +95,19 @@ export function GenerateImageInlineModal( {
 				);
 			}
 
-			setGeneratedData( { ...response, prompt: activePrompt } );
+			setGeneratedData( ( previousData ) => {
+				const previousPrompts = referenceImage
+					? previousData?.prompts ?? [ previousData?.prompt ?? '' ]
+					: [];
+				return {
+					...response,
+					prompt: activePrompt,
+					prompts: [
+						...previousPrompts.filter( Boolean ),
+						activePrompt,
+					],
+				};
+			} );
 			setState( 'preview' );
 		} catch ( err: any ) {
 			const message: string =
