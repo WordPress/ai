@@ -11,7 +11,6 @@ namespace WordPress\AI\Abilities\Review_Notes;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
@@ -27,14 +26,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Reviews a single block's content and returns suggestions for the specified
  * review types (Accessibility, Readability, Grammar, SEO, etc.).
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Review_Notes extends Abstract_Ability {
 
 	/**
 	 * Review types supported by this Ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @var list<string>
 	 */
@@ -44,7 +43,7 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return array<string, mixed> The input schema of the ability.
 	 */
@@ -95,7 +94,7 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return array<string, mixed> The output schema of the ability.
 	 */
@@ -127,7 +126,7 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
 	 * @return array{suggestions: list<array{review_type: string, text: string}>}|\WP_Error
@@ -180,7 +179,7 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
@@ -234,7 +233,7 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -245,41 +244,37 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * Returns the JSON schema used for structured output generation.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return array<string, mixed> JSON schema for an array of suggestions.
 	 */
 	protected function suggestions_schema(): array {
 		return array(
-			'name'   => 'suggestions',
-			'strict' => true,
-			'schema' => array(
-				'type'                 => 'object',
-				'properties'           => array(
-					'suggestions' => array(
-						'type'  => 'array',
-						'items' => array(
-							'type'                 => 'object',
-							'properties'           => array(
-								'review_type' => array( 'type' => 'string' ),
-								'text'        => array( 'type' => 'string' ),
-								'priority'    => array( 'type' => 'integer' ),
-							),
-							'required'             => array( 'review_type', 'text', 'priority' ),
-							'additionalProperties' => false,
+			'type'                 => 'object',
+			'properties'           => array(
+				'suggestions' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'                 => 'object',
+						'properties'           => array(
+							'review_type' => array( 'type' => 'string' ),
+							'text'        => array( 'type' => 'string' ),
+							'priority'    => array( 'type' => 'integer' ),
 						),
+						'required'             => array( 'review_type', 'text', 'priority' ),
+						'additionalProperties' => false,
 					),
 				),
-				'required'             => array( 'suggestions' ),
-				'additionalProperties' => false,
 			),
+			'required'             => array( 'suggestions' ),
+			'additionalProperties' => false,
 		);
 	}
 
 	/**
 	 * Generates review suggestions for a single block.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param string $block_type The block type identifier.
 	 * @param string $block_content The plain-text block content.
@@ -297,7 +292,7 @@ class Review_Notes extends Abstract_Ability {
 	) {
 		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
-		$raw = AI_Client::prompt_with_wp_error( $prompt )
+		$raw = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->suggestions_schema() )
@@ -357,7 +352,7 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * Creates the prompt for the review.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param string $block_type The block type identifier.
 	 * @param string $block_content The plain-text block content.
@@ -392,7 +387,7 @@ class Review_Notes extends Abstract_Ability {
 	 * Notes use format [REVIEW_TYPE] text. Returns lowercase keys
 	 * for case-insensitive comparison.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param list<string> $existing_notes Note content strings.
 	 * @return array<string, true> Map of existing review types to true.

@@ -1,0 +1,106 @@
+{
+  "id": "resp_00c0745122332f4b0069aae1933f5481a2a15d5888dedb098f",
+  "object": "response",
+  "created_at": 1772806547,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1772806548,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "incomplete_details": null,
+  "instructions": "You are an editorial review assistant for WordPress block content...",
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4o-mini-2024-07-18",
+  "output": [
+    {
+      "id": "msg_00c0745122332f4b0069aae193d42881a2915c8be8bfbb4ae7",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"suggestions\":[{\"review_type\":\"grammar\",\"text\":\"Fix this!\",\"priority\":1}]}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "description": null,
+      "name": "response_schema",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "review_type": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "review_type",
+                "text",
+                "priority"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "suggestions"
+        ],
+        "additionalProperties": false
+      },
+      "strict": true
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 1.0,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 901,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 46,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 947
+  },
+  "user": null,
+  "metadata": {}
+}

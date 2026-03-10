@@ -16,7 +16,7 @@ The WordPress AI Experiments plugin provides a set of opt-in, experimental AI fe
 
 ## Overview
 
-* **Purpose:** Demonstrate and deliver AI features by combining all AI Building Blocks ([PHP AI Client SDK](https://github.com/WordPress/php-ai-client), [Abilities API](https://github.com/WordPress/abilities-api), and [MCP Adapter](https://github.com/WordPress/mcp-adapter)) into a unified WordPress experience.
+* **Purpose:** Demonstrate and deliver AI features by combining the AI Building Blocks ([PHP AI Client SDK](https://github.com/WordPress/php-ai-client), [Abilities API](https://github.com/WordPress/abilities-api)) into a unified WordPress experience.
 * **Scope:** Reference implementations, user-facing AI features, and experimental capabilities for testing and feedback.
 * **Audience:** WordPress users, content creators, site administrators, and developers learning the AI APIs.
 
@@ -33,14 +33,15 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 
 ## Current Features
 
-* **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Browse and interact with registered AI abilities from a dedicated admin screen.
-* * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generate descriptive alt text for images to improve accessibility.
+* **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
+* * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
-* **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Automatically create concise summaries for your posts.
+* **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
-* **[Image Generation](docs/experiments/image-generation.md)** - Create feature image from post content directly in the block editor.
+* **[Image Generation](docs/experiments/image-generation.md)** - Create images from post content in the editor, also via the Media Library.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
-* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
+* **Title Generation** -  Generates title suggestions from content.
 
 ## Roadmap
 
@@ -52,13 +53,7 @@ Overview of planned features:
 * **Content Assistant** – AI-powered writing and editing in Gutenberg
 * **Site Agent** – Natural language WordPress administration
 * **Workflow Automation** – AI-driven task automation
-  * Title Generation / Rewriting – Suggests alternative post titles for better clarity, tone, or engagement.
-  * Excerpt Generation – Creates concise summaries for post excerpts.
-  * Content Summarization – Summarizes long-form content into digestible overviews.
   * Contextual Tagging – Suggests relevant tags and categories to organize content.
-* **Media Enhancement** – Auto-captioning and intelligent organization
-  * Alt Text Generation – Auto-generates descriptive alt text for images.
-  * Image Generation – Produces inline or featured images from text prompts.
 
 ## Developer Experience
 
@@ -66,14 +61,14 @@ The AI Experiments plugin is meant to be studied, forked, and extended.  If you�
 
 If you’re a plugin developer, you’ll be able to:
 
-*   Read the [Contributing Guide](CONTRIBUTING.md) for detailed development information.
-*   Register new AI abilities
-*   Override default behavior with custom filters
-*   Reuse the same building blocks in your own plugins
+* Read the [Contributing Guide](CONTRIBUTING.md) for detailed development information.
+* Register new AI abilities
+* Override default behavior with custom filters
+* Reuse the same building blocks in your own plugins
 
 ## How to Get Involved
 
-We want everyone's input! Whether you're an author, editor, educator, researcher, accessibility expert, user, or just someone with strong feelings about AI, all are welcome.
+We want everyone's input! Whether you're an author, editor, educator, researcher, accessibility expert, user, or someone with strong feelings about AI, all are welcome.
 
 Anyone contributing to the AI Experiments plugin is expected to conduct themselves in accordance with the WordPress project's [Code of Conduct](https://github.com/WordPress/.github/blob/trunk/CODE_OF_CONDUCT.md).
 

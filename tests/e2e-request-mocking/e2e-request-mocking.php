@@ -39,13 +39,25 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$response = file_get_contents( __DIR__ . '/responses/OpenAI/models.json' );
 	}
 
+	// Mock the OpenAI responses API response.
+	if ( str_contains( $url, 'https://api.openai.com/v1/responses' ) ) {
+		$body = $parsed_args['body'] ?? '';
+
+		// Route review-notes requests to their own fixture.
+		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-responses.json' );
+		} else {
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );
+		}
+	}
+
 	// Mock the OpenAI completions API response.
 	if ( str_contains( $url, 'https://api.openai.com/v1/chat/completions' ) ) {
 		$body = $parsed_args['body'] ?? '';
 
 		// Route review-notes requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-suggestions.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-completions.json' );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}

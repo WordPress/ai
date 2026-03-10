@@ -28,28 +28,46 @@ export const visitSettingsPage = async ( admin: Admin ) => {
 };
 
 /**
- * Visits the credentials page.
+ * Visits the Connectors page.
  *
  * @param admin The admin fixture from the test context.
  */
-export const visitCredentialsPage = async ( admin: Admin ) => {
-	await admin.visitAdminPage( 'options-general.php?page=wp-ai-client' );
+export const visitConnectorsPage = async ( admin: Admin ) => {
+	await admin.visitAdminPage( 'options-connectors.php' );
 };
 
 /**
- * Clears out any existing credentials.
+ * Clears out any existing Connectors.
  *
  * @param admin The admin fixture from the test context.
  * @param page  The page object.
  */
-export const clearCredentials = async ( admin: Admin, page: Page ) => {
-	await visitCredentialsPage( admin );
-	const passwordFields = page.locator( '.form-table input[type="password"]' );
-	const count = await passwordFields.count();
-	for ( let i = 0; i < count; i++ ) {
-		await passwordFields.nth( i ).fill( '' );
+export const clearConnectors = async ( admin: Admin, page: Page ) => {
+	await visitConnectorsPage( admin );
+
+	// Wait for page to fully load before finding button
+	await page.waitForTimeout( 1000 );
+
+	const editBtn = page.locator(
+		'.connector-item--ai-provider-for-openai button',
+		{
+			hasText: 'Edit',
+		}
+	);
+
+	if ( ( await editBtn.count() ) === 0 ) {
+		return;
 	}
-	await page.locator( '#submit' ).click();
+
+	await editBtn.click();
+	await page
+		.locator(
+			'.connector-item--ai-provider-for-openai .connector-settings button'
+		)
+		.click();
+
+	// Wait for save.
+	await page.waitForTimeout( 1000 );
 };
 
 /**

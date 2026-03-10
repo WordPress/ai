@@ -59,7 +59,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Registers the admin menu under Media.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function register_admin_menu(): void {
 		add_media_page(
@@ -74,7 +74,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Renders the Generate Image admin page.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function render_admin_page(): void {
 		echo '<div class="wrap">';
@@ -87,7 +87,7 @@ class Image_Generation extends Abstract_Experiment {
 	 * Injects a "Generate Image" button into the Media Library header via PHP.
 	 * Uses an inline script in admin_footer to run after WP's media grid JS.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function inject_generate_image_button(): void {
 		$url = admin_url( 'upload.php?page=generate-image' );
@@ -205,7 +205,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Enqueues and localizes the inline block editor script.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function enqueue_inline_assets(): void {
 		$this->enqueue_shared_assets();
@@ -214,7 +214,7 @@ class Image_Generation extends Abstract_Experiment {
 	/**
 	 * Enqueues the shared assets.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	private function enqueue_shared_assets(): void {
 		Asset_Loader::enqueue_script( 'image_generation', 'experiments/image-generation' );
