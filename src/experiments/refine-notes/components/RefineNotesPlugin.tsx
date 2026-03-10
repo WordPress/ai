@@ -8,8 +8,7 @@
 import { Button, Flex, FlexItem } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { useEffect } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
-import { customLink } from '@wordpress/icons';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -23,18 +22,18 @@ import { useRefineNotes } from '../hooks/useRefineNotes';
  * when unresolved Notes exist.
  */
 export default function RefineNotesPlugin() {
-	const { isRefining, hasPendingNotes, checkPendingNotes, runRefinement } =
-		useRefineNotes();
+	const {
+		isRefining,
+		progress,
+		total,
+		hasPendingNotes,
+		checkPendingNotes,
+		runRefinement,
+	} = useRefineNotes();
 
-	// Check for pending notes when the component mounts and when window gains focus.
+	// Check notes on mount
 	useEffect( () => {
 		checkPendingNotes();
-
-		const handleFocus = () => checkPendingNotes();
-		window.addEventListener( 'focus', handleFocus );
-		return () => {
-			window.removeEventListener( 'focus', handleFocus );
-		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
@@ -50,8 +49,14 @@ export default function RefineNotesPlugin() {
 	}
 
 	const buttonLabel = isRefining
-		? __( 'Refining blocks…', 'ai' )
+		? sprintf(
+				/* translators: 1: Current block number, 2: Total number of blocks. */
+				__( 'Refining block (%1$s of %2$s)…', 'ai' ),
+				progress,
+				total
+		  )
 		: __( 'Refine from Notes', 'ai' );
+
 	const buttonDescription = __(
 		'Automatically updates blocks using unresolved editorial feedback Notes.',
 		'ai'
@@ -59,19 +64,20 @@ export default function RefineNotesPlugin() {
 
 	return (
 		<PluginPostStatusInfo>
-			<Flex direction="column" gap={ 2 }>
+			<Flex
+				direction="column"
+				align="stretch"
+				justify="flex-start"
+				className="editor-post-refine-notes"
+				gap={ 2 }
+			>
 				<FlexItem>
 					<Button
 						variant="secondary"
-						icon={ customLink }
-						onClick={ () => runRefinement() }
 						isBusy={ isRefining }
 						disabled={ isRefining }
-						style={ {
-							justifyContent: 'center',
-							width: '100%',
-						} }
-						__next40pxDefaultSize
+						onClick={ () => void runRefinement() }
+						style={ { width: '100%', justifyContent: 'center' } }
 					>
 						{ buttonLabel }
 					</Button>

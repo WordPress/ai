@@ -166,17 +166,27 @@ async function resolveNote( noteId: number ): Promise< void > {
 }
 
 /**
- * Applies refinements based on notes to blocks in a post.
+ * Hook for refining blocks based on existing notes with AI.
  *
- * @return Object with refining state and runRefinement handler.
+ * @return {Object}   Object with refining state and functions.
+ * @property {boolean}  isRefining        Whether a refine operation is in progress.
+ * @property {number}   progress          The number of blocks processed so far.
+ * @property {number}   total             The total number of blocks to process.
+ * @property {boolean}  hasPendingNotes   Whether there are pending notes to process.
+ * @property {Function} checkPendingNotes Checks if there are pending notes.
+ * @property {Function} runRefinement     Function to trigger the refinement process.
  */
 export function useRefineNotes(): {
 	isRefining: boolean;
+	progress: number;
+	total: number;
 	hasPendingNotes: boolean;
 	checkPendingNotes: () => Promise< void >;
 	runRefinement: () => Promise< void >;
 } {
 	const [ isRefining, setIsRefining ] = useState< boolean >( false );
+	const [ progress, setProgress ] = useState< number >( 0 );
+	const [ total, setTotal ] = useState< number >( 0 );
 	const [ hasPendingNotes, setHasPendingNotes ] =
 		useState< boolean >( false );
 
@@ -204,6 +214,8 @@ export function useRefineNotes(): {
 
 	const runRefinement = async () => {
 		setIsRefining( true );
+		setProgress( 0 );
+		setTotal( 0 );
 
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_refine_notes_error'
@@ -242,101 +254,141 @@ export function useRefineNotes(): {
 				noteContentById.set( note.id, note.content?.rendered ?? '' );
 			}
 
-			let refinedBlocksCount = 0;
-			const notesToResolve: number[] = [];
-
-			// Process each reviewable block that has notes.
-			for ( const block of flatBlocks ) {
+			// Find which blocks have matching notes
+			const refineableBlocks = flatBlocks.filter( ( block ) => {
 				if ( ! REVIEWABLE_BLOCK_TYPES.includes( block.name ) ) {
-					continue;
+					return false;
 				}
-
 				const existingNoteId =
 					block.attributes.metadata?.noteId ?? null;
 				if (
 					! existingNoteId ||
 					! noteContentById.has( existingNoteId )
 				) {
-					continue;
+					return false;
 				}
-
 				const blockText = getBlockText( block );
-				if ( blockText.length === 0 ) {
-					continue;
-				}
+				return blockText.length > 0;
+			} );
 
-				// Collect notes logic
-				const existingNoteTexts: string[] = [];
-				const rootText = noteContentById.get( existingNoteId );
-				if ( rootText ) {
-					existingNoteTexts.push( rootText );
-				}
+			if ( refineableBlocks.length === 0 ) {
+				( dispatch( noticesStore ) as any ).createNotice(
+					'info',
+					__( 'No blocks found matching the existing notes.', 'ai' ),
+					{ type: 'snackbar' }
+				);
+				setHasPendingNotes( false );
+				return;
+			}
 
-				for ( const note of pendingNotes ) {
-					if ( note.parent === existingNoteId ) {
-						const replyText = noteContentById.get( note.id );
-						if ( replyText ) {
-							existingNoteTexts.push( replyText );
-						}
-					}
-				}
+			setTotal( refineableBlocks.length );
 
-				// Replace the block with the placeholder.
-				const contentWithPlaceholder = replaceBlockWithPlaceholder(
-					content,
-					block.clientId,
-					BLOCK_PLACEHOLDER
+			let refinedBlocksCount = 0;
+			const notesToResolve: number[] = [];
+
+			// Process in batches of 4 (similar to Review Notes)
+			const BATCH_SIZE = 4;
+			for (
+				let batchStart = 0;
+				batchStart < refineableBlocks.length;
+				batchStart += BATCH_SIZE
+			) {
+				const batch = refineableBlocks.slice(
+					batchStart,
+					batchStart + BATCH_SIZE
 				);
 
-				const contextWindow = buildContextWindow(
-					contentWithPlaceholder,
-					BLOCK_PLACEHOLDER
-				);
-				const context = `What follows is surrounding article content, where the block being refined has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the nearby text to better understand the context of the block within the article. CONTENT: \n\n${ contextWindow }`;
+				await Promise.all(
+					batch.map( async ( block ) => {
+						const existingNoteId = block.attributes.metadata
+							?.noteId as number;
 
-				// Execute refinement
-				try {
-					const refinedContent = await runAbility< string >(
-						'ai/refine-notes',
-						{
-							block_type: block.name,
-							block_content: blockText,
-							context,
-							post_id: postId,
-							notes: existingNoteTexts,
+						const blockText = getBlockText( block );
+
+						// Collect notes logic
+						const existingNoteTexts: string[] = [];
+						const rootText = noteContentById.get( existingNoteId );
+						if ( rootText ) {
+							existingNoteTexts.push( rootText );
 						}
-					);
 
-					if ( refinedContent && refinedContent !== blockText ) {
-						// Extract content depending on block type
-						// We update the content directly with the refined content logic
-						// Only paragraph and heading generally use the `content` attribute directly.
-						const attributeToUpdate =
-							block.name === 'core/image' ? 'alt' : 'content';
-
-						(
-							dispatch( blockEditorStore ) as any
-						 ).updateBlockAttributes( block.clientId, {
-							[ attributeToUpdate ]: refinedContent,
-						} );
-
-						refinedBlocksCount++;
-
-						// Add notes for resolution
-						notesToResolve.push( existingNoteId );
 						for ( const note of pendingNotes ) {
 							if ( note.parent === existingNoteId ) {
-								notesToResolve.push( note.id );
+								const replyText = noteContentById.get(
+									note.id
+								);
+								if ( replyText ) {
+									existingNoteTexts.push( replyText );
+								}
 							}
 						}
-					}
-				} catch ( e ) {
-					// Fall through, continue with others
-					console.warn(
-						`[AI Refine Notes] Failed to refine block ${ block.clientId }`,
-						e
-					);
-				}
+
+						// Replace the block with the placeholder.
+						const contentWithPlaceholder =
+							replaceBlockWithPlaceholder(
+								content,
+								block.clientId,
+								BLOCK_PLACEHOLDER
+							);
+
+						const contextWindow = buildContextWindow(
+							contentWithPlaceholder,
+							BLOCK_PLACEHOLDER
+						);
+						const refinementContext = `What follows is surrounding article content, where the block being refined has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the nearby text to better understand the context of the block within the article. CONTENT: \n\n${ contextWindow }`;
+
+						// Execute refinement
+						try {
+							const refinedContent = await runAbility< string >(
+								'ai/refine-notes',
+								{
+									block_type: block.name,
+									block_content: blockText,
+									context: refinementContext,
+									post_id: postId,
+									notes: existingNoteTexts,
+								}
+							);
+
+							if (
+								refinedContent &&
+								refinedContent !== blockText
+							) {
+								// For heading and paragraph it's content, image is alt
+								const attributeToUpdate =
+									block.name === 'core/image'
+										? 'alt'
+										: 'content';
+
+								(
+									dispatch( blockEditorStore ) as any
+								 ).updateBlockAttributes( block.clientId, {
+									[ attributeToUpdate ]: refinedContent,
+								} );
+
+								refinedBlocksCount++;
+
+								// Add notes for resolution
+								notesToResolve.push( existingNoteId );
+								for ( const note of pendingNotes ) {
+									if ( note.parent === existingNoteId ) {
+										notesToResolve.push( note.id );
+									}
+								}
+							}
+						} catch ( e ) {
+							// eslint-disable-next-line no-console
+							console.warn(
+								`[AI Refine Notes] Failed to refine block ${ block.clientId }`,
+								e
+							);
+						}
+					} )
+				);
+
+				setProgress(
+					Math.min( batchStart + BATCH_SIZE, refineableBlocks.length )
+				);
 			}
 
 			// Resolve applied notes
@@ -353,6 +405,23 @@ export function useRefineNotes(): {
 			}
 
 			if ( refinedBlocksCount > 0 ) {
+				// We trigger autosave to ensure the DB state has the refinements
+				// as a distinct revision boundary.
+				await ( dispatch( editorStore ) as any ).autosave();
+
+				const lastRevisionId = (
+					select( editorStore ) as any
+				 ).getCurrentPostLastRevisionId();
+
+				const noticeActions = lastRevisionId
+					? [
+							{
+								label: __( 'Review in Revisions', 'ai' ),
+								url: `/wp-admin/revision.php?revision=${ lastRevisionId }`,
+							},
+					  ]
+					: [];
+
 				( dispatch( noticesStore ) as any ).createSuccessNotice(
 					sprintf(
 						/* translators: %d: number of blocks refined. */
@@ -364,12 +433,11 @@ export function useRefineNotes(): {
 						),
 						refinedBlocksCount
 					),
-					{ type: 'snackbar' }
+					{
+						type: 'snackbar',
+						actions: noticeActions,
+					}
 				);
-
-				// Make sure we trigger an autosave or save state so that it is properly versioned
-				// Dispatch save to save standard editor content (saving effectively creates a revision boundary)
-				( dispatch( editorStore ) as any ).autosave();
 			} else {
 				( dispatch( noticesStore ) as any ).createNotice(
 					'info',
@@ -396,5 +464,12 @@ export function useRefineNotes(): {
 		}
 	};
 
-	return { isRefining, hasPendingNotes, checkPendingNotes, runRefinement };
+	return {
+		isRefining,
+		progress,
+		total,
+		hasPendingNotes,
+		checkPendingNotes,
+		runRefinement,
+	};
 }
