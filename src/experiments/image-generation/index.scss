@@ -1,3 +1,65 @@
+.ai-generate-image-standalone {
+	max-width: 950px;
+
+	textarea {
+		max-width: 600px;
+	}
+
+	.components-notice {
+		margin-top: 15px;
+	}
+
+	&__idle {
+		.description {
+			margin-bottom: 10px;
+		}
+	}
+
+	&__generating {
+		.ai-generate-image-standalone__preview-image {
+			opacity: 0.5;
+		}
+
+		.ai-generate-image-standalone__spinner-row {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+	}
+
+	&__preview {
+		.ai-generate-image-standalone__comparison {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 16px;
+		}
+
+		.ai-generate-image-standalone__comparison-label {
+			font-weight: 600;
+			margin: 10px 0 0;
+		}
+	}
+
+	&__success {
+		.ai-generate-image-standalone__actions {
+			align-items: center;
+		}
+	}
+
+	&__actions {
+		display: flex;
+		gap: 10px;
+		margin-top: 15px;
+	}
+
+	&__preview-image {
+		max-width: 100%;
+		height: auto;
+		display: block;
+		margin: 15px 0;
+	}
+}
+
 .ai-generate-image-inline-modal {
 	.components-notice {
 		margin-top: 15px;
