@@ -48,6 +48,7 @@ composer format && npm run lint:js:fix
 
 # Run tests
 npm run test:e2e:env:start && npm run test:e2e && npm run test:php && npm run test:e2e:env:stop
+```
 
 ---
 
