@@ -52,7 +52,7 @@ const PRESETS = [
 	{
 		label: __( 'Remove background', 'ai' ),
 		prompt: __(
-			'Remove the background from this image, leaving only the main subject on a transparent or white background. Do not make any edits to the main subject. Only remove the background.',
+			'(isolate subject:1.5), (remove background:1.4), (pure solid white background:1.3), high-contrast separation, clean edges, studio lighting, (no shadows:1.2), eliminate environment, focused subject, sharp silhouette, minimalist backdrop.',
 			'ai'
 		),
 		icon: <Icon icon="remove" />,
