@@ -98,14 +98,18 @@ async function mountPanel( imgeditWrap: Element ): Promise< void > {
 	currentButtonSlot.className = 'ai-media-library-editor-btn-slot';
 	menu.appendChild( currentButtonSlot );
 
+	// Query the image canvas + settings row.
+	const imagePanel = imgeditWrap.querySelector< HTMLElement >(
+		'.imgedit-panel-content:not(.imgedit-panel-tools)'
+	);
+
 	// Inject panel container between the toolbar row and the image canvas row.
 	const toolbarRow = imgeditWrap.querySelector(
 		'.imgedit-panel-content.imgedit-panel-tools'
 	);
 
 	currentContainer = document.createElement( 'div' );
-	currentContainer.className =
-		'imgedit-panel-content ai-media-library-editor-root';
+	currentContainer.className = 'ai-media-library-editor-root';
 
 	if ( toolbarRow ) {
 		toolbarRow.insertAdjacentElement( 'afterend', currentContainer );
@@ -117,14 +121,15 @@ async function mountPanel( imgeditWrap: Element ): Promise< void > {
 		);
 	}
 
+	const props = {
+		postId,
+		attachmentUrl,
+		buttonContainer: currentButtonSlot,
+		...( imagePanel ? { imagePanel } : {} ),
+	};
+
 	currentRoot = createRoot( currentContainer );
-	currentRoot.render(
-		createElement( MediaLibraryImageEditor, {
-			postId,
-			attachmentUrl,
-			buttonContainer: currentButtonSlot,
-		} )
-	);
+	currentRoot.render( createElement( MediaLibraryImageEditor, props ) );
 }
 
 /**

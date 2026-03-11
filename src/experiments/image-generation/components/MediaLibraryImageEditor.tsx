@@ -10,7 +10,7 @@
 /**
  * WordPress dependencies
  */
-import { useState, createPortal } from '@wordpress/element';
+import { useState, useEffect, createPortal } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import {
 	Button,
@@ -63,6 +63,7 @@ interface Props {
 	postId: number;
 	attachmentUrl: string;
 	buttonContainer: HTMLElement;
+	imagePanel?: HTMLElement;
 }
 
 /**
@@ -76,8 +77,21 @@ interface Props {
 export function MediaLibraryImageEditor( {
 	attachmentUrl,
 	buttonContainer,
+	imagePanel,
 }: Props ) {
 	const [ panelOpen, setPanelOpen ] = useState( false );
+
+	// Hide the native image canvas while the AI panel is open.
+	useEffect( () => {
+		if ( ! imagePanel ) {
+			return;
+		}
+		imagePanel.style.display = panelOpen ? 'none' : '';
+		return () => {
+			imagePanel.style.display = '';
+		};
+	}, [ panelOpen, imagePanel ] );
+
 	const [ state, setState ] = useState< EditorState >( 'idle' );
 	const [ prompt, setPrompt ] = useState( '' );
 	const [ refinePrompt, setRefinePrompt ] = useState( '' );
@@ -237,7 +251,7 @@ export function MediaLibraryImageEditor( {
 			{ createPortal( toggleButton, buttonContainer ) }
 
 			{ panelOpen && (
-				<div className="ai-media-library-editor">
+				<div className="imgedit-panel-content ai-media-library-editor">
 					{ state === 'idle' && (
 						<div className="ai-media-library-editor__idle">
 							<div className="ai-media-library-editor__presets">
