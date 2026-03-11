@@ -11,7 +11,7 @@
  * WordPress dependencies
  */
 import { useState, createPortal } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import {
 	Button,
 	TextareaControl,
@@ -36,9 +36,9 @@ type EditorState =
 	| 'idle'
 	| 'generating'
 	| 'preview'
+	| 'refining'
 	| 'saving'
-	| 'success'
-	| 'error';
+	| 'success';
 
 const PRESETS = [
 	{
@@ -80,29 +80,45 @@ export function MediaLibraryImageEditor( {
 	const [ panelOpen, setPanelOpen ] = useState( false );
 	const [ state, setState ] = useState< EditorState >( 'idle' );
 	const [ prompt, setPrompt ] = useState( '' );
+	const [ refinePrompt, setRefinePrompt ] = useState( '' );
 	const [ generatedData, setGeneratedData ] =
 		useState< GeneratedImageData | null >( null );
 	const [ uploadedData, setUploadedData ] = useState< UploadedImage | null >(
 		null
 	);
-	const [ errorMessage, setErrorMessage ] = useState< string | null >( null );
+	const [ error, setError ] = useState< string | null >( null );
+	// Tracks the reference data URI used for the last generation.
+	// `undefined` means the original attachment URL was used (fresh edit).
+	// A string means a previously generated image was used (refinement).
+	const [ lastReference, setLastReference ] = useState< string | undefined >(
+		undefined
+	);
 
 	/**
-	 * Generates an AI-edited version of the attachment image.
+	 * Generates an AI-refined version of the image.
 	 *
-	 * @param {string} activePrompt The prompt to use; defaults to the textarea value.
+	 * When `referenceOverride` is provided it is used directly as the
+	 * reference image. Otherwise the attachment URL is fetched and
+	 * converted to a data URI.
+	 *
+	 * @param {string}           activePrompt      Prompt to use for generation.
+	 * @param {string|undefined} referenceOverride Data URI to refine; omit for fresh edits.
 	 */
 	async function handleGenerate(
-		activePrompt: string = prompt.trim()
+		activePrompt: string = prompt.trim(),
+		referenceOverride?: string
 	): Promise< void > {
-		setErrorMessage( null );
+		setError( null );
+		setLastReference( referenceOverride );
 		setState( 'generating' );
 
 		try {
-			const base64 = await urlToBase64( attachmentUrl );
+			const reference =
+				referenceOverride ?? ( await urlToBase64( attachmentUrl ) );
+
 			const input: ImageGenerationAbilityInput = {
 				prompt: activePrompt,
-				reference: base64,
+				reference,
 			};
 
 			const response = ( await runAbility(
@@ -116,14 +132,32 @@ export function MediaLibraryImageEditor( {
 				);
 			}
 
-			setGeneratedData( { ...response, prompt: activePrompt } );
+			// Track prompt history for upload metadata.
+			setGeneratedData( ( previousData ) => {
+				const previousPrompts = referenceOverride
+					? previousData?.prompts ??
+					  ( previousData?.prompt ? [ previousData.prompt ] : [] )
+					: [];
+				const promptHistory = previousPrompts.filter( Boolean );
+				const lastPrompt = promptHistory[ promptHistory.length - 1 ];
+				return {
+					...response,
+					prompt: activePrompt,
+					prompts:
+						lastPrompt === activePrompt
+							? promptHistory
+							: [ ...promptHistory, activePrompt ],
+				};
+			} );
+
 			setState( 'preview' );
 		} catch ( err: any ) {
-			setErrorMessage(
+			setError(
 				err?.message ||
 					__( 'An error occurred during image generation.', 'ai' )
 			);
-			setState( 'error' );
+			// Return to whichever state triggered the generation.
+			setState( referenceOverride ? 'refining' : 'idle' );
 		}
 	}
 
@@ -135,7 +169,7 @@ export function MediaLibraryImageEditor( {
 			return;
 		}
 
-		setErrorMessage( null );
+		setError( null );
 		setState( 'saving' );
 
 		try {
@@ -143,10 +177,8 @@ export function MediaLibraryImageEditor( {
 			setUploadedData( uploaded );
 			setState( 'success' );
 		} catch ( err: any ) {
-			setErrorMessage(
-				err?.message || __( 'Failed to save image.', 'ai' )
-			);
-			setState( 'error' );
+			setError( err?.message || __( 'Failed to save image.', 'ai' ) );
+			setState( 'preview' );
 		}
 	}
 
@@ -157,13 +189,35 @@ export function MediaLibraryImageEditor( {
 		setGeneratedData( null );
 		setUploadedData( null );
 		setPrompt( '' );
-		setErrorMessage( null );
+		setRefinePrompt( '' );
+		setError( null );
+		setLastReference( undefined );
 		setState( 'idle' );
 	}
 
 	const previewSrc = generatedData?.image?.data
 		? `data:image/png;base64,${ generatedData.image.data }`
 		: null;
+
+	// Left comparison image = whatever was used as the reference for the last
+	// generation. For a fresh edit that's the original attachment; for a
+	// refinement it's the previously generated result.
+	const comparisonLeftSrc = lastReference ?? attachmentUrl;
+	// Refinement depth: 0 = fresh edit, 1 = first refinement, etc.
+	const refinementDepth = ( generatedData?.prompts?.length ?? 1 ) - 1;
+	const comparisonLeftLabel =
+		lastReference === undefined
+			? __( 'Original image', 'ai' )
+			: sprintf(
+					/* translators: %d: the refinement iteration number */
+					__( 'Refined image #%d', 'ai' ),
+					refinementDepth
+			  );
+	const comparisonRightLabel = sprintf(
+		/* translators: %d: the refinement iteration number */
+		__( 'Refined image #%d', 'ai' ),
+		refinementDepth + 1
+	);
 
 	const toggleButton = (
 		<button
@@ -202,7 +256,7 @@ export function MediaLibraryImageEditor( {
 							</div>
 							<TextareaControl
 								label={ __(
-									'Describe the edits you want to make',
+									'Describe the refinements you want to make to the image.',
 									'ai'
 								) }
 								value={ prompt }
@@ -219,11 +273,23 @@ export function MediaLibraryImageEditor( {
 									{ __( 'Generate', 'ai' ) }
 								</Button>
 							</div>
+							{ error && (
+								<Notice status="error" isDismissible={ false }>
+									{ error }
+								</Notice>
+							) }
 						</div>
 					) }
 
 					{ state === 'generating' && (
 						<div className="ai-media-library-editor__generating">
+							{ previewSrc && (
+								<img
+									src={ previewSrc }
+									alt={ generatedData?.prompt ?? '' }
+									className="ai-media-library-editor__preview-image"
+								/>
+							) }
 							<div className="ai-media-library-editor__spinner-row">
 								<Spinner />
 								<span>{ __( 'Generating image…', 'ai' ) }</span>
@@ -236,17 +302,17 @@ export function MediaLibraryImageEditor( {
 							<div className="ai-media-library-editor__comparison">
 								<div className="ai-media-library-editor__comparison-item">
 									<p className="ai-media-library-editor__comparison-label">
-										{ __( 'Original', 'ai' ) }
+										{ comparisonLeftLabel }
 									</p>
 									<img
-										src={ attachmentUrl }
-										alt={ __( 'Original image', 'ai' ) }
+										src={ comparisonLeftSrc }
+										alt={ comparisonLeftLabel }
 										className="ai-media-library-editor__preview-image"
 									/>
 								</div>
 								<div className="ai-media-library-editor__comparison-item">
 									<p className="ai-media-library-editor__comparison-label">
-										{ __( 'Edited', 'ai' ) }
+										{ comparisonRightLabel }
 									</p>
 									<img
 										src={ previewSrc }
@@ -260,15 +326,107 @@ export function MediaLibraryImageEditor( {
 									variant="primary"
 									onClick={ handleSave }
 								>
-									{ __( 'Save as new image', 'ai' ) }
+									{ __( 'Save to Media Library', 'ai' ) }
 								</Button>
 								<Button
 									variant="secondary"
+									onClick={ () => {
+										setRefinePrompt( '' );
+										setError( null );
+										setState( 'refining' );
+									} }
+								>
+									{ __( 'Refine Image', 'ai' ) }
+								</Button>
+								<Button
+									variant="secondary"
+									onClick={ () =>
+										handleGenerate(
+											generatedData?.prompt ?? '',
+											lastReference
+										)
+									}
+								>
+									{ __( 'Generate Another Image', 'ai' ) }
+								</Button>
+								<Button
+									variant="tertiary"
+									isDestructive
 									onClick={ handleReset }
 								>
-									{ __( 'Try again', 'ai' ) }
+									{ __( 'Start over', 'ai' ) }
 								</Button>
 							</div>
+							{ error && (
+								<Notice status="error" isDismissible={ false }>
+									{ error }
+								</Notice>
+							) }
+						</div>
+					) }
+
+					{ state === 'refining' && previewSrc && (
+						<div className="ai-media-library-editor__refining">
+							<img
+								src={ previewSrc }
+								alt={ generatedData?.prompt ?? '' }
+								className="ai-media-library-editor__preview-image"
+							/>
+							<div className="ai-media-library-editor__presets">
+								{ PRESETS.map( ( preset ) => (
+									<Button
+										key={ preset.label }
+										variant="secondary"
+										icon={ preset.icon }
+										onClick={ () =>
+											handleGenerate(
+												preset.prompt,
+												previewSrc
+											)
+										}
+									>
+										{ preset.label }
+									</Button>
+								) ) }
+							</div>
+							<TextareaControl
+								label={ __(
+									'Describe the refinements you want to make to the image.',
+									'ai'
+								) }
+								value={ refinePrompt }
+								onChange={ setRefinePrompt }
+								rows={ 3 }
+								__nextHasNoMarginBottom
+							/>
+							<div className="ai-media-library-editor__actions">
+								<Button
+									variant="primary"
+									disabled={ ! refinePrompt.trim() }
+									onClick={ () =>
+										handleGenerate(
+											refinePrompt.trim(),
+											previewSrc
+										)
+									}
+								>
+									{ __( 'Apply', 'ai' ) }
+								</Button>
+								<Button
+									variant="tertiary"
+									onClick={ () => {
+										setError( null );
+										setState( 'preview' );
+									} }
+								>
+									{ __( 'Cancel', 'ai' ) }
+								</Button>
+							</div>
+							{ error && (
+								<Notice status="error" isDismissible={ false }>
+									{ error }
+								</Notice>
+							) }
 						</div>
 					) }
 
@@ -299,24 +457,6 @@ export function MediaLibraryImageEditor( {
 									onClick={ handleReset }
 								>
 									{ __( 'Edit again', 'ai' ) }
-								</Button>
-							</div>
-						</div>
-					) }
-
-					{ state === 'error' && (
-						<div className="ai-media-library-editor__error">
-							{ errorMessage && (
-								<Notice status="error" isDismissible={ false }>
-									{ errorMessage }
-								</Notice>
-							) }
-							<div className="ai-media-library-editor__actions">
-								<Button
-									variant="secondary"
-									onClick={ handleReset }
-								>
-									{ __( 'Try again', 'ai' ) }
 								</Button>
 							</div>
 						</div>

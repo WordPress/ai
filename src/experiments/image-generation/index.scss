@@ -123,6 +123,19 @@
 		max-width: 100%;
 		height: auto;
 		display: block;
+		margin-bottom: 15px;
+	}
+
+	&__generating {
+		.ai-media-library-editor__preview-image {
+			opacity: 0.5;
+		}
+	}
+
+	&__refining {
+		.ai-media-library-editor__presets {
+			margin-top: 12px;
+		}
 	}
 }
 
