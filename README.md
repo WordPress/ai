@@ -34,7 +34,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 ## Current Features
 
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
-* * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
+* **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
@@ -49,11 +49,11 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 Overview of planned features:
 
-* **AI Playground** – Experiment with different AI models and providers
-* **Content Assistant** – AI-powered writing and editing in Gutenberg
-* **Site Agent** – Natural language WordPress administration
-* **Workflow Automation** – AI-driven task automation
-  * Contextual Tagging – Suggests relevant tags and categories to organize content.
+* **AI Playground** – Experiment with different AI models and providers.
+* **Content Assistant** – AI-powered writing and editing in Gutenberg.
+* **Site Agent** – Natural language WordPress administration.
+* **Workflow Automation** – AI-driven task automation.
+* **Contextual Tagging** – Suggests relevant tags and categories to organize content.
 
 ## Developer Experience
 
@@ -62,9 +62,9 @@ The AI Experiments plugin is meant to be studied, forked, and extended.  If you�
 If you’re a plugin developer, you’ll be able to:
 
 * Read the [Contributing Guide](CONTRIBUTING.md) for detailed development information.
-* Register new AI abilities
-* Override default behavior with custom filters
-* Reuse the same building blocks in your own plugins
+* Register new AI abilities.
+* Override default behavior with custom filters.
+* Reuse the same building blocks in your own plugins.
 
 ## How to Get Involved
 
