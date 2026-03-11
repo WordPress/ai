@@ -1,8 +1,7 @@
 /**
  * Media Library Image Editor — AI panel injection.
  *
- * Uses a MutationObserver to detect when the WordPress image editor opens
- * (Crop / Scale / Rotate screen), then:
+ * Uses a MutationObserver to detect when the WordPress image editor opens then:
  *   - Injects an "AI Edit" toggle button into the native `.imgedit-menu` toolbar.
  *   - Mounts the MediaLibraryImageEditor React component in a panel between
  *     the toolbar row and the image canvas.
@@ -100,7 +99,6 @@ async function mountPanel( imgeditWrap: Element ): Promise< void > {
 	menu.appendChild( currentButtonSlot );
 
 	// Inject panel container between the toolbar row and the image canvas row.
-	// The toolbar row has classes: imgedit-panel-content + imgedit-panel-tools.
 	const toolbarRow = imgeditWrap.querySelector(
 		'.imgedit-panel-content.imgedit-panel-tools'
 	);

@@ -4,7 +4,7 @@
  * Renders an "AI Edit" toggle button inside the native image editor toolbar
  * (via a React portal) and an expandable panel between the toolbar and the
  * image. Applies AI edits to the existing attachment and saves the result
- * as a new attachment (non-destructive).
+ * as a new attachment.
  */
 
 /**
@@ -17,6 +17,7 @@ import {
 	TextareaControl,
 	Spinner,
 	Notice,
+	Icon,
 } from '@wordpress/components';
 
 /**
@@ -46,6 +47,7 @@ const PRESETS = [
 			'Expand the background of this image, extending it naturally in all directions while keeping the main subject intact. Do not make any edits to the main subject. Only expand the background.',
 			'ai'
 		),
+		icon: <Icon icon="editor-expand" />,
 	},
 	{
 		label: __( 'Remove background', 'ai' ),
@@ -53,6 +55,7 @@ const PRESETS = [
 			'Remove the background from this image, leaving only the main subject on a transparent or white background. Do not make any edits to the main subject. Only remove the background.',
 			'ai'
 		),
+		icon: <Icon icon="remove" />,
 	},
 ];
 
@@ -188,6 +191,7 @@ export function MediaLibraryImageEditor( {
 									<Button
 										key={ preset.label }
 										variant="secondary"
+										icon={ preset.icon }
 										onClick={ () =>
 											handleGenerate( preset.prompt )
 										}
