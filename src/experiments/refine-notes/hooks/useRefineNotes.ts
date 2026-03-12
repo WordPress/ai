@@ -6,7 +6,7 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
-import { dispatch, select } from '@wordpress/data';
+import { dispatch, resolveSelect, select, useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
@@ -181,36 +181,41 @@ export function useRefineNotes(): {
 	progress: number;
 	total: number;
 	hasPendingNotes: boolean;
-	checkPendingNotes: () => Promise< void >;
 	runRefinement: () => Promise< void >;
 } {
 	const [ isRefining, setIsRefining ] = useState< boolean >( false );
 	const [ progress, setProgress ] = useState< number >( 0 );
 	const [ total, setTotal ] = useState< number >( 0 );
-	const [ hasPendingNotes, setHasPendingNotes ] =
-		useState< boolean >( false );
 
-	const checkPendingNotes = async () => {
-		const postId = (
-			select( editorStore ) as any
-		 ).getCurrentPostId() as number;
+	const postId = useSelect(
+		( sel ) => ( sel( editorStore ) as any ).getCurrentPostId() as number,
+		[]
+	);
 
-		if ( ! postId ) {
-			return;
-		}
-
-		try {
-			// Find if there is at least one hold note.
-			const checkingNotes = await apiFetch< ExistingNote[] >( {
-				path: `/wp/v2/comments?type=note&status=hold&post=${ postId }&per_page=1`,
-				method: 'GET',
-			} );
-
-			setHasPendingNotes( checkingNotes.length > 0 );
-		} catch ( e ) {
-			setHasPendingNotes( false );
-		}
-	};
+	// Reactively derived from the coreStore so the button appears/disappears
+	// automatically whenever Review Notes creates notes (via saveEntityRecord +
+	// invalidateResolutionForStoreSelector) or Refine Notes resolves them.
+	const hasPendingNotes = useSelect(
+		( sel ) => {
+			if ( ! postId ) {
+				return false;
+			}
+			const notes = ( sel( coreStore ) as any ).getEntityRecords(
+				'root',
+				'comment',
+				{
+					type: 'note',
+					status: 'hold',
+					post: postId,
+					per_page: 1,
+					_fields: 'id',
+				}
+			) as Array< { id: number } > | null;
+			// null means the fetch is still in flight; treat as false until resolved.
+			return notes !== null && notes.length > 0;
+		},
+		[ postId ]
+	);
 
 	const runRefinement = async () => {
 		setIsRefining( true );
@@ -222,9 +227,6 @@ export function useRefineNotes(): {
 		);
 
 		try {
-			const postId = (
-				select( editorStore ) as any
-			 ).getCurrentPostId() as number;
 			const content = (
 				select( editorStore ) as any
 			 ).getEditedPostContent() as string;
@@ -244,7 +246,6 @@ export function useRefineNotes(): {
 					__( 'No pending notes found to refine.', 'ai' ),
 					{ type: 'snackbar' }
 				);
-				setHasPendingNotes( false );
 				return;
 			}
 
@@ -277,7 +278,6 @@ export function useRefineNotes(): {
 					__( 'No blocks found matching the existing notes.', 'ai' ),
 					{ type: 'snackbar' }
 				);
-				setHasPendingNotes( false );
 				return;
 			}
 
@@ -409,9 +409,33 @@ export function useRefineNotes(): {
 				// as a distinct revision boundary.
 				await ( dispatch( editorStore ) as any ).autosave();
 
-				const lastRevisionId = (
+				// Fetch the latest revision ID directly from the REST API.
+				// The autosave endpoint only updates the autosave record (not the main
+				// post entity), so the editor store's revision data is stale after autosave.
+				const currentPostType = (
 					select( editorStore ) as any
-				 ).getCurrentPostLastRevisionId();
+				 ).getCurrentPostType() as string;
+				const postTypeData = await (
+					resolveSelect( coreStore ) as any
+				 ).getPostType( currentPostType );
+				const restBase =
+					( postTypeData?.rest_base as string ) ??
+					`${ currentPostType }s`;
+
+				let lastRevisionId: number | null = null;
+				try {
+					const revisions = await apiFetch< Array< { id: number } > >(
+						{
+							path: `/wp/v2/${ restBase }/${ postId }/revisions?per_page=1`,
+							method: 'GET',
+						}
+					);
+					lastRevisionId = revisions[ 0 ]?.id ?? null;
+				} catch ( e ) {
+					lastRevisionId = (
+						select( editorStore ) as any
+					 ).getCurrentPostLastRevisionId() as number | null;
+				}
 
 				const noticeActions = lastRevisionId
 					? [
@@ -448,9 +472,6 @@ export function useRefineNotes(): {
 					{ type: 'snackbar' }
 				);
 			}
-
-			// Recheck
-			await checkPendingNotes();
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				error?.message ?? String( error ),
@@ -469,7 +490,6 @@ export function useRefineNotes(): {
 		progress,
 		total,
 		hasPendingNotes,
-		checkPendingNotes,
 		runRefinement,
 	};
 }

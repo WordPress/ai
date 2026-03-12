@@ -7,7 +7,6 @@
  */
 import { Button, Flex, FlexItem } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
-import { useEffect } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -22,20 +21,8 @@ import { useRefineNotes } from '../hooks/useRefineNotes';
  * when unresolved Notes exist.
  */
 export default function RefineNotesPlugin() {
-	const {
-		isRefining,
-		progress,
-		total,
-		hasPendingNotes,
-		checkPendingNotes,
-		runRefinement,
-	} = useRefineNotes();
-
-	// Check notes on mount
-	useEffect( () => {
-		checkPendingNotes();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [] );
+	const { isRefining, progress, total, hasPendingNotes, runRefinement } =
+		useRefineNotes();
 
 	if ( ! ( window as any ).aiRefineNotesData?.enabled ) {
 		return null;
