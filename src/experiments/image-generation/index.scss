@@ -1,3 +1,37 @@
+// Shared history navigation wrapper — three-column grid: arrow | content | arrow.
+.ai-image-history-nav {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	align-items: center;
+	gap: 4px;
+
+	&__arrow {
+		align-self: center;
+
+		&:disabled {
+			opacity: 0.3;
+		}
+	}
+
+	&__content {
+		min-width: 0;
+	}
+
+	img.is-active {
+		outline: 2px solid #3858e9;
+		outline-offset: 3px;
+		border-radius: 2px;
+	}
+
+	&__counter {
+		text-align: center;
+		font-size: 12px;
+		color: #757575;
+		font-variant-numeric: tabular-nums;
+		margin: 4px 0 0;
+	}
+}
+
 .ai-generate-image-standalone {
 	max-width: 950px;
 

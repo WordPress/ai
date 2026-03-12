@@ -19,6 +19,7 @@ import {
 	Notice,
 	Icon,
 } from '@wordpress/components';
+import { chevronLeft, chevronRight } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -26,19 +27,14 @@ import {
 import { runAbility } from '../../../utils/run-ability';
 import { urlToBase64, prepareExpandCanvas } from '../../../utils/image';
 import { uploadImage } from '../functions/upload-image';
+import { useImageHistory } from '../hooks/useImageHistory';
 import type {
 	GeneratedImageData,
 	ImageGenerationAbilityInput,
 	UploadedImage,
 } from '../types';
 
-type EditorState =
-	| 'idle'
-	| 'generating'
-	| 'preview'
-	| 'refining'
-	| 'saving'
-	| 'success';
+type EditorState = 'idle' | 'generating' | 'preview' | 'refining' | 'saving';
 
 interface Preset {
 	label: string;
@@ -103,20 +99,22 @@ export function MediaLibraryImageEditor( {
 	const [ state, setState ] = useState< EditorState >( 'idle' );
 	const [ prompt, setPrompt ] = useState( '' );
 	const [ refinePrompt, setRefinePrompt ] = useState( '' );
-	const [ generatedData, setGeneratedData ] =
-		useState< GeneratedImageData | null >( null );
-	const [ uploadedData, setUploadedData ] = useState< UploadedImage | null >(
+	const [ savedUpload, setSavedUpload ] = useState< UploadedImage | null >(
 		null
 	);
 	const [ error, setError ] = useState< string | null >( null );
-	// Tracks the reference data URI used for the last generation.
-	const [ lastReference, setLastReference ] = useState< string | undefined >(
-		undefined
-	);
-	// True when the last generation was a refinement of a previously generated
-	// image (vs a fresh edit of the original attachment).
-	const [ lastWasRefinement, setLastWasRefinement ] =
-		useState< boolean >( false );
+
+	const {
+		history,
+		historyIndex,
+		activeEntry,
+		canGoBack,
+		canGoForward,
+		addToHistory,
+		goBack,
+		goForward,
+		resetHistory,
+	} = useImageHistory();
 
 	/**
 	 * Generates an AI-refined version of the image.
@@ -128,15 +126,15 @@ export function MediaLibraryImageEditor( {
 	 * @param {string}           activePrompt      Prompt to use for generation.
 	 * @param {string|undefined} referenceOverride Data URI to use as reference; omit for fresh edits.
 	 * @param {boolean}          isRefinement      True when refining a previously generated image.
+	 * @param {number|undefined} refHistoryIndex   History index of the entry whose image is the reference.
 	 */
 	async function handleGenerate(
 		activePrompt: string = prompt.trim(),
 		referenceOverride?: string,
-		isRefinement: boolean = false
+		isRefinement: boolean = false,
+		refHistoryIndex?: number
 	): Promise< void > {
 		setError( null );
-		setLastReference( referenceOverride );
-		setLastWasRefinement( isRefinement );
 		setState( 'generating' );
 
 		try {
@@ -159,24 +157,26 @@ export function MediaLibraryImageEditor( {
 				);
 			}
 
-			// Track prompt history for upload metadata.
-			setGeneratedData( ( previousData ) => {
-				const previousPrompts = referenceOverride
-					? previousData?.prompts ??
-					  ( previousData?.prompt ? [ previousData.prompt ] : [] )
-					: [];
-				const promptHistory = previousPrompts.filter( Boolean );
-				const lastPrompt = promptHistory[ promptHistory.length - 1 ];
-				return {
-					...response,
-					prompt: activePrompt,
-					prompts:
-						lastPrompt === activePrompt
-							? promptHistory
-							: [ ...promptHistory, activePrompt ],
-				};
-			} );
+			const prevData = activeEntry?.generatedData;
+			const previousPrompts = referenceOverride
+				? prevData?.prompts ??
+				  ( prevData?.prompt ? [ prevData.prompt ] : [] )
+				: [];
+			const promptHistory = previousPrompts.filter( Boolean );
+			const lastPrompt = promptHistory[ promptHistory.length - 1 ];
+			const prompts =
+				lastPrompt === activePrompt
+					? promptHistory
+					: [ ...promptHistory, activePrompt ];
 
+			addToHistory(
+				{ ...response, prompt: activePrompt, prompts },
+				referenceOverride,
+				isRefinement,
+				refHistoryIndex
+			);
+
+			setSavedUpload( null );
 			setState( 'preview' );
 		} catch ( err: any ) {
 			setError(
@@ -189,10 +189,10 @@ export function MediaLibraryImageEditor( {
 	}
 
 	/**
-	 * Saves the AI-generated image as a new media library attachment.
+	 * Saves the active generated image to the Media Library.
 	 */
 	async function handleSave(): Promise< void > {
-		if ( ! generatedData ) {
+		if ( ! activeEntry ) {
 			return;
 		}
 
@@ -200,9 +200,9 @@ export function MediaLibraryImageEditor( {
 		setState( 'saving' );
 
 		try {
-			const uploaded = await uploadImage( generatedData );
-			setUploadedData( uploaded );
-			setState( 'success' );
+			const uploaded = await uploadImage( activeEntry.generatedData );
+			setSavedUpload( uploaded );
+			setState( 'preview' );
 		} catch ( err: any ) {
 			setError( err?.message || __( 'Failed to save image.', 'ai' ) );
 			setState( 'preview' );
@@ -213,37 +213,33 @@ export function MediaLibraryImageEditor( {
 	 * Resets the panel back to the idle state.
 	 */
 	function handleReset(): void {
-		setGeneratedData( null );
-		setUploadedData( null );
+		resetHistory();
+		setSavedUpload( null );
 		setPrompt( '' );
 		setRefinePrompt( '' );
 		setError( null );
-		setLastReference( undefined );
-		setLastWasRefinement( false );
 		setState( 'idle' );
 	}
 
-	const previewSrc = generatedData?.image?.data
-		? `data:image/png;base64,${ generatedData.image.data }`
+	const previewSrc = activeEntry?.generatedData?.image?.data
+		? `data:image/png;base64,${ activeEntry.generatedData.image.data }`
 		: null;
 
-	// Left comparison image = whatever was used as the reference for the last
-	// generation. For a fresh edit that's the original attachment; for a
-	// refinement it's the previously generated result.
-	const comparisonLeftSrc = lastReference ?? attachmentUrl;
-	// Refinement depth: 0 = fresh edit, 1 = first refinement, etc.
-	const refinementDepth = ( generatedData?.prompts?.length ?? 1 ) - 1;
-	const comparisonLeftLabel = ! lastWasRefinement
-		? __( 'Original image', 'ai' )
-		: sprintf(
-				/* translators: %d: the refinement iteration number */
-				__( 'Refined image #%d', 'ai' ),
-				refinementDepth
-		  );
+	// Left comparison image = the reference used to generate the active entry,
+	// falling back to the original attachment URL.
+	const comparisonLeftSrc = activeEntry?.referenceSrc ?? attachmentUrl;
+	const comparisonLeftLabel =
+		activeEntry?.referenceHistoryIndex === undefined
+			? __( 'Original image', 'ai' )
+			: sprintf(
+					/* translators: %d: version number */
+					__( 'Version %d', 'ai' ),
+					activeEntry.referenceHistoryIndex + 1
+			  );
 	const comparisonRightLabel = sprintf(
-		/* translators: %d: the refinement iteration number */
-		__( 'Refined image #%d', 'ai' ),
-		refinementDepth + 1
+		/* translators: %d: version number */
+		__( 'Version %d', 'ai' ),
+		historyIndex + 1
 	);
 
 	const toggleButton = (
@@ -321,7 +317,9 @@ export function MediaLibraryImageEditor( {
 							{ previewSrc && (
 								<img
 									src={ previewSrc }
-									alt={ generatedData?.prompt ?? '' }
+									alt={
+										activeEntry?.generatedData?.prompt ?? ''
+									}
 									className="ai-media-library-editor__preview-image"
 								/>
 							) }
@@ -334,28 +332,72 @@ export function MediaLibraryImageEditor( {
 
 					{ state === 'preview' && previewSrc && (
 						<div className="ai-media-library-editor__preview">
-							<div className="ai-media-library-editor__comparison">
-								<div className="ai-media-library-editor__comparison-item">
-									<p className="ai-media-library-editor__comparison-label">
-										{ comparisonLeftLabel }
-									</p>
-									<img
-										src={ comparisonLeftSrc }
-										alt={ comparisonLeftLabel }
-										className="ai-media-library-editor__preview-image"
-									/>
+							{ savedUpload && (
+								<Notice
+									status="success"
+									onDismiss={ () => setSavedUpload( null ) }
+								>
+									{ __( 'Image saved!', 'ai' ) }{ ' ' }
+									<a
+										href={ `upload.php?item=${ savedUpload.id }` }
+									>
+										{ __( 'View new image', 'ai' ) }
+									</a>
+								</Notice>
+							) }
+							<div className="ai-image-history-nav">
+								<Button
+									className="ai-image-history-nav__arrow"
+									icon={ chevronLeft }
+									disabled={ ! canGoBack }
+									onClick={ goBack }
+									label={ __( 'Previous version', 'ai' ) }
+								/>
+								<div className="ai-image-history-nav__content">
+									<div className="ai-media-library-editor__comparison">
+										<div className="ai-media-library-editor__comparison-item">
+											<p className="ai-media-library-editor__comparison-label">
+												{ comparisonLeftLabel }
+											</p>
+											<img
+												src={ comparisonLeftSrc }
+												alt={ comparisonLeftLabel }
+												className="ai-media-library-editor__preview-image"
+											/>
+										</div>
+										<div className="ai-media-library-editor__comparison-item">
+											<p className="ai-media-library-editor__comparison-label">
+												{ comparisonRightLabel }
+											</p>
+											<img
+												src={ previewSrc }
+												alt={
+													activeEntry?.generatedData
+														?.prompt ?? ''
+												}
+												className="ai-media-library-editor__preview-image is-active"
+											/>
+										</div>
+									</div>
 								</div>
-								<div className="ai-media-library-editor__comparison-item">
-									<p className="ai-media-library-editor__comparison-label">
-										{ comparisonRightLabel }
-									</p>
-									<img
-										src={ previewSrc }
-										alt={ generatedData?.prompt ?? '' }
-										className="ai-media-library-editor__preview-image"
-									/>
-								</div>
+								<Button
+									className="ai-image-history-nav__arrow"
+									icon={ chevronRight }
+									disabled={ ! canGoForward }
+									onClick={ goForward }
+									label={ __( 'Next version', 'ai' ) }
+								/>
 							</div>
+							{ history.length > 1 && (
+								<p className="ai-image-history-nav__counter">
+									{ sprintf(
+										/* translators: 1: current position, 2: total count */
+										__( '%1$d / %2$d', 'ai' ),
+										historyIndex + 1,
+										history.length
+									) }
+								</p>
+							) }
 							<div className="ai-media-library-editor__actions">
 								<Button
 									variant="primary"
@@ -377,9 +419,11 @@ export function MediaLibraryImageEditor( {
 									variant="secondary"
 									onClick={ () =>
 										handleGenerate(
-											generatedData?.prompt ?? '',
-											lastReference,
-											lastWasRefinement
+											activeEntry?.generatedData.prompt ??
+												'',
+											activeEntry?.referenceSrc,
+											activeEntry?.isRefinement ?? false,
+											activeEntry?.referenceHistoryIndex
 										)
 									}
 								>
@@ -405,7 +449,7 @@ export function MediaLibraryImageEditor( {
 						<div className="ai-media-library-editor__refining">
 							<img
 								src={ previewSrc }
-								alt={ generatedData?.prompt ?? '' }
+								alt={ activeEntry?.generatedData?.prompt ?? '' }
 								className="ai-media-library-editor__preview-image"
 							/>
 							<div className="ai-media-library-editor__presets">
@@ -418,7 +462,8 @@ export function MediaLibraryImageEditor( {
 											handleGenerate(
 												preset.prompt,
 												previewSrc,
-												true
+												true,
+												historyIndex
 											)
 										}
 									>
@@ -444,7 +489,8 @@ export function MediaLibraryImageEditor( {
 										handleGenerate(
 											refinePrompt.trim(),
 											previewSrc,
-											true
+											true,
+											historyIndex
 										)
 									}
 								>
@@ -475,27 +521,6 @@ export function MediaLibraryImageEditor( {
 								<span>
 									{ __( 'Saving to Media Library…', 'ai' ) }
 								</span>
-							</div>
-						</div>
-					) }
-
-					{ state === 'success' && uploadedData && (
-						<div className="ai-media-library-editor__success">
-							<Notice status="success" isDismissible={ false }>
-								{ __( 'Image saved!', 'ai' ) }{ ' ' }
-								<a
-									href={ `upload.php?item=${ uploadedData.id }` }
-								>
-									{ __( 'View new image', 'ai' ) }
-								</a>
-							</Notice>
-							<div className="ai-media-library-editor__actions">
-								<Button
-									variant="secondary"
-									onClick={ handleReset }
-								>
-									{ __( 'Edit again', 'ai' ) }
-								</Button>
 							</div>
 						</div>
 					) }

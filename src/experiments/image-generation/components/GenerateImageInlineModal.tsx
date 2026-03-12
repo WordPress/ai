@@ -2,7 +2,7 @@
  * WordPress dependencies
  */
 import { useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import {
 	Modal,
 	Button,
@@ -10,7 +10,7 @@ import {
 	Spinner,
 	Notice,
 } from '@wordpress/components';
-import { image } from '@wordpress/icons';
+import { image, chevronLeft, chevronRight } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -19,6 +19,7 @@ import { runAbility } from '../../../utils/run-ability';
 import { uploadImage } from '../functions/upload-image';
 import { insertIntoBlock } from '../functions/insert-into-block';
 import { openGalleryMediaLibraryWithImage } from '../functions/open-gallery-media-library';
+import { useImageHistory } from '../hooks/useImageHistory';
 import type {
 	GeneratedImageData,
 	ImageGenerationAbilityInput,
@@ -58,24 +59,33 @@ export function GenerateImageInlineModal( {
 	const [ state, setState ] = useState< ModalState >( 'idle' );
 	const [ prompt, setPrompt ] = useState( '' );
 	const [ refinePrompt, setRefinePrompt ] = useState( '' );
-	const [ generatedData, setGeneratedData ] =
-		useState< GeneratedImageData | null >( null );
-	const [ originalImageSrc, setOriginalImageSrc ] = useState< string | null >(
-		null
-	);
 	const [ progress, setProgress ] = useState( '' );
 	const [ error, setError ] = useState< string | null >( null );
+
+	const {
+		history,
+		historyIndex,
+		activeEntry,
+		canGoBack,
+		canGoForward,
+		addToHistory,
+		goBack,
+		goForward,
+		resetHistory,
+	} = useImageHistory();
 
 	/**
 	 * Runs the image generation ability with the given prompt and optional
 	 * reference image for the refining flow.
 	 *
-	 * @param {string}           activePrompt   The prompt to generate an image from.
-	 * @param {string|undefined} referenceImage Optional base64 image for refining.
+	 * @param {string}           activePrompt    The prompt to generate an image from.
+	 * @param {string|undefined} referenceImage  Optional base64 image for refining.
+	 * @param {number|undefined} refHistoryIndex History index of the entry whose image is the reference.
 	 */
 	async function generate(
 		activePrompt: string,
-		referenceImage?: string
+		referenceImage?: string,
+		refHistoryIndex?: number
 	): Promise< void > {
 		setError( null );
 		setState( 'generating' );
@@ -85,8 +95,6 @@ export function GenerateImageInlineModal( {
 			const input: ImageGenerationAbilityInput = { prompt: activePrompt };
 			if ( referenceImage ) {
 				input.reference = referenceImage;
-			} else {
-				setOriginalImageSrc( null );
 			}
 
 			const response = ( await runAbility(
@@ -100,21 +108,24 @@ export function GenerateImageInlineModal( {
 				);
 			}
 
-			setGeneratedData( ( previousData ) => {
-				const previousPrompts = referenceImage
-					? previousData?.prompts ?? [ previousData?.prompt ?? '' ]
-					: [];
-				const promptHistory = previousPrompts.filter( Boolean );
-				const lastPrompt = promptHistory[ promptHistory.length - 1 ];
-				return {
-					...response,
-					prompt: activePrompt,
-					prompts:
-						lastPrompt === activePrompt
-							? promptHistory
-							: [ ...promptHistory, activePrompt ],
-				};
-			} );
+			const prevData = activeEntry?.generatedData;
+			const previousPrompts = referenceImage
+				? prevData?.prompts ??
+				  ( prevData?.prompt ? [ prevData.prompt ] : [] )
+				: [];
+			const promptHistory = previousPrompts.filter( Boolean );
+			const lastPrompt = promptHistory[ promptHistory.length - 1 ];
+			const prompts =
+				lastPrompt === activePrompt
+					? promptHistory
+					: [ ...promptHistory, activePrompt ];
+
+			addToHistory(
+				{ ...response, prompt: activePrompt, prompts },
+				referenceImage,
+				!! referenceImage,
+				refHistoryIndex
+			);
 			setState( 'preview' );
 		} catch ( err: any ) {
 			const message: string =
@@ -132,7 +143,7 @@ export function GenerateImageInlineModal( {
 	 * Uploads the generated image and inserts it into the block.
 	 */
 	async function handleUseImage(): Promise< void > {
-		if ( ! generatedData ) {
+		if ( ! activeEntry ) {
 			return;
 		}
 
@@ -141,10 +152,13 @@ export function GenerateImageInlineModal( {
 		setProgress( __( 'Uploading image…', 'ai' ) );
 
 		try {
-			const uploaded: UploadedImage = await uploadImage( generatedData, {
-				onProgress: setProgress,
-				altTextEnabled: aiImageGenerationData?.altTextEnabled,
-			} );
+			const uploaded: UploadedImage = await uploadImage(
+				activeEntry.generatedData,
+				{
+					onProgress: setProgress,
+					altTextEnabled: aiImageGenerationData?.altTextEnabled,
+				}
+			);
 
 			if ( blockName === 'core/gallery' ) {
 				const openedMediaLibrary = openGalleryMediaLibraryWithImage(
@@ -169,13 +183,21 @@ export function GenerateImageInlineModal( {
 		}
 	}
 
-	const previewSrc = generatedData?.image?.data
-		? `data:image/png;base64,${ generatedData.image.data }`
+	const previewSrc = activeEntry?.generatedData?.image?.data
+		? `data:image/png;base64,${ activeEntry.generatedData.image.data }`
 		: null;
-	const hasRefinedResult = Boolean(
-		originalImageSrc &&
-			generatedData?.prompts &&
-			generatedData.prompts.length > 1
+
+	// Show comparison only when the active entry was a refinement.
+	const showComparison = Boolean( activeEntry?.referenceSrc );
+	const comparisonLeftLabel = sprintf(
+		/* translators: %d: version number */
+		__( 'Version %d', 'ai' ),
+		( activeEntry?.referenceHistoryIndex ?? 0 ) + 1
+	);
+	const comparisonRightLabel = sprintf(
+		/* translators: %d: version number */
+		__( 'Version %d', 'ai' ),
+		historyIndex + 1
 	);
 
 	return (
@@ -226,7 +248,7 @@ export function GenerateImageInlineModal( {
 					{ previewSrc && (
 						<img
 							src={ previewSrc }
-							alt={ generatedData?.prompt ?? '' }
+							alt={ activeEntry?.generatedData?.prompt ?? '' }
 							className="ai-generate-image-inline-modal__preview-image"
 						/>
 					) }
@@ -245,38 +267,70 @@ export function GenerateImageInlineModal( {
 			{ /* PREVIEW — show the generated image with action buttons */ }
 			{ state === 'preview' && previewSrc && (
 				<div className="ai-generate-image-inline-modal__preview">
-					{ hasRefinedResult ? (
-						<div className="ai-generate-image-inline-modal__comparison">
-							<div className="ai-generate-image-inline-modal__comparison-item">
-								<p className="ai-generate-image-inline-modal__comparison-label">
-									{ __( 'Original image', 'ai' ) }
-								</p>
-								<img
-									src={ originalImageSrc ?? '' }
-									alt={ __(
-										'Original generated image',
-										'ai'
-									) }
-									className="ai-generate-image-inline-modal__preview-image"
-								/>
-							</div>
-							<div className="ai-generate-image-inline-modal__comparison-item">
-								<p className="ai-generate-image-inline-modal__comparison-label">
-									{ __( 'Refined image', 'ai' ) }
-								</p>
+					<div className="ai-image-history-nav">
+						<Button
+							className="ai-image-history-nav__arrow"
+							icon={ chevronLeft }
+							disabled={ ! canGoBack }
+							onClick={ goBack }
+							label={ __( 'Previous version', 'ai' ) }
+						/>
+						<div className="ai-image-history-nav__content">
+							{ showComparison ? (
+								<div className="ai-generate-image-inline-modal__comparison">
+									<div className="ai-generate-image-inline-modal__comparison-item">
+										<p className="ai-generate-image-inline-modal__comparison-label">
+											{ comparisonLeftLabel }
+										</p>
+										<img
+											src={
+												activeEntry?.referenceSrc ?? ''
+											}
+											alt={ comparisonLeftLabel }
+											className="ai-generate-image-inline-modal__preview-image"
+										/>
+									</div>
+									<div className="ai-generate-image-inline-modal__comparison-item">
+										<p className="ai-generate-image-inline-modal__comparison-label">
+											{ comparisonRightLabel }
+										</p>
+										<img
+											src={ previewSrc }
+											alt={
+												activeEntry?.generatedData
+													?.prompt ?? ''
+											}
+											className="ai-generate-image-inline-modal__preview-image is-active"
+										/>
+									</div>
+								</div>
+							) : (
 								<img
 									src={ previewSrc }
-									alt={ generatedData?.prompt ?? '' }
-									className="ai-generate-image-inline-modal__preview-image"
+									alt={
+										activeEntry?.generatedData?.prompt ?? ''
+									}
+									className="ai-generate-image-inline-modal__preview-image is-active"
 								/>
-							</div>
+							) }
 						</div>
-					) : (
-						<img
-							src={ previewSrc }
-							alt={ generatedData?.prompt ?? '' }
-							className="ai-generate-image-inline-modal__preview-image"
+						<Button
+							className="ai-image-history-nav__arrow"
+							icon={ chevronRight }
+							disabled={ ! canGoForward }
+							onClick={ goForward }
+							label={ __( 'Next version', 'ai' ) }
 						/>
+					</div>
+					{ history.length > 1 && (
+						<p className="ai-image-history-nav__counter">
+							{ sprintf(
+								/* translators: 1: current position, 2: total count */
+								__( '%1$d / %2$d', 'ai' ),
+								historyIndex + 1,
+								history.length
+							) }
+						</p>
 					) }
 					<div className="ai-generate-image-inline-modal__actions">
 						<Button variant="primary" onClick={ handleUseImage }>
@@ -285,7 +339,6 @@ export function GenerateImageInlineModal( {
 						<Button
 							variant="secondary"
 							onClick={ () => {
-								setOriginalImageSrc( previewSrc );
 								setRefinePrompt( '' );
 								setState( 'refining' );
 							} }
@@ -295,15 +348,12 @@ export function GenerateImageInlineModal( {
 						<Button
 							variant="secondary"
 							onClick={ () => {
-								if ( hasRefinedResult ) {
-									setOriginalImageSrc( originalImageSrc );
-									generate(
-										refinePrompt.trim(),
-										originalImageSrc ?? undefined
-									);
-								} else {
-									generate( prompt.trim() );
-								}
+								generate(
+									activeEntry?.generatedData.prompt ??
+										prompt.trim(),
+									activeEntry?.referenceSrc,
+									activeEntry?.referenceHistoryIndex
+								);
 							} }
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
@@ -311,8 +361,7 @@ export function GenerateImageInlineModal( {
 						<Button
 							variant="tertiary"
 							onClick={ () => {
-								setGeneratedData( null );
-								setOriginalImageSrc( null );
+								resetHistory();
 								setState( 'idle' );
 								setError( null );
 							} }
@@ -333,7 +382,7 @@ export function GenerateImageInlineModal( {
 				<div className="ai-generate-image-inline-modal__refining">
 					<img
 						src={ previewSrc }
-						alt={ generatedData?.prompt ?? '' }
+						alt={ activeEntry?.generatedData?.prompt ?? '' }
 						className="ai-generate-image-inline-modal__preview-image"
 					/>
 					<TextareaControl
@@ -351,7 +400,11 @@ export function GenerateImageInlineModal( {
 							variant="primary"
 							disabled={ ! refinePrompt.trim() }
 							onClick={ () =>
-								generate( refinePrompt.trim(), previewSrc )
+								generate(
+									refinePrompt.trim(),
+									previewSrc,
+									historyIndex
+								)
 							}
 						>
 							{ __( 'Refine', 'ai' ) }
