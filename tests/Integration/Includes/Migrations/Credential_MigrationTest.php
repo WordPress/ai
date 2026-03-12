@@ -45,7 +45,13 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		// Ensure each test starts from a clean migration state regardless of
+		// bootstrap side effects that may run migrations before tests execute.
+		delete_option( 'wp_ai_client_provider_credentials' );
+		delete_option( 'ai_experiments_version' );
+
 		foreach ( self::get_connector_options() as $option ) {
+			delete_option( $option );
 			remove_all_filters( 'sanitize_option_' . $option );
 			remove_filter( 'option_' . $option, '_wp_connectors_mask_api_key' );
 		}
