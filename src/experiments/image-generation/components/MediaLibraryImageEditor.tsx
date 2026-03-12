@@ -24,7 +24,7 @@ import {
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import { urlToBase64 } from '../../../utils/image';
+import { urlToBase64, prepareExpandCanvas } from '../../../utils/image';
 import { uploadImage } from '../functions/upload-image';
 import type {
 	GeneratedImageData,
@@ -40,19 +40,27 @@ type EditorState =
 	| 'saving'
 	| 'success';
 
-const PRESETS = [
+interface Preset {
+	label: string;
+	prompt: string;
+	icon: JSX.Element;
+	prepare?: ( url: string ) => Promise< string >;
+}
+
+const PRESETS: Preset[] = [
 	{
 		label: __( 'Expand background', 'ai' ),
 		prompt: __(
-			'Expand the background of this image, extending it naturally in all directions while keeping the main subject intact. Do not make any edits to the main subject. Only expand the background.',
+			'Outpaint the image to create a wider panoramic view. Expand the scene outward in all directions to fill the empty transparent border while preserving the original style, lighting, colors, and perspective. Continue textures, structures, and environmental elements naturally so the extension blends seamlessly with the original image. Preserve the original image exactly and only generate content in the empty area.',
 			'ai'
 		),
 		icon: <Icon icon="editor-expand" />,
+		prepare: ( url: string ) => prepareExpandCanvas( url ),
 	},
 	{
 		label: __( 'Remove background', 'ai' ),
 		prompt: __(
-			'(isolate subject:1.5), (remove background:1.4), (pure solid white background:1.3), high-contrast separation, clean edges, studio lighting, (no shadows:1.2), eliminate environment, focused subject, sharp silhouette, minimalist backdrop.',
+			'Remove the entire background and isolate the main subject. Replace the background with a pure solid white (#FFFFFF) background. Preserve all details of the subject and maintain natural, clean edges around the silhouette. Ensure there are no remaining environmental elements, textures, gradients, or shadows from the original background. The final result should look like a professional studio product photo with a perfectly clean white backdrop.',
 			'ai'
 		),
 		icon: <Icon icon="remove" />,
@@ -102,11 +110,13 @@ export function MediaLibraryImageEditor( {
 	);
 	const [ error, setError ] = useState< string | null >( null );
 	// Tracks the reference data URI used for the last generation.
-	// `undefined` means the original attachment URL was used (fresh edit).
-	// A string means a previously generated image was used (refinement).
 	const [ lastReference, setLastReference ] = useState< string | undefined >(
 		undefined
 	);
+	// True when the last generation was a refinement of a previously generated
+	// image (vs a fresh edit of the original attachment).
+	const [ lastWasRefinement, setLastWasRefinement ] =
+		useState< boolean >( false );
 
 	/**
 	 * Generates an AI-refined version of the image.
@@ -116,14 +126,17 @@ export function MediaLibraryImageEditor( {
 	 * converted to a data URI.
 	 *
 	 * @param {string}           activePrompt      Prompt to use for generation.
-	 * @param {string|undefined} referenceOverride Data URI to refine; omit for fresh edits.
+	 * @param {string|undefined} referenceOverride Data URI to use as reference; omit for fresh edits.
+	 * @param {boolean}          isRefinement      True when refining a previously generated image.
 	 */
 	async function handleGenerate(
 		activePrompt: string = prompt.trim(),
-		referenceOverride?: string
+		referenceOverride?: string,
+		isRefinement: boolean = false
 	): Promise< void > {
 		setError( null );
 		setLastReference( referenceOverride );
+		setLastWasRefinement( isRefinement );
 		setState( 'generating' );
 
 		try {
@@ -171,7 +184,7 @@ export function MediaLibraryImageEditor( {
 					__( 'An error occurred during image generation.', 'ai' )
 			);
 			// Return to whichever state triggered the generation.
-			setState( referenceOverride ? 'refining' : 'idle' );
+			setState( isRefinement ? 'refining' : 'idle' );
 		}
 	}
 
@@ -206,6 +219,7 @@ export function MediaLibraryImageEditor( {
 		setRefinePrompt( '' );
 		setError( null );
 		setLastReference( undefined );
+		setLastWasRefinement( false );
 		setState( 'idle' );
 	}
 
@@ -219,14 +233,13 @@ export function MediaLibraryImageEditor( {
 	const comparisonLeftSrc = lastReference ?? attachmentUrl;
 	// Refinement depth: 0 = fresh edit, 1 = first refinement, etc.
 	const refinementDepth = ( generatedData?.prompts?.length ?? 1 ) - 1;
-	const comparisonLeftLabel =
-		lastReference === undefined
-			? __( 'Original image', 'ai' )
-			: sprintf(
-					/* translators: %d: the refinement iteration number */
-					__( 'Refined image #%d', 'ai' ),
-					refinementDepth
-			  );
+	const comparisonLeftLabel = ! lastWasRefinement
+		? __( 'Original image', 'ai' )
+		: sprintf(
+				/* translators: %d: the refinement iteration number */
+				__( 'Refined image #%d', 'ai' ),
+				refinementDepth
+		  );
 	const comparisonRightLabel = sprintf(
 		/* translators: %d: the refinement iteration number */
 		__( 'Refined image #%d', 'ai' ),
@@ -260,9 +273,17 @@ export function MediaLibraryImageEditor( {
 										key={ preset.label }
 										variant="secondary"
 										icon={ preset.icon }
-										onClick={ () =>
-											handleGenerate( preset.prompt )
-										}
+										onClick={ async () => {
+											const reference = preset.prepare
+												? await preset.prepare(
+														attachmentUrl
+												  )
+												: undefined;
+											handleGenerate(
+												preset.prompt,
+												reference
+											);
+										} }
 									>
 										{ preset.label }
 									</Button>
@@ -357,7 +378,8 @@ export function MediaLibraryImageEditor( {
 									onClick={ () =>
 										handleGenerate(
 											generatedData?.prompt ?? '',
-											lastReference
+											lastReference,
+											lastWasRefinement
 										)
 									}
 								>
@@ -395,7 +417,8 @@ export function MediaLibraryImageEditor( {
 										onClick={ () =>
 											handleGenerate(
 												preset.prompt,
-												previewSrc
+												previewSrc,
+												true
 											)
 										}
 									>
@@ -420,7 +443,8 @@ export function MediaLibraryImageEditor( {
 									onClick={ () =>
 										handleGenerate(
 											refinePrompt.trim(),
-											previewSrc
+											previewSrc,
+											true
 										)
 									}
 								>
