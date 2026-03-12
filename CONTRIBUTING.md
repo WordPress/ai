@@ -6,8 +6,6 @@ Welcome to the WordPress AI Experiments Plugin! Here you find some information o
 
 ### Prerequisites
 
-- PHP 7.4 or higher
-- WordPress 6.9 or higher
 - Composer
 - Node.js and npm (for asset building)
 
@@ -50,6 +48,7 @@ composer format && npm run lint:js:fix
 
 # Run tests
 npm run test:e2e:env:start && npm run test:e2e && npm run test:php && npm run test:e2e:env:stop
+```
 
 ---
 
@@ -63,7 +62,7 @@ All code must be backward compatible with PHP 7.4, which is the minimum required
 
 ### WordPress Compatibility
 
-The plugin requires WordPress 6.9 or higher. Ensure all WordPress functions and hooks used are available in this version.
+The plugin requires WordPress 7.0 or higher. Ensure all WordPress functions and hooks used are available in this version.
 
 ### Documentation standards
 

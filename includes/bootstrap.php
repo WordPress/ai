@@ -12,9 +12,9 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Migrations\Credential_Migration;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
-use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'AI_EXPERIMENTS_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_VERSION', '0.4.1' );
+	define( 'AI_EXPERIMENTS_VERSION', '0.5.0' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_FILE' ) ) {
 	define( 'AI_EXPERIMENTS_PLUGIN_FILE', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR . 'ai.php' : '' );
@@ -38,7 +38,7 @@ if ( ! defined( 'AI_EXPERIMENTS_MIN_PHP_VERSION' ) ) {
 	define( 'AI_EXPERIMENTS_MIN_PHP_VERSION', '7.4' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_MIN_WP_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '6.9' );
+	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '7.0' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
 	define( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
@@ -120,30 +120,9 @@ function check_wp_version(): bool {
 }
 
 /**
- * Displays admin notice about missing Composer autoload files.
- *
- * @since 0.1.0
- */
-function display_composer_notice(): void {
-	?>
-	<div class="notice notice-error">
-		<p>
-			<?php
-			printf(
-				/* translators: %s: composer install command */
-				esc_html__( 'Your installation of the AI Experiments plugin is incomplete. Please run %s.', 'ai' ),
-				'<code>composer install</code>'
-			);
-			?>
-		</p>
-	</div>
-	<?php
-}
-
-/**
  * Adds action links to the plugin list table.
  *
- * This adds "Experiments" and "Credentials" links to
+ * This adds "Experiments" and "Connectors" links to
  * the plugin's action links on the Plugins page.
  *
  * @since 0.1.1
@@ -158,13 +137,13 @@ function plugin_action_links( array $links ): array {
 		esc_html__( 'Experiments', 'ai' )
 	);
 
-	$credentials_link = sprintf(
+	$connectors_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
-		admin_url( 'options-general.php?page=wp-ai-client' ),
-		esc_html__( 'Credentials', 'ai' )
+		admin_url( 'options-connectors.php' ),
+		esc_html__( 'Connectors', 'ai' )
 	);
 
-	array_unshift( $links, $credentials_link, $experiments_link );
+	array_unshift( $links, $connectors_link, $experiments_link );
 
 	return $links;
 }
@@ -187,12 +166,12 @@ function load(): void {
 		return;
 	}
 
-	// Load the Jetpack autoloader.
-	if ( ! file_exists( AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php' ) ) {
-		add_action( 'admin_notices', __NAMESPACE__ . '\display_composer_notice' );
-		return;
-	}
-	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'vendor/autoload_packages.php';
+	// Load required files.
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/autoload.php';
+	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/helpers.php';
+
+	// Run any pending migrations.
+	( new Credential_Migration() )->run();
 
 	$loaded = true;
 
@@ -200,7 +179,7 @@ function load(): void {
 	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
 	// Hook experiment initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_experiments' );
+	add_action( 'init', __NAMESPACE__ . '\initialize_experiments', 15 );
 }
 
 /**
@@ -210,9 +189,6 @@ function load(): void {
  */
 function initialize_experiments(): void {
 	try {
-		// Initialize the WP AI Client.
-		AI_Client::init();
-
 		$registry = new Experiment_Registry();
 		$loader   = new Experiment_Loader( $registry );
 		$loader->register_default_experiments();

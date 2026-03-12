@@ -11,7 +11,6 @@ namespace WordPress\AI\Abilities\Review_Notes;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
@@ -251,28 +250,24 @@ class Review_Notes extends Abstract_Ability {
 	 */
 	protected function suggestions_schema(): array {
 		return array(
-			'name'   => 'suggestions',
-			'strict' => true,
-			'schema' => array(
-				'type'                 => 'object',
-				'properties'           => array(
-					'suggestions' => array(
-						'type'  => 'array',
-						'items' => array(
-							'type'                 => 'object',
-							'properties'           => array(
-								'review_type' => array( 'type' => 'string' ),
-								'text'        => array( 'type' => 'string' ),
-								'priority'    => array( 'type' => 'integer' ),
-							),
-							'required'             => array( 'review_type', 'text', 'priority' ),
-							'additionalProperties' => false,
+			'type'                 => 'object',
+			'properties'           => array(
+				'suggestions' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'                 => 'object',
+						'properties'           => array(
+							'review_type' => array( 'type' => 'string' ),
+							'text'        => array( 'type' => 'string' ),
+							'priority'    => array( 'type' => 'integer' ),
 						),
+						'required'             => array( 'review_type', 'text', 'priority' ),
+						'additionalProperties' => false,
 					),
 				),
-				'required'             => array( 'suggestions' ),
-				'additionalProperties' => false,
 			),
+			'required'             => array( 'suggestions' ),
+			'additionalProperties' => false,
 		);
 	}
 
@@ -297,7 +292,7 @@ class Review_Notes extends Abstract_Ability {
 	) {
 		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
-		$raw = AI_Client::prompt_with_wp_error( $prompt )
+		$raw = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->suggestions_schema() )

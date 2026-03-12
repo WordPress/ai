@@ -45,7 +45,7 @@ The ability can be called directly via REST API for automation, bulk processing,
   - `attachment_fields_to_edit` → `add_button_to_media_modal()` adds an "AI Alt Text" field with Generate/Regenerate button to the media modal
 - `src/experiments/alt-text-generation/index.tsx` uses `addFilter( 'editor.BlockEdit', 'ai/alt-text-generation', ... )` to inject `<AltTextControls />` into every `core/image` block when the experiment is enabled
 - `src/experiments/alt-text-generation/media.ts` finds `.ai-alt-text-media-actions` and the associated textarea (e.g. `#attachment-details-two-column-alt-text`, `#attachment-details-alt-text`, or `#attachment_alt`), wires the Generate button to `runAbility( 'ai/alt-text-generation', { attachment_id } )`, and updates the textarea value and button label on success
-- Ability implementation: `includes/Abilities/Image/Alt_Text_Generation.php` (extends `Abstract_Ability`) handles input sanitization, permission checks, image reference resolution (attachment or URL → data URI), and calls `AI_Client::prompt_with_wp_error()->with_file()->generate_text()` using the system instruction at `includes/Abilities/Image/alt-text-system-instruction.php`
+- Ability implementation: `includes/Abilities/Image/Alt_Text_Generation.php` (extends `Abstract_Ability`) handles input sanitization, permission checks, image reference resolution (attachment or URL → data URI), and calls `wp_ai_client_prompt()->with_file()->generate_text()` using the system instruction at `includes/Abilities/Image/alt-text-system-instruction.php`
 
 ### Assets & Data Flow
 

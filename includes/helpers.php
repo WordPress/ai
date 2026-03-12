@@ -11,7 +11,6 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Services\AI_Service;
-use WordPress\AI_Client\AI_Client;
 
 /**
  * Purposely using return instead of exit here.
@@ -303,22 +302,28 @@ function get_preferred_vision_models(): array {
  * @return bool True if we have AI credentials, false otherwise.
  */
 function has_ai_credentials(): bool {
-	$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
-
-	// If there are no credentials, return false.
-	if ( ! is_array( $credentials ) || empty( $credentials ) ) {
+	if ( ! function_exists( 'wp_get_connectors' ) ) {
 		return false;
 	}
 
-	// If all of the AI keys are empty, return false; otherwise, return true.
-	return ! empty(
-		array_filter(
-			$credentials,
-			static function ( $api_key ): bool {
-				return is_string( $api_key ) && '' !== $api_key;
-			}
-		)
-	);
+	foreach ( wp_get_connectors() as $connector_data ) {
+		if ( 'ai_provider' !== $connector_data['type'] ) {
+			continue;
+		}
+
+		$auth = $connector_data['authentication'];
+		if ( 'api_key' !== $auth['method'] || empty( $auth['setting_name'] ) ) {
+			continue;
+		}
+
+		if ( '' === get_option( $auth['setting_name'], '' ) ) {
+			continue;
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 /**
@@ -351,7 +356,7 @@ function has_valid_ai_credentials(): bool {
 
 	// See if we have credentials that give us access to generate text.
 	try {
-		return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
+		return wp_ai_client_prompt( 'Test' )->is_supported_for_text_generation();
 	} catch ( Throwable $t ) {
 		return false;
 	}
