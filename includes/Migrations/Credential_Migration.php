@@ -16,14 +16,14 @@ namespace WordPress\AI\Migrations;
  * Handles credential migration from the legacy storage format to the
  * WordPress Connectors-based storage format.
  *
- * @since x.x.x
+ * @since 0.5.0
  */
 class Credential_Migration {
 
 	/**
 	 * The legacy option that stored all provider credentials as an array.
 	 *
-	 * @since x.x.x
+	 * @since 0.5.0
 	 * @var string
 	 */
 	private const OLD_OPTION = 'wp_ai_client_provider_credentials';
@@ -31,7 +31,7 @@ class Credential_Migration {
 	/**
 	 * The option that tracks the last-run migration version.
 	 *
-	 * @since x.x.x
+	 * @since 0.5.0
 	 * @var string
 	 */
 	private const VERSION_OPTION = 'ai_experiments_version';
@@ -39,7 +39,7 @@ class Credential_Migration {
 	/**
 	 * The plugin version at which this migration must run.
 	 *
-	 * @since x.x.x
+	 * @since 0.5.0
 	 * @var string
 	 */
 	private const TARGET_VERSION = '0.5.0';
@@ -47,7 +47,7 @@ class Credential_Migration {
 	/**
 	 * Map of legacy provider array keys to their new Connectors option names.
 	 *
-	 * @since x.x.x
+	 * @since 0.5.0
 	 *
 	 * @return array<string, string>
 	 */
@@ -65,7 +65,7 @@ class Credential_Migration {
 	 * Compares the stored version option against the target version and, when
 	 * an upgrade is detected, migrates credentials then records the new version.
 	 *
-	 * @since x.x.x
+	 * @since 0.5.0
 	 */
 	public function run(): void {
 		$stored_version = get_option( self::VERSION_OPTION, '0.0.0' );
@@ -84,7 +84,7 @@ class Credential_Migration {
 	 * Reads the old combined credentials option and, for each known provider,
 	 * copies the credential to the new option only when the new option is empty.
 	 *
-	 * @since x.x.x
+	 * @since 0.5.0
 	 */
 	private function maybe_migrate_credentials(): void {
 		$old_credentials = get_option( self::OLD_OPTION, array() );
