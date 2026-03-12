@@ -48,23 +48,31 @@ export const clearConnectors = async ( admin: Admin, page: Page ) => {
 	// Wait for page to fully load before finding button
 	await page.waitForTimeout( 1000 );
 
-	const editBtn = page.locator(
-		'.connector-item--ai-provider-for-openai button',
-		{
-			hasText: 'Edit',
+	const providers = [
+		'ai-provider-for-openai',
+		'ai-provider-for-google',
+		'ai-provider-for-anthropic',
+	];
+
+	for ( const provider of providers ) {
+		const editBtn = page.locator(
+			`.connector-item--${ provider } button`,
+			{
+				hasText: 'Edit',
+			}
+		);
+
+		if ( ( await editBtn.count() ) === 0 ) {
+			continue;
 		}
-	);
 
-	if ( ( await editBtn.count() ) === 0 ) {
-		return;
+		await editBtn.click();
+		await page
+			.locator(
+				`.connector-item--${ provider } .connector-settings button`
+			)
+			.click();
 	}
-
-	await editBtn.click();
-	await page
-		.locator(
-			'.connector-item--ai-provider-for-openai .connector-settings button'
-		)
-		.click();
 
 	// Wait for save.
 	await page.waitForTimeout( 1000 );

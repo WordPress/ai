@@ -12,6 +12,7 @@ const config = fs.existsSync( path ) ? require( path ) : {};
 
 config.plugins = [
 	'.',
+	'https://downloads.wordpress.org/plugin/ai-provider-for-google.zip',
 	'https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip',
 	'./tests/e2e-request-mocking',
 ];
