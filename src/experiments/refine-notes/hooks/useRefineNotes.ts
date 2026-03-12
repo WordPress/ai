@@ -382,6 +382,7 @@ export function useRefineNotes(): {
 								`[AI Refine Notes] Failed to refine block ${ block.clientId }`,
 								e
 							);
+							throw e;
 						}
 					} )
 				);

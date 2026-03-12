@@ -51,6 +51,19 @@ class Refine_Notes extends Abstract_Experiment {
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+
+		register_meta(
+			'comment',
+			'ai_note',
+			array(
+				'type'          => 'boolean',
+				'single'        => true,
+				'show_in_rest'  => true,
+				'auth_callback' => static function (): bool {
+					return current_user_can( 'edit_posts' );
+				},
+			)
+		);
 	}
 
 	/**
