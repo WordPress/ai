@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 **Note this version bumps the WordPress minimum supported version from 6.9 to 7.0.**
 
 ### Added
-- Switch to using AI Client bundled in WordPress 7.0 ([#275](https://github.com/WordPress/ai/pull/275)).
+- Switch to using AI Client bundled in WordPress 7.0 ([#275](https://github.com/WordPress/ai/pull/275), [#301](https://github.com/WordPress/ai/pull/301)).
 
 ### Changed
 - Bump WordPress minimum supported version from 6.9 to 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).

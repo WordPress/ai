@@ -129,7 +129,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 = 0.5.0 - 2026-03-12 =
 
-* **Added:** Switch to using AI Client bundled in WordPress 7.0 ([#275](https://github.com/WordPress/ai/pull/275)).
+* **Added:** Switch to using AI Client bundled in WordPress 7.0 ([#275](https://github.com/WordPress/ai/pull/275), [#301](https://github.com/WordPress/ai/pull/301)).
 * **Changed:** Bump WordPress minimum supported version from 6.9 to 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).
 * **Changed:** Bump WordPress tested-up-to version 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).
 * **Changed:** Migrate credentials from the AI Credentials to the new Connectors screen ([#286](https://github.com/WordPress/ai/pull/286)).
