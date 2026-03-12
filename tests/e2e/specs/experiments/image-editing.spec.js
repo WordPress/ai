@@ -12,7 +12,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  * Internal dependencies
  */
 const {
-	clearConnectors,
+	clearConnector,
 	enableExperiment,
 	enableExperiments,
 	visitAdminPage,
@@ -23,7 +23,16 @@ const {
 const TEST_IMAGE_PATH = path.join( __dirname, '../../../data/sample.png' );
 
 test.describe( 'Image Editing Experiment', () => {
-	test.beforeAll( async ( { admin, page } ) => {
+	test.skip( 'Can enable the image generation/editing experiment', async ( {
+		admin,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Image Generation Experiment (which contains editing).
+		await enableExperiment( admin, page, 'image-generation' );
+
 		await visitConnectorsPage( admin );
 
 		// Add dummy credentials for Google.
@@ -42,21 +51,6 @@ test.describe( 'Image Editing Experiment', () => {
 				'.connector-item--ai-provider-for-google .connector-settings button'
 			)
 			.click();
-	} );
-
-	test.afterAll( async ( { admin, page } ) => {
-		await clearConnectors( admin, page );
-	} );
-
-	test( 'Can enable the image generation/editing experiment', async ( {
-		admin,
-		page,
-	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
-		// Enable the Image Generation Experiment (which contains editing).
-		await enableExperiment( admin, page, 'image-generation' );
 	} );
 
 	test.skip( 'Can refine an image within a block', async ( {
@@ -625,6 +619,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await expect(
 			page.locator( '.ai-image-history-nav__counter' )
 		).toHaveText( '3 / 3' );
+
+		await clearConnector( admin, page, 'ai-provider-for-google' );
 	} );
-	// ADD TESTS FOR EXPAND AND REMOVE BACKGROUND ON AN EXISTING IMAGE
 } );

@@ -79,6 +79,41 @@ export const clearConnectors = async ( admin: Admin, page: Page ) => {
 };
 
 /**
+ * Clears out a specific existing Connector.
+ *
+ * @param admin The admin fixture from the test context.
+ * @param page  The page object.
+ * @param connectorId The ID of the connector to clear.
+ */
+export const clearConnector = async ( admin: Admin, page: Page, connectorId: string ) => {
+	await visitConnectorsPage( admin );
+
+	// Wait for page to fully load before finding button
+	await page.waitForTimeout( 1000 );
+
+	const editBtn = page.locator(
+		`.connector-item--${ connectorId } button`,
+		{
+			hasText: 'Edit',
+		}
+	);
+
+	if ( ( await editBtn.count() ) === 0 ) {
+		return;
+	}
+
+	await editBtn.click();
+	await page
+		.locator(
+			`.connector-item--${ connectorId } .connector-settings button`
+		)
+		.click();
+
+	// Wait for save.
+	await page.waitForTimeout( 1000 );
+};
+
+/**
  * Globally disables experiments.
  *
  * @param admin The admin fixture from the test context.
