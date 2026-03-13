@@ -2,7 +2,7 @@
 Contributors:      wordpressorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      7.0
-Stable tag:        0.4.1
+Stable tag:        0.5.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -124,11 +124,20 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 10. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
 11. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
 12. AI settings screen showing toggles to enable specific experiments.
-13. AI Credentials settings screen showing API key fields for available AI service providers.
 
 == Changelog ==
 
+= 0.5.0 - 2026-03-12 =
+
+* **Added:** Switch to using AI Client bundled in WordPress 7.0 ([#275](https://github.com/WordPress/ai/pull/275), [#301](https://github.com/WordPress/ai/pull/301)).
+* **Changed:** Bump WordPress minimum supported version from 6.9 to 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).
+* **Changed:** Bump WordPress tested-up-to version 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).
+* **Changed:** Migrate credentials from the AI Credentials to the new Connectors screen ([#286](https://github.com/WordPress/ai/pull/286)).
+* **Changed:** Improve documentation and plugin assets ([#280](https://github.com/WordPress/ai/pull/280), [#281](https://github.com/WordPress/ai/pull/281), [#291](https://github.com/WordPress/ai/pull/291), [#293](https://github.com/WordPress/ai/pull/293), [#296](https://github.com/WordPress/ai/pull/296)).
+* **Removed:** No longer using AI Client via Composer package ([#271](https://github.com/WordPress/ai/pull/271)).
+
 = 0.4.1 - 2026-03-06 =
+
 * **Fixed:** Issues with 0.4.0 release merge and deploy ([#266](https://github.com/WordPress/ai/pull/266)).
 
 = 0.4.0 - 2026-03-05 =
@@ -204,3 +213,8 @@ First public release of the AI Experiments plugin, introducing a framework for e
 * **Added:** Basic admin settings screen with toggle support
 * **Added:** Initial integration with WP AI Client SDK and Abilities API
 * **Added:** Utilities Ability for common AI tasks and testing
+
+== Upgrade Notice ==
+
+= 0.5.0 =
+This version bumps the WordPress minimum supported version from 6.9 to 7.0.

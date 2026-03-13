@@ -3,7 +3,7 @@
 /**
  * PSR-4 autoloader for the AI plugin.
  *
- * @since x.x.x
+ * @since 0.5.0
  *
  * @package WordPress\AI
  */
