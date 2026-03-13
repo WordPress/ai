@@ -446,4 +446,184 @@ PHP;
 			}
 		}
 	}
+
+	/**
+	 * Test that ai_experiments_system_instruction filter modifies system instructions.
+	 *
+	 * @since 0.5.0
+	 */
+	public function test_system_instruction_filter() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$filter_callback = function ( $instruction, $name, $data ) {
+			return $instruction . ' Appended by filter.';
+		};
+
+		add_filter( 'ai_experiments_system_instruction', $filter_callback, 10, 3 );
+
+		$result = $ability->get_system_instruction();
+
+		remove_filter( 'ai_experiments_system_instruction', $filter_callback, 10 );
+
+		$this->assertStringContainsString( 'Appended by filter.', $result, 'System instruction filter should modify the instruction' );
+	}
+
+	/**
+	 * Test that ai_experiments_system_instruction filter receives the correct ability name.
+	 *
+	 * @since 0.5.0
+	 */
+	public function test_system_instruction_filter_receives_ability_name() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$captured_name = null;
+		$filter_callback = function ( $instruction, $name ) use ( &$captured_name ) {
+			$captured_name = $name;
+			return $instruction;
+		};
+
+		add_filter( 'ai_experiments_system_instruction', $filter_callback, 10, 2 );
+
+		$ability->get_system_instruction();
+
+		remove_filter( 'ai_experiments_system_instruction', $filter_callback, 10 );
+
+		$this->assertSame( 'test-ability', $captured_name, 'Filter should receive the ability name' );
+	}
+
+	/**
+	 * Test that ai_experiments_ability_result filter modifies ability results.
+	 *
+	 * @since 0.5.0
+	 */
+	public function test_ability_result_filter() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$filter_callback = function ( $result, $name, $input ) {
+			$result['filtered'] = true;
+			return $result;
+		};
+
+		add_filter( 'ai_experiments_ability_result', $filter_callback, 10, 3 );
+
+		$result = $ability->filtered_execute_callback( array() );
+
+		remove_filter( 'ai_experiments_ability_result', $filter_callback, 10 );
+
+		$this->assertArrayHasKey( 'filtered', $result, 'Result filter should add key to result' );
+		$this->assertTrue( $result['filtered'], 'Result filter should set filtered to true' );
+	}
+
+	/**
+	 * Test that the dynamic ability result filter works.
+	 *
+	 * @since 0.5.0
+	 */
+	public function test_ability_result_dynamic_filter() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$filter_callback = function ( $result, $input ) {
+			$result['specific'] = true;
+			return $result;
+		};
+
+		add_filter( 'ai_experiments_ability_result_test-ability', $filter_callback, 10, 2 );
+
+		$result = $ability->filtered_execute_callback( array() );
+
+		remove_filter( 'ai_experiments_ability_result_test-ability', $filter_callback, 10 );
+
+		$this->assertArrayHasKey( 'specific', $result, 'Dynamic result filter should add key to result' );
+		$this->assertTrue( $result['specific'], 'Dynamic result filter should set specific to true' );
+	}
+
+	/**
+	 * Test that WP_Error results are not filtered.
+	 *
+	 * @since 0.5.0
+	 */
+	public function test_wp_error_not_filtered() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Error_Ability(
+			'test-error-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$filter_called = false;
+		$filter_callback = function ( $result ) use ( &$filter_called ) {
+			$filter_called = true;
+			return $result;
+		};
+
+		add_filter( 'ai_experiments_ability_result', $filter_callback, 10, 1 );
+
+		$result = $ability->filtered_execute_callback( array() );
+
+		remove_filter( 'ai_experiments_ability_result', $filter_callback, 10 );
+
+		$this->assertTrue( is_wp_error( $result ), 'WP_Error should be returned as-is' );
+		$this->assertFalse( $filter_called, 'Result filter should not be called for WP_Error' );
+	}
+}
+
+/**
+ * Test ability that returns WP_Error for testing error bypass.
+ *
+ * @since 0.5.0
+ */
+class Test_Error_Ability extends Abstract_Ability {
+	protected function category(): string {
+		return 'test-category';
+	}
+
+	protected function input_schema(): array {
+		return array( 'type' => 'object', 'properties' => array() );
+	}
+
+	protected function output_schema(): array {
+		return array( 'type' => 'object', 'properties' => array() );
+	}
+
+	protected function execute_callback( $input ) {
+		return new \WP_Error( 'test_error', 'Test error message' );
+	}
+
+	protected function permission_callback( $input ) {
+		return true;
+	}
+
+	protected function meta(): array {
+		return array();
+	}
 }
