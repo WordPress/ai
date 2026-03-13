@@ -61,16 +61,6 @@ final class Experiment_Loader {
 
 		// Register all experiments with type validation.
 		foreach ( $experiments as $experiment ) {
-			// Skip invalid experiment instances.
-			if ( ! $experiment instanceof Experiment ) {
-				_doing_it_wrong(
-					__METHOD__,
-					esc_html__( 'Attempted to register invalid experiment. Must implement Experiment interface.', 'ai' ),
-					'n.e.x.t'
-				);
-				return;
-			}
-
 			$this->registry->register_experiment( $experiment );
 		}
 
