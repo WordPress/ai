@@ -10,7 +10,7 @@ AI features, experiments and capabilities for WordPress.
 
 == Description ==
 
-The WordPress AI plugin brings AI-powered features directly into your WordPress admin and editing experience.
+The AI plugin brings AI-powered features directly into your WordPress admin and editing experience.
 
 **What's Inside:**
 

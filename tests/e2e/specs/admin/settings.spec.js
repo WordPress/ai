@@ -35,7 +35,7 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure the page title is correct.
 		await expect(
-			page.locator( '.wrap h1', { hasText: 'WordPress AI' } )
+			page.locator( '.wrap h1', { hasText: 'AI' } )
 		).toHaveCount( 1 );
 
 		// Ensure the no AI Connectors error message is displayed.

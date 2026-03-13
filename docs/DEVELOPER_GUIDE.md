@@ -1,6 +1,6 @@
 # Developer Guide
 
-Welcome to the WordPress AI plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered experiments.
+Welcome to the AI plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered experiments.
 
 ## Table of Contents
 

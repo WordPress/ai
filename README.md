@@ -1,4 +1,4 @@
-# WordPress AI
+# AI
 
 ![AI](https://github.com/WordPress/ai/blob/trunk/.wordpress-org/banner-1544x500.png)
 
@@ -12,7 +12,7 @@
 
 ## Description
 
-The WordPress AI plugin provides a set of opt-in AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
+The AI plugin provides a set of opt-in AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
 
 ## Overview
 

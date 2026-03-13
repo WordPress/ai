@@ -30,7 +30,7 @@ An additionally encouraged, though not required, step would be to open a PR that
 
 ### 2. Assessment of Proposed Experiment
 
-Once a proposal has been opened, the [AI maintainers](../CREDITS.md#maintainers) will work to assess viability and rationale for including the proposed experiment within the plugin as opposed to within a separate plugin, within Gutenberg or WordPress core directly, or perhaps generally "not likely a fit for the AI plugin" for described reasons.
+Once a proposal has been opened, the [AI plugin maintainers](../CREDITS.md#maintainers) will work to assess viability and rationale for including the proposed experiment within the plugin as opposed to within a separate plugin, within Gutenberg or WordPress core directly, or perhaps generally "not likely a fit for the AI plugin" for described reasons.
 
 For proposals that are aligned to the AI plugin purpose and roadmap, they'll be added to the [project board](https://github.com/orgs/WordPress/projects/240/views/7) and assigned a numbered milestone (or `Future Release` for those unlikely to be ready in the near future but still warranted within the plugin).
 

@@ -78,7 +78,7 @@ class Settings_Page {
 	 */
 	public function register_menu(): void {
 		$page_hook = add_options_page(
-			__( 'WordPress AI', 'ai' ),
+			__( 'AI', 'ai' ),
 			__( 'AI', 'ai' ),
 			'manage_options',
 			self::PAGE_SLUG,
