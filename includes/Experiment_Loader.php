@@ -59,7 +59,6 @@ final class Experiment_Loader {
 	public function register_default_experiments(): void {
 		$experiments = $this->get_default_experiments();
 
-		// Register all experiments with type validation.
 		foreach ( $experiments as $experiment ) {
 			$this->registry->register_experiment( $experiment );
 		}
