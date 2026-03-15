@@ -132,7 +132,7 @@ final class Experiment_Loader {
 				_doing_it_wrong(
 					__METHOD__,
 					esc_html__( 'Attempted to register invalid experiment. All experiments must implement the Experiment interface.', 'ai' ),
-					'n.e.x.t'
+					'x.x.x'
 				);
 
 				continue;
