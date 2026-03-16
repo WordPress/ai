@@ -15,7 +15,7 @@ Read these before making changes:
 
 ## Workflow
 
-- All npm scripts wrap `wp-env` — prefer `npm run` over direct `composer`/`vendor` calls.
+- PHP-related npm scripts wrap `wp-env`; some JavaScript/tooling scripts call `wp-scripts`/`tsc` directly. Prefer `npm run` over direct `composer`, `vendor/bin`, or `wp-env` calls.
 - Run `npm run lint:php`, `npm run lint:php:stan`, `npm run lint:js`, and `npm run typecheck` before submitting PRs.
 - Use `npm run lint:php:fix` and `npm run lint:js:fix` to auto-fix.
 
