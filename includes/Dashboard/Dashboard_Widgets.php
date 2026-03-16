@@ -77,6 +77,14 @@ class Dashboard_Widgets {
 			array( $status_widget, 'render' )
 		);
 
+		$capabilities_widget = new AI_Capabilities_Widget( $this->registry );
+
+		wp_add_dashboard_widget(
+			'ai_experiments_capabilities',
+			__( 'AI Capabilities', 'ai' ),
+			array( $capabilities_widget, 'render' )
+		);
+
 		Asset_Loader::enqueue_style( 'dashboard-widgets', 'admin/dashboard' );
 	}
 }
