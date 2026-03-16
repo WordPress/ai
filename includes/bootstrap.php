@@ -198,10 +198,13 @@ function initialize_experiments(): void {
 		$settings_registration = new Settings_Registration( $registry );
 		$settings_registration->init();
 
-		// Initialize admin settings page.
+		// Initialize admin settings page and dashboard widgets.
 		if ( is_admin() ) {
 			$settings_page = new Settings_Page( $registry );
 			$settings_page->init();
+
+			$dashboard_widgets = new Dashboard\Dashboard_Widgets( $registry );
+			$dashboard_widgets->init();
 		}
 
 		// Register our post-related WordPress Abilities.
