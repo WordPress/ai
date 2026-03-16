@@ -55,6 +55,31 @@ class Mock_Experiment extends Abstract_Experiment {
 }
 
 /**
+ * Experiment that throws during instantiation.
+ *
+ * @since 0.1.0
+ */
+class Throwing_Experiment extends Abstract_Experiment {
+	/**
+	 * Loads experiment metadata - throws to simulate failure.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 */
+	protected function load_experiment_metadata(): array {
+		throw new \RuntimeException( 'Test exception' );
+	}
+
+	/**
+	 * Registers the experiment.
+	 *
+	 * @since 0.1.0
+	 */
+	public function register(): void {}
+}
+
+/**
  * Experiment_Loader test case.
  *
  * @since 0.1.0
@@ -181,13 +206,13 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_ai_experiments_register_experiments_hook_fires() {
-		$hook_fired = false;
+		$hook_fired      = false;
 		$passed_registry = null;
 
 		add_action(
 			'ai_experiments_register_experiments',
-			function ( $registry ) use ( &$hook_fired, &$passed_registry ) {
-				$hook_fired = true;
+			static function ( $registry ) use ( &$hook_fired, &$passed_registry ) {
+				$hook_fired      = true;
 				$passed_registry = $registry;
 			}
 		);
@@ -210,7 +235,7 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	public function test_third_party_experiment_registration() {
 		add_action(
 			'ai_experiments_register_experiments',
-			function ( $registry ) {
+			static function ( $registry ) {
 				$custom_experiment = new Mock_Experiment();
 				$registry->register_experiment( $custom_experiment );
 			}
@@ -341,5 +366,55 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 			$experiment->register_called,
 			'Disabled experiment register() should not be called'
 		);
+	}
+
+	/**
+	 * Test non-existent experiment class triggers _doing_it_wrong().
+	 */
+	public function test_nonexistent_class_triggers_doing_it_wrong() {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Experiment_Loader::get_default_experiments' );
+
+		add_filter(
+			'ai_experiments_default_experiment_classes',
+			static function () {
+				return array( 'NonExistent\Class' );
+			}
+		);
+
+		$this->loader->register_default_experiments();
+	}
+
+	/**
+	 * Test invalid interface triggers _doing_it_wrong().
+	 */
+	public function test_invalid_interface_triggers_doing_it_wrong() {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Experiment_Loader::get_default_experiments' );
+
+		add_filter(
+			'ai_experiments_default_experiment_classes',
+			static function () {
+				return array( \stdClass::class );
+			}
+		);
+
+		$this->loader->register_default_experiments();
+	}
+
+	/**
+	 * Test instantiation failure triggers _doing_it_wrong().
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_instantiation_failure_triggers_doing_it_wrong() {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Experiment_Loader::get_default_experiments' );
+
+		add_filter(
+			'ai_experiments_default_experiment_classes',
+			static function () {
+				return array( Throwing_Experiment::class );
+			}
+		);
+
+		$this->loader->register_default_experiments();
 	}
 }
