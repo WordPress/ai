@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Renders the AI Experiments Status dashboard widget.
+ * Renders the AI Status dashboard widget.
  *
  * @since x.x.x
  */
@@ -89,12 +89,12 @@ class AI_Status_Widget {
 			),
 			array(
 				'done'  => $global_enabled,
-				'label' => __( 'Enable AI Experiments', 'ai' ),
+				'label' => __( 'Globally enable AI Experiments', 'ai' ),
 				'url'   => admin_url( 'options-general.php?page=ai-experiments' ),
 			),
 			array(
 				'done'  => $any_experiment_on,
-				'label' => __( 'Enable an experiment', 'ai' ),
+				'label' => __( 'Enable an individual experiment', 'ai' ),
 				'url'   => admin_url( 'options-general.php?page=ai-experiments' ),
 			),
 			array(
@@ -107,7 +107,7 @@ class AI_Status_Widget {
 
 		<div class="ai-dashboard-status">
 			<p class="ai-dashboard-status__intro">
-				<?php esc_html_e( 'Complete these steps to get started with AI Experiments:', 'ai' ); ?>
+				<?php esc_html_e( 'Complete these steps to get started with the AI plugin:', 'ai' ); ?>
 			</p>
 			<ol class="ai-dashboard-status__checklist">
 				<?php foreach ( $steps as $step ) : ?>
