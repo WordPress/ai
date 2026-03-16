@@ -259,7 +259,7 @@ class Title_Generation extends Abstract_Ability {
 		}
 
 		// Generate the titles using the AI client.
-		return wp_ai_client_prompt( $context )
+		return wp_ai_client_prompt( $content )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
 			->using_candidate_count( (int) $candidates )
