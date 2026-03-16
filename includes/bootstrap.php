@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Migrations\Credential_Migration;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -22,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'AI_EXPERIMENTS_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_VERSION', '0.4.1' );
+	define( 'AI_EXPERIMENTS_VERSION', '0.5.0' );
 }
 if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_FILE' ) ) {
 	define( 'AI_EXPERIMENTS_PLUGIN_FILE', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR . 'ai.php' : '' );
@@ -168,6 +169,9 @@ function load(): void {
 	// Load required files.
 	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/autoload.php';
 	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/helpers.php';
+
+	// Run any pending migrations.
+	( new Credential_Migration() )->run();
 
 	$loaded = true;
 

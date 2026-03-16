@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [0.5.0] - 2026-03-12
+**Note this version bumps the WordPress minimum supported version from 6.9 to 7.0.**
+
+### Added
+- Switch to using AI Client bundled in WordPress 7.0 ([#275](https://github.com/WordPress/ai/pull/275), [#301](https://github.com/WordPress/ai/pull/301)).
+
+### Changed
+- Bump WordPress minimum supported version from 6.9 to 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).
+- Bump WordPress tested-up-to version 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).
+- Migrate credentials from the AI Credentials to the new Connectors screen ([#286](https://github.com/WordPress/ai/pull/286)).
+- Improve documentation and plugin assets ([#280](https://github.com/WordPress/ai/pull/280), [#281](https://github.com/WordPress/ai/pull/281), [#291](https://github.com/WordPress/ai/pull/291), [#293](https://github.com/WordPress/ai/pull/293), [#296](https://github.com/WordPress/ai/pull/296)).
+
+### Removed
+- No longer using AI Client via Composer package ([#271](https://github.com/WordPress/ai/pull/271)).
+
+### Developer
+- Bump `simple-git` from 3.30.0 to 3.33.0 ([#295](https://github.com/WordPress/ai/pull/295)).
+
 ## [0.4.1] - 2026-03-06
 ### Fixed
 - Issues with 0.4.0 release merge and deploy ([#266](https://github.com/WordPress/ai/pull/266)).
@@ -141,6 +159,7 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[0.5.0]: https://github.com/WordPress/ai/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/WordPress/ai/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/WordPress/ai/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/WordPress/ai/compare/0.3.0...0.3.1

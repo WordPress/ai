@@ -302,11 +302,11 @@ function get_preferred_vision_models(): array {
  * @return bool True if we have AI credentials, false otherwise.
  */
 function has_ai_credentials(): bool {
-	if ( ! function_exists( '_wp_connectors_get_connector_settings' ) || ! function_exists( '_wp_connectors_get_real_api_key' ) ) {
+	if ( ! function_exists( 'wp_get_connectors' ) ) {
 		return false;
 	}
 
-	foreach ( _wp_connectors_get_connector_settings() as $connector_data ) {
+	foreach ( wp_get_connectors() as $connector_data ) {
 		if ( 'ai_provider' !== $connector_data['type'] ) {
 			continue;
 		}
@@ -316,8 +316,7 @@ function has_ai_credentials(): bool {
 			continue;
 		}
 
-		$api_key = _wp_connectors_get_real_api_key( $auth['setting_name'], '_wp_connectors_mask_api_key' );
-		if ( '' === $api_key ) {
+		if ( '' === get_option( $auth['setting_name'], '' ) ) {
 			continue;
 		}
 
