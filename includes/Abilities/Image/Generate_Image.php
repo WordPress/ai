@@ -242,7 +242,6 @@ class Generate_Image extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() )
-			->as_output_mime_type( 'image/png' )
 			->using_model_preference( ...get_preferred_image_models() );
 
 		if ( null !== $reference_image ) {
