@@ -27,7 +27,6 @@ build-types/
 # AI files
 .gemini/
 .claude/
-AGENTS.md
 GEMINI.md
 CLAUDE.md
 
