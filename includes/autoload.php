@@ -3,12 +3,17 @@
 /**
  * PSR-4 autoloader for the AI Experiments plugin.
  *
- * @since x.x.x
+ * @since 0.5.0
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 spl_autoload_register(
 	static function ( string $class_name ): void {
