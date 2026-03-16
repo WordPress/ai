@@ -115,8 +115,8 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'Configure an AI provider', $output );
-		$this->assertStringContainsString( 'Enable AI Experiments', $output );
-		$this->assertStringContainsString( 'Enable an experiment', $output );
+		$this->assertStringContainsString( 'Globally enable AI Experiments', $output );
+		$this->assertStringContainsString( 'Enable an individual experiment', $output );
 		$this->assertStringContainsString( 'Try it out', $output );
 	}
 
