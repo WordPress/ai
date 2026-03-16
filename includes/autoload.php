@@ -10,6 +10,11 @@
 
 declare( strict_types=1 );
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 spl_autoload_register(
 	static function ( string $class_name ): void {
 		$prefix   = 'WordPress\\AI\\';
