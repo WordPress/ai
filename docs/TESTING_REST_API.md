@@ -151,5 +151,3 @@ curl -X POST "https://wordpress-ai.test/wp-json/wp-abilities/v1/abilities/ai/tit
 5. **Body:** 
    - Select "raw" and "JSON"
    - Paste the JSON with `input` wrapper
-
-

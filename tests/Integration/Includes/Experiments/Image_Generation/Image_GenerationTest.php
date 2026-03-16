@@ -7,10 +7,11 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Image_Generation;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiments\Image_Generation\Image_Generation;
 use WP_UnitTestCase;
+use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiment_Category;
+use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiments\Image_Generation\Image_Generation;
 
 /**
  * Image_Generation test case.
@@ -69,6 +70,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'image-generation', $experiment->get_id() );
 		$this->assertEquals( 'Image Generation', $experiment->get_label() );
+		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 
@@ -106,6 +108,21 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that register() hooks enqueue_inline_assets to enqueue_block_editor_assets.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_register_hooks_enqueue_block_editor_assets(): void {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		$this->assertNotFalse(
+			has_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_inline_assets' ) ),
+			'enqueue_inline_assets should be hooked to enqueue_block_editor_assets'
+		);
+	}
+
+	/**
 	 * Test that the experiment registers post meta.
 	 *
 	 * @since 0.3.0
@@ -120,5 +137,66 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'integer', $meta['ai_generated']['type'], 'ai_generated meta type should be integer' );
 		$this->assertTrue( $meta['ai_generated']['show_in_rest'], 'ai_generated meta should be available in REST API' );
 	}
-}
 
+	/**
+	 * Test that register_admin_menu hooks are added.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_register_hooks_admin_menu() {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		$this->assertNotFalse( has_action( 'admin_menu', array( $experiment, 'register_admin_menu' ) ), 'admin_menu hook should be registered' );
+		$this->assertNotFalse( has_action( 'admin_footer-upload.php', array( $experiment, 'inject_generate_image_button' ) ), 'admin_footer-upload.php hook should be registered' );
+	}
+
+	/**
+	 * Test that render_admin_page outputs expected HTML.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_render_admin_page() {
+		$experiment = new Image_Generation();
+
+		ob_start();
+		$experiment->render_admin_page();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( '<div class="wrap">', $output, 'Output should contain wrap div' );
+		$this->assertStringContainsString( 'Generate Image', $output, 'Output should contain page title' );
+		$this->assertStringContainsString( 'ai-image-generation-root', $output, 'Output should contain React root element' );
+	}
+
+	/**
+	 * Test that inject_generate_image_button outputs a script tag.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_inject_generate_image_button() {
+		$experiment = new Image_Generation();
+
+		ob_start();
+		$experiment->inject_generate_image_button();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( '<script type="text/javascript">', $output, 'Output should contain script tag' );
+		$this->assertStringContainsString( 'ai-generate-image-btn', $output, 'Output should contain button class name' );
+		$this->assertStringContainsString( 'page=generate-image', $output, 'Output should contain link to admin page' );
+		$this->assertStringContainsString( 'stopImmediatePropagation', $output, 'Output should contain click handler that stops propagation' );
+	}
+
+	/**
+	 * Test that enqueue_assets does not load on irrelevant screens.
+	 *
+	 * @since 0.4.0
+	 */
+	public function test_enqueue_assets_skips_irrelevant_screens() {
+		$experiment = new Image_Generation();
+		$experiment->register();
+
+		// Calling with an irrelevant hook suffix should not enqueue anything.
+		$experiment->enqueue_assets( 'options-general.php' );
+		$this->assertFalse( wp_script_is( 'ai_image_generation', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
+	}
+}

@@ -42,10 +42,6 @@
 	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
 
-.ability-explorer-wrap .wp-list-table th {
-	font-weight: 600;
-}
-
 .ability-explorer-wrap .wp-list-table td code {
 	background: var(--wp--preset--color--background, #f6f7f7);
 	padding: 2px 8px;
@@ -53,11 +49,24 @@
 	font-size: 12px;
 }
 
+.ability-explorer-wrap td.column-primary strong {
+	display: block;
+	margin-bottom: .2em;
+	font-size: 14px;
+}
+
+.ability-explorer-wrap .wp-list-table .column-provider,
+.ability-explorer-wrap .wp-list-table .column-actions {
+	width: 10%;
+}
+
 /* Provider Badges - Using WordPress notice colors */
 .ability-provider {
-	display: inline-block;
-	padding: 4px 8px;
-	border-radius: 3px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px 8px;
+	border-radius: 2px;
 	font-size: 12px;
 	font-weight: 500;
 }
@@ -153,9 +162,29 @@
 	position: relative;
 }
 
+.ability-schema-wrapper {
+	position: relative;
+}
+
 .ability-copy-btn {
-	float: right;
-	margin-top: -5px;
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+
+	.dashicons {
+		font-size: 16px;
+		width: 16px;
+		height: 16px;
+	}
+}
+
+.wp-core-ui .button.ability-copy-btn .dashicons {
+	vertical-align: middle;
+	line-height: .95;
 }
 
 /* Test Runner */

@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\Excerpt_Generation;
 use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation as Excerpt_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -34,6 +35,7 @@ class Excerpt_Generation extends Abstract_Experiment {
 			'id'          => 'excerpt-generation',
 			'label'       => __( 'Excerpt Generation', 'ai' ),
 			'description' => __( 'Generates excerpt suggestions from content', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
@@ -93,7 +95,6 @@ class Excerpt_Generation extends Abstract_Experiment {
 			'ExcerptGenerationData',
 			array(
 				'enabled' => $this->is_enabled(),
-				'path'    => Excerpt_Generation_Ability::path( $this->get_id() ),
 			)
 		);
 	}

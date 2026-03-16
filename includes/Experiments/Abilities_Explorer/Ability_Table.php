@@ -51,7 +51,6 @@ class Ability_Table extends \WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
-			'cb'       => '<input type="checkbox" />',
 			'name'     => __( 'Name', 'ai' ),
 			'slug'     => __( 'Slug', 'ai' ),
 			'provider' => __( 'Provider', 'ai' ),
@@ -156,18 +155,6 @@ class Ability_Table extends \WP_List_Table {
 	 *
 	 * @param array<string,mixed> $item Item data.
 	 */
-	public function column_cb( $item ): string {
-		return sprintf(
-			'<input type="checkbox" name="abilities[]" value="%s" />',
-			esc_attr( $item['slug'] )
-		);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 *
-	 * @param array<string,mixed> $item Item data.
-	 */
 	public function column_name( $item ): string {
 		$detail_url = add_query_arg(
 			array(
@@ -179,10 +166,10 @@ class Ability_Table extends \WP_List_Table {
 		);
 
 		return sprintf(
-			'<strong><a href="%s">%s</a></strong><br /><small>%s</small>',
+			'<strong><a href="%s">%s</a></strong><small>%s</small>',
 			esc_url( $detail_url ),
 			esc_html( $item['name'] ),
-			esc_html( wp_trim_words( $item['description'], 15 ) )
+			esc_html( wp_trim_words( $item['description'], 20 ) )
 		);
 	}
 
@@ -210,7 +197,7 @@ class Ability_Table extends \WP_List_Table {
 		return sprintf(
 			'<span class="%s">%s</span>',
 			esc_attr( $class ),
-			esc_html( $provider )
+			esc_html( Ability_Handler::get_provider_label( $provider ) )
 		);
 	}
 

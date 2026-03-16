@@ -15,6 +15,7 @@ namespace WordPress\AI\Experiments\Abilities_Explorer;
 
 use WordPress\AI\Abstracts\Abstract_Experiment;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -37,6 +38,7 @@ class Abilities_Explorer extends Abstract_Experiment {
 			'id'          => 'abilities-explorer',
 			'label'       => __( 'Abilities Explorer', 'ai' ),
 			'description' => __( 'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.', 'ai' ),
+			'category'    => Experiment_Category::ADMIN,
 		);
 	}
 
@@ -79,7 +81,7 @@ class Abilities_Explorer extends Abstract_Experiment {
 					'error'         => esc_html__( 'Error', 'ai' ),
 					'invalidJson'   => esc_html__( 'Invalid JSON input', 'ai' ),
 					'confirmInvoke' => esc_html__( 'Are you sure you want to invoke this ability?', 'ai' ),
-					'copySuccess'   => esc_html__( 'Copied to clipboard!', 'ai' ),
+					'copySuccess'   => esc_html__( 'Copied!', 'ai' ),
 					'copyError'     => esc_html__( 'Failed to copy', 'ai' ),
 				),
 			)

@@ -119,6 +119,33 @@ class Ability_Handler {
 	}
 
 	/**
+	 * Get translatable provider labels keyed by provider slug.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return array<string,string> Map of provider slug to translated label.
+	 */
+	public static function get_provider_labels(): array {
+		return array(
+			'Core'   => __( 'Core', 'ai' ),
+			'Plugin' => __( 'Plugin', 'ai' ),
+			'Theme'  => __( 'Theme', 'ai' ),
+		);
+	}
+
+	/**
+	 * Get the label for a provider.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param string $provider Provider slug.
+	 * @return string Provider label.
+	 */
+	public static function get_provider_label( string $provider ): string {
+		return self::get_provider_labels()[ $provider ] ?? $provider;
+	}
+
+	/**
 	 * Detect ability provider (Core, Plugin, or Theme).
 	 *
 	 * @since 0.2.0
