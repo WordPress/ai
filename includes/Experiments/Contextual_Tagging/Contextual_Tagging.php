@@ -121,6 +121,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 		}
 
 		Asset_Loader::enqueue_script( 'contextual_tagging', 'experiments/contextual-tagging' );
+		Asset_Loader::enqueue_style( 'contextual_tagging', 'experiments/contextual-tagging' );
 		Asset_Loader::localize_script(
 			'contextual_tagging',
 			'ContextualTaggingData',

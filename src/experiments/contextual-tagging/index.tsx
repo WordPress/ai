@@ -3,6 +3,11 @@
  */
 
 /**
+ * Styles
+ */
+import './index.scss';
+
+/**
  * WordPress dependencies
  */
 import { registerPlugin } from '@wordpress/plugins';
