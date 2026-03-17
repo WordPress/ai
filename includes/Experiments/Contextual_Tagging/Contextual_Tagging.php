@@ -22,8 +22,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Contextual tagging experiment.
  *
- * Provides AI-powered suggestions for post tags and categories
- * based on a comprehensive analysis of the post's content.
+ * Provides AI-powered suggestions for post taxonomies
+ * based on a comprehensive analysis of the post content.
  *
  * @since 0.6.0
  */
@@ -127,8 +127,8 @@ class Contextual_Tagging extends Abstract_Experiment {
 			'ContextualTaggingData',
 			array(
 				'enabled'        => $this->is_enabled(),
-				'strategy'       => get_option( $this->get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY ),
-				'maxSuggestions' => (int) get_option( $this->get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS ),
+				'strategy'       => $this->get_strategy(),
+				'maxSuggestions' => $this->get_max_suggestions(),
 			)
 		);
 	}
@@ -168,8 +168,8 @@ class Contextual_Tagging extends Abstract_Experiment {
 	public function render_settings_fields(): void {
 		$strategy_option        = $this->get_field_option_name( 'strategy' );
 		$max_suggestions_option = $this->get_field_option_name( 'max_suggestions' );
-		$current_strategy       = get_option( $strategy_option, self::STRATEGY_EXISTING_ONLY );
-		$current_max            = get_option( $max_suggestions_option, self::DEFAULT_MAX_SUGGESTIONS );
+		$current_strategy       = $this->get_strategy();
+		$current_max            = $this->get_max_suggestions();
 		?>
 		<fieldset class="ai-experiment-settings-fieldset">
 			<legend class="screen-reader-text"><?php esc_html_e( 'Contextual Tagging Settings', 'ai' ); ?></legend>
@@ -233,5 +233,50 @@ class Contextual_Tagging extends Abstract_Experiment {
 		$value = absint( $value );
 
 		return max( 1, min( 10, $value ) );
+	}
+
+	/**
+	 * Gets the strategy to use for contextual tagging.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @return string The strategy to use.
+	 */
+	public function get_strategy(): string {
+		$strategy = get_option( $this->get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY );
+
+		/**
+		 * Filters the strategy to use for contextual tagging.
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param string $strategy The strategy to use.
+		 * @return string The filtered strategy.
+		 */
+		$strategy = apply_filters( 'ai_contextual_tagging_strategy', $strategy );
+
+		// Return the sanitized strategy value.
+		return $this->sanitize_strategy( $strategy );
+	}
+
+	/**
+	 * Gets the maximum number of suggestions to generate for contextual tagging.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @return int The maximum number of suggestions to generate.
+	 */
+	public function get_max_suggestions(): int {
+		$max_suggestions = (int) get_option( $this->get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
+
+		/**
+		 * Filters the maximum number of suggestions to generate for contextual tagging.
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param int $max_suggestions The maximum number of suggestions to generate.
+		 * @return int The filtered max suggestions.
+		 */
+		return apply_filters( 'ai_contextual_tagging_max_suggestions', $max_suggestions );
 	}
 }

@@ -10,7 +10,10 @@ declare( strict_types=1 );
 namespace WordPress\AI\Abilities\Contextual_Tagging;
 
 use WP_Error;
+use WP_Post;
+use WP_Post_Type;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Experiments\Contextual_Tagging\Contextual_Tagging as Contextual_Tagging_Experiment;
 
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\get_preferred_models_for_text_generation;
@@ -24,15 +27,6 @@ use function WordPress\AI\normalize_content;
  * @since 0.6.0
  */
 class Contextual_Tagging extends Abstract_Ability {
-
-	/**
-	 * The default number of suggestions to generate.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @var int
-	 */
-	protected const SUGGESTIONS_DEFAULT = 5;
 
 	/**
 	 * Returns the input schema of the ability.
@@ -63,7 +57,7 @@ class Contextual_Tagging extends Abstract_Ability {
 				),
 				'strategy'        => array(
 					'type'              => 'string',
-					'default'           => 'existing_only',
+					'default'           => Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY,
 					'sanitize_callback' => 'sanitize_key',
 					'description'       => esc_html__( 'The suggestion strategy: existing_only or allow_new.', 'ai' ),
 				),
@@ -71,7 +65,7 @@ class Contextual_Tagging extends Abstract_Ability {
 					'type'              => 'integer',
 					'minimum'           => 1,
 					'maximum'           => 10,
-					'default'           => self::SUGGESTIONS_DEFAULT,
+					'default'           => Contextual_Tagging_Experiment::DEFAULT_MAX_SUGGESTIONS,
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Maximum number of suggestions to generate.', 'ai' ),
 				),
@@ -135,8 +129,8 @@ class Contextual_Tagging extends Abstract_Ability {
 				'content'         => null,
 				'post_id'         => null,
 				'taxonomy'        => 'post_tag',
-				'strategy'        => 'existing_only',
-				'max_suggestions' => self::SUGGESTIONS_DEFAULT,
+				'strategy'        => Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY,
+				'max_suggestions' => (int) Contextual_Tagging_Experiment::DEFAULT_MAX_SUGGESTIONS,
 			),
 		);
 
@@ -153,7 +147,7 @@ class Contextual_Tagging extends Abstract_Ability {
 		if ( $args['post_id'] ) {
 			$post = get_post( (int) $args['post_id'] );
 
-			if ( ! $post ) {
+			if ( ! $post instanceof WP_Post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
@@ -223,7 +217,7 @@ class Contextual_Tagging extends Abstract_Ability {
 			$post = get_post( $args['post_id'] );
 
 			// Ensure the post exists.
-			if ( ! $post ) {
+			if ( ! $post instanceof WP_Post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
@@ -239,16 +233,8 @@ class Contextual_Tagging extends Abstract_Ability {
 				);
 			}
 
-			// Ensure the post type is allowed in REST endpoints.
-			$post_type = get_post_type( $post_id );
-
-			if ( ! $post_type ) {
-				return false;
-			}
-
-			$post_type_obj = get_post_type_object( $post_type );
-
-			if ( ! $post_type_obj || empty( $post_type_obj->show_in_rest ) ) {
+			$post_type_obj = get_post_type_object( $post->post_type );
+			if ( ! $post_type_obj instanceof WP_Post_Type || empty( $post_type_obj->show_in_rest ) ) {
 				return false;
 			}
 		} elseif ( ! current_user_can( 'edit_posts' ) ) {
@@ -365,46 +351,6 @@ class Contextual_Tagging extends Abstract_Ability {
 	}
 
 	/**
-	 * Builds the strategy instruction for the system prompt.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @param string $strategy The suggestion strategy.
-	 * @return string The strategy instruction text.
-	 */
-	protected function build_strategy_instruction( string $strategy ): string {
-		if ( 'existing_only' === $strategy ) {
-			return '- IMPORTANT: Only suggest terms that already exist on the site. Set "is_new" to false for all suggestions. Do not invent new terms.';
-		}
-
-		return '- You may suggest new terms if no good existing match exists. Set "is_new" to true for new terms and false for existing terms. Prefer existing terms when possible.';
-	}
-
-	/**
-	 * Builds the existing terms instruction for the system prompt.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @param array<string> $existing_terms The existing terms.
-	 * @param string        $strategy       The suggestion strategy.
-	 * @return string The existing terms instruction text.
-	 */
-	protected function build_existing_terms_instruction( array $existing_terms, string $strategy ): string {
-		if ( empty( $existing_terms ) ) {
-			if ( 'existing_only' === $strategy ) {
-				return '- No existing terms are available. Return an empty array.';
-			}
-
-			return '- No existing terms are available. You may suggest new terms.';
-		}
-
-		return sprintf(
-			"- Existing terms on the site: %s\n- Prioritize selecting from these existing terms.",
-			implode( ', ', $existing_terms )
-		);
-	}
-
-	/**
 	 * Gets a human-readable label for the taxonomy.
 	 *
 	 * @since 0.6.0
@@ -471,6 +417,46 @@ class Contextual_Tagging extends Abstract_Ability {
 				'',
 				'The content you will be provided is delimited by triple quotes.',
 			)
+		);
+	}
+
+	/**
+	 * Builds the strategy instruction for the system prompt.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $strategy The suggestion strategy.
+	 * @return string The strategy instruction text.
+	 */
+	protected function build_strategy_instruction( string $strategy ): string {
+		if ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
+			return '- IMPORTANT: Only suggest terms that already exist on the site. Set "is_new" to false for all suggestions. Do not invent new terms.';
+		}
+
+		return '- You may suggest new terms if no good existing match exists. Set "is_new" to true for new terms and false for existing terms. Prefer existing terms when possible.';
+	}
+
+	/**
+	 * Builds the existing terms instruction for the system prompt.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param array<string> $existing_terms The existing terms.
+	 * @param string        $strategy       The suggestion strategy.
+	 * @return string The existing terms instruction text.
+	 */
+	protected function build_existing_terms_instruction( array $existing_terms, string $strategy ): string {
+		if ( empty( $existing_terms ) ) {
+			if ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
+				return '- No existing terms are available. Return an empty array.';
+			}
+
+			return '- No existing terms are available. You may suggest new terms.';
+		}
+
+		return sprintf(
+			"- Existing terms on the site: %s\n- Prioritize selecting from these existing terms.",
+			implode( ', ', $existing_terms )
 		);
 	}
 
