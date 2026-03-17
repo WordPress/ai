@@ -68,7 +68,7 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		$this->registry = new Experiment_Registry();
 	}
@@ -80,7 +80,7 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 

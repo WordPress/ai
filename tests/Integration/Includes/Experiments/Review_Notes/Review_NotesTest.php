@@ -40,7 +40,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable experiments globally and individually.
 		update_option( 'ai_experiments_enabled', true );
@@ -67,7 +67,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_review-notes_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
