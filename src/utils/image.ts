@@ -82,3 +82,52 @@ export async function prepareExpandCanvas(
 
 	return canvas.toDataURL( 'image/png' );
 }
+
+/**
+ * Composites a drawing canvas onto a source image and returns the result
+ * as a PNG data URI. The drawing is rendered on top of the source image
+ * so that visual annotations (circles, arrows, highlights) are baked
+ * into the final image.
+ *
+ * @param {string}            imageSrc      URL or data URI of the source image.
+ * @param {HTMLCanvasElement} drawingCanvas Canvas containing the user's drawing.
+ * @return {Promise<string>} PNG data URI of the composited image.
+ */
+export async function compositeDrawing(
+	imageSrc: string,
+	drawingCanvas: HTMLCanvasElement
+): Promise< string > {
+	const MAX_DIMENSION = 4096;
+
+	const img = await new Promise< HTMLImageElement >( ( resolve, reject ) => {
+		const el = new Image();
+		el.crossOrigin = 'anonymous';
+		el.onload = () => resolve( el );
+		el.onerror = () =>
+			reject( new Error( `Failed to load image: ${ imageSrc }` ) );
+		el.src = imageSrc;
+	} );
+
+	const srcW = img.naturalWidth;
+	const srcH = img.naturalHeight;
+
+	// Cap dimensions at MAX_DIMENSION while preserving aspect ratio.
+	const capScale = Math.min( 1, MAX_DIMENSION / srcW, MAX_DIMENSION / srcH );
+	const canvasW = Math.round( srcW * capScale );
+	const canvasH = Math.round( srcH * capScale );
+
+	const canvas = document.createElement( 'canvas' );
+	canvas.width = canvasW;
+	canvas.height = canvasH;
+
+	const ctx = canvas.getContext( '2d' );
+	if ( ! ctx ) {
+		throw new Error( 'Could not get 2D canvas context.' );
+	}
+
+	// Draw the source image, then layer the drawing on top.
+	ctx.drawImage( img, 0, 0, canvasW, canvasH );
+	ctx.drawImage( drawingCanvas, 0, 0, canvasW, canvasH );
+
+	return canvas.toDataURL( 'image/png' );
+}
