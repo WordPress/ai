@@ -541,7 +541,7 @@ import './index.scss';
 		},
 	};
 
-	// Ensure the experiment is enabled.
+	// Don't render if disabled.
 	if ( ! aiAbilityExplorer?.enabled ) {
 		return null;
 	}

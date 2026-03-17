@@ -19,7 +19,7 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
  * AI Service class.
  *
  * Manages AI provider configuration and provides a consistent interface
- * for experimental features to communicate with AI providers.
+ * for features to communicate with AI providers.
  *
  * @since 0.2.1
  */

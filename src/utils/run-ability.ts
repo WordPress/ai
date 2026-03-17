@@ -49,7 +49,7 @@ const logFallbackWarning = () => {
 
 	// eslint-disable-next-line no-console
 	console.warn(
-		'[AI Experiments] wp.abilities.executeAbility is unavailable. Falling back to REST.'
+		'[AI] wp.abilities.executeAbility is unavailable. Falling back to REST.'
 	);
 	hasShownFallbackNotice = true;
 };

@@ -37,7 +37,7 @@ export default function SummarizationPlugin() {
 				'ai'
 		  );
 
-	// Ensure the experiment is enabled.
+	// Don't render if disabled.
 	if ( ! aiSummarizationData?.enabled ) {
 		return null;
 	}

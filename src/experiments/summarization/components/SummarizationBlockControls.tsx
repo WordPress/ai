@@ -29,7 +29,7 @@ const Controls = () => {
 		? __( 'Re-generate AI Summary', 'ai' )
 		: __( 'Generate AI Summary', 'ai' );
 
-	// Ensure the experiment is enabled.
+	// Don't render if disabled.
 	if ( ! aiSummarizationData?.enabled ) {
 		return null;
 	}
