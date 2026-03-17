@@ -107,13 +107,13 @@ const PRESETS: Preset[] = [
 	{
 		label: __( 'Remove item', 'ai' ),
 		prompt: REMOVE_ITEM_PROMPT,
-		icon: <Icon icon="trash" />,
+		icon: <Icon icon="editor-removeformatting" />,
 		requiresMask: 'remove',
 	},
 	{
 		label: __( 'Replace item', 'ai' ),
 		prompt: '',
-		icon: <Icon icon="update" />,
+		icon: <Icon icon="migrate" />,
 		requiresMask: 'replace',
 	},
 ];
