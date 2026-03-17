@@ -252,7 +252,7 @@ class Refine_Notes extends Abstract_Ability {
 		$prompt_parts = array();
 
 		$prompt_parts[] = '<block-type>' . sanitize_text_field( $block_type ) . '</block-type>';
-		$prompt_parts[] = '<block-content>' . $block_content . '</block-content>';
+		$prompt_parts[] = '<block-content>' . wp_kses_post( $block_content ) . '</block-content>';
 
 		if ( ! empty( $notes ) ) {
 			$prompt_parts[] = '<notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $notes ) ) . '</notes>';
