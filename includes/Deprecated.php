@@ -71,7 +71,7 @@ final class Deprecated {
 
 				$models = (array) apply_filters_deprecated(
 					'ai_experiments_preferred_models_for_text_generation',
-					array( $models, '' ),
+					array( $models ),
 					'x.x.x',
 					'wpai_preferred_models_for_text_generation',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
@@ -90,7 +90,7 @@ final class Deprecated {
 
 				$models = (array) apply_filters_deprecated(
 					'ai_experiments_preferred_image_models',
-					array( $models, array() ),
+					array( $models ),
 					'x.x.x',
 					'wpai_preferred_image_models',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
@@ -109,7 +109,7 @@ final class Deprecated {
 
 				$models = (array) apply_filters_deprecated(
 					'ai_experiments_preferred_vision_models',
-					array( $models, array() ),
+					array( $models ),
 					'x.x.x',
 					'wpai_preferred_vision_models',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
@@ -126,7 +126,7 @@ final class Deprecated {
 					return $valid;
 				}
 
-				$valid = (bool) apply_filters_deprecated(
+				$valid = apply_filters_deprecated(
 					'ai_experiments_pre_has_valid_credentials_check',
 					array( $valid ),
 					'x.x.x',
