@@ -11,6 +11,7 @@ import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
 import apiFetch from '@wordpress/api-fetch';
+import { count as wordCount } from '@wordpress/wordcount';
 
 /**
  * Internal dependencies
@@ -91,11 +92,8 @@ export function useContextualTagging( taxonomy: string ): {
 	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
 
 	// Check if content has enough words.
-	const wordCount = content
-		? content.replace( /<[^>]*>/g, '' ).split( /\s+/ ).filter( Boolean )
-				.length
-		: 0;
-	const hasEnoughContent = wordCount >= MINIMUM_WORD_COUNT;
+	const hasEnoughContent =
+		wordCount( content || '', 'words' ) >= MINIMUM_WORD_COUNT;
 
 	const handleGenerate = useCallback( async () => {
 		const settings = getSettings();
