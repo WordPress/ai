@@ -25,20 +25,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Adds functionality to apply AI-generated refinements based on editorial
  * feedback (Notes) left on individual blocks.
  *
- * @since 0.5.0
+ * @since x.x.x
  */
 class Refine_Notes extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'refine-notes',
 			'label'       => __( 'Refine from Notes', 'ai' ),
-			'description' => __( 'Update post content based on editorial feedback from Notes.', 'ai' ),
+			'description' => __( 'Analyze feedback that has been left via Notes and apply edits where needed.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -46,30 +46,17 @@ class Refine_Notes extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
-
-		register_meta(
-			'comment',
-			'ai_note',
-			array(
-				'type'          => 'boolean',
-				'single'        => true,
-				'show_in_rest'  => true,
-				'auth_callback' => static function (): bool {
-					return current_user_can( 'edit_posts' );
-				},
-			)
-		);
 	}
 
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -85,7 +72,7 @@ class Refine_Notes extends Abstract_Experiment {
 	/**
 	 * Enqueues and localizes the block editor script.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'refine_notes', 'experiments/refine-notes' );

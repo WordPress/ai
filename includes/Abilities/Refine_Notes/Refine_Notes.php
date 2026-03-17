@@ -25,14 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Receives block content and active notes, then returns the revised block content.
  *
- * @since 0.5.0
+ * @since x.x.x
  */
 class Refine_Notes extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The input schema of the ability.
 	 */
@@ -47,7 +47,7 @@ class Refine_Notes extends Abstract_Ability {
 				),
 				'block_content' => array(
 					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
+					'sanitize_callback' => 'wp_kses_post',
 					'description'       => esc_html__( 'The content of the block to refine.', 'ai' ),
 				),
 				'notes'         => array(
@@ -55,7 +55,7 @@ class Refine_Notes extends Abstract_Ability {
 					'items'       => array(
 						'type' => 'string',
 					),
-					'description' => esc_html__( 'The editorial feedback notes to apply to the block.', 'ai' ),
+					'description' => esc_html__( 'The feedback Notes to apply to the block.', 'ai' ),
 				),
 				'context'       => array(
 					'type'              => 'string',
@@ -75,7 +75,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The output schema of the ability.
 	 */
@@ -89,7 +89,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $input The input arguments to the ability.
 	 * @return string|\WP_Error
@@ -140,7 +140,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $input The input arguments to the ability.
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
@@ -194,7 +194,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	protected function meta(): array {
 		return array(
@@ -205,7 +205,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * Generates refined content for a single block based on notes.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @param string $block_type The block type identifier.
 	 * @param string $block_content The plain-text block content.
@@ -240,7 +240,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * Creates the prompt for the refinement.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @param string $block_type The block type identifier.
 	 * @param string $block_content The plain-text block content.
@@ -252,7 +252,7 @@ class Refine_Notes extends Abstract_Ability {
 		$prompt_parts = array();
 
 		$prompt_parts[] = '<block-type>' . sanitize_text_field( $block_type ) . '</block-type>';
-		$prompt_parts[] = '<block-content>' . normalize_content( $block_content ) . '</block-content>';
+		$prompt_parts[] = '<block-content>' . $block_content . '</block-content>';
 
 		if ( ! empty( $notes ) ) {
 			$prompt_parts[] = '<notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $notes ) ) . '</notes>';

@@ -24,13 +24,6 @@ export default function RefineNotesPlugin() {
 	const { isRefining, progress, total, hasPendingNotes, runRefinement } =
 		useRefineNotes();
 
-	if ( ! ( window as any ).aiRefineNotesData?.enabled ) {
-		return null;
-	}
-
-	// Always render the container, but hide the button if no notes,
-	// or maybe render it disabled if no notes? Let's hide it if no pending notes
-	// based on the issue description, "when Notes are present".
 	if ( ! hasPendingNotes && ! isRefining ) {
 		return null;
 	}
@@ -45,7 +38,7 @@ export default function RefineNotesPlugin() {
 		: __( 'Refine from Notes', 'ai' );
 
 	const buttonDescription = __(
-		'Automatically updates blocks using unresolved editorial feedback Notes.',
+		'Automatically updates blocks using unresolved feedback Notes.',
 		'ai'
 	);
 
