@@ -19,6 +19,11 @@ module.exports = {
 			'src/admin/settings',
 			'index.scss'
 		),
+		'experiments/contextual-tagging': path.resolve(
+			process.cwd(),
+			'src/experiments/contextual-tagging',
+			'index.tsx'
+		),
 		'experiments/abilities-explorer': path.resolve(
 			process.cwd(),
 			'src/experiments/abilities-explorer',
