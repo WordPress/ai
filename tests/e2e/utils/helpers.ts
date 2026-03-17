@@ -24,7 +24,7 @@ export const visitAdminPage = async ( admin: Admin, path: string ) => {
  * @param admin The admin fixture from the test context.
  */
 export const visitSettingsPage = async ( admin: Admin ) => {
-	await admin.visitAdminPage( 'options-general.php?page=ai-experiments' );
+	await admin.visitAdminPage( 'options-general.php?page=ai' );
 };
 
 /**
@@ -86,7 +86,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 
 	// Click the disable button if it exists. Otherwise we assume the experiments are already disabled.
 	const button = page.locator( 'button.ai-experiments__toggle-button', {
-		hasText: 'Disable Experiments',
+		hasText: 'Disable AI',
 	} );
 	if ( ( await button.count() ) === 0 ) {
 		return;
@@ -118,7 +118,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 
 	// Click the enable button if it exists. Otherwise we assume the experiments are already enabled.
 	const button = page.locator( 'button.ai-experiments__toggle-button', {
-		hasText: 'Enable Experiments',
+		hasText: 'Enable AI',
 	} );
 	if ( ( await button.count() ) === 0 ) {
 		return;

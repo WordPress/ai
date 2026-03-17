@@ -1,6 +1,6 @@
 <?php
 /**
- * Settings page for AI Experiments.
+ * Settings page for the AI plugin.
  *
  * @package WordPress\AI
  *
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Manages the admin settings page for AI experiments.
+ * Manages the admin settings page for the AI plugin.
  *
  * @since 0.1.0
  */
@@ -45,7 +45,7 @@ class Settings_Page {
 	 *
 	 * @var string
 	 */
-	private const PAGE_SLUG = 'ai-experiments';
+	private const PAGE_SLUG = 'ai';
 
 	/**
 	 * Constructor.
@@ -78,11 +78,12 @@ class Settings_Page {
 	 */
 	public function register_menu(): void {
 		$page_hook = add_options_page(
-			__( 'AI Experiments', 'ai' ),
-			__( 'AI Experiments', 'ai' ),
+			__( 'AI', 'ai' ),
+			__( 'AI', 'ai' ),
 			'manage_options',
 			self::PAGE_SLUG,
-			array( $this, 'render_page' )
+			array( $this, 'render_page' ),
+			2
 		);
 
 		// Hook into the specific page load to enqueue styles.
@@ -139,13 +140,13 @@ class Settings_Page {
 				if ( ! has_ai_credentials() ) {
 					$error_message = sprintf(
 						/* translators: 1: Link to the Connectors settings page. */
-						__( 'Most experiments require a valid AI Connector to function properly. To ensure those work properly, you need to have one or more AI Connectors configured <a href="%s">here</a>.', 'ai' ),
+						__( 'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured <a href="%s">here</a>.', 'ai' ),
 						admin_url( 'options-connectors.php' )
 					);
 				} else {
 					$error_message = sprintf(
 						/* translators: 1: Link to the Connectors settings page. */
-						__( 'Most experiments require a valid AI Connector to function properly. Please <a href="%s">review</a> the AI Connectors you have configured to ensure they are valid.', 'ai' ),
+						__( 'The AI plugin requires a valid AI Connector to function properly. Please <a href="%s">review</a> the AI Connectors you have configured to ensure they are valid.', 'ai' ),
 						admin_url( 'options-connectors.php' )
 					);
 				}
@@ -167,7 +168,7 @@ class Settings_Page {
 						<div class="ai-experiments__card-heading">
 							<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
 							<p class="description" id="ai-experiments-global-desc">
-								<?php esc_html_e( 'Control whether AI experiments are enabled for your site. When disabled, all experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
+								<?php esc_html_e( 'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
 							</p>
 						</div>
 
@@ -184,7 +185,7 @@ class Settings_Page {
 								data-ai-toggle-global="<?php echo $global_enabled ? '0' : '1'; ?>"
 								aria-describedby="ai-experiments-global-desc"
 							>
-								<?php echo $global_enabled ? esc_html__( 'Disable Experiments', 'ai' ) : esc_html__( 'Enable Experiments', 'ai' ); ?>
+								<?php echo $global_enabled ? esc_html__( 'Disable AI', 'ai' ) : esc_html__( 'Enable AI', 'ai' ); ?>
 							</button>
 						</div>
 					</div>
@@ -203,7 +204,7 @@ class Settings_Page {
 					$this->render_experiments_section(
 						'ai-experiments-editor-heading',
 						__( 'Editor Experiments', 'ai' ),
-						__( 'AI-powered features for the block editor, including content generation and enhancement tools.', 'ai' ),
+						__( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
 						$experiments_by_category[ Experiment_Category::EDITOR ] ?? array(),
 						$global_enabled
 					);
@@ -211,7 +212,7 @@ class Settings_Page {
 					$this->render_experiments_section(
 						'ai-experiments-admin-heading',
 						__( 'Admin Experiments', 'ai' ),
-						__( 'AI-powered features for the WordPress admin area, including exploration and testing tools.', 'ai' ),
+						__( 'AI-powered experiments for the WordPress admin area, including exploration and testing tools.', 'ai' ),
 						$experiments_by_category[ Experiment_Category::ADMIN ] ?? array(),
 						$global_enabled
 					);
@@ -287,7 +288,7 @@ class Settings_Page {
 
 				<?php if ( ! $global_enabled ) : ?>
 					<div class="notice notice-info inline ai-experiments__notice" role="status" aria-live="polite">
-						<p><?php esc_html_e( 'Enable experiments above to configure individual experiment settings.', 'ai' ); ?></p>
+						<p><?php esc_html_e( 'Enable AI above to configure individual experiment settings.', 'ai' ); ?></p>
 					</div>
 				<?php endif; ?>
 			</div>

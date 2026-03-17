@@ -318,7 +318,7 @@ You can extend the React components to add custom UI elements:
 ### Manual Testing
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Toggle **Excerpt Generation** to enabled
    - Ensure you have valid AI credentials configured
 

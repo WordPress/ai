@@ -396,7 +396,7 @@ GET /wp-json/wp/v2/posts/123?context=edit
 ### Manual Testing
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Toggle **Content Summarization** to enabled
    - Ensure you have valid AI credentials configured
 

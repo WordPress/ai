@@ -1,5 +1,5 @@
 /**
- * AI Review Notes experiment plugin registration.
+ * AI Review Notes plugin registration.
  */
 
 /**
