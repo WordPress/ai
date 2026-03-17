@@ -5,12 +5,7 @@
 /**
  * WordPress dependencies
  */
-import {
-	Button,
-	TextareaControl,
-	Spinner,
-	Notice,
-} from '@wordpress/components';
+import { Button, TextareaControl, Spinner } from '@wordpress/components';
 import { InspectorControls } from '@wordpress/block-editor';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -62,7 +57,6 @@ export function AltTextControls( {
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 	const [ generatedAlt, setGeneratedAlt ] = useState< string | null >( null );
-	const [ error, setError ] = useState< string | null >( null );
 
 	// Don't show controls if there's no image.
 	if ( ! attachmentId && ! imageUrl ) {
@@ -77,7 +71,6 @@ export function AltTextControls( {
 	 */
 	const handleGenerate = async () => {
 		setIsGenerating( true );
-		setError( null );
 		setGeneratedAlt( null );
 
 		// Clear any previous notices.
@@ -98,7 +91,6 @@ export function AltTextControls( {
 			const errorMessage =
 				err?.message ||
 				__( 'An error occurred while generating alt text.', 'ai' );
-			setError( errorMessage );
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				errorMessage,
 				{
@@ -126,7 +118,6 @@ export function AltTextControls( {
 	 */
 	const handleDismiss = () => {
 		setGeneratedAlt( null );
-		setError( null );
 	};
 
 	return (
@@ -135,17 +126,6 @@ export function AltTextControls( {
 				<h3 style={ { marginTop: 0, marginBottom: '8px' } }>
 					{ __( 'AI Alternative Text', 'ai' ) }
 				</h3>
-
-				{ /* Error display */ }
-				{ error && (
-					<Notice
-						status="error"
-						isDismissible
-						onRemove={ () => setError( null ) }
-					>
-						<div style={ { marginBottom: '12px' } }>{ error }</div>
-					</Notice>
-				) }
 
 				{ /* Generated alt text preview */ }
 				{ hasGeneratedAlt && (
