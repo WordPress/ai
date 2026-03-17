@@ -1,0 +1,153 @@
+/**
+ * Suggestion panel component for displaying AI-generated taxonomy suggestions.
+ */
+
+/**
+ * WordPress dependencies
+ */
+import { Button, Spinner } from '@wordpress/components';
+import { __, sprintf } from '@wordpress/i18n';
+import { close as closeIcon, update } from '@wordpress/icons';
+
+/**
+ * Internal dependencies
+ */
+import { useContextualTagging } from './useContextualTagging';
+import type { TagSuggestion } from '../types';
+
+interface SuggestionPanelProps {
+	taxonomy: string;
+}
+
+/**
+ * SuggestionPanel component.
+ *
+ * Displays a button to generate suggestions and renders suggestion pills
+ * that can be accepted or dismissed.
+ *
+ * @param props Component props.
+ * @return The suggestion panel component.
+ */
+export default function SuggestionPanel( {
+	taxonomy,
+}: SuggestionPanelProps ): JSX.Element | null {
+	const {
+		isGenerating,
+		suggestions,
+		hasEnoughContent,
+		handleGenerate,
+		handleAccept,
+		handleDismiss,
+		handleDismissAll,
+	} = useContextualTagging( taxonomy );
+
+	const taxonomyLabel =
+		taxonomy === 'category'
+			? __( 'Categories', 'ai' )
+			: __( 'Tags', 'ai' );
+
+	const hasSuggestions = suggestions.length > 0;
+
+	return (
+		<div className="ai-contextual-tagging">
+			{ ! hasSuggestions && (
+				<Button
+					icon={ update }
+					variant="secondary"
+					onClick={ handleGenerate }
+					disabled={ isGenerating || ! hasEnoughContent }
+					isBusy={ isGenerating }
+					className="ai-contextual-tagging__generate-button"
+				>
+					{ isGenerating
+						? __( 'Generating…', 'ai' )
+						: /* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
+						  sprintf(
+								__( 'Suggest %s', 'ai' ),
+								taxonomyLabel
+						  ) }
+				</Button>
+			) }
+
+			{ ! hasEnoughContent && ! hasSuggestions && (
+				<p className="ai-contextual-tagging__hint">
+					{ __(
+						'Add more content to enable AI suggestions (approximately 150 words).',
+						'ai'
+					) }
+				</p>
+			) }
+
+			{ isGenerating && (
+				<div className="ai-contextual-tagging__loading">
+					<Spinner />
+				</div>
+			) }
+
+			{ hasSuggestions && (
+				<div className="ai-contextual-tagging__suggestions">
+					<div className="ai-contextual-tagging__pills">
+						{ suggestions.map( ( suggestion: TagSuggestion ) => (
+							<span
+								key={ suggestion.term }
+								className={ `ai-contextual-tagging__pill${
+									suggestion.is_new
+										? ' ai-contextual-tagging__pill--new'
+										: ''
+								}` }
+							>
+								<Button
+									className="ai-contextual-tagging__pill-accept"
+									onClick={ () =>
+										handleAccept( suggestion )
+									}
+									label={ sprintf(
+										/* translators: %s: Term name. */
+										__( 'Add "%s"', 'ai' ),
+										suggestion.term
+									) }
+								>
+									{ suggestion.term }
+									{ suggestion.is_new && (
+										<span className="ai-contextual-tagging__pill-badge">
+											{ __( 'new', 'ai' ) }
+										</span>
+									) }
+								</Button>
+								<Button
+									className="ai-contextual-tagging__pill-dismiss"
+									icon={ closeIcon }
+									iconSize={ 16 }
+									onClick={ () =>
+										handleDismiss( suggestion )
+									}
+									label={ sprintf(
+										/* translators: %s: Term name. */
+										__( 'Dismiss "%s"', 'ai' ),
+										suggestion.term
+									) }
+								/>
+							</span>
+						) ) }
+					</div>
+					<div className="ai-contextual-tagging__actions">
+						<Button
+							variant="link"
+							onClick={ handleGenerate }
+							disabled={ isGenerating }
+						>
+							{ __( 'Regenerate', 'ai' ) }
+						</Button>
+						<Button
+							variant="link"
+							onClick={ handleDismissAll }
+							isDestructive
+						>
+							{ __( 'Dismiss all', 'ai' ) }
+						</Button>
+					</div>
+				</div>
+			) }
+		</div>
+	);
+}
