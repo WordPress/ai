@@ -5,40 +5,19 @@
 /**
  * WordPress dependencies
  */
-import { useEffect, useState, createRoot } from '@wordpress/element';
+import { useEffect, useRef } from '@wordpress/element';
+import { createRoot } from '@wordpress/element';
 
 /**
  * Internal dependencies
  */
 import SuggestionPanel from './SuggestionPanel';
+import { usePanelInjection } from './usePanelInjection';
 
 /**
  * Container ID for the tag suggestions.
  */
 const CONTAINER_ID = 'ai-contextual-tagging-tags';
-
-/**
- * Finds a sidebar panel by its toggle button text.
- *
- * @param title The panel title text to search for.
- * @return The panel body element, or null if not found.
- */
-function findPanelByTitle( title: string ): HTMLElement | null {
-	const panelBodies = document.querySelectorAll(
-		'.components-panel__body'
-	);
-
-	for ( const panel of panelBodies ) {
-		const toggle = panel.querySelector(
-			'.components-panel__body-toggle'
-		);
-		if ( toggle?.textContent?.trim() === title ) {
-			return panel as HTMLElement;
-		}
-	}
-
-	return null;
-}
 
 /**
  * TagPanelWrapper component.
@@ -49,68 +28,30 @@ function findPanelByTitle( title: string ): HTMLElement | null {
  * @return null - Renders via portal.
  */
 export default function TagPanelWrapper(): null {
-	const [ container, setContainer ] = useState< HTMLElement | null >(
+	const container = usePanelInjection( 'Tags', CONTAINER_ID );
+	const rootRef = useRef< ReturnType< typeof createRoot > | null >(
 		null
 	);
 
 	useEffect( () => {
-		const findAndAttach = (): boolean => {
-			// Don't create duplicate containers.
-			if ( document.getElementById( CONTAINER_ID ) ) {
-				return true;
-			}
-
-			// Find the Tags panel by its toggle button text.
-			const tagsPanel = findPanelByTitle( 'Tags' );
-
-			if ( ! tagsPanel ) {
-				return false;
-			}
-
-			// Create and inject our container at the end of the panel.
-			const el = document.createElement( 'div' );
-			el.id = CONTAINER_ID;
-			tagsPanel.appendChild( el );
-			setContainer( el );
-			return true;
-		};
-
-		// Try immediately.
-		if ( findAndAttach() ) {
-			return;
-		}
-
-		// Observe for the panel appearing.
-		const observer = new MutationObserver( () => {
-			if ( findAndAttach() ) {
-				observer.disconnect();
-			}
-		} );
-
-		observer.observe( document.body, {
-			childList: true,
-			subtree: true,
-		} );
-
-		return () => {
-			observer.disconnect();
-			const el = document.getElementById( CONTAINER_ID );
-			if ( el ) {
-				el.remove();
-			}
-		};
-	}, [] );
-
-	useEffect( () => {
 		if ( ! container ) {
+			if ( rootRef.current ) {
+				rootRef.current.unmount();
+				rootRef.current = null;
+			}
 			return;
 		}
 
-		const root = createRoot( container );
-		root.render( <SuggestionPanel taxonomy="post_tag" /> );
+		if ( ! rootRef.current ) {
+			rootRef.current = createRoot( container );
+		}
+		rootRef.current.render( <SuggestionPanel taxonomy="post_tag" /> );
 
 		return () => {
-			root.unmount();
+			if ( rootRef.current ) {
+				rootRef.current.unmount();
+				rootRef.current = null;
+			}
 		};
 	}, [ container ] );
 
