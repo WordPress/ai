@@ -46,6 +46,10 @@
 		}
 	}
 
+	&__pill-parent {
+		opacity: 0.6;
+	}
+
 	&__pill-badge {
 		display: inline-block;
 		margin-left: 4px;

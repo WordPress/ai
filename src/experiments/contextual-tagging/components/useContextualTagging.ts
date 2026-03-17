@@ -180,10 +180,26 @@ async function addTermToPost(
 	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
 	const restBase = taxonomyObject?.rest_base ?? taxonomy;
 
-	const currentTerms: string[] = getEditedPostAttribute( restBase ) ?? [];
-	const termId = await findOrCreateTerm( restBase, suggestion.term );
+	// Resolve parent term ID for hierarchical taxonomies.
+	let parentId: number | undefined;
+	if ( suggestion.parent ) {
+		const resolvedParent = await findOrCreateTerm(
+			restBase,
+			suggestion.parent
+		);
+		if ( resolvedParent ) {
+			parentId = resolvedParent;
+		}
+	}
 
-	if ( termId && ! currentTerms.includes( termId as any ) ) {
+	const currentTerms: number[] = getEditedPostAttribute( restBase ) ?? [];
+	const termId = await findOrCreateTerm(
+		restBase,
+		suggestion.term,
+		parentId
+	);
+
+	if ( termId && ! currentTerms.includes( termId ) ) {
 		editPost( {
 			[ restBase ]: [ ...currentTerms, termId ],
 		} );
@@ -195,11 +211,13 @@ async function addTermToPost(
  *
  * @param restBase The REST base for the taxonomy.
  * @param termName The term name.
+ * @param parentId Optional parent term ID for hierarchical taxonomies.
  * @return The term ID, or null if not found and could not be created.
  */
 async function findOrCreateTerm(
 	restBase: string,
-	termName: string
+	termName: string,
+	parentId?: number
 ): Promise< number | null > {
 	try {
 		// Search for existing term.
@@ -221,10 +239,15 @@ async function findOrCreateTerm(
 		}
 
 		// Create new term via REST.
+		const data: Record< string, unknown > = { name: termName };
+		if ( parentId ) {
+			data[ 'parent' ] = parentId;
+		}
+
 		const newTerm: any = await apiFetch( {
 			path: `/wp/v2/${ restBase }`,
 			method: 'POST',
-			data: { name: termName },
+			data,
 		} );
 
 		return newTerm?.id ?? null;
