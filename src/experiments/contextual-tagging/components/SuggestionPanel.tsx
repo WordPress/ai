@@ -58,14 +58,12 @@ export default function SuggestionPanel( {
 					disabled={ isGenerating || ! hasEnoughContent }
 					isBusy={ isGenerating }
 					className="ai-contextual-tagging__generate-button"
+					__next40pxDefaultSize
 				>
 					{ isGenerating
 						? __( 'Generating…', 'ai' )
 						: /* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
-						  sprintf(
-								__( 'Suggest %s', 'ai' ),
-								taxonomyLabel
-						  ) }
+						  sprintf( __( 'Suggest %s', 'ai' ), taxonomyLabel ) }
 				</Button>
 			) }
 
@@ -98,9 +96,7 @@ export default function SuggestionPanel( {
 							>
 								<Button
 									className="ai-contextual-tagging__pill-accept"
-									onClick={ () =>
-										handleAccept( suggestion )
-									}
+									onClick={ () => handleAccept( suggestion ) }
 									label={ sprintf(
 										/* translators: %s: Term name. */
 										__( 'Add "%s"', 'ai' ),
