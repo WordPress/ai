@@ -779,7 +779,7 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
 ### Manual Testing
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Toggle **Image Generation** to enabled
    - Ensure you have valid AI credentials configured
 

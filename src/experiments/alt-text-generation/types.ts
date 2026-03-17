@@ -1,5 +1,5 @@
 /**
- * Type definitions for alt text generation experiment.
+ * Type definitions for alt text generation.
  */
 
 /**
