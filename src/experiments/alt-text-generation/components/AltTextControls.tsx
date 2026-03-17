@@ -121,8 +121,11 @@ export function AltTextControls( {
 	};
 
 	return (
-		<InspectorControls>
-			<div className="ai-alt-text-controls" style={ { padding: '16px' } }>
+		<InspectorControls group="content">
+			<div
+				className="ai-alt-text-controls"
+				style={ { padding: '0 16px' } }
+			>
 				<h3 style={ { marginTop: 0, marginBottom: '8px' } }>
 					{ __( 'AI Alternative Text', 'ai' ) }
 				</h3>
