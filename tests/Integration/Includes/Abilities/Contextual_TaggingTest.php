@@ -89,6 +89,8 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		remove_all_filters( 'ai_contextual_tagging_content' );
+		remove_all_filters( 'ai_contextual_tagging_suggestions' );
 		parent::tearDown();
 	}
 
@@ -167,27 +169,6 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'confidence', $item_props, 'Item should have confidence property' );
 		$this->assertArrayHasKey( 'is_new', $item_props, 'Item should have is_new property' );
 		$this->assertArrayHasKey( 'parent', $item_props, 'Item should have parent property' );
-	}
-
-	/**
-	 * Test that get_system_instruction() returns the system instruction.
-	 *
-	 * @since 0.6.0
-	 */
-	public function test_get_system_instruction_returns_system_instruction() {
-		$system_instruction = $this->ability->get_system_instruction(
-			null,
-			array(
-				'strategy'        => 'Only suggest existing terms.',
-				'max_suggestions' => 5,
-				'taxonomy'        => 'tags',
-				'existing_terms'  => 'Existing terms: wordpress, plugins',
-			)
-		);
-
-		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
-		$this->assertNotEmpty( $system_instruction, 'System instruction should not be empty' );
-		$this->assertStringContainsString( 'tags', $system_instruction, 'System instruction should contain the taxonomy name' );
 	}
 
 	/**
@@ -330,6 +311,234 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that parse_suggestions() sorts by confidence descending.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_parse_suggestions_sorts_by_confidence() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '[
+			{"term": "low", "confidence": 0.3, "is_new": true},
+			{"term": "high", "confidence": 0.95, "is_new": true},
+			{"term": "mid", "confidence": 0.6, "is_new": true}
+		]';
+
+		$result = $method->invoke( $this->ability, $response, array(), 10 );
+
+		$this->assertEquals( 'high', $result[0]['term'], 'First should be highest confidence' );
+		$this->assertEquals( 'mid', $result[1]['term'], 'Second should be mid confidence' );
+		$this->assertEquals( 'low', $result[2]['term'], 'Third should be lowest confidence' );
+	}
+
+	/**
+	 * Test that parse_suggestions() clamps confidence values to 0-1 range.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_parse_suggestions_clamps_confidence() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '[
+			{"term": "over", "confidence": 1.5, "is_new": true},
+			{"term": "under", "confidence": -0.5, "is_new": true}
+		]';
+
+		$result = $method->invoke( $this->ability, $response, array(), 10 );
+
+		$this->assertEquals( 1.0, $result[0]['confidence'], 'Confidence above 1 should be clamped to 1.0' );
+		$this->assertEquals( 0.0, $result[1]['confidence'], 'Confidence below 0 should be clamped to 0.0' );
+	}
+
+	/**
+	 * Test that parse_suggestions() preserves parent field for hierarchical terms.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_parse_suggestions_preserves_parent_field() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '[
+			{"term": "machine learning", "confidence": 0.9, "is_new": true, "parent": "technology"},
+			{"term": "finance", "confidence": 0.8, "is_new": false}
+		]';
+
+		$result = $method->invoke( $this->ability, $response, array( 'finance' ), 10 );
+
+		$this->assertArrayHasKey( 'parent', $result[0], 'First suggestion should have parent key' );
+		$this->assertEquals( 'technology', $result[0]['parent'], 'Parent should be technology' );
+		$this->assertArrayNotHasKey( 'parent', $result[1], 'Second suggestion should not have parent key' );
+	}
+
+	/**
+	 * Test that parse_suggestions() skips items with empty or missing term.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_parse_suggestions_skips_invalid_items() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '[
+			{"term": "valid", "confidence": 0.9, "is_new": true},
+			{"confidence": 0.8, "is_new": true},
+			{"term": "", "confidence": 0.7, "is_new": true},
+			"not an object",
+			{"term": "also valid", "confidence": 0.6, "is_new": true}
+		]';
+
+		$result = $method->invoke( $this->ability, $response, array(), 10 );
+
+		$this->assertCount( 2, $result, 'Should only have 2 valid suggestions' );
+		$this->assertEquals( 'valid', $result[0]['term'] );
+		$this->assertEquals( 'also valid', $result[1]['term'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() defaults confidence to 0.5 when missing.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_parse_suggestions_defaults_missing_confidence() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '[{"term": "test", "is_new": true}]';
+
+		$result = $method->invoke( $this->ability, $response, array(), 10 );
+
+		$this->assertEquals( 0.5, $result[0]['confidence'], 'Missing confidence should default to 0.5' );
+	}
+
+	/**
+	 * Test that parse_suggestions() determines is_new based on existing terms, not AI response.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_parse_suggestions_overrides_is_new_from_existing_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		// AI says "tech" is new, but it exists in our list.
+		$response = '[{"term": "Tech", "confidence": 0.9, "is_new": true}]';
+
+		$result = $method->invoke( $this->ability, $response, array( 'tech' ), 10 );
+
+		$this->assertFalse( $result[0]['is_new'], 'Should be false because "tech" exists (case-insensitive match)' );
+	}
+
+	/**
+	 * Test that build_system_instruction() includes expected components.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_build_system_instruction_contains_expected_content() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_system_instruction' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$this->ability,
+			'tags',
+			5,
+			'- Only suggest existing terms.',
+			'- Existing terms: php, js'
+		);
+
+		$this->assertStringContainsString( 'tags', $result, 'Should contain taxonomy label' );
+		$this->assertStringContainsString( '5', $result, 'Should contain max suggestions count' );
+		$this->assertStringContainsString( 'Only suggest existing terms', $result, 'Should contain strategy instruction' );
+		$this->assertStringContainsString( 'php, js', $result, 'Should contain existing terms' );
+		$this->assertStringContainsString( 'JSON', $result, 'Should mention JSON output format' );
+		$this->assertStringContainsString( 'triple quotes', $result, 'Should mention content delimiter' );
+	}
+
+	/**
+	 * Test that build_strategy_instruction() returns correct text for existing_only.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_build_strategy_instruction_existing_only() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_strategy_instruction' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'existing_only' );
+
+		$this->assertStringContainsString( 'Only suggest terms that already exist', $result );
+	}
+
+	/**
+	 * Test that build_strategy_instruction() returns correct text for allow_new.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_build_strategy_instruction_allow_new() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_strategy_instruction' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'allow_new' );
+
+		$this->assertStringContainsString( 'may suggest new terms', $result );
+	}
+
+	/**
+	 * Test that build_existing_terms_instruction() lists terms when available.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_build_existing_terms_instruction_with_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_existing_terms_instruction' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, array( 'php', 'javascript', 'css' ), 'existing_only' );
+
+		$this->assertStringContainsString( 'php, javascript, css', $result );
+		$this->assertStringContainsString( 'Prioritize', $result );
+	}
+
+	/**
+	 * Test that build_existing_terms_instruction() handles empty terms with existing_only strategy.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_build_existing_terms_instruction_empty_existing_only() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_existing_terms_instruction' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, array(), 'existing_only' );
+
+		$this->assertStringContainsString( 'empty array', $result );
+	}
+
+	/**
+	 * Test that build_existing_terms_instruction() handles empty terms with allow_new strategy.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_build_existing_terms_instruction_empty_allow_new() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_existing_terms_instruction' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, array(), 'allow_new' );
+
+		$this->assertStringContainsString( 'suggest new terms', $result );
+	}
+
+	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
 	 * @since 0.6.0
@@ -382,6 +591,42 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
+	}
+
+	/**
+	 * Test that permission_callback() returns false for post type without show_in_rest.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_permission_callback_with_post_type_without_show_in_rest() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		register_post_type(
+			'test_no_rest',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+			)
+		);
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_type'    => 'test_no_rest',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertFalse( $result, 'Permission should be denied for post type without show_in_rest' );
+
+		unregister_post_type( 'test_no_rest' );
 	}
 
 	/**

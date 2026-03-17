@@ -54,8 +54,12 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_contextual-tagging_enabled' );
+		delete_option( 'ai_experiment_contextual-tagging_field_strategy' );
+		delete_option( 'ai_experiment_contextual-tagging_field_max_suggestions' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_all_filters( 'ai_contextual_tagging_strategy' );
+		remove_all_filters( 'ai_contextual_tagging_max_suggestions' );
 		parent::tearDown();
 	}
 
@@ -117,5 +121,105 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		$this->assertEquals( 1, $experiment->sanitize_max_suggestions( -1 ) );
 		$this->assertEquals( 10, $experiment->sanitize_max_suggestions( 15 ) );
 		$this->assertEquals( 7, $experiment->sanitize_max_suggestions( '7' ) );
+	}
+
+	/**
+	 * Test that get_strategy() returns the default value.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_get_strategy_returns_default() {
+		$experiment = new Contextual_Tagging();
+
+		$this->assertEquals( 'existing_only', $experiment->get_strategy() );
+	}
+
+	/**
+	 * Test that get_strategy() returns the saved option value.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_get_strategy_returns_saved_option() {
+		update_option( 'ai_experiment_contextual-tagging_field_strategy', 'allow_new' );
+		$experiment = new Contextual_Tagging();
+
+		$this->assertEquals( 'allow_new', $experiment->get_strategy() );
+	}
+
+	/**
+	 * Test that get_strategy() is filterable.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_get_strategy_is_filterable() {
+		$experiment = new Contextual_Tagging();
+
+		add_filter(
+			'ai_contextual_tagging_strategy',
+			static function () {
+				return 'allow_new';
+			}
+		);
+
+		$this->assertEquals( 'allow_new', $experiment->get_strategy() );
+	}
+
+	/**
+	 * Test that get_strategy() sanitizes filtered value.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_get_strategy_sanitizes_filtered_value() {
+		$experiment = new Contextual_Tagging();
+
+		add_filter(
+			'ai_contextual_tagging_strategy',
+			static function () {
+				return 'malicious_value';
+			}
+		);
+
+		$this->assertEquals( 'existing_only', $experiment->get_strategy(), 'Invalid filtered value should fall back to default' );
+	}
+
+	/**
+	 * Test that get_max_suggestions() returns the default value.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_get_max_suggestions_returns_default() {
+		$experiment = new Contextual_Tagging();
+
+		$this->assertEquals( 5, $experiment->get_max_suggestions() );
+	}
+
+	/**
+	 * Test that get_max_suggestions() returns the saved option value.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_get_max_suggestions_returns_saved_option() {
+		update_option( 'ai_experiment_contextual-tagging_field_max_suggestions', 8 );
+		$experiment = new Contextual_Tagging();
+
+		$this->assertEquals( 8, $experiment->get_max_suggestions() );
+	}
+
+	/**
+	 * Test that get_max_suggestions() is filterable.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_get_max_suggestions_is_filterable() {
+		$experiment = new Contextual_Tagging();
+
+		add_filter(
+			'ai_contextual_tagging_max_suggestions',
+			static function () {
+				return 3;
+			}
+		);
+
+		$this->assertEquals( 3, $experiment->get_max_suggestions() );
 	}
 }
