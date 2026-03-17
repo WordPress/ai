@@ -1,4 +1,4 @@
-# AI
+# WordPress AI
 
 ![AI](https://github.com/WordPress/ai/blob/trunk/.wordpress-org/banner-1544x500.png)
 
