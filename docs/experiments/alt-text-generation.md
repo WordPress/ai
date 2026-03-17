@@ -260,7 +260,7 @@ The ability truncates generated alt text to 125 characters (see `MAX_ALT_TEXT_LE
 ### Manual Testing
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Enable the global experiments toggle, then enable **Alt Text Generation**
 
 2. **Block editor:**

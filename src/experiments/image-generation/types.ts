@@ -1,5 +1,5 @@
 /**
- * Type definitions for image generation experiment.
+ * Type definitions for image generation.
  */
 
 /**

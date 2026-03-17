@@ -4,7 +4,7 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/PHPCSStandards/PHP_CodeSniffer/master/phpcs.xsd"
 >
-	<description>Sniffs for AI Experiments plugin</description>
+	<description>Sniffs for the AI plugin</description>
 
 	<!-- What to scan: include any root-level PHP files, and the /inc folder -->
 	<file>./includes/</file>

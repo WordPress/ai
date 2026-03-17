@@ -1,5 +1,5 @@
 /**
- * Media library integrations for the alt text generation experiment.
+ * Media library integrations for alt text generation.
  */
 
 /**

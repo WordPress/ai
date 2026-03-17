@@ -313,7 +313,7 @@ Then add guidance for the `tone` type to `system-instruction.php`.
 ### Manual Testing Steps
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Enable the global toggle
    - Enable **AI Review Notes**
    - Ensure valid AI credentials are configured

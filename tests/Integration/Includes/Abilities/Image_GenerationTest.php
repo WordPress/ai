@@ -28,8 +28,8 @@ class Test_Image_Generation_Experiment extends Abstract_Experiment {
 	protected function load_experiment_metadata(): array {
 		return array(
 			'id'          => 'image-generation',
-			'label'       => 'Image Generation',
-			'description' => 'Generates an image from a passed in prompt',
+			'label'       => 'Image Generation and Editing',
+			'description' => 'Generate and edit featured images and inline images with AI',
 		);
 	}
 
