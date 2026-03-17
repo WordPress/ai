@@ -5,12 +5,9 @@
 /**
  * WordPress dependencies
  */
-import {
-	Button,
-	Flex,
-	FlexItem,
-	Spinner,
-} from '@wordpress/components';
+import { Button, Flex, FlexItem, Spinner } from '@wordpress/components';
+import { select } from '@wordpress/data';
+import { store as coreStore } from '@wordpress/core-data';
 import { __, sprintf } from '@wordpress/i18n';
 import { close as closeIcon, update } from '@wordpress/icons';
 
@@ -46,10 +43,8 @@ export default function SuggestionPanel( {
 		handleDismissAll,
 	} = useContextualTagging( taxonomy );
 
-	const taxonomyLabel =
-		taxonomy === 'category'
-			? __( 'Categories', 'ai' )
-			: __( 'Tags', 'ai' );
+	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
+	const taxonomyLabel: string = taxonomyObject?.name ?? taxonomy;
 
 	const hasSuggestions = suggestions.length > 0;
 
@@ -93,60 +88,48 @@ export default function SuggestionPanel( {
 			{ hasSuggestions && (
 				<div className="ai-contextual-tagging__suggestions">
 					<div className="ai-contextual-tagging__pills">
-						{ suggestions.map(
-							( suggestion: TagSuggestion ) => (
-								<span
-									key={ suggestion.term }
-									className={ `ai-contextual-tagging__pill${
-										suggestion.is_new
-											? ' ai-contextual-tagging__pill--new'
-											: ''
-									}` }
+						{ suggestions.map( ( suggestion: TagSuggestion ) => (
+							<span
+								key={ suggestion.term }
+								className={ `ai-contextual-tagging__pill${
+									suggestion.is_new
+										? ' ai-contextual-tagging__pill--new'
+										: ''
+								}` }
+							>
+								<Button
+									className="ai-contextual-tagging__pill-accept"
+									onClick={ () => handleAccept( suggestion ) }
+									label={ sprintf(
+										/* translators: %s: Term name. */
+										__( 'Add "%s"', 'ai' ),
+										suggestion.term
+									) }
 								>
-									<Button
-										className="ai-contextual-tagging__pill-accept"
-										onClick={ () =>
-											handleAccept( suggestion )
-										}
-										label={ sprintf(
-											/* translators: %s: Term name. */
-											__( 'Add "%s"', 'ai' ),
-											suggestion.term
-										) }
-									>
-										{ suggestion.term }
-										{ suggestion.is_new && (
-											<span className="ai-contextual-tagging__pill-badge">
-												{ __( 'new', 'ai' ) }
-											</span>
-										) }
-									</Button>
-									<Button
-										className="ai-contextual-tagging__pill-dismiss"
-										icon={ closeIcon }
-										iconSize={ 16 }
-										onClick={ () =>
-											handleDismiss(
-												suggestion
-											)
-										}
-										label={ sprintf(
-											/* translators: %s: Term name. */
-											__(
-												'Dismiss "%s"',
-												'ai'
-											),
-											suggestion.term
-										) }
-									/>
-								</span>
-							)
-						) }
+									{ suggestion.term }
+									{ suggestion.is_new && (
+										<span className="ai-contextual-tagging__pill-badge">
+											{ __( 'new', 'ai' ) }
+										</span>
+									) }
+								</Button>
+								<Button
+									className="ai-contextual-tagging__pill-dismiss"
+									icon={ closeIcon }
+									iconSize={ 16 }
+									onClick={ () =>
+										handleDismiss( suggestion )
+									}
+									label={ sprintf(
+										/* translators: %s: Term name. */
+										__( 'Dismiss "%s"', 'ai' ),
+										suggestion.term
+									) }
+								/>
+							</span>
+						) ) }
 					</div>
-					<Flex
-						gap={ 3 }
-						className="ai-contextual-tagging__actions"
-					>
+					<Flex gap={ 3 } className="ai-contextual-tagging__actions">
 						<FlexItem>
 							<Button
 								variant="link"
