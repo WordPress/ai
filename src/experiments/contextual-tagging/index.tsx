@@ -10,20 +10,42 @@ import './index.scss';
 /**
  * WordPress dependencies
  */
-import { registerPlugin } from '@wordpress/plugins';
+import { addFilter } from '@wordpress/hooks';
 
 /**
  * Internal dependencies
  */
-import TagPanelWrapper from './components/TagPanelWrapper';
-import CategoryPanelWrapper from './components/CategoryPanelWrapper';
+import SuggestionPanel from './components/SuggestionPanel';
 
-// Register plugin for tag suggestions in the Tags sidebar panel.
-registerPlugin( 'ai-contextual-tagging-tags', {
-	render: TagPanelWrapper,
-} );
+const SUPPORTED_TAXONOMIES = [ 'post_tag', 'category' ];
 
-// Register plugin for category suggestions in the Categories sidebar panel.
-registerPlugin( 'ai-contextual-tagging-categories', {
-	render: CategoryPanelWrapper,
-} );
+/**
+ * Wraps the taxonomy selector component with the AI suggestion panel.
+ *
+ * @param OriginalComponent The original taxonomy selector component.
+ * @return The wrapped component.
+ */
+function withContextualTagging(
+	OriginalComponent: React.ComponentType< any >
+) {
+	return function ContextualTaggingWrapper( props: any ) {
+		const { slug } = props;
+
+		if ( ! SUPPORTED_TAXONOMIES.includes( slug ) ) {
+			return <OriginalComponent { ...props } />;
+		}
+
+		return (
+			<>
+				<OriginalComponent { ...props } />
+				<SuggestionPanel taxonomy={ slug } />
+			</>
+		);
+	};
+}
+
+addFilter(
+	'editor.PostTaxonomyType',
+	'ai/contextual-tagging',
+	withContextualTagging
+);
