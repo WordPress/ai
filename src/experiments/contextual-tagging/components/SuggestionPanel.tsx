@@ -106,6 +106,11 @@ export default function SuggestionPanel( {
 										suggestion.term
 									) }
 								>
+									{ suggestion.parent && (
+										<span className="ai-contextual-tagging__pill-parent">
+											{ suggestion.parent + ' › ' }
+										</span>
+									) }
 									{ suggestion.term }
 									{ suggestion.is_new && (
 										<span className="ai-contextual-tagging__pill-badge">
