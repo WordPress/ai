@@ -5,7 +5,12 @@
 /**
  * WordPress dependencies
  */
-import { Button, Spinner } from '@wordpress/components';
+import {
+	Button,
+	Flex,
+	FlexItem,
+	Spinner,
+} from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
 import { close as closeIcon, update } from '@wordpress/icons';
 
@@ -62,13 +67,16 @@ export default function SuggestionPanel( {
 				>
 					{ isGenerating
 						? __( 'Generating…', 'ai' )
-						: /* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
-						  sprintf( __( 'Suggest %s', 'ai' ), taxonomyLabel ) }
+						: sprintf(
+								/* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
+								__( 'Suggest %s', 'ai' ),
+								taxonomyLabel
+						  ) }
 				</Button>
 			) }
 
 			{ ! hasEnoughContent && ! hasSuggestions && (
-				<p className="ai-contextual-tagging__hint">
+				<p className="ai-contextual-tagging__hint components-base-control__help">
 					{ __(
 						'Add more content to enable AI suggestions (approximately 150 words).',
 						'ai'
@@ -85,63 +93,79 @@ export default function SuggestionPanel( {
 			{ hasSuggestions && (
 				<div className="ai-contextual-tagging__suggestions">
 					<div className="ai-contextual-tagging__pills">
-						{ suggestions.map( ( suggestion: TagSuggestion ) => (
-							<span
-								key={ suggestion.term }
-								className={ `ai-contextual-tagging__pill${
-									suggestion.is_new
-										? ' ai-contextual-tagging__pill--new'
-										: ''
-								}` }
-							>
-								<Button
-									className="ai-contextual-tagging__pill-accept"
-									onClick={ () => handleAccept( suggestion ) }
-									label={ sprintf(
-										/* translators: %s: Term name. */
-										__( 'Add "%s"', 'ai' ),
-										suggestion.term
-									) }
+						{ suggestions.map(
+							( suggestion: TagSuggestion ) => (
+								<span
+									key={ suggestion.term }
+									className={ `ai-contextual-tagging__pill${
+										suggestion.is_new
+											? ' ai-contextual-tagging__pill--new'
+											: ''
+									}` }
 								>
-									{ suggestion.term }
-									{ suggestion.is_new && (
-										<span className="ai-contextual-tagging__pill-badge">
-											{ __( 'new', 'ai' ) }
-										</span>
-									) }
-								</Button>
-								<Button
-									className="ai-contextual-tagging__pill-dismiss"
-									icon={ closeIcon }
-									iconSize={ 16 }
-									onClick={ () =>
-										handleDismiss( suggestion )
-									}
-									label={ sprintf(
-										/* translators: %s: Term name. */
-										__( 'Dismiss "%s"', 'ai' ),
-										suggestion.term
-									) }
-								/>
-							</span>
-						) ) }
+									<Button
+										className="ai-contextual-tagging__pill-accept"
+										onClick={ () =>
+											handleAccept( suggestion )
+										}
+										label={ sprintf(
+											/* translators: %s: Term name. */
+											__( 'Add "%s"', 'ai' ),
+											suggestion.term
+										) }
+									>
+										{ suggestion.term }
+										{ suggestion.is_new && (
+											<span className="ai-contextual-tagging__pill-badge">
+												{ __( 'new', 'ai' ) }
+											</span>
+										) }
+									</Button>
+									<Button
+										className="ai-contextual-tagging__pill-dismiss"
+										icon={ closeIcon }
+										iconSize={ 16 }
+										onClick={ () =>
+											handleDismiss(
+												suggestion
+											)
+										}
+										label={ sprintf(
+											/* translators: %s: Term name. */
+											__(
+												'Dismiss "%s"',
+												'ai'
+											),
+											suggestion.term
+										) }
+									/>
+								</span>
+							)
+						) }
 					</div>
-					<div className="ai-contextual-tagging__actions">
-						<Button
-							variant="link"
-							onClick={ handleGenerate }
-							disabled={ isGenerating }
-						>
-							{ __( 'Regenerate', 'ai' ) }
-						</Button>
-						<Button
-							variant="link"
-							onClick={ handleDismissAll }
-							isDestructive
-						>
-							{ __( 'Dismiss all', 'ai' ) }
-						</Button>
-					</div>
+					<Flex
+						gap={ 3 }
+						className="ai-contextual-tagging__actions"
+					>
+						<FlexItem>
+							<Button
+								variant="link"
+								onClick={ handleGenerate }
+								disabled={ isGenerating }
+							>
+								{ __( 'Regenerate', 'ai' ) }
+							</Button>
+						</FlexItem>
+						<FlexItem>
+							<Button
+								variant="link"
+								onClick={ handleDismissAll }
+								isDestructive
+							>
+								{ __( 'Dismiss all', 'ai' ) }
+							</Button>
+						</FlexItem>
+					</Flex>
 				</div>
 			) }
 		</div>

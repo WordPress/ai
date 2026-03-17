@@ -52,7 +52,13 @@ export function usePanelInjection(
 	const containerRef = useRef< HTMLElement | null >( null );
 
 	useEffect( () => {
+		let mutating = false;
+
 		const findAndAttach = (): void => {
+			if ( mutating ) {
+				return;
+			}
+
 			const panel = findPanelByTitle( panelTitle );
 			const isOpen =
 				panel && panel.classList.contains( 'is-opened' );
@@ -62,7 +68,9 @@ export function usePanelInjection(
 				const existing =
 					document.getElementById( containerId );
 				if ( existing ) {
+					mutating = true;
 					existing.remove();
+					mutating = false;
 				}
 				if ( containerRef.current ) {
 					containerRef.current = null;
@@ -75,8 +83,13 @@ export function usePanelInjection(
 			const existing = document.getElementById( containerId );
 			if ( existing ) {
 				// Ensure it's the last child (not displaced by re-renders).
-				if ( panel.lastElementChild !== existing ) {
+				if (
+					panel &&
+					panel.lastElementChild !== existing
+				) {
+					mutating = true;
 					panel.appendChild( existing );
+					mutating = false;
 				}
 				return;
 			}
@@ -84,7 +97,9 @@ export function usePanelInjection(
 			// Create and inject our container at the end of the panel.
 			const el = document.createElement( 'div' );
 			el.id = containerId;
-			panel.appendChild( el );
+			mutating = true;
+			panel!.appendChild( el );
+			mutating = false;
 			containerRef.current = el;
 			setContainer( el );
 		};
