@@ -1,6 +1,6 @@
 <?php
 /**
- * Settings registration for AI Experiments.
+ * Settings registration for the AI plugin.
  *
  * @package WordPress\AI
  *
@@ -14,7 +14,7 @@ namespace WordPress\AI\Settings;
 use WordPress\AI\Experiment_Registry;
 
 /**
- * Handles registration of settings for AI experiments.
+ * Handles registration of settings for the AI plugin.
  *
  * @since 0.1.0
  */
@@ -70,7 +70,7 @@ class Settings_Registration {
 	}
 
 	/**
-	 * Registers all settings for experiments.
+	 * Registers all settings.
 	 *
 	 * @since 0.1.0
 	 *

@@ -11,8 +11,6 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Contracts\Experiment;
-use WordPress\AI\Exception\Invalid_Experiment_Exception;
-use WordPress\AI\Exception\Invalid_Experiment_Metadata_Exception;
 
 /**
  * Orchestrates experiment initialization and registration.
@@ -57,21 +55,11 @@ final class Experiment_Loader {
 	 * should use the 'ai_experiments_register_experiments' action hook.
 	 *
 	 * @since 0.1.0
-	 *
-	 * @throws \WordPress\AI\Exception\Invalid_Experiment_Exception If an experiment does not implement the Experiment interface.
 	 */
 	public function register_default_experiments(): void {
 		$experiments = $this->get_default_experiments();
 
-		// Register all experiments with type validation.
 		foreach ( $experiments as $experiment ) {
-			// Skip invalid experiment instances.
-			if ( ! $experiment instanceof Experiment ) {
-				throw new Invalid_Experiment_Exception(
-					esc_html__( 'Attempted to register invalid experiment. Must implement Experiment interface.', 'ai' )
-				);
-			}
-
 			$this->registry->register_experiment( $experiment );
 		}
 
@@ -100,7 +88,6 @@ final class Experiment_Loader {
 	 * @since 0.1.0
 	 *
 	 * @return array<\WordPress\AI\Contracts\Experiment> Array of default experiment instances.
-	 * @throws \WordPress\AI\Exception\Invalid_Experiment_Exception If an experiment class does not exist (caught internally).
 	 */
 	private function get_default_experiments(): array {
 		$experiment_classes = array(
@@ -122,50 +109,49 @@ final class Experiment_Loader {
 		 *
 		 * @since 0.1.0
 		 *
-		 * @param array $experiment_classes Array of experiment class names or instances.
+		 * @param array<\WordPress\AI\Contracts\Experiment|class-string<\WordPress\AI\Contracts\Experiment>> $experiment_classes Array of experiment class names or instances.
 		 */
 		$items = apply_filters( 'ai_experiments_default_experiment_classes', $experiment_classes );
 
 		$experiments = array();
 		foreach ( $items as $item ) {
+			if ( is_string( $item ) && ! class_exists( $item ) ) {
+				_doing_it_wrong(
+					__METHOD__,
+					sprintf(
+						/* translators: %s: Experiment class name. */
+						esc_html__( 'Experiment class "%s" does not exist.', 'ai' ),
+						esc_html( $item )
+					),
+					'0.1.0'
+				);
+				continue;
+			}
+
+			// Support both class names and pre-instantiated instances.
+			if ( ! is_a( $item, Experiment::class, true ) ) {
+				_doing_it_wrong(
+					__METHOD__,
+					esc_html__( 'Attempted to register invalid experiment. All experiments must implement the Experiment interface.', 'ai' ),
+					'x.x.x'
+				);
+
+				continue;
+			}
+
 			try {
-				// Support both class names and pre-instantiated instances.
-				if ( is_string( $item ) && class_exists( $item ) ) {
-					/** @var class-string<\WordPress\AI\Contracts\Experiment> $item */
-					$experiments[] = new $item();
-				} elseif ( $item instanceof Experiment ) {
-					$experiments[] = $item;
-				} elseif ( is_string( $item ) ) {
-					// Class doesn't exist - throw exception.
-					throw new Invalid_Experiment_Exception(
-						sprintf(
-							/* translators: %s: Experiment class name. */
-							esc_html__( 'Experiment class "%s" does not exist.', 'ai' ),
-							esc_html( $item )
-						)
-					);
-				}
-			} catch ( Invalid_Experiment_Metadata_Exception $e ) {
-				// Skip experiments with invalid metadata.
+				// If it's a class name, instantiate it.
+				$experiment    = is_string( $item ) ? new $item() : $item;
+				$experiments[] = $experiment;
+			} catch ( Throwable $e ) {
+				// Skip experiments that fail to instantiate.
 				_doing_it_wrong(
 					__METHOD__,
 					sprintf(
 						/* translators: 1: Experiment class name, 2: Error message. */
 						esc_html__( 'Failed to instantiate experiment "%1$s": %2$s', 'ai' ),
 						is_string( $item ) ? esc_html( $item ) : esc_html( (string) get_class( $item ) ),
-						esc_html( $e->getMessage() )
-					),
-					'0.1.0'
-				);
-			} catch ( Throwable $t ) {
-				// Skip experiments that fail to instantiate.
-				_doing_it_wrong(
-					__METHOD__,
-					sprintf(
-						/* translators: 1: Experiment class name, 2: Error message. */
-						esc_html__( 'Experiment instantiation error for "%1$s": %2$s', 'ai' ),
-						is_string( $item ) ? esc_html( $item ) : esc_html( (string) get_class( $item ) ),
-						esc_html( $t->getMessage() )
+						esc_html( $e->getMessage() ),
 					),
 					'0.1.0'
 				);

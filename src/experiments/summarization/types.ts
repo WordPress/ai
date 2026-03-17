@@ -1,5 +1,5 @@
 /**
- * Type definitions for summarization experiment.
+ * Type definitions for summarization.
  */
 
 /**
