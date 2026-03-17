@@ -311,6 +311,20 @@ class Contextual_Tagging extends Abstract_Ability {
 			$existing_terms_instruction
 		);
 
+		/**
+		 * Filters the content string before it is sent to the AI model for taxonomy suggestion generation.
+		 *
+		 * Allows developers to modify, augment, or replace the content that the AI analyzes
+		 * when generating tag and category suggestions.
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param string $context  The normalized content string to be analyzed.
+		 * @param string $taxonomy The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
+		 * @param string $strategy The suggestion strategy ('existing_only' or 'allow_new').
+		 */
+		$context = (string) apply_filters( 'ai_contextual_tagging_content', $context, $taxonomy, $strategy );
+
 		// Generate the suggestions using the AI client.
 		$result = wp_ai_client_prompt( '"""' . $context . '"""' )
 			->using_system_instruction( $system_instruction )
@@ -323,7 +337,31 @@ class Contextual_Tagging extends Abstract_Ability {
 		}
 
 		// Parse the JSON response.
-		return $this->parse_suggestions( $result, $existing_terms, $max_suggestions );
+		$suggestions = $this->parse_suggestions( $result, $existing_terms, $max_suggestions );
+
+		if ( is_wp_error( $suggestions ) ) {
+			return $suggestions;
+		}
+
+		/**
+		 * Filters the parsed taxonomy suggestions before they are returned to the client.
+		 *
+		 * Allows developers to modify, reorder, add, or remove suggestions after the AI
+		 * has generated them and they have been parsed into structured data.
+		 *
+		 * Each suggestion is an associative array with the keys:
+		 * - 'term'       (string) The suggested term name.
+		 * - 'confidence' (float)  Confidence score between 0 and 1.
+		 * - 'is_new'     (bool)   Whether the term is new or already exists on the site.
+		 * - 'parent'     (string) Optional. Parent term name for hierarchical taxonomies.
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param array<array{term: string, confidence: float, is_new: bool, parent?: string}> $suggestions    The parsed suggestions.
+		 * @param string                                                                       $taxonomy       The taxonomy slug (e.g., 'post_tag', 'category').
+		 * @param string                                                                       $strategy       The suggestion strategy ('existing_only' or 'allow_new').
+		 */
+		return (array) apply_filters( 'ai_contextual_tagging_suggestions', $suggestions, $taxonomy, $strategy );
 	}
 
 	/**

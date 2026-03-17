@@ -168,8 +168,8 @@ class Contextual_Tagging extends Abstract_Experiment {
 	public function render_settings_fields(): void {
 		$strategy_option        = $this->get_field_option_name( 'strategy' );
 		$max_suggestions_option = $this->get_field_option_name( 'max_suggestions' );
-		$current_strategy       = $this->get_strategy();
-		$current_max            = $this->get_max_suggestions();
+		$current_strategy       = get_option( $this->get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY );
+		$current_max            = get_option( $this->get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
 		?>
 		<fieldset class="ai-experiment-settings-fieldset">
 			<legend class="screen-reader-text"><?php esc_html_e( 'Contextual Tagging Settings', 'ai' ); ?></legend>
