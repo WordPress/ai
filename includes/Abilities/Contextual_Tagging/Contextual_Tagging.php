@@ -524,8 +524,13 @@ class Contextual_Tagging extends Abstract_Ability {
 			);
 		}
 
-		$existing_terms_lower = array_map( 'strtolower', $existing_terms );
-		$suggestions          = array();
+		// Build a lowercase → original name lookup for existing terms.
+		$existing_terms_map = array();
+		foreach ( $existing_terms as $existing_term ) {
+			$existing_terms_map[ strtolower( $existing_term ) ] = $existing_term;
+		}
+
+		$suggestions = array();
 
 		foreach ( $decoded as $item ) {
 			if ( ! is_array( $item ) || empty( $item['term'] ) ) {
@@ -533,8 +538,14 @@ class Contextual_Tagging extends Abstract_Ability {
 			}
 
 			$term       = sanitize_text_field( trim( $item['term'] ) );
+			$term_lower = strtolower( $term );
+			$is_new     = ! isset( $existing_terms_map[ $term_lower ] );
 			$confidence = isset( $item['confidence'] ) ? (float) $item['confidence'] : 0.5;
-			$is_new     = ! in_array( strtolower( $term ), $existing_terms_lower, true );
+
+			// Use the original capitalized name for existing terms.
+			if ( ! $is_new ) {
+				$term = $existing_terms_map[ $term_lower ];
+			}
 
 			$suggestion = array(
 				'term'       => $term,
