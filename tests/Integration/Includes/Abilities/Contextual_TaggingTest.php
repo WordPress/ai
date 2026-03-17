@@ -428,12 +428,13 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		// AI says "tech" is new, but it exists in our list.
-		$response = '[{"term": "Tech", "confidence": 0.9, "is_new": true}]';
+		// AI says "tech" is new, but it exists in our list as "Tech".
+		$response = '[{"term": "tech", "confidence": 0.9, "is_new": true}]';
 
-		$result = $method->invoke( $this->ability, $response, array( 'tech' ), 10 );
+		$result = $method->invoke( $this->ability, $response, array( 'Tech' ), 10 );
 
-		$this->assertFalse( $result[0]['is_new'], 'Should be false because "tech" exists (case-insensitive match)' );
+		$this->assertFalse( $result[0]['is_new'], 'Should be false because "Tech" exists (case-insensitive match)' );
+		$this->assertEquals( 'Tech', $result[0]['term'], 'Should use the original capitalized term name from the existing terms list' );
 	}
 
 	/**
