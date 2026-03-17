@@ -10,8 +10,8 @@ import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
-import apiFetch from '@wordpress/api-fetch';
 import { count as wordCount } from '@wordpress/wordcount';
+import apiFetch from '@wordpress/api-fetch';
 
 /**
  * Internal dependencies
@@ -90,6 +90,7 @@ export function useContextualTagging( taxonomy: string ): {
 	const content = select( editorStore ).getEditedPostContent();
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
+	const { removeNotice, createErrorNotice } = dispatch( noticesStore ) as any;
 
 	// Check if content has enough words.
 	const hasEnoughContent =
@@ -99,9 +100,12 @@ export function useContextualTagging( taxonomy: string ): {
 		const settings = getSettings();
 		setIsGenerating( true );
 		setSuggestions( [] );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+
+		// Remove any existing error notices.
+		removeNotice( NOTICE_ID );
 
 		try {
+			// Generate suggestions.
 			const result = await generateSuggestions(
 				postId,
 				content,
@@ -109,39 +113,42 @@ export function useContextualTagging( taxonomy: string ): {
 				settings.strategy,
 				settings.maxSuggestions
 			);
+
+			// Update the suggestions state.
 			setSuggestions( result );
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice(
-				error?.message || error,
-				{
-					id: NOTICE_ID,
-					isDismissible: true,
-				}
-			);
+			// Create an error notice.
+			createErrorNotice( error?.message || error, {
+				id: NOTICE_ID,
+				isDismissible: true,
+			} );
 		} finally {
 			setIsGenerating( false );
 		}
 	}, [ postId, content, taxonomy ] );
 
+	// Remove a suggestion from the list.
+	const removeSuggestionFromList = ( suggestion: TagSuggestion ) => {
+		setSuggestions( ( prev ) =>
+			prev.filter( ( s ) => s.term !== suggestion.term )
+		);
+	};
+
+	// Handle accepting a suggestion.
 	const handleAccept = useCallback(
 		( suggestion: TagSuggestion ) => {
-			// Remove from suggestions list.
-			setSuggestions( ( prev ) =>
-				prev.filter( ( s ) => s.term !== suggestion.term )
-			);
-
-			// Add the term to the post.
+			removeSuggestionFromList( suggestion );
 			addTermToPost( taxonomy, suggestion );
 		},
 		[ taxonomy ]
 	);
 
+	// Handle dismissing a suggestion.
 	const handleDismiss = useCallback( ( suggestion: TagSuggestion ) => {
-		setSuggestions( ( prev ) =>
-			prev.filter( ( s ) => s.term !== suggestion.term )
-		);
+		removeSuggestionFromList( suggestion );
 	}, [] );
 
+	// Handle dismissing all suggestions.
 	const handleDismissAll = useCallback( () => {
 		setSuggestions( [] );
 	}, [] );
@@ -167,58 +174,38 @@ async function addTermToPost(
 	taxonomy: string,
 	suggestion: TagSuggestion
 ): Promise< void > {
-	const { editPost } = dispatch( editorStore );
+	const { editPost }: any = dispatch( editorStore );
+	const { getEditedPostAttribute } = select( editorStore );
 
-	if ( taxonomy === 'post_tag' ) {
-		// For tags, we can use the tag name directly via the editor store.
-		// WordPress handles creating new tags automatically when saving.
-		const currentTags: string[] =
-			( select( editorStore ) as any ).getEditedPostAttribute( 'tags' ) ??
-			[];
+	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
+	const restBase = taxonomyObject?.rest_base ?? taxonomy;
 
-		// Look up the term by name to get its ID, or create it.
-		const termId = await findOrCreateTerm( taxonomy, suggestion.term );
+	const currentTerms: string[] = getEditedPostAttribute( restBase ) ?? [];
+	const termId = await findOrCreateTerm( restBase, suggestion.term );
 
-		if ( termId && ! currentTags.includes( termId as any ) ) {
-			( editPost as any )( {
-				tags: [ ...currentTags, termId ],
-			} );
-		}
-	} else if ( taxonomy === 'category' ) {
-		const currentCategories: number[] =
-			( select( editorStore ) as any ).getEditedPostAttribute(
-				'categories'
-			) ?? [];
-
-		const termId = await findOrCreateTerm( taxonomy, suggestion.term );
-
-		if ( termId && ! currentCategories.includes( termId ) ) {
-			( editPost as any )( {
-				categories: [ ...currentCategories, termId ],
-			} );
-		}
+	if ( termId && ! currentTerms.includes( termId as any ) ) {
+		editPost( {
+			[ restBase ]: [ ...currentTerms, termId ],
+		} );
 	}
 }
 
 /**
  * Finds an existing term by name or creates a new one.
  *
- * @param taxonomy The taxonomy slug.
+ * @param restBase The REST base for the taxonomy.
  * @param termName The term name.
  * @return The term ID, or null if not found and could not be created.
  */
 async function findOrCreateTerm(
-	taxonomy: string,
+	restBase: string,
 	termName: string
 ): Promise< number | null > {
-	// Map taxonomy slug to REST base.
-	const restBase = taxonomy === 'post_tag' ? 'tags' : 'categories';
-
 	try {
 		// Search for existing term.
 		const searchResults: any[] = await (
 			resolveSelect( coreStore ) as any
-		).getEntityRecords( 'taxonomy', restBase, {
+		 ).getEntityRecords( 'taxonomy', restBase, {
 			search: termName,
 			per_page: 100,
 		} );
@@ -226,8 +213,7 @@ async function findOrCreateTerm(
 		// If we have a direct match, return its ID.
 		if ( Array.isArray( searchResults ) ) {
 			const match = searchResults.find(
-				( t: any ) =>
-					t.name.toLowerCase() === termName.toLowerCase()
+				( t: any ) => t.name.toLowerCase() === termName.toLowerCase()
 			);
 			if ( match ) {
 				return match.id;
