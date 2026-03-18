@@ -170,7 +170,7 @@ abstract class Abstract_Feature implements Feature {
 
 		// @todo remove in v1.0
 		$is_enabled = (bool) apply_filters_deprecated(
-			"ai_experiments_feature_{$this->id}_enabled",
+			"ai_experiments_experiment_{$this->id}_enabled",
 			array( $feature_enabled ),
 			'x.x.x',
 			"wpai_feature_{$this->id}_enabled",
@@ -186,7 +186,7 @@ abstract class Abstract_Feature implements Feature {
 		 *
 		 * @param bool $feature_enabled Whether the feature is enabled.
 		 */
-		$is_enabled = (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $feature_enabled );
+		$is_enabled = (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $is_enabled );
 
 		// Cache the result.
 		$this->enabled_cache = $is_enabled;
