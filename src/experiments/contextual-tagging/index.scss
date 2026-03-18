@@ -5,6 +5,11 @@
 
 	&__generate-button {
 		width: 100%;
+
+		/* Override core button styles to center the text and icon. */
+		&.has-icon.has-text {
+			justify-content: center;
+		}
 	}
 
 	&__hint {

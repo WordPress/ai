@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { Button, Flex, FlexItem, Spinner } from '@wordpress/components';
+import { Button, Flex, FlexItem } from '@wordpress/components';
 import { select } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { __, sprintf } from '@wordpress/i18n';
@@ -78,12 +78,6 @@ export default function SuggestionPanel( {
 						'ai'
 					) }
 				</p>
-			) }
-
-			{ isGenerating && (
-				<div className="ai-contextual-tagging__loading">
-					<Spinner />
-				</div>
 			) }
 
 			{ hasSuggestions && (
