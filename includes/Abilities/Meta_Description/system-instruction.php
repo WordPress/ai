@@ -5,6 +5,10 @@
  * @package WordPress\AI\Abilities\Meta_Description
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 return <<<'INSTRUCTION'
 You are an SEO-aware editorial assistant that generates meta descriptions for online articles and pages.
