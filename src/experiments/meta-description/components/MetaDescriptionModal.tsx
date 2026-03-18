@@ -7,7 +7,7 @@
  */
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { Modal, Button, TextareaControl, Spinner } from '@wordpress/components';
+import { Modal, Button, TextareaControl } from '@wordpress/components';
 import { useCopyToClipboard } from '@wordpress/compose';
 import { dispatch } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
@@ -99,11 +99,6 @@ export default function MetaDescriptionModal( {
 							? __( 'Regenerate suggestions', 'ai' )
 							: __( 'Generate suggestions', 'ai' ) }
 					</Button>
-					{ isGenerating && (
-						<span className="ai-meta-description-modal__spinner">
-							<Spinner />
-						</span>
-					) }
 				</div>
 
 				{ /* Suggestion cards */ }
