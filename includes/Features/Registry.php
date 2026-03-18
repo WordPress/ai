@@ -32,7 +32,7 @@ final class Registry {
 	private array $features = array();
 
 	/**
-	 * Registers an feature.
+	 * Registers a feature.
 	 *
 	 * @since x.x.x
 	 *
@@ -51,7 +51,7 @@ final class Registry {
 	}
 
 	/**
-	 * Gets an feature by ID.
+	 * Gets a feature by ID.
 	 *
 	 * @since x.x.x
 	 *
@@ -74,7 +74,7 @@ final class Registry {
 	}
 
 	/**
-	 * Checks if an feature is registered.
+	 * Checks if a feature is registered.
 	 *
 	 * @since x.x.x
 	 *
