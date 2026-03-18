@@ -90,7 +90,7 @@ class Settings_Registration {
 
 		// Register settings for each experiment.
 		foreach ( $this->registry->get_all_features() as $feature ) {
-			$feature_id = $feature->get_id();
+			$feature_id = $feature::get_id();
 			$option_key = "wpai_feature_{$feature_id}_enabled";
 
 			register_setting(
