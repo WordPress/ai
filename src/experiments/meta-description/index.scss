@@ -1,0 +1,111 @@
+/**
+ * Styles for the Meta Description experiment.
+ */
+
+// Panel display.
+.ai-meta-description-panel {
+	&__text {
+		margin: 0 0 8px;
+		font-size: 13px;
+		line-height: 1.5;
+		color: #1e1e1e;
+	}
+
+	&__actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 8px;
+	}
+}
+
+// Character count.
+.ai-meta-description__char-count {
+	display: inline-block;
+	font-size: 12px;
+	line-height: 1;
+
+	&--in-range {
+		color: #00a32a;
+	}
+
+	&--out-of-range {
+		color: #dba617;
+	}
+}
+
+// Suggestion card.
+.ai-meta-description__suggestion-card {
+	display: block;
+	width: 100%;
+	padding: 12px;
+	margin-bottom: 8px;
+	text-align: left;
+	background: #f0f0f0;
+	border: 2px solid transparent;
+	border-radius: 4px;
+	cursor: pointer;
+	height: auto;
+
+	&:hover {
+		background: #e8e8e8;
+	}
+
+	&--selected {
+		border-color: var(--wp-admin-theme-color, #3858e9);
+		background: #f0f6fc;
+
+		&:hover {
+			background: #e8f0fe;
+		}
+	}
+
+	.ai-meta-description__suggestion-text {
+		display: block;
+		margin-bottom: 4px;
+		font-size: 13px;
+		line-height: 1.5;
+		white-space: normal;
+		word-wrap: break-word;
+	}
+}
+
+// Modal layout.
+.ai-meta-description-modal {
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	&__generate {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	&__spinner {
+		display: inline-flex;
+		align-items: center;
+	}
+
+	&__suggestions-label {
+		margin: 0 0 8px;
+		font-size: 13px;
+		color: #757575;
+	}
+
+	&__editor {
+		.ai-meta-description__char-count {
+			margin-top: 4px;
+		}
+	}
+
+	&__actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding-top: 8px;
+		border-top: 1px solid #e0e0e0;
+	}
+}
