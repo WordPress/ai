@@ -1,5 +1,5 @@
 === AI ===
-Contributors:      wordpressorg
+Contributors:      wordpressdotorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      7.0
 Stable tag:        0.5.0

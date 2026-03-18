@@ -52,7 +52,7 @@ class Settings_Registration {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param \WordPress\AI\Features\Registry $registry The experiment registry.
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
 	public function __construct( Registry $registry ) {
 		$this->registry = $registry;

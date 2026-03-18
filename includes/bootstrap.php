@@ -184,12 +184,12 @@ function load(): void {
 	// Add plugin action links.
 	add_filter( 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
-	// Hook experiment initialization to init.
+	// Hook feature initialization to init.
 	add_action( 'init', __NAMESPACE__ . '\initialize_features', 15 );
 }
 
 /**
- * Initializes plugin experiments.
+ * Initializes plugin features.
  *
  * @since 0.1.0
  */

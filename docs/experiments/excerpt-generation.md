@@ -264,10 +264,10 @@ This file returns a string that instructs the AI on how to generate excerpts. Yo
 
 ### Filtering Preferred Models
 
-You can filter which AI models are used for excerpt generation using the `wpai_preferred_models` filter:
+You can filter which AI models are used for excerpt generation using the `wpai_preferred_text_models` filter:
 
 ```php
-add_filter( 'wpai_preferred_models', function( $models ) {
+add_filter( 'wpai_preferred_text_models', function( $models ) {
     // Prefer specific models
     return array(
         array( 'openai', 'gpt-4' ),
