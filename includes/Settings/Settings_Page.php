@@ -296,7 +296,7 @@ class Settings_Page {
 			<ul class="ai-experiments__list">
 				<?php foreach ( $experiments as $experiment ) : ?>
 					<?php
-					$experiment_id      = $experiment->get_id();
+					$experiment_id      = $experiment::get_id();
 					$experiment_option  = "wpai_feature_{$experiment_id}_enabled";
 					$experiment_enabled = (bool) get_option( $experiment_option, false );
 					$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
