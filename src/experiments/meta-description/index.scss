@@ -8,7 +8,7 @@
 		margin: 0 0 8px;
 		font-size: 13px;
 		line-height: 1.5;
-		color: #1e1e1e;
+		color: var(--wp--preset--color--foreground, #1e1e1e);
 	}
 
 	&__actions {
@@ -27,11 +27,11 @@
 	line-height: 1;
 
 	&--in-range {
-		color: #00a32a;
+		color: var(--wp-components-color-success, #00a32a);
 	}
 
 	&--out-of-range {
-		color: #dba617;
+		color: var(--wp-components-color-warning, #dba617);
 	}
 }
 
@@ -42,22 +42,22 @@
 	padding: 12px;
 	margin-bottom: 8px;
 	text-align: left;
-	background: #f0f0f0;
+	background: var(--wp--preset--color--background, #f0f0f0);
 	border: 2px solid transparent;
 	border-radius: 4px;
 	cursor: pointer;
 	height: auto;
 
 	&:hover {
-		background: #e8e8e8;
+		background: var(--wp-admin-border-color-lighter, #dcdcde);
 	}
 
 	&--selected {
 		border-color: var(--wp-admin-theme-color, #3858e9);
-		background: #f0f6fc;
+		background: color-mix(in srgb, var(--wp-admin-theme-color, #3858e9) 8%, white);
 
 		&:hover {
-			background: #e8f0fe;
+			background: color-mix(in srgb, var(--wp-admin-theme-color, #3858e9) 12%, white);
 		}
 	}
 
@@ -68,6 +68,7 @@
 		line-height: 1.5;
 		white-space: normal;
 		word-wrap: break-word;
+		color: var(--wp--preset--color--foreground, #1e1e1e);
 	}
 }
 
@@ -93,7 +94,7 @@
 	&__suggestions-label {
 		margin: 0 0 8px;
 		font-size: 13px;
-		color: #757575;
+		color: var(--wp--preset--color--foreground, #757575);
 	}
 
 	&__editor {
@@ -107,6 +108,6 @@
 		align-items: center;
 		gap: 8px;
 		padding-top: 8px;
-		border-top: 1px solid #e0e0e0;
+		border-top: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
 	}
 }
