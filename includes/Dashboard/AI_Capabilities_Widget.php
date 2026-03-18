@@ -14,8 +14,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Dashboard;
 
-use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
+use WordPress\AI\Features\Registry;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
@@ -32,22 +32,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 class AI_Capabilities_Widget {
 
 	/**
-	 * The experiment registry instance.
+	 * The feature registry instance.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var \WordPress\AI\Experiment_Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
-	private Experiment_Registry $registry;
+	private Registry $registry;
 
 	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Experiment_Registry $registry The experiment registry.
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
-	public function __construct( Experiment_Registry $registry ) {
+	public function __construct( Registry $registry ) {
 		$this->registry = $registry;
 	}
 
@@ -105,8 +105,8 @@ class AI_Capabilities_Widget {
 		</div>
 
 		<?php
-		$experiment = $this->registry->get_experiment( 'abilities-explorer' );
-		if ( $experiment && $experiment->is_enabled() ) :
+		$feature = $this->registry->get_feature( 'abilities-explorer' );
+		if ( $feature && $feature->is_enabled() ) :
 			?>
 			<p class="ai-dashboard-capabilities__links">
 				<a href="<?php echo esc_url( admin_url( 'tools.php?page=ai-abilities-explorer' ) ); ?>">

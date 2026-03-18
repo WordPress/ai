@@ -8,22 +8,29 @@
 namespace WordPress\AI\Tests\Integration\Dashboard;
 
 use WP_UnitTestCase;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Dashboard\AI_Capabilities_Widget;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Features\Registry;
 
 /**
- * Stub experiment for capabilities widget tests.
+ * Stub feature for capabilities widget tests.
  *
  * @since x.x.x
  */
-class Capabilities_Test_Experiment extends Abstract_Experiment {
+class Capabilities_Test_Feature extends Abstract_Feature {
+
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'abilities-explorer';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'abilities-explorer',
 			'label'       => 'Abilities Explorer',
 			'description' => 'Test abilities explorer',
 		);
@@ -48,8 +55,8 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_abilities-explorer_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_abilities-explorer_enabled' );
 		parent::tearDown();
 	}
 
@@ -59,7 +66,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_render_outputs_wrapper() {
-		$registry = new Experiment_Registry();
+		$registry = new Registry();
 		$widget   = new AI_Capabilities_Widget( $registry );
 
 		ob_start();
@@ -83,7 +90,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'WordPress Abilities API not available.' );
 		}
 
-		$registry = new Experiment_Registry();
+		$registry = new Registry();
 		$widget   = new AI_Capabilities_Widget( $registry );
 
 		ob_start();
@@ -102,7 +109,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that Abilities Explorer link shows when experiment is enabled.
+	 * Tests that Abilities Explorer link shows when feature is enabled.
 	 *
 	 * @since x.x.x
 	 */
@@ -111,11 +118,11 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'WordPress Abilities API not available.' );
 		}
 
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_abilities-explorer_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_abilities-explorer_enabled', true );
 
-		$registry = new Experiment_Registry();
-		$registry->register_experiment( new Capabilities_Test_Experiment() );
+		$registry = new Registry();
+		$registry->register_feature( new Capabilities_Test_Feature() );
 
 		$widget = new AI_Capabilities_Widget( $registry );
 
@@ -131,7 +138,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that Abilities Explorer link is hidden when experiment is disabled.
+	 * Tests that Abilities Explorer link is hidden when feature is disabled.
 	 *
 	 * @since x.x.x
 	 */
@@ -140,8 +147,8 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'WordPress Abilities API not available.' );
 		}
 
-		$registry = new Experiment_Registry();
-		$registry->register_experiment( new Capabilities_Test_Experiment() );
+		$registry = new Registry();
+		$registry->register_feature( new Capabilities_Test_Feature() );
 
 		$widget = new AI_Capabilities_Widget( $registry );
 
@@ -173,7 +180,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'No AI providers registered.' );
 		}
 
-		$exp_registry = new Experiment_Registry();
+		$exp_registry = new Registry();
 		$widget       = new AI_Capabilities_Widget( $exp_registry );
 
 		ob_start();
@@ -209,8 +216,8 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'No AI providers registered.' );
 		}
 
-		$exp_registry = new Experiment_Registry();
-		$widget       = new AI_Capabilities_Widget( $exp_registry );
+		$registry = new Registry();
+		$widget   = new AI_Capabilities_Widget( $registry );
 
 		ob_start();
 		$widget->render();

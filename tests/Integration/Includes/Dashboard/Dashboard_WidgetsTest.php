@@ -9,7 +9,7 @@ namespace WordPress\AI\Tests\Integration\Dashboard;
 
 use WP_UnitTestCase;
 use WordPress\AI\Dashboard\Dashboard_Widgets;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Features\Registry;
 
 /**
  * Dashboard_Widgets test case.
@@ -24,7 +24,7 @@ class Dashboard_WidgetsTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_init_hooks_wp_dashboard_setup() {
-		$registry = new Experiment_Registry();
+		$registry = new Registry();
 		$widgets  = new Dashboard_Widgets( $registry );
 		$widgets->init();
 
@@ -49,11 +49,11 @@ class Dashboard_WidgetsTest extends WP_UnitTestCase {
 		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $subscriber_id );
 
-		$registry = new Experiment_Registry();
+		$registry = new Registry();
 		$widgets  = new Dashboard_Widgets( $registry );
 		$widgets->register_widgets();
 
-		$status_registered = isset( $wp_meta_boxes['dashboard']['normal']['core']['ai_experiments_status'] );
+		$status_registered = isset( $wp_meta_boxes['dashboard']['normal']['core']['wpai_status'] );
 
 		$this->assertFalse(
 			$status_registered,
@@ -82,7 +82,7 @@ class Dashboard_WidgetsTest extends WP_UnitTestCase {
 		// Set the current screen to the dashboard so wp_add_dashboard_widget works.
 		set_current_screen( 'dashboard' );
 
-		$registry = new Experiment_Registry();
+		$registry = new Registry();
 		$widgets  = new Dashboard_Widgets( $registry );
 		$widgets->register_widgets();
 
@@ -95,12 +95,12 @@ class Dashboard_WidgetsTest extends WP_UnitTestCase {
 		}
 
 		$this->assertContains(
-			'ai_experiments_status',
+			'wpai_status',
 			$all_widgets,
 			'AI Status widget should be registered'
 		);
 		$this->assertContains(
-			'ai_experiments_capabilities',
+			'wpai_capabilities',
 			$all_widgets,
 			'AI Capabilities widget should be registered'
 		);

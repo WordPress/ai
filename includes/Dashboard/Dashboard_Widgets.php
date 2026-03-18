@@ -14,7 +14,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Dashboard;
 
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Features\Registry;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -29,22 +29,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Dashboard_Widgets {
 
 	/**
-	 * The experiment registry instance.
+	 * The feature registry instance.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var \WordPress\AI\Experiment_Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
-	private Experiment_Registry $registry;
+	private Registry $registry;
 
 	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Experiment_Registry $registry The experiment registry.
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
-	public function __construct( Experiment_Registry $registry ) {
+	public function __construct( Registry $registry ) {
 		$this->registry = $registry;
 	}
 
@@ -72,7 +72,7 @@ class Dashboard_Widgets {
 		$status_widget = new AI_Status_Widget( $this->registry );
 
 		wp_add_dashboard_widget(
-			'ai_experiments_status',
+			'wpai_status',
 			__( 'AI Status', 'ai' ),
 			array( $status_widget, 'render' )
 		);
@@ -80,7 +80,7 @@ class Dashboard_Widgets {
 		$capabilities_widget = new AI_Capabilities_Widget( $this->registry );
 
 		wp_add_dashboard_widget(
-			'ai_experiments_capabilities',
+			'wpai_capabilities',
 			__( 'AI Capabilities', 'ai' ),
 			array( $capabilities_widget, 'render' )
 		);

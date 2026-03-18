@@ -2,7 +2,7 @@
 /**
  * AI Status dashboard widget.
  *
- * Displays a getting-started checklist or provider/experiment status
+ * Displays a getting-started checklist or provider/feature status
  * depending on whether initial setup is complete.
  *
  * @package WordPress\AI\Dashboard
@@ -14,7 +14,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Dashboard;
 
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Registration;
 
 use function WordPress\AI\has_ai_credentials;
@@ -32,22 +32,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 class AI_Status_Widget {
 
 	/**
-	 * The experiment registry instance.
+	 * The feature registry instance.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var \WordPress\AI\Experiment_Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
-	private Experiment_Registry $registry;
+	private Registry $registry;
 
 	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Experiment_Registry $registry The experiment registry.
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
-	public function __construct( Experiment_Registry $registry ) {
+	public function __construct( Registry $registry ) {
 		$this->registry = $registry;
 	}
 
@@ -60,14 +60,14 @@ class AI_Status_Widget {
 	 * @since x.x.x
 	 */
 	public function render(): void {
-		$has_credentials   = has_ai_credentials();
-		$global_enabled    = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
-		$any_experiment_on = $this->has_any_enabled_experiment();
+		$has_credentials = has_ai_credentials();
+		$global_enabled  = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		$any_feature_on  = $this->has_any_enabled_feature();
 
-		if ( $has_credentials && $global_enabled && $any_experiment_on ) {
+		if ( $has_credentials && $global_enabled && $any_feature_on ) {
 			$this->render_status();
 		} else {
-			$this->render_getting_started( $has_credentials, $global_enabled, $any_experiment_on );
+			$this->render_getting_started( $has_credentials, $global_enabled, $any_feature_on );
 		}
 	}
 
@@ -77,10 +77,10 @@ class AI_Status_Widget {
 	 * @since x.x.x
 	 *
 	 * @param bool $has_credentials   Whether any AI provider credentials are configured.
-	 * @param bool $global_enabled    Whether the global experiments toggle is on.
-	 * @param bool $any_experiment_on Whether at least one experiment is enabled.
+	 * @param bool $global_enabled    Whether the global features toggle is on.
+	 * @param bool $any_feature_on Whether at least one feature is enabled.
 	 */
-	private function render_getting_started( bool $has_credentials, bool $global_enabled, bool $any_experiment_on ): void {
+	private function render_getting_started( bool $has_credentials, bool $global_enabled, bool $any_feature_on ): void {
 		$steps = array(
 			array(
 				'done'  => $has_credentials,
@@ -89,13 +89,13 @@ class AI_Status_Widget {
 			),
 			array(
 				'done'  => $global_enabled,
-				'label' => __( 'Globally enable AI Experiments', 'ai' ),
-				'url'   => admin_url( 'options-general.php?page=ai-experiments' ),
+				'label' => __( 'Globally enable AI Features', 'ai' ),
+				'url'   => admin_url( 'options-general.php?page=ai' ),
 			),
 			array(
-				'done'  => $any_experiment_on,
-				'label' => __( 'Enable an individual experiment', 'ai' ),
-				'url'   => admin_url( 'options-general.php?page=ai-experiments' ),
+				'done'  => $any_feature_on,
+				'label' => __( 'Enable an individual feature', 'ai' ),
+				'url'   => admin_url( 'options-general.php?page=ai' ),
 			),
 			array(
 				'done'  => false,
@@ -131,8 +131,8 @@ class AI_Status_Widget {
 	 *
 	 */
 	private function render_status(): void {
-		$connectors  = $this->get_ai_connectors();
-		$experiments = $this->registry->get_all_experiments();
+		$connectors = $this->get_ai_connectors();
+		$features   = $this->registry->get_all_features();
 		?>
 
 		<div class="ai-dashboard-status">
@@ -157,20 +157,20 @@ class AI_Status_Widget {
 				</div>
 
 				<div class="ai-dashboard-status__column">
-					<h4 class="ai-dashboard-status__section-title"><?php esc_html_e( 'Experiments', 'ai' ); ?></h4>
+					<h4 class="ai-dashboard-status__section-title"><?php esc_html_e( 'Features', 'ai' ); ?></h4>
 					<ul class="ai-dashboard-status__list">
-						<?php foreach ( $experiments as $experiment ) : ?>
+						<?php foreach ( $features as $feature ) : ?>
 							<li class="ai-dashboard-status__list-item">
-								<?php if ( $experiment->is_enabled() ) : ?>
+								<?php if ( $feature->is_enabled() ) : ?>
 									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success"></span>
 								<?php else : ?>
 									<span class="dashicons dashicons-no ai-dashboard-status__icon--error"></span>
 								<?php endif; ?>
-								<?php echo esc_html( $experiment->get_label() ); ?>
+								<?php echo esc_html( $feature->get_label() ); ?>
 							</li>
 						<?php endforeach; ?>
 					</ul>
-					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-experiments' ) ); ?>">
+					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai' ) ); ?>">
 						<?php esc_html_e( 'Manage', 'ai' ); ?>
 					</a>
 				</div>
@@ -214,15 +214,15 @@ class AI_Status_Widget {
 	}
 
 	/**
-	 * Checks whether any registered experiment is individually enabled.
+	 * Checks whether any registered feature is individually enabled.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return bool True if at least one experiment is enabled.
+	 * @return bool True if at least one feature is enabled.
 	 */
-	private function has_any_enabled_experiment(): bool {
-		foreach ( $this->registry->get_all_experiments() as $experiment ) {
-			if ( $experiment->is_enabled() ) {
+	private function has_any_enabled_feature(): bool {
+		foreach ( $this->registry->get_all_features() as $feature ) {
+			if ( $feature->is_enabled() ) {
 				return true;
 			}
 		}
