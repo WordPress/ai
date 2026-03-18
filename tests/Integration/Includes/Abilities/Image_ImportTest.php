@@ -7,27 +7,29 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Image\Import_Base64_Image as Import;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Image\Import_Base64_Image as Import;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Image_Import Ability tests.
  *
  * @since 0.2.0
  */
-class Test_Image_Import_Experiment extends Abstract_Experiment {
+class Test_Image_Import_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'image-import';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'image-import',
 			'label'       => 'Image Import',
 			'description' => 'Imports an image into the media library from a base64 encoded string',
 		);
@@ -53,14 +55,14 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Image_Import ability instance.
 	 *
-	 * @var Import
+	 * @var \WordPress\AI\Abilities\Image\Import_Base64_Image
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Image_Import_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Image_Import_Experiment
 	 */
 	private $experiment;
 
@@ -80,7 +82,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->experiment = new Test_Image_Import_Experiment();
-		$this->ability = new Import(
+		$this->ability    = new Import(
 			'ai/image-import',
 			array(
 				'label'       => $this->experiment->get_label(),

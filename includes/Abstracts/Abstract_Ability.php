@@ -59,11 +59,11 @@ abstract class Abstract_Ability extends WP_Ability {
 	 *
 	 * @since 0.2.0
 	 *
-	 * @param string $experiment_id The ID of the experiment.
+	 * @param string $feature_id The ID of the feature.
 	 * @return string The REST API path of the ability.
 	 */
-	public static function path( string $experiment_id = '' ): string {
-		return 'wp-abilities/v1/abilities/ai/' . $experiment_id . '/run';
+	public static function path( string $feature_id = '' ): string {
+		return 'wp-abilities/v1/abilities/ai/' . $feature_id . '/run';
 	}
 
 	/**

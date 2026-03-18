@@ -8,10 +8,10 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Example_Experiment;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiment_Category;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\Example_Experiment\Example_Experiment;
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Example_Experiment test case.
@@ -34,20 +34,20 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable experiments globally and individually.
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_example-experiment_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_example-experiment_enabled', true );
 
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
 
 		// Manually register the Example Experiment since it's no longer loaded by default.
 		$example_experiment = new Example_Experiment();
-		$registry->register_experiment( $example_experiment );
+		$registry->register_feature( $example_experiment );
 
-		$loader->initialize_experiments();
+		$loader->initialize_features();
 
-		$experiment = $registry->get_experiment( 'example-experiment' );
+		$experiment = $registry->get_feature( 'example-experiment' );
 		$this->assertInstanceOf( Example_Experiment::class, $experiment, 'Example experiment should be registered in the registry.' );
 	}
 
@@ -58,8 +58,8 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_example-experiment_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_example-experiment_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();

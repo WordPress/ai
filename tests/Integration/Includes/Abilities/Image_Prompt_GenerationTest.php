@@ -7,27 +7,29 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Image\Generate_Image_Prompt;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Image\Generate_Image_Prompt;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Image_Prompt_Generation Ability tests.
  *
  * @since 0.3.0
  */
-class Test_Image_Prompt_Generation_Experiment extends Abstract_Experiment {
-	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.3.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+class Test_Image_Prompt_Generation_Experiment extends Abstract_Feature {
+/**
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'image-prompt-generation';
+	}
+
+/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'image-prompt-generation',
 			'label'       => 'Image Prompt Generation',
 			'description' => 'Generates a prompt from post content that can be used to generate an image',
 		);
@@ -53,14 +55,14 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Image_Prompt_Generation ability instance.
 	 *
-	 * @var Generate_Image_Prompt
+	 * @var \WordPress\AI\Abilities\Image\Generate_Image_Prompt
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Image_Prompt_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Image_Prompt_Generation_Experiment
 	 */
 	private $experiment;
 

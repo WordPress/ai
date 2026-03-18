@@ -12,6 +12,9 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Experiments\Experiments;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 use WordPress\AI\Migrations\Credential_Migration;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
@@ -182,7 +185,7 @@ function load(): void {
 	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
 	// Hook experiment initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_experiments', 15 );
+	add_action( 'init', __NAMESPACE__ . '\initialize_features', 15 );
 }
 
 /**
@@ -190,12 +193,16 @@ function load(): void {
  *
  * @since 0.1.0
  */
-function initialize_experiments(): void {
+function initialize_features(): void {
 	try {
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
-		$loader->initialize_experiments();
+		// Experiments are hooked into our Loader, so we need to register them first.
+		$experiments = new Experiments();
+		$experiments->init();
+
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
+		$loader->initialize_features();
 
 		// Initialize settings registration.
 		$settings_registration = new Settings_Registration( $registry );
@@ -230,7 +237,7 @@ function initialize_experiments(): void {
 		);
 	} catch ( \Throwable $t ) {
 		_doing_it_wrong(
-			__NAMESPACE__ . '\initialize_experiments',
+			__NAMESPACE__ . '\initialize_features',
 			sprintf(
 				/* translators: %s: Error message. */
 				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),

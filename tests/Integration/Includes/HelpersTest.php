@@ -134,9 +134,12 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_normalize_content_applies_filters() {
-		add_filter( 'wpai_pre_normalize_content', function( $content ) {
-			return 'Filtered: ' . $content;
-		} );
+		add_filter(
+			'wpai_pre_normalize_content',
+			static function ( $content ) {
+				return 'Filtered: ' . $content;
+			}
+		);
 
 		$result = \WordPress\AI\normalize_content( 'test' );
 
@@ -312,7 +315,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_models_for_text_generation_applies_filter() {
 		add_filter(
 			'wpai_preferred_models_for_text_generation',
-			function( $models ) {
+			static function ( $models ) {
 				// Add a custom model.
 				$models[] = array(
 					'custom',
@@ -339,7 +342,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_models_for_text_generation_filter_can_replace_models() {
 		add_filter(
 			'wpai_preferred_models_for_text_generation',
-			function( $models ) {
+			static function ( $models ) {
 				// Replace with a single model.
 				return array(
 					array(
@@ -438,7 +441,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_image_models_applies_filter() {
 		add_filter(
 			'wpai_preferred_image_models',
-			function( $models ) {
+			static function ( $models ) {
 				// Add a custom model.
 				$models[] = array(
 					'custom',
@@ -465,7 +468,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_image_models_filter_can_replace_models() {
 		add_filter(
 			'wpai_preferred_image_models',
-			function( $models ) {
+			static function ( $models ) {
 				// Replace with a single model.
 				return array(
 					array(
@@ -531,7 +534,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_vision_models_applies_filter() {
 		add_filter(
 			'wpai_preferred_vision_models',
-			function( $models ) {
+			static function ( $models ) {
 				$models[] = array(
 					'custom',
 					'custom-vision-model',
@@ -557,7 +560,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_vision_models_filter_can_replace_models() {
 		add_filter(
 			'wpai_preferred_vision_models',
-			function( $models ) {
+			static function ( $models ) {
 				return array(
 					array(
 						'test',
