@@ -7,11 +7,11 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Summarization;
 
-use WordPress\AI\Experiment_Category;
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiments\Summarization\Summarization;
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Experiments\Summarization\Summarization;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Summarization test case.
@@ -34,15 +34,15 @@ class SummarizationTest extends WP_UnitTestCase {
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable experiments globally and individually.
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_summarization_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_summarization_enabled', true );
 
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
-		$loader->initialize_experiments();
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
+		$loader->initialize_features();
 
-		$experiment = $registry->get_experiment( 'summarization' );
+		$experiment = $registry->get_feature( 'summarization' );
 		$this->assertInstanceOf( Summarization::class, $experiment, 'Summarization experiment should be registered in the registry.' );
 	}
 
@@ -53,8 +53,8 @@ class SummarizationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_summarization_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_summarization_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
@@ -74,4 +74,3 @@ class SummarizationTest extends WP_UnitTestCase {
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 }
-

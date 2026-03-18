@@ -167,12 +167,10 @@ Any settings or filters available.
 If your experiment has requirements (PHP extensions, other plugins, etc.), implement validation in your constructor:
 
 ```php
-use WordPress\AI\Exception\Invalid_Experiment_Metadata_Exception;
-
 class My_Experiment extends Abstract_Experiment {
 	public function __construct() {
 		if ( ! extension_loaded( 'gd' ) ) {
-			throw new Invalid_Experiment_Metadata_Exception(
+			throw new \RuntimeException(
 				__( 'This experiment requires the GD extension.', 'ai' )
 			);
 		}
@@ -190,10 +188,10 @@ The plugin provides a set of hooks and filters to allow third-party developers t
 
 ### Registering a Custom Experiment
 
-Developers can register their own experiments using the `ai_experiments_register_experiments` action. This is the primary way to add new functionality to the plugin.
+Developers can register their own experiments using the `wpai_register_features` action. This is the primary way to add new functionality to the plugin.
 
 ```php
-add_action( 'ai_experiments_register_experiments', function( $registry ) {
+add_action( 'wpai_register_features', function( $registry ) {
 	$registry->register_experiment( new My_Custom_Experiment() );
 } );
 ```
@@ -237,15 +235,15 @@ add_filter( 'ai_experiment_example-experiment_enabled', function( $enabled ) {
 Disable all experiments at once:
 
 ```php
-add_filter( 'ai_experiments_enabled', '__return_false' );
+add_filter( 'wpai_features_enabled', '__return_false' );
 ```
 
 ### Other Hooks
 
 The plugin also includes the following action hooks:
 
-- `ai_experiments_register_experiments`: Fires after default experiments are registered, receives `$registry` parameter
-- `ai_experiments_initialized`: Fires after all registered experiments have been initialized
+- `wpai_register_features`: Fires after default experiments are registered, receives `$registry` parameter
+- `wpai_features_initialized`: Fires after all registered experiments have been initialized
 
 ### Asset Loading
 

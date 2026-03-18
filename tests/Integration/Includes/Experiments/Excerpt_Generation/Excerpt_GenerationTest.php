@@ -8,10 +8,10 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Excerpt_Generation;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiment_Category;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation;
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Excerpt_Generation experiment test case.
@@ -31,14 +31,14 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_excerpt-generation_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_excerpt-generation_enabled', true );
 
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
 
-		$experiment = $registry->get_experiment( 'excerpt-generation' );
+		$experiment = $registry->get_feature( 'excerpt-generation' );
 		$this->assertInstanceOf(
 			Excerpt_Generation::class,
 			$experiment,
@@ -53,8 +53,8 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_excerpt-generation_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_excerpt-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
@@ -80,11 +80,11 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function test_experiment_can_be_disabled_via_filter(): void {
-		add_filter( 'ai_experiments_experiment_excerpt-generation_enabled', '__return_false' );
+		add_filter( 'wpai_feature_excerpt-generation_enabled', '__return_false' );
 
 		$experiment = new Excerpt_Generation();
 		$this->assertFalse( $experiment->is_enabled() );
 
-		remove_all_filters( 'ai_experiments_experiment_excerpt-generation_enabled' );
+		remove_all_filters( 'wpai_feature_excerpt-generation_enabled' );
 	}
 }
