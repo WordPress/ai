@@ -37,7 +37,7 @@ final class Registry {
 	 * @return bool True if registered successfully, false if already exists or invalid.
 	 */
 	public function register_feature( Feature $feature ): bool {
-		$id = $feature->get_id();
+		$id = $feature::get_id();
 
 		if ( $this->has_feature( $id ) ) {
 			return false;
