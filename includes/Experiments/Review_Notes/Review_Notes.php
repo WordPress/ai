@@ -10,9 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Review_Notes;
 
 use WordPress\AI\Abilities\Review_Notes\Review_Notes as Review_Notes_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Experiments\Experiment_Category;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,16 +27,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.4.0
  */
-class Review_Notes extends Abstract_Experiment {
+class Review_Notes extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.4.0
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'review-notes';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'review-notes',
 			'label'       => __( 'Review Notes', 'ai' ),
 			'description' => __( 'Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
@@ -45,8 +49,6 @@ class Review_Notes extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.4.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );

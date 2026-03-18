@@ -7,7 +7,7 @@
  */
 export interface TitleGenerationAbilityInput {
 	content: string;
-	post_id: number;
+	context: string;
 	[ key: string ]: string | number | undefined;
 }
 

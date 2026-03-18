@@ -689,10 +689,10 @@ This instruction tells the AI how to create image generation prompts from post c
 
 ### Filtering Preferred Image Models
 
-You can filter which AI image models are used for image generation using the `ai_experiments_preferred_image_models` filter:
+You can filter which AI image models are used for image generation using the `wpai_preferred_image_models` filter:
 
 ```php
-add_filter( 'ai_experiments_preferred_image_models', function( $models ) {
+add_filter( 'wpai_preferred_image_models', function( $models ) {
     // Prefer specific image models
     return array(
         array( 'openai', 'dall-e-3' ),

@@ -303,7 +303,7 @@ npm run test:php
 
 - The experiment requires valid AI credentials and vision-capable models (configured via `get_preferred_vision_models()`).
 - Users need `edit_post` for the specific attachment when using `attachment_id`, or `upload_files` when using only `image_url`.
-- The experiment is only active when both the global experiments flag (`ai_experiments_enabled`) and the experiment option (`ai_experiment_alt-text-generation_enabled`) are enabled. Use the filter `ai_experiments_experiment_alt-text-generation_enabled` to override.
+- The experiment is only active when both the global experiments flag (`wpai_features_enabled`) and the experiment option (`wpai_features_alt-text-generation_enabled`) are enabled. Use the filter `wpai_features_alt-text-generation_enabled` to override.
 
 ### Performance
 

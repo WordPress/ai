@@ -12,10 +12,10 @@ namespace WordPress\AI\Experiments\Image_Generation;
 use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
 use WordPress\AI\Abilities\Image\Generate_Image_Prompt as Generate_Image_Prompt_Ability;
 use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -26,16 +26,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.2.0
  */
-class Image_Generation extends Abstract_Experiment {
+class Image_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.2.0
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'image-generation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'image-generation',
 			'label'       => __( 'Image Generation and Editing', 'ai' ),
 			'description' => __( 'Generate and edit featured images and inline images with AI', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
@@ -44,8 +48,6 @@ class Image_Generation extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.2.0
 	 */
 	public function register(): void {
 		$this->register_post_meta();
