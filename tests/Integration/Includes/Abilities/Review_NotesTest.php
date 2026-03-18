@@ -10,24 +10,26 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Review_Notes\Review_Notes;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Review_Notes_Ability tests.
  *
  * @since 0.4.0
  */
-class Test_Review_Notes_Experiment extends Abstract_Experiment {
+class Test_Review_Notes_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.4.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'review-notes';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'review-notes',
 			'label'       => 'Review Notes',
 			'description' => 'Reviews post content block-by-block and adds Notes with suggestions.',
 		);
@@ -35,8 +37,6 @@ class Test_Review_Notes_Experiment extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.4.0
 	 */
 	public function register(): void {
 		// No-op for testing.

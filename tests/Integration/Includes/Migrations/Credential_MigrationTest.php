@@ -104,7 +104,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	public function test_run_stores_version_after_migration() {
 		( new Credential_Migration() )->run();
 
-		$this->assertEquals( AI_EXPERIMENTS_VERSION, get_option( 'ai_experiments_version' ) );
+		$this->assertEquals( '0.5.0', get_option( 'ai_experiments_version' ) );
 	}
 
 	/**

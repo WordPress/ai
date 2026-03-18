@@ -10,24 +10,30 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Excerpt_Generation Ability tests.
  *
  * @since 0.1.0
  */
-class Test_Excerpt_Generation_Experiment extends Abstract_Experiment {
+class Test_Excerpt_Generation_Experiment extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'excerpt-generation';
+	}
+
 	/**
 	 * Loads experiment metadata.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @return array{label: string, description: string} Experiment metadata.
 	 */
-	protected function load_experiment_metadata(): array {
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'excerpt-generation',
 			'label'       => 'Excerpt Generation',
 			'description' => 'Generates excerpt suggestions from content',
 		);

@@ -7,41 +7,40 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Image\Generate_Image;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Image\Generate_Image;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Image_Generation Ability tests.
  *
  * @since 0.2.0
  */
-class Test_Image_Generation_Experiment extends Abstract_Experiment {
+class Test_Image_Generation_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'image-generation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'image-generation',
 			'label'       => 'Image Generation and Editing',
-			'description' => 'Generate and edit featured images and inline images with AI',
+			'description' => 'Generate and edit images using AI',
 		);
 	}
 
 	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.2.0
+	 * {@inheritDoc}
 	 */
 	public function register(): void {
 		// No-op for testing.
 	}
-
 }
 
 /**
@@ -54,14 +53,14 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Image_Generation ability instance.
 	 *
-	 * @var Image_Generation
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Image_Generation
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Image_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Image_Generation_Experiment
 	 */
 	private $experiment;
 
@@ -74,7 +73,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->experiment = new Test_Image_Generation_Experiment();
-		$this->ability = new Generate_Image(
+		$this->ability    = new Generate_Image(
 			'ai/image-generation',
 			array(
 				'label'       => $this->experiment->get_label(),
@@ -366,4 +365,3 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
 }
-

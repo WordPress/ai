@@ -1,5 +1,5 @@
 === AI ===
-Contributors:      wordpressorg
+Contributors:      wordpressdotorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      7.0
 Stable tag:        0.5.0
@@ -57,7 +57,7 @@ The AI plugin is designed to be studied, extended, and built upon. Whether you'r
 
 **Extend the Plugin:**
 
-* **Build Custom Experiments** - Use the `Abstract_Experiment` base class to create your own AI-powered features.
+* **Build Custom Experiments** - Use the `Abstract_Feature` base class to create your own AI-powered features.
 * **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys.
 * **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled).
 * **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities.

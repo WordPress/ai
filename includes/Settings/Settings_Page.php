@@ -12,9 +12,9 @@ declare(strict_types=1);
 namespace WordPress\AI\Settings;
 
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
-use WordPress\AI\Experiment_Registry;
-
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Features\Feature_Category;
+use WordPress\AI\Features\Registry;
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
@@ -34,9 +34,9 @@ class Settings_Page {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @var \WordPress\AI\Experiment_Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
-	private Experiment_Registry $registry;
+	private Registry $registry;
 
 	/**
 	 * The settings page slug.
@@ -52,9 +52,9 @@ class Settings_Page {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param \WordPress\AI\Experiment_Registry $registry The experiment registry.
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
-	public function __construct( Experiment_Registry $registry ) {
+	public function __construct( Registry $registry ) {
 		$this->registry = $registry;
 	}
 
@@ -194,10 +194,10 @@ class Settings_Page {
 					// Group experiments by category, normalizing unknown categories to OTHER.
 					$known_categories        = array( Experiment_Category::EDITOR, Experiment_Category::ADMIN );
 					$experiments_by_category = array();
-					foreach ( $this->registry->get_all_experiments() as $experiment ) {
+					foreach ( $this->registry->get_all_features() as $experiment ) {
 						$category                               = in_array( $experiment->get_category(), $known_categories, true )
 							? $experiment->get_category()
-							: Experiment_Category::OTHER;
+							: Feature_Category::OTHER;
 						$experiments_by_category[ $category ][] = $experiment;
 					}
 
@@ -221,7 +221,7 @@ class Settings_Page {
 						'ai-experiments-other-heading',
 						__( 'Other Experiments', 'ai' ),
 						__( 'Additional experiments that do not fit into a specific category.', 'ai' ),
-						$experiments_by_category[ Experiment_Category::OTHER ] ?? array(),
+						$experiments_by_category[ Feature_Category::OTHER ] ?? array(),
 						$global_enabled
 					);
 					?>
@@ -264,7 +264,7 @@ class Settings_Page {
 	 * @param string $heading_id HTML ID for the heading element.
 	 * @param string $heading_text Translated section heading.
 	 * @param string $description Translated section description.
-	 * @param list<\WordPress\AI\Contracts\Experiment> $experiments Experiments to render.
+	 * @param list<\WordPress\AI\Contracts\Feature> $experiments Experiments to render.
 	 * @param bool $global_enabled Whether the global toggle is on.
 	 */
 	private function render_experiments_section(
@@ -296,8 +296,8 @@ class Settings_Page {
 			<ul class="ai-experiments__list">
 				<?php foreach ( $experiments as $experiment ) : ?>
 					<?php
-					$experiment_id      = $experiment->get_id();
-					$experiment_option  = "ai_experiment_{$experiment_id}_enabled";
+					$experiment_id      = $experiment::get_id();
+					$experiment_option  = "wpai_feature_{$experiment_id}_enabled";
 					$experiment_enabled = (bool) get_option( $experiment_option, false );
 					$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
 					$desc_id            = "ai-experiment-{$experiment_id}-desc";
