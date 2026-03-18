@@ -75,7 +75,7 @@ class Credential_Migration {
 		}
 
 		$this->maybe_migrate_credentials();
-		update_option( self::VERSION_OPTION, '0.5.0' );
+		update_option( self::VERSION_OPTION, self::TARGET_VERSION );
 	}
 
 	/**
