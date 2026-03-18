@@ -13,6 +13,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Features;
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Feature category constants.
  *
