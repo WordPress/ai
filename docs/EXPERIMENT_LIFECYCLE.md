@@ -1,6 +1,6 @@
 # Experiment Decisions and Lifecycle
 
-This document describes how individual Experiments are proposed, approved, and evolved within the AI Experiments plugin, as well as how a specific Experiment may eventually graduate toward WordPress core.
+This document describes how individual Experiments are proposed, approved, and evolved within the AI plugin, as well as how a specific Experiment may eventually graduate toward WordPress core.
 
 This is a descriptive guide, not a rigid policy.  The goal is to help contributors understand how things typically work, set reasonable expectations, and reduce uncertainty when proposing or building new Experiments.
 
@@ -8,7 +8,7 @@ The process intentionally favors learning and iteration over certainty.
 
 ## How Experiments are Evaluated for the Plugin
 
-Each Experiment is evaluated independently.  Inclusion in the AI Experiments plugin does not imply endorsement for core, nor a guarantee of long-term support.
+Each Experiment is evaluated independently.  Inclusion in the AI plugin does not imply endorsement for core, nor a guarantee of long-term support.
 
 In practice, most Experiments follow a three-step path.
 
@@ -30,9 +30,9 @@ An additionally encouraged, though not required, step would be to open a PR that
 
 ### 2. Assessment of Proposed Experiment
 
-Once a proposal has been opened, the [AI Experiment maintainers](../CREDITS.md#maintainers) will work to assess viability and rationale for including the proposed experiment within the plugin as opposed to within a separate plugin, within Gutenberg or WordPress core directly, or perhaps generally "not likely a fit for the AI Experiments plugin" for described reasons.
+Once a proposal has been opened, the [AI plugin maintainers](../CREDITS.md#maintainers) will work to assess viability and rationale for including the proposed experiment within the plugin as opposed to within a separate plugin, within Gutenberg or WordPress core directly, or perhaps generally "not likely a fit for the AI plugin" for described reasons.
 
-For proposals that are aligned to the AI Experiments purpose and roadmap, they'll be added to the [project board](https://github.com/orgs/WordPress/projects/240/views/7) and assigned a numbered milestone (or `Future Release` for those unlikely to be ready in the near future but still warranted within the plugin).
+For proposals that are aligned to the AI plugin purpose and roadmap, they'll be added to the [project board](https://github.com/orgs/WordPress/projects/240/views/7) and assigned a numbered milestone (or `Future Release` for those unlikely to be ready in the near future but still warranted within the plugin).
 
 ### 3. Implementation via Pull Request
 
@@ -54,7 +54,7 @@ Final approval for inclusion in the plugin is handled by the [plugin maintainers
 
 When reviewing an Experiment, maintainers typically consider:
 
-* Alignment with the goals of the AI Experiments plugin
+* Alignment with the goals of the AI plugin
 * Code quality and long-term maintainability
 * User experience and clarity
 * Safety, performance, and data handling considerations
@@ -66,7 +66,7 @@ Once approved, the Experiment ships as part of the plugin and is explicitly trea
 
 Graduation is optional and uncommon.  Most Experiments are expected to inform future work rather than ship directly to core.
 
-When graduation does happen, it applies to a specific Experiment, not the AI Experiments plugin as a whole.
+When graduation does happen, it applies to a specific Experiment, not the AI plugin as a whole.
 
 ### 1. Evidence of Value and Stability
 
@@ -85,7 +85,7 @@ For editor-facing Experiments, the most common next step is migration into the G
 
 This allows:
 
-* Significantly broader testing than AI Experiments alone
+* Significantly broader testing than the AI plugin alone
 * Use of established Gutenberg Experiment and feedback workflows
 * Closer alignment with editor UX patterns and architecture
 
@@ -116,8 +116,8 @@ Acceptance into core is ultimately a core leadership decision and may require fu
 ## Important Notes
 
 * Experiments may be deprecated or removed at any time
-* Experiments may undergo breaking changes. Unless absolutely not feasible, those will occur in a Major version bump of the AI Experiments plugin to help signify those changes
+* Experiments may undergo breaking changes. Unless absolutely not feasible, those will occur in a Major version bump of the AI plugin to help signify those changes
 * Not all Experiments are intended to graduate to core, in fact most are never expected to and instead are expected to stay within the plugin
 * Learning and validation are considered successful outcomes
 
-The AI Experiments plugin exists to make it safe to explore ideas early, learn quickly, and improve the quality of features that may eventually reach WordPress core.
+The AI plugin exists to make it safe to explore ideas early, learn quickly, and improve the quality of features that may eventually reach WordPress core.

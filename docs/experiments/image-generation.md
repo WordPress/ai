@@ -681,10 +681,10 @@ This instruction tells the AI how to create image generation prompts from post c
 
 ### Filtering Preferred Image Models
 
-You can filter which AI image models are used for image generation using the `ai_experiments_preferred_image_models` filter:
+You can filter which AI image models are used for image generation using the `wpai_preferred_image_models` filter:
 
 ```php
-add_filter( 'ai_experiments_preferred_image_models', function( $models ) {
+add_filter( 'wpai_preferred_image_models', function( $models ) {
     // Prefer specific image models
     return array(
         array( 'openai', 'dall-e-3' ),
@@ -771,7 +771,7 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
 ### Manual Testing
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Toggle **Image Generation** to enabled
    - Ensure you have valid AI credentials configured
 

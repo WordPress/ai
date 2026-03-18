@@ -218,7 +218,7 @@ export default function TitleToolbar(): JSX.Element | null {
 		closeModal();
 	};
 
-	// Ensure the experiment is enabled.
+	// Don't render if disabled.
 	if ( ! aiTitleGenerationData?.enabled ) {
 		return null;
 	}

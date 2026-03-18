@@ -1,5 +1,5 @@
 /**
- * Alt text generation experiment plugin registration.
+ * Alt text generation plugin registration.
  */
 
 /**
@@ -39,7 +39,7 @@ const withAltTextGeneration = createHigherOrderComponent( ( BlockEdit ) => {
 			return <BlockEdit { ...props } />;
 		}
 
-		// Don't render if experiment is disabled.
+		// Don't render if disabled.
 		if ( ! aiAltTextGenerationData?.enabled ) {
 			return <BlockEdit { ...props } />;
 		}

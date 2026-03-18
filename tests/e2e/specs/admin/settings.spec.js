@@ -35,14 +35,14 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure the page title is correct.
 		await expect(
-			page.locator( '.wrap h1', { hasText: 'AI Experiments' } )
+			page.locator( '.wrap h1', { hasText: 'AI' } )
 		).toHaveCount( 1 );
 
 		// Ensure the no AI Connectors error message is displayed.
 		await expect(
 			page.locator( '.wrap .notice-error', {
 				hasText:
-					'Most experiments require a valid AI Connector to function properly',
+					'The AI plugin requires a valid AI Connector to function properly',
 			} )
 		).toHaveCount( 1 );
 	} );
@@ -84,7 +84,7 @@ test.describe( 'Plugin settings', () => {
 			page
 				.locator( '.ai-experiments__notice', {
 					hasText:
-						'Enable experiments above to configure individual experiment settings.',
+						'Enable AI above to configure individual experiment settings',
 				} )
 				.first()
 		).toHaveCount( 1 );

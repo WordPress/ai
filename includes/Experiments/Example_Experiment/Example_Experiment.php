@@ -9,8 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Example_Experiment;
 
-use WordPress\AI\Abstracts\Abstract_Experiment;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -21,15 +21,19 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.1.0
  */
-class Example_Experiment extends Abstract_Experiment {
+class Example_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.1.0
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'example-experiment';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'example-experiment',
 			'label'       => __( 'Example Experiment', 'ai' ),
 			'description' => __( 'Demonstrates the AI experiment system with example hooks and functionality.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
@@ -38,8 +42,6 @@ class Example_Experiment extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.1.0
 	 */
 	public function register(): void {
 		add_action( 'wp_footer', array( $this, 'add_footer_content' ), 20 );

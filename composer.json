@@ -1,6 +1,6 @@
 {
   "name": "wordpress/ai",
-  "description": "AI experiments and capabilities for WordPress.",
+  "description": "AI features, experiments and capabilities for WordPress.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {

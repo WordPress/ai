@@ -1,5 +1,5 @@
 /**
- * Type definitions for title generation experiment.
+ * Type definitions for title generation.
  */
 
 /**
