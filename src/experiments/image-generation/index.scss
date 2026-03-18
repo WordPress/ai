@@ -110,9 +110,15 @@
 }
 
 .ai-media-library-editor {
-	padding: 0 0 15px;
-	max-width: 950px;
+	padding-top: 0 !important;
+	max-width: 1050px;
 	min-width: 600px;
+
+	.components-textarea-control {
+		label {
+			text-transform: none;
+		}
+	}
 
 	.components-notice {
 		margin-top: 10px;

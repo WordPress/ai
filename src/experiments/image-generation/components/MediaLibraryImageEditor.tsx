@@ -1,16 +1,15 @@
 /**
  * AI editing panel for the WordPress Media Library image editor.
  *
- * Renders an "AI Edit" toggle button inside the native image editor toolbar
- * (via a React portal) and an expandable panel between the toolbar and the
- * image. Applies AI edits to the existing attachment and saves the result
- * as a new attachment.
+ * Renders preset action buttons and a Refine Image option directly
+ * below the native image editor toolbar. Applies AI edits to the
+ * existing attachment and saves the result as a new attachment.
  */
 
 /**
  * WordPress dependencies
  */
-import { useState, useEffect, createPortal } from '@wordpress/element';
+import { useState, useEffect } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import {
 	Button,
@@ -45,7 +44,7 @@ interface Preset {
 
 const PRESETS: Preset[] = [
 	{
-		label: __( 'Expand background', 'ai' ),
+		label: __( 'Expand Background', 'ai' ),
 		prompt: __(
 			'Outpaint the image to create a wider panoramic view. Expand the scene outward in all directions to fill the empty transparent border while preserving the original style, lighting, colors, and perspective. Continue textures, structures, and environmental elements naturally so the extension blends seamlessly with the original image. Preserve the original image exactly and only generate content in the empty area.',
 			'ai'
@@ -54,7 +53,7 @@ const PRESETS: Preset[] = [
 		prepare: ( url: string ) => prepareExpandCanvas( url ),
 	},
 	{
-		label: __( 'Remove background', 'ai' ),
+		label: __( 'Remove Background', 'ai' ),
 		prompt: __(
 			'Remove the entire background and isolate the main subject. Replace the background with a pure solid white (#FFFFFF) background. Preserve all details of the subject and maintain natural, clean edges around the silhouette. Ensure there are no remaining environmental elements, textures, gradients, or shadows from the original background. The final result should look like a professional studio product photo with a perfectly clean white backdrop.',
 			'ai'
@@ -66,37 +65,23 @@ const PRESETS: Preset[] = [
 interface Props {
 	postId: number;
 	attachmentUrl: string;
-	buttonContainer: HTMLElement;
 	imagePanel?: HTMLElement;
 }
 
 /**
  * AI editing panel for the WordPress Media Library image editor.
  *
- * Renders a toggle button into the native toolbar via a React portal, and an
- * expandable panel between the toolbar and the image canvas.
+ * Shows preset action buttons and a Refine Image option directly in the panel
+ * below the native image editor toolbar.
  *
  * @param {Props} props Component props.
  */
 export function MediaLibraryImageEditor( {
 	attachmentUrl,
-	buttonContainer,
 	imagePanel,
 }: Props ) {
-	const [ panelOpen, setPanelOpen ] = useState( false );
-
-	// Hide the native image canvas while the AI panel is open.
-	useEffect( () => {
-		if ( ! imagePanel ) {
-			return;
-		}
-		imagePanel.style.display = panelOpen ? 'none' : '';
-		return () => {
-			imagePanel.style.display = '';
-		};
-	}, [ panelOpen, imagePanel ] );
-
 	const [ state, setState ] = useState< EditorState >( 'idle' );
+
 	const [ prompt, setPrompt ] = useState( '' );
 	const [ refinePrompt, setRefinePrompt ] = useState( '' );
 	const [ savedUpload, setSavedUpload ] = useState< UploadedImage | null >(
@@ -115,6 +100,18 @@ export function MediaLibraryImageEditor( {
 		goForward,
 		resetHistory,
 	} = useImageHistory();
+
+	// Hide the native image canvas once we have a generated image.
+	useEffect( () => {
+		if ( ! imagePanel ) {
+			return;
+		}
+		const hasGeneratedImage = historyIndex >= 0;
+		imagePanel.style.display = hasGeneratedImage ? 'none' : '';
+		return () => {
+			imagePanel.style.display = '';
+		};
+	}, [ historyIndex, imagePanel ] );
 
 	/**
 	 * Generates an AI-refined version of the image.
@@ -242,52 +239,43 @@ export function MediaLibraryImageEditor( {
 		historyIndex + 1
 	);
 
-	const toggleButton = (
-		<button
-			type="button"
-			className={ `button ai-media-library-editor__toggle-btn${
-				panelOpen ? ' active' : ''
-			}` }
-			aria-expanded={ panelOpen }
-			onClick={ () => setPanelOpen( ( open ) => ! open ) }
-		>
-			{ __( 'AI Edit', 'ai' ) }
-		</button>
-	);
+	const [ showPrompt, setShowPrompt ] = useState( false );
 
 	return (
-		<>
-			{ createPortal( toggleButton, buttonContainer ) }
-
-			{ panelOpen && (
-				<div className="imgedit-panel-content ai-media-library-editor">
-					{ state === 'idle' && (
-						<div className="ai-media-library-editor__idle">
-							<div className="ai-media-library-editor__presets">
-								{ PRESETS.map( ( preset ) => (
-									<Button
-										key={ preset.label }
-										variant="secondary"
-										icon={ preset.icon }
-										onClick={ async () => {
-											const reference = preset.prepare
-												? await preset.prepare(
-														attachmentUrl
-												  )
-												: undefined;
-											handleGenerate(
-												preset.prompt,
-												reference
-											);
-										} }
-									>
-										{ preset.label }
-									</Button>
-								) ) }
-							</div>
+		<div className="imgedit-panel-content ai-media-library-editor">
+			{ state === 'idle' && (
+				<div className="ai-media-library-editor__idle">
+					<div className="ai-media-library-editor__presets">
+						{ PRESETS.map( ( preset ) => (
+							<Button
+								key={ preset.label }
+								variant="secondary"
+								icon={ preset.icon }
+								onClick={ async () => {
+									const reference = preset.prepare
+										? await preset.prepare( attachmentUrl )
+										: undefined;
+									handleGenerate( preset.prompt, reference );
+								} }
+							>
+								{ preset.label }
+							</Button>
+						) ) }
+						<Button
+							variant="secondary"
+							icon={ <Icon icon="format-image" /> }
+							onClick={ () =>
+								setShowPrompt( ( show ) => ! show )
+							}
+						>
+							{ __( 'Refine Image', 'ai' ) }
+						</Button>
+					</div>
+					{ showPrompt && (
+						<>
 							<TextareaControl
 								label={ __(
-									'Describe the refinements you want to make to the image.',
+									'Describe the refinements you want to make to the image',
 									'ai'
 								) }
 								value={ prompt }
@@ -304,228 +292,218 @@ export function MediaLibraryImageEditor( {
 									{ __( 'Generate', 'ai' ) }
 								</Button>
 							</div>
-							{ error && (
-								<Notice status="error" isDismissible={ false }>
-									{ error }
-								</Notice>
-							) }
-						</div>
+						</>
 					) }
-
-					{ state === 'generating' && (
-						<div className="ai-media-library-editor__generating">
-							{ previewSrc && (
-								<img
-									src={ previewSrc }
-									alt={
-										activeEntry?.generatedData?.prompt ?? ''
-									}
-									className="ai-media-library-editor__preview-image"
-								/>
-							) }
-							<div className="ai-media-library-editor__spinner-row">
-								<Spinner />
-								<span>{ __( 'Generating image…', 'ai' ) }</span>
-							</div>
-						</div>
-					) }
-
-					{ state === 'preview' && previewSrc && (
-						<div className="ai-media-library-editor__preview">
-							{ savedUpload && (
-								<Notice
-									status="success"
-									onDismiss={ () => setSavedUpload( null ) }
-								>
-									{ __( 'Image saved!', 'ai' ) }{ ' ' }
-									<a
-										href={ `upload.php?item=${ savedUpload.id }` }
-									>
-										{ __( 'View new image', 'ai' ) }
-									</a>
-								</Notice>
-							) }
-							<div className="ai-image-history-nav">
-								<Button
-									className="ai-image-history-nav__arrow"
-									icon={ chevronLeft }
-									disabled={ ! canGoBack }
-									onClick={ goBack }
-									label={ __( 'Previous version', 'ai' ) }
-								/>
-								<div className="ai-image-history-nav__content">
-									<div className="ai-media-library-editor__comparison">
-										<div className="ai-media-library-editor__comparison-item">
-											<p className="ai-media-library-editor__comparison-label">
-												{ comparisonLeftLabel }
-											</p>
-											<img
-												src={ comparisonLeftSrc }
-												alt={ comparisonLeftLabel }
-												className="ai-media-library-editor__preview-image"
-											/>
-										</div>
-										<div className="ai-media-library-editor__comparison-item">
-											<p className="ai-media-library-editor__comparison-label">
-												{ comparisonRightLabel }
-											</p>
-											<img
-												src={ previewSrc }
-												alt={
-													activeEntry?.generatedData
-														?.prompt ?? ''
-												}
-												className="ai-media-library-editor__preview-image is-active"
-											/>
-										</div>
-									</div>
-								</div>
-								<Button
-									className="ai-image-history-nav__arrow"
-									icon={ chevronRight }
-									disabled={ ! canGoForward }
-									onClick={ goForward }
-									label={ __( 'Next version', 'ai' ) }
-								/>
-							</div>
-							{ history.length > 1 && (
-								<p className="ai-image-history-nav__counter">
-									{ sprintf(
-										/* translators: 1: current position, 2: total count */
-										__( '%1$d / %2$d', 'ai' ),
-										historyIndex + 1,
-										history.length
-									) }
-								</p>
-							) }
-							<div className="ai-media-library-editor__actions">
-								<Button
-									variant="primary"
-									onClick={ handleSave }
-								>
-									{ __( 'Save to Media Library', 'ai' ) }
-								</Button>
-								<Button
-									variant="secondary"
-									onClick={ () => {
-										setRefinePrompt( '' );
-										setError( null );
-										setState( 'refining' );
-									} }
-								>
-									{ __( 'Refine Image', 'ai' ) }
-								</Button>
-								<Button
-									variant="secondary"
-									onClick={ () =>
-										handleGenerate(
-											activeEntry?.generatedData.prompt ??
-												'',
-											activeEntry?.referenceSrc,
-											activeEntry?.isRefinement ?? false,
-											activeEntry?.referenceHistoryIndex
-										)
-									}
-								>
-									{ __( 'Generate Another Image', 'ai' ) }
-								</Button>
-								<Button
-									variant="tertiary"
-									isDestructive
-									onClick={ handleReset }
-								>
-									{ __( 'Start over', 'ai' ) }
-								</Button>
-							</div>
-							{ error && (
-								<Notice status="error" isDismissible={ false }>
-									{ error }
-								</Notice>
-							) }
-						</div>
-					) }
-
-					{ state === 'refining' && previewSrc && (
-						<div className="ai-media-library-editor__refining">
-							<img
-								src={ previewSrc }
-								alt={ activeEntry?.generatedData?.prompt ?? '' }
-								className="ai-media-library-editor__preview-image"
-							/>
-							<div className="ai-media-library-editor__presets">
-								{ PRESETS.map( ( preset ) => (
-									<Button
-										key={ preset.label }
-										variant="secondary"
-										icon={ preset.icon }
-										onClick={ () =>
-											handleGenerate(
-												preset.prompt,
-												previewSrc,
-												true,
-												historyIndex
-											)
-										}
-									>
-										{ preset.label }
-									</Button>
-								) ) }
-							</div>
-							<TextareaControl
-								label={ __(
-									'Describe the refinements you want to make to the image.',
-									'ai'
-								) }
-								value={ refinePrompt }
-								onChange={ setRefinePrompt }
-								rows={ 3 }
-								__nextHasNoMarginBottom
-							/>
-							<div className="ai-media-library-editor__actions">
-								<Button
-									variant="primary"
-									disabled={ ! refinePrompt.trim() }
-									onClick={ () =>
-										handleGenerate(
-											refinePrompt.trim(),
-											previewSrc,
-											true,
-											historyIndex
-										)
-									}
-								>
-									{ __( 'Apply', 'ai' ) }
-								</Button>
-								<Button
-									variant="tertiary"
-									onClick={ () => {
-										setError( null );
-										setState( 'preview' );
-									} }
-								>
-									{ __( 'Cancel', 'ai' ) }
-								</Button>
-							</div>
-							{ error && (
-								<Notice status="error" isDismissible={ false }>
-									{ error }
-								</Notice>
-							) }
-						</div>
-					) }
-
-					{ state === 'saving' && (
-						<div className="ai-media-library-editor__saving">
-							<div className="ai-media-library-editor__spinner-row">
-								<Spinner />
-								<span>
-									{ __( 'Saving to Media Library…', 'ai' ) }
-								</span>
-							</div>
-						</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
 					) }
 				</div>
 			) }
-		</>
+
+			{ state === 'generating' && (
+				<div className="ai-media-library-editor__generating">
+					{ previewSrc && (
+						<img
+							src={ previewSrc }
+							alt={ activeEntry?.generatedData?.prompt ?? '' }
+							className="ai-media-library-editor__preview-image"
+						/>
+					) }
+					<div className="ai-media-library-editor__spinner-row">
+						<Spinner />
+						<span>{ __( 'Generating image…', 'ai' ) }</span>
+					</div>
+				</div>
+			) }
+
+			{ state === 'preview' && previewSrc && (
+				<div className="ai-media-library-editor__preview">
+					{ savedUpload && (
+						<Notice
+							status="success"
+							onDismiss={ () => setSavedUpload( null ) }
+						>
+							{ __( 'Image saved!', 'ai' ) }{ ' ' }
+							<a href={ `upload.php?item=${ savedUpload.id }` }>
+								{ __( 'View new image', 'ai' ) }
+							</a>
+						</Notice>
+					) }
+					<div className="ai-image-history-nav">
+						<Button
+							className="ai-image-history-nav__arrow"
+							icon={ chevronLeft }
+							disabled={ ! canGoBack }
+							onClick={ goBack }
+							label={ __( 'Previous version', 'ai' ) }
+						/>
+						<div className="ai-image-history-nav__content">
+							<div className="ai-media-library-editor__comparison">
+								<div className="ai-media-library-editor__comparison-item">
+									<p className="ai-media-library-editor__comparison-label">
+										{ comparisonLeftLabel }
+									</p>
+									<img
+										src={ comparisonLeftSrc }
+										alt={ comparisonLeftLabel }
+										className="ai-media-library-editor__preview-image"
+									/>
+								</div>
+								<div className="ai-media-library-editor__comparison-item">
+									<p className="ai-media-library-editor__comparison-label">
+										{ comparisonRightLabel }
+									</p>
+									<img
+										src={ previewSrc }
+										alt={
+											activeEntry?.generatedData
+												?.prompt ?? ''
+										}
+										className="ai-media-library-editor__preview-image is-active"
+									/>
+								</div>
+							</div>
+						</div>
+						<Button
+							className="ai-image-history-nav__arrow"
+							icon={ chevronRight }
+							disabled={ ! canGoForward }
+							onClick={ goForward }
+							label={ __( 'Next version', 'ai' ) }
+						/>
+					</div>
+					{ history.length > 1 && (
+						<p className="ai-image-history-nav__counter">
+							{ sprintf(
+								/* translators: 1: current position, 2: total count */
+								__( '%1$d / %2$d', 'ai' ),
+								historyIndex + 1,
+								history.length
+							) }
+						</p>
+					) }
+					<div className="ai-media-library-editor__actions">
+						<Button variant="primary" onClick={ handleSave }>
+							{ __( 'Save to Media Library', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={ () => {
+								setRefinePrompt( '' );
+								setError( null );
+								setState( 'refining' );
+							} }
+						>
+							{ __( 'Refine Image', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={ () =>
+								handleGenerate(
+									activeEntry?.generatedData.prompt ?? '',
+									activeEntry?.referenceSrc,
+									activeEntry?.isRefinement ?? false,
+									activeEntry?.referenceHistoryIndex
+								)
+							}
+						>
+							{ __( 'Generate Another Image', 'ai' ) }
+						</Button>
+						<Button
+							variant="tertiary"
+							isDestructive
+							onClick={ handleReset }
+						>
+							{ __( 'Start over', 'ai' ) }
+						</Button>
+					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
+				</div>
+			) }
+
+			{ state === 'refining' && previewSrc && (
+				<div className="ai-media-library-editor__refining">
+					<img
+						src={ previewSrc }
+						alt={ activeEntry?.generatedData?.prompt ?? '' }
+						className="ai-media-library-editor__preview-image"
+					/>
+					<div className="ai-media-library-editor__presets">
+						{ PRESETS.map( ( preset ) => (
+							<Button
+								key={ preset.label }
+								variant="secondary"
+								icon={ preset.icon }
+								onClick={ () =>
+									handleGenerate(
+										preset.prompt,
+										previewSrc,
+										true,
+										historyIndex
+									)
+								}
+							>
+								{ preset.label }
+							</Button>
+						) ) }
+					</div>
+					<TextareaControl
+						label={ __(
+							'Describe the refinements you want to make to the image',
+							'ai'
+						) }
+						value={ refinePrompt }
+						onChange={ setRefinePrompt }
+						rows={ 3 }
+						__nextHasNoMarginBottom
+					/>
+					<div className="ai-media-library-editor__actions">
+						<Button
+							variant="primary"
+							disabled={ ! refinePrompt.trim() }
+							onClick={ () =>
+								handleGenerate(
+									refinePrompt.trim(),
+									previewSrc,
+									true,
+									historyIndex
+								)
+							}
+						>
+							{ __( 'Apply', 'ai' ) }
+						</Button>
+						<Button
+							variant="tertiary"
+							onClick={ () => {
+								setError( null );
+								setState( 'preview' );
+							} }
+						>
+							{ __( 'Cancel', 'ai' ) }
+						</Button>
+					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
+				</div>
+			) }
+
+			{ state === 'saving' && (
+				<div className="ai-media-library-editor__saving">
+					<div className="ai-media-library-editor__spinner-row">
+						<Spinner />
+						<span>{ __( 'Saving to Media Library…', 'ai' ) }</span>
+					</div>
+				</div>
+			) }
+		</div>
 	);
 }
