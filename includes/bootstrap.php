@@ -12,10 +12,11 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Admin\Activation;
+use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
-use WordPress\AI\Migrations\Credential_Migration;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -173,8 +174,8 @@ function load(): void {
 	require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
 	require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
 
-	// Run any pending migrations.
-	( new Credential_Migration() )->run();
+	// Handle any pending upgrades.
+	( new Upgrades() )->init();
 
 	// Handle deprecated code.
 	( new Deprecated() )->init();
@@ -249,3 +250,20 @@ function initialize_features(): void {
 }
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
+
+
+/**
+ * Triggers when the plugin is activated.
+ *
+ * @since x.x.x
+ */
+register_activation_hook(
+	WPAI_PLUGIN_FILE,
+	static function (): void {
+		// Load required files.
+		require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
+		require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
+
+		Activation::activation_callback();
+	}
+);
