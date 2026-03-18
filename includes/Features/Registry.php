@@ -11,6 +11,9 @@ namespace WordPress\AI\Features;
 
 use WordPress\AI\Contracts\Feature;
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Central registry for managing feature storage and retrieval.
  *

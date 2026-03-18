@@ -15,6 +15,9 @@ namespace WordPress\AI\Experiments;
 
 use WordPress\AI\Features\Feature_Category;
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Experiment category constants.
  *

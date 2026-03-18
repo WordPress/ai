@@ -9,6 +9,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments;
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Registers experimental features to the plugin
  *

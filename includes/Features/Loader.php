@@ -12,6 +12,9 @@ namespace WordPress\AI\Features;
 use Throwable;
 use WordPress\AI\Contracts\Feature;
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Orchestrates feature initialization and registration.
  *
