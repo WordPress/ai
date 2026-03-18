@@ -34,7 +34,6 @@ interface UseMetaDescriptionReturn {
 	hasSeoPlugin: boolean;
 	generateDescriptions: () => Promise< void >;
 	applyDescription: ( text: string ) => void;
-	copyToClipboard: ( text: string ) => Promise< void >;
 }
 
 /**
@@ -48,8 +47,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const hasSeoPlugin = Boolean( localized?.seoPlugin );
 
 	const { editPost } = useDispatch( editorStore );
-	const { removeNotice, createErrorNotice, createSuccessNotice } =
-		dispatch( noticesStore );
+	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
 
 	const [ isGenerating, setIsGenerating ] = useState( false );
 	const [ suggestions, setSuggestions ] = useState<
@@ -127,24 +125,6 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		[ editPost, metaKey ]
 	);
 
-	const copyToClipboard = useCallback(
-		async ( text: string ) => {
-			try {
-				await navigator.clipboard.writeText( text );
-				createSuccessNotice( 'Meta description copied to clipboard.', {
-					type: 'snackbar',
-					isDismissible: true,
-				} );
-			} catch {
-				createErrorNotice( 'Failed to copy to clipboard.', {
-					id: NOTICE_ID,
-					isDismissible: true,
-				} );
-			}
-		},
-		[ createSuccessNotice, createErrorNotice ]
-	);
-
 	return {
 		isGenerating,
 		suggestions,
@@ -153,6 +133,5 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		hasSeoPlugin,
 		generateDescriptions,
 		applyDescription,
-		copyToClipboard,
 	};
 }

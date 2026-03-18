@@ -30,7 +30,6 @@ export default function MetaDescriptionPanel(): JSX.Element {
 		currentDescription,
 		generateDescriptions,
 		applyDescription,
-		copyToClipboard,
 	} = useMetaDescription();
 
 	const [ isModalOpen, setIsModalOpen ] = useState( false );
@@ -99,7 +98,6 @@ export default function MetaDescriptionPanel(): JSX.Element {
 					initialDescription={ currentDescription }
 					onGenerate={ generateDescriptions }
 					onApply={ applyDescription }
-					onCopy={ copyToClipboard }
 					onClose={ () => setIsModalOpen( false ) }
 				/>
 			) }

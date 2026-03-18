@@ -8,6 +8,9 @@
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Modal, Button, TextareaControl, Spinner } from '@wordpress/components';
+import { useCopyToClipboard } from '@wordpress/compose';
+import { dispatch } from '@wordpress/data';
+import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
@@ -22,7 +25,6 @@ interface MetaDescriptionModalProps {
 	initialDescription: string;
 	onGenerate: () => Promise< void >;
 	onApply: ( text: string ) => void;
-	onCopy: ( text: string ) => Promise< void >;
 	onClose: () => void;
 }
 
@@ -35,7 +37,6 @@ interface MetaDescriptionModalProps {
  * @param props.initialDescription Pre-existing description to edit.
  * @param props.onGenerate         Callback to trigger generation.
  * @param props.onApply            Callback to apply the description.
- * @param props.onCopy             Callback to copy to clipboard.
  * @param props.onClose            Callback to close the modal.
  */
 export default function MetaDescriptionModal( {
@@ -44,13 +45,27 @@ export default function MetaDescriptionModal( {
 	initialDescription,
 	onGenerate,
 	onApply,
-	onCopy,
 	onClose,
 }: MetaDescriptionModalProps ): JSX.Element {
 	const [ selectedIndex, setSelectedIndex ] = useState< number | null >(
 		null
 	);
 	const [ editableText, setEditableText ] = useState( initialDescription );
+
+	const { createSuccessNotice } = dispatch( noticesStore );
+
+	const copyButtonRef = useCopyToClipboard< HTMLButtonElement >(
+		() => editableText,
+		() => {
+			createSuccessNotice(
+				__( 'Meta description copied to clipboard.', 'ai' ),
+				{
+					type: 'snackbar',
+					isDismissible: true,
+				}
+			);
+		}
+	);
 
 	const handleSelectSuggestion = ( index: number, text: string ) => {
 		setSelectedIndex( index );
@@ -143,8 +158,8 @@ export default function MetaDescriptionModal( {
 						{ __( 'Apply', 'ai' ) }
 					</Button>
 					<Button
+						ref={ copyButtonRef }
 						variant="tertiary"
-						onClick={ () => onCopy( editableText ) }
 						disabled={ editableText.trim().length === 0 }
 					>
 						{ __( 'Copy to clipboard', 'ai' ) }
