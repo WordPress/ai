@@ -189,7 +189,7 @@ function load(): void {
 }
 
 /**
- * Initializes plugin experiments.
+ * Initializes plugin features.
  *
  * @since 0.1.0
  */
