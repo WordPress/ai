@@ -125,7 +125,7 @@ export function useContextualTagging( taxonomy: string ): {
 		} finally {
 			setIsGenerating( false );
 		}
-	}, [ postId, content, taxonomy ] );
+	}, [ postId, content, taxonomy, removeNotice, createErrorNotice ] );
 
 	// Remove a suggestion from the list.
 	const removeSuggestionFromList = ( suggestion: TagSuggestion ) => {
@@ -239,9 +239,9 @@ async function findOrCreateTerm(
 		}
 
 		// Create new term via REST.
-		const data: Record< string, unknown > = { name: termName };
+		const data: Record< string, unknown > = { name: termName, parent: 0 };
 		if ( parentId ) {
-			data[ 'parent' ] = parentId;
+			data[ 'parent' ] = parentId; // eslint-disable-line dot-notation
 		}
 
 		const newTerm: any = await apiFetch( {

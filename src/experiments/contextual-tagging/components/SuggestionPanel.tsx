@@ -27,7 +27,7 @@ interface SuggestionPanelProps {
  * Displays a button to generate suggestions and renders suggestion pills
  * that can be accepted or dismissed.
  *
- * @param props Component props.
+ * @param props          Component props.
  * @param props.taxonomy The taxonomy to generate suggestions for.
  * @return The suggestion panel component.
  */
