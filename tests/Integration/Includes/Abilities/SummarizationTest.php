@@ -7,27 +7,29 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Summarization\Summarization;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Summarization\Summarization;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Summarization Ability tests.
  *
  * @since 0.2.0
  */
-class Test_Summarization_Experiment extends Abstract_Experiment {
+class Test_Summarization_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'summarization';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'summarization',
 			'label'       => 'Content Summarization',
 			'description' => 'Summarizes long-form content into digestible overviews',
 		);
@@ -41,7 +43,6 @@ class Test_Summarization_Experiment extends Abstract_Experiment {
 	public function register(): void {
 		// No-op for testing.
 	}
-
 }
 
 /**
@@ -54,14 +55,14 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Summarization ability instance.
 	 *
-	 * @var Summarization
+	 * @var \WordPress\AI\Abilities\Summarization\Summarization
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Summarization_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Summarization_Experiment
 	 */
 	private $experiment;
 
@@ -496,4 +497,3 @@ class SummarizationTest extends WP_UnitTestCase {
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
 }
-

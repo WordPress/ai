@@ -11,6 +11,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Handle deprecated code.
  *
@@ -135,6 +138,60 @@ final class Deprecated {
 				);
 				return $valid;
 			}
+		);
+
+		// @todo remove in v1.0.
+		add_filter(
+			'wpai_features_enabled',
+			static function ( $enabled ) {
+				if ( ! has_filter( 'ai_experiments_enabled' ) ) {
+					return $enabled;
+				}
+
+				$enabled = (bool) apply_filters_deprecated(
+					'ai_experiments_enabled',
+					array( $enabled ),
+					'x.x.x',
+					'wpai_features_enabled',
+					esc_html__( 'This filter will be removed in v1.0', 'ai' )
+				);
+				return $enabled;
+			}
+		);
+
+		// @todo remove in v1.0.
+		add_action(
+			'wpai_register_features',
+			static function ( $registry ) {
+				if ( ! has_action( 'ai_experiments_register_experiments' ) ) {
+					return;
+				}
+				do_action_deprecated(
+					'ai_experiments_register_experiments',
+					array( $registry ),
+					'x.x.x',
+					'wpai_register_features',
+					esc_html__( 'This action will be removed in v1.0', 'ai' )
+				);
+			},
+		);
+
+		// @todo remove in v1.0.
+		add_action(
+			'wpai_features_initialized',
+			static function () {
+				if ( ! has_action( 'ai_experiments_initialized' ) ) {
+					return;
+				}
+
+				do_action_deprecated(
+					'ai_experiments_initialized',
+					array(),
+					'x.x.x',
+					'wpai_features_initialized',
+					esc_html__( 'This action will be removed in v1.0', 'ai' )
+				);
+			},
 		);
 	}
 }

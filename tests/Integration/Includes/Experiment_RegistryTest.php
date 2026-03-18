@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for the Experiment_Registry class.
+ * Tests for the Registry class.
  *
  * @package WordPress\AI\Tests\Includes
  */
@@ -8,26 +8,28 @@
 namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
-use WordPress\AI\Abstracts\Abstract_Experiment;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Test experiment for registry tests.
  *
  * @since 0.1.0
  */
-class Test_Experiment extends Abstract_Experiment {
+class Test_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'test-experiment';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'test-experiment',
 			'label'       => 'Test Experiment',
 			'description' => 'A test experiment for unit testing',
 		);
@@ -44,15 +46,15 @@ class Test_Experiment extends Abstract_Experiment {
 }
 
 /**
- * Experiment_Registry test case.
+ * Registry test case.
  *
  * @since 0.1.0
  */
-class Experiment_Registry_Test extends WP_UnitTestCase {
+class Registry_Test extends WP_UnitTestCase {
 	/**
 	 * Experiment registry instance.
 	 *
-	 * @var \WordPress\AI\Experiment_Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
 	private $registry;
 
@@ -70,7 +72,7 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		$this->registry = new Experiment_Registry();
+		$this->registry = new Registry();
 	}
 
 	/**
@@ -91,10 +93,10 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 */
 	public function test_register_experiment() {
 		$experiment = new Test_Experiment();
-		$result     = $this->registry->register_experiment( $experiment );
+		$result     = $this->registry->register_feature( $experiment );
 
 		$this->assertTrue( $result, 'Experiment should register successfully' );
-		$this->assertTrue( $this->registry->has_experiment( 'test-experiment' ), 'Experiment should exist in registry' );
+		$this->assertTrue( $this->registry->has_feature( 'test-experiment' ), 'Experiment should exist in registry' );
 	}
 
 	/**
@@ -104,8 +106,8 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 */
 	public function test_register_duplicate_experiment_fails() {
 		$experiment = new Test_Experiment();
-		$this->registry->register_experiment( $experiment );
-		$result = $this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
+		$result = $this->registry->register_feature( $experiment );
 
 		$this->assertFalse( $result, 'Duplicate experiment registration should fail' );
 	}
@@ -117,8 +119,8 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 */
 	public function test_get_experiment() {
 		$experiment = new Test_Experiment();
-		$this->registry->register_experiment( $experiment );
-		$retrieved = $this->registry->get_experiment( 'test-experiment' );
+		$this->registry->register_feature( $experiment );
+		$retrieved = $this->registry->get_feature( 'test-experiment' );
 
 		$this->assertSame( $experiment, $retrieved, 'Should retrieve the same experiment instance' );
 	}
@@ -129,7 +131,7 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_get_nonexistent_experiment_returns_null() {
-		$retrieved = $this->registry->get_experiment( 'nonexistent-experiment' );
+		$retrieved = $this->registry->get_feature( 'nonexistent-experiment' );
 
 		$this->assertNull( $retrieved, 'Non-existent experiment should return null' );
 	}
@@ -141,11 +143,11 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 */
 	public function test_get_all_experiments() {
 		$experiment1 = new Test_Experiment();
-		$this->registry->register_experiment( $experiment1 );
+		$this->registry->register_feature( $experiment1 );
 
-		$experiments = $this->registry->get_all_experiments();
+		$experiments = $this->registry->get_all_features();
 
-		$this->assertIsArray( $experiments, 'get_all_experiments should return an array' );
+		$this->assertIsArray( $experiments, 'get_all_features should return an array' );
 		$this->assertCount( 1, $experiments, 'Should have one experiment' );
 		$this->assertArrayHasKey( 'test-experiment', $experiments, 'Experiments array should contain registered experiment' );
 		$this->assertSame( $experiment1, $experiments['test-experiment'], 'Should return same instance' );
@@ -158,9 +160,9 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 */
 	public function test_has_experiment_returns_true_for_existing_experiment() {
 		$experiment = new Test_Experiment();
-		$this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
 
-		$this->assertTrue( $this->registry->has_experiment( 'test-experiment' ), 'Should find existing experiment' );
+		$this->assertTrue( $this->registry->has_feature( 'test-experiment' ), 'Should find existing experiment' );
 	}
 
 	/**
@@ -169,7 +171,7 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_has_experiment_returns_false_for_nonexistent_experiment() {
-		$this->assertFalse( $this->registry->has_experiment( 'nonexistent-experiment' ), 'Should not find non-existent experiment' );
+		$this->assertFalse( $this->registry->has_feature( 'nonexistent-experiment' ), 'Should not find non-existent experiment' );
 	}
 
 	/**
@@ -177,12 +179,12 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_initialize_experiments() {
+	public function test_initialize_features() {
 		$experiment = new Test_Experiment();
-		$this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
 
-		$loader = new Experiment_Loader( $this->registry );
-		$loader->initialize_experiments();
+		$loader = new Loader( $this->registry );
+		$loader->initialize_features();
 
 		$this->assertTrue( $loader->is_initialized(), 'Loader should be marked as initialized' );
 	}
@@ -193,13 +195,13 @@ class Experiment_Registry_Test extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_disabled_experiments_not_initialized() {
-		add_filter( 'ai_experiments_experiment_test-experiment_enabled', '__return_false' );
+		add_filter( 'wpai_feature_test-experiment_enabled', '__return_false' );
 
 		$experiment = new Test_Experiment();
-		$this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
 
-		$loader = new Experiment_Loader( $this->registry );
-		$loader->initialize_experiments();
+		$loader = new Loader( $this->registry );
+		$loader->initialize_features();
 
 		$this->assertFalse( $experiment->is_enabled(), 'Experiment should be disabled' );
 	}
