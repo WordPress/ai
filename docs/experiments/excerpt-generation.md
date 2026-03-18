@@ -282,13 +282,13 @@ The `normalize_content()` helper function processes content before sending it to
 
 ```php
 // Filter content before normalization
-add_filter( 'ai_experiments_pre_normalize_content', function( $content ) {
+add_filter( 'wpai_pre_normalize_content', function( $content ) {
     // Custom preprocessing
     return $content;
 } );
 
 // Filter content after normalization
-add_filter( 'ai_experiments_normalize_content', function( $content ) {
+add_filter( 'wpai_normalize_content', function( $content ) {
     // Custom post-processing
     return $content;
 } );

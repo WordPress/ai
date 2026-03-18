@@ -29,7 +29,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		update_option( 'ai_experiments_enabled', true );
 		update_option( 'ai_experiment_excerpt-generation_enabled', true );
@@ -56,7 +56,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_excerpt-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 

@@ -173,6 +173,9 @@ function load(): void {
 	// Run any pending migrations.
 	( new Credential_Migration() )->run();
 
+	// Handle deprecated code.
+	( new Deprecated() )->init();
+
 	$loaded = true;
 
 	// Add plugin action links.
