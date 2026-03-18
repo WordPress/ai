@@ -312,10 +312,10 @@ This file returns a string that instructs the AI on how to generate summaries. T
 
 ### Filtering Preferred Models
 
-You can filter which AI models are used for summarization using the `ai_experiments_preferred_models` filter:
+You can filter which AI models are used for summarization using the `wpai_preferred_models` filter:
 
 ```php
-add_filter( 'ai_experiments_preferred_models', function( $models ) {
+add_filter( 'wpai_preferred_models', function( $models ) {
     // Prefer specific models
     return array(
         array( 'openai', 'gpt-4' ),

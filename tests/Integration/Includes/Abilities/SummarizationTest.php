@@ -19,15 +19,15 @@ use WordPress\AI\Abstracts\Abstract_Feature;
  */
 class Test_Summarization_Experiment extends Abstract_Feature {
 	/**
-		 * {@inheritDoc}
-		 */
+	 * {@inheritDoc}
+	 */
 	public static function get_id(): string {
 		return 'summarization';
 	}
 
 	/**
-		 * {@inheritDoc}
-		 */
+	 * {@inheritDoc}
+	 */
 	protected function load_metadata(): array {
 		return array(
 			'label'       => 'Content Summarization',
