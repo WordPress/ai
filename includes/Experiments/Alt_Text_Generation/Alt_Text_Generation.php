@@ -174,7 +174,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 
 		add_meta_box(
 			'ai_alt_text_generation',
-			__( 'AI Alt Text', 'ai' ),
+			__( 'Alt Text', 'ai' ),
 			array( $this, 'render_attachment_meta_box' ),
 			'attachment',
 		);
@@ -216,7 +216,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
 		$fields['ai_alt_text'] = array(
-			'label'        => __( 'AI Alt Text', 'ai' ),
+			'label'        => __( 'Alt Text', 'ai' ),
 			'input'        => 'html',
 			'show_in_edit' => false,
 			'html'         => '<div class="ai-alt-text-media-actions"><button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p></div>',
