@@ -279,7 +279,7 @@ Edit `includes/Abilities/Review_Notes/system-instruction.php` to adjust:
 ### Filtering Preferred Models
 
 ```php
-add_filter( 'wpai_preferred_models', function( $models ) {
+add_filter( 'wpai_preferred_text_models', function( $models ) {
     return array(
         array( 'openai', 'gpt-4o' ),
         array( 'openai', 'gpt-4o-mini' ),
