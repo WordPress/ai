@@ -82,6 +82,13 @@ export default function SuggestionPanel( {
 
 			{ hasSuggestions && (
 				<div className="ai-contextual-tagging__suggestions">
+					<h3 className="ai-contextual-tagging__suggestions-title">
+						{ sprintf(
+							/* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
+							__( 'Suggested %s', 'ai' ),
+							taxonomyLabel
+						) }
+					</h3>
 					<div className="ai-contextual-tagging__pills">
 						{ suggestions.map( ( suggestion: TagSuggestion ) => (
 							<span
