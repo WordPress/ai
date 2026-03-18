@@ -192,7 +192,7 @@ Developers can register their own experiments using the `wpai_register_features`
 
 ```php
 add_action( 'wpai_register_features', function( $registry ) {
-	$registry->register_experiment( new My_Custom_Experiment() );
+	$registry->register_feature( new My_Custom_Experiment() );
 } );
 ```
 
