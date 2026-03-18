@@ -107,22 +107,22 @@ class AI_Service_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test ai_experiments_service_initialized action can be hooked.
+	 * Test wpai_service_initialized action can be hooked.
 	 *
 	 * @since 0.2.1
 	 */
 	public function test_init_action_is_hookable(): void {
 		$callback = static function () {};
 
-		add_action( 'ai_experiments_service_initialized', $callback );
+		add_action( 'wpai_service_initialized', $callback );
 
 		// Verify callback was registered.
 		$this->assertNotFalse(
-			has_action( 'ai_experiments_service_initialized', $callback ),
+			has_action( 'wpai_service_initialized', $callback ),
 			'Action should accept callbacks'
 		);
 
 		// Cleanup.
-		remove_action( 'ai_experiments_service_initialized', $callback );
+		remove_action( 'wpai_service_initialized', $callback );
 	}
 }
