@@ -160,11 +160,11 @@ final class Deprecated {
 		add_action(
 			'wpai_register_features',
 			static function ( $registry ) {
-				if ( ! has_action( 'ai_experiments_register_features' ) ) {
+				if ( ! has_action( 'ai_experiments_register_experiments' ) ) {
 					return;
 				}
 				do_action_deprecated(
-					'ai_experiments_register_features',
+					'ai_experiments_register_experiments',
 					array( $registry ),
 					'x.x.x',
 					'wpai_register_features',
@@ -177,12 +177,12 @@ final class Deprecated {
 		add_action(
 			'wpai_features_initialized',
 			static function () {
-				if ( ! has_action( 'ai_experiments_features_initialized' ) ) {
+				if ( ! has_action( 'ai_experiments_initialized' ) ) {
 					return;
 				}
 
 				do_action_deprecated(
-					'ai_experiments_features_initialized',
+					'ai_experiments_initialized',
 					array(),
 					'x.x.x',
 					'wpai_features_initialized',
