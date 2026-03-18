@@ -57,7 +57,7 @@ class V0_6_0 extends Abstract_Upgrade {
 		);
 
 		foreach ( $features as $feature ) {
-			$this->migrate_option( "ai_experiment_{$feature}_enabled", "wpai_featrue_{$feature}_enabled" );
+			$this->migrate_option( "ai_experiment_{$feature}_enabled", "wpai_feature_{$feature}_enabled" );
 		}
 	}
 

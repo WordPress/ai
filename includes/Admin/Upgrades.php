@@ -11,6 +11,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Admin;
 
 use WordPress\AI\Admin\Upgrades\V0_5_0;
+use WordPress\AI\Admin\Upgrades\V0_6_0;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -40,7 +41,7 @@ final class Upgrades {
 	/**
 	 * Upgrade classes.
 	 *
-	 * New upgraded chasses should be added here.
+	 * New upgrade routine classes should be added here, in order of oldest to newest.
 	 *
 	 * @since x.x.x
 	 *
@@ -48,6 +49,7 @@ final class Upgrades {
 	 */
 	private const UPGRADE_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as a single const.
 		V0_5_0::class,
+		V0_6_0::class,
 	);
 
 	/**
@@ -72,10 +74,10 @@ final class Upgrades {
 
 		foreach ( self::UPGRADE_CLASSES as $upgrade_class ) {
 			/**
-			 * Skip upgrades for older versions.
+			 * Skip upgrades for newer versions.
 			 * @todo Remove the !empty() check once we no long need to support < v0.5.0 and '' means a new install.
 			 */
-			if ( ! empty( $db_version ) || version_compare( $db_version, $upgrade_class::$version, '>=' ) ) {
+			if ( ! empty( $db_version ) && version_compare( $db_version, $upgrade_class::$version, '>=' ) ) {
 				continue;
 			}
 
@@ -124,7 +126,7 @@ final class Upgrades {
 		wp_admin_notice(
 			sprintf(
 				/* translators: 1. The version the upgrade failed on, 2. The error message. */
-				esc_html__( 'WordPress AI failed to upgrade to %1$s. Migration version %1$s failed with the following error: %2$s. Please deactivate and reactivate the plugin to try again.', 'ai' ),
+				esc_html__( 'WordPress AI failed to upgrade to %1$s. Migration version %2$s failed with the following error: %3$s. Please deactivate and reactivate the plugin to try again.', 'ai' ),
 				WPAI_VERSION,
 				esc_html( $failed_upgrade['version'] ),
 				esc_html( $failed_upgrade['error'] )

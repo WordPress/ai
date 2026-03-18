@@ -4,7 +4,7 @@
  *
  * The class encapsulates the logic for performing any necessary database migrations or other upgrade tasks when the plugin is updated to a new version. Each class represents a specific plugin version where the upgrade became necessary and contains the logic to perform the upgrade from the previous version(s).
  *
- * Error are caught during the routine and stored as messages that can be displayed to the user in the admin area.
+ * Error are caught during the upgrade routine and stored in an option for use in an admin notice.
  *
  * @package WordPress\AI\Admin\Upgrades
  * @since x.x.x
