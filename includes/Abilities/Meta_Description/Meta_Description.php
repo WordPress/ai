@@ -250,10 +250,41 @@ class Meta_Description extends Abstract_Ability {
 			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
+		/**
+		 * Filters the prompt content sent to the AI model for meta description generation.
+		 *
+		 * Allows developers to modify or augment the content before it is sent to the model.
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param string $prompt  The assembled prompt including content, title, and context tags.
+		 * @param string $content The normalized post content.
+		 * @param string $title   The post title.
+		 */
+		$prompt = (string) apply_filters( 'ai_meta_description_prompt', $prompt, $content, $title );
+
+		/**
+		 * Filters the number of meta description candidates to generate.
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param int $candidate_count The number of candidates to request from the AI model.
+		 */
+		$candidate_count = (int) apply_filters( 'ai_meta_description_candidate_count', self::DEFAULT_CANDIDATE_COUNT );
+
+		/**
+		 * Filters the temperature for the result of the meta description generation.
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param float $result_temperature The temperature for the result of the meta description generation.
+		 */
+		$result_temperature = (float) apply_filters( 'ai_meta_description_result_temperature', 0.7 );
+
 		$results = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.7 )
-			->using_candidate_count( self::DEFAULT_CANDIDATE_COUNT )
+			->using_temperature( $result_temperature )
+			->using_candidate_count( $candidate_count )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->generate_texts();
 
