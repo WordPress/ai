@@ -9,11 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Meta_Description;
 
+use WP_Error;
 use WP_Post;
 use WP_Post_Type;
-use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
@@ -31,7 +30,7 @@ class Meta_Description extends Abstract_Ability {
 	 * @since 0.6.0
 	 * @var int
 	 */
-	const DEFAULT_CANDIDATE_COUNT = 3;
+	public const DEFAULT_CANDIDATE_COUNT = 3;
 
 	/**
 	 * {@inheritDoc}
@@ -147,7 +146,6 @@ class Meta_Description extends Abstract_Ability {
 		}
 
 		$descriptions = $this->generate_descriptions( $content, $title, $context );
-
 		if ( is_wp_error( $descriptions ) ) {
 			return $descriptions;
 		}
@@ -244,11 +242,11 @@ class Meta_Description extends Abstract_Ability {
 
 		$prompt = '<content>' . $content . '</content>';
 
-		if ( $title ) {
+		if ( ! empty( $title ) ) {
 			$prompt .= "\n\n<title>" . $title . '</title>';
 		}
 
-		if ( $context ) {
+		if ( ! empty( $context ) ) {
 			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 

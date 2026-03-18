@@ -57,7 +57,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	public function test_get_supported_plugins_is_filterable() {
 		add_filter(
 			'ai_meta_description_seo_plugins',
-			function ( $plugins ) {
+			static function ( $plugins ) {
 				$plugins['custom-seo'] = array(
 					'file'     => 'custom-seo/custom-seo.php',
 					'meta_key' => '_custom_seo_description',
@@ -125,7 +125,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	public function test_get_meta_key_is_filterable() {
 		add_filter(
 			'ai_meta_description_meta_key',
-			function () {
+			static function () {
 				return '_custom_override_key';
 			}
 		);

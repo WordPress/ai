@@ -26,7 +26,7 @@ class SEO_Integration {
 	 * @since 0.6.0
 	 * @var string
 	 */
-	const FALLBACK_META_KEY = '_meta_description';
+	public const FALLBACK_META_KEY = '_meta_description';
 
 	/**
 	 * Returns the list of supported SEO plugins and their meta keys.
@@ -37,19 +37,19 @@ class SEO_Integration {
 	 */
 	public static function get_supported_plugins(): array {
 		$plugins = array(
-			'yoast-seo'       => array(
+			'yoast-seo'      => array(
 				'file'     => 'wordpress-seo/wp-seo.php',
 				'meta_key' => '_yoast_wpseo_metadesc',
 			),
-			'rank-math'       => array(
+			'rank-math'      => array(
 				'file'     => 'seo-by-rank-math/rank-math.php',
 				'meta_key' => 'rank_math_description',
 			),
-			'all-in-one-seo'  => array(
+			'all-in-one-seo' => array(
 				'file'     => 'all-in-one-seo-pack/all_in_one_seo_pack.php',
 				'meta_key' => '_aioseo_description',
 			),
-			'seopress'        => array(
+			'seopress'       => array(
 				'file'     => 'wp-seopress/seopress.php',
 				'meta_key' => '_seopress_titles_desc',
 			),

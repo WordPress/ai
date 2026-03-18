@@ -79,8 +79,8 @@ class Meta_Description extends Abstract_Experiment {
 	 * @since 0.6.0
 	 */
 	public function register_post_meta(): void {
-		$meta_key    = SEO_Integration::get_meta_key();
-		$seo_plugin  = SEO_Integration::detect_active_plugin();
+		$meta_key   = SEO_Integration::get_meta_key();
+		$seo_plugin = SEO_Integration::detect_active_plugin();
 
 		// Only register the fallback meta key. SEO plugins register their own.
 		if ( null !== $seo_plugin ) {
