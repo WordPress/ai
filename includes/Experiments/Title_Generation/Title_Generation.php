@@ -10,9 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Title_Generation;
 
 use WordPress\AI\Abilities\Title_Generation\Title_Generation as Title_Generation_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -23,16 +23,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.1.0
  */
-class Title_Generation extends Abstract_Experiment {
+class Title_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.1.0
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'title-generation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'title-generation',
 			'label'       => __( 'Title Generation', 'ai' ),
 			'description' => __( 'Generates title suggestions from content', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,

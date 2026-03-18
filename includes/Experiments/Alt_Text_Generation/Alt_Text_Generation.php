@@ -10,9 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Alt_Text_Generation;
 
 use WordPress\AI\Abilities\Image\Alt_Text_Generation as Alt_Text_Generation_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -25,7 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.3.0
  */
-class Alt_Text_Generation extends Abstract_Experiment {
+class Alt_Text_Generation extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'alt-text-generation';
+	}
+
 	/**
 	 * Tracks whether the media-focused assets have already been enqueued.
 	 *
@@ -37,12 +44,9 @@ class Alt_Text_Generation extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.3.0
 	 */
-	protected function load_experiment_metadata(): array {
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'alt-text-generation',
 			'label'       => __( 'Alt Text Generation', 'ai' ),
 			'description' => __( 'Generates descriptive alt text for images using AI vision models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
@@ -51,8 +55,6 @@ class Alt_Text_Generation extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.3.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -70,7 +72,7 @@ class Alt_Text_Generation extends Abstract_Experiment {
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
-			'ai/' . $this->get_id(),
+			'ai/' . self::get_id(),
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
