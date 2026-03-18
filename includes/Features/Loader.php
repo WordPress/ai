@@ -54,7 +54,7 @@ final class Loader {
 	/**
 	 * Registers features.
 	 *
-	 * Registers the default built-in features and fires the 'wpai_register' action hook for third-party usage.
+	 * Registers the default built-in features and fires the 'wpai_register_features' action hook for third-party usage.
 	 *
 	 * @since x.x.x
 	 */
