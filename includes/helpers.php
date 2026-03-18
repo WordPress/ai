@@ -167,7 +167,7 @@ function get_preferred_models_for_text_generation(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
-	return (array) apply_filters( 'wpai_preferred_models_for_text_generation', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_text_models', $preferred_models );
 }
 
 /**

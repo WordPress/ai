@@ -63,7 +63,7 @@ final class Deprecated {
 
 		// @todo remove in v1.0.
 		add_filter(
-			'wpai_preferred_models_for_text_generation',
+			'wpai_preferred_text_models',
 			static function ( $models ) {
 				if ( ! has_filter( 'ai_experiments_preferred_models_for_text_generation' ) ) {
 					return $models;
@@ -73,7 +73,7 @@ final class Deprecated {
 					'ai_experiments_preferred_models_for_text_generation',
 					array( $models ),
 					'x.x.x',
-					'wpai_preferred_models_for_text_generation',
+					'wpai_preferred_text_models',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
 				);
 				return $models;

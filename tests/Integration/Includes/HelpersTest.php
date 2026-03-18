@@ -311,7 +311,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_models_for_text_generation_applies_filter() {
 		add_filter(
-			'wpai_preferred_models_for_text_generation',
+			'wpai_preferred_text_models',
 			function( $models ) {
 				// Add a custom model.
 				$models[] = array(
@@ -328,7 +328,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'custom', $result[4][0], 'Fifth model provider should be custom' );
 		$this->assertEquals( 'custom-model', $result[4][1], 'Fifth model name should be custom-model' );
 
-		remove_all_filters( 'wpai_preferred_models_for_text_generation' );
+		remove_all_filters( 'wpai_preferred_text_models' );
 	}
 
 	/**
@@ -338,7 +338,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_models_for_text_generation_filter_can_replace_models() {
 		add_filter(
-			'wpai_preferred_models_for_text_generation',
+			'wpai_preferred_text_models',
 			function( $models ) {
 				// Replace with a single model.
 				return array(
@@ -356,7 +356,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'test', $result[0][0], 'Model provider should be test' );
 		$this->assertEquals( 'test-model', $result[0][1], 'Model name should be test-model' );
 
-		remove_all_filters( 'wpai_preferred_models_for_text_generation' );
+		remove_all_filters( 'wpai_preferred_text_models' );
 	}
 
 	/**
