@@ -75,7 +75,7 @@ class Credential_Migration {
 		}
 
 		$this->maybe_migrate_credentials();
-		update_option( self::VERSION_OPTION, AI_EXPERIMENTS_VERSION );
+		update_option( self::VERSION_OPTION, WPAI_VERSION );
 	}
 
 	/**

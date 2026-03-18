@@ -29,6 +29,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Shortcut constant to the path of this file.
  */
-define( 'AI_EXPERIMENTS_DIR', plugin_dir_path( __FILE__ ) );
+define( 'WPAI_DIR', plugin_dir_path( __FILE__ ) );
 
-require_once AI_EXPERIMENTS_DIR . 'includes/bootstrap.php';
+require_once WPAI_DIR . 'includes/bootstrap.php';

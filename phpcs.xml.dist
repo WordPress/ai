@@ -186,8 +186,7 @@
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<properties>
 			<property name="prefixes" type="array">
-				<element value="AI_EXPERIMENTS" /><!-- Constant -->
-
+				<element value="WPAI" /><!-- Constant -->
 				<element value="WordPress\AI" /><!-- Namespace -->
 				<element value="wpai_" /><!-- Function and variable prefix -->
 			</property>

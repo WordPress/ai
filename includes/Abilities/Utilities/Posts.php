@@ -60,7 +60,7 @@ class Posts {
 			array(
 				'label'               => esc_html__( 'Get post details', 'ai' ),
 				'description'         => esc_html__( 'Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
-				'category'            => AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY,
+				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
@@ -179,7 +179,7 @@ class Posts {
 			array(
 				'label'               => esc_html__( 'Get the post terms', 'ai' ),
 				'description'         => esc_html__( 'Get the terms of a post based on the post ID and optionally filter by taxonomy.', 'ai' ),
-				'category'            => AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY,
+				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
