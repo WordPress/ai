@@ -81,7 +81,7 @@ abstract class Abstract_Feature implements Feature {
 		$this->id = static::get_id();
 		if ( empty( $this->id ) ) {
 			throw new InvalidArgumentException(
-				esc_html__( 'Feature id is required in load_metadata().', 'ai' )
+				esc_html__( 'Invalid Feature id returned by ::get_id().', 'ai' )
 			);
 		}
 
