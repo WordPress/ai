@@ -28,6 +28,7 @@ interface SuggestionPanelProps {
  * that can be accepted or dismissed.
  *
  * @param props Component props.
+ * @param props.taxonomy The taxonomy to generate suggestions for.
  * @return The suggestion panel component.
  */
 export default function SuggestionPanel( {
