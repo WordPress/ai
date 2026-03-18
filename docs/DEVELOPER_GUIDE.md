@@ -33,7 +33,7 @@ mkdir -p includes/Experiments/My_Experiment
 
 ### Step 2: Create Experiment Class
 
-Create your experiment class by extending `Abstract_Experiment`:
+Create your experiment class by extending `Abstract_Feature`:
 
 ```php
 <?php
@@ -45,7 +45,7 @@ Create your experiment class by extending `Abstract_Experiment`:
 
 namespace WordPress\AI\Experiments\My_Experiment;
 
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 
 /**
@@ -53,89 +53,87 @@ use WordPress\AI\Asset_Loader;
  *
  * @since 0.1.0
  */
-class My_Experiment extends Abstract_Experiment {
-	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
-	 */
-	protected function load_experiment_metadata(): array {
-		return array(
-			'id'          => 'my-experiment',
-			'label'       => __( 'My Experiment', 'ai' ),
-			'description' => __( 'Description of what my experiment does.', 'ai' ),
-		);
-	}
+class My_Experiment extends Abstract_Feature {
+  /**
+   * {@inheritDoc}
+   */
+  public static function get_id(): string {
+    return 'my-experiment';
+  }
 
-	/**
-	 * Registers the experiment's hooks and functionality.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// Register your hooks here
-		add_action( 'init', array( $this, 'initialize' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_filter( 'the_content', array( $this, 'filter_content' ) );
-	}
+  /**
+   * {@inheritDoc}
+   */
+  protected function load_metadata(): array {
+    return array(
+    'label'       => __( 'My Experiment', 'ai' ),
+    'description' => __( 'Description of what my experiment does.', 'ai' ),
+    );
+  }
 
-	/**
-	 * Initializes the experiment.
-	 *
-	 * @since 0.1.0
-	 */
-	public function initialize(): void {
-		// Experiment initialization logic
-	}
+  /**
+   * Registers the experiment's hooks and functionality.
+   *
+   * @since 0.1.0
+   */
+  public function register(): void {
+    // Register your hooks here
+    add_action( 'init', array( $this, 'initialize' ) );
+    add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+    add_filter( 'the_content', array( $this, 'filter_content' ) );
+  }
 
-	/**
-	 * Enqueues and localizes the admin script.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $hook_suffix The current admin page hook suffix.
-	 */
-	public function enqueue_assets( string $hook_suffix ): void {
-		Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
-		Asset_Loader::localize_script(
-			'my-experiment',
-			'MyExperimentData',
-			array(
-				'enabled' => $this->is_enabled(),
-			)
-		);
-	}
+  /**
+   * Initializes the experiment.
+   *
+   * @since 0.1.0
+   */
+  public function initialize(): void {
+    // Experiment initialization logic
+  }
 
-	/**
-	 * Filters content.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $content Post content.
-	 * @return string Modified content.
-	 */
-	public function filter_content( string $content ): string {
-		// Experiment logic here
-		return $content;
-	}
+  /**
+   * Enqueues and localizes the admin script.
+   *
+   * @since 0.1.0
+   *
+   * @param string $hook_suffix The current admin page hook suffix.
+   */
+  public function enqueue_assets( string $hook_suffix ): void {
+    Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
+    Asset_Loader::localize_script(
+    'my-experiment',
+    'MyExperimentData',
+    array(
+      'enabled' => $this->is_enabled(),
+    )
+    );
+  }
+
+  /**
+   * Filters content.
+   *
+   * @since 0.1.0
+   *
+   * @param string $content Post content.
+   * @return string Modified content.
+   */
+  public function filter_content( string $content ): string {
+    // Experiment logic here
+    return $content;
+  }
 }
 ```
 
 ### Step 3: Register the Experiment
 
-Add your experiment class name to the default experiments list in `Experiment_Loader::get_default_experiments()`:
+Register your experiment class via the `wpai_default_feature_classes` filter. The built-in experiments are registered through the `Experiments` class, but third-party experiments can be added the same way:
 
 ```php
-private function get_default_experiments(): array {
-	$experiment_classes = array(
-		'WordPress\AI\Experiments\Example_Experiment\Example_Experiment',
-		'WordPress\AI\Experiments\My_Experiment\My_Experiment', // Add your experiment
-	);
-
-	// ... rest of the method
-}
+add_filter( 'wpai_default_feature_classes', function( $classes ) {
+  $classes[ My_Experiment::get_id() ] = My_Experiment::class;
+  return $classes;
+} );
 ```
 
 ### Step 4: Add Experiment Documentation
@@ -175,8 +173,8 @@ class My_Experiment extends Abstract_Experiment {
 			);
 		}
 
-		parent::__construct();
-	}
+    parent::__construct();
+  }
 }
 ```
 
@@ -201,32 +199,29 @@ add_action( 'wpai_register_features', function( $registry ) {
 Modify the list of default experiment classes before they are instantiated:
 
 ```php
-add_filter( 'ai_experiments_default_experiment_classes', function( $experiment_classes ) {
-	// Add a custom experiment
-	$experiment_classes[] = 'My_Namespace\My_Custom_Experiment';
+add_filter( 'wpai_default_feature_classes', function( $feature_classes ) {
+  // Add a custom experiment
+  $feature_classes[ My_Custom_Experiment::get_id() ] = My_Custom_Experiment::class;
 
-	// Remove a default experiment
-	$key = array_search( 'WordPress\AI\Experiments\Example_Experiment\Example_Experiment', $experiment_classes );
-	if ( false !== $key ) {
-		unset( $experiment_classes[ $key ] );
-	}
+  // Remove a default experiment
+  unset( $feature_classes['example-experiment'] );
 
-	return $experiment_classes;
+  return $feature_classes;
 } );
 ```
 
 ### Disabling an Experiment
 
-Experiments can be disabled using the `ai_experiment_{$experiment_id}_enabled` filter:
+Experiments can be disabled using the `wpai_feature_{$feature_id}_enabled` filter:
 
 ```php
 // Disable a specific experiment by its ID
-add_filter( 'ai_experiment_example-experiment_enabled', '__return_false' );
+add_filter( 'wpai_feature_example-experiment_enabled', '__return_false' );
 
 // Or with a custom callback
-add_filter( 'ai_experiment_example-experiment_enabled', function( $enabled ) {
-	// Your custom logic here
-	return false;
+add_filter( 'wpai_feature_example-experiment_enabled', function( $enabled ) {
+  // Your custom logic here
+  return false;
 } );
 ```
 
@@ -242,8 +237,8 @@ add_filter( 'wpai_features_enabled', '__return_false' );
 
 The plugin also includes the following action hooks:
 
-- `wpai_register_features`: Fires after default experiments are registered, receives `$registry` parameter
-- `wpai_features_initialized`: Fires after all registered experiments have been initialized
+- `wpai_register_features`: Fires after default features are registered, receives `$registry` parameter
+- `wpai_features_initialized`: Fires after all registered features have been initialized
 
 ### Asset Loading
 
@@ -283,11 +278,11 @@ Asset_Loader::enqueue_style( 'my-experiment', 'experiments/my-experiment' );
  * In this example, the data will be available in the script as `aiMyExperimentData`.
  */
 Asset_Loader::localize_script(
-	'my-experiment',
-	'MyExperimentData',
-	array(
-		'my_data' => 'my data',
-	)
+  'my-experiment',
+  'MyExperimentData',
+  array(
+    'my_data' => 'my data',
+  )
 );
 ```
 
@@ -317,11 +312,12 @@ use WordPress\AI\Experiments\My_Experiment\My_Experiment;
 use PHPUnit\Framework\TestCase;
 
 class My_Experiment_Test extends TestCase {
-	public function test_experiment_metadata() {
-		$experiment = new My_Experiment();
-		$this->assertEquals( 'my-experiment', $experiment->get_id() );
-		$this->assertNotEmpty( $experiment->get_label() );
-	}
+  public function test_experiment_metadata() {
+    $this->assertEquals( 'my-experiment', My_Experiment::get_id() );
+
+    $experiment = new My_Experiment();
+    $this->assertNotEmpty( $experiment->get_label() );
+  }
 }
 ```
 

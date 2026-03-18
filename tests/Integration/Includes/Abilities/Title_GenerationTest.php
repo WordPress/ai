@@ -19,8 +19,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
  */
 class Test_Title_Generation_Experiment extends Abstract_Feature {
 	/**
-		 * {@inheritDoc}
-		 */
+	 * {@inheritDoc}
+	 */
 	public static function get_id(): string {
 		return 'title-generation';
 	}

@@ -18,14 +18,14 @@ use WordPress\AI\Abstracts\Abstract_Feature;
  * @since 0.4.0
  */
 class Test_Review_Notes_Experiment extends Abstract_Feature {
-/**
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
 		return 'review-notes';
 	}
 
-/**
+	/**
 	 * {@inheritDoc}
 	 */
 	protected function load_metadata(): array {

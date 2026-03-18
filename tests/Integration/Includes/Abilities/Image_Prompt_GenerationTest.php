@@ -18,14 +18,14 @@ use WordPress\AI\Abstracts\Abstract_Feature;
  * @since 0.3.0
  */
 class Test_Image_Prompt_Generation_Experiment extends Abstract_Feature {
-/**
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
 		return 'image-prompt-generation';
 	}
 
-/**
+	/**
 	 * {@inheritDoc}
 	 */
 	protected function load_metadata(): array {
