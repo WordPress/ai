@@ -66,11 +66,11 @@ export default function MetaDescriptionPanel(): JSX.Element {
 					<CharacterCount count={ currentDescription.length } />
 					<div className="ai-meta-description-panel__actions">
 						<Button
-							variant="secondary"
+							variant="link"
 							onClick={ handleOpenEditModal }
 							size="compact"
 						>
-							{ __( 'Edit', 'ai' ) }
+							{ __( 'Edit description', 'ai' ) }
 						</Button>
 						<Button
 							icon={ update }
