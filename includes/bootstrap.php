@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'WPAI_VERSION' ) ) {
-	define( 'WPAI_VERSION', '0.5.0' );
+	define( 'WPAI_VERSION', '0.6.0' );
 }
 if ( ! defined( 'WPAI_PLUGIN_FILE' ) ) {
 	define( 'WPAI_PLUGIN_FILE', defined( 'WPAI_DIR' ) ? WPAI_DIR . 'ai.php' : '' );

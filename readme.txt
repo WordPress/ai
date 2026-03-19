@@ -2,7 +2,7 @@
 Contributors:      wordpressdotorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      7.0
-Stable tag:        0.5.0
+Stable tag:        0.6.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
