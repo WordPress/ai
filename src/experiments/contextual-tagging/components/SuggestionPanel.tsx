@@ -143,7 +143,7 @@ export default function SuggestionPanel( {
 								onClick={ handleGenerate }
 								disabled={ isGenerating }
 							>
-								{ __( 'Regenerate', 'ai' ) }
+								{ __( 'Suggest again', 'ai' ) }
 							</Button>
 						</FlexItem>
 						<FlexItem>
