@@ -1,10 +1,41 @@
-# Experiment Decisions and Lifecycle
+# Feature and Experiment Lifecycle
 
-This document describes how individual Experiments are proposed, approved, and evolved within the AI plugin, as well as how a specific Experiment may eventually graduate toward WordPress core.
+The AI plugin supports two categories of opt-in functionality: **Features** and **Experiments**.  This document describes how each is defined, how Experiments are proposed and developed, how functionality can be promoted from Experiment to Feature, and how a specific Experiment/Feature may eventually graduate toward WordPress core.
 
-This is a descriptive guide, not a rigid policy.  The goal is to help contributors understand how things typically work, set reasonable expectations, and reduce uncertainty when proposing or building new Experiments.
+This is a descriptive guide, not a rigid policy.  The goal is to help contributors understand how things typically work, set reasonable expectations, and reduce uncertainty when proposing or building new functionality.
 
 The process intentionally favors learning and iteration over certainty.
+
+## Features and Experiments
+
+Both Features and Experiments are opt-in and must be individually enabled.
+
+**Features** are stable and ready for general use.  They are expected to evolve without breaking existing behavior where possible, and are supported over time with bug fixes and incremental improvements.
+
+**Experiments** are early-stage and actively being developed.  They are subject to breaking changes or removal without notice and are used to validate ideas, workflows, and integrations before broader adoption.
+
+### How They Appear in the UI
+
+On the AI settings screen:
+
+- **Features** are presented prominently with richer UI and visual emphasis
+- **Experiments** are listed below as simpler controls (e.g., checkboxes)
+
+All functionality is registered with a declared type (`feature`, `experiment`, or `deprecated`) which controls how it is surfaced in the UI and communicates stability expectations to contributors and users.
+
+### Promoting an Experiment to a Feature
+
+An Experiment may be promoted to a Feature when it demonstrates:
+
+- **Stability** — No significant breaking changes are expected in normal usage.
+- **Clear user value** — Solves a meaningful problem or improves a core workflow.
+- **UX maturity** — Interaction model is understandable, consistent, and integrated.
+- **Technical reliability** — Errors are handled gracefully and performance is acceptable.
+- **Maintainability** — Contributors are confident supporting it long-term.
+
+When promoting, update the registration type from `experiment` to `feature`, move it into the Features section of the AI settings UI, remove experimental labeling, review for backward compatibility or data migrations, and update documentation and release notes accordingly.
+
+Promotion is expected to be one-way.  Reclassifying a Feature back to an Experiment should be rare and avoided.
 
 ## How Experiments are Evaluated for the Plugin
 
@@ -93,7 +124,7 @@ Not every Experiment requires this step, but it is the preferred path before pro
 
 ### 3. Proposal to WordPress Core
 
-A proposal to merge into WordPress core should focus on a single Experiment and follow the [Feature Plugin Merge Criteria](https://make.wordpress.org/core/handbook/about/release-cycle/features-as-plugins/#feature-plugin-merge-criteria) used by core.
+A proposal to merge into WordPress core should focus on a single Experiment/Feature and follow the [Feature Plugin Merge Criteria](https://make.wordpress.org/core/handbook/about/release-cycle/features-as-plugins/#feature-plugin-merge-criteria) used by core.
 
 The proposal typically documents:
 
@@ -115,6 +146,7 @@ Acceptance into core is ultimately a core leadership decision and may require fu
 
 ## Important Notes
 
+* Features are expected to be stable and supported, breaking changes should be avoided
 * Experiments may be deprecated or removed at any time
 * Experiments may undergo breaking changes. Unless absolutely not feasible, those will occur in a Major version bump of the AI plugin to help signify those changes
 * Not all Experiments are intended to graduate to core, in fact most are never expected to and instead are expected to stay within the plugin
