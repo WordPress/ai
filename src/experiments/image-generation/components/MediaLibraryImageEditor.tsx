@@ -246,6 +246,15 @@ export function MediaLibraryImageEditor( {
 			{ state === 'idle' && (
 				<div className="ai-media-library-editor__idle">
 					<div className="ai-media-library-editor__presets">
+						<Button
+							variant="secondary"
+							icon={ <Icon icon="format-image" /> }
+							onClick={ () =>
+								setShowPrompt( ( show ) => ! show )
+							}
+						>
+							{ __( 'Refine Image', 'ai' ) }
+						</Button>
 						{ PRESETS.map( ( preset ) => (
 							<Button
 								key={ preset.label }
@@ -261,15 +270,6 @@ export function MediaLibraryImageEditor( {
 								{ preset.label }
 							</Button>
 						) ) }
-						<Button
-							variant="secondary"
-							icon={ <Icon icon="format-image" /> }
-							onClick={ () =>
-								setShowPrompt( ( show ) => ! show )
-							}
-						>
-							{ __( 'Refine Image', 'ai' ) }
-						</Button>
 					</div>
 					{ showPrompt && (
 						<>
