@@ -294,22 +294,11 @@ class Contextual_Tagging extends Abstract_Ability {
 		// Fetch existing terms for the taxonomy.
 		$existing_terms = $this->get_existing_terms( $taxonomy );
 
-		// Build strategy instruction.
-		$strategy_instruction = $this->build_strategy_instruction( $strategy );
-
-		// Build existing terms instruction.
-		$existing_terms_instruction = $this->build_existing_terms_instruction( $existing_terms, $strategy );
-
 		// Get the taxonomy label for the prompt.
 		$taxonomy_label = $this->get_taxonomy_label( $taxonomy );
 
-		// Build the system instruction directly to avoid esc_html() escaping JSON syntax.
-		$system_instruction = $this->build_system_instruction(
-			$taxonomy_label,
-			$max_suggestions,
-			$strategy_instruction,
-			$existing_terms_instruction
-		);
+		// Build the prompt with XML-like content wrapping.
+		$prompt = $this->build_prompt( $context, $taxonomy, $strategy, $existing_terms );
 
 		/**
 		 * Filters the content string before it is sent to the AI model for taxonomy suggestion generation.
@@ -319,24 +308,33 @@ class Contextual_Tagging extends Abstract_Ability {
 		 *
 		 * @since x.x.x
 		 *
-		 * @param string $context  The normalized content string to be analyzed.
+		 * @param string $prompt   The prompt string to be sent to the AI model.
 		 * @param string $taxonomy The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
 		 * @param string $strategy The suggestion strategy ('existing_only' or 'allow_new').
 		 */
-		$context = (string) apply_filters( 'ai_contextual_tagging_content', $context, $taxonomy, $strategy );
+		$prompt = (string) apply_filters( 'wpai_contextual_tagging_content', $prompt, $taxonomy, $strategy );
 
-		// Generate the suggestions using the AI client.
-		$result = wp_ai_client_prompt( '"""' . $context . '"""' )
-			->using_system_instruction( $system_instruction )
+		// Generate the suggestions using the AI client with structured output.
+		$result = wp_ai_client_prompt( $prompt )
+			->using_system_instruction(
+				$this->get_system_instruction(
+					'system-instruction.php',
+					array(
+						'taxonomy'        => $taxonomy_label,
+						'max_suggestions' => $max_suggestions,
+					)
+				)
+			)
 			->using_temperature( 0.5 )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
+			->as_json_response( $this->suggestions_schema() )
 			->generate_text();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
-		// Parse the JSON response.
+		// Parse the structured JSON response.
 		$suggestions = $this->parse_suggestions( $result, $existing_terms, $max_suggestions );
 
 		if ( is_wp_error( $suggestions ) ) {
@@ -407,94 +405,62 @@ class Contextual_Tagging extends Abstract_Ability {
 	}
 
 	/**
-	 * Builds the system instruction for the AI prompt.
-	 *
-	 * Built directly rather than loaded from a file to avoid esc_html()
-	 * escaping JSON syntax characters in the instruction.
+	 * Builds the prompt with XML-like content wrapping.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $taxonomy        The taxonomy label.
-	 * @param int    $max_suggestions The maximum number of suggestions.
-	 * @param string $strategy        The strategy instruction text.
-	 * @param string $existing_terms  The existing terms instruction text.
-	 * @return string The system instruction.
-	 */
-	protected function build_system_instruction(
-		string $taxonomy,
-		int $max_suggestions,
-		string $strategy,
-		string $existing_terms
-	): string {
-		return implode(
-			"\n",
-			array(
-				"You are a content taxonomy assistant for a WordPress website. Your task is to analyze article content and suggest relevant {$taxonomy} terms.",
-				'',
-				"Goal: Analyze the provided content (title, body, and any existing context) and suggest up to {$max_suggestions} relevant terms for the {$taxonomy} taxonomy.",
-				'',
-				'Output format:',
-				'Return ONLY a valid JSON array. No prose, no markdown, no code fences.',
-				'Each element is an object with these keys:',
-				'  "term" - a string with the suggested term name (1-3 words, lowercase)',
-				'  "confidence" - a number between 0 and 1',
-				'  "is_new" - a boolean indicating if this term does not already exist on the site',
-				'  "parent" - (optional, categories only) string name of the parent category',
-				'',
-				'Example output for an article about machine learning in healthcare:',
-				'[{"term": "machine learning", "confidence": 0.95, "is_new": true}, {"term": "healthcare", "confidence": 0.9, "is_new": false}]',
-				'',
-				'Rules:',
-				'- The "term" field must contain ONLY the human-readable tag or category name.',
-				'- Confidence should reflect relevance: 1.0 = perfect match, 0.5 = somewhat relevant.',
-				'- Do not suggest duplicate or near-duplicate terms.',
-				'- Prioritize specificity and relevance over breadth.',
-				'- Sort suggestions by confidence, highest first.',
-				$strategy,
-				$existing_terms,
-				'',
-				'The content you will be provided is delimited by triple quotes.',
-			)
-		);
-	}
-
-	/**
-	 * Builds the strategy instruction for the system prompt.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $strategy The suggestion strategy.
-	 * @return string The strategy instruction text.
-	 */
-	protected function build_strategy_instruction( string $strategy ): string {
-		if ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
-			return '- IMPORTANT: Only suggest terms that already exist on the site. Set "is_new" to false for all suggestions. Do not invent new terms.';
-		}
-
-		return '- You may suggest new terms if no good existing match exists. Set "is_new" to true for new terms and false for existing terms. Prefer existing terms when possible.';
-	}
-
-	/**
-	 * Builds the existing terms instruction for the system prompt.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string> $existing_terms The existing terms.
+	 * @param string        $context        The content to analyze.
+	 * @param string        $taxonomy       The taxonomy slug.
 	 * @param string        $strategy       The suggestion strategy.
-	 * @return string The existing terms instruction text.
+	 * @param array<string> $existing_terms The existing terms.
+	 * @return string The formatted prompt.
 	 */
-	protected function build_existing_terms_instruction( array $existing_terms, string $strategy ): string {
-		if ( empty( $existing_terms ) ) {
-			if ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
-				return '- No existing terms are available. Return an empty array.';
-			}
+	protected function build_prompt( string $context, string $taxonomy, string $strategy, array $existing_terms ): string {
+		$prompt_parts = array();
 
-			return '- No existing terms are available. You may suggest new terms.';
+		$prompt_parts[] = '<content>' . $context . '</content>';
+
+		if ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
+			$prompt_parts[] = '<strategy>Only suggest terms that already exist on the site. Set "is_new" to false for all suggestions. Do not invent new terms.</strategy>';
+		} else {
+			$prompt_parts[] = '<strategy>You may suggest new terms if no good existing match exists. Set "is_new" to true for new terms and false for existing terms. Prefer existing terms when possible.</strategy>';
 		}
 
-		return sprintf(
-			"- Existing terms on the site: %s\n- Prioritize selecting from these existing terms.",
-			implode( ', ', $existing_terms )
+		if ( ! empty( $existing_terms ) ) {
+			$prompt_parts[] = '<existing-terms>' . implode( ', ', $existing_terms ) . '</existing-terms>';
+		} elseif ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
+			$prompt_parts[] = '<existing-terms>No existing terms are available. Return an empty suggestions array.</existing-terms>';
+		}
+
+		return implode( "\n", $prompt_parts );
+	}
+
+	/**
+	 * Returns the JSON schema for structured output from the AI model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The JSON schema for structured output.
+	 */
+	protected function suggestions_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'suggestions' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'term'       => array( 'type' => 'string' ),
+							'confidence' => array( 'type' => 'number' ),
+							'is_new'     => array( 'type' => 'boolean' ),
+							'parent'     => array( 'type' => 'string' ),
+						),
+						'required'   => array( 'term', 'confidence', 'is_new' ),
+					),
+				),
+			),
+			'required'   => array( 'suggestions' ),
 		);
 	}
 
@@ -509,15 +475,9 @@ class Contextual_Tagging extends Abstract_Ability {
 	 * @return array<array{term: string, confidence: float, is_new: bool, parent?: string}>|\WP_Error Parsed suggestions or error.
 	 */
 	protected function parse_suggestions( string $response, array $existing_terms, int $max_suggestions ) {
-		// Strip any markdown code fences the model may have included.
-		$response = trim( $response );
-		$response = preg_replace( '/^```(?:json)?\s*/i', '', $response ) ?? $response;
-		$response = preg_replace( '/\s*```$/', '', $response ) ?? $response;
-		$response = trim( $response );
-
 		$decoded = json_decode( $response, true );
 
-		if ( ! is_array( $decoded ) ) {
+		if ( ! is_array( $decoded ) || ! isset( $decoded['suggestions'] ) || ! is_array( $decoded['suggestions'] ) ) {
 			return new WP_Error(
 				'invalid_response',
 				esc_html__( 'Could not parse AI response as valid suggestions.', 'ai' )
@@ -532,7 +492,7 @@ class Contextual_Tagging extends Abstract_Ability {
 
 		$suggestions = array();
 
-		foreach ( $decoded as $item ) {
+		foreach ( $decoded['suggestions'] as $item ) {
 			if ( ! is_array( $item ) || empty( $item['term'] ) ) {
 				continue;
 			}
