@@ -113,12 +113,16 @@ class Contextual_Tagging extends Abstract_Feature {
 
 		$screen = get_current_screen();
 
-		// Load the assets only if the post type supports editor and is not an attachment.
+		// Load the assets only if the post type supports categories or tags and is not an attachment.
+		// Also check if the user can manage categories.
 		if (
 			! $screen ||
-			! post_type_supports( $screen->post_type, 'editor' ) ||
 			! current_user_can( 'manage_categories' ) ||
-			in_array( $screen->post_type, array( 'attachment' ), true )
+			in_array( $screen->post_type, array( 'attachment' ), true ) ||
+			(
+				! is_object_in_taxonomy( $screen->post_type, 'category' ) &&
+				! is_object_in_taxonomy( $screen->post_type, 'post_tag' )
+			)
 		) {
 			return;
 		}
