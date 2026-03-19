@@ -23,7 +23,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
-* **Image Generation** - Create images from post content in the editor, also via the Media Library.
+* **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
@@ -69,7 +69,6 @@ The AI plugin is designed to be studied, extended, and built upon. Whether you'r
 * **AI Playground** - Experiment with different AI models and prompts.
 * **MCP (Model Context Protocol)** – Integrate and test Model Context Protocol capabilities in WordPress workflows.
 * **Extended Providers** – Support for experimenting with additional or alternate AI providers.
-* **Date Calculation Ability** – Natural-language date interpretation for AI workflows like “every 3rd Tuesday.”
 
 **Get Started:**
 
