@@ -2,8 +2,6 @@
 /**
  * Upgrade routines for version x.x.x.
  *
- * Originally this file was located in `includes/Migrations/Credential_Migration.php`, which is why the since tags don't match.
- *
  * @package WordPress\AI\Admin\Upgrades
  * @since x.x.x
  */
