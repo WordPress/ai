@@ -76,11 +76,19 @@ class Refine_Notes extends Abstract_Experiment {
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'refine_notes', 'experiments/refine-notes' );
+
+		$post_type        = get_post_type( get_the_ID() );
+		$post_type_object = $post_type ? get_post_type_object( $post_type ) : null;
+		$rest_base        = ( $post_type_object && $post_type_object->rest_base )
+			? $post_type_object->rest_base
+			: null;
+
 		Asset_Loader::localize_script(
 			'refine_notes',
 			'RefineNotesData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'   => $this->is_enabled(),
+				'rest_base' => $rest_base,
 			)
 		);
 	}

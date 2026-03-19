@@ -15,13 +15,13 @@ use WordPress\AI\Abstracts\Abstract_Experiment;
 /**
  * Test experiment for Refine_Notes Ability tests.
  *
- * @since 0.5.0
+ * @since x.x.x
  */
 class Test_Refine_Notes_Experiment extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
@@ -36,7 +36,7 @@ class Test_Refine_Notes_Experiment extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -46,7 +46,7 @@ class Test_Refine_Notes_Experiment extends Abstract_Experiment {
 /**
  * Refine_Notes Ability test case.
  *
- * @since 0.5.0
+ * @since x.x.x
  *
  * @group abilities
  * @group refine-notes
@@ -56,7 +56,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Refine_Notes Ability instance.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @var Refine_Notes
 	 */
@@ -65,7 +65,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Test experiment instance.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @var Test_Refine_Notes_Experiment
 	 */
@@ -74,7 +74,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Sets up the test case.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -92,7 +92,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tears down the test case.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -106,7 +106,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that input_schema() returns the expected structure.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -128,7 +128,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that input_schema() marks the expected fields as required.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_input_schema_marks_required_fields() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -150,7 +150,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that output_schema() returns the expected structure.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -171,7 +171,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that meta() includes show_in_rest.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -192,7 +192,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_system_instruction() returns a non-empty string.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_get_system_instruction_returns_string() {
 		$instruction = $this->ability->get_system_instruction();
@@ -208,7 +208,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns true for users with edit_posts capability.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -226,7 +226,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns WP_Error for users without edit_posts capability.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -245,7 +245,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns WP_Error for logged-out users.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -267,7 +267,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns true for an editor with a valid post.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_returns_true_for_editor_with_valid_post() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -287,7 +287,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns WP_Error when the context post does not exist.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_returns_error_when_context_post_not_found() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -306,7 +306,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns WP_Error when the user cannot edit the specific post.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_returns_error_when_user_cannot_edit_post() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -327,7 +327,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns false for a post type not shown in REST.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_returns_false_for_non_rest_post_type() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -361,7 +361,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that execute_callback() returns an error when block_content is empty.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_returns_error_when_block_content_empty() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -382,7 +382,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that execute_callback() returns an error when notes array is empty.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_returns_error_when_notes_empty() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -403,7 +403,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that execute_callback() filters out non-string notes and returns error when no valid notes remain.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_filters_non_string_notes() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -428,7 +428,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that execute_callback() returns refined text from generate_refinement.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_returns_refined_text() {
 		$mock = $this->getMockBuilder( Refine_Notes::class )
@@ -464,7 +464,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that execute_callback() propagates WP_Error from generate_refinement.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_propagates_wp_error_from_generate_refinement() {
 		$mock = $this->getMockBuilder( Refine_Notes::class )
@@ -505,7 +505,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	 * The AI call may fail in test environments without credentials, so the
 	 * test accepts both a valid result and an AI-related WP_Error.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_with_valid_input() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -542,7 +542,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that create_prompt() builds the expected XML structure.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_create_prompt_includes_xml_tags() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -568,7 +568,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that create_prompt() sanitizes script injection in block_content.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_create_prompt_sanitizes_block_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -591,7 +591,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that create_prompt() includes context tag when context is provided.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_create_prompt_includes_context_when_provided() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -613,7 +613,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that create_prompt() omits context tag when context is empty.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_create_prompt_omits_context_when_empty() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -634,7 +634,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that create_prompt() includes multiple notes separated by double newlines.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_create_prompt_includes_multiple_notes() {
 		$reflection = new \ReflectionClass( $this->ability );

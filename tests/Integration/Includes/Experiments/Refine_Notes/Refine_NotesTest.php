@@ -15,14 +15,14 @@ use WP_UnitTestCase;
 /**
  * Refine_Notes test case.
  *
- * @since 0.5.0
+ * @since x.x.x
  */
 class Refine_NotesTest extends WP_UnitTestCase {
 
 	/**
 	 * The experiment instance under test.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @var Refine_Notes
 	 */
@@ -31,7 +31,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -60,7 +60,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -78,7 +78,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment is registered correctly.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_experiment_registration() {
 		$this->assertEquals( 'refine-notes', $this->experiment->get_id() );
@@ -93,7 +93,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the required hooks are registered after the experiment initialises.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 */
 	public function test_hooks_are_registered() {
 		$this->assertNotFalse(

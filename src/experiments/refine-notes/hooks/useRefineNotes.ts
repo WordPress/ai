@@ -6,7 +6,7 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
-import { dispatch, resolveSelect, select, useSelect } from '@wordpress/data';
+import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
@@ -310,15 +310,10 @@ export function useRefineNotes(): {
 				// Fetch the latest revision ID directly from the REST API.
 				// The autosave endpoint only updates the autosave record (not the main
 				// post entity), so the editor store's revision data is stale after autosave.
-				const currentPostType = (
-					select( editorStore ) as any
-				 ).getCurrentPostType() as string;
-				const postTypeData = await (
-					resolveSelect( coreStore ) as any
-				 ).getPostType( currentPostType );
-				const restBase =
-					( postTypeData?.rest_base as string ) ??
-					`${ currentPostType }s`;
+				const { aiRefineNotesData } = window as any;
+				const restBase = aiRefineNotesData?.rest_base as
+					| string
+					| undefined;
 
 				let lastRevisionId: number | null = null;
 				try {

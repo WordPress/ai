@@ -148,33 +148,6 @@ test.describe( 'AI Refine from Notes Experiment', () => {
 			}
 		} );
 
-		// Intercept the ability endpoint and return a canned response so the test
-		// never reaches the PHP AI client (which requires model credentials that
-		// are not present in the e2e environment).
-		await page.route(
-			( url ) => {
-				const decoded = decodeURIComponent( url.href );
-				return (
-					decoded.includes( 'wp-abilities' ) &&
-					decoded.includes( 'refine-notes' )
-				);
-			},
-			async ( route ) => {
-				// Small delay so "Refining block…" stays visible long enough
-				// for the toBeVisible assertion to catch it.
-				await new Promise( ( resolve ) => setTimeout( resolve, 500 ) );
-				await route.fulfill( {
-					status: 200,
-					contentType: 'application/json',
-					// The abilities REST endpoint returns the scalar output
-					// directly as JSON, so a quoted string is correct here.
-					body: JSON.stringify(
-						'This is the refined block content.'
-					),
-				} );
-			}
-		);
-
 		await page.reload();
 
 		// Ensure the sidebar is visible.
