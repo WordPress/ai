@@ -1,16 +1,16 @@
-=== AI Experiments ===
-Contributors:      wordpressorg
+=== AI ===
+Contributors:      wordpressdotorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      7.0
 Stable tag:        0.5.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
-AI experiments and capabilities for WordPress.
+AI features, experiments and capabilities for WordPress.
 
 == Description ==
 
-The WordPress AI Experiments plugin brings experimental AI-powered features directly into your WordPress admin and editing experience.
+The AI plugin brings AI-powered features directly into your WordPress admin and editing experience.
 
 **What's Inside:**
 
@@ -48,16 +48,16 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 1. Upload the plugin files to the `/wp-content/plugins/ai` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. Go to `Settings -> Connectors` and setup at least one AI connector.
-4. Go to `Settings -> AI Experiments` and globally enable experiments and then enable the individual experiments you want to test.
+4. Go to `Settings -> AI` and globally enable functionality and then enable the individual features or experiments you want to test.
 5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Re-generate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
 
 == For Developers ==
 
-The AI Experiments plugin is designed to be studied, extended, and built upon. Whether you're a plugin developer, agency, or hosting provider, here's what you can do:
+The AI plugin is designed to be studied, extended, and built upon. Whether you're a plugin developer, agency, or hosting provider, here's what you can do:
 
 **Extend the Plugin:**
 
-* **Build Custom Experiments** - Use the `Abstract_Experiment` base class to create your own AI-powered features.
+* **Build Custom Experiments** - Use the `Abstract_Feature` base class to create your own AI-powered features.
 * **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys.
 * **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled).
 * **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities.
@@ -94,7 +94,7 @@ This is an experimental plugin, so we recommend testing in a staging environment
 
 The plugin supports OpenAI, Google AI (Gemini), and Anthropic (Claude). You can configure one or multiple providers in Settings -> Connectors.
 
-= Do I need an API key to use the experiments? =
+= Do I need an API key to use the features? =
 
 Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic).
 
@@ -104,7 +104,7 @@ The plugin itself is free, but you'll need to pay for API usage from your chosen
 
 = Can I use this without coding knowledge? =
 
-Absolutely! The plugin is designed for content creators and site administrators. Once your AI Connectors are configured, you can use AI experiments directly from the post editor.
+Absolutely! The plugin is designed for content creators and site administrators. Once your AI Connectors are configured, you can use the AI functionality directly from the post editor.
 
 = Where can I get help or report issues? =
 
@@ -123,7 +123,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 9. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
 10. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
 11. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
-12. AI Experiments settings screen showing toggles to enable specific experiments.
+12. AI settings screen showing toggles to enable specific experiments.
 
 == Changelog ==
 
@@ -214,7 +214,7 @@ First public release of the AI Experiments plugin, introducing a framework for e
 * **Added:** Initial integration with WP AI Client SDK and Abilities API
 * **Added:** Utilities Ability for common AI tasks and testing
 
-== Upgrade Notice == 
+== Upgrade Notice ==
 
 = 0.5.0 =
 This version bumps the WordPress minimum supported version from 6.9 to 7.0.

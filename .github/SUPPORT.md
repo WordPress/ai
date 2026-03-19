@@ -1,6 +1,6 @@
-# AI Experiments Plugin Project Support
+# AI Plugin Project Support
 
-Welcome to the AI Experiments plugin, a WordPress project. We hope you join us in exploring AI capabilities within WordPress; all are welcome here.
+Welcome to the AI plugin, a WordPress project. We hope you join us in exploring AI capabilities within WordPress; all are welcome here.
 
 * Please see the [Contributing Guidelines](../CONTRIBUTING.md) for additional information on how to contribute.
 

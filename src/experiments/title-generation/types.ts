@@ -1,5 +1,5 @@
 /**
- * Type definitions for title generation experiment.
+ * Type definitions for title generation.
  */
 
 /**
@@ -7,7 +7,7 @@
  */
 export interface TitleGenerationAbilityInput {
 	content: string;
-	post_id: number;
+	context: string;
 	[ key: string ]: string | number | undefined;
 }
 

@@ -1,5 +1,5 @@
 /**
- * Summarization experiment plugin registration.
+ * Summarization plugin registration.
  */
 
 /**

@@ -4,7 +4,7 @@
  * Registers block filters that add a "Generate Image" toolbar
  * button and inline button to supported core blocks. Clicking the
  * button opens a modal where the user can generate an image, preview
- * it, and insert it into the block with a single click.
+ * it, refine it, and insert it into the block with a single click.
  */
 
 /**
@@ -43,7 +43,7 @@ const TARGET_BLOCKS = [
  */
 const withGenerateImageInlineButton = createHigherOrderComponent(
 	( Component ) => {
-		// Only run when the experiment is enabled.
+		// Don't render if disabled.
 		if ( ! aiImageGenerationData?.enabled ) {
 			return Component;
 		}
