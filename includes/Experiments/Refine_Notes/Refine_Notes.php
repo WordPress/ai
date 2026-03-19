@@ -10,9 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Refine_Notes;
 
 use WordPress\AI\Abilities\Refine_Notes\Refine_Notes as Refine_Notes_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Experiments\Experiment_Category;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,16 +27,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since x.x.x
  */
-class Refine_Notes extends Abstract_Experiment {
+class Refine_Notes extends Abstract_Feature {
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'refine-notes';
+	}
 
 	/**
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
 	 */
-	protected function load_experiment_metadata(): array {
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'refine-notes',
 			'label'       => __( 'Refine from Notes', 'ai' ),
 			'description' => __( 'Analyze feedback that has been left via Notes and apply edits where needed.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,

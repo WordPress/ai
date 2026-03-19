@@ -7,9 +7,10 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Refine_Notes;
 
-use WordPress\AI\Experiment_Registry;
-use WordPress\AI\Experiment_Loader;
+use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Experiments\Refine_Notes\Refine_Notes;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 use WP_UnitTestCase;
 
 /**
@@ -36,22 +37,22 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		// Set up mock AI credentials so has_ai_credentials() returns true.
-		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
-
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_refine-notes_enabled', true );
+		// Enable features globally and individually.
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_refine-notes_enabled', true );
 
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
-		$loader->initialize_experiments();
+		$experiments = new Experiments();
+		$experiments->init();
 
-		$experiment = $registry->get_experiment( 'refine-notes' );
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
+		$loader->initialize_features();
+
+		$experiment = $registry->get_feature( 'refine-notes' );
 		$this->assertInstanceOf( Refine_Notes::class, $experiment, 'Refine_Notes experiment should be registered in the registry.' );
 
 		$this->experiment = $experiment;
@@ -64,10 +65,10 @@ class Refine_NotesTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_refine-notes_enabled' );
-		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_refine-notes_enabled' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		remove_all_filters( 'wpai_default_feature_classes' );
 		parent::tearDown();
 	}
 
@@ -100,7 +101,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 			has_action( 'wp_abilities_api_init', array( $this->experiment, 'register_abilities' ) ),
 			'wp_abilities_api_init action should be registered'
 		);
-		
+
 		$this->assertNotFalse(
 			has_action( 'enqueue_block_editor_assets', array( $this->experiment, 'enqueue_assets' ) ),
 			'enqueue_block_editor_assets action should be registered'

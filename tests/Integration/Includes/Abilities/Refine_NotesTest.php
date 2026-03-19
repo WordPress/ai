@@ -10,24 +10,30 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Refine_Notes\Refine_Notes;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Refine_Notes Ability tests.
  *
  * @since x.x.x
  */
-class Test_Refine_Notes_Experiment extends Abstract_Experiment {
+class Test_Refine_Notes_Experiment extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'refine-notes';
+	}
+
 	/**
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @return array{label: string, description: string} Feature metadata.
 	 */
-	protected function load_experiment_metadata(): array {
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'refine-notes',
 			'label'       => 'Refine from Notes',
 			'description' => 'Refines block content based on editorial notes.',
 		);
