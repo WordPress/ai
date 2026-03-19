@@ -24,14 +24,14 @@ use function WordPress\AI\normalize_content;
  *
  * Generates taxonomy term suggestions based on post content analysis.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class Contextual_Tagging extends Abstract_Ability {
 
 	/**
 	 * Returns the input schema of the ability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The input schema of the ability.
 	 */
@@ -76,7 +76,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Returns the output schema of the ability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The output schema of the ability.
 	 */
@@ -116,7 +116,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Executes the ability with the given input arguments.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $input The input arguments to the ability.
 	 * @return array{suggestions: array<array{term: string, confidence: float, is_new: bool, parent?: string}>}|\WP_Error The result of the ability execution, or a WP_Error on failure.
@@ -205,7 +205,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Returns the permission callback of the ability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $args The input arguments to the ability.
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
@@ -251,7 +251,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Returns the meta of the ability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The meta of the ability.
 	 */
@@ -264,7 +264,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Generates taxonomy term suggestions from the given content.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string|array<string, string> $context         The context to generate suggestions from.
 	 * @param string                       $taxonomy        The taxonomy to suggest terms for.
@@ -317,7 +317,7 @@ class Contextual_Tagging extends Abstract_Ability {
 		 * Allows developers to modify, augment, or replace the content that the AI analyzes
 		 * when generating tag and category suggestions.
 		 *
-		 * @since 0.6.0
+		 * @since x.x.x
 		 *
 		 * @param string $context  The normalized content string to be analyzed.
 		 * @param string $taxonomy The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
@@ -355,7 +355,7 @@ class Contextual_Tagging extends Abstract_Ability {
 		 * - 'is_new'     (bool)   Whether the term is new or already exists on the site.
 		 * - 'parent'     (string) Optional. Parent term name for hierarchical taxonomies.
 		 *
-		 * @since 0.6.0
+		 * @since x.x.x
 		 *
 		 * @param array<array{term: string, confidence: float, is_new: bool, parent?: string}> $suggestions    The parsed suggestions.
 		 * @param string                                                                       $taxonomy       The taxonomy slug (e.g., 'post_tag', 'category').
@@ -367,7 +367,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Gets existing terms for a taxonomy.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string $taxonomy The taxonomy to get terms for.
 	 * @return array<string> List of existing term names.
@@ -391,7 +391,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Gets a human-readable label for the taxonomy.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string $taxonomy The taxonomy slug.
 	 * @return string The taxonomy label.
@@ -412,7 +412,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	 * Built directly rather than loaded from a file to avoid esc_html()
 	 * escaping JSON syntax characters in the instruction.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string $taxonomy        The taxonomy label.
 	 * @param int    $max_suggestions The maximum number of suggestions.
@@ -461,7 +461,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Builds the strategy instruction for the system prompt.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string $strategy The suggestion strategy.
 	 * @return string The strategy instruction text.
@@ -477,7 +477,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Builds the existing terms instruction for the system prompt.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param array<string> $existing_terms The existing terms.
 	 * @param string        $strategy       The suggestion strategy.
@@ -501,7 +501,7 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Parses the AI response into structured suggestions.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string        $response        The raw AI response.
 	 * @param array<string> $existing_terms  List of existing term names.

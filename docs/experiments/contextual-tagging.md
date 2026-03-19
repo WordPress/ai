@@ -133,11 +133,11 @@ The ability checks permissions based on the input:
 
 The experiment registers two settings on the AI Experiments settings page:
 
-- **Taxonomy strategy** (`ai_experiment_contextual-tagging_field_strategy`):
+- **Taxonomy strategy** (`wpai_experiment_contextual-tagging_field_strategy`):
   - `existing_only` (default) — Only suggest terms that already exist on the site
   - `allow_new` — Allow suggestions for new terms based on content
 
-- **Maximum suggestions** (`ai_experiment_contextual-tagging_field_max_suggestions`):
+- **Maximum suggestions** (`wpai_experiment_contextual-tagging_field_max_suggestions`):
   - Integer between 1 and 10, default 5
 
 ## Using the Ability via REST API
@@ -244,10 +244,10 @@ The ability may return the following error codes:
 
 ### Filtering Content Before AI Processing
 
-Use the `ai_contextual_tagging_content` filter to modify the content string before it is sent to the AI model:
+Use the `wpai_contextual_tagging_content` filter to modify the content string before it is sent to the AI model:
 
 ```php
-add_filter( 'ai_contextual_tagging_content', function( $content, $taxonomy, $strategy ) {
+add_filter( 'wpai_contextual_tagging_content', function( $content, $taxonomy, $strategy ) {
     // Add custom context to improve suggestions.
     if ( 'category' === $taxonomy ) {
         $content .= "\n\nSite focus: technology and science news.";
@@ -258,10 +258,10 @@ add_filter( 'ai_contextual_tagging_content', function( $content, $taxonomy, $str
 
 ### Filtering Suggestions After AI Processing
 
-Use the `ai_contextual_tagging_suggestions` filter to modify the parsed suggestions before they are returned:
+Use the `wpai_contextual_tagging_suggestions` filter to modify the parsed suggestions before they are returned:
 
 ```php
-add_filter( 'ai_contextual_tagging_suggestions', function( $suggestions, $taxonomy, $strategy ) {
+add_filter( 'wpai_contextual_tagging_suggestions', function( $suggestions, $taxonomy, $strategy ) {
     // Remove suggestions with low confidence.
     return array_filter( $suggestions, function( $s ) {
         return $s['confidence'] >= 0.7;
@@ -273,12 +273,12 @@ add_filter( 'ai_contextual_tagging_suggestions', function( $suggestions, $taxono
 
 ```php
 // Override the strategy programmatically.
-add_filter( 'ai_contextual_tagging_strategy', function( $strategy ) {
+add_filter( 'wpai_contextual_tagging_strategy', function( $strategy ) {
     return 'allow_new';
 } );
 
 // Override the max suggestions count.
-add_filter( 'ai_contextual_tagging_max_suggestions', function( $max ) {
+add_filter( 'wpai_contextual_tagging_max_suggestions', function( $max ) {
     return 7;
 } );
 ```
@@ -288,7 +288,7 @@ add_filter( 'ai_contextual_tagging_max_suggestions', function( $max ) {
 You can filter which AI models are used for suggestion generation:
 
 ```php
-add_filter( 'ai_experiments_preferred_models_for_text_generation', function( $models ) {
+add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $models ) {
     return array(
         array( 'openai', 'gpt-4' ),
         array( 'anthropic', 'claude-haiku-4-5' ),
@@ -301,12 +301,12 @@ add_filter( 'ai_experiments_preferred_models_for_text_generation', function( $mo
 The `normalize_content()` helper function processes content before sending it to the AI:
 
 ```php
-add_filter( 'ai_experiments_pre_normalize_content', function( $content ) {
+add_filter( 'wpai_experiments_pre_normalize_content', function( $content ) {
     // Custom preprocessing.
     return $content;
 } );
 
-add_filter( 'ai_experiments_normalize_content', function( $content ) {
+add_filter( 'wpai_experiments_normalize_content', function( $content ) {
     // Custom post-processing.
     return $content;
 } );
