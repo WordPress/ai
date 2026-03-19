@@ -5,12 +5,13 @@
 /**
  * WordPress dependencies
  */
-import { dispatch, resolveSelect, select } from '@wordpress/data';
+import { dispatch, select } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
 import { count as wordCount } from '@wordpress/wordcount';
+import { addQueryArgs } from '@wordpress/url';
 import apiFetch from '@wordpress/api-fetch';
 
 /**
@@ -184,6 +185,7 @@ async function addTermToPost(
 	let parentId: number | undefined;
 	if ( suggestion.parent ) {
 		const resolvedParent = await findOrCreateTerm(
+			taxonomy,
 			restBase,
 			suggestion.parent
 		);
@@ -194,6 +196,7 @@ async function addTermToPost(
 
 	const currentTerms: number[] = getEditedPostAttribute( restBase ) ?? [];
 	const termId = await findOrCreateTerm(
+		taxonomy,
 		restBase,
 		suggestion.term,
 		parentId
@@ -209,23 +212,25 @@ async function addTermToPost(
 /**
  * Finds an existing term by name or creates a new one.
  *
- * @param restBase The REST base for the taxonomy.
+ * @param taxonomy The taxonomy slug (e.g., 'category').
+ * @param restBase The REST base for the taxonomy (e.g., 'categories').
  * @param termName The term name.
  * @param parentId Optional parent term ID for hierarchical taxonomies.
  * @return The term ID, or null if not found and could not be created.
  */
 async function findOrCreateTerm(
+	taxonomy: string,
 	restBase: string,
 	termName: string,
 	parentId?: number
 ): Promise< number | null > {
 	try {
-		// Search for existing term.
-		const searchResults: any[] = await (
-			resolveSelect( coreStore ) as any
-		 ).getEntityRecords( 'taxonomy', restBase, {
-			search: termName,
-			per_page: 100,
+		// Search for existing term via REST.
+		const searchResults: any[] = await apiFetch( {
+			path: addQueryArgs( `/wp/v2/${ restBase }`, {
+				search: termName,
+				per_page: 100,
+			} ),
 		} );
 
 		// If we have a direct match, return its ID.
@@ -238,17 +243,15 @@ async function findOrCreateTerm(
 			}
 		}
 
-		// Create new term via REST.
-		const data: Record< string, unknown > = { name: termName, parent: 0 };
+		// Create new term
+		const data: Record< string, unknown > = { name: termName };
 		if ( parentId ) {
 			data[ 'parent' ] = parentId; // eslint-disable-line dot-notation
 		}
 
-		const newTerm: any = await apiFetch( {
-			path: `/wp/v2/${ restBase }`,
-			method: 'POST',
-			data,
-		} );
+		const newTerm: any = await (
+			dispatch( coreStore ) as any
+		 ).saveEntityRecord( 'taxonomy', taxonomy, data );
 
 		return newTerm?.id ?? null;
 	} catch {
