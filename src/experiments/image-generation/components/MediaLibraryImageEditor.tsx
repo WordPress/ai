@@ -320,6 +320,30 @@ export function MediaLibraryImageEditor( {
 
 			{ state === 'preview' && previewSrc && (
 				<div className="ai-media-library-editor__preview">
+					<div className="ai-media-library-editor__presets">
+						{ PRESETS.map( ( preset ) => (
+							<Button
+								key={ preset.label }
+								variant="secondary"
+								icon={ preset.icon }
+								onClick={ async () => {
+									const reference = preset.prepare
+										? await preset.prepare(
+												previewSrc as string
+										  )
+										: previewSrc ?? undefined;
+									handleGenerate(
+										preset.prompt,
+										reference,
+										true,
+										historyIndex
+									);
+								} }
+							>
+								{ preset.label }
+							</Button>
+						) ) }
+					</div>
 					{ savedUpload && (
 						<Notice
 							status="success"
