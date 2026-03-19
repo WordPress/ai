@@ -72,8 +72,6 @@ class Contextual_Tagging extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
