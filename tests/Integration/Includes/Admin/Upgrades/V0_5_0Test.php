@@ -1,21 +1,21 @@
 <?php
 /**
- * Integration tests for Credential_Migration.
+ * Integration tests for V0_5_0.
  *
- * @package WordPress\AI\Tests\Integration\Includes\Migrations
+ * @package WordPress\AI\Tests\Integration\Admin\Upgrades
  */
 
-namespace WordPress\AI\Tests\Integration\Includes\Migrations;
+namespace WordPress\AI\Tests\Integration\Admin\Upgrades;
 
 use WP_UnitTestCase;
-use WordPress\AI\Migrations\Credential_Migration;
+use WordPress\AI\Admin\Upgrades\V0_5_0;
 
 /**
- * Credential_Migration test case.
+ * V0_5_0 test case.
  *
  * @since 0.5.0
  */
-class Credential_MigrationTest extends WP_UnitTestCase {
+class V0_5_0Test extends WP_UnitTestCase {
 
 	/**
 	 * Returns the new-style Connectors option names under test.
@@ -48,7 +48,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 		// Ensure each test starts from a clean migration state regardless of
 		// bootstrap side effects that may run migrations before tests execute.
 		delete_option( 'wp_ai_client_provider_credentials' );
-		delete_option( 'ai_experiments_version' );
+		delete_option( 'wpai_version' );
 
 		foreach ( self::get_connector_options() as $option ) {
 			delete_option( $option );
@@ -64,7 +64,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		delete_option( 'ai_experiments_version' );
+		delete_option( 'wpai_version' );
 
 		foreach ( self::get_connector_options() as $option ) {
 			delete_option( $option );
@@ -89,7 +89,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 			)
 		);
 
-		( new Credential_Migration() )->run();
+		( new V0_5_0( '' ) )->run();
 
 		$this->assertEquals( 'sk-openai-key', get_option( 'connectors_ai_openai_api_key' ) );
 		$this->assertEquals( 'google-key', get_option( 'connectors_ai_google_api_key' ) );
@@ -101,10 +101,10 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	 *
 	 * @since 0.5.0
 	 */
-	public function test_run_stores_version_after_migration() {
-		( new Credential_Migration() )->run();
+	public function test_run_returns_success_after_migration() {
+		$success = ( new V0_5_0( '' ) )->run();
 
-		$this->assertEquals( '0.5.0', get_option( 'ai_experiments_version' ) );
+		$this->assertTrue( $success );
 	}
 
 	/**
@@ -113,13 +113,12 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	 * @since 0.5.0
 	 */
 	public function test_run_skips_when_version_already_current() {
-		update_option( 'ai_experiments_version', '0.5.0' );
 		update_option(
 			'wp_ai_client_provider_credentials',
 			array( 'openai' => 'sk-old-key' )
 		);
 
-		( new Credential_Migration() )->run();
+		( new V0_5_0( '0.5.0' ) )->run();
 
 		$this->assertNull(
 			$this->get_option_from_db( 'connectors_ai_openai_api_key' ),
@@ -133,7 +132,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 	 * @since 0.5.0
 	 */
 	public function test_run_does_nothing_on_fresh_install() {
-		( new Credential_Migration() )->run();
+		( new V0_5_0( '' ) )->run();
 
 		foreach ( self::get_connector_options() as $option ) {
 			$this->assertNull(
@@ -155,7 +154,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 			array( 'openai' => 'sk-old-key' )
 		);
 
-		( new Credential_Migration() )->run();
+		( new V0_5_0( '' ) )->run();
 
 		$this->assertEquals(
 			'sk-already-set',
@@ -179,7 +178,7 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 			)
 		);
 
-		( new Credential_Migration() )->run();
+		( new V0_5_0( '' ) )->run();
 
 		$this->assertEquals(
 			'sk-already-set',
@@ -190,35 +189,6 @@ class Credential_MigrationTest extends WP_UnitTestCase {
 			'anthropic-old-key',
 			get_option( 'connectors_ai_anthropic_api_key' ),
 			'Anthropic credential should be migrated'
-		);
-	}
-
-	/**
-	 * Tests that a second call to run() after migration is already complete is a no-op.
-	 *
-	 * @since 0.5.0
-	 */
-	public function test_run_is_idempotent() {
-		update_option(
-			'wp_ai_client_provider_credentials',
-			array( 'openai' => 'sk-openai-key' )
-		);
-
-		$migration = new Credential_Migration();
-		$migration->run();
-
-		// Simulate the old option being changed after migration has already run.
-		update_option(
-			'wp_ai_client_provider_credentials',
-			array( 'openai' => 'sk-different-key' )
-		);
-
-		$migration->run();
-
-		$this->assertEquals(
-			'sk-openai-key',
-			get_option( 'connectors_ai_openai_api_key' ),
-			'Second run should not re-migrate'
 		);
 	}
 
