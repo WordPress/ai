@@ -31,7 +31,7 @@ class Test_Image_Generation_Experiment extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => 'Image Generation and Editing',
-			'description' => 'Generate and edit featured images and inline images with AI',
+			'description' => 'Generate and edit images using AI',
 		);
 	}
 

@@ -39,6 +39,29 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$response = file_get_contents( __DIR__ . '/responses/OpenAI/models.json' );
 	}
 
+	// Mock the Google models API response.
+	if ( str_contains( $url, 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000' ) ) {
+		// Handle invalid API key.
+		if (
+			isset( $parsed_args['headers']['X-Goog-Api-Key'] ) &&
+			str_contains( $parsed_args['headers']['X-Goog-Api-Key'], 'invalid-api-key' )
+		) {
+			return $preempt;
+		}
+
+		$response = file_get_contents( __DIR__ . '/responses/Google/models.json' );
+	}
+
+	// Mock the Google Imagen API response.
+	if ( str_contains( $url, 'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict' ) ) {
+		$response = file_get_contents( __DIR__ . '/responses/Google/imagen.json' );
+	}
+
+	// Mock the Google Gemini image API response.
+	if ( str_contains( $url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent' ) ) {
+		$response = file_get_contents( __DIR__ . '/responses/Google/gemini-image.json' );
+	}
+
 	// Mock the OpenAI responses API response.
 	if ( str_contains( $url, 'https://api.openai.com/v1/responses' ) ) {
 		$body = $parsed_args['body'] ?? '';
