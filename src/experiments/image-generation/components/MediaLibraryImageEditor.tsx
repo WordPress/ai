@@ -9,11 +9,12 @@
 /**
  * WordPress dependencies
  */
-import { useState, useEffect } from '@wordpress/element';
+import { useState, useRef, useEffect, useCallback } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import {
 	Button,
 	TextareaControl,
+	RangeControl,
 	Spinner,
 	Notice,
 	Icon,
@@ -24,7 +25,11 @@ import { chevronLeft, chevronRight } from '@wordpress/icons';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import { urlToBase64, prepareExpandCanvas } from '../../../utils/image';
+import {
+	urlToBase64,
+	prepareExpandCanvas,
+	compositeDrawing,
+} from '../../../utils/image';
 import { uploadImage } from '../functions/upload-image';
 import { useImageHistory } from '../hooks/useImageHistory';
 import type {
@@ -32,14 +37,46 @@ import type {
 	ImageGenerationAbilityInput,
 	UploadedImage,
 } from '../types';
+import { MaskCanvas } from './MaskCanvas';
+import type { MaskCanvasHandle } from './MaskCanvas';
 
-type EditorState = 'idle' | 'generating' | 'preview' | 'refining' | 'saving';
+type EditorState =
+	| 'idle'
+	| 'masking'
+	| 'generating'
+	| 'preview'
+	| 'refining'
+	| 'saving';
+
+type MaskMode = 'remove' | 'replace';
+
+interface MaskingSource {
+	src: string;
+	fromState: 'idle' | 'preview' | 'refining';
+	historyIndex?: number | undefined;
+}
+
+const REMOVE_ITEM_PROMPT = __(
+	'Remove the item circled/marked in red from the image. Replace the marked area naturally by extending the surrounding background, textures, and patterns. Seamlessly match the lighting, colors, perspective, and style. Do not introduce any new objects. The red marking is only an annotation and should not appear in the result.',
+	'ai'
+);
+
+const REPLACE_PROMPT_PREFIX = __(
+	'Replace the item circled/marked in red in the image with:',
+	'ai'
+);
+
+const REPLACE_PROMPT_SUFFIX = __(
+	'. Blend the replacement naturally with the surrounding image, matching lighting, perspective, and style. The red marking is only an annotation and should not appear in the result.',
+	'ai'
+);
 
 interface Preset {
 	label: string;
 	prompt: string;
 	icon: JSX.Element;
 	prepare?: ( url: string ) => Promise< string >;
+	requiresMask?: MaskMode;
 }
 
 const PRESETS: Preset[] = [
@@ -59,6 +96,18 @@ const PRESETS: Preset[] = [
 			'ai'
 		),
 		icon: <Icon icon="remove" />,
+	},
+	{
+		label: __( 'Remove Item', 'ai' ),
+		prompt: REMOVE_ITEM_PROMPT,
+		icon: <Icon icon="editor-removeformatting" />,
+		requiresMask: 'remove',
+	},
+	{
+		label: __( 'Replace Item', 'ai' ),
+		prompt: '',
+		icon: <Icon icon="migrate" />,
+		requiresMask: 'replace',
 	},
 ];
 
@@ -88,6 +137,15 @@ export function MediaLibraryImageEditor( {
 		null
 	);
 	const [ error, setError ] = useState< string | null >( null );
+
+	// Mask editing state.
+	const [ maskMode, setMaskMode ] = useState< MaskMode | null >( null );
+	const [ brushSize, setBrushSize ] = useState( 15 );
+	const [ replacePrompt, setReplacePrompt ] = useState( '' );
+	const [ hasMask, setHasMask ] = useState( false );
+	const [ maskingSource, setMaskingSource ] =
+		useState< MaskingSource | null >( null );
+	const maskCanvasRef = useRef< MaskCanvasHandle >( null );
 
 	const {
 		history,
@@ -124,12 +182,14 @@ export function MediaLibraryImageEditor( {
 	 * @param {string|undefined} referenceOverride Data URI to use as reference; omit for fresh edits.
 	 * @param {boolean}          isRefinement      True when refining a previously generated image.
 	 * @param {number|undefined} refHistoryIndex   History index of the entry whose image is the reference.
+	 * @param {string|undefined} displayReference  Unmodified image to show in comparison; defaults to referenceOverride.
 	 */
 	async function handleGenerate(
 		activePrompt: string = prompt.trim(),
 		referenceOverride?: string,
 		isRefinement: boolean = false,
-		refHistoryIndex?: number
+		refHistoryIndex?: number,
+		displayReference?: string
 	): Promise< void > {
 		setError( null );
 		setState( 'generating' );
@@ -154,8 +214,9 @@ export function MediaLibraryImageEditor( {
 				);
 			}
 
+			const historyReference = displayReference ?? referenceOverride;
 			const prevData = activeEntry?.generatedData;
-			const previousPrompts = referenceOverride
+			const previousPrompts = historyReference
 				? prevData?.prompts ??
 				  ( prevData?.prompt ? [ prevData.prompt ] : [] )
 				: [];
@@ -168,7 +229,7 @@ export function MediaLibraryImageEditor( {
 
 			addToHistory(
 				{ ...response, prompt: activePrompt, prompts },
-				referenceOverride,
+				historyReference,
 				isRefinement,
 				refHistoryIndex
 			);
@@ -214,9 +275,82 @@ export function MediaLibraryImageEditor( {
 		setSavedUpload( null );
 		setPrompt( '' );
 		setRefinePrompt( '' );
+		setReplacePrompt( '' );
+		setMaskMode( null );
+		setMaskingSource( null );
+		setHasMask( false );
 		setError( null );
 		setState( 'idle' );
 	}
+
+	/**
+	 * Enters masking mode for a mask-based preset.
+	 *
+	 * @param {MaskMode}                    mode      Whether this is a remove or replace operation.
+	 * @param {'idle'|'preview'|'refining'} fromState The editor state to return to on cancel.
+	 * @param {string}                      src       Image source to draw the mask on.
+	 * @param {number|undefined}            hIndex    History index when entering from refining.
+	 */
+	function enterMasking(
+		mode: MaskMode,
+		fromState: 'idle' | 'preview' | 'refining',
+		src: string,
+		hIndex?: number
+	): void {
+		setMaskMode( mode );
+		setMaskingSource( { src, fromState, historyIndex: hIndex } );
+		setReplacePrompt( '' );
+		setHasMask( false );
+		setError( null );
+		setState( 'masking' );
+	}
+
+	/**
+	 * Handles the "Apply" action in masking mode.
+	 *
+	 * Composites the user's red drawing onto the source image and sends
+	 * the annotated image to the AI with a prompt describing the intent.
+	 */
+	const handleMaskApply = useCallback( async () => {
+		if ( ! maskingSource || ! maskCanvasRef.current ) {
+			return;
+		}
+
+		const canvas = maskCanvasRef.current.getCanvas();
+		if ( ! canvas ) {
+			return;
+		}
+
+		try {
+			const annotatedImage = await compositeDrawing(
+				maskingSource.src,
+				canvas
+			);
+
+			const activePrompt =
+				maskMode === 'remove'
+					? REMOVE_ITEM_PROMPT
+					: `${ REPLACE_PROMPT_PREFIX } ${ replacePrompt.trim() }${ REPLACE_PROMPT_SUFFIX }`;
+
+			const isRefinement = maskingSource.fromState === 'refining';
+
+			handleGenerate(
+				activePrompt,
+				annotatedImage,
+				isRefinement,
+				maskingSource.historyIndex,
+				maskingSource.src
+			);
+		} catch ( err: any ) {
+			setError(
+				err?.message ?? __( 'Failed to apply drawing to image.', 'ai' )
+			);
+		}
+	}, [ maskingSource, maskMode, replacePrompt ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	const handleMaskChange = useCallback( ( value: boolean ) => {
+		setHasMask( value );
+	}, [] );
 
 	const previewSrc = activeEntry?.generatedData?.image?.data
 		? `data:image/png;base64,${ activeEntry.generatedData.image.data }`
@@ -261,6 +395,14 @@ export function MediaLibraryImageEditor( {
 								variant="secondary"
 								icon={ preset.icon }
 								onClick={ async () => {
+									if ( preset.requiresMask ) {
+										enterMasking(
+											preset.requiresMask,
+											'idle',
+											attachmentUrl
+										);
+										return;
+									}
 									const reference = preset.prepare
 										? await preset.prepare( attachmentUrl )
 										: undefined;
@@ -302,6 +444,87 @@ export function MediaLibraryImageEditor( {
 				</div>
 			) }
 
+			{ state === 'masking' && maskingSource && (
+				<div className="ai-media-library-editor__masking">
+					<MaskCanvas
+						ref={ maskCanvasRef }
+						imageSrc={ maskingSource.src }
+						brushSize={ brushSize }
+						onMaskChange={ handleMaskChange }
+					/>
+					<div className="ai-media-library-editor__masking-sidebar">
+						<RangeControl
+							__nextHasNoMarginBottom
+							label={ __( 'Brush size', 'ai' ) }
+							value={ brushSize }
+							onChange={ ( value ) =>
+								setBrushSize( value ?? 15 )
+							}
+							min={ 5 }
+							max={ 100 }
+							__next40pxDefaultSize
+						/>
+						<div className="ai-media-library-editor__masking-sidebar-buttons">
+							<Button
+								variant="secondary"
+								onClick={ () => maskCanvasRef.current?.undo() }
+							>
+								{ __( 'Undo', 'ai' ) }
+							</Button>
+							<Button
+								variant="secondary"
+								onClick={ () => maskCanvasRef.current?.clear() }
+							>
+								{ __( 'Clear', 'ai' ) }
+							</Button>
+						</div>
+						{ maskMode === 'replace' && (
+							<TextareaControl
+								label={ __(
+									'Describe what to replace with',
+									'ai'
+								) }
+								value={ replacePrompt }
+								onChange={ setReplacePrompt }
+								rows={ 2 }
+								__nextHasNoMarginBottom
+							/>
+						) }
+						<div className="ai-media-library-editor__masking-sidebar-actions">
+							<Button
+								variant="primary"
+								disabled={
+									! hasMask ||
+									( maskMode === 'replace' &&
+										! replacePrompt.trim() )
+								}
+								onClick={ handleMaskApply }
+							>
+								{ maskMode === 'remove'
+									? __( 'Remove', 'ai' )
+									: __( 'Replace', 'ai' ) }
+							</Button>
+							<Button
+								variant="tertiary"
+								onClick={ () => {
+									setError( null );
+									setState( maskingSource.fromState );
+									setMaskMode( null );
+									setMaskingSource( null );
+								} }
+							>
+								{ __( 'Cancel', 'ai' ) }
+							</Button>
+						</div>
+						{ error && (
+							<Notice status="error" isDismissible={ false }>
+								{ error }
+							</Notice>
+						) }
+					</div>
+				</div>
+			) }
+
 			{ state === 'generating' && (
 				<div className="ai-media-library-editor__generating">
 					{ previewSrc && (
@@ -327,6 +550,15 @@ export function MediaLibraryImageEditor( {
 								variant="secondary"
 								icon={ preset.icon }
 								onClick={ async () => {
+									if ( preset.requiresMask ) {
+										enterMasking(
+											preset.requiresMask,
+											'preview',
+											previewSrc,
+											historyIndex
+										);
+										return;
+									}
 									const reference = preset.prepare
 										? await preset.prepare(
 												previewSrc as string
@@ -464,14 +696,23 @@ export function MediaLibraryImageEditor( {
 								key={ preset.label }
 								variant="secondary"
 								icon={ preset.icon }
-								onClick={ () =>
+								onClick={ () => {
+									if ( preset.requiresMask && previewSrc ) {
+										enterMasking(
+											preset.requiresMask,
+											'refining',
+											previewSrc,
+											historyIndex
+										);
+										return;
+									}
 									handleGenerate(
 										preset.prompt,
 										previewSrc,
 										true,
 										historyIndex
-									)
-								}
+									);
+								} }
 							>
 								{ preset.label }
 							</Button>
