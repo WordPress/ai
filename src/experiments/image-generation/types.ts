@@ -34,6 +34,7 @@ export interface GeneratedImage {
 export interface GeneratedImageData {
 	image: GeneratedImage;
 	prompt: string;
+	prompts?: string[];
 }
 
 /**
@@ -93,6 +94,7 @@ export interface ImageImportAbilityInput {
  */
 export interface ImageGenerationAbilityInput {
 	prompt: string;
+	reference?: string;
 	[ key: string ]: string | undefined;
 }
 

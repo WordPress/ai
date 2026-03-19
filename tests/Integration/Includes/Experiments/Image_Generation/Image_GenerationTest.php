@@ -69,7 +69,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$experiment = new Image_Generation();
 
 		$this->assertEquals( 'image-generation', $experiment->get_id() );
-		$this->assertEquals( 'Image Generation', $experiment->get_label() );
+		$this->assertEquals( 'Image Generation and Editing', $experiment->get_label() );
 		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}

@@ -8,17 +8,19 @@
 /**
  * WordPress dependencies
  */
-import { render } from '@wordpress/element';
+import { createRoot } from '@wordpress/element';
 
 /**
  * Internal dependencies
  */
 import { GenerateImageStandalone } from './components/GenerateImageStandalone';
+import './index.scss';
 
 document.addEventListener( 'DOMContentLoaded', () => {
-	// Mount the Standalone app if we're on the new admin page.
+	// Mount the app if we're on the generate image page.
 	const rootEl = document.getElementById( 'ai-image-generation-root' );
 	if ( rootEl ) {
-		render( <GenerateImageStandalone />, rootEl );
+		const root = createRoot( rootEl );
+		root.render( <GenerateImageStandalone /> );
 	}
 } );

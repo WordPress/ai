@@ -153,7 +153,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		let useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -162,6 +162,14 @@ test.describe( 'Image Generation Experiment', () => {
 			}
 		);
 		await expect( useImageButton ).toBeVisible();
+
+		const refineButton = page.locator(
+			'.ai-generate-image-inline-modal__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -213,7 +221,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -316,7 +324,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		let useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -325,6 +333,14 @@ test.describe( 'Image Generation Experiment', () => {
 			}
 		);
 		await expect( useImageButton ).toBeVisible();
+
+		const refineButton = page.locator(
+			'.ai-generate-image-inline-modal__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -367,7 +383,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -450,7 +466,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-standalone__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 5 );
 
 		let saveImageButton = page.locator(
 			'.ai-generate-image-standalone__actions button',
@@ -460,10 +476,18 @@ test.describe( 'Image Generation Experiment', () => {
 		);
 		await expect( saveImageButton ).toBeVisible();
 
+		const refineButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
+
 		const generateAnotherButton = page.locator(
 			'.ai-generate-image-standalone__actions button',
 			{
-				hasText: 'Regenerate',
+				hasText: 'Generate Another Image',
 			}
 		);
 		await expect( generateAnotherButton ).toBeVisible();
@@ -496,7 +520,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-standalone__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 5 );
 
 		saveImageButton = page.locator(
 			'.ai-generate-image-standalone__actions button',

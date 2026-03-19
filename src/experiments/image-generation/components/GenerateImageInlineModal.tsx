@@ -27,7 +27,7 @@ import type {
 
 const { aiImageGenerationData } = window as any;
 
-type ModalState = 'idle' | 'generating' | 'preview';
+type ModalState = 'idle' | 'generating' | 'preview' | 'refining';
 
 interface Props {
 	blockName: string;
@@ -39,7 +39,9 @@ interface Props {
 /**
  * Modal component for inline AI image generation in the block editor.
  *
- * Supports a generate → preview → insert flow.
+ * Supports a generate → preview →  refine → insert flow. When refining,
+ * the current preview image is sent as a reference to the generation
+ * ability so that models supporting image editing can use it as context.
  *
  * @param {Props}    props               The props for the component.
  * @param {string}   props.blockName     The name of the block.
@@ -55,23 +57,37 @@ export function GenerateImageInlineModal( {
 }: Props ) {
 	const [ state, setState ] = useState< ModalState >( 'idle' );
 	const [ prompt, setPrompt ] = useState( '' );
+	const [ refinePrompt, setRefinePrompt ] = useState( '' );
 	const [ generatedData, setGeneratedData ] =
 		useState< GeneratedImageData | null >( null );
+	const [ originalImageSrc, setOriginalImageSrc ] = useState< string | null >(
+		null
+	);
 	const [ progress, setProgress ] = useState( '' );
 	const [ error, setError ] = useState< string | null >( null );
 
 	/**
-	 * Runs the image generation ability with the given prompt.
+	 * Runs the image generation ability with the given prompt and optional
+	 * reference image for the refining flow.
 	 *
-	 * @param {string} activePrompt The prompt to generate an image from.
+	 * @param {string}           activePrompt   The prompt to generate an image from.
+	 * @param {string|undefined} referenceImage Optional base64 image for refining.
 	 */
-	async function generate( activePrompt: string ): Promise< void > {
+	async function generate(
+		activePrompt: string,
+		referenceImage?: string
+	): Promise< void > {
 		setError( null );
 		setState( 'generating' );
 		setProgress( __( 'Generating image…', 'ai' ) );
 
 		try {
 			const input: ImageGenerationAbilityInput = { prompt: activePrompt };
+			if ( referenceImage ) {
+				input.reference = referenceImage;
+			} else {
+				setOriginalImageSrc( null );
+			}
 
 			const response = ( await runAbility(
 				'ai/image-generation',
@@ -84,7 +100,21 @@ export function GenerateImageInlineModal( {
 				);
 			}
 
-			setGeneratedData( { ...response, prompt: activePrompt } );
+			setGeneratedData( ( previousData ) => {
+				const previousPrompts = referenceImage
+					? previousData?.prompts ?? [ previousData?.prompt ?? '' ]
+					: [];
+				const promptHistory = previousPrompts.filter( Boolean );
+				const lastPrompt = promptHistory[ promptHistory.length - 1 ];
+				return {
+					...response,
+					prompt: activePrompt,
+					prompts:
+						lastPrompt === activePrompt
+							? promptHistory
+							: [ ...promptHistory, activePrompt ],
+				};
+			} );
 			setState( 'preview' );
 		} catch ( err: any ) {
 			const message: string =
@@ -94,7 +124,7 @@ export function GenerateImageInlineModal( {
 			setError( message );
 
 			// Return to the previous state so the user can try again.
-			setState( 'idle' );
+			setState( referenceImage ? 'refining' : 'idle' );
 		}
 	}
 
@@ -142,6 +172,11 @@ export function GenerateImageInlineModal( {
 	const previewSrc = generatedData?.image?.data
 		? `data:image/png;base64,${ generatedData.image.data }`
 		: null;
+	const hasRefinedResult = Boolean(
+		originalImageSrc &&
+			generatedData?.prompts &&
+			generatedData.prompts.length > 1
+	);
 
 	return (
 		<Modal
@@ -210,18 +245,66 @@ export function GenerateImageInlineModal( {
 			{ /* PREVIEW — show the generated image with action buttons */ }
 			{ state === 'preview' && previewSrc && (
 				<div className="ai-generate-image-inline-modal__preview">
-					<img
-						src={ previewSrc }
-						alt={ generatedData?.prompt ?? '' }
-						className="ai-generate-image-inline-modal__preview-image"
-					/>
+					{ hasRefinedResult ? (
+						<div className="ai-generate-image-inline-modal__comparison">
+							<div className="ai-generate-image-inline-modal__comparison-item">
+								<p className="ai-generate-image-inline-modal__comparison-label">
+									{ __( 'Original image', 'ai' ) }
+								</p>
+								<img
+									src={ originalImageSrc ?? '' }
+									alt={ __(
+										'Original generated image',
+										'ai'
+									) }
+									className="ai-generate-image-inline-modal__preview-image"
+								/>
+							</div>
+							<div className="ai-generate-image-inline-modal__comparison-item">
+								<p className="ai-generate-image-inline-modal__comparison-label">
+									{ __( 'Refined image', 'ai' ) }
+								</p>
+								<img
+									src={ previewSrc }
+									alt={ generatedData?.prompt ?? '' }
+									className="ai-generate-image-inline-modal__preview-image"
+								/>
+							</div>
+						</div>
+					) : (
+						<img
+							src={ previewSrc }
+							alt={ generatedData?.prompt ?? '' }
+							className="ai-generate-image-inline-modal__preview-image"
+						/>
+					) }
 					<div className="ai-generate-image-inline-modal__actions">
 						<Button variant="primary" onClick={ handleUseImage }>
 							{ __( 'Use Image', 'ai' ) }
 						</Button>
 						<Button
 							variant="secondary"
-							onClick={ () => generate( prompt.trim() ) }
+							onClick={ () => {
+								setOriginalImageSrc( previewSrc );
+								setRefinePrompt( '' );
+								setState( 'refining' );
+							} }
+						>
+							{ __( 'Refine Image', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={ () => {
+								if ( hasRefinedResult ) {
+									setOriginalImageSrc( originalImageSrc );
+									generate(
+										refinePrompt.trim(),
+										originalImageSrc ?? undefined
+									);
+								} else {
+									generate( prompt.trim() );
+								}
+							} }
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
 						</Button>
@@ -229,11 +312,58 @@ export function GenerateImageInlineModal( {
 							variant="tertiary"
 							onClick={ () => {
 								setGeneratedData( null );
+								setOriginalImageSrc( null );
 								setState( 'idle' );
 								setError( null );
 							} }
 						>
 							{ __( 'Edit Prompt', 'ai' ) }
+						</Button>
+					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
+				</div>
+			) }
+
+			{ /* REFINING — show current image + follow-up prompt */ }
+			{ state === 'refining' && previewSrc && (
+				<div className="ai-generate-image-inline-modal__refining">
+					<img
+						src={ previewSrc }
+						alt={ generatedData?.prompt ?? '' }
+						className="ai-generate-image-inline-modal__preview-image"
+					/>
+					<TextareaControl
+						label={ __(
+							'Describe the refinements you want to make to the image.',
+							'ai'
+						) }
+						value={ refinePrompt }
+						onChange={ setRefinePrompt }
+						rows={ 3 }
+						__nextHasNoMarginBottom
+					/>
+					<div className="ai-generate-image-inline-modal__actions">
+						<Button
+							variant="primary"
+							disabled={ ! refinePrompt.trim() }
+							onClick={ () =>
+								generate( refinePrompt.trim(), previewSrc )
+							}
+						>
+							{ __( 'Refine', 'ai' ) }
+						</Button>
+						<Button
+							variant="tertiary"
+							onClick={ () => {
+								setState( 'preview' );
+								setError( null );
+							} }
+						>
+							{ __( 'Cancel Refinement', 'ai' ) }
 						</Button>
 					</div>
 					{ error && (
