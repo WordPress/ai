@@ -37,8 +37,8 @@ class Asset_Loader {
 	 * @param array<string, mixed>|null $asset_data Optional asset metadata (dependencies and version).
 	 */
 	public static function enqueue_script( string $handle, string $file_name, ?array $asset_data = null ): void {
-		$script_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.js';
-		$script_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.js';
+		$script_path       = WPAI_PLUGIN_DIR . 'build/' . $file_name . '.js';
+		$script_url        = WPAI_PLUGIN_URL . 'build/' . $file_name . '.js';
 		$script_asset_path = substr( $script_path, 0, -3 ) . '.asset.php';
 
 		// If the file doesn't exist, don't try to enqueue it.
@@ -82,8 +82,8 @@ class Asset_Loader {
 	 * @param array<string, mixed>|null $asset_data Optional asset metadata (dependencies and version).
 	 */
 	public static function enqueue_style( string $handle, string $file_name, ?array $asset_data = null ): void {
-		$style_path       = AI_EXPERIMENTS_DIR . 'build/' . $file_name . '.css';
-		$style_url        = AI_EXPERIMENTS_PLUGIN_URL . 'build/' . $file_name . '.css';
+		$style_path       = WPAI_PLUGIN_DIR . 'build/' . $file_name . '.css';
+		$style_url        = WPAI_PLUGIN_URL . 'build/' . $file_name . '.css';
 		$style_asset_path = substr( $style_path, 0, -4 ) . '.asset.php';
 		$handle           = 'ai_' . $handle;
 

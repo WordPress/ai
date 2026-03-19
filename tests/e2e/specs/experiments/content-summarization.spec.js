@@ -50,14 +50,14 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		// Ensure the Generate AI Summary button exists, is visible, and has the correct text.
+		// Ensure the Generate Summary button exists, is visible, and has the correct text.
 		const generateButton = page.locator(
 			'.ai-summarization-plugin-container button'
 		);
 		await expect( generateButton ).toBeVisible();
-		await expect( generateButton ).toHaveText( 'Generate AI Summary' );
+		await expect( generateButton ).toHaveText( 'Generate Summary' );
 
-		// Click the Generate AI Summary button.
+		// Click the Generate Summary button.
 		await generateButton.click();
 
 		// Ensure the generated summary is inserted as a block.
@@ -74,9 +74,9 @@ test.describe( 'Content Summarization Experiment', () => {
 			.locator( '.editor-sidebar__panel-tabs button:has-text("Post")' )
 			.click();
 
-		// Ensure the Generate AI Summary button text is updated.
+		// Ensure the Generate Summary button text is updated.
 		await expect( generateButton ).toBeVisible();
-		await expect( generateButton ).toHaveText( 'Re-generate AI Summary' );
+		await expect( generateButton ).toHaveText( 'Re-generate Summary' );
 
 		// Save the post.
 		await editor.saveDraft();
@@ -107,7 +107,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		// Ensure the Generate AI Summary button doesn't exist.
+		// Ensure the Generate Summary button doesn't exist.
 		await expect(
 			page.locator( '.ai-summarization-plugin-container button' )
 		).not.toBeVisible();
@@ -138,7 +138,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		// Ensure the Generate AI Summary button doesn't exist.
+		// Ensure the Generate Summary button doesn't exist.
 		await expect(
 			page.locator( '.ai-summarization-plugin-container button' )
 		).not.toBeVisible();

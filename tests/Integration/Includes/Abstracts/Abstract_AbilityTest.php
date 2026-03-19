@@ -9,8 +9,8 @@ namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Experiments\Experiment_Category;
 
 /**
  * Test ability implementation for Abstract_Ability tests.
@@ -106,17 +106,25 @@ class Test_Ability extends Abstract_Ability {
  *
  * @since 0.1.0
  */
-class Test_Ability_Experiment extends Abstract_Experiment {
+class Test_Ability_Experiment extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since 0.1.0
+	 */
+	public static function get_id(): string {
+		return 'test-ability-experiment';
+	}
+
 	/**
 	 * Loads experiment metadata.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
+	 * @return array{label: string, description: string, category: string} Experiment metadata.
 	 */
-	protected function load_experiment_metadata(): array {
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'test-ability-experiment',
 			'label'       => 'Test Ability Experiment',
 			'description' => 'A test experiment for ability testing',
 			'category'    => Experiment_Category::EDITOR,
@@ -152,7 +160,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 	}
 
 	/**
@@ -162,7 +170,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -307,12 +315,12 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		);
 
 		// Get the test ability's directory using reflection.
-		$reflection = new \ReflectionClass( $ability );
-		$file_name  = $reflection->getFileName();
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
 		$feature_dir = dirname( $file_name );
 
 		// Create a temporary system instruction file that uses data variables.
-		$test_file = trailingslashit( $feature_dir ) . 'test-system-instruction.php';
+		$test_file    = trailingslashit( $feature_dir ) . 'test-system-instruction.php';
 		$test_content = <<<'PHP'
 <?php
 // Process the length variable if provided.
@@ -335,8 +343,8 @@ PHP;
 		try {
 			// Test with data parameter.
 			$data = array(
-				'length'   => 'short',
-				'tone'     => 'professional',
+				'length'    => 'short',
+				'tone'      => 'professional',
 				'max_words' => 100,
 			);
 
@@ -371,12 +379,12 @@ PHP;
 		);
 
 		// Get the test ability's directory using reflection.
-		$reflection = new \ReflectionClass( $ability );
-		$file_name  = $reflection->getFileName();
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
 		$feature_dir = dirname( $file_name );
 
 		// Create a temporary system instruction file without using data variables.
-		$test_file = trailingslashit( $feature_dir ) . 'test-system-instruction-simple.php';
+		$test_file    = trailingslashit( $feature_dir ) . 'test-system-instruction-simple.php';
 		$test_content = <<<'PHP'
 <?php
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
@@ -417,12 +425,12 @@ PHP;
 		);
 
 		// Get the test ability's directory using reflection.
-		$reflection = new \ReflectionClass( $ability );
-		$file_name  = $reflection->getFileName();
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
 		$feature_dir = dirname( $file_name );
 
 		// Create a temporary system instruction file.
-		$test_file = trailingslashit( $feature_dir ) . 'test-system-instruction-empty.php';
+		$test_file    = trailingslashit( $feature_dir ) . 'test-system-instruction-empty.php';
 		$test_content = <<<'PHP'
 <?php
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
