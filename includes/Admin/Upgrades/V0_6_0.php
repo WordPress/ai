@@ -16,7 +16,7 @@ namespace WordPress\AI\Admin\Upgrades;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Upgrade routine for migrating provider credentials to the new Connectors-based storage format.
+ * Upgrade routine for migrating legacy ai_experiment options to the wpai_* equivalents.
  *
  * @since x.x.x
  * @internal
