@@ -73,6 +73,36 @@ async function generateSuggestions(
 }
 
 /**
+ * Gets the lowercase names of terms currently assigned to the post for a taxonomy.
+ *
+ * @param taxonomy The taxonomy slug.
+ * @return A promise that resolves to an array of lowercase term names.
+ */
+async function getAssignedTermNames( taxonomy: string ): Promise< string[] > {
+	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
+	const restBase = taxonomyObject?.rest_base ?? taxonomy;
+	const { getEditedPostAttribute } = select( editorStore );
+	const termIds: number[] = getEditedPostAttribute( restBase ) ?? [];
+
+	if ( ! termIds.length ) {
+		return [];
+	}
+
+	try {
+		const terms: any[] = await apiFetch( {
+			path: addQueryArgs( `/wp/v2/${ restBase }`, {
+				include: termIds.join( ',' ),
+				per_page: termIds.length,
+			} ),
+		} );
+
+		return terms.map( ( t: any ) => t.name.toLowerCase() );
+	} catch {
+		return [];
+	}
+}
+
+/**
  * Hook for contextual tagging functionality.
  *
  * @param taxonomy The taxonomy to generate suggestions for.
@@ -115,8 +145,14 @@ export function useContextualTagging( taxonomy: string ): {
 				settings.maxSuggestions
 			);
 
+			// Filter out terms already assigned to the post.
+			const assignedNames = await getAssignedTermNames( taxonomy );
+			const filtered = result.filter(
+				( s ) => ! assignedNames.includes( s.term.toLowerCase() )
+			);
+
 			// Update the suggestions state.
-			setSuggestions( result );
+			setSuggestions( filtered );
 		} catch ( error: any ) {
 			// Create an error notice.
 			createErrorNotice( error?.message || error, {

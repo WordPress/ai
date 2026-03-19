@@ -143,6 +143,8 @@ class Contextual_Tagging extends Abstract_Ability {
 			);
 		}
 
+		$assigned_terms = array();
+
 		// If a post ID is provided, ensure the post exists before using its content.
 		if ( $args['post_id'] ) {
 			$post = get_post( (int) $args['post_id'] );
@@ -161,6 +163,12 @@ class Contextual_Tagging extends Abstract_Ability {
 			// Default to the passed in content if it exists.
 			if ( $args['content'] ) {
 				$context['content'] = normalize_content( $args['content'] );
+			}
+
+			// Get terms already assigned to this post for the taxonomy.
+			$assigned = wp_get_object_terms( (int) $args['post_id'], $args['taxonomy'], array( 'fields' => 'names' ) );
+			if ( ! is_wp_error( $assigned ) ) {
+				$assigned_terms = (array) $assigned;
 			}
 		} else {
 			$context = array(
@@ -181,7 +189,8 @@ class Contextual_Tagging extends Abstract_Ability {
 			$context,
 			$args['taxonomy'],
 			$args['strategy'],
-			(int) $args['max_suggestions']
+			(int) $args['max_suggestions'],
+			$assigned_terms
 		);
 
 		// If we have an error, return it.
@@ -270,9 +279,10 @@ class Contextual_Tagging extends Abstract_Ability {
 	 * @param string                       $taxonomy        The taxonomy to suggest terms for.
 	 * @param string                       $strategy        The suggestion strategy.
 	 * @param int                          $max_suggestions The maximum number of suggestions.
+	 * @param array<string>                $assigned_terms  Terms already assigned to the post.
 	 * @return array<array{term: string, confidence: float, is_new: bool, parent?: string}>|\WP_Error The generated suggestions, or a WP_Error if there was an error.
 	 */
-	protected function generate_suggestions( $context, string $taxonomy, string $strategy, int $max_suggestions ) {
+	protected function generate_suggestions( $context, string $taxonomy, string $strategy, int $max_suggestions, array $assigned_terms = array() ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -298,7 +308,7 @@ class Contextual_Tagging extends Abstract_Ability {
 		$taxonomy_label = $this->get_taxonomy_label( $taxonomy );
 
 		// Build the prompt with XML-like content wrapping.
-		$prompt = $this->build_prompt( $context, $taxonomy, $strategy, $existing_terms );
+		$prompt = $this->build_prompt( $context, $taxonomy, $strategy, $existing_terms, $assigned_terms );
 
 		/**
 		 * Filters the content string before it is sent to the AI model for taxonomy suggestion generation.
@@ -413,9 +423,10 @@ class Contextual_Tagging extends Abstract_Ability {
 	 * @param string        $taxonomy       The taxonomy slug.
 	 * @param string        $strategy       The suggestion strategy.
 	 * @param array<string> $existing_terms The existing terms.
+	 * @param array<string> $assigned_terms Terms already assigned to the post.
 	 * @return string The formatted prompt.
 	 */
-	protected function build_prompt( string $context, string $taxonomy, string $strategy, array $existing_terms ): string {
+	protected function build_prompt( string $context, string $taxonomy, string $strategy, array $existing_terms, array $assigned_terms = array() ): string {
 		$prompt_parts = array();
 
 		$prompt_parts[] = '<content>' . $context . '</content>';
@@ -430,6 +441,10 @@ class Contextual_Tagging extends Abstract_Ability {
 			$prompt_parts[] = '<existing-terms>' . implode( ', ', $existing_terms ) . '</existing-terms>';
 		} elseif ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
 			$prompt_parts[] = '<existing-terms>No existing terms are available. Return an empty suggestions array.</existing-terms>';
+		}
+
+		if ( ! empty( $assigned_terms ) ) {
+			$prompt_parts[] = '<assigned-terms>' . implode( ', ', $assigned_terms ) . '</assigned-terms>';
 		}
 
 		return implode( "\n", $prompt_parts );
