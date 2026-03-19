@@ -10,24 +10,26 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Contextual_Tagging\Contextual_Tagging;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Contextual_Tagging Ability tests.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
-class Test_Contextual_Tagging_Experiment extends Abstract_Experiment {
+class Test_Contextual_Tagging_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'contextual-tagging';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'contextual-tagging',
 			'label'       => 'Contextual Tagging',
 			'description' => 'AI-powered suggestions for post tags and categories.',
 		);
@@ -36,7 +38,7 @@ class Test_Contextual_Tagging_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -46,7 +48,7 @@ class Test_Contextual_Tagging_Experiment extends Abstract_Experiment {
 /**
  * Contextual_Tagging Ability test case.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class Contextual_TaggingTest extends WP_UnitTestCase {
 
@@ -67,7 +69,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -85,19 +87,19 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		remove_all_filters( 'ai_contextual_tagging_content' );
-		remove_all_filters( 'ai_contextual_tagging_suggestions' );
+		remove_all_filters( 'wpai_contextual_tagging_content' );
+		remove_all_filters( 'wpai_contextual_tagging_suggestions' );
 		parent::tearDown();
 	}
 
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -112,7 +114,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -147,7 +149,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -174,7 +176,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_without_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -191,7 +193,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when post_id points to non-existent post.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_with_invalid_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -210,7 +212,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error for invalid taxonomy.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_with_invalid_taxonomy() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -230,14 +232,14 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() handles valid JSON correctly.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_with_valid_json() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		$response = '[{"term": "development", "confidence": 0.9, "is_new": false}, {"term": "plugins", "confidence": 0.8, "is_new": true}]';
+		$response = '{"suggestions": [{"term": "development", "confidence": 0.9, "is_new": false}, {"term": "plugins", "confidence": 0.8, "is_new": true}]}';
 
 		$result = $method->invoke( $this->ability, $response, array( 'development' ), 5 );
 
@@ -249,28 +251,9 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that parse_suggestions() handles markdown-wrapped JSON.
-	 *
-	 * @since 0.6.0
-	 */
-	public function test_parse_suggestions_with_markdown_json() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'parse_suggestions' );
-		$method->setAccessible( true );
-
-		$response = "```json\n[{\"term\": \"ai\", \"confidence\": 0.95, \"is_new\": false}]\n```";
-
-		$result = $method->invoke( $this->ability, $response, array( 'ai' ), 5 );
-
-		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertCount( 1, $result, 'Should have 1 suggestion' );
-		$this->assertEquals( 'ai', $result[0]['term'], 'Suggestion should be ai' );
-	}
-
-	/**
 	 * Test that parse_suggestions() returns error for invalid JSON.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_with_invalid_json() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -288,20 +271,20 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() limits results to max_suggestions.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_limits_results() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		$response = '[
+		$response = '{"suggestions": [
 			{"term": "a", "confidence": 0.9, "is_new": false},
 			{"term": "b", "confidence": 0.8, "is_new": false},
 			{"term": "c", "confidence": 0.7, "is_new": false},
 			{"term": "d", "confidence": 0.6, "is_new": false},
 			{"term": "e", "confidence": 0.5, "is_new": false}
-		]';
+		]}';
 
 		$result = $method->invoke( $this->ability, $response, array(), 3 );
 
@@ -313,18 +296,18 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() sorts by confidence descending.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_sorts_by_confidence() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		$response = '[
+		$response = '{"suggestions": [
 			{"term": "low", "confidence": 0.3, "is_new": true},
 			{"term": "high", "confidence": 0.95, "is_new": true},
 			{"term": "mid", "confidence": 0.6, "is_new": true}
-		]';
+		]}';
 
 		$result = $method->invoke( $this->ability, $response, array(), 10 );
 
@@ -336,17 +319,17 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() clamps confidence values to 0-1 range.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_clamps_confidence() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		$response = '[
+		$response = '{"suggestions": [
 			{"term": "over", "confidence": 1.5, "is_new": true},
 			{"term": "under", "confidence": -0.5, "is_new": true}
-		]';
+		]}';
 
 		$result = $method->invoke( $this->ability, $response, array(), 10 );
 
@@ -357,17 +340,17 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() preserves parent field for hierarchical terms.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_preserves_parent_field() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		$response = '[
+		$response = '{"suggestions": [
 			{"term": "machine learning", "confidence": 0.9, "is_new": true, "parent": "technology"},
 			{"term": "finance", "confidence": 0.8, "is_new": false}
-		]';
+		]}';
 
 		$result = $method->invoke( $this->ability, $response, array( 'finance' ), 10 );
 
@@ -379,20 +362,20 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() skips items with empty or missing term.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_skips_invalid_items() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		$response = '[
+		$response = '{"suggestions": [
 			{"term": "valid", "confidence": 0.9, "is_new": true},
 			{"confidence": 0.8, "is_new": true},
 			{"term": "", "confidence": 0.7, "is_new": true},
 			"not an object",
 			{"term": "also valid", "confidence": 0.6, "is_new": true}
-		]';
+		]}';
 
 		$result = $method->invoke( $this->ability, $response, array(), 10 );
 
@@ -404,14 +387,14 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() defaults confidence to 0.5 when missing.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_defaults_missing_confidence() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		$response = '[{"term": "test", "is_new": true}]';
+		$response = '{"suggestions": [{"term": "test", "is_new": true}]}';
 
 		$result = $method->invoke( $this->ability, $response, array(), 10 );
 
@@ -421,7 +404,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() determines is_new based on existing terms, not AI response.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_parse_suggestions_overrides_is_new_from_existing_terms() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -429,7 +412,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// AI says "tech" is new, but it exists in our list as "Tech".
-		$response = '[{"term": "tech", "confidence": 0.9, "is_new": true}]';
+		$response = '{"suggestions": [{"term": "tech", "confidence": 0.9, "is_new": true}]}';
 
 		$result = $method->invoke( $this->ability, $response, array( 'Tech' ), 10 );
 
@@ -438,111 +421,86 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that build_system_instruction() includes expected components.
+	 * Test that build_prompt() wraps content in XML tags for existing_only strategy.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
-	public function test_build_system_instruction_contains_expected_content() {
+	public function test_build_prompt_existing_only_strategy() {
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_system_instruction' );
+		$method     = $reflection->getMethod( 'build_prompt' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke(
-			$this->ability,
-			'tags',
-			5,
-			'- Only suggest existing terms.',
-			'- Existing terms: php, js'
-		);
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', 'existing_only', array( 'php', 'javascript' ) );
 
-		$this->assertStringContainsString( 'tags', $result, 'Should contain taxonomy label' );
-		$this->assertStringContainsString( '5', $result, 'Should contain max suggestions count' );
-		$this->assertStringContainsString( 'Only suggest existing terms', $result, 'Should contain strategy instruction' );
-		$this->assertStringContainsString( 'php, js', $result, 'Should contain existing terms' );
-		$this->assertStringContainsString( 'JSON', $result, 'Should mention JSON output format' );
-		$this->assertStringContainsString( 'triple quotes', $result, 'Should mention content delimiter' );
-	}
-
-	/**
-	 * Test that build_strategy_instruction() returns correct text for existing_only.
-	 *
-	 * @since 0.6.0
-	 */
-	public function test_build_strategy_instruction_existing_only() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_strategy_instruction' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'existing_only' );
-
+		$this->assertStringContainsString( '<content>Test content</content>', $result, 'Should wrap content in XML tags' );
+		$this->assertStringContainsString( '<strategy>', $result, 'Should include strategy tag' );
 		$this->assertStringContainsString( 'Only suggest terms that already exist', $result );
+		$this->assertStringContainsString( '<existing-terms>php, javascript</existing-terms>', $result );
 	}
 
 	/**
-	 * Test that build_strategy_instruction() returns correct text for allow_new.
+	 * Test that build_prompt() wraps content in XML tags for allow_new strategy.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
-	public function test_build_strategy_instruction_allow_new() {
+	public function test_build_prompt_allow_new_strategy() {
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_strategy_instruction' );
+		$method     = $reflection->getMethod( 'build_prompt' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $this->ability, 'allow_new' );
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', 'allow_new', array() );
 
+		$this->assertStringContainsString( '<content>Test content</content>', $result );
 		$this->assertStringContainsString( 'may suggest new terms', $result );
 	}
 
 	/**
-	 * Test that build_existing_terms_instruction() lists terms when available.
+	 * Test that build_prompt() handles empty terms with existing_only strategy.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
-	public function test_build_existing_terms_instruction_with_terms() {
+	public function test_build_prompt_empty_terms_existing_only() {
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_existing_terms_instruction' );
+		$method     = $reflection->getMethod( 'build_prompt' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $this->ability, array( 'php', 'javascript', 'css' ), 'existing_only' );
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', 'existing_only', array() );
 
-		$this->assertStringContainsString( 'php, javascript, css', $result );
-		$this->assertStringContainsString( 'Prioritize', $result );
+		$this->assertStringContainsString( 'empty suggestions array', $result );
 	}
 
 	/**
-	 * Test that build_existing_terms_instruction() handles empty terms with existing_only strategy.
+	 * Test that suggestions_schema() returns the expected structure.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
-	public function test_build_existing_terms_instruction_empty_existing_only() {
+	public function test_suggestions_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_existing_terms_instruction' );
+		$method     = $reflection->getMethod( 'suggestions_schema' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $this->ability, array(), 'existing_only' );
+		$schema = $method->invoke( $this->ability );
 
-		$this->assertStringContainsString( 'empty array', $result );
-	}
+		$this->assertEquals( 'object', $schema['type'] );
+		$this->assertArrayHasKey( 'suggestions', $schema['properties'] );
+		$this->assertEquals( 'array', $schema['properties']['suggestions']['type'] );
 
-	/**
-	 * Test that build_existing_terms_instruction() handles empty terms with allow_new strategy.
-	 *
-	 * @since 0.6.0
-	 */
-	public function test_build_existing_terms_instruction_empty_allow_new() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_existing_terms_instruction' );
-		$method->setAccessible( true );
+		$item_props = $schema['properties']['suggestions']['items']['properties'];
+		$this->assertArrayHasKey( 'term', $item_props );
+		$this->assertArrayHasKey( 'confidence', $item_props );
+		$this->assertArrayHasKey( 'is_new', $item_props );
+		$this->assertArrayHasKey( 'parent', $item_props );
 
-		$result = $method->invoke( $this->ability, array(), 'allow_new' );
-
-		$this->assertStringContainsString( 'suggest new terms', $result );
+		$required = $schema['properties']['suggestions']['items']['required'];
+		$this->assertContains( 'term', $required );
+		$this->assertContains( 'confidence', $required );
+		$this->assertContains( 'is_new', $required );
 	}
 
 	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -560,7 +518,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_posts capability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -579,7 +537,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -597,7 +555,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns false for post type without show_in_rest.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_post_type_without_show_in_rest() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -633,7 +591,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );

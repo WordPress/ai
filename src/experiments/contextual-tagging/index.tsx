@@ -3,11 +3,6 @@
  */
 
 /**
- * Styles
- */
-import './index.scss';
-
-/**
  * WordPress dependencies
  */
 import { addFilter } from '@wordpress/hooks';
@@ -16,6 +11,11 @@ import { addFilter } from '@wordpress/hooks';
  * Internal dependencies
  */
 import SuggestionPanel from './components/SuggestionPanel';
+
+/**
+ * Styles
+ */
+import './index.scss';
 
 const SUPPORTED_TAXONOMIES = [ 'post_tag', 'category' ];
 

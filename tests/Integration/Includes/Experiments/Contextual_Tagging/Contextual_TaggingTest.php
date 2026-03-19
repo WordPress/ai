@@ -8,21 +8,21 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Contextual_Tagging;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiment_Category;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Contextual_Tagging\Contextual_Tagging;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Contextual_Tagging test case.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -31,42 +31,42 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable experiments globally and individually.
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_contextual-tagging_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_contextual-tagging_enabled', true );
 
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
 
-		$experiment = $registry->get_experiment( 'contextual-tagging' );
+		$experiment = $registry->get_feature( 'contextual-tagging' );
 		$this->assertInstanceOf( Contextual_Tagging::class, $experiment, 'Contextual tagging experiment should be registered in the registry.' );
 	}
 
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_contextual-tagging_enabled' );
-		delete_option( 'ai_experiment_contextual-tagging_field_strategy' );
-		delete_option( 'ai_experiment_contextual-tagging_field_max_suggestions' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_contextual-tagging_enabled' );
+		delete_option( 'wpai_feature_contextual-tagging_field_strategy' );
+		delete_option( 'wpai_feature_contextual-tagging_field_max_suggestions' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
-		remove_all_filters( 'ai_contextual_tagging_strategy' );
-		remove_all_filters( 'ai_contextual_tagging_max_suggestions' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		remove_all_filters( 'wpai_contextual_tagging_strategy' );
+		remove_all_filters( 'wpai_contextual_tagging_max_suggestions' );
 		parent::tearDown();
 	}
 
 	/**
 	 * Test that the experiment is registered correctly.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Contextual_Tagging();
@@ -80,24 +80,24 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that experiment settings are registered.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_experiment_settings_registration() {
 		$experiment = new Contextual_Tagging();
 		$experiment->register_settings();
 
 		// Verify the settings are registered by checking they can be retrieved.
-		$strategy = get_option( 'ai_experiment_contextual-tagging_field_strategy', 'existing_only' );
+		$strategy = get_option( 'wpai_feature_contextual-tagging_field_strategy', 'existing_only' );
 		$this->assertEquals( 'existing_only', $strategy );
 
-		$max_suggestions = get_option( 'ai_experiment_contextual-tagging_field_max_suggestions', 5 );
+		$max_suggestions = get_option( 'wpai_feature_contextual-tagging_field_max_suggestions', 5 );
 		$this->assertEquals( 5, $max_suggestions );
 	}
 
 	/**
 	 * Test that strategy sanitization works correctly.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_sanitize_strategy() {
 		$experiment = new Contextual_Tagging();
@@ -111,7 +111,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that max suggestions sanitization works correctly.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_sanitize_max_suggestions() {
 		$experiment = new Contextual_Tagging();
@@ -126,7 +126,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_strategy() returns the default value.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_get_strategy_returns_default() {
 		$experiment = new Contextual_Tagging();
@@ -137,10 +137,10 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_strategy() returns the saved option value.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_get_strategy_returns_saved_option() {
-		update_option( 'ai_experiment_contextual-tagging_field_strategy', 'allow_new' );
+		update_option( 'wpai_feature_contextual-tagging_field_strategy', 'allow_new' );
 		$experiment = new Contextual_Tagging();
 
 		$this->assertEquals( 'allow_new', $experiment->get_strategy() );
@@ -149,13 +149,13 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_strategy() is filterable.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_get_strategy_is_filterable() {
 		$experiment = new Contextual_Tagging();
 
 		add_filter(
-			'ai_contextual_tagging_strategy',
+			'wpai_contextual_tagging_strategy',
 			static function () {
 				return 'allow_new';
 			}
@@ -167,13 +167,13 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_strategy() sanitizes filtered value.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_get_strategy_sanitizes_filtered_value() {
 		$experiment = new Contextual_Tagging();
 
 		add_filter(
-			'ai_contextual_tagging_strategy',
+			'wpai_contextual_tagging_strategy',
 			static function () {
 				return 'malicious_value';
 			}
@@ -185,7 +185,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_max_suggestions() returns the default value.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_get_max_suggestions_returns_default() {
 		$experiment = new Contextual_Tagging();
@@ -196,10 +196,10 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_max_suggestions() returns the saved option value.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_get_max_suggestions_returns_saved_option() {
-		update_option( 'ai_experiment_contextual-tagging_field_max_suggestions', 8 );
+		update_option( 'wpai_feature_contextual-tagging_field_max_suggestions', 8 );
 		$experiment = new Contextual_Tagging();
 
 		$this->assertEquals( 8, $experiment->get_max_suggestions() );
@@ -208,13 +208,13 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_max_suggestions() is filterable.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_get_max_suggestions_is_filterable() {
 		$experiment = new Contextual_Tagging();
 
 		add_filter(
-			'ai_contextual_tagging_max_suggestions',
+			'wpai_contextual_tagging_max_suggestions',
 			static function () {
 				return 3;
 			}
