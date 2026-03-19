@@ -113,6 +113,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 		if (
 			! $screen ||
 			! post_type_supports( $screen->post_type, 'editor' ) ||
+			! current_user_can( 'manage_categories' ) ||
 			in_array( $screen->post_type, array( 'attachment' ), true )
 		) {
 			return;
@@ -169,38 +170,48 @@ class Contextual_Tagging extends Abstract_Experiment {
 		$current_strategy       = get_option( $this->get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY );
 		$current_max            = get_option( $this->get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
 		?>
-		<fieldset class="ai-experiment-settings-fieldset">
+		<fieldset class="ai-experiments__item-fields">
 			<legend class="screen-reader-text"><?php esc_html_e( 'Contextual Tagging Settings', 'ai' ); ?></legend>
-			<p>
-				<label for="<?php echo esc_attr( $strategy_option ); ?>">
-					<?php esc_html_e( 'Taxonomy strategy:', 'ai' ); ?>
-				</label>
-				<select
-					id="<?php echo esc_attr( $strategy_option ); ?>"
-					name="<?php echo esc_attr( $strategy_option ); ?>"
-				>
-					<option value="<?php echo esc_attr( self::STRATEGY_EXISTING_ONLY ); ?>" <?php selected( $current_strategy, self::STRATEGY_EXISTING_ONLY ); ?>>
-						<?php esc_html_e( 'Only suggest existing terms', 'ai' ); ?>
-					</option>
-					<option value="<?php echo esc_attr( self::STRATEGY_ALLOW_NEW ); ?>" <?php selected( $current_strategy, self::STRATEGY_ALLOW_NEW ); ?>>
-						<?php esc_html_e( 'Suggest new terms based on context', 'ai' ); ?>
-					</option>
-				</select>
-			</p>
-			<p>
-				<label for="<?php echo esc_attr( $max_suggestions_option ); ?>">
-					<?php esc_html_e( 'Maximum suggestions:', 'ai' ); ?>
-				</label>
-				<input
-					type="number"
-					id="<?php echo esc_attr( $max_suggestions_option ); ?>"
-					name="<?php echo esc_attr( $max_suggestions_option ); ?>"
-					value="<?php echo esc_attr( (string) $current_max ); ?>"
-					min="1"
-					max="10"
-					step="1"
-				/>
-			</p>
+			<table class="ai-experiments__settings-table" role="presentation">
+				<tr>
+					<td>
+						<label for="<?php echo esc_attr( $strategy_option ); ?>">
+							<?php esc_html_e( 'Taxonomy strategy:', 'ai' ); ?>
+						</label>
+					</td>
+					<td>
+						<select
+							id="<?php echo esc_attr( $strategy_option ); ?>"
+							name="<?php echo esc_attr( $strategy_option ); ?>"
+						>
+							<option value="<?php echo esc_attr( self::STRATEGY_EXISTING_ONLY ); ?>" <?php selected( $current_strategy, self::STRATEGY_EXISTING_ONLY ); ?>>
+								<?php esc_html_e( 'Only suggest existing terms', 'ai' ); ?>
+							</option>
+							<option value="<?php echo esc_attr( self::STRATEGY_ALLOW_NEW ); ?>" <?php selected( $current_strategy, self::STRATEGY_ALLOW_NEW ); ?>>
+								<?php esc_html_e( 'Suggest new terms based on context', 'ai' ); ?>
+							</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<label for="<?php echo esc_attr( $max_suggestions_option ); ?>">
+							<?php esc_html_e( 'Maximum suggestions:', 'ai' ); ?>
+						</label>
+					</td>
+					<td>
+						<input
+							type="number"
+							id="<?php echo esc_attr( $max_suggestions_option ); ?>"
+							name="<?php echo esc_attr( $max_suggestions_option ); ?>"
+							value="<?php echo esc_attr( (string) $current_max ); ?>"
+							min="1"
+							max="10"
+							step="1"
+						/>
+					</td>
+				</tr>
+			</table>
 		</fieldset>
 		<?php
 	}
