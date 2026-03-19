@@ -552,6 +552,15 @@ export function MediaLibraryImageEditor( {
 								variant="secondary"
 								icon={ preset.icon }
 								onClick={ async () => {
+									if ( preset.requiresMask ) {
+										enterMasking(
+											preset.requiresMask,
+											'idle',
+											previewSrc,
+											historyIndex
+										);
+										return;
+									}
 									const reference = preset.prepare
 										? await preset.prepare(
 												previewSrc as string

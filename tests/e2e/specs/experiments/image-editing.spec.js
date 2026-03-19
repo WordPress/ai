@@ -505,6 +505,9 @@ test.describe( 'Image Editing Experiment', () => {
 			.first();
 		await removeItemBtn.click();
 
+		// Wait a second.
+		await page.waitForTimeout( 1000 );
+
 		// Ensure the mask canvas is visible.
 		await expect(
 			page.locator( '.ai-media-library-editor__masking' )
@@ -526,6 +529,9 @@ test.describe( 'Image Editing Experiment', () => {
 			} )
 			.first();
 		await replaceItemBtn.click();
+
+		// Wait a second.
+		await page.waitForTimeout( 1000 );
 
 		// Ensure the mask canvas is visible.
 		await expect(
