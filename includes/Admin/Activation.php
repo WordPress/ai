@@ -3,7 +3,7 @@
  * Runs on plugin activation.
  *
  * @package WordPress\AI\Admin
- * @since x.x.x
+ * @since 0.6.0
  */
 
 declare( strict_types=1 );
@@ -18,13 +18,13 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 final class Activation {
 	/**
 	 * Runs on plugin activation.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public static function activation_callback(): void {
 		// Check and run any pending upgrades.

@@ -14,14 +14,14 @@ use WordPress\AI\Admin\Upgrades;
  * Upgrades test case.
  *
  * @covers \WordPress\AI\Admin\Upgrades
- * @since x.x.x
+ * @since 0.6.0
  */
 class UpgradesTest extends WP_UnitTestCase {
 
 	/**
 	 * Cleans up options before each test.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -35,7 +35,7 @@ class UpgradesTest extends WP_UnitTestCase {
 	/**
 	 * Cleans up options after each test.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function tearDown(): void {
 		delete_option( 'wpai_version' );
@@ -49,7 +49,7 @@ class UpgradesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that do_upgrades() sets version to WPAI_VERSION on fresh install.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_do_upgrades_sets_version_on_fresh_install() {
 		Upgrades::do_upgrades();
@@ -60,7 +60,7 @@ class UpgradesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that do_upgrades() skips all upgrades when already at latest version.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_do_upgrades_skips_when_version_is_current() {
 		update_option( 'wpai_version', '99.0.0' );
@@ -83,7 +83,7 @@ class UpgradesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that do_upgrades() clears failed upgrade message on success.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_do_upgrades_clears_failed_message_on_success() {
 		update_option(
@@ -105,7 +105,7 @@ class UpgradesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that init() doesn't throw errors and registers hooks.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_init_registers_admin_init_hook() {
 		$upgrades = new Upgrades();
@@ -118,7 +118,7 @@ class UpgradesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that failed_upgrade_notice() outputs nothing when no failure.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_failed_upgrade_notice_outputs_nothing_when_no_failure() {
 		$upgrades = new Upgrades();
@@ -133,7 +133,7 @@ class UpgradesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that failed_upgrade_notice() clears invalid failure data.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_failed_upgrade_notice_clears_invalid_data() {
 		update_option(
@@ -156,7 +156,7 @@ class UpgradesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that failed_upgrade_notice() outputs error message.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_failed_upgrade_notice_outputs_error_message() {
 		update_option(

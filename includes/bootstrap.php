@@ -255,7 +255,7 @@ add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
 /**
  * Triggers when the plugin is activated.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 register_activation_hook(
 	WPAI_PLUGIN_FILE,

@@ -14,14 +14,14 @@ use WordPress\AI\Admin\Upgrades\V0_6_0;
  * V0_6_0 test case.
  *
  * @covers \WordPress\AI\Admin\Upgrades\V0_6_0
- * @since x.x.x
+ * @since 0.6.0
  */
 class V0_6_0Test extends WP_UnitTestCase {
 
 	/**
 	 * Removes options before each test.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -36,7 +36,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 	/**
 	 * Cleans up options after each test.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function tearDown(): void {
 		delete_option( 'wpai_version' );
@@ -51,7 +51,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() migrates the global enabled option.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_run_migrates_global_enabled_option() {
 		update_option( 'ai_experiment_enabled', '1' );
@@ -68,7 +68,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() returns true on success.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_run_returns_success_after_migration() {
 		$result = ( new V0_6_0( '' ) )->run();
@@ -79,7 +79,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() skips when version is already at target.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_run_skips_when_version_already_current() {
 		update_option( 'ai_experiment_enabled', '1' );
@@ -100,7 +100,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() does nothing on fresh install (no old options).
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_run_does_nothing_on_fresh_install() {
 		( new V0_6_0( '' ) )->run();
@@ -114,7 +114,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() migrates only options where new option is empty.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_run_migrates_only_options_missing_new_value() {
 		update_option( 'wpai_feature_enabled', 'already-set' );
@@ -147,7 +147,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() handles empty string old values correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_run_skips_empty_old_values() {
 		update_option( 'ai_experiment_enabled', '' );
@@ -165,7 +165,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 	 *
 	 * Returns null if the option row does not exist.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param string $option_name The option name to look up.
 	 * @return string|null The raw value, or null if the row is absent.
