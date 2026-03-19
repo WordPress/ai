@@ -312,7 +312,7 @@ class Contextual_Tagging extends Abstract_Ability {
 		 * @param string $taxonomy The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
 		 * @param string $strategy The suggestion strategy ('existing_only' or 'allow_new').
 		 */
-		$prompt = (string) apply_filters( 'wpai_contextual_tagging_content', $prompt, $taxonomy, $strategy );
+		$prompt = (string) apply_filters( 'wpwpai_contextual_tagging_content', $prompt, $taxonomy, $strategy );
 
 		// Generate the suggestions using the AI client with structured output.
 		$result = wp_ai_client_prompt( $prompt )
@@ -359,7 +359,7 @@ class Contextual_Tagging extends Abstract_Ability {
 		 * @param string                                                                       $taxonomy       The taxonomy slug (e.g., 'post_tag', 'category').
 		 * @param string                                                                       $strategy       The suggestion strategy ('existing_only' or 'allow_new').
 		 */
-		return (array) apply_filters( 'ai_contextual_tagging_suggestions', $suggestions, $taxonomy, $strategy );
+		return (array) apply_filters( 'wpai_contextual_tagging_suggestions', $suggestions, $taxonomy, $strategy );
 	}
 
 	/**
