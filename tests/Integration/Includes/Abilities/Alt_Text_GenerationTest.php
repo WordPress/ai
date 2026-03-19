@@ -10,24 +10,30 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Image\Alt_Text_Generation;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Alt_Text_Generation Ability tests.
  *
  * @since 0.3.0
  */
-class Test_Alt_Text_Generation_Experiment extends Abstract_Experiment {
+class Test_Alt_Text_Generation_Experiment extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'alt-text-generation';
+	}
+
 	/**
 	 * Loads experiment metadata.
 	 *
 	 * @since 0.3.0
 	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @return array{label: string, description: string} Experiment metadata.
 	 */
-	protected function load_experiment_metadata(): array {
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'alt-text-generation',
 			'label'       => 'Alt Text Generation',
 			'description' => 'Generates descriptive alt text for images using AI vision models.',
 		);
@@ -53,14 +59,14 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Alt_Text_Generation ability instance.
 	 *
-	 * @var Alt_Text_Generation
+	 * @var \WordPress\AI\Abilities\Image\Alt_Text_Generation
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Alt_Text_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Alt_Text_Generation_Experiment
 	 */
 	private $experiment;
 
@@ -370,7 +376,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_attachment_id() {
-		$data_dir = dirname( __FILE__ ) . '/../../../data';
+		$data_dir = __DIR__ . '/../../../data';
 		$png_path = $data_dir . '/sample.png';
 
 		if ( ! is_readable( $png_path ) ) {

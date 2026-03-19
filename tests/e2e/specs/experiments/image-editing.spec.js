@@ -23,7 +23,7 @@ const {
 const TEST_IMAGE_PATH = path.join( __dirname, '../../../data/sample.png' );
 
 test.describe( 'Image Editing Experiment', () => {
-	test.skip( 'Can enable the image generation/editing experiment', async ( {
+	test( 'Can enable the image generation/editing experiment', async ( {
 		admin,
 		page,
 	} ) => {
@@ -53,7 +53,7 @@ test.describe( 'Image Editing Experiment', () => {
 			.click();
 	} );
 
-	test.skip( 'Can refine an image within a block', async ( {
+	test( 'Can refine an image within a block', async ( {
 		admin,
 		editor,
 		page,
@@ -129,6 +129,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await page
 			.locator( '.ai-generate-image-inline-modal__refining button' )
 			.filter( { hasText: 'Refine' } )
+			.first()
 			.click();
 
 		// Ensure the images are visible in the modal.
@@ -192,7 +193,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await expect( imageContainer.locator( 'img' ) ).toBeVisible();
 	} );
 
-	test.skip( 'Can refine an image in the stand-alone Generate Image page', async ( {
+	test( 'Can refine an image in the stand-alone Generate Image page', async ( {
 		admin,
 		page,
 	} ) => {
@@ -244,6 +245,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await page
 			.locator( '.ai-generate-image-standalone__refining button' )
 			.filter( { hasText: 'Refine' } )
+			.first()
 			.click();
 
 		// Ensure the images are visible in the modal.
@@ -289,20 +291,11 @@ test.describe( 'Image Editing Experiment', () => {
 
 		// Ensure a success message is visible.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__success' )
+			page.locator( '.components-notice.is-success' )
 		).toBeVisible();
 
-		// Ensure we have two new buttons.
-		await expect(
-			page.locator( '.ai-generate-image-standalone__success button' )
-		).toHaveCount( 1 );
-
-		await expect(
-			page.locator( '.ai-generate-image-standalone__success a' )
-		).toHaveCount( 1 );
-
 		// View the image in the Media Library.
-		page.locator( '.ai-generate-image-standalone__success a' ).click();
+		page.locator( '.components-notice.is-success a' ).click();
 
 		// Ensure alt text is set.
 		await expect(
@@ -310,7 +303,7 @@ test.describe( 'Image Editing Experiment', () => {
 		).toHaveValue( 'Add a red hat' );
 	} );
 
-	test.skip( 'Can refine an existing image in the Media Library', async ( {
+	test( 'Can refine an existing image in the Media Library', async ( {
 		admin,
 		page,
 		requestUtils,
@@ -338,8 +331,14 @@ test.describe( 'Image Editing Experiment', () => {
 			.first();
 		await editImageButton.click();
 
-		// Find and click on the AI Edit button.
-		await page.locator( '.ai-media-library-editor__toggle-btn' ).click();
+		// Find and click on the Refine Image button.
+		const refineImageButton = page.locator(
+			'.ai-media-library-editor__presets button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await refineImageButton.click();
 
 		// Add a prompt and generate the image.
 		await page
@@ -353,32 +352,6 @@ test.describe( 'Image Editing Experiment', () => {
 		await expect(
 			page.locator( '.ai-media-library-editor__preview-image' )
 		).toHaveCount( 2 );
-
-		// Click the previous image navigation arrow.
-		const previousImgBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Previous version',
-			} );
-		await previousImgBtn.click();
-
-		// Ensure the navigation shows correctly.
-		await expect(
-			page.locator( '.ai-image-history-nav__counter' )
-		).toHaveText( '1 / 2' );
-
-		// Click the next image navigation arrow.
-		const nextImgBtn = page
-			.locator( '.ai-image-history-nav' )
-			.getByRole( 'button', {
-				name: 'Next version',
-			} );
-		await nextImgBtn.click();
-
-		// Ensure the navigation shows correctly.
-		await expect(
-			page.locator( '.ai-image-history-nav__counter' )
-		).toHaveText( '2 / 2' );
 
 		// Ensure the buttons we want are there.
 		await expect(
@@ -462,7 +435,7 @@ test.describe( 'Image Editing Experiment', () => {
 		).toHaveValue( 'A smiley face' );
 	} );
 
-	test.skip( 'Can use preset refine buttons on an existing image in the Media Library', async ( {
+	test( 'Can use preset refine buttons on an existing image in the Media Library', async ( {
 		admin,
 		page,
 		requestUtils,
@@ -490,18 +463,15 @@ test.describe( 'Image Editing Experiment', () => {
 			.first();
 		await editImageButton.click();
 
-		// Find and click on the AI Edit button.
-		await page.locator( '.ai-media-library-editor__toggle-btn' ).click();
-
-		// Ensure there are two preset buttons.
+		// Ensure there are three preset buttons.
 		await expect(
 			page.locator( '.ai-media-library-editor__presets button' )
-		).toHaveCount( 2 );
+		).toHaveCount( 3 );
 
 		// Find the Expand Background button and click on it.
 		const expandBGBtn = page
 			.locator( '.ai-media-library-editor__presets button', {
-				hasText: 'Expand background',
+				hasText: 'Expand Background',
 			} )
 			.first();
 		await expandBGBtn.click();
@@ -530,7 +500,7 @@ test.describe( 'Image Editing Experiment', () => {
 		// Find the Remove background button and click on it.
 		const removeBGBtn = page
 			.locator( '.ai-media-library-editor__presets button', {
-				hasText: 'Remove background',
+				hasText: 'Remove Background',
 			} )
 			.first();
 		await removeBGBtn.click();

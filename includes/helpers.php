@@ -42,7 +42,7 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered Post content.
 	 */
-	$content = (string) apply_filters( 'ai_experiments_pre_normalize_content', $content );
+	$content = (string) apply_filters( 'wpai_pre_normalize_content', $content );
 
 	// Strip HTML entities.
 	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content ) ?? $content;
@@ -68,7 +68,7 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered normalized content.
 	 */
-	$content = (string) apply_filters( 'ai_experiments_normalize_content', (string) $content );
+	$content = (string) apply_filters( 'wpai_normalize_content', (string) $content );
 
 	return trim( $content );
 }
@@ -167,7 +167,7 @@ function get_preferred_models_for_text_generation(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_models_for_text_generation', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_text_models', $preferred_models );
 }
 
 /**
@@ -257,7 +257,7 @@ function get_preferred_image_models(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred image models.
 	 * @return array<int, array{string, string}> The filtered preferred image models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_image_models', $preferred_models );
 }
 
 /**
@@ -291,7 +291,7 @@ function get_preferred_vision_models(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred vision models.
 	 * @return array<int, array{string, string}> The filtered preferred vision models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_vision_models', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_vision_models', $preferred_models );
 }
 
 /**
@@ -349,7 +349,7 @@ function has_valid_ai_credentials(): bool {
 	 * @param bool|null $has_valid_credentials Whether valid credentials are available. Return null to use default check.
 	 * @return bool|null True if valid credentials are available, false otherwise, or null to use default check.
 	 */
-	$valid = apply_filters( 'ai_experiments_pre_has_valid_credentials_check', null );
+	$valid = apply_filters( 'wpai_pre_has_valid_credentials_check', null );
 	if ( null !== $valid ) {
 		return (bool) $valid;
 	}

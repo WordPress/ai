@@ -1,11 +1,10 @@
 /**
  * Media Library Image Editor — AI panel injection.
  *
- * Uses a MutationObserver to detect when the WordPress image editor opens then:
- *   - Injects an "AI Edit" toggle button into the native `.imgedit-menu` toolbar.
- *   - Mounts the MediaLibraryImageEditor React component in a panel between
- *     the toolbar row and the image canvas.
- * Unmounts and removes both when the editor closes.
+ * Uses a MutationObserver to detect when the WordPress image editor opens then
+ * mounts the MediaLibraryImageEditor React component in a panel between the
+ * toolbar row and the image canvas. Unmounts and removes the panel when the
+ * editor closes.
  */
 
 /**
@@ -20,7 +19,6 @@ import { MediaLibraryImageEditor } from './components/MediaLibraryImageEditor';
 
 let currentRoot: ReturnType< typeof createRoot > | null = null;
 let currentContainer: HTMLElement | null = null;
-let currentButtonSlot: HTMLElement | null = null;
 
 /**
  * Extracts the attachment post ID from the imgedit-panel element ID.
@@ -88,16 +86,6 @@ async function mountPanel( imgeditWrap: Element ): Promise< void > {
 		return;
 	}
 
-	// Inject button slot into the Crop/Scale/Image Rotation toolbar menu.
-	const menu = imgeditWrap.querySelector( '.imgedit-menu' );
-	if ( ! menu ) {
-		return;
-	}
-
-	currentButtonSlot = document.createElement( 'span' );
-	currentButtonSlot.className = 'ai-media-library-editor-btn-slot';
-	menu.appendChild( currentButtonSlot );
-
 	// Query the image canvas + settings row.
 	const imagePanel = imgeditWrap.querySelector< HTMLElement >(
 		'.imgedit-panel-content:not(.imgedit-panel-tools)'
@@ -124,7 +112,6 @@ async function mountPanel( imgeditWrap: Element ): Promise< void > {
 	const props = {
 		postId,
 		attachmentUrl,
-		buttonContainer: currentButtonSlot,
 		...( imagePanel ? { imagePanel } : {} ),
 	};
 
@@ -145,11 +132,6 @@ function unmountPanel(): void {
 	if ( currentContainer ) {
 		currentContainer.remove();
 		currentContainer = null;
-	}
-
-	if ( currentButtonSlot ) {
-		currentButtonSlot.remove();
-		currentButtonSlot = null;
 	}
 }
 

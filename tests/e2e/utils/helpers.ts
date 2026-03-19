@@ -188,7 +188,7 @@ export const enableExperiment = async (
 	experimentId: string
 ) => {
 	await visitSettingsPage( admin );
-	await page.locator( `#ai_experiment_${ experimentId }_enabled` ).check();
+	await page.locator( `#wpai_feature_${ experimentId }_enabled` ).check();
 	await page.locator( '#submit' ).click();
 
 	// Ensure the save was successful.
@@ -212,7 +212,7 @@ export const disableExperiment = async (
 	experimentId: string
 ) => {
 	await visitSettingsPage( admin );
-	await page.locator( `#ai_experiment_${ experimentId }_enabled` ).uncheck();
+	await page.locator( `#wpai_feature_${ experimentId }_enabled` ).uncheck();
 	await page.locator( '#submit' ).click();
 
 	// Ensure the save was successful.
