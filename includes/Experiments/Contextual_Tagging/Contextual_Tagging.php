@@ -25,14 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Provides AI-powered suggestions for post taxonomies
  * based on a comprehensive analysis of the post content.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class Contextual_Tagging extends Abstract_Experiment {
 
 	/**
 	 * The default taxonomy strategy.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -41,7 +41,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * The strategy that allows new term suggestions.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -50,7 +50,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * The default maximum number of suggestions.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @var int
 	 */
@@ -59,7 +59,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	protected function load_experiment_metadata(): array {
 		return array(
@@ -73,7 +73,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -83,7 +83,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -99,7 +99,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
@@ -136,7 +136,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * Registers experiment-specific settings.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function register_settings(): void {
 		register_setting(
@@ -163,7 +163,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * Renders experiment-specific settings fields.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function render_settings_fields(): void {
 		$strategy_option        = $this->get_field_option_name( 'strategy' );
@@ -210,7 +210,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * Sanitizes the strategy setting.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $value The value to sanitize.
 	 * @return string The sanitized strategy value.
@@ -224,7 +224,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * Sanitizes the max suggestions setting.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $value The value to sanitize.
 	 * @return int The sanitized max suggestions value.
@@ -238,7 +238,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * Gets the strategy to use for contextual tagging.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return string The strategy to use.
 	 */
@@ -248,12 +248,12 @@ class Contextual_Tagging extends Abstract_Experiment {
 		/**
 		 * Filters the strategy to use for contextual tagging.
 		 *
-		 * @since 0.6.0
+		 * @since x.x.x
 		 *
 		 * @param string $strategy The strategy to use.
 		 * @return string The filtered strategy.
 		 */
-		$strategy = apply_filters( 'ai_contextual_tagging_strategy', $strategy );
+		$strategy = apply_filters( 'wpai_contextual_tagging_strategy', $strategy );
 
 		// Return the sanitized strategy value.
 		return $this->sanitize_strategy( $strategy );
@@ -262,7 +262,7 @@ class Contextual_Tagging extends Abstract_Experiment {
 	/**
 	 * Gets the maximum number of suggestions to generate for contextual tagging.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return int The maximum number of suggestions to generate.
 	 */
@@ -272,11 +272,11 @@ class Contextual_Tagging extends Abstract_Experiment {
 		/**
 		 * Filters the maximum number of suggestions to generate for contextual tagging.
 		 *
-		 * @since 0.6.0
+		 * @since x.x.x
 		 *
 		 * @param int $max_suggestions The maximum number of suggestions to generate.
 		 * @return int The filtered max suggestions.
 		 */
-		return apply_filters( 'ai_contextual_tagging_max_suggestions', $max_suggestions );
+		return apply_filters( 'wpai_contextual_tagging_max_suggestions', $max_suggestions );
 	}
 }
