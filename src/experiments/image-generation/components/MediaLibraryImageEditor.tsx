@@ -52,7 +52,7 @@ type MaskMode = 'remove' | 'replace';
 
 interface MaskingSource {
 	src: string;
-	fromState: 'idle' | 'refining';
+	fromState: 'idle' | 'preview' | 'refining';
 	historyIndex?: number | undefined;
 }
 
@@ -286,14 +286,14 @@ export function MediaLibraryImageEditor( {
 	/**
 	 * Enters masking mode for a mask-based preset.
 	 *
-	 * @param {MaskMode}          mode      Whether this is a remove or replace operation.
-	 * @param {'idle'|'refining'} fromState The editor state to return to on cancel.
-	 * @param {string}            src       Image source to draw the mask on.
-	 * @param {number|undefined}  hIndex    History index when entering from refining.
+	 * @param {MaskMode}                    mode      Whether this is a remove or replace operation.
+	 * @param {'idle'|'preview'|'refining'} fromState The editor state to return to on cancel.
+	 * @param {string}                      src       Image source to draw the mask on.
+	 * @param {number|undefined}            hIndex    History index when entering from refining.
 	 */
 	function enterMasking(
 		mode: MaskMode,
-		fromState: 'idle' | 'refining',
+		fromState: 'idle' | 'preview' | 'refining',
 		src: string,
 		hIndex?: number
 	): void {
@@ -508,11 +508,7 @@ export function MediaLibraryImageEditor( {
 								variant="tertiary"
 								onClick={ () => {
 									setError( null );
-									setState(
-										maskingSource.fromState === 'refining'
-											? 'refining'
-											: 'idle'
-									);
+									setState( maskingSource.fromState );
 									setMaskMode( null );
 									setMaskingSource( null );
 								} }
@@ -557,7 +553,7 @@ export function MediaLibraryImageEditor( {
 									if ( preset.requiresMask ) {
 										enterMasking(
 											preset.requiresMask,
-											'idle',
+											'preview',
 											previewSrc,
 											historyIndex
 										);
