@@ -170,7 +170,7 @@ export const MaskCanvas = forwardRef< MaskCanvasHandle, Props >(
 					( brushSize / displayWidth ) *
 					( naturalSize?.width ?? displayWidth );
 
-				ctxRef.current.strokeStyle = 'rgba(255, 0, 0, 0.4)';
+				ctxRef.current.strokeStyle = 'rgba(255, 0, 0, 1)';
 				ctxRef.current.lineWidth = scaledBrush;
 				ctxRef.current.lineCap = 'round';
 				ctxRef.current.lineJoin = 'round';
@@ -197,7 +197,7 @@ export const MaskCanvas = forwardRef< MaskCanvasHandle, Props >(
 					( brushSize / displayWidth ) *
 					( naturalSize?.width ?? displayWidth );
 
-				ctxRef.current.fillStyle = 'rgba(255, 0, 0, 0.4)';
+				ctxRef.current.fillStyle = 'rgba(255, 0, 0, 1)';
 				ctxRef.current.beginPath();
 				ctxRef.current.arc(
 					point.x,

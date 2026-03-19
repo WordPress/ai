@@ -500,7 +500,9 @@ export function MediaLibraryImageEditor( {
 								}
 								onClick={ handleMaskApply }
 							>
-								{ __( 'Apply', 'ai' ) }
+								{ maskMode === 'remove'
+									? __( 'Remove', 'ai' )
+									: __( 'Replace', 'ai' ) }
 							</Button>
 							<Button
 								variant="tertiary"
