@@ -126,10 +126,6 @@ export function AltTextControls( {
 				className="ai-alt-text-controls"
 				style={ { padding: '0 16px' } }
 			>
-				<h3 style={ { marginTop: 0, marginBottom: '8px' } }>
-					{ __( 'Alternative Text', 'ai' ) }
-				</h3>
-
 				{ /* Generated alt text preview */ }
 				{ hasGeneratedAlt && (
 					<div style={ { marginBottom: '12px' } }>
