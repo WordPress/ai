@@ -60,11 +60,13 @@ export default function App() {
 	return (
 		<div className="apb-chat">
 			<div className="apb-chat__header">
-				<h2>WordPress AI Plugin Builder</h2>
+				<div className="apb-chat__header-left">
+					<h2>🤖 WordPress AI Plugin Builder</h2>
+				</div>
 				<div className="apb-chat__header-actions">
 					{messages.length > 0 ? (
-						<button className="apb-chat__reset" onClick={reset}>
-							New Chat
+						<button className="apb-chat__reset button button-secondary" onClick={reset}>
+							✨ New Project
 						</button>
 					) : (
 						<div className="apb-chat__status">
@@ -78,8 +80,9 @@ export default function App() {
 			<div className="apb-chat__messages">
 				{messages.length === 0 ? (
 					<div className="apb-chat__empty">
+						<div className="apb-chat__empty-icon">🏗️</div>
 						<h3 className="apb-chat__empty-title">Code WordPress Plugins with AI</h3>
-						<p className="apb-chat__empty-subtitle">Describe the functionality you need.</p>
+						<p className="apb-chat__empty-subtitle">Describe the functionality you need, and watch AI build your plugin in minutes.</p>
 						
 						<div className="apb-chat__examples">
 							{examples.map((example, i) => (
@@ -87,8 +90,9 @@ export default function App() {
 									key={i}
 									className="apb-chat__example-btn"
 									onClick={() => setInput(example)}
+									title={example}
 								>
-									{example}
+									→ {example}
 								</button>
 							))}
 						</div>
@@ -111,33 +115,47 @@ export default function App() {
 									)}
 									{msg.type === 'plan' && (
 										<div className="apb-bubble apb-bubble--plan">
-											<strong>Plugin Plan: {msg.data.plugin_name}</strong>
-											<p>{msg.data.description}</p>
+										<div className="apb-plan-header">
+											<strong>📋 Plugin Plan: {msg.data.plugin_name}</strong>
+											<span className="apb-plan-badge">{msg.data.complexity}</span>
+										</div>
+										<p>{msg.data.description}</p>
+										<div className="apb-files-section">
+											<strong>📁 Files ({msg.data.files.length}):</strong>
 											<ul>
 												{msg.data.files.map((file: any, i: number) => (
-													<li key={i}><code>{file.path}</code> - {file.description}</li>
+													<li key={i}><code>{file.path}</code> — {file.description}</li>
 												))}
 											</ul>
+										</div>
 										</div>
 									)}
 									{msg.type === 'files' && (
 										<div className="apb-bubble apb-bubble--files">
-											<strong>Generated Files: {msg.data.length}</strong>
-											<div className="apb-actions" style={{ marginTop: '10px' }}>
-												<button className="button button-primary" onClick={() => installPlugin()}>
-													Install and Activate Plugin
+										<strong>✅ Files Generated Successfully</strong>
+										<p style={{ marginTop: '8px' }}>Your plugin code is ready to be installed and activated.</p>
+										<div style={{ marginTop: '12px' }}>
+											<button className="button button-primary" onClick={() => installPlugin()}>
+												🚀 Install & Activate Plugin
 												</button>
 											</div>
 										</div>
 									)}
 									{msg.type === 'install' && (
-										<div className="apb-bubble apb-bubble--success">
-											{msg.data.activated ? 'Plugin installed and activated successfully!' : `Installed, but activation failed: ${msg.data.error}`}
+									<div className={`apb-bubble apb-bubble--${msg.data.activated ? 'success' : 'warning'}`}>
+										<strong>{msg.data.activated ? '🎉 Success!' : '⚠️ Partial Success'}</strong>
+										<p style={{ marginTop: '6px' }}>
+											{msg.data.activated 
+												? 'Your plugin has been installed and activated successfully!' 
+												: `Installed, but activation encountered an issue: ${msg.data.error}`
+											}
+										</p>
 										</div>
 									)}
 									{msg.type === 'error' && (
 										<div className="apb-bubble apb-bubble--error">
-											{msg.content}
+											<strong>❌ Error</strong>
+											<p style={{ marginTop: '6px' }}>{msg.content}</p>
 										</div>
 									)}
 								</div>
@@ -149,9 +167,13 @@ export default function App() {
 
 				{hasSlugConflict && (
 					<div className="apb-chat__conflict-actions">
-						<button className="apb-chat__force-install button button-secondary" onClick={forceInstallPlugin}>
-							Install Anyway
-						</button>
+						<div className="apb-bubble apb-bubble--warning">
+							<strong>⚠️ Plugin Slug Conflict</strong>
+							<p style={{ marginTop: '6px' }}>A plugin with this slug already exists. You can install this version anyway to overwrite the existing files.</p>
+							<button className="button button-primary" style={{ marginTop: '10px' }} onClick={forceInstallPlugin}>
+								Proceed with Installation
+							</button>
+						</div>
 					</div>
 				)}
 			</div>
@@ -165,20 +187,26 @@ export default function App() {
 						disabled={isProcessing}
 						rows={1}
 						onKeyDown={handleKeyDown}
-						placeholder="Describe what plugin you want to build..."
+						placeholder="Describe what plugin you want to build... (e.g., 'A contact form with email notifications')"
 					/>
 					<button
-						className="apb-chat__send-btn"
+						className={`apb-chat__send-btn ${isProcessing ? 'is-loading' : ''}`}
 						disabled={isProcessing || !input.trim()}
 						onClick={handleSend}
-						title="Send"
+						title={isProcessing ? 'Building plugin...' : 'Send'}
 					>
 						{isProcessing ? <Spinner /> : '🚀'}
 					</button>
 				</div>
 				{logs.length > 0 && (
-					<div style={{ marginTop: '5px', fontSize: '11px', color: '#666', textAlign: 'right' }}>
-						{logs[logs.length - 1].message}
+					<div className="apb-chat__logs">
+						<span className="apb-log-status">
+							{logs[logs.length - 1].level === 'error' && '❌'}
+							{logs[logs.length - 1].level === 'success' && '✓'}
+							{logs[logs.length - 1].level === 'info' && 'ℹ'}
+							{logs[logs.length - 1].level === 'warn' && '⚠'}
+						</span>
+						<span className="apb-log-message">{logs[logs.length - 1].message}</span>
 					</div>
 				)}
 			</div>
