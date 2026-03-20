@@ -56,6 +56,10 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_alt-text-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		remove_all_filters( 'ai_experiments_experiment_alt-text-generation_enabled' );
+		unset( $_GET['ai_bulk_alt_text'], $_GET['ai_attachment_ids'] );
+		wp_dequeue_script( 'ai_alt_text_generation_bulk' );
+		wp_deregister_script( 'ai_alt_text_generation_bulk' );
 		parent::tearDown();
 	}
 
@@ -167,5 +171,77 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$result     = $experiment->handle_bulk_action( $redirect, 'delete', array( 1, 2, 3 ) );
 
 		$this->assertSame( $redirect, $result );
+	}
+
+	/**
+	 * Test that the bulk script is enqueued on upload.php when valid GET params and capability are present.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_script_enqueues_with_valid_params(): void {
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$_GET['ai_bulk_alt_text']  = '1';
+		$_GET['ai_attachment_ids'] = '1,2';
+
+		$experiment = new Alt_Text_Generation();
+		$experiment->register();
+		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
+	}
+
+	/**
+	 * Test that the bulk script is not enqueued when the GET flag is absent.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_script_skips_without_flag(): void {
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$experiment = new Alt_Text_Generation();
+		$experiment->register();
+		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
+
+		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
+	}
+
+	/**
+	 * Test that the bulk script is not enqueued when the user lacks the upload_files capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_script_skips_without_capability(): void {
+		wp_set_current_user( 0 );
+
+		$_GET['ai_bulk_alt_text']  = '1';
+		$_GET['ai_attachment_ids'] = '1,2';
+
+		$experiment = new Alt_Text_Generation();
+		$experiment->register();
+		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
+
+		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
+	}
+
+	/**
+	 * Test that the bulk script is not enqueued when the attachment IDs resolve to an empty list.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_script_skips_empty_ids(): void {
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$_GET['ai_bulk_alt_text']  = '1';
+		$_GET['ai_attachment_ids'] = '0,0';
+
+		$experiment = new Alt_Text_Generation();
+		$experiment->register();
+		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
+
+		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
 	}
 }
