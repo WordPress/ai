@@ -261,7 +261,7 @@ class Meta_Description extends Abstract_Ability {
 		 * @param string $content The normalized post content.
 		 * @param string $title   The post title.
 		 */
-		$prompt = (string) apply_filters( 'ai_meta_description_prompt', $prompt, $content, $title );
+		$prompt = (string) apply_filters( 'wpai_meta_description_prompt', $prompt, $content, $title );
 
 		/**
 		 * Filters the number of meta description candidates to generate.
@@ -270,7 +270,7 @@ class Meta_Description extends Abstract_Ability {
 		 *
 		 * @param int $candidate_count The number of candidates to request from the AI model.
 		 */
-		$candidate_count = (int) apply_filters( 'ai_meta_description_candidate_count', self::DEFAULT_CANDIDATE_COUNT );
+		$candidate_count = (int) apply_filters( 'wpai_meta_description_candidate_count', self::DEFAULT_CANDIDATE_COUNT );
 
 		/**
 		 * Filters the temperature for the result of the meta description generation.
@@ -279,7 +279,7 @@ class Meta_Description extends Abstract_Ability {
 		 *
 		 * @param float $result_temperature The temperature for the result of the meta description generation.
 		 */
-		$result_temperature = (float) apply_filters( 'ai_meta_description_result_temperature', 0.7 );
+		$result_temperature = (float) apply_filters( 'wpai_meta_description_result_temperature', 0.7 );
 
 		$results = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )

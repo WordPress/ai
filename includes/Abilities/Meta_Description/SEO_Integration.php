@@ -64,7 +64,7 @@ class SEO_Integration {
 		 *
 		 * @param array<string, array{file: string, meta_key: string}> $plugins Map of plugin slug to detection info.
 		 */
-		return (array) apply_filters( 'ai_meta_description_seo_plugins', $plugins );
+		return (array) apply_filters( 'wpai_meta_description_seo_plugins', $plugins );
 	}
 
 	/**
@@ -116,6 +116,6 @@ class SEO_Integration {
 		 * @param string      $key         The meta key.
 		 * @param string|null $plugin_slug The detected SEO plugin slug, or null.
 		 */
-		return (string) apply_filters( 'ai_meta_description_meta_key', $key, $plugin_slug );
+		return (string) apply_filters( 'wpai_meta_description_meta_key', $key, $plugin_slug );
 	}
 }
