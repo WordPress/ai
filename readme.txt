@@ -130,11 +130,11 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 **There are Breaking Changes in this release.**
 
-* **Breaking Changes:* Refactor `Experiments` to be a type of `Feature`, improving how functionality is organized and surfaced ([#316](https://github.com/WordPress/ai/pull/316)).
+* **Breaking Changes:** Refactor `Experiments` to be a type of `Feature`, improving how functionality is organized and surfaced ([#316](https://github.com/WordPress/ai/pull/316)).
 
 The following classes have been removed. Anyone that was directly using these will need to make updates to utilize the correct replacements: `Abstract_Experiment`, `Invalid_Experiment_Metadata_Exception`, `Invalid_Experiment_Exception`, `Experiment_Loader`, `Experiment_Registry`.
 
-* **Breaking Changes:* Standardize the Title Generation Ability to align with other registered Abilities ([#227](https://github.com/WordPress/ai/pull/227)).
+* **Breaking Changes:** Standardize the Title Generation Ability to align with other registered Abilities ([#227](https://github.com/WordPress/ai/pull/227)).
 
 The `ai/title-generation` Ability now uses a `context` argument instead of a `post_id` argument in the `input_schema`. Anyone directly using this Ability will need to make updates to account for that.
 
