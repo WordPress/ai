@@ -252,14 +252,6 @@ class Generate_Image extends Abstract_Ability {
 			->as_output_file_type( FileTypeEnum::inline() )
 			->using_model_preference( ...get_preferred_image_models() );
 
-		// Return a more specific error if there isn't a model that supports image generation.
-		if ( ! $prompt_builder->is_supported_for_image_generation() ) {
-			return new WP_Error(
-				'unsupported_model',
-				esc_html__( 'Image generation failed. Please ensure you have a connected provider that supports image generation.', 'ai' )
-			);
-		}
-
 		if ( null !== $reference_image ) {
 			try {
 				$file           = new File( $reference_image );
@@ -270,6 +262,14 @@ class Generate_Image extends Abstract_Ability {
 					esc_html__( 'The reference image is not valid base64-encoded data.', 'ai' )
 				);
 			}
+		}
+
+		// Return a more specific error if there isn't a model that supports image generation.
+		if ( ! $prompt_builder->is_supported_for_image_generation() ) {
+			return new WP_Error(
+				'unsupported_model',
+				esc_html__( 'Image generation failed. Please ensure you have a connected provider that supports image generation.', 'ai' )
+			);
 		}
 
 		return $prompt_builder;
