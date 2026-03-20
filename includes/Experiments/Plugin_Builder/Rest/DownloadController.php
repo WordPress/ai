@@ -9,7 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Plugin_Builder\Rest;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use WP_REST_Request;
+use ZipArchive;
 
 /**
  * Handles plugin ZIP downloads — via REST (from files array) and via admin-post (from disk).
@@ -143,9 +146,9 @@ class DownloadController {
 		}
 
 		$tmp = tempnam( sys_get_temp_dir(), 'ai_plugin_' );
-		$zip = new \ZipArchive();
+		$zip = new ZipArchive();
 
-		if ( true !== $zip->open( $tmp, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
+		if ( true !== $zip->open( $tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE ) ) {
 			return false;
 		}
 
@@ -177,15 +180,15 @@ class DownloadController {
 		}
 
 		$tmp = tempnam( sys_get_temp_dir(), 'ai_plugin_' );
-		$zip = new \ZipArchive();
+		$zip = new ZipArchive();
 
-		if ( true !== $zip->open( $tmp, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
+		if ( true !== $zip->open( $tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE ) ) {
 			return false;
 		}
 
-		$iterator = new \RecursiveIteratorIterator(
-			new \RecursiveDirectoryIterator( $plugin_dir, \RecursiveDirectoryIterator::SKIP_DOTS ),
-			\RecursiveIteratorIterator::LEAVES_ONLY
+		$iterator = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator( $plugin_dir, RecursiveDirectoryIterator::SKIP_DOTS ),
+			RecursiveIteratorIterator::LEAVES_ONLY
 		);
 
 		foreach ( $iterator as $file ) {
