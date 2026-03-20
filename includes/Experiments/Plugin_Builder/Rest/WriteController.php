@@ -19,7 +19,7 @@ use WordPress\AI\Experiments\Plugin_Builder\Rest\DownloadController;
 /**
  * POST /wordpress-ai-plugin-builder/v1/write-files — write generated files to disk.
  *
- * @since 0.7.0
+ * @since x.x.x
  */
 class WriteController {
 
@@ -28,7 +28,7 @@ class WriteController {
 	/**
 	 * Register routes.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		register_rest_route(
@@ -63,7 +63,7 @@ class WriteController {
 	/**
 	 * Handle request.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param WP_REST_Request $request The request.
 	 * @return WP_REST_Response|WP_Error
