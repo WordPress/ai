@@ -14,7 +14,7 @@ use WP_REST_Request;
 /**
  * Handles plugin ZIP downloads — via REST (from files array) and via admin-post (from disk).
  *
- * @since 0.7.0
+ * @since x.x.x
  */
 class DownloadController {
 
@@ -26,7 +26,7 @@ class DownloadController {
 	/**
 	 * Register REST route and admin-post action.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		register_rest_route(
@@ -56,7 +56,7 @@ class DownloadController {
 	/**
 	 * REST handler — builds a ZIP from the supplied files array.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param WP_REST_Request $request The REST request.
 	 */
@@ -99,7 +99,7 @@ class DownloadController {
 	/**
 	 * Admin-post handler — builds a ZIP from the installed plugin directory on disk.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function handle_admin_post(): void {
 		$slug = isset( $_GET['slug'] ) ? sanitize_file_name( wp_unslash( $_GET['slug'] ) ) : '';
@@ -131,7 +131,7 @@ class DownloadController {
 	/**
 	 * Create a ZIP archive in memory from a files array.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param string                           $plugin_slug Plugin slug (top-level ZIP folder).
 	 * @param array<int, array<string, mixed>> $files       Files with "path" and "content" keys.
@@ -165,7 +165,7 @@ class DownloadController {
 	/**
 	 * Create a ZIP archive in memory from a plugin directory on disk.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param string $plugin_dir  Absolute path to the plugin directory.
 	 * @param string $plugin_slug Plugin slug (top-level ZIP folder).
@@ -209,7 +209,7 @@ class DownloadController {
 	/**
 	 * Send ZIP binary response with appropriate headers.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param string $plugin_slug Slug used as the download filename.
 	 * @param string $zip_content Binary ZIP content.
