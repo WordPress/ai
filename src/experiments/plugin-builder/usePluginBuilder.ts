@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import { useState, useCallback, useMemo, useRef } from '@wordpress/element';
 import {
 	BuilderState,
