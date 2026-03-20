@@ -185,11 +185,26 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$_GET['ai_bulk_alt_text']  = '1';
 		$_GET['ai_attachment_ids'] = '1,2';
 
+		// Asset_Loader::enqueue_script() bails early if the compiled JS file does not exist
+		// (build and test jobs run in parallel in CI). Create a stub so the enqueue proceeds.
+		$script_path  = WPAI_PLUGIN_DIR . 'build/experiments/alt-text-generation-bulk.js';
+		$stub_created = ! file_exists( $script_path );
+		if ( $stub_created ) {
+			wp_mkdir_p( dirname( $script_path ) );
+			file_put_contents( $script_path, '' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		}
+
 		$experiment = new Alt_Text_Generation();
 		$experiment->register();
 		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
 
-		$this->assertTrue( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
+		$enqueued = wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' );
+
+		if ( $stub_created ) {
+			unlink( $script_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+		}
+
+		$this->assertTrue( $enqueued );
 	}
 
 	/**
