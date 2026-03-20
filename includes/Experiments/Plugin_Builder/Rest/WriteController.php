@@ -12,7 +12,6 @@ namespace WordPress\AI\Experiments\Plugin_Builder\Rest;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
-use WordPress\AI\Experiments\Plugin_Builder\Config;
 use WordPress\AI\Experiments\Plugin_Builder\Installer\PluginWriter;
 use WordPress\AI\Experiments\Plugin_Builder\Installer\SlugValidator;
 

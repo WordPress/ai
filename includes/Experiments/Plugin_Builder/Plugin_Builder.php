@@ -11,7 +11,7 @@ namespace WordPress\AI\Experiments\Plugin_Builder;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
-use  WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
+use WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
 use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
@@ -134,8 +134,7 @@ class Plugin_Builder extends Abstract_Feature {
 			'ai-plugin-builder',
 			plugins_url( 'build/experiments/style-plugin-builder.css', dirname( __DIR__, 2 ) ),
 			array(),
-			$assets['version'],
-			'all'
+			$assets['version']
 		);
 
 		wp_localize_script(
