@@ -79,6 +79,14 @@ export default function MetaDescriptionModal( {
 
 	const hasSuggestions = suggestions.length > 0;
 
+	let generateButtonLabel: string = hasSuggestions
+		? __( 'Regenerate Suggestions', 'ai' )
+		: __( 'Generate Suggestions', 'ai' );
+
+	if ( isGenerating ) {
+		generateButtonLabel = __( 'Generating', 'ai' );
+	}
+
 	return (
 		<Modal
 			title={ __( 'Meta Description', 'ai' ) }
@@ -95,9 +103,7 @@ export default function MetaDescriptionModal( {
 						disabled={ isGenerating }
 						isBusy={ isGenerating }
 					>
-						{ hasSuggestions
-							? __( 'Regenerate suggestions', 'ai' )
-							: __( 'Generate suggestions', 'ai' ) }
+						{ generateButtonLabel }
 					</Button>
 				</div>
 

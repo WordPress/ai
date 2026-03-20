@@ -87,7 +87,7 @@ export default function MetaDescriptionPanel(): JSX.Element {
 					disabled={ isGenerating }
 					isBusy={ isGenerating }
 				>
-					{ __( 'Generate meta description', 'ai' ) }
+					{ __( 'Generate Meta Description', 'ai' ) }
 				</Button>
 			) }
 
