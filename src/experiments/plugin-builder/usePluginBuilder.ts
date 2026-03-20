@@ -45,6 +45,20 @@ function createMessage(
 	};
 }
 
+/**
+ * Parses JSON with markdown delimiters removed.
+ *
+ * @param {string} json
+ * @return {any} Parsed JSON.
+ */
+function parseJSON( json: string ): any {
+	return JSON.parse(
+		json
+			.replace( /^```json/, '' )
+			.replace( /```\s*$/, '' )
+	);
+}
+
 export function usePluginBuilder() {
 	const [state, setState] = useState<BuilderState>('idle');
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -157,7 +171,7 @@ export function usePluginBuilder() {
 
 			let intentData;
 			try {
-				intentData = JSON.parse(intentText);
+				intentData = parseJSON(intentText);
 			} catch (e) {
 				intentData = { intent: 'plugin_request', confidence: 0.5 };
 			}
@@ -190,7 +204,7 @@ export function usePluginBuilder() {
 
 			let plan: PluginPlan;
 			try {
-				plan = JSON.parse(plannerText);
+				plan = parseJSON(plannerText);
 			} catch (e) {
 				handleError('Failed to parse the plugin plan JSON.');
 				return;
