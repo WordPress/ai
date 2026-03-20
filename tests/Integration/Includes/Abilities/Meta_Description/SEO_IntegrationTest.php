@@ -23,8 +23,8 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	 * @since 0.6.0
 	 */
 	public function tearDown(): void {
-		remove_all_filters( 'ai_meta_description_seo_plugins' );
-		remove_all_filters( 'ai_meta_description_meta_key' );
+		remove_all_filters( 'wpai_meta_description_seo_plugins' );
+		remove_all_filters( 'wpai_meta_description_meta_key' );
 		parent::tearDown();
 	}
 
@@ -56,7 +56,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	 */
 	public function test_get_supported_plugins_is_filterable() {
 		add_filter(
-			'ai_meta_description_seo_plugins',
+			'wpai_meta_description_seo_plugins',
 			static function ( $plugins ) {
 				$plugins['custom-seo'] = array(
 					'file'     => 'custom-seo/custom-seo.php',
@@ -124,7 +124,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	 */
 	public function test_get_meta_key_is_filterable() {
 		add_filter(
-			'ai_meta_description_meta_key',
+			'wpai_meta_description_meta_key',
 			static function () {
 				return '_custom_override_key';
 			}
