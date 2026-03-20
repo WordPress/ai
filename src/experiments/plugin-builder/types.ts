@@ -10,12 +10,23 @@ export interface LogEntry {
 	detail?: string;
 }
 
-export interface GeneratedFile {
+export interface PluginFile {
 	path: string;
 	type: string;
-	content: string;
-	description?: string;
+	description: string;
 	is_main?: boolean;
+	content?: string;
+}
+
+export interface SecurityIssue {
+	file_path: string;
+	line: number;
+	pattern: string;
+	line_content: string;
+}
+
+export interface GeneratedFile extends PluginFile {
+	content: string;
 }
 
 export interface PluginPlan {
@@ -24,7 +35,7 @@ export interface PluginPlan {
 	description: string;
 	complexity: 'simple' | 'complex';
 	is_modification?: boolean;
-	files: { path: string; type: string; description: string; is_main?: boolean }[];
+	files: PluginFile[];
 	hooks_used?: string[];
 	wp_apis_used?: string[];
 	security_notes?: string[];

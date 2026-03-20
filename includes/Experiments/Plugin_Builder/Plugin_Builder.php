@@ -48,18 +48,22 @@ class Plugin_Builder extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
+		add_filter(
+			'wp_ai_client_default_request_timeout',
+			static function () {
+				return 300;
+			}
+		);
+
+		add_action( 'init', array( 'WordPress\AI_Client\AI_Client', 'init' ) );
+
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
-
-		// Register background job handler
-		\WordPress\AI\Experiments\Plugin_Builder\Ai\BackgroundJob::register();
 
 		// Instantiate REST controllers
 		add_action(
 			'rest_api_init',
 			static function () {
-				( new \WordPress\AI\Experiments\Plugin_Builder\Rest\GenerateController() )->register();
-				( new \WordPress\AI\Experiments\Plugin_Builder\Rest\StatusController() )->register();
 				( new \WordPress\AI\Experiments\Plugin_Builder\Rest\InstallController() )->register();
 			}
 		);
@@ -106,6 +110,8 @@ class Plugin_Builder extends Abstract_Feature {
 			return;
 		}
 
+		wp_enqueue_script( 'wp-ai-client' );
+
 		$asset_file = plugin_dir_path( dirname( __DIR__, 2 ) ) . 'build/experiments/plugin-builder.asset.php';
 
 		if ( ! file_exists( $asset_file ) ) {
@@ -117,7 +123,7 @@ class Plugin_Builder extends Abstract_Feature {
 		wp_enqueue_script(
 			'ai-plugin-builder',
 			plugins_url( 'build/experiments/plugin-builder.js', dirname( __DIR__, 2 ) ),
-			$assets['dependencies'],
+			array_merge( $assets['dependencies'], array( 'wp-ai-client' ) ),
 			$assets['version'],
 			true
 		);

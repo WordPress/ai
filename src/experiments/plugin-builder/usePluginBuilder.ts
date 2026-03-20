@@ -3,18 +3,28 @@ import {
 	BuilderState,
 	ChatMessage,
 	GeneratedFile,
-	InstallResponse,
 	LogEntry,
 	LogLevel,
 	PluginPlan,
 	ReviewResult,
-	StatusResponse,
 	TokenUsageSummary,
-	isJobResponse,
 	needsSlugConfirmation,
 } from './types';
 import * as api from './api';
-import { usePolling } from './usePolling';
+import {
+	getSystemPrompt,
+	getIntentPrompt,
+	getPlannerPrompt,
+	getCoderPrompt,
+} from './prompts';
+import { scanFiles } from './securityScanner';
+
+// Type augmentations for wp.aiClient since there's no types package yet
+declare global {
+	interface Window {
+		wp: any;
+	}
+}
 
 let messageIdCounter = 0;
 let logIdCounter = 0;
@@ -23,7 +33,7 @@ function createMessage(
 	role: 'user' | 'assistant',
 	type: ChatMessage['type'],
 	content: string,
-	data?: any,
+	data?: any
 ): ChatMessage {
 	return {
 		id: String(++messageIdCounter),
@@ -39,18 +49,15 @@ export function usePluginBuilder() {
 	const [state, setState] = useState<BuilderState>('idle');
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [logs, setLogs] = useState<LogEntry[]>([]);
-	const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 	const [currentPlan, setCurrentPlan] = useState<PluginPlan | null>(null);
 	const [currentFiles, setCurrentFiles] = useState<GeneratedFile[]>([]);
 	const [currentReview, setCurrentReview] = useState<ReviewResult | null>(null);
 	const [currentStep, setCurrentStep] = useState<string>('');
 	const [error, setError] = useState<string | null>(null);
-	const [planShown, setPlanShown] = useState<boolean>(false);
 	const [tokenUsage, setTokenUsage] = useState<TokenUsageSummary | null>(null);
 	const [slugConflictWarnings, setSlugConflictWarnings] = useState<string[]>([]);
-	
+
 	const startTimeRef = useRef<number>(0);
-	const lastStatusRef = useRef<string>('');
 
 	// Logging
 	const log = useCallback((level: LogLevel, message: string, detail?: string) => {
@@ -72,7 +79,6 @@ export function usePluginBuilder() {
 		return `${secs}s`;
 	}, []);
 
-	// Messages
 	const addMessage = useCallback((msg: ChatMessage) => {
 		setMessages((prev) => [...prev, msg]);
 	}, []);
@@ -111,129 +117,156 @@ export function usePluginBuilder() {
 		log('error', 'Pipeline error', message);
 	}, [addMessage, log, removeLastLoading]);
 
-	// Polling callback
-	const pollCallback = useCallback(async (): Promise<boolean> => {
-		if (!currentJobId) return true;
-
-		try {
-			const status = await api.getStatus(currentJobId);
-			return handleStatusUpdate(status);
-		} catch (e: any) {
-			const msg = e.message || 'Failed to check status';
-			log('error', 'Polling failed', msg);
-			handleError(msg);
-			return true;
-		}
-	}, [currentJobId, handleError, log]);
-
-	const { start: startPolling, stop: stopPolling } = usePolling(pollCallback, 2000);
-
-	const handleStatusUpdate = useCallback((status: StatusResponse): boolean => {
-		setCurrentStep(status.current_step);
-
-		if (status.status !== lastStatusRef.current) {
-			const prefix = elapsed() ? `[${elapsed()}]` : '';
-			log('info', `${prefix} Status: ${status.status}`, status.current_step);
-			lastStatusRef.current = status.status;
-		}
-
-		if (status.plan && !planShown) {
-			setPlanShown(true);
-			setCurrentPlan(status.plan);
-			removeLastLoading();
-			addMessage(createMessage('assistant', 'plan', `Here's the plan for **${status.plan.plugin_name}**:`, status.plan));
-			addMessage(createMessage('assistant', 'loading', status.current_step));
-			log('success', `Plan ready: ${status.plan.plugin_name}`, `${status.plan.files.length} file(s)`);
-		}
-
-		updateLastLoading(status.current_step);
-
-		if (status.status === 'coding') setState('coding');
-		if (status.status === 'reviewing') setState('reviewing');
-		if (status.status === 'fixing') setState('fixing');
-
-		if (status.status === 'done') {
-			if (status.files?.length) setCurrentFiles(status.files);
-			if (status.review) setCurrentReview(status.review);
-			if (status.token_usage) setTokenUsage(status.token_usage);
-
-			removeLastLoading();
-
-			if (status.review) {
-				addMessage(createMessage('assistant', 'review', '', status.review));
-			}
-			if (status.files?.length) {
-				addMessage(createMessage('assistant', 'files', "Here's the generated code:", status.files));
-			}
-
-			setState('ready_to_install');
-			log('success', `Done in ${elapsed()}`, status.current_step);
-
-			if (status.token_usage) {
-				log('info', `Tokens: ${status.token_usage.total_tokens.toLocaleString()} total`);
-			}
-			return true; // Stop polling
-		}
-
-		if (status.status === 'error') {
-			handleError(status.error || 'An unknown error occurred');
-			return true; // Stop polling
-		}
-
-		return false; // Continue polling
-	}, [addMessage, elapsed, handleError, log, planShown, removeLastLoading, updateLastLoading]);
+	const updateStep = useCallback((step: string) => {
+		setCurrentStep(step);
+		updateLastLoading(step);
+		log('info', `Status: ${state}`, step);
+	}, [state, updateLastLoading, log]);
 
 	// Actions
 	const sendDescription = useCallback(async (description: string) => {
 		if (!description.trim()) return;
-
-		stopPolling();
+		if (!window.wp?.aiClient?.prompt) {
+			handleError('WP AI Client JavaScript API is not available.');
+			return;
+		}
 
 		const previousPlan = currentPlan;
-		const previousFiles = currentFiles.length > 0 ? currentFiles : null;
+		const previousFiles = currentFiles.length > 0 ? currentFiles : [];
 
-		setCurrentJobId(null);
-		setPlanShown(false);
 		setError(null);
-		lastStatusRef.current = '';
 		setState('planning');
 		startTimeRef.current = Date.now();
+		setTokenUsage(null);
 
 		log('info', 'Request sent', description.substring(0, 100));
 		addMessage(createMessage('user', 'text', description));
 		addMessage(createMessage('assistant', 'loading', 'Analyzing your request...'));
 
-		try {
-			const resp = await api.generate(description.trim(), 'simple', previousPlan, previousFiles);
+		const aiPrompt = window.wp.aiClient.prompt;
 
-			if (!isJobResponse(resp)) {
+		try {
+			// Phase 1: Intent Detection
+			updateStep('Detecting intent...');
+			const intentText = await aiPrompt(getIntentPrompt(description, previousPlan))
+				.usingSystemInstruction(getSystemPrompt('detector'))
+				.usingTemperature(0.1)
+				.usingMaxTokens(500)
+				.asJsonResponse()
+				.generateText();
+
+			let intentData;
+			try {
+				intentData = JSON.parse(intentText);
+			} catch (e) {
+				intentData = { intent: 'plugin_request', confidence: 0.5 };
+			}
+
+			if (intentData.intent === 'question' || intentData.intent === 'other') {
 				removeLastLoading();
-				addMessage(createMessage('assistant', 'text', resp.response || 'I can help you build plugins.'));
-				if (resp.token_usage) setTokenUsage(resp.token_usage);
+				addMessage(createMessage('assistant', 'text', intentData.response || 'I can help you build plugins.'));
 				setState(previousPlan ? 'ready_to_install' : 'idle');
-				log('info', `Intent: ${resp.type}`, resp.response?.substring(0, 100));
 				return;
 			}
 
-			setCurrentJobId(resp.job_id);
-			log('info', `Job ID: ${resp.job_id}`, `Intent: ${resp.type}`);
-
-			if (resp.type !== 'modification_request') {
+			if (intentData.intent !== 'modification_request') {
 				setCurrentPlan(null);
 				setCurrentFiles([]);
 				setCurrentReview(null);
+				// Reset previous files context for a new request
+				previousFiles.length = 0;
 			}
 
-			// We need a slight timeout to let the currentJobId state update propagate to pollCallback dependencies.
-			// Actually usePolling is wrapping the callback, so it will get the latest due to refs or we can just call it in next tick
-			setTimeout(() => {
-			    startPolling();
-			}, 100);
+			// Phase 2: Planner
+			setState('planning');
+			updateStep('Generating plugin architecture plan...');
+			const maxFiles = 10;
+			const plannerText = await aiPrompt(getPlannerPrompt(description, 'simple', maxFiles, previousPlan))
+				.usingSystemInstruction(getSystemPrompt('planner'))
+				.usingMaxTokens(16384)
+				.usingTemperature(0.3)
+				.asJsonResponse()
+				.generateText();
+
+			let plan: PluginPlan;
+			try {
+				plan = JSON.parse(plannerText);
+			} catch (e) {
+				handleError('Failed to parse the plugin plan JSON.');
+				return;
+			}
+
+			setCurrentPlan(plan);
+			log('success', `Plan ready: ${plan.plugin_name}`, `${plan.files.length} file(s)`);
+			
+			// Show plan inline
+			removeLastLoading();
+			addMessage(createMessage('assistant', 'plan', `Here's the plan for **${plan.plugin_name}**:`, plan));
+			addMessage(createMessage('assistant', 'loading', 'Preparing generated files...'));
+
+			// Phase 3: Generator Loop
+			setState('coding');
+			const newFiles: GeneratedFile[] = [];
+
+			for (const fileInfo of plan.files) {
+				updateStep(`Writing ${fileInfo.path}...`);
+
+				const codeText = await aiPrompt(getCoderPrompt(plan, fileInfo, previousFiles.concat(newFiles)))
+					.usingSystemInstruction(getSystemPrompt('coder', fileInfo.type))
+					.usingTemperature(0.2)
+					.usingMaxTokens(32768)
+					.generateText();
+
+				// Optional basic cleanup: AI sometimes wraps code in backticks
+				let cleanContent = codeText;
+				if (cleanContent.startsWith('\`\`\`')) {
+					const firstNewlineIndex = cleanContent.indexOf('\\n');
+					if (firstNewlineIndex !== -1) {
+						cleanContent = cleanContent.substring(firstNewlineIndex + 1);
+					}
+					if (cleanContent.endsWith('\`\`\`')) {
+						cleanContent = cleanContent.substring(0, cleanContent.length - 3);
+					}
+				}
+
+				newFiles.push({
+					...fileInfo,
+					content: cleanContent.trim(),
+				});
+			}
+
+			setCurrentFiles(newFiles);
+
+			// Phase 4: Basic Client-Side Security Scan
+			setState('reviewing');
+			updateStep('Scanning files for security issues...');
+			const scanResult = scanFiles(newFiles);
+
+			const review: ReviewResult = {
+				passed: scanResult.passed,
+				review_summary: scanResult.passed ? 'No obvious dangerous patterns found.' : 'Dangerous patterns detected in generated code.',
+				suggestions: scanResult.issues.map(iss => ({
+					action: 'Needs Review',
+					file_path: iss.file_path,
+					file_type: 'php',
+					reason: 'Pattern match',
+					description: `Matched dangerous pattern \`${iss.pattern}\` on line ${iss.line}: \`${iss.line_content}\``
+				})),
+			};
+			setCurrentReview(review);
+
+			// Finish
+			removeLastLoading();
+			addMessage(createMessage('assistant', 'review', '', review));
+			addMessage(createMessage('assistant', 'files', "Here's the generated code:", newFiles));
+
+			setState('ready_to_install');
+			log('success', `Done in ${elapsed()}`, 'Ready to install');
+
 		} catch (e: any) {
-			const msg = e.message || 'Failed to start generation';
-			handleError(msg);
+			handleError(e.message || 'Failed during AI generation pipeline.');
 		}
-	}, [addMessage, currentFiles, currentPlan, handleError, log, removeLastLoading, startPolling, stopPolling]);
+	}, [addMessage, currentFiles, currentPlan, handleError, log, removeLastLoading, updateStep, elapsed]);
 
 	const installPlugin = useCallback(async (force: boolean = false) => {
 		if (!currentPlan || !currentFiles.length) return;
@@ -275,24 +308,20 @@ export function usePluginBuilder() {
 	}, [installPlugin]);
 
 	const reset = useCallback(() => {
-		stopPolling();
 		setState('idle');
 		setMessages([]);
 		setLogs([]);
-		setCurrentJobId(null);
 		setCurrentPlan(null);
 		setCurrentFiles([]);
 		setCurrentReview(null);
 		setCurrentStep('');
-		setPlanShown(false);
 		setError(null);
 		setTokenUsage(null);
-		lastStatusRef.current = '';
 		startTimeRef.current = 0;
 		setSlugConflictWarnings([]);
 		messageIdCounter = 0;
 		logIdCounter = 0;
-	}, [stopPolling]);
+	}, []);
 
 	const isProcessing = useMemo(() => 
 		['planning', 'coding', 'reviewing', 'fixing', 'installing'].includes(state),
