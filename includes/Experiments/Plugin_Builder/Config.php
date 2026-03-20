@@ -17,15 +17,6 @@ namespace WordPress\AI\Experiments\Plugin_Builder;
 class Config {
 
 	/**
-	 * Required capability to generate plugins.
-	 *
-	 * @return string
-	 */
-	public static function generate_capability(): string {
-		return 'install_plugins';
-	}
-
-	/**
 	 * Required capability to install generated plugins.
 	 *
 	 * @return string

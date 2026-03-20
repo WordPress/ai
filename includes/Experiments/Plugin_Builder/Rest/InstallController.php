@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Plugin_Builder\Rest;
 
 use WP_Error;
+use WP_REST_Request;
 use WP_REST_Response;
 use WordPress\AI\Experiments\Plugin_Builder\Config;
 use WordPress\AI\Experiments\Plugin_Builder\Installer\PluginActivator;
@@ -65,10 +66,10 @@ class InstallController {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WP_REST_Request $request The request.
-	 * @return \WP_REST_Response|\WP_Error
+	 * @param WP_REST_Request $request The request.
+	 * @return WP_REST_Response|WP_Error
 	 */
-	public function handle( \WP_REST_Request $request ) {
+	public function handle( WP_REST_Request $request ) {
 		$plugin_slug = $request->get_param( 'plugin_slug' );
 		$files       = $request->get_param( 'files' );
 		$force       = (bool) $request->get_param( 'force' );

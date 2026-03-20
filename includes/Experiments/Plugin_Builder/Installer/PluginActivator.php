@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Plugin_Builder\Installer;
 
+use WP_Error;
+
 /**
  * Safely activates a generated plugin with fatal error detection.
  *
@@ -26,7 +28,7 @@ class PluginActivator {
 	 * @since x.x.x
 	 *
 	 * @param string $plugin_path Relative path to the main plugin file.
-	 * @return true|\WP_Error
+	 * @return true|WP_Error
 	 */
 	public function activate( string $plugin_path ) {
 		if ( ! function_exists( 'activate_plugin' ) ) {
@@ -70,14 +72,5 @@ class PluginActivator {
 		}
 
 		return true;
-	}
-
-	/**
-	 * Clear the stored fatal error.
-	 *
-	 * @since x.x.x
-	 */
-	public static function clear_fatal(): void {
-		delete_option( self::FATAL_OPTION_KEY );
 	}
 }

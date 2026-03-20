@@ -11,6 +11,8 @@ namespace WordPress\AI\Experiments\Plugin_Builder;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Experiments\Plugin_Builder\Rest\InstallController;
+use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -55,7 +57,7 @@ class Plugin_Builder extends Abstract_Feature {
 			}
 		);
 
-		add_action( 'init', array( 'WordPress\AI_Client\AI_Client', 'init' ) );
+		add_action( 'init', array( AI_Client::class, 'init' ) );
 
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
@@ -64,7 +66,7 @@ class Plugin_Builder extends Abstract_Feature {
 		add_action(
 			'rest_api_init',
 			static function () {
-				( new \WordPress\AI\Experiments\Plugin_Builder\Rest\InstallController() )->register();
+				( new InstallController() )->register();
 			}
 		);
 	}
