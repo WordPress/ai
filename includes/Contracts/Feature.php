@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Contracts;
 
+use WP_Error;
+
 /**
  * Interface for all features.
  *
@@ -69,6 +71,15 @@ interface Feature {
 	 * @return 'deprecated'|'experimental'|'stable'
 	 */
 	public function get_stability(): string;
+
+	/**
+	 * Check feature requirements.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return WP_Error|true
+	 */
+	public function check_requirements();
 
 	/**
 	 * Registers the feature's hooks and functionality.
