@@ -54,6 +54,11 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'experiments/plugin-builder': path.resolve(
+			process.cwd(),
+			'src/experiments/plugin-builder',
+			'index.tsx'
+		),
 		'experiments/alt-text-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',

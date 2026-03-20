@@ -11,6 +11,8 @@ namespace WordPress\AI\Experiments\Plugin_Builder;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use  WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
+use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -47,5 +49,103 @@ class Plugin_Builder extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void {}
+	public function register(): void {
+		add_filter(
+			'wp_ai_client_default_request_timeout',
+			static function () {
+				return 300;
+			}
+		);
+
+		add_action( 'init', array( AI_Client::class, 'init' ) );
+
+		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+
+		// Instantiate REST controllers
+		add_action(
+			'rest_api_init',
+			static function () {
+				( new WriteController() )->register();
+			}
+		);
+	}
+
+	/**
+	 * Registers the admin menu page for the plugin builder.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_admin_menu(): void {
+		if ( ! $this->is_enabled() ) {
+			return;
+		}
+
+		// Use the same capability as adding new plugins since this generates and installs them.
+		add_plugins_page(
+			__( 'AI Plugin Builder', 'ai' ),
+			__( 'AI Plugin Builder', 'ai' ),
+			'install_plugins',
+			'ai-plugin-builder',
+			array( $this, 'render_admin_page' )
+		);
+	}
+
+	/**
+	 * Renders the admin page container.
+	 *
+	 * @since x.x.x
+	 */
+	public function render_admin_page(): void {
+		echo '<div id="wp-ai-plugin-builder-root"></div>';
+	}
+
+	/**
+	 * Enqueues the React frontend scripts for the admin page.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook The current admin page.
+	 */
+	public function enqueue_scripts( string $hook ): void {
+		if ( 'plugins_page_ai-plugin-builder' !== $hook ) {
+			return;
+		}
+
+		wp_enqueue_script( 'wp-ai-client' );
+
+		$asset_file = plugin_dir_path( dirname( __DIR__, 2 ) ) . 'build/experiments/plugin-builder.asset.php';
+
+		if ( ! file_exists( $asset_file ) ) {
+			return;
+		}
+
+		$assets = require $asset_file;
+
+		wp_enqueue_script(
+			'ai-plugin-builder',
+			plugins_url( 'build/experiments/plugin-builder.js', dirname( __DIR__, 2 ) ),
+			array_merge( $assets['dependencies'], array( 'wp-ai-client' ) ),
+			$assets['version'],
+			true
+		);
+
+		wp_enqueue_style(
+			'ai-plugin-builder',
+			plugins_url( 'build/experiments/style-plugin-builder.css', dirname( __DIR__, 2 ) ),
+			array(),
+			$assets['version'],
+			'all'
+		);
+
+		wp_localize_script(
+			'ai-plugin-builder',
+			'aiPluginBuilder',
+			array(
+				'restUrl'  => esc_url_raw( rest_url( 'wordpress-ai-plugin-builder/v1/' ) ),
+				'nonce'    => wp_create_nonce( 'wp_rest' ),
+				'adminUrl' => admin_url( 'plugins.php' ),
+			)
+		);
+	}
 }

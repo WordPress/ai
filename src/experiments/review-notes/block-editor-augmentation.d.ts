@@ -13,7 +13,9 @@ declare module '@wordpress/block-editor' {
 		onClose: () => void;
 	}
 
-	export const BlockSettingsMenuControls: (props: {
-		children: ( fillProps: BlockSettingsMenuControlsFillProps ) => ReactNode;
-	}) => ReactNode;
+	export const BlockSettingsMenuControls: ( props: {
+		children: (
+			fillProps: BlockSettingsMenuControlsFillProps
+		) => ReactNode;
+	} ) => ReactNode;
 }
