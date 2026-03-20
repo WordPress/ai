@@ -10,24 +10,26 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Meta_Description\Meta_Description;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Meta_Description Ability tests.
  *
  * @since 0.6.0
  */
-class Test_Meta_Description_Experiment extends Abstract_Experiment {
+class Test_Meta_Description_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'meta-description';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'meta-description',
 			'label'       => 'Meta Description',
 			'description' => 'Generates meta description suggestions with SEO plugin integration',
 		);

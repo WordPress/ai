@@ -8,10 +8,10 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Meta_Description;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiment_Category;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Meta_Description\Meta_Description;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Meta_Description experiment test case.
@@ -29,16 +29,16 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_meta-description_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_meta-description_enabled', true );
 
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
 
-		$experiment = $registry->get_experiment( 'meta-description' );
+		$experiment = $registry->get_feature( 'meta-description' );
 		$this->assertInstanceOf(
 			Meta_Description::class,
 			$experiment,
@@ -53,10 +53,10 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_meta-description_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_meta-description_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -80,11 +80,11 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since 0.6.0
 	 */
 	public function test_experiment_can_be_disabled_via_filter(): void {
-		add_filter( 'ai_experiments_experiment_meta-description_enabled', '__return_false' );
+		add_filter( 'wpai_feature_meta-description_enabled', '__return_false' );
 
 		$experiment = new Meta_Description();
 		$this->assertFalse( $experiment->is_enabled() );
 
-		remove_all_filters( 'ai_experiments_experiment_meta-description_enabled' );
+		remove_all_filters( 'wpai_feature_meta-description_enabled' );
 	}
 }

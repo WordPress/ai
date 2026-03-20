@@ -11,9 +11,9 @@ namespace WordPress\AI\Experiments\Meta_Description;
 
 use WordPress\AI\Abilities\Meta_Description\Meta_Description as Meta_Description_Ability;
 use WordPress\AI\Abilities\Meta_Description\SEO_Integration;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -27,16 +27,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.6.0
  */
-class Meta_Description extends Abstract_Experiment {
+class Meta_Description extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.6.0
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'meta-description';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'meta-description',
 			'label'       => __( 'Meta Description', 'ai' ),
 			'description' => __( 'Generates meta description suggestions with SEO plugin integration', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,

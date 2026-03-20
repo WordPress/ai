@@ -134,15 +134,18 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_normalize_content_applies_filters() {
-		add_filter( 'ai_experiments_pre_normalize_content', function( $content ) {
-			return 'Filtered: ' . $content;
-		} );
+		add_filter(
+			'wpai_pre_normalize_content',
+			static function ( $content ) {
+				return 'Filtered: ' . $content;
+			}
+		);
 
 		$result = \WordPress\AI\normalize_content( 'test' );
 
 		$this->assertStringContainsString( 'Filtered:', $result, 'Should apply pre-normalize filter' );
 
-		remove_all_filters( 'ai_experiments_pre_normalize_content' );
+		remove_all_filters( 'wpai_pre_normalize_content' );
 	}
 
 	/**
@@ -311,8 +314,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_models_for_text_generation_applies_filter() {
 		add_filter(
-			'ai_experiments_preferred_models_for_text_generation',
-			function( $models ) {
+			'wpai_preferred_text_models',
+			static function ( $models ) {
 				// Add a custom model.
 				$models[] = array(
 					'custom',
@@ -328,7 +331,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'custom', $result[4][0], 'Fifth model provider should be custom' );
 		$this->assertEquals( 'custom-model', $result[4][1], 'Fifth model name should be custom-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_models_for_text_generation' );
+		remove_all_filters( 'wpai_preferred_text_models' );
 	}
 
 	/**
@@ -338,8 +341,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_models_for_text_generation_filter_can_replace_models() {
 		add_filter(
-			'ai_experiments_preferred_models_for_text_generation',
-			function( $models ) {
+			'wpai_preferred_text_models',
+			static function () {
 				// Replace with a single model.
 				return array(
 					array(
@@ -356,7 +359,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'test', $result[0][0], 'Model provider should be test' );
 		$this->assertEquals( 'test-model', $result[0][1], 'Model name should be test-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_models_for_text_generation' );
+		remove_all_filters( 'wpai_preferred_text_models' );
 	}
 
 	/**
@@ -437,8 +440,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_image_models_applies_filter() {
 		add_filter(
-			'ai_experiments_preferred_image_models',
-			function( $models ) {
+			'wpai_preferred_image_models',
+			static function ( $models ) {
 				// Add a custom model.
 				$models[] = array(
 					'custom',
@@ -454,7 +457,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'custom', $result[8][0], 'Ninth model provider should be custom' );
 		$this->assertEquals( 'custom-image-model', $result[8][1], 'Ninth model name should be custom-image-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_image_models' );
+		remove_all_filters( 'wpai_preferred_image_models' );
 	}
 
 	/**
@@ -464,8 +467,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_image_models_filter_can_replace_models() {
 		add_filter(
-			'ai_experiments_preferred_image_models',
-			function( $models ) {
+			'wpai_preferred_image_models',
+			static function ( $models ) {
 				// Replace with a single model.
 				return array(
 					array(
@@ -482,7 +485,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'test', $result[0][0], 'Model provider should be test' );
 		$this->assertEquals( 'test-image-model', $result[0][1], 'Model name should be test-image-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_image_models' );
+		remove_all_filters( 'wpai_preferred_image_models' );
 	}
 
 	/**
@@ -530,8 +533,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_vision_models_applies_filter() {
 		add_filter(
-			'ai_experiments_preferred_vision_models',
-			function( $models ) {
+			'wpai_preferred_vision_models',
+			static function ( $models ) {
 				$models[] = array(
 					'custom',
 					'custom-vision-model',
@@ -546,7 +549,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'custom', $result[3][0], 'Fourth model provider should be custom' );
 		$this->assertEquals( 'custom-vision-model', $result[3][1], 'Fourth model name should be custom-vision-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_vision_models' );
+		remove_all_filters( 'wpai_preferred_vision_models' );
 	}
 
 	/**
@@ -556,8 +559,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_preferred_vision_models_filter_can_replace_models() {
 		add_filter(
-			'ai_experiments_preferred_vision_models',
-			function( $models ) {
+			'wpai_preferred_vision_models',
+			static function ( $models ) {
 				return array(
 					array(
 						'test',
@@ -573,6 +576,6 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'test', $result[0][0], 'Model provider should be test' );
 		$this->assertEquals( 'test-vision-model', $result[0][1], 'Model name should be test-vision-model' );
 
-		remove_all_filters( 'ai_experiments_preferred_vision_models' );
+		remove_all_filters( 'wpai_preferred_vision_models' );
 	}
 }

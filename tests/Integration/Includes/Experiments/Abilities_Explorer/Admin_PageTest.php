@@ -19,7 +19,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Admin page instance.
 	 *
-	 * @var Admin_Page
+	 * @var \WordPress\AI\Experiments\Abilities_Explorer\Admin_Page
 	 */
 	private $admin_page;
 

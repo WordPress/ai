@@ -107,7 +107,7 @@ The test runner automatically generates example input based on the ability's inp
 ### Manual Testing
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Toggle **Abilities Explorer** to enabled
 
 2. **Test the list view:**
