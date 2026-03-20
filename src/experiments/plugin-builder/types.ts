@@ -1,4 +1,13 @@
-export type BuilderState = 'idle' | 'planning' | 'coding' | 'reviewing' | 'fixing' | 'ready_to_install' | 'installing' | 'installed' | 'error';
+export type BuilderState =
+	| 'idle'
+	| 'planning'
+	| 'coding'
+	| 'reviewing'
+	| 'fixing'
+	| 'ready_to_install'
+	| 'installing'
+	| 'installed'
+	| 'error';
 
 export type LogLevel = 'info' | 'success' | 'warn' | 'error';
 
@@ -72,7 +81,14 @@ export interface TokenUsageSummary {
 export interface ChatMessage {
 	id: string;
 	role: 'user' | 'assistant';
-	type: 'text' | 'loading' | 'plan' | 'files' | 'review' | 'install' | 'error';
+	type:
+		| 'text'
+		| 'loading'
+		| 'plan'
+		| 'files'
+		| 'review'
+		| 'install'
+		| 'error';
 	content: string;
 	data?: any;
 	timestamp: Date;
@@ -80,7 +96,14 @@ export interface ChatMessage {
 
 export interface StatusResponse {
 	job_id: string;
-	status: 'queued' | 'planning' | 'coding' | 'reviewing' | 'fixing' | 'done' | 'error';
+	status:
+		| 'queued'
+		| 'planning'
+		| 'coding'
+		| 'reviewing'
+		| 'fixing'
+		| 'done'
+		| 'error';
 	current_step: string;
 	plan?: PluginPlan;
 	files?: GeneratedFile[];
@@ -120,12 +143,22 @@ export interface WriteSlugConflictResponse {
 	message: string;
 }
 
-export type WriteResponse = WriteSuccessResponse | WriteErrorResponse | WriteSlugConflictResponse;
+export type WriteResponse =
+	| WriteSuccessResponse
+	| WriteErrorResponse
+	| WriteSlugConflictResponse;
 
-export function isJobResponse(response: AnyGenerateResponse): response is GenerateResponse {
-	return response.type === 'plugin_request' || response.type === 'modification_request';
+export function isJobResponse(
+	response: AnyGenerateResponse
+): response is GenerateResponse {
+	return (
+		response.type === 'plugin_request' ||
+		response.type === 'modification_request'
+	);
 }
 
-export function needsSlugConfirmation(response: WriteResponse): response is WriteSlugConflictResponse {
+export function needsSlugConfirmation(
+	response: WriteResponse
+): response is WriteSlugConflictResponse {
 	return 'needs_confirmation' in response && response.needs_confirmation;
 }
