@@ -91,7 +91,7 @@ class Plugin_Builder extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function render_admin_page(): void {
-		echo '<div id="ai-plugin-builder-root"></div>';
+		echo '<div id="wp-ai-plugin-builder-root"></div>';
 	}
 
 	/**
