@@ -67,11 +67,11 @@ class GenerateController {
 						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'previous_plan'  => array(
-						'type'    => 'object',
+						'type'    => array( 'object', 'null' ),
 						'default' => null,
 					),
 					'previous_files' => array(
-						'type'    => 'array',
+						'type'    => array( 'array', 'null' ),
 						'default' => null,
 					),
 				),
