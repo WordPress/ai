@@ -1,0 +1,27 @@
+.ai-content-resizing-modal__loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 32px 0;
+
+	p {
+		color: #757575;
+		margin: 0;
+	}
+}
+
+.ai-content-resizing-modal__text {
+	background: rgba(147, 51, 234, 0.06);
+	border-left: 3px solid rgba(147, 51, 234, 0.4);
+	border-radius: 2px;
+	padding: 12px;
+	font-size: 14px;
+	line-height: 1.6;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.ai-content-resizing-modal__actions {
+	margin-top: 16px;
+}
