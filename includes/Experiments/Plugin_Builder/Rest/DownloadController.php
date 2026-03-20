@@ -13,11 +13,10 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use WP_Error;
 use WP_REST_Request;
-use WP_HTTP_Response;
 use ZipArchive;
 
 /**
- * Handles plugin ZIP downloads — via REST (from files array) and via admin-post (from disk).
+ * Handles plugin ZIP downloads — via REST (from disk) and via admin-post (from disk).
  *
  * @since x.x.x
  */
@@ -38,7 +37,7 @@ class DownloadController {
 			self::ROUTE_NAMESPACE,
 			'/download',
 			array(
-				'methods'             => 'POST',
+				'methods'             => 'GET',
 				'callback'            => array( $this, 'handle_rest' ),
 				'permission_callback' => static function () {
 					return current_user_can( 'install_plugins' );
@@ -49,43 +48,33 @@ class DownloadController {
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_file_name',
 					),
-					'files'       => array(
-						'required' => true,
-						'type'     => 'array',
-					),
 				),
 			)
 		);
 	}
 
 	/**
-	 * REST handler — builds a ZIP from the supplied files array.
+	 * REST handler — builds a ZIP from the installed plugin directory on disk.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param WP_REST_Request $request The REST request.
-	 * @return WP_Error
+	 * @return WP_Error|void
 	 */
-	public function handle_rest( WP_REST_Request $request ): WP_Error {
+	public function handle_rest( WP_REST_Request $request ) {
 		$plugin_slug = $request->get_param( 'plugin_slug' );
-		$files       = $request->get_param( 'files' );
 
-		if ( empty( $files ) || ! is_array( $files ) ) {
-			return new WP_Error( 'no_files', __( 'No files provided.', 'ai' ), array( 'status' => 400 ) );
+		$ai_slugs = get_option( self::OPTION_KEY, array() );
+		if ( ! in_array( $plugin_slug, (array) $ai_slugs, true ) ) {
+			return new WP_Error( 'not_found', __( 'Plugin not found.', 'ai' ), array( 'status' => 404 ) );
 		}
 
-		foreach ( $files as $file ) {
-			if ( ! is_array( $file ) || empty( $file['path'] ) || ! isset( $file['content'] ) ) {
-				return new WP_Error( 'invalid_file', __( 'Each file must have "path" and "content".', 'ai' ), array( 'status' => 400 ) );
-			}
-
-			$path = $file['path'];
-			if ( str_contains( $path, '..' ) || str_starts_with( $path, '/' ) || str_starts_with( $path, '\\' ) ) {
-				return new WP_Error( 'invalid_path', __( 'Invalid file path.', 'ai' ), array( 'status' => 400 ) );
-			}
+		$plugin_dir = WP_PLUGIN_DIR . '/' . $plugin_slug;
+		if ( ! is_dir( $plugin_dir ) ) {
+			return new WP_Error( 'not_found', __( 'Plugin directory not found.', 'ai' ), array( 'status' => 404 ) );
 		}
 
-		$zip_content = $this->create_zip_from_files( $plugin_slug, $files );
+		$zip_content = $this->create_zip_from_dir( $plugin_dir, $plugin_slug );
 
 		if ( ! $zip_content ) {
 			return new WP_Error( 'zip_failed', __( 'Failed to create ZIP archive.', 'ai' ), array( 'status' => 500 ) );
@@ -136,40 +125,6 @@ class DownloadController {
 		}
 		echo $zip_content;
 		exit;
-	}
-
-	/**
-	 * Create a ZIP archive in memory from a files array.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string                           $plugin_slug Plugin slug (top-level ZIP folder).
-	 * @param array<int, array<string, mixed>> $files       Files with "path" and "content" keys.
-	 * @return string|false ZIP binary string or false on failure.
-	 */
-	private function create_zip_from_files( string $plugin_slug, array $files ) {
-		if ( ! class_exists( 'ZipArchive' ) ) {
-			return false;
-		}
-
-		$tmp = tempnam( sys_get_temp_dir(), 'ai_plugin_' );
-		$zip = new ZipArchive();
-
-		if ( true !== $zip->open( $tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE ) ) {
-			return false;
-		}
-
-		foreach ( $files as $file ) {
-			$relative = $plugin_slug . '/' . ltrim( $file['path'], '/' );
-			$zip->addFromString( $relative, $file['content'] );
-		}
-
-		$zip->close();
-
-		$content = file_get_contents( $tmp );
-		unlink( $tmp );
-
-		return $content;
 	}
 
 	/**

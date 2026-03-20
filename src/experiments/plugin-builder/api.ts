@@ -29,19 +29,17 @@ export async function writeFiles(
 	} );
 }
 
-export async function downloadPlugin(
-	pluginSlug: string,
-	files: GeneratedFile[]
-): Promise< void > {
+export async function downloadPlugin( pluginSlug: string ): Promise< void > {
 	const { restUrl, nonce } = window.aiPluginBuilder;
 
-	const response = await fetch( `${ restUrl }download`, {
-		method: 'POST',
+	const url = new URL( `${ restUrl }download` );
+	url.searchParams.set( 'plugin_slug', pluginSlug );
+
+	const response = await fetch( url.toString(), {
+		method: 'GET',
 		headers: {
-			'Content-Type': 'application/json',
 			'X-WP-Nonce': nonce,
 		},
-		body: JSON.stringify( { plugin_slug: pluginSlug, files } ),
 	} );
 
 	if ( ! response.ok ) {
@@ -50,14 +48,14 @@ export async function downloadPlugin(
 	}
 
 	const blob = await response.blob();
-	const url = URL.createObjectURL( blob );
+	const blobUrl = URL.createObjectURL( blob );
 	const anchor = document.createElement( 'a' );
-	anchor.href = url;
+	anchor.href = blobUrl;
 	anchor.download = `${ pluginSlug }.zip`;
 	document.body.appendChild( anchor );
 	anchor.click();
 	document.body.removeChild( anchor );
-	URL.revokeObjectURL( url );
+	URL.revokeObjectURL( blobUrl );
 }
 
 export async function activatePlugin( pluginFile: string ): Promise< any > {

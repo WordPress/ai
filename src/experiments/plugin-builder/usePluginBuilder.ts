@@ -507,15 +507,15 @@ export function usePluginBuilder() {
 	}, [ installPlugin ] );
 
 	const downloadPlugin = useCallback( async () => {
-		if ( ! currentPlan || ! currentFiles.length ) return;
+		if ( ! currentPlan || state !== 'installed' ) return;
 
 		try {
-			await api.downloadPlugin( currentPlan.plugin_slug, currentFiles );
+			await api.downloadPlugin( currentPlan.plugin_slug );
 			log( 'success', 'Plugin downloaded', currentPlan.plugin_slug );
 		} catch ( e: any ) {
 			handleError( e.message || 'Failed to download plugin.' );
 		}
-	}, [ currentPlan, currentFiles, log, handleError ] );
+	}, [ currentPlan, state, log, handleError ] );
 
 	const reset = useCallback( () => {
 		setState( 'idle' );
@@ -550,6 +550,8 @@ export function usePluginBuilder() {
 		[ slugConflictWarnings ]
 	);
 
+	const isInstalled = useMemo( () => state === 'installed', [ state ] );
+
 	return {
 		state,
 		messages,
@@ -562,6 +564,7 @@ export function usePluginBuilder() {
 		tokenUsage,
 		isProcessing,
 		hasSlugConflict,
+		isInstalled,
 		slugConflictWarnings,
 		sendDescription,
 		installPlugin,

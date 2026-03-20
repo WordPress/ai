@@ -35,6 +35,7 @@ export default function App() {
 		messages,
 		isProcessing,
 		hasSlugConflict,
+		isInstalled,
 		sendDescription,
 		installPlugin,
 		forceInstallPlugin,
@@ -175,22 +176,33 @@ export default function App() {
 												className="apb-actions"
 												style={ { marginTop: '10px' } }
 											>
-												<button
-													className="button button-primary"
-													onClick={ () =>
-														installPlugin()
-													}
-												>
-													Install and Activate Plugin
-												</button>
+												{ ! isInstalled && (
+													<button
+														className="button button-primary"
+														onClick={ () =>
+															installPlugin()
+														}
+													>
+														Install and Activate
+														Plugin
+													</button>
+												) }
 												<button
 													className="button button-secondary"
 													onClick={ () =>
 														downloadPlugin()
 													}
+													disabled={ ! isInstalled }
 													style={ {
-														marginLeft: '8px',
+														marginLeft: isInstalled
+															? '0'
+															: '8px',
 													} }
+													title={
+														isInstalled
+															? 'Download plugin as ZIP'
+															: 'Install the plugin first to download'
+													}
 												>
 													Download Plugin
 												</button>
