@@ -36,8 +36,7 @@ class IntentDetector {
 		$user_prompt   = $this->get_user_prompt( $description, $previous_plan );
 
 		$prompt = wp_ai_client_prompt( $user_prompt )
-			// @phpstan-ignore-next-line
-			->with_system_prompt( $system_prompt )
+			->using_system_instruction( $system_prompt )
 			->using_temperature( 0.1 )
 			->using_max_tokens( 500 );
 
