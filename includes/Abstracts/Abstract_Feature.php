@@ -73,7 +73,7 @@ abstract class Abstract_Feature implements Feature {
 	 * The feature's callback to check requirements.
 	 * @var ?callable(): (true|WP_Error)
 	 */
-	private $check_requirements;
+	private $check_requirements_callback;
 
 	/**
 	 * Constructor.
@@ -110,7 +110,7 @@ abstract class Abstract_Feature implements Feature {
 		}
 
 		if ( isset( $metadata['check_requirements'] ) ) {
-			$this->check_requirements = $metadata['check_requirements'];
+			$this->check_requirements_callback = $metadata['check_requirements'];
 		}
 
 		$this->label       = $metadata['label'];
@@ -217,8 +217,8 @@ abstract class Abstract_Feature implements Feature {
 	 * {@inheritDoc}
 	 */
 	final public function check_requirements() {
-		if ( $this->check_requirements !== null ) {
-			return call_user_func( $this->check_requirements );
+		if ( $this->check_requirements_callback !== null ) {
+			return call_user_func( $this->check_requirements_callback );
 		}
 		return true;
 	}
