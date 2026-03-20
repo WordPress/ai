@@ -185,7 +185,10 @@ class Generate_Image extends Abstract_Ability {
 
 		if ( is_wp_error( $result ) ) {
 			// Update the error message if trying to edit an image.
-			if ( null !== $reference_image && str_contains( $result->get_error_message(), 'No models found that support image_generation' ) ) {
+			if (
+				null !== $reference_image &&
+				false !== strpos( $result->get_error_message(), 'No models found that support image_generation' )
+			) {
 				$result = new WP_Error(
 					$result->get_error_code(),
 					esc_html__( 'Image refinement failed. Please ensure you have a connected provider that supports image refinement, not just image generation.', 'ai' )
