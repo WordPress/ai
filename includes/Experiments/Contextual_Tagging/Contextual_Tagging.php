@@ -10,9 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Contextual_Tagging;
 
 use WordPress\AI\Abilities\Contextual_Tagging\Contextual_Tagging as Contextual_Tagging_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Settings\Settings_Registration;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since x.x.x
  */
-class Contextual_Tagging extends Abstract_Experiment {
+class Contextual_Tagging extends Abstract_Feature {
 
 	/**
 	 * The default taxonomy strategy.
@@ -58,12 +58,16 @@ class Contextual_Tagging extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since x.x.x
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'contextual-tagging';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'contextual-tagging',
 			'label'       => __( 'Contextual Tagging', 'ai' ),
 			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
