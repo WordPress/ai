@@ -122,6 +122,14 @@ class Plugin_Builder extends Abstract_Feature {
 			true
 		);
 
+		wp_enqueue_style(
+			'ai-plugin-builder',
+			plugins_url( 'build/experiments/style-plugin-builder.css', dirname( __DIR__, 2 ) ),
+			array(),
+			$assets['version'],
+			'all'
+		);
+
 		wp_localize_script(
 			'ai-plugin-builder',
 			'aiPluginBuilder',
