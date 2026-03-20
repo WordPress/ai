@@ -14,6 +14,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Plugin_Builder\Rest\DownloadController;
 use WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
 use WordPress\AI_Client\AI_Client;
+use WP_Error;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -41,9 +42,18 @@ class Plugin_Builder extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Plugin Builder', 'ai' ),
-			'description' => __( 'Uses AI to create plugins in WordPress.', 'ai' ),
-			'category'    => Experiment_Category::ADMIN,
+			'label'              => __( 'Plugin Builder', 'ai' ),
+			'description'        => __( 'Uses AI to create plugins in WordPress.', 'ai' ),
+			'category'           => Experiment_Category::ADMIN,
+			'check_requirements' => function () {
+				if ( ! class_exists( 'WordPress\AI_Client\AI_Client' ) ) {
+					return new WP_Error(
+						'missing_ai_client',
+						__( 'This feature requires the <a href="https://github.com/WordPress/wp-ai-client" target="_blank">WP AI Client</a> plugin. You must currently install this plugin from GitHub. Clone it into your plugins directory and run <code>npm install &amp;&amp; composer install &amp;&amp; npm run build</code>.', 'ai' )
+					);
+				}
+				return true;
+			},
 		);
 	}
 

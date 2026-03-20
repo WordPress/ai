@@ -88,6 +88,7 @@ export interface ChatMessage {
 		| 'files'
 		| 'review'
 		| 'install'
+		| 'analysis'
 		| 'error';
 	content: string;
 	data?: any;
@@ -157,8 +158,17 @@ export function isJobResponse(
 	);
 }
 
-export function needsSlugConfirmation(
-	response: WriteResponse
-): response is WriteSlugConflictResponse {
+export function needsSlugConfirmation(response: WriteResponse): response is WriteSlugConflictResponse {
 	return 'needs_confirmation' in response && response.needs_confirmation;
+}
+
+export interface AnalysisNewCommand {
+	name: string;
+	label: string;
+	url: string;
+}
+
+export interface AnalysisResponse {
+	new_commands?: AnalysisNewCommand[];
+	suggested_commands?: string[];
 }

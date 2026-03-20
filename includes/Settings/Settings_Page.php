@@ -301,6 +301,8 @@ class Settings_Page {
 					$experiment_enabled = (bool) get_option( $experiment_option, false );
 					$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
 					$desc_id            = "ai-experiment-{$experiment_id}-desc";
+
+					$checked_requirements = $experiment->check_requirements();
 					?>
 
 					<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
@@ -312,7 +314,7 @@ class Settings_Page {
 									id="<?php echo esc_attr( $experiment_option ); ?>"
 									value="1"
 									<?php checked( $experiment_enabled ); ?>
-									<?php disabled( ! $global_enabled ); ?>
+									<?php disabled( ! $global_enabled || is_wp_error( $checked_requirements ) ); ?>
 									<?php if ( $experiment->get_description() ) : ?>
 										aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
 									<?php endif; ?>
@@ -342,6 +344,33 @@ class Settings_Page {
 								);
 								?>
 							</p>
+						<?php endif; ?>
+
+						<?php if ( is_wp_error( $checked_requirements ) ) : ?>
+							<?php foreach ( $checked_requirements->get_error_messages() as $error_message ) : ?>
+								<div class="notice notice-warning inline">
+									<p>
+										<?php
+										echo wp_kses(
+											$error_message,
+											array(
+												'a'      => array(
+													'href'   => array(),
+													'title'  => array(),
+													'target' => array(),
+													'rel'    => array(),
+												),
+												'b'      => array(),
+												'strong' => array(),
+												'em'     => array(),
+												'i'      => array(),
+												'code'   => array(),
+											)
+										);
+										?>
+									</p>
+								</div>
+							<?php endforeach; ?>
 						<?php endif; ?>
 
 						<?php

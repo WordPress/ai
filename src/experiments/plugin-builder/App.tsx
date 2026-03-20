@@ -32,6 +32,7 @@ function SmallSpinner() {
 
 export default function App() {
 	const {
+		state,
 		messages,
 		isProcessing,
 		hasSlugConflict,
@@ -219,6 +220,34 @@ export default function App() {
 									{ msg.type === 'error' && (
 										<div className="apb-bubble apb-bubble--error">
 											{ msg.content }
+										</div>
+									) }
+									{ msg.type === 'analysis' && (
+										<div className="apb-bubble apb-bubble--analysis">
+											<strong>Suggested Next Steps:</strong>
+											<div
+												className="apb-actions"
+												style={ { marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' } }
+											>
+												{ msg.data?.suggested_commands?.map( ( cmdName: string, i: number ) => {
+													const cmdObj = msg.data.all_commands?.find( ( c: any ) => c.name === cmdName );
+													if ( ! cmdObj ) return null;
+
+													return (
+														<button
+															key={ cmdName }
+															className={ `button ${ i === 0 ? 'button-primary' : 'button-secondary' }` }
+															onClick={ () => {
+																if ( typeof cmdObj.callback === 'function' ) {
+																	cmdObj.callback( { close: () => {} } );
+																}
+															} }
+														>
+															{ cmdObj.label }
+														</button>
+													);
+												} ) }
+											</div>
 										</div>
 									) }
 								</div>

@@ -1,6 +1,8 @@
 /* eslint-disable */
 
 import { useState, useCallback, useMemo, useRef } from '@wordpress/element';
+import { select, dispatch } from '@wordpress/data';
+import { store as commandsStore } from '@wordpress/commands';
 import {
 	BuilderState,
 	ChatMessage,
@@ -11,6 +13,7 @@ import {
 	ReviewResult,
 	TokenUsageSummary,
 	needsSlugConfirmation,
+	AnalysisResponse,
 } from './types';
 import * as api from './api';
 import {
@@ -18,6 +21,7 @@ import {
 	getIntentPrompt,
 	getPlannerPrompt,
 	getCoderPrompt,
+	getAnalyzerPrompt,
 } from './prompts';
 import { scanFiles } from './securityScanner';
 
@@ -185,12 +189,10 @@ export function usePluginBuilder() {
 				)
 			);
 
-			const aiPrompt = window.wp.aiClient.prompt;
-
 			try {
 				// Phase 1: Intent Detection
 				updateStep( 'Detecting intent...' );
-				const intentText = await aiPrompt(
+				const intentText = await window.wp.aiClient.prompt(
 					getIntentPrompt( description, previousPlan )
 				)
 					.usingSystemInstruction( getSystemPrompt( 'detector' ) )
@@ -235,7 +237,7 @@ export function usePluginBuilder() {
 				setState( 'planning' );
 				updateStep( 'Generating plugin architecture plan...' );
 				const maxFiles = 10;
-				const plannerText = await aiPrompt(
+				const plannerText = await window.wp.aiClient.prompt(
 					getPlannerPrompt(
 						description,
 						'simple',
@@ -289,7 +291,7 @@ export function usePluginBuilder() {
 				for ( const fileInfo of plan.files ) {
 					updateStep( `Writing ${ fileInfo.path }...` );
 
-					const codeText = await aiPrompt(
+					const codeText = await window.wp.aiClient.prompt(
 						getCoderPrompt(
 							plan,
 							fileInfo,
@@ -442,6 +444,61 @@ export function usePluginBuilder() {
 							'Plugin installed & activated',
 							pluginFile
 						);
+
+						// New Analysis Phase
+						addMessage(
+							createMessage('assistant', 'loading', 'Analyzing next steps...')
+						);
+						updateStep('Checking plugin features...');
+
+						try {
+							const existingCommands = select(commandsStore)
+								.getCommands()
+								.map((c: any) => ({ name: c.name, label: c.label }));
+
+							const analyzerText = await window.wp.aiClient.prompt(getAnalyzerPrompt(currentFiles, existingCommands))
+								.usingSystemInstruction(getSystemPrompt('analyzer'))
+								.usingTemperature(0.2)
+								.usingMaxTokens(8000)
+								.asJsonResponse()
+								.generateText();
+
+							const analysis: AnalysisResponse = parseJSON(analyzerText);
+							if (analysis.new_commands && analysis.new_commands.length > 0) {
+								for (const cmd of analysis.new_commands) {
+									dispatch(commandsStore).registerCommand({
+										name: cmd.name,
+										label: cmd.label,
+										callback: ({ close }: { close?: () => void }) => {
+											document.location.href = cmd.url;
+											if (close) close();
+										},
+									});
+								}
+							}
+
+							const updatedCommands = select(commandsStore).getCommands();
+
+							removeLastLoading();
+							addMessage(
+								createMessage('assistant', 'analysis', '', {
+									suggested_commands: analysis.suggested_commands || [],
+									all_commands: updatedCommands,
+								})
+							);
+							log('success', 'Analysis complete. Suggested next steps generated.');
+						} catch (analysisErr: any) {
+							removeLastLoading();
+							console.error( 'Analysis failed:', analysisErr );
+							addMessage(
+								createMessage(
+									'assistant',
+									'text',
+									`**Analysis Error:** ${ analysisErr.message }\n\nCheck browser console for details.`
+								)
+							);
+							log('warn', 'Failed to analyze next steps', analysisErr.message);
+						}
 					} catch ( activationError: any ) {
 						removeLastLoading();
 						setState( 'installed' );
