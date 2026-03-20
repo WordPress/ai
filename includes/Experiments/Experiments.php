@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * Uses wpai_default_feature_classes filter to register experiments, which are then initialized by the Loader class.
  *
  * @internal
- * @since x.x.x
+ * @since 0.6.0
  */
 final class Experiments {
 	/**
@@ -39,7 +39,7 @@ final class Experiments {
 	/**
 	 * Initializes the experiments by hooking into the appropriate filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function init(): void {
 		// Priority 9 ensures it runs before any potential overrides at default priority.
@@ -49,7 +49,7 @@ final class Experiments {
 	/**
 	 * Registers default experiment classes.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param array<string, class-string<\WordPress\AI\Contracts\Feature>> $existing Array of existing experiment class names, with experiment IDs as keys.
 	 *

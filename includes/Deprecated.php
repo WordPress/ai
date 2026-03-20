@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 
 declare( strict_types=1 );
@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 final class Deprecated {
 	/**
@@ -37,7 +37,7 @@ final class Deprecated {
 				$content = (string) apply_filters_deprecated(
 					'ai_experiments_pre_normalize_content',
 					array( $content ),
-					'x.x.x',
+					'0.6.0',
 					'wpai_pre_normalize_content',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
 				);
@@ -56,7 +56,7 @@ final class Deprecated {
 				$content = (string) apply_filters_deprecated(
 					'ai_experiments_normalize_content',
 					array( $content ),
-					'x.x.x',
+					'0.6.0',
 					'wpai_normalize_content',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
 				);
@@ -75,7 +75,7 @@ final class Deprecated {
 				$models = (array) apply_filters_deprecated(
 					'ai_experiments_preferred_models_for_text_generation',
 					array( $models ),
-					'x.x.x',
+					'0.6.0',
 					'wpai_preferred_text_models',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
 				);
@@ -94,7 +94,7 @@ final class Deprecated {
 				$models = (array) apply_filters_deprecated(
 					'ai_experiments_preferred_image_models',
 					array( $models ),
-					'x.x.x',
+					'0.6.0',
 					'wpai_preferred_image_models',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
 				);
@@ -113,7 +113,7 @@ final class Deprecated {
 				$models = (array) apply_filters_deprecated(
 					'ai_experiments_preferred_vision_models',
 					array( $models ),
-					'x.x.x',
+					'0.6.0',
 					'wpai_preferred_vision_models',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
 				);
@@ -132,7 +132,7 @@ final class Deprecated {
 				$valid = apply_filters_deprecated(
 					'ai_experiments_pre_has_valid_credentials_check',
 					array( $valid ),
-					'x.x.x',
+					'0.6.0',
 					'wpai_pre_has_valid_credentials_check',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
 				);
@@ -151,7 +151,7 @@ final class Deprecated {
 				$enabled = (bool) apply_filters_deprecated(
 					'ai_experiments_enabled',
 					array( $enabled ),
-					'x.x.x',
+					'0.6.0',
 					'wpai_features_enabled',
 					esc_html__( 'This filter will be removed in v1.0', 'ai' )
 				);
@@ -169,7 +169,7 @@ final class Deprecated {
 				do_action_deprecated(
 					'ai_experiments_register_experiments',
 					array( $registry ),
-					'x.x.x',
+					'0.6.0',
 					'wpai_register_features',
 					esc_html__( 'This action will be removed in v1.0', 'ai' )
 				);
@@ -187,7 +187,7 @@ final class Deprecated {
 				do_action_deprecated(
 					'ai_experiments_initialized',
 					array(),
-					'x.x.x',
+					'0.6.0',
 					'wpai_features_initialized',
 					esc_html__( 'This action will be removed in v1.0', 'ai' )
 				);

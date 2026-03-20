@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [0.6.0] - 2026-03-20
+**There are Breaking Changes in this release.**
+
+### Breaking Changes
+- Refactor `Experiments` to be a type of `Feature`, improving how functionality is organized and surfaced ([#316](https://github.com/WordPress/ai/pull/316)).
+
+The following classes have been removed. Anyone that was directly using these will need to make updates to utilize the correct replacements: `Abstract_Experiment`, `Invalid_Experiment_Metadata_Exception`, `Invalid_Experiment_Exception`, `Experiment_Loader`, `Experiment_Registry`.
+
+- Standardize the Title Generation Ability to align with other registered Abilities ([#227](https://github.com/WordPress/ai/pull/227)).
+
+The `ai/title-generation` Ability now uses a `context` argument instead of a `post_id` argument in the `input_schema`. Anyone directly using this Ability will need to make updates to account for that.
+
+### Added
+- New Experiment: Image Editing via prompt-based image refining in the Post Editor and Media Library ([#292](https://github.com/WordPress/ai/pull/292)).
+- New Experiment: Image Editing via expanding or removing background and removing or replacing items in the Media Libary ([#305](https://github.com/WordPress/ai/pull/305), [#312](https://github.com/WordPress/ai/pull/312)).
+
+### Changed
+- Rename the plugin from "AI Experiments" to "AI" ([#287](https://github.com/WordPress/ai/pull/287)).
+- Replace `Invalid_Experiment_Exception` with `_doing_it_wrong()` ([#303](https://github.com/WordPress/ai/pull/303)).
+- Rename hook prefixes in `helpers.php` ([#315](https://github.com/WordPress/ai/pull/315)).
+- Rename plugin constants to `WPAI_*` ([#317](https://github.com/WordPress/ai/pull/317)).
+- Refactor the upgrade routine and add v0.6.0 migrations ([#321](https://github.com/WordPress/ai/pull/321)).
+- Move the Generate Alt Text button to the new Content tab for improved discoverability ([#306](https://github.com/WordPress/ai/pull/306)).
+- Remove stray "AI" references from UI for improved consistency ([#320](https://github.com/WordPress/ai/pull/320)).
+- Update documentation ([#314](https://github.com/WordPress/ai/pull/314)).
+
+### Fixed
+- Remove duplicate error display in the Generate Alt Text flow ([#255](https://github.com/WordPress/ai/pull/255)).
+
 ## [0.5.0] - 2026-03-12
 **Note this version bumps the WordPress minimum supported version from 6.9 to 7.0.**
 
