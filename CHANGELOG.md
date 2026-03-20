@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
-## [0.6.0] - 2026-03-19
+## [0.6.0] - 2026-03-20
 **There are Breaking Changes in this release.**
 
 ### Breaking Changes

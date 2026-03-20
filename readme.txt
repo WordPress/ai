@@ -126,7 +126,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 == Changelog ==
 
-= 0.6.0 - 2026-03-19 =
+= 0.6.0 - 2026-03-20 =
 
 **There are Breaking Changes in this release.**
 
