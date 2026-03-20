@@ -49,7 +49,7 @@ class Config {
 	 * @return string
 	 */
 	public static function generate_capability(): string {
-		return 'prompt_ai'; // Use the standard prompt_ai capability from WP AI Client instead of manage_options.
+		return 'install_plugin';
 	}
 
 	/**
