@@ -169,6 +169,6 @@ export interface AnalysisNewCommand {
 }
 
 export interface AnalysisResponse {
-	new_commands: AnalysisNewCommand[];
-	suggested_commands: string[];
+	new_commands?: AnalysisNewCommand[];
+	suggested_commands?: string[];
 }
