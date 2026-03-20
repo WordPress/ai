@@ -11,7 +11,9 @@ namespace WordPress\AI\Experiments\Plugin_Builder\Rest;
 
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use WP_Error;
 use WP_REST_Request;
+use WP_HTTP_Response;
 use ZipArchive;
 
 /**
@@ -62,41 +64,40 @@ class DownloadController {
 	 * @since x.x.x
 	 *
 	 * @param WP_REST_Request $request The REST request.
+	 * @return WP_Error|WP_HTTP_Response
 	 */
-	public function handle_rest( WP_REST_Request $request ): void {
+	public function handle_rest( WP_REST_Request $request ) {
 		$plugin_slug = $request->get_param( 'plugin_slug' );
 		$files       = $request->get_param( 'files' );
 
 		if ( empty( $files ) || ! is_array( $files ) ) {
-			status_header( 400 );
-			echo wp_json_encode( array( 'error' => __( 'No files provided.', 'ai' ) ) );
-			exit;
+			return new WP_Error( 'no_files', __( 'No files provided.', 'ai' ), array( 'status' => 400 ) );
 		}
 
 		foreach ( $files as $file ) {
 			if ( ! is_array( $file ) || empty( $file['path'] ) || ! isset( $file['content'] ) ) {
-				status_header( 400 );
-				echo wp_json_encode( array( 'error' => __( 'Each file must have "path" and "content".', 'ai' ) ) );
-				exit;
+				return new WP_Error( 'invalid_file', __( 'Each file must have "path" and "content".', 'ai' ), array( 'status' => 400 ) );
 			}
 
 			$path = $file['path'];
 			if ( str_contains( $path, '..' ) || str_starts_with( $path, '/' ) || str_starts_with( $path, '\\' ) ) {
-				status_header( 400 );
-				echo wp_json_encode( array( 'error' => __( 'Invalid file path.', 'ai' ) ) );
-				exit;
+				return new WP_Error( 'invalid_path', __( 'Invalid file path.', 'ai' ), array( 'status' => 400 ) );
 			}
 		}
 
 		$zip_content = $this->create_zip_from_files( $plugin_slug, $files );
 
 		if ( ! $zip_content ) {
-			status_header( 500 );
-			echo wp_json_encode( array( 'error' => __( 'Failed to create ZIP archive.', 'ai' ) ) );
-			exit;
+			return new WP_Error( 'zip_failed', __( 'Failed to create ZIP archive.', 'ai' ), array( 'status' => 500 ) );
 		}
 
-		$this->send_zip( $plugin_slug, $zip_content );
+		$response = new WP_HTTP_Response( $zip_content, 200 );
+		$response->header( 'Content-Type', 'application/zip' );
+		$response->header( 'Content-Disposition', 'attachment; filename=' . $plugin_slug . '.zip' );
+		$response->header( 'Content-Length', (string) strlen( $zip_content ) );
+		$response->header( 'Cache-Control', 'no-cache, must-revalidate' );
+
+		return $response;
 	}
 
 	/**
