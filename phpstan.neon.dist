@@ -24,11 +24,26 @@ parameters:
 				- includes/
 		# Temporary while WP 7.0 beta AI Client migration is in progress.
 		ignoreErrors:
-			- '#has parameter [a-zA-Z\$0-9_]+ with no value type specified in iterable type array#'
-			- '#return type has no value type specified in iterable type array#'
-			- '#Function wp_ai_client_prompt not found\.#'
-			- '#WP_AI_Client_[A-Za-z0-9_]+#'
-			- '#WordPress\\AiClient\\#'
+			-
+				message: '#has parameter [a-zA-Z\$0-9_]+ with no value type specified in iterable type array#'
+				paths:
+					- includes/wp-ai-client/*
+			-
+				message: '#return type has no value type specified in iterable type array#'
+				paths:
+					- includes/wp-ai-client/*
+			-
+				message: '#Function wp_ai_client_prompt not found\.#'
+				paths:
+					- includes/wp-ai-client/*
+			-
+				message: '#WP_AI_Client_[A-Za-z0-9_]+#'
+				paths:
+					- includes/wp-ai-client/*
+			-
+				message: '#WordPress\\AiClient\\#'
+				paths:
+					- includes/wp-ai-client/*
 		excludePaths:
 			analyse:
 				- tests/
