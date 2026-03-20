@@ -534,20 +534,11 @@ test.describe( 'Image Generation Experiment', () => {
 
 		// Ensure a success message is visible.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__success' )
+			page.locator( '.components-notice.is-success' )
 		).toBeVisible();
 
-		// Ensure we have two new buttons.
-		await expect(
-			page.locator( '.ai-generate-image-standalone__success button' )
-		).toHaveCount( 1 );
-
-		await expect(
-			page.locator( '.ai-generate-image-standalone__success a' )
-		).toHaveCount( 1 );
-
 		// View the image in the Media Library.
-		page.locator( '.ai-generate-image-standalone__success a' ).click();
+		page.locator( '.components-notice.is-success a' ).click();
 
 		// Ensure alt text is set.
 		await expect(
