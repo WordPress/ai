@@ -64,9 +64,9 @@ class DownloadController {
 	 * @since x.x.x
 	 *
 	 * @param WP_REST_Request $request The REST request.
-	 * @return WP_Error|WP_HTTP_Response
+	 * @return WP_Error
 	 */
-	public function handle_rest( WP_REST_Request $request ) {
+	public function handle_rest( WP_REST_Request $request ): WP_Error {
 		$plugin_slug = $request->get_param( 'plugin_slug' );
 		$files       = $request->get_param( 'files' );
 
@@ -91,21 +91,23 @@ class DownloadController {
 			return new WP_Error( 'zip_failed', __( 'Failed to create ZIP archive.', 'ai' ), array( 'status' => 500 ) );
 		}
 
-		$response = new WP_HTTP_Response( $zip_content, 200 );
-		$response->header( 'Content-Type', 'application/zip' );
-		$response->header( 'Content-Disposition', 'attachment; filename=' . $plugin_slug . '.zip' );
-		$response->header( 'Content-Length', (string) strlen( $zip_content ) );
-		$response->header( 'Cache-Control', 'no-cache, must-revalidate' );
+		status_header( 200 );
+		foreach ( $this->get_zip_response_headers( $plugin_slug, $zip_content ) as $header => $value ) {
+			header( "$header: $value" );
+		}
 
-		return $response;
+		echo $zip_content;
+		exit;
 	}
 
 	/**
 	 * Admin-post handler — builds a ZIP from the installed plugin directory on disk.
 	 *
 	 * @since x.x.x
+	 *
+	 * @phpstan-return never
 	 */
-	public function handle_admin_post(): void {
+	public function handle_admin_post() {
 		$slug = isset( $_GET['slug'] ) ? sanitize_file_name( wp_unslash( $_GET['slug'] ) ) : '';
 		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
 
@@ -129,7 +131,11 @@ class DownloadController {
 			wp_die( esc_html__( 'Failed to create ZIP archive.', 'ai' ), 500 );
 		}
 
-		$this->send_zip( $slug, $zip_content );
+		foreach ( $this->get_zip_response_headers( $slug, $zip_content ) as $header => $value ) {
+			header( "$header: $value" );
+		}
+		echo $zip_content;
+		exit;
 	}
 
 	/**
@@ -217,16 +223,14 @@ class DownloadController {
 	 *
 	 * @param string $plugin_slug Slug used as the download filename.
 	 * @param string $zip_content Binary ZIP content.
+	 * @return array<string, string> ZIP response headers.
 	 */
-	private function send_zip( string $plugin_slug, string $zip_content ): void {
-		header( 'Content-Type: application/zip' );
-		header( 'Content-Disposition: attachment; filename="' . $plugin_slug . '.zip"' );
-		header( 'Content-Length: ' . strlen( $zip_content ) );
-		header( 'Cache-Control: no-cache, no-store, must-revalidate' );
-
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo $zip_content;
-		exit;
+	private function get_zip_response_headers( string $plugin_slug, string $zip_content ): array {
+		return array(
+			'Content-Type'        => 'application/zip',
+			'Content-Disposition' => 'attachment; filename=' . $plugin_slug . '.zip',
+			'Content-Length'      => (string) strlen( $zip_content ),
+			'Cache-Control'       => 'no-cache, must-revalidate',
+		);
 	}
 }
-
