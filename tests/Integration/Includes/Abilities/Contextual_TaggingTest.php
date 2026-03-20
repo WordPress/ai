@@ -239,9 +239,9 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		$response = '{"suggestions": [{"term": "development", "confidence": 0.9, "is_new": false}, {"term": "plugins", "confidence": 0.8, "is_new": true}]}';
+		$response = '{"suggestions": [{"term": "development", "confidence": 0.9}, {"term": "plugins", "confidence": 0.8}]}';
 
-		$result = $method->invoke( $this->ability, $response, array( 'development' ), 5 );
+		$result = $method->invoke( $this->ability, $response, array( 'development' ), 'allow_new', array(), 5 );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertCount( 2, $result, 'Should have 2 suggestions' );
@@ -262,7 +262,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 
 		$response = 'This is not valid JSON';
 
-		$result = $method->invoke( $this->ability, $response, array(), 5 );
+		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 5 );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'invalid_response', $result->get_error_code(), 'Error code should be invalid_response' );
@@ -286,7 +286,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 			{"term": "e", "confidence": 0.5, "is_new": false}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 3 );
+		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 3 );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertCount( 3, $result, 'Should be limited to 3 suggestions' );
@@ -309,7 +309,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 			{"term": "mid", "confidence": 0.6, "is_new": true}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 10 );
+		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 10 );
 
 		$this->assertEquals( 'high', $result[0]['term'], 'First should be highest confidence' );
 		$this->assertEquals( 'mid', $result[1]['term'], 'Second should be mid confidence' );
@@ -331,7 +331,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 			{"term": "under", "confidence": -0.5, "is_new": true}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 10 );
+		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 10 );
 
 		$this->assertEquals( 1.0, $result[0]['confidence'], 'Confidence above 1 should be clamped to 1.0' );
 		$this->assertEquals( 0.0, $result[1]['confidence'], 'Confidence below 0 should be clamped to 0.0' );
@@ -352,7 +352,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 			{"term": "finance", "confidence": 0.8, "is_new": false}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array( 'finance' ), 10 );
+		$result = $method->invoke( $this->ability, $response, array( 'finance' ), 'allow_new', array(), 10 );
 
 		$this->assertArrayHasKey( 'parent', $result[0], 'First suggestion should have parent key' );
 		$this->assertEquals( 'technology', $result[0]['parent'], 'Parent should be technology' );
@@ -377,7 +377,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 			{"term": "also valid", "confidence": 0.6, "is_new": true}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 10 );
+		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 10 );
 
 		$this->assertCount( 2, $result, 'Should only have 2 valid suggestions' );
 		$this->assertEquals( 'valid', $result[0]['term'] );
@@ -396,7 +396,7 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 
 		$response = '{"suggestions": [{"term": "test", "is_new": true}]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 10 );
+		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 10 );
 
 		$this->assertEquals( 0.5, $result[0]['confidence'], 'Missing confidence should default to 0.5' );
 	}
@@ -414,59 +414,121 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		// AI says "tech" is new, but it exists in our list as "Tech".
 		$response = '{"suggestions": [{"term": "tech", "confidence": 0.9, "is_new": true}]}';
 
-		$result = $method->invoke( $this->ability, $response, array( 'Tech' ), 10 );
+		$result = $method->invoke( $this->ability, $response, array( 'Tech' ), 'allow_new', array(), 10 );
 
 		$this->assertFalse( $result[0]['is_new'], 'Should be false because "Tech" exists (case-insensitive match)' );
 		$this->assertEquals( 'Tech', $result[0]['term'], 'Should use the original capitalized term name from the existing terms list' );
 	}
 
 	/**
-	 * Test that build_prompt() wraps content in XML tags for existing_only strategy.
+	 * Test that build_prompt() wraps content in XML tags.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_build_prompt_existing_only_strategy() {
+	public function test_build_prompt_wraps_content() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'build_prompt' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', 'existing_only', array( 'php', 'javascript' ) );
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag' );
 
 		$this->assertStringContainsString( '<content>Test content</content>', $result, 'Should wrap content in XML tags' );
-		$this->assertStringContainsString( '<strategy>', $result, 'Should include strategy tag' );
-		$this->assertStringContainsString( 'Only suggest terms that already exist', $result );
-		$this->assertStringContainsString( '<existing-terms>php, javascript</existing-terms>', $result );
 	}
 
 	/**
-	 * Test that build_prompt() wraps content in XML tags for allow_new strategy.
+	 * Test that build_prompt() does not include existing terms or strategy tags.
+	 *
+	 * Existing terms are no longer sent to the LLM to avoid scaling issues.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_build_prompt_allow_new_strategy() {
+	public function test_build_prompt_excludes_existing_terms_and_strategy() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'build_prompt' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', 'allow_new', array() );
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag' );
 
-		$this->assertStringContainsString( '<content>Test content</content>', $result );
-		$this->assertStringContainsString( 'may suggest new terms', $result );
+		$this->assertStringNotContainsString( '<existing-terms>', $result, 'Should not include existing terms' );
+		$this->assertStringNotContainsString( '<strategy>', $result, 'Should not include strategy tag' );
 	}
 
 	/**
-	 * Test that build_prompt() handles empty terms with existing_only strategy.
+	 * Test that build_prompt() includes assigned terms when provided.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_build_prompt_empty_terms_existing_only() {
+	public function test_build_prompt_includes_assigned_terms() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'build_prompt' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', 'existing_only', array() );
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', array( 'php', 'wordpress' ) );
 
-		$this->assertStringContainsString( 'empty suggestions array', $result );
+		$this->assertStringContainsString( '<assigned-terms>php, wordpress</assigned-terms>', $result, 'Should include assigned terms' );
+	}
+
+	/**
+	 * Test that build_prompt() omits assigned terms tag when empty.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_prompt_omits_empty_assigned_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_prompt' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', array() );
+
+		$this->assertStringNotContainsString( '<assigned-terms>', $result, 'Should not include assigned terms when empty' );
+	}
+
+	/**
+	 * Test that parse_suggestions() filters out assigned terms.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_filters_assigned_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": "php", "confidence": 0.9, "is_new": true},
+			{"term": "javascript", "confidence": 0.8, "is_new": true},
+			{"term": "python", "confidence": 0.7, "is_new": true}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, array( 'php', 'javascript', 'python' ), 'allow_new', array( 'PHP' ), 10 );
+
+		$this->assertCount( 2, $result, 'Should exclude assigned term' );
+		$this->assertEquals( 'javascript', $result[0]['term'] );
+		$this->assertEquals( 'python', $result[1]['term'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() filters new terms for existing_only strategy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_existing_only_filters_new_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": "php", "confidence": 0.9, "is_new": true},
+			{"term": "brand new term", "confidence": 0.85, "is_new": true},
+			{"term": "javascript", "confidence": 0.8, "is_new": true}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, array( 'php', 'javascript' ), 'existing_only', array(), 10 );
+
+		$this->assertCount( 2, $result, 'Should only include existing terms' );
+		$this->assertEquals( 'php', $result[0]['term'] );
+		$this->assertEquals( 'javascript', $result[1]['term'] );
+		$this->assertFalse( $result[0]['is_new'] );
+		$this->assertFalse( $result[1]['is_new'] );
 	}
 
 	/**
@@ -488,13 +550,13 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 		$item_props = $schema['properties']['suggestions']['items']['properties'];
 		$this->assertArrayHasKey( 'term', $item_props );
 		$this->assertArrayHasKey( 'confidence', $item_props );
-		$this->assertArrayHasKey( 'is_new', $item_props );
+		$this->assertArrayNotHasKey( 'is_new', $item_props, 'is_new is determined server-side, not by the LLM' );
 		$this->assertArrayHasKey( 'parent', $item_props );
 
 		$required = $schema['properties']['suggestions']['items']['required'];
 		$this->assertContains( 'term', $required );
 		$this->assertContains( 'confidence', $required );
-		$this->assertContains( 'is_new', $required );
+		$this->assertNotContains( 'is_new', $required );
 	}
 
 	/**

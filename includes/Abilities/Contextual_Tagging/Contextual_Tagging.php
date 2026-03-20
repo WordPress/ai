@@ -273,6 +273,10 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Generates taxonomy term suggestions from the given content.
 	 *
+	 * The LLM generates suggestions based purely on content analysis
+	 * and the currently assigned terms. Post-processing then matches
+	 * suggestions against existing terms and applies the strategy.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param string|array<string, string> $context         The context to generate suggestions from.
@@ -301,40 +305,28 @@ class Contextual_Tagging extends Abstract_Ability {
 			);
 		}
 
-		// Fetch existing terms for the taxonomy.
-		$existing_terms = $this->get_existing_terms( $taxonomy );
-
-		// Get the taxonomy label for the prompt.
-		$taxonomy_label = $this->get_taxonomy_label( $taxonomy );
-
-		// Build the prompt with XML-like content wrapping.
-		$prompt = $this->build_prompt( $context, $taxonomy, $strategy, $existing_terms, $assigned_terms );
+		// Build the prompt.
+		// We supply the currently assigned terms to avoid redundant suggestions.
+		$prompt = $this->build_prompt( $context, $taxonomy, $assigned_terms );
 
 		/**
-		 * Filters the content string before it is sent to the AI model for taxonomy suggestion generation.
+		 * Filters the prompt string before it is sent to the AI model for taxonomy suggestion generation.
 		 *
-		 * Allows developers to modify, augment, or replace the content that the AI analyzes
-		 * when generating tag and category suggestions.
+		 * Allows developers to modify, augment, or replace the prompt that the AI analyzes
+		 * when generating taxonomy term suggestions.
 		 *
 		 * @since x.x.x
 		 *
-		 * @param string $prompt   The prompt string to be sent to the AI model.
-		 * @param string $taxonomy The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
-		 * @param string $strategy The suggestion strategy ('existing_only' or 'allow_new').
+		 * @param string                       $prompt         The prompt string to be sent to the AI model.
+		 * @param string|array<string, string> $context        The context to generate suggestions from.
+		 * @param string                       $taxonomy       The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
+		 * @param array<string>                $assigned_terms Terms already assigned to the post.
 		 */
-		$prompt = (string) apply_filters( 'wpai_contextual_tagging_content', $prompt, $taxonomy, $strategy );
+		$prompt = (string) apply_filters( 'wpai_contextual_tagging_prompt', $prompt, $context, $taxonomy, $assigned_terms );
 
 		// Generate the suggestions using the AI client with structured output.
 		$result = wp_ai_client_prompt( $prompt )
-			->using_system_instruction(
-				$this->get_system_instruction(
-					'system-instruction.php',
-					array(
-						'taxonomy'        => $taxonomy_label,
-						'max_suggestions' => $max_suggestions,
-					)
-				)
-			)
+			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.5 )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->suggestions_schema() )
@@ -344,8 +336,11 @@ class Contextual_Tagging extends Abstract_Ability {
 			return $result;
 		}
 
-		// Parse the structured JSON response.
-		$suggestions = $this->parse_suggestions( $result, $existing_terms, $max_suggestions );
+		// Fetch existing terms for post-processing (matching, not for the prompt).
+		$existing_terms = $this->get_existing_terms( $taxonomy );
+
+		// Parse, match against existing terms, filter, and limit.
+		$suggestions = $this->parse_suggestions( $result, $existing_terms, $strategy, $assigned_terms, $max_suggestions );
 
 		if ( is_wp_error( $suggestions ) ) {
 			return $suggestions;
@@ -421,27 +416,14 @@ class Contextual_Tagging extends Abstract_Ability {
 	 *
 	 * @param string        $context        The content to analyze.
 	 * @param string        $taxonomy       The taxonomy slug.
-	 * @param string        $strategy       The suggestion strategy.
-	 * @param array<string> $existing_terms The existing terms.
 	 * @param array<string> $assigned_terms Terms already assigned to the post.
 	 * @return string The formatted prompt.
 	 */
-	protected function build_prompt( string $context, string $taxonomy, string $strategy, array $existing_terms, array $assigned_terms = array() ): string {
+	protected function build_prompt( string $context, string $taxonomy, array $assigned_terms = array() ): string {
 		$prompt_parts = array();
 
+		$prompt_parts[] = '<taxonomy>' . $taxonomy . '</taxonomy>';
 		$prompt_parts[] = '<content>' . $context . '</content>';
-
-		if ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
-			$prompt_parts[] = '<strategy>Only suggest terms that already exist on the site. Set "is_new" to false for all suggestions. Do not invent new terms.</strategy>';
-		} else {
-			$prompt_parts[] = '<strategy>You may suggest new terms if no good existing match exists. Set "is_new" to true for new terms and false for existing terms. Prefer existing terms when possible.</strategy>';
-		}
-
-		if ( ! empty( $existing_terms ) ) {
-			$prompt_parts[] = '<existing-terms>' . implode( ', ', $existing_terms ) . '</existing-terms>';
-		} elseif ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
-			$prompt_parts[] = '<existing-terms>No existing terms are available. Return an empty suggestions array.</existing-terms>';
-		}
 
 		if ( ! empty( $assigned_terms ) ) {
 			$prompt_parts[] = '<assigned-terms>' . implode( ', ', $assigned_terms ) . '</assigned-terms>';
@@ -468,10 +450,9 @@ class Contextual_Tagging extends Abstract_Ability {
 						'properties' => array(
 							'term'       => array( 'type' => 'string' ),
 							'confidence' => array( 'type' => 'number' ),
-							'is_new'     => array( 'type' => 'boolean' ),
 							'parent'     => array( 'type' => 'string' ),
 						),
-						'required'   => array( 'term', 'confidence', 'is_new' ),
+						'required'   => array( 'term', 'confidence' ),
 					),
 				),
 			),
@@ -482,14 +463,20 @@ class Contextual_Tagging extends Abstract_Ability {
 	/**
 	 * Parses the AI response into structured suggestions.
 	 *
+	 * Matches LLM suggestions against existing terms (case-insensitive),
+	 * filters out assigned terms, applies the strategy, sorts by confidence,
+	 * and limits to the requested number of suggestions.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param string        $response        The raw AI response.
 	 * @param array<string> $existing_terms  List of existing term names.
-	 * @param int           $max_suggestions The maximum number of suggestions.
+	 * @param string        $strategy        The suggestion strategy ('existing_only' or 'allow_new').
+	 * @param array<string> $assigned_terms  Terms already assigned to the post.
+	 * @param int           $max_suggestions The maximum number of suggestions to return.
 	 * @return array<array{term: string, confidence: float, is_new: bool, parent?: string}>|\WP_Error Parsed suggestions or error.
 	 */
-	protected function parse_suggestions( string $response, array $existing_terms, int $max_suggestions ) {
+	protected function parse_suggestions( string $response, array $existing_terms, string $strategy, array $assigned_terms, int $max_suggestions ) {
 		$decoded = json_decode( $response, true );
 
 		if ( ! is_array( $decoded ) || ! isset( $decoded['suggestions'] ) || ! is_array( $decoded['suggestions'] ) ) {
@@ -505,6 +492,9 @@ class Contextual_Tagging extends Abstract_Ability {
 			$existing_terms_map[ strtolower( $existing_term ) ] = $existing_term;
 		}
 
+		// Build a lowercase set of assigned terms for filtering.
+		$assigned_terms_lower = array_map( 'strtolower', $assigned_terms );
+
 		$suggestions = array();
 
 		foreach ( $decoded['suggestions'] as $item ) {
@@ -516,6 +506,17 @@ class Contextual_Tagging extends Abstract_Ability {
 			$term_lower = strtolower( $term );
 			$is_new     = ! isset( $existing_terms_map[ $term_lower ] );
 			$confidence = isset( $item['confidence'] ) ? (float) $item['confidence'] : 0.5;
+
+			// Skip terms already assigned to the post.
+			// The agent should avoid suggesting these, but just in case we'll check here as well.
+			if ( in_array( $term_lower, $assigned_terms_lower, true ) ) {
+				continue;
+			}
+
+			// For existing_only strategy, skip terms that don't exist.
+			if ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy && $is_new ) {
+				continue;
+			}
 
 			// Use the original capitalized name for existing terms.
 			if ( ! $is_new ) {
