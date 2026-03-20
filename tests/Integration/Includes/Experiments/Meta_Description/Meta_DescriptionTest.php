@@ -69,7 +69,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		$experiment = new Meta_Description();
 
 		$this->assertEquals( 'meta-description', $experiment->get_id() );
-		$this->assertEquals( 'Meta Description', $experiment->get_label() );
+		$this->assertEquals( 'Meta Description Generation', $experiment->get_label() );
 		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}

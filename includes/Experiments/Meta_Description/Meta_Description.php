@@ -102,10 +102,11 @@ class Meta_Description extends Abstract_Feature {
 				$post_type,
 				$meta_key,
 				array(
-					'show_in_rest'  => true,
-					'single'        => true,
-					'type'          => 'string',
-					'auth_callback' => static function () {
+					'show_in_rest'      => true,
+					'single'            => true,
+					'type'              => 'string',
+					'revisions_enabled' => true,
+					'auth_callback'     => static function () {
 						return current_user_can( 'edit_posts' );
 					},
 				)
