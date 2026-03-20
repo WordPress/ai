@@ -1,7 +1,7 @@
 import { PluginFile, PluginPlan } from './types';
 
 export function getSystemPrompt(
-	role: 'planner' | 'coder' | 'reviewer' | 'detector',
+	role: 'planner' | 'coder' | 'reviewer' | 'detector' | 'analyzer',
 	fileType?: string
 ): string {
 	switch ( role ) {
@@ -12,6 +12,8 @@ export function getSystemPrompt(
 			return `You are an expert WordPress ${ type } developer. Output ONLY raw code, no markdown.`;
 		case 'reviewer':
 			return 'You are a senior WordPress security reviewer. Return only valid JSON.';
+		case 'analyzer':
+			return 'You are an expert WordPress plugin analyzer. Return only valid JSON.';
 		case 'detector':
 			return `You are an intent classifier for a WordPress AI Plugin Builder. Your job is to determine what the user wants.
 
@@ -339,4 +341,50 @@ function buildContext( previousFiles: PluginFile[] ): string {
 	}
 
 	return prevSection;
+}
+
+export function getAnalyzerPrompt(
+	files: PluginFile[],
+	existingCommands: { name: string; label: string }[]
+): string {
+	let filesContext = '';
+	for ( const f of files ) {
+		filesContext += `\n### ${ f.path }\n\`\`\`${ f.type }\n${ f.content || '' }\n\`\`\`\n`;
+	}
+
+	const cmdsJson = JSON.stringify( existingCommands, null, 2 );
+
+	return `Analyze the following newly generated WordPress plugin files to determine how a user can interact with it.
+
+## Your Task
+1. Check if the plugin registers any settings pages, admin menus, custom post types, or distinct frontend functionalities.
+2. Review the provided list of \`existingCommands\`.
+3. If the plugin adds an admin interface (like exactly an options page or a new menu item) that isn't already covered by \`existingCommands\`, you must register a new command for it. Provide its \`name\` (e.g., \`myplugin/settings\`), a clear \`label\` (e.g., \`Go to: MyPlugin Settings\`), and the exact \`url\` required to reach it (e.g., \`options-general.php?page=my-plugin\`).
+4. Finally, suggest 1 to 3 command \`name\`s that the user should likely execute next to observe the plugin in action. Use a mix of your newly registered commands or existing core commands. Order them by preference.
+
+## Existing Commands
+\`\`\`json
+${ cmdsJson }
+\`\`\`
+
+## Plugin Files
+${ filesContext }
+
+Return ONLY valid JSON matching this exact schema:
+
+\`\`\`json
+{
+  "new_commands": [
+    {
+      "name": "myplugin/settings",
+      "label": "Go to: MyPlugin Settings",
+      "url": "options-general.php?page=my-plugin"
+    }
+  ],
+  "suggested_commands": [
+    "myplugin/settings",
+    "core/dashboard"
+  ]
+}
+\`\`\``;
 }
