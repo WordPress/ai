@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\Plugin_Builder;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Experiments\Plugin_Builder\Rest\DownloadController;
 use WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
 use WordPress\AI_Client\AI_Client;
 
@@ -24,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Uses the AI infrastructure to create plugins in WordPress.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Plugin_Builder extends Abstract_Feature {
 
@@ -62,19 +63,26 @@ class Plugin_Builder extends Abstract_Feature {
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 
-		// Instantiate REST controllers
+		// Instantiate REST controllers.
 		add_action(
 			'rest_api_init',
 			static function () {
 				( new WriteController() )->register();
+				( new DownloadController() )->register();
 			}
 		);
+
+		// Admin-post handler for downloading an AI-generated plugin as a ZIP from the plugins list.
+		add_action( 'admin_post_ai_download_plugin', array( $this, 'handle_plugin_download' ) );
+
+		// Add "Download" action link to AI-generated plugins in the plugins list.
+		add_filter( 'plugin_action_links', array( $this, 'add_download_action_link' ), 10, 2 );
 	}
 
 	/**
 	 * Registers the admin menu page for the plugin builder.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function register_admin_menu(): void {
 		if ( ! $this->is_enabled() ) {
@@ -94,7 +102,7 @@ class Plugin_Builder extends Abstract_Feature {
 	/**
 	 * Renders the admin page container.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function render_admin_page(): void {
 		echo '<div id="wp-ai-plugin-builder-root"></div>';
@@ -103,7 +111,7 @@ class Plugin_Builder extends Abstract_Feature {
 	/**
 	 * Enqueues the React frontend scripts for the admin page.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $hook The current admin page.
 	 */
@@ -146,5 +154,45 @@ class Plugin_Builder extends Abstract_Feature {
 				'adminUrl' => admin_url( 'plugins.php' ),
 			)
 		);
+	}
+
+	/**
+	 * Delegates the admin-post download request to DownloadController.
+	 *
+	 * @since 0.7.0
+	 */
+	public function handle_plugin_download(): void {
+		( new DownloadController() )->handle_admin_post();
+	}
+
+	/**
+	 * Adds a "Download" action link to AI-generated plugins in the plugins list.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string[] $actions     Existing action links.
+	 * @param string   $plugin_file Plugin file relative to the plugins directory (e.g. "slug/slug.php").
+	 * @return string[] Modified action links.
+	 */
+	public function add_download_action_link( array $actions, string $plugin_file ): array {
+		$slug      = dirname( $plugin_file );
+		$ai_slugs  = get_option( DownloadController::OPTION_KEY, array() );
+
+		if ( ! in_array( $slug, (array) $ai_slugs, true ) ) {
+			return $actions;
+		}
+
+		$url = wp_nonce_url(
+			admin_url( 'admin-post.php?action=ai_download_plugin&slug=' . rawurlencode( $slug ) ),
+			'ai_download_' . $slug
+		);
+
+		$actions['ai_download'] = sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( $url ),
+			esc_html__( 'Download', 'ai' )
+		);
+
+		return $actions;
 	}
 }

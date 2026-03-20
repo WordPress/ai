@@ -38,6 +38,7 @@ export default function App() {
 		sendDescription,
 		installPlugin,
 		forceInstallPlugin,
+		downloadPlugin,
 		reset,
 		logs,
 	} = usePluginBuilder();
@@ -181,6 +182,17 @@ export default function App() {
 													}
 												>
 													Install and Activate Plugin
+												</button>
+												<button
+													className="button button-secondary"
+													onClick={ () =>
+														downloadPlugin()
+													}
+													style={ {
+														marginLeft: '8px',
+													} }
+												>
+													Download Plugin
 												</button>
 											</div>
 										</div>

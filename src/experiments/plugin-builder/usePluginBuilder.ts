@@ -506,6 +506,17 @@ export function usePluginBuilder() {
 		void installPlugin( true );
 	}, [ installPlugin ] );
 
+	const downloadPlugin = useCallback( async () => {
+		if ( ! currentPlan || ! currentFiles.length ) return;
+
+		try {
+			await api.downloadPlugin( currentPlan.plugin_slug, currentFiles );
+			log( 'success', 'Plugin downloaded', currentPlan.plugin_slug );
+		} catch ( e: any ) {
+			handleError( e.message || 'Failed to download plugin.' );
+		}
+	}, [ currentPlan, currentFiles, log, handleError ] );
+
 	const reset = useCallback( () => {
 		setState( 'idle' );
 		setMessages( [] );
@@ -555,6 +566,7 @@ export function usePluginBuilder() {
 		sendDescription,
 		installPlugin,
 		forceInstallPlugin,
+		downloadPlugin,
 		reset,
 	};
 }
