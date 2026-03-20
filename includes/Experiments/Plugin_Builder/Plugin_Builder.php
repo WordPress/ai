@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Uses the AI infrastructure to create plugins in WordPress.
  *
- * @since 0.7.0
+ * @since x.x.x
  */
 class Plugin_Builder extends Abstract_Feature {
 
@@ -82,7 +82,7 @@ class Plugin_Builder extends Abstract_Feature {
 	/**
 	 * Registers the admin menu page for the plugin builder.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function register_admin_menu(): void {
 		if ( ! $this->is_enabled() ) {
@@ -102,7 +102,7 @@ class Plugin_Builder extends Abstract_Feature {
 	/**
 	 * Renders the admin page container.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function render_admin_page(): void {
 		echo '<div id="wp-ai-plugin-builder-root"></div>';
@@ -111,7 +111,7 @@ class Plugin_Builder extends Abstract_Feature {
 	/**
 	 * Enqueues the React frontend scripts for the admin page.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param string $hook The current admin page.
 	 */
@@ -159,7 +159,7 @@ class Plugin_Builder extends Abstract_Feature {
 	/**
 	 * Delegates the admin-post download request to DownloadController.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function handle_plugin_download(): void {
 		( new DownloadController() )->handle_admin_post();
@@ -168,7 +168,7 @@ class Plugin_Builder extends Abstract_Feature {
 	/**
 	 * Adds a "Download" action link to AI-generated plugins in the plugins list.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param string[] $actions     Existing action links.
 	 * @param string   $plugin_file Plugin file relative to the plugins directory (e.g. "slug/slug.php").
