@@ -185,10 +185,7 @@ class Generate_Image extends Abstract_Ability {
 
 		if ( is_wp_error( $result ) ) {
 			// Update the error message if trying to edit an image.
-			if (
-				null !== $reference_image &&
-				false !== strpos( $result->get_error_message(), 'No models found that support image_generation' )
-			) {
+			if ( null !== $reference_image ) {
 				$result = new WP_Error(
 					$result->get_error_code(),
 					esc_html__( 'Image refinement failed. Please ensure you have a connected provider that supports image refinement, not just image generation.', 'ai' )
@@ -254,6 +251,14 @@ class Generate_Image extends Abstract_Ability {
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() )
 			->using_model_preference( ...get_preferred_image_models() );
+
+		// Return a more specific error if there isn't a model that supports image generation.
+		if ( ! $prompt_builder->is_supported_for_image_generation() ) {
+			return new WP_Error(
+				'unsupported_model',
+				esc_html__( 'Image generation failed. Please ensure you have a connected provider that supports image generation.', 'ai' )
+			);
+		}
 
 		if ( null !== $reference_image ) {
 			try {
