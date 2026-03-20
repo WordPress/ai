@@ -10,24 +10,26 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Title_Generation\Title_Generation;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Title_Generation Ability tests.
  *
  * @since 0.1.0
  */
-class Test_Title_Generation_Experiment extends Abstract_Experiment {
+class Test_Title_Generation_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'title-generation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'title-generation',
 			'label'       => 'Title Generation',
 			'description' => 'Generates title suggestions from content',
 		);
@@ -123,16 +125,16 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
-		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
+		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
 		$this->assertArrayHasKey( 'candidates', $schema['properties'], 'Schema should have candidates property' );
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['content']['sanitize_callback'], 'Content should use sanitize_text_field' );
 
-		// Verify post_id property.
-		$this->assertEquals( 'integer', $schema['properties']['post_id']['type'], 'Post ID should be integer type' );
-		$this->assertEquals( 'absint', $schema['properties']['post_id']['sanitize_callback'], 'Post ID should use absint' );
+		// Verify context property (can be string or numeric post ID).
+		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'Context should be string type' );
+		$this->assertEquals( 'sanitize_text_field', $schema['properties']['context']['sanitize_callback'], 'Context should use sanitize_text_field' );
 
 		// Verify candidates property.
 		$this->assertEquals( 'integer', $schema['properties']['candidates']['type'], 'candidates should be integer type' );
@@ -227,7 +229,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		);
 
 		$input = array(
-			'post_id'    => $post_id,
+			'context'    => $post_id,
 			'candidates' => 2,
 		);
 
@@ -251,7 +253,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() returns error when post_id points to non-existent post.
+	 * Test that execute_callback() returns error when context points to non-existent post.
 	 *
 	 * @since 0.1.0
 	 */
@@ -261,7 +263,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$input  = array(
-			'post_id' => 99999, // Non-existent post ID.
+			'context' => 99999, // Non-existent post ID.
 		);
 		$result = $method->invoke( $this->ability, $input );
 
@@ -320,7 +322,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() prioritizes post_id over content.
+	 * Test that execute_callback() prioritizes context (post ID) over content.
 	 *
 	 * @since 0.1.0
 	 */
@@ -339,7 +341,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 
 		$input = array(
 			'content' => 'This content should be ignored.',
-			'post_id' => $post_id,
+			'context' => $post_id,
 		);
 
 		try {
@@ -442,7 +444,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => $post_id ) );
 
 		$this->assertTrue( $result, 'Permission should be granted for user with edit_post capability' );
 	}
@@ -469,7 +471,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => $post_id ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
@@ -488,7 +490,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => 99999 ) );
+		$result = $method->invoke( $this->ability, array( 'context' => 99999 ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'post_not_found', $result->get_error_code(), 'Error code should be post_not_found' );
@@ -525,7 +527,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => $post_id ) );
 
 		$this->assertFalse( $result, 'Permission should be denied for post type without show_in_rest' );
 

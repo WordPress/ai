@@ -24,7 +24,7 @@ export const visitAdminPage = async ( admin: Admin, path: string ) => {
  * @param admin The admin fixture from the test context.
  */
 export const visitSettingsPage = async ( admin: Admin ) => {
-	await admin.visitAdminPage( 'options-general.php?page=ai-experiments' );
+	await admin.visitAdminPage( 'options-general.php?page=ai' );
 };
 
 /**
@@ -48,12 +48,53 @@ export const clearConnectors = async ( admin: Admin, page: Page ) => {
 	// Wait for page to fully load before finding button
 	await page.waitForTimeout( 1000 );
 
-	const editBtn = page.locator(
-		'.connector-item--ai-provider-for-openai button',
-		{
+	const providers = [
+		'ai-provider-for-openai',
+		'ai-provider-for-google',
+		'ai-provider-for-anthropic',
+	];
+
+	for ( const provider of providers ) {
+		const editBtn = page.locator( `.connector-item--${ provider } button`, {
 			hasText: 'Edit',
+		} );
+
+		if ( ( await editBtn.count() ) === 0 ) {
+			continue;
 		}
-	);
+
+		await editBtn.click();
+		await page
+			.locator(
+				`.connector-item--${ provider } .connector-settings button`
+			)
+			.click();
+	}
+
+	// Wait for save.
+	await page.waitForTimeout( 1000 );
+};
+
+/**
+ * Clears out a specific existing Connector.
+ *
+ * @param admin       The admin fixture from the test context.
+ * @param page        The page object.
+ * @param connectorId The ID of the connector to clear.
+ */
+export const clearConnector = async (
+	admin: Admin,
+	page: Page,
+	connectorId: string
+) => {
+	await visitConnectorsPage( admin );
+
+	// Wait for page to fully load before finding button
+	await page.waitForTimeout( 1000 );
+
+	const editBtn = page.locator( `.connector-item--${ connectorId } button`, {
+		hasText: 'Edit',
+	} );
 
 	if ( ( await editBtn.count() ) === 0 ) {
 		return;
@@ -62,7 +103,7 @@ export const clearConnectors = async ( admin: Admin, page: Page ) => {
 	await editBtn.click();
 	await page
 		.locator(
-			'.connector-item--ai-provider-for-openai .connector-settings button'
+			`.connector-item--${ connectorId } .connector-settings button`
 		)
 		.click();
 
@@ -86,7 +127,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 
 	// Click the disable button if it exists. Otherwise we assume the experiments are already disabled.
 	const button = page.locator( 'button.ai-experiments__toggle-button', {
-		hasText: 'Disable Experiments',
+		hasText: 'Disable AI',
 	} );
 	if ( ( await button.count() ) === 0 ) {
 		return;
@@ -118,7 +159,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 
 	// Click the enable button if it exists. Otherwise we assume the experiments are already enabled.
 	const button = page.locator( 'button.ai-experiments__toggle-button', {
-		hasText: 'Enable Experiments',
+		hasText: 'Enable AI',
 	} );
 	if ( ( await button.count() ) === 0 ) {
 		return;
@@ -147,7 +188,7 @@ export const enableExperiment = async (
 	experimentId: string
 ) => {
 	await visitSettingsPage( admin );
-	await page.locator( `#ai_experiment_${ experimentId }_enabled` ).check();
+	await page.locator( `#wpai_feature_${ experimentId }_enabled` ).check();
 	await page.locator( '#submit' ).click();
 
 	// Ensure the save was successful.
@@ -171,7 +212,7 @@ export const disableExperiment = async (
 	experimentId: string
 ) => {
 	await visitSettingsPage( admin );
-	await page.locator( `#ai_experiment_${ experimentId }_enabled` ).uncheck();
+	await page.locator( `#wpai_feature_${ experimentId }_enabled` ).uncheck();
 	await page.locator( '#submit' ).click();
 
 	// Ensure the save was successful.

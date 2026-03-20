@@ -1,6 +1,6 @@
 <?php
 /**
- * Bootstrap file for the AI Experiments plugin.
+ * Bootstrap file for the AI plugin.
  *
  * Handles plugin initialization, version checks, and feature loading.
  *
@@ -12,7 +12,11 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
-use WordPress\AI\Migrations\Credential_Migration;
+use WordPress\AI\Admin\Activation;
+use WordPress\AI\Admin\Upgrades;
+use WordPress\AI\Experiments\Experiments;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -22,26 +26,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-if ( ! defined( 'AI_EXPERIMENTS_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_VERSION', '0.5.0' );
+if ( ! defined( 'WPAI_VERSION' ) ) {
+	define( 'WPAI_VERSION', '0.6.0' );
 }
-if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_FILE' ) ) {
-	define( 'AI_EXPERIMENTS_PLUGIN_FILE', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR . 'ai.php' : '' );
+if ( ! defined( 'WPAI_PLUGIN_FILE' ) ) {
+	define( 'WPAI_PLUGIN_FILE', defined( 'WPAI_DIR' ) ? WPAI_DIR . 'ai.php' : '' );
 }
-if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_DIR' ) ) {
-	define( 'AI_EXPERIMENTS_PLUGIN_DIR', defined( 'AI_EXPERIMENTS_DIR' ) ? AI_EXPERIMENTS_DIR : '' );
+if ( ! defined( 'WPAI_PLUGIN_DIR' ) ) {
+	define( 'WPAI_PLUGIN_DIR', defined( 'WPAI_DIR' ) ? WPAI_DIR : '' );
 }
-if ( ! defined( 'AI_EXPERIMENTS_PLUGIN_URL' ) ) {
-	define( 'AI_EXPERIMENTS_PLUGIN_URL', plugin_dir_url( AI_EXPERIMENTS_PLUGIN_FILE ) );
+if ( ! defined( 'WPAI_PLUGIN_URL' ) ) {
+	define( 'WPAI_PLUGIN_URL', plugin_dir_url( WPAI_PLUGIN_FILE ) );
 }
-if ( ! defined( 'AI_EXPERIMENTS_MIN_PHP_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_MIN_PHP_VERSION', '7.4' );
+if ( ! defined( 'WPAI_MIN_PHP_VERSION' ) ) {
+	define( 'WPAI_MIN_PHP_VERSION', '7.4' );
 }
-if ( ! defined( 'AI_EXPERIMENTS_MIN_WP_VERSION' ) ) {
-	define( 'AI_EXPERIMENTS_MIN_WP_VERSION', '7.0' );
+if ( ! defined( 'WPAI_MIN_WP_VERSION' ) ) {
+	define( 'WPAI_MIN_WP_VERSION', '7.0' );
 }
-if ( ! defined( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY' ) ) {
-	define( 'AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
+if ( ! defined( 'WPAI_DEFAULT_ABILITY_CATEGORY' ) ) {
+	define( 'WPAI_DEFAULT_ABILITY_CATEGORY', 'ai-experiments' );
 }
 
 /**
@@ -70,15 +74,15 @@ function version_notice( string $message ): void {
  * @return bool True if PHP version is sufficient, false otherwise.
  */
 function check_php_version(): bool {
-	if ( version_compare( phpversion(), AI_EXPERIMENTS_MIN_PHP_VERSION, '<' ) ) {
+	if ( version_compare( phpversion(), WPAI_MIN_PHP_VERSION, '<' ) ) {
 		add_action(
 			'admin_notices',
 			static function () {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required PHP version, 2: Current PHP version */
-						__( 'AI Experiments plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
-						AI_EXPERIMENTS_MIN_PHP_VERSION,
+						__( 'AI plugin requires PHP version %1$s or higher. You are running PHP version %2$s.', 'ai' ),
+						WPAI_MIN_PHP_VERSION,
 						PHP_VERSION
 					)
 				);
@@ -99,7 +103,7 @@ function check_php_version(): bool {
  * @return bool True if WordPress version is sufficient, false otherwise.
  */
 function check_wp_version(): bool {
-	if ( ! is_wp_version_compatible( AI_EXPERIMENTS_MIN_WP_VERSION ) ) {
+	if ( ! is_wp_version_compatible( WPAI_MIN_WP_VERSION ) ) {
 		add_action(
 			'admin_notices',
 			static function () {
@@ -107,8 +111,8 @@ function check_wp_version(): bool {
 				version_notice(
 					sprintf(
 						/* translators: 1: Required WordPress version, 2: Current WordPress version */
-						__( 'AI Experiments plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
-						AI_EXPERIMENTS_MIN_WP_VERSION,
+						__( 'AI plugin requires WordPress version %1$s or higher. You are running WordPress version %2$s.', 'ai' ),
+						WPAI_MIN_WP_VERSION,
 						$wp_version
 					)
 				);
@@ -122,7 +126,7 @@ function check_wp_version(): bool {
 /**
  * Adds action links to the plugin list table.
  *
- * This adds "Experiments" and "Connectors" links to
+ * This adds "Settings" and "Connectors" links to
  * the plugin's action links on the Plugins page.
  *
  * @since 0.1.1
@@ -131,10 +135,10 @@ function check_wp_version(): bool {
  * @return array<string> Modified action links.
  */
 function plugin_action_links( array $links ): array {
-	$experiments_link = sprintf(
+	$settings_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
-		admin_url( 'options-general.php?page=ai-experiments' ),
-		esc_html__( 'Experiments', 'ai' )
+		admin_url( 'options-general.php?page=ai' ),
+		esc_html__( 'Settings', 'ai' )
 	);
 
 	$connectors_link = sprintf(
@@ -143,7 +147,7 @@ function plugin_action_links( array $links ): array {
 		esc_html__( 'Connectors', 'ai' )
 	);
 
-	array_unshift( $links, $connectors_link, $experiments_link );
+	array_unshift( $links, $connectors_link, $settings_link );
 
 	return $links;
 }
@@ -167,32 +171,39 @@ function load(): void {
 	}
 
 	// Load required files.
-	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/autoload.php';
-	require_once AI_EXPERIMENTS_PLUGIN_DIR . 'includes/helpers.php';
+	require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
+	require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
 
-	// Run any pending migrations.
-	( new Credential_Migration() )->run();
+	// Handle any pending upgrades.
+	( new Upgrades() )->init();
+
+	// Handle deprecated code.
+	( new Deprecated() )->init();
 
 	$loaded = true;
 
 	// Add plugin action links.
-	add_filter( 'plugin_action_links_' . plugin_basename( AI_EXPERIMENTS_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
+	add_filter( 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE ), __NAMESPACE__ . '\plugin_action_links' );
 
-	// Hook experiment initialization to init.
-	add_action( 'init', __NAMESPACE__ . '\initialize_experiments', 15 );
+	// Hook feature initialization to init.
+	add_action( 'init', __NAMESPACE__ . '\initialize_features', 15 );
 }
 
 /**
- * Initializes plugin experiments.
+ * Initializes plugin features.
  *
  * @since 0.1.0
  */
-function initialize_experiments(): void {
+function initialize_features(): void {
 	try {
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
-		$loader->initialize_experiments();
+		// Experiments are hooked into our Loader, so we need to register them first.
+		$experiments = new Experiments();
+		$experiments->init();
+
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
+		$loader->initialize_features();
 
 		// Initialize settings registration.
 		$settings_registration = new Settings_Registration( $registry );
@@ -217,17 +228,17 @@ function initialize_experiments(): void {
 				 * in the future if we need/want more specific categories.
 				 */
 				wp_register_ability_category(
-					AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY,
+					WPAI_DEFAULT_ABILITY_CATEGORY,
 					array(
-						'label'       => __( 'AI Experiments', 'ai' ),
-						'description' => __( 'Various AI experiments.', 'ai' ),
+						'label'       => __( 'AI', 'ai' ),
+						'description' => __( 'Various AI features and experiments.', 'ai' ),
 					),
 				);
 			}
 		);
 	} catch ( \Throwable $t ) {
 		_doing_it_wrong(
-			__NAMESPACE__ . '\initialize_experiments',
+			__NAMESPACE__ . '\initialize_features',
 			sprintf(
 				/* translators: %s: Error message. */
 				esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
@@ -239,3 +250,20 @@ function initialize_experiments(): void {
 }
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
+
+
+/**
+ * Triggers when the plugin is activated.
+ *
+ * @since 0.6.0
+ */
+register_activation_hook(
+	WPAI_PLUGIN_FILE,
+	static function (): void {
+		// Load required files.
+		require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
+		require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
+
+		Activation::activation_callback();
+	}
+);

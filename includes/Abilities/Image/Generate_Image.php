@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Image;
 use Throwable;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AiClient\Files\DTO\File;
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
@@ -35,10 +36,15 @@ class Generate_Image extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'prompt' => array(
+				'prompt'    => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'Prompt used to generate an image.', 'ai' ),
+				),
+				'reference' => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => esc_html__( 'Optional base64-encoded image to use as a reference image for edits.', 'ai' ),
 				),
 			),
 			'required'   => array( 'prompt' ),
@@ -106,8 +112,10 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
+		$reference_image = ! empty( $input['reference'] ) ? (string) $input['reference'] : null;
+
 		// Generate the image.
-		$result = $this->generate_image( $input['prompt'] );
+		$result = $this->generate_image( $input['prompt'], $reference_image );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -162,18 +170,18 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.2.0
 	 *
 	 * @param string $prompt The prompt to generate an image from.
+	 * @param string|null $reference_image Optional base64-encoded image to use as a reference for edits.
 	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
 	 */
-	protected function generate_image( string $prompt ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
-		$request_options = new RequestOptions();
-		$request_options->setTimeout( 90 );
+	protected function generate_image( string $prompt, ?string $reference_image = null ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
+		$prompt_builder = $this->get_prompt_builder( $prompt, $reference_image );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
 
 		// Generate the image using the AI client.
-		$result = wp_ai_client_prompt( $prompt )
-			->using_request_options( $request_options )
-			->as_output_file_type( FileTypeEnum::inline() )
-			->using_model_preference( ...get_preferred_image_models() )
-			->generate_image_result();
+		$result = $prompt_builder->generate_image_result();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -216,5 +224,38 @@ class Generate_Image extends Abstract_Ability {
 		}
 
 		return $data;
+	}
+
+	/**
+	 * Gets a prompt builder for generating an image.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $prompt The prompt to generate an image from.
+	 * @param string|null $reference_image Optional base64-encoded image to use as a reference for edits.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
+		$request_options = new RequestOptions();
+		$request_options->setTimeout( 90 );
+
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->using_request_options( $request_options )
+			->as_output_file_type( FileTypeEnum::inline() )
+			->using_model_preference( ...get_preferred_image_models() );
+
+		if ( null !== $reference_image ) {
+			try {
+				$file           = new File( $reference_image );
+				$prompt_builder = $prompt_builder->with_file( $file );
+			} catch ( Throwable $t ) {
+				return new WP_Error(
+					'invalid_reference',
+					esc_html__( 'The reference image is not valid base64-encoded data.', 'ai' )
+				);
+			}
+		}
+
+		return $prompt_builder;
 	}
 }

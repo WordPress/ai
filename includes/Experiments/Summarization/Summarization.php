@@ -10,9 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Summarization;
 
 use WordPress\AI\Abilities\Summarization\Summarization as Summarization_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Experiments\Experiment_Category;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -24,16 +24,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.2.0
  */
-class Summarization extends Abstract_Experiment {
+class Summarization extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.2.0
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'summarization';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'summarization',
 			'label'       => __( 'Content Summarization', 'ai' ),
 			'description' => __( 'Summarizes long-form content into digestible overviews', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
@@ -42,8 +46,6 @@ class Summarization extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.2.0
 	 */
 	public function register(): void {
 		$this->register_post_meta();

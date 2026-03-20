@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the Abstract_Experiment class.
+ * Integration tests for the Abstract_Feature class.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abstracts
  */
@@ -8,25 +8,28 @@
 namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
 
 use WP_UnitTestCase;
-use WordPress\AI\Abstracts\Abstract_Experiment;
-use WordPress\AI\Experiment_Category;
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Features\Feature_Category;
 
 /**
  * Test experiment with an explicit category.
  *
  * @since 0.4.0
  */
-class Test_Categorized_Experiment extends Abstract_Experiment {
+class Test_Categorized_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.4.0
-	 *
-	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'test-categorized';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'test-categorized',
 			'label'       => 'Test Categorized',
 			'description' => 'Test experiment with explicit category',
 			'category'    => Experiment_Category::EDITOR,
@@ -48,17 +51,19 @@ class Test_Categorized_Experiment extends Abstract_Experiment {
  *
  * @since 0.4.0
  */
-class Test_Uncategorized_Experiment extends Abstract_Experiment {
+class Test_Uncategorized_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.4.0
-	 *
-	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'test-uncategorized';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'test-uncategorized',
 			'label'       => 'Test Uncategorized',
 			'description' => 'Test experiment without category key',
 		);
@@ -75,21 +80,48 @@ class Test_Uncategorized_Experiment extends Abstract_Experiment {
 }
 
 /**
+ * Mock categorised experiment for get_stability test
+ *
+ * @since 0.4.0
+ */
+class Mock_Custom_Stability_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * @return string
+	 */
+	public static function get_id(): string {
+		return 'test-custom-stability';
+	}
+
+	/**
+	 * @return array
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Custom Stability',
+			'description' => 'Test description',
+			'stability'   => 'stable',
+		);
+	}
+}
+
+/**
  * Test experiment with an empty string category.
  *
  * @since 0.4.0
  */
-class Test_Empty_Category_Experiment extends Abstract_Experiment {
+class Test_Empty_Category_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.4.0
-	 *
-	 * @return array{id: string, label: string, description: string, category: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'test-empty-category';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'test-empty-category',
 			'label'       => 'Test Empty Category',
 			'description' => 'Test experiment with empty string category',
 			'category'    => '',
@@ -107,11 +139,11 @@ class Test_Empty_Category_Experiment extends Abstract_Experiment {
 }
 
 /**
- * Abstract_Experiment test case.
+ * Abstract_Feature test case.
  *
  * @since 0.4.0
  */
-class Abstract_ExperimentTest extends WP_UnitTestCase {
+class Abstract_FeatureTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
@@ -121,10 +153,10 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_test-categorized_enabled', true );
-		update_option( 'ai_experiment_test-uncategorized_enabled', true );
-		update_option( 'ai_experiment_test-empty-category_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_test-categorized_enabled', true );
+		update_option( 'wpai_feature_test-uncategorized_enabled', true );
+		update_option( 'wpai_feature_test-empty-category_enabled', true );
 	}
 
 	/**
@@ -133,10 +165,10 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_test-categorized_enabled' );
-		delete_option( 'ai_experiment_test-uncategorized_enabled' );
-		delete_option( 'ai_experiment_test-empty-category_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_test-categorized_enabled' );
+		delete_option( 'wpai_feature_test-uncategorized_enabled' );
+		delete_option( 'wpai_feature_test-empty-category_enabled' );
 		parent::tearDown();
 	}
 
@@ -151,7 +183,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 		$this->assertSame(
 			Experiment_Category::EDITOR,
 			$experiment->get_category(),
-			'get_category() should return the category declared in load_experiment_metadata()'
+			'get_category() should return the category declared in load_metadata()'
 		);
 	}
 
@@ -164,7 +196,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 		$experiment = new Test_Uncategorized_Experiment();
 
 		$this->assertSame(
-			Experiment_Category::OTHER,
+			Feature_Category::OTHER,
 			$experiment->get_category(),
 			'get_category() should return OTHER when no category key is present in metadata'
 		);
@@ -179,7 +211,7 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 		$experiment = new Test_Empty_Category_Experiment();
 
 		$this->assertSame(
-			Experiment_Category::OTHER,
+			Feature_Category::OTHER,
 			$experiment->get_category(),
 			'get_category() should return OTHER when category is an empty string'
 		);
@@ -209,6 +241,22 @@ class Abstract_ExperimentTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function test_experiment_category_other_constant_value(): void {
-		$this->assertSame( 'other', Experiment_Category::OTHER );
+		$this->assertSame( 'other', Feature_Category::OTHER );
+	}
+
+	/**
+	 * @since 0.6.0
+	 */
+	public function test_get_stability_default() {
+		$experiment = new Test_Uncategorized_Experiment();
+		$this->assertEquals( 'experimental', $experiment->get_stability(), 'Default stability should be experimental' );
+	}
+
+	/**
+	 * @since 0.6.0
+	 */
+	public function test_get_stability_custom() {
+		$experiment = new Mock_Custom_Stability_Experiment();
+		$this->assertEquals( 'stable', $experiment->get_stability(), 'Custom stability should be returned from metadata' );
 	}
 }

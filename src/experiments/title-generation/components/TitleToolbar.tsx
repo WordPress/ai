@@ -120,8 +120,8 @@ function TitleOptionsList( {
 /**
  * Generates titles for the given post ID and content.
  *
- * @param {number} postId  The ID of the post to generate a title for.
- * @param {string} content The content of the post to generate a title for.
+ * @param {number} postId  The ID of the post to generate titles for.
+ * @param {string} content The content of the post to generate titles for.
  * @return {Promise<string[]>} A promise that resolves to the generated titles.
  */
 async function generateTitles(
@@ -129,7 +129,7 @@ async function generateTitles(
 	content: string
 ): Promise< string[] > {
 	const params: TitleGenerationAbilityInput = {
-		post_id: postId,
+		context: postId.toString(),
 		content,
 	};
 
@@ -218,7 +218,7 @@ export default function TitleToolbar(): JSX.Element | null {
 		closeModal();
 	};
 
-	// Ensure the experiment is enabled.
+	// Don't render if disabled.
 	if ( ! aiTitleGenerationData?.enabled ) {
 		return null;
 	}

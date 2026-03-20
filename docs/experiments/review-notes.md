@@ -272,13 +272,14 @@ async function reviewBlock( blockType, blockContent, existingNotes = [] ) {
 ### Customizing the System Instruction
 
 Edit `includes/Abilities/Review_Notes/system-instruction.php` to adjust:
+
 - Which review types apply to which block types
 - How strictly prior suggestions are de-duplicated
 
 ### Filtering Preferred Models
 
 ```php
-add_filter( 'ai_experiments_preferred_models', function( $models ) {
+add_filter( 'wpai_preferred_text_models', function( $models ) {
     return array(
         array( 'openai', 'gpt-4o' ),
         array( 'openai', 'gpt-4o-mini' ),
@@ -289,7 +290,7 @@ add_filter( 'ai_experiments_preferred_models', function( $models ) {
 ### Disabling the Experiment Programmatically
 
 ```php
-add_filter( 'ai_experiments_experiment_review-notes_enabled', '__return_false' );
+add_filter( 'wpai_feature_review-notes_enabled', '__return_false' );
 ```
 
 ### Adding Custom Review Types
@@ -313,7 +314,7 @@ Then add guidance for the `tone` type to `system-instruction.php`.
 ### Manual Testing Steps
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Enable the global toggle
    - Enable **AI Review Notes**
    - Ensure valid AI credentials are configured

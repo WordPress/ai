@@ -1,6 +1,6 @@
 <?php
 /**
- * Settings registration for AI Experiments.
+ * Settings registration for the AI plugin.
  *
  * @package WordPress\AI
  *
@@ -11,10 +11,10 @@ declare(strict_types=1);
 
 namespace WordPress\AI\Settings;
 
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Features\Registry;
 
 /**
- * Handles registration of settings for AI experiments.
+ * Handles registration of settings for the AI plugin.
  *
  * @since 0.1.0
  */
@@ -25,9 +25,9 @@ class Settings_Registration {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @var \WordPress\AI\Experiment_Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
-	private Experiment_Registry $registry;
+	private Registry $registry;
 
 	/**
 	 * The option group name for settings registration.
@@ -45,16 +45,16 @@ class Settings_Registration {
 	 *
 	 * @var string
 	 */
-	public const GLOBAL_OPTION = 'ai_experiments_enabled';
+	public const GLOBAL_OPTION = 'wpai_features_enabled';
 
 	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param \WordPress\AI\Experiment_Registry $registry The experiment registry.
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
-	public function __construct( Experiment_Registry $registry ) {
+	public function __construct( Registry $registry ) {
 		$this->registry = $registry;
 	}
 
@@ -70,7 +70,7 @@ class Settings_Registration {
 	}
 
 	/**
-	 * Registers all settings for experiments.
+	 * Registers all settings.
 	 *
 	 * @since 0.1.0
 	 *
@@ -89,13 +89,13 @@ class Settings_Registration {
 		);
 
 		// Register settings for each experiment.
-		foreach ( $this->registry->get_all_experiments() as $experiment ) {
-			$experiment_id     = $experiment->get_id();
-			$experiment_option = "ai_experiment_{$experiment_id}_enabled";
+		foreach ( $this->registry->get_all_features() as $feature ) {
+			$feature_id = $feature::get_id();
+			$option_key = "wpai_feature_{$feature_id}_enabled";
 
 			register_setting(
 				self::OPTION_GROUP,
-				$experiment_option,
+				$option_key,
 				array(
 					'type'              => 'boolean',
 					'default'           => false,
@@ -104,11 +104,11 @@ class Settings_Registration {
 			);
 
 			// Allow experiments to register their own custom settings.
-			if ( ! method_exists( $experiment, 'register_settings' ) ) {
+			if ( ! method_exists( $feature, 'register_settings' ) ) {
 				continue;
 			}
 
-			$experiment->register_settings();
+			$feature->register_settings();
 		}
 	}
 }
