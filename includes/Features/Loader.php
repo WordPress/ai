@@ -21,13 +21,13 @@ defined( 'ABSPATH' ) || exit;
  * This class is responsible for loading and initializing features from the registry.
  * It decouples the initialization logic from the registry itself.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 final class Loader {
 	/**
 	 * Feature registry instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var \WordPress\AI\Features\Registry
 	 */
 	private \WordPress\AI\Features\Registry $registry;
@@ -35,7 +35,7 @@ final class Loader {
 	/**
 	 * Whether features have been initialized.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var bool
 	 */
 	private bool $initialized = false;
@@ -43,7 +43,7 @@ final class Loader {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param \WordPress\AI\Features\Registry $registry The feature registry instance.
 	 */
@@ -56,7 +56,7 @@ final class Loader {
 	 *
 	 * Registers the default built-in features and fires the 'wpai_register_features' action hook for third-party usage.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function register_features(): void {
 		$features = $this->get_default_features();
@@ -77,7 +77,7 @@ final class Loader {
 		 * } );
 		 * ```
 		 *
-		 * @since x.x.x
+		 * @since 0.6.0
 		 *
 		 * @param \WordPress\AI\Features\Registry $registry The feature registry instance.
 		 */
@@ -87,7 +87,7 @@ final class Loader {
 	/**
 	 * Gets default built-in features.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return array<\WordPress\AI\Contracts\Feature> Array of default feature instances.
 	 */
@@ -101,7 +101,7 @@ final class Loader {
 		 *
 		 * Allows developers to add, remove, or replace default feature classes.
 		 *
-		 * @since x.x.x
+		 * @since 0.6.0
 		 *
 		 * @param array<string, \WordPress\AI\Contracts\Feature|class-string<\WordPress\AI\Contracts\Feature>> $feature_classes Array of feature class names, keyed by ID.
 		 */
@@ -113,7 +113,7 @@ final class Loader {
 				_doing_it_wrong(
 					__METHOD__,
 					esc_html__( 'Attempted to register invalid feature. Default features must be class-strings.', 'ai' ),
-					'x.x.x'
+					'0.6.0'
 				);
 				continue;
 			}
@@ -122,7 +122,7 @@ final class Loader {
 				_doing_it_wrong(
 					__METHOD__,
 					esc_html__( 'Attempted to register invalid feature. All features must implement the Feature interface.', 'ai' ),
-					'x.x.x'
+					'0.6.0'
 				);
 
 				continue;
@@ -141,7 +141,7 @@ final class Loader {
 						esc_html( $item ),
 						esc_html( $e->getMessage() ),
 					),
-					'x.x.x'
+					'0.6.0'
 				);
 
 				continue;
@@ -157,7 +157,7 @@ final class Loader {
 	 * Loops through all registered features and calls their register() method
 	 * if they are enabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function initialize_features(): void {
 		if ( $this->initialized ) {
@@ -167,7 +167,7 @@ final class Loader {
 		/**
 		 * Filters whether to enable AI features.
 		 *
-		 * @since x.x.x
+		 * @since 0.6.0
 		 *
 		 * @param bool $enabled Whether to enable AI features.
 		 */
@@ -191,7 +191,7 @@ final class Loader {
 		/**
 		 * Fires after all features have been initialized.
 		 *
-		 * @since x.x.x
+		 * @since 0.6.0
 		 */
 		do_action( 'wpai_features_initialized' );
 
@@ -201,7 +201,7 @@ final class Loader {
 	/**
 	 * Checks if features have been initialized.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return bool True if initialized, false otherwise.
 	 */
