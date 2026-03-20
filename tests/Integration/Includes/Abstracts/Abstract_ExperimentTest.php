@@ -245,7 +245,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_get_stability_default() {
 		$experiment = new Test_Uncategorized_Experiment();
@@ -253,7 +253,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_get_stability_custom() {
 		$experiment = new Mock_Custom_Stability_Experiment();

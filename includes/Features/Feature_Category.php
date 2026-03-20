@@ -6,7 +6,7 @@
  *
  * @package WordPress\AI\Features
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 
 declare( strict_types=1 );
@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
  * Provides type-safe-ish constants for features categorization.
  * These values correspond to where features are displayed in the settings UI.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 class Feature_Category {
 	/**
@@ -32,7 +32,7 @@ class Feature_Category {
 	 * known category constant. Features in this category appear in the
 	 * Other Features section.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @var string
 	 */

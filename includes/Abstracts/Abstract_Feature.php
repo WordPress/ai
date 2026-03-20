@@ -19,13 +19,13 @@ use WordPress\AI\Settings\Settings_Registration;
  *
  * Provides common functionality for all features including enable/disable state.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 abstract class Abstract_Feature implements Feature {
 	/**
 	 * Feature identifier.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var non-empty-string
 	 */
 	protected string $id;
@@ -33,7 +33,7 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * Feature label.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var non-empty-string
 	 */
 	protected string $label;
@@ -41,7 +41,7 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * Feature description.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var non-empty-string
 	 */
 	protected string $description;
@@ -49,7 +49,7 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * Feature category.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var non-empty-string
 	 */
 	protected string $category;
@@ -57,7 +57,7 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * Cache for this feature's enabled status.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var bool|null
 	 */
 	private ?bool $enabled_cache = null;
@@ -73,7 +73,7 @@ abstract class Abstract_Feature implements Feature {
 	 *
 	 * Loads feature metadata and initializes properties.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @throws \InvalidArgumentException If feature metadata is invalid.
 	 */
@@ -114,7 +114,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Must return an array with keys: label, description.
 	 * Optionally includes: category, stability.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return array{
 	 *  label: string,
@@ -172,7 +172,7 @@ abstract class Abstract_Feature implements Feature {
 		$is_enabled = (bool) apply_filters_deprecated(
 			"ai_experiments_experiment_{$this->id}_enabled",
 			array( $feature_enabled ),
-			'x.x.x',
+			'0.6.0',
 			"wpai_feature_{$this->id}_enabled",
 			esc_html__( 'This will be removed in v1.0', 'ai' )
 		);
@@ -182,7 +182,7 @@ abstract class Abstract_Feature implements Feature {
 		 *
 		 * The dynamic portion of the hook name, `$this->id`, refers to the feature ID.
 		 *
-		 * @since x.x.x
+		 * @since 0.6.0
 		 *
 		 * @param bool $feature_enabled Whether the feature is enabled.
 		 */
@@ -207,7 +207,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Override this method in child classes to register custom settings options
 	 * using WordPress Settings API (register_setting).
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return void
 	 */
@@ -223,7 +223,7 @@ abstract class Abstract_Feature implements Feature {
 	 * that will appear within the feature's card on the settings page.
 	 * This is called after the feature's main toggle control.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return void
 	 */
@@ -239,7 +239,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Use this when registering and rendering custom settings fields to ensure
 	 * consistent naming across the plugin.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param string $option_name The base option name (e.g., 'api_key', 'temperature').
 	 * @return string The fully namespaced option name.
