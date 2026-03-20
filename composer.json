@@ -5,7 +5,8 @@
   "license": "GPL-2.0-or-later",
   "require": {
     "ext-json": "*",
-    "php": ">=7.4"
+    "php": ">=7.4",
+    "wordpress/wp-ai-client": "^0.4.0"
   },
   "require-dev": {
     "automattic/vipwpcs": "^3.0",
@@ -41,7 +42,8 @@
     "allow-plugins": {
       "composer/installers": true,
       "dealerdirect/phpcodesniffer-composer-installer": true,
-      "phpstan/extension-installer": true
+      "phpstan/extension-installer": true,
+      "php-http/discovery": true
     },
     "platform": {
       "php": "7.4"
