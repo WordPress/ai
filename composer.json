@@ -5,6 +5,7 @@
   "license": "GPL-2.0-or-later",
   "require": {
     "ext-json": "*",
+    "ext-zip": "*",
     "php": ">=7.4"
   },
   "require-dev": {
