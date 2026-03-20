@@ -69,21 +69,21 @@ class DownloadController {
 
 		if ( empty( $files ) || ! is_array( $files ) ) {
 			status_header( 400 );
-			echo wp_json_encode( array( 'error' => 'No files provided.' ) );
+			echo wp_json_encode( array( 'error' => __( 'No files provided.', 'ai' ) ) );
 			exit;
 		}
 
 		foreach ( $files as $file ) {
 			if ( ! is_array( $file ) || empty( $file['path'] ) || ! isset( $file['content'] ) ) {
 				status_header( 400 );
-				echo wp_json_encode( array( 'error' => 'Each file must have "path" and "content".' ) );
+				echo wp_json_encode( array( 'error' => __( 'Each file must have "path" and "content".', 'ai' ) ) );
 				exit;
 			}
 
 			$path = $file['path'];
 			if ( str_contains( $path, '..' ) || str_starts_with( $path, '/' ) || str_starts_with( $path, '\\' ) ) {
 				status_header( 400 );
-				echo wp_json_encode( array( 'error' => 'Invalid file path.' ) );
+				echo wp_json_encode( array( 'error' => __( 'Invalid file path.', 'ai' ) ) );
 				exit;
 			}
 		}
@@ -92,7 +92,7 @@ class DownloadController {
 
 		if ( ! $zip_content ) {
 			status_header( 500 );
-			echo wp_json_encode( array( 'error' => 'Failed to create ZIP archive.' ) );
+			echo wp_json_encode( array( 'error' => __( 'Failed to create ZIP archive.', 'ai' ) ) );
 			exit;
 		}
 
