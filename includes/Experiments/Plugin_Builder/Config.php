@@ -49,7 +49,7 @@ class Config {
 	 * @return string
 	 */
 	public static function generate_capability(): string {
-		return 'install_plugin';
+		return 'install_plugins';
 	}
 
 	/**
