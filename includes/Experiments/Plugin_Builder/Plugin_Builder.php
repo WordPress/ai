@@ -11,7 +11,7 @@ namespace WordPress\AI\Experiments\Plugin_Builder;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
-use WordPress\AI\Experiments\Plugin_Builder\Rest\InstallController;
+use  WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
 use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
@@ -66,7 +66,7 @@ class Plugin_Builder extends Abstract_Feature {
 		add_action(
 			'rest_api_init',
 			static function () {
-				( new InstallController() )->register();
+				( new WriteController() )->register();
 			}
 		);
 	}

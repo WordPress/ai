@@ -234,16 +234,9 @@ export function usePluginBuilder() {
 					.generateText();
 
 				// Optional basic cleanup: AI sometimes wraps code in backticks
-				let cleanContent = codeText;
-				if (cleanContent.startsWith('\`\`\`')) {
-					const firstNewlineIndex = cleanContent.indexOf('\\n');
-					if (firstNewlineIndex !== -1) {
-						cleanContent = cleanContent.substring(firstNewlineIndex + 1);
-					}
-					if (cleanContent.endsWith('\`\`\`')) {
-						cleanContent = cleanContent.substring(0, cleanContent.length - 3);
-					}
-				}
+				let cleanContent = codeText.trim();
+				cleanContent = cleanContent.replace(/^```[a-z]*\s*\n/i, '');
+				cleanContent = cleanContent.replace(/\n```\s*$/i, '');
 
 				newFiles.push({
 					...fileInfo,
@@ -289,14 +282,14 @@ export function usePluginBuilder() {
 
 		setState('installing');
 		setSlugConflictWarnings([]);
-		addMessage(createMessage('assistant', 'loading', 'Installing plugin...'));
-		log('info', `Installing: ${currentPlan.plugin_slug}${force ? ' (forced)' : ''}`);
+		addMessage(createMessage('assistant', 'loading', 'Saving and activating plugin...'));
+		log('info', `Saving: ${currentPlan.plugin_slug}${force ? ' (forced)' : ''}`);
 
 		try {
-			const result = await api.install(currentPlan.plugin_slug, currentFiles, force);
-			removeLastLoading();
-
+			const result = await api.writeFiles(currentPlan.plugin_slug, currentFiles, force);
+			
 			if (needsSlugConfirmation(result)) {
+				removeLastLoading();
 				setSlugConflictWarnings(result.warnings);
 				setState('ready_to_install');
 				addMessage(
@@ -306,18 +299,46 @@ export function usePluginBuilder() {
 				return;
 			}
 
-			if ('installed' in result && result.installed) {
-				setState('installed');
-				addMessage(createMessage('assistant', 'install', '', result));
-				log('success', result.activated ? 'Plugin installed & activated' : 'Plugin installed (activation failed)', result.error || result.plugin);
+			if ('written' in result && result.written) {
+				updateStep('Activating plugin...');
+				const pluginFile = result.plugin;
+				
+				try {
+					await api.activatePlugin(pluginFile);
+					removeLastLoading();
+					setState('installed');
+					// Reusing 'install' message type for the success output
+					addMessage(createMessage('assistant', 'install', '', { installed: true, activated: true, plugin: pluginFile }));
+					log('success', 'Plugin installed & activated', pluginFile);
+				} catch (activationError: any) {
+					removeLastLoading();
+					setState('installed');
+					let msg = activationError.message || 'Failed to activate the plugin.';
+					
+					let additionalData = activationError.data?.additional_data || activationError.additional_data || '';
+					if (additionalData) {
+						if (Array.isArray(additionalData)) {
+							additionalData = additionalData.join('\n');
+						} else if (typeof additionalData === 'object') {
+							additionalData = JSON.stringify(additionalData, null, 2);
+						}
+						// The UI will likely render this error string.
+						msg += `\n\n**Additional Data:**\n\`\`\`\n${additionalData}\n\`\`\``;
+					}
+
+					addMessage(createMessage('assistant', 'install', '', { installed: true, activated: false, plugin: pluginFile, error: msg }));
+					log('warn', 'Plugin installed (activation failed)', msg);
+				}
 			} else if ('error' in result) {
+				removeLastLoading();
 				handleError(result.error);
 			}
 		} catch (e: any) {
-			const msg = e.message || 'Failed to install plugin';
+			removeLastLoading();
+			const msg = e.message || 'Failed to save plugin files';
 			handleError(msg);
 		}
-	}, [addMessage, currentFiles, currentPlan, handleError, log, removeLastLoading]);
+	}, [addMessage, currentFiles, currentPlan, handleError, log, removeLastLoading, updateStep]);
 
 	const forceInstallPlugin = useCallback(() => {
 		void installPlugin(true);
