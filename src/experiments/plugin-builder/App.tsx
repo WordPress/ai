@@ -488,7 +488,8 @@ export default function App() {
 															downloadPlugin()
 														}
 														disabled={
-															isProcessing
+															isProcessing ||
+															! isInstalled
 														}
 														style={ {
 															marginLeft: messages
