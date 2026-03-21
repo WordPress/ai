@@ -866,10 +866,40 @@ Do not stop until you have called finish.`;
 							{ role: 'user', parts: responses }
 						);
 					} else {
-						isFinished = true;
+						// Model stopped without issuing tool calls (and thus without the required 'finish' tool).
+						// Treat this as an error instead of silently marking the run as finished.
+						removeLastLoading();
+						updateStep(
+							__(
+								'The code generation process stopped unexpectedly before completion. Please try again.',
+								'ai'
+							)
+						);
+						setState( 'failed' );
+						return;
 					}
 				}
 
+				// If we exit the generator loop without having successfully called the 'finish' tool,
+				// do not proceed to scan/review; surface an error instead.
+				if ( ! isFinished ) {
+					// If the user aborted, stop quietly without continuing the workflow.
+					if ( abortRef.current ) {
+						removeLastLoading();
+						setState( 'idle' );
+						return;
+					}
+
+					removeLastLoading();
+					updateStep(
+						__(
+							'The generator reached its internal limit before completing the plugin. Please try again.',
+							'ai'
+						)
+					);
+					setState( 'failed' );
+					return;
+				}
 				setCurrentFiles( newFiles );
 
 				// Phase 4: Basic Client-Side Security Scan
