@@ -195,7 +195,13 @@ class WriteController {
 					$flatten( $warnings, 'WARNING' );
 				}
 			} catch ( \Exception $e ) {
-				$issues[] = '[ERROR] Checker exception: ' . $e->getMessage();
+				$issues[] = array(
+					'type'    => 'ERROR',
+					'file'    => null,
+					'line'    => null,
+					'column'  => null,
+					'message' => 'Checker exception: ' . $e->getMessage(),
+				);
 			}
 		}
 
