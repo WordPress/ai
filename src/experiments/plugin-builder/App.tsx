@@ -70,6 +70,7 @@ export default function App() {
 		installPlugin,
 		forceInstallPlugin,
 		downloadPlugin,
+		installedPluginFile,
 		reset,
 		logs,
 		loadChat,
@@ -521,7 +522,7 @@ export default function App() {
 																	'installed'
 															}
 															onClick={ () =>
-																installPlugin()
+																forceInstallPlugin()
 															}
 														>
 															{ messages

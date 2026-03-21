@@ -1475,6 +1475,7 @@ Do not stop until you have called finish.`;
 		isProcessing,
 		hasSlugConflict,
 		isInstalled,
+		installedPluginFile,
 		slugConflictWarnings,
 		activeChatId,
 		sendDescription,
