@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Plugin_Builder;
 
+use WordPress\AI\Abilities\Plugin_Builder\Plugin_Prompt_Enhancement;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Plugin_Builder\Rest\DownloadController;
@@ -65,6 +66,7 @@ class Plugin_Builder extends Abstract_Feature {
 
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 
 		// Instantiate REST controllers.
 		add_action(
@@ -159,6 +161,17 @@ class Plugin_Builder extends Abstract_Feature {
 					'publish_posts'      => 'install_plugins',
 				),
 			)
+		);
+	}
+
+	public function register_abilities(): void {
+		wp_register_ability(
+			'ai/plugin-prompt-enhancement',
+			array(
+				'label'         => __( 'Plugin Prompt Enhancement', 'ai' ),
+				'description'   => __( 'Enhances a user\'s plugin description for better AI generation.', 'ai' ),
+				'ability_class' => Plugin_Prompt_Enhancement::class,
+			),
 		);
 	}
 
