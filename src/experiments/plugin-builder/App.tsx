@@ -78,7 +78,7 @@ export default function App() {
 		<div className="apb-chat">
 			<div className="apb-chat__header">
 				<div className="apb-chat__header-left">
-					<h2>🤖 WordPress AI Plugin Builder</h2>
+					<h2>🤖 AI-Powered Plugin Builder</h2>
 				</div>
 				<div className="apb-chat__header-actions">
 					{messages.length > 0 ? (
