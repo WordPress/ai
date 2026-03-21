@@ -145,7 +145,7 @@ class Plugin_Builder extends Abstract_Feature {
 				'show_ui'             => false,
 				'show_in_rest'        => true,
 				'rest_base'           => 'abp-chats',
-				'supports'            => array( 'title', 'editor', 'custom-fields' ),
+				'supports'            => array( 'title', 'custom-fields' ),
 				'capability_type'     => 'abp_chat',
 				'map_meta_cap'        => true,
 				'capabilities'        => array(
