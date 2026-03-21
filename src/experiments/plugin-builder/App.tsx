@@ -143,34 +143,30 @@ export default function App() {
 									) }
 									{ msg.type === 'plan' && (
 										<div className="apb-bubble apb-bubble--plan">
-										<div className="apb-plan-header">
-											<strong>📋 Plugin Plan: {msg.data.plugin_name}</strong>
-											<span className="apb-plan-badge">{msg.data.complexity}</span>
-										</div>
-										<p>{msg.data.description}</p>
-										<div className="apb-files-section">
-											<strong>📁 Files ({msg.data.files.length}):</strong>
-											<strong>
-												Plugin Plan:{ ' ' }
-												{ msg.data.plugin_name }
-											</strong>
-											<p>{ msg.data.description }</p>
-											<ul>
-												{ msg.data.files.map(
-													(
-														file: any,
-														i: number
-													) => (
-														<li key={ i }>
-															<code>
-																{ file.path }
-															</code>{ ' ' }
-															-{ ' ' }
-															{ file.description }
-														</li>
-													)
-												) }
-											</ul>
+											<div className="apb-plan-header">
+												<strong>📋 Plugin Plan: {msg.data.plugin_name}</strong>
+												<span className="apb-plan-badge">{msg.data.complexity}</span>
+											</div>
+											<p>{msg.data.description}</p>
+											<div className="apb-files-section">
+												<strong>📁 Files ({msg.data.files.length}):</strong>
+												<ul>
+													{ msg.data.files.map(
+														(
+															file: any,
+															i: number
+														) => (
+															<li key={ i }>
+																<code>
+																	{ file.path }
+																</code>{ ' ' }
+																-{ ' ' }
+																{ file.description }
+															</li>
+														)
+													) }
+												</ul>
+											</div>
 										</div>
 									) }
 									{ msg.type === 'files' && (
