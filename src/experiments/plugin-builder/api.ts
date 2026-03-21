@@ -127,8 +127,29 @@ export async function saveChatHistory(
 }
 
 export async function listPlugins(): Promise<any> {
-	return apiFetch({
-		path: `/wp/v2/plugins`,
-		method: 'GET',
-	});
+	const perPage = 100;
+	let page = 1;
+	let allPlugins: any[] = [];
+
+	// Fetch all pages of plugins until a page returns fewer than perPage items.
+	while (true) {
+		const pageItems = await apiFetch<any[]>({
+			path: `/wp/v2/plugins?per_page=${perPage}&page=${page}`,
+			method: 'GET',
+		});
+
+		if (!Array.isArray(pageItems) || pageItems.length === 0) {
+			break;
+		}
+
+		allPlugins = allPlugins.concat(pageItems);
+
+		if (pageItems.length < perPage) {
+			break;
+		}
+
+		page++;
+	}
+
+	return allPlugins;
 }
