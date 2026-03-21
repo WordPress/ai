@@ -15,7 +15,7 @@ export function getSystemPrompt(
 		case 'analyzer':
 			return 'You are an expert WordPress plugin analyzer. Return only valid JSON.';
 		case 'detector':
-			return `You are an intent classifier for a WordPress AI Plugin Builder. Your job is to determine what the user wants.
+			return `You are an intent classifier for a AI-Powered Plugin Builder. Your job is to determine what the user wants.
 
 Classify the user's intent into one of these categories:
 - plugin_request: User wants to create a new WordPress plugin (most common)
@@ -108,7 +108,7 @@ If the user is asking for something completely different (new plugin), ignore th
 - All function and class names MUST be prefixed with the plugin slug (e.g., \`recipe_manager_register_cpt\`).
 - For simple plugins: 1-2 files. For complex plugins: up to ${ maxFiles } files.
 - Use WordPress coding standards and best practices.
-- IMPORTANT: Generate unique, descriptive plugin slugs (e.g., \`acme-maintenance-mode-2024\` instead of just \`maintenance-mode\`) to avoid conflicts with existing WordPress.org plugins.
+- IMPORTANT: Plugin slugs MUST be descriptive and start with the \`apb-\` prefix (AI Plugin Builder). For example: \`apb-maintenance-mode\`, \`apb-contact-form\`, \`apb-gallery\`. This helps to ensure uniqueness and avoids conflicts with existing WordPress.org plugins.
 
 ## Architecture Guidelines (from WordPress Agent Skills)
 - Main plugin file contains the plugin header and bootstraps the plugin.
@@ -241,9 +241,10 @@ This is the main plugin file. It MUST start with the WordPress plugin header:
  * Plugin Name: ${ plan.plugin_name }
  * Description: ${ plan.description }
  * Version: 1.0.0
- * Author: WordPress AI Plugin Builder
+ * Author: AI-Powered Plugin Builder
  * License: GPL-2.0-or-later
  * Text Domain: ${ plan.plugin_slug }
+ * AI Plugin Built: true
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

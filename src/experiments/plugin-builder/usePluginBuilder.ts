@@ -1,6 +1,7 @@
 /* eslint-disable */
 
 import { useState, useCallback, useMemo, useRef } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
 import { select, dispatch } from '@wordpress/data';
 import { store as commandsStore } from '@wordpress/commands';
 import {
@@ -167,7 +168,9 @@ export function usePluginBuilder() {
 		async ( description: string ) => {
 			if ( ! description.trim() ) return;
 			if ( ! window.wp?.aiClient?.prompt ) {
-				handleError( 'WP AI Client JavaScript API is not available.' );
+				handleError(
+					__( 'WP AI Client JavaScript API is not available.', 'ai' )
+				);
 				return;
 			}
 
@@ -179,19 +182,19 @@ export function usePluginBuilder() {
 			startTimeRef.current = Date.now();
 			setTokenUsage( null );
 
-			log( 'info', 'Request sent', description.substring( 0, 100 ) );
+			log( 'info', __( 'Request sent', 'ai' ), description.substring( 0, 100 ) );
 			addMessage( createMessage( 'user', 'text', description ) );
 			addMessage(
 				createMessage(
 					'assistant',
 					'loading',
-					'Analyzing your request...'
+					__( 'Analyzing your request...', 'ai' )
 				)
 			);
 
 			try {
 				// Phase 1: Intent Detection
-				updateStep( 'Detecting intent...' );
+				updateStep( __( 'Detecting intent...', 'ai' ) );
 				const intentText = await window.wp.aiClient.prompt(
 					getIntentPrompt( description, previousPlan )
 				)
@@ -218,7 +221,7 @@ export function usePluginBuilder() {
 							'assistant',
 							'text',
 							intentData.response ||
-								'I can help you build plugins.'
+								__( 'I can help you build plugins.', 'ai' )
 						)
 					);
 					setState( previousPlan ? 'ready_to_install' : 'idle' );
@@ -235,7 +238,7 @@ export function usePluginBuilder() {
 
 				// Phase 2: Planner
 				setState( 'planning' );
-				updateStep( 'Generating plugin architecture plan...' );
+				updateStep( __( 'Generating plugin architecture plan...', 'ai' ) );
 				const maxFiles = 10;
 				const plannerText = await window.wp.aiClient.prompt(
 					getPlannerPrompt(
@@ -255,15 +258,25 @@ export function usePluginBuilder() {
 				try {
 					plan = parseJSON( plannerText );
 				} catch ( e ) {
-					handleError( 'Failed to parse the plugin plan JSON.' );
+					handleError(
+						__( 'Failed to parse the plugin plan JSON.', 'ai' )
+					);
 					return;
 				}
 
 				setCurrentPlan( plan );
 				log(
 					'success',
-					`Plan ready: ${ plan.plugin_name }`,
-					`${ plan.files.length } file(s)`
+					sprintf(
+						/* translators: %s: plugin name */
+						__( 'Plan ready: %s', 'ai' ),
+						plan.plugin_name
+					),
+					sprintf(
+						/* translators: %d: number of files */
+						__( '%d file(s)', 'ai' ),
+						plan.files.length
+					)
 				);
 
 				// Show plan inline
@@ -272,7 +285,11 @@ export function usePluginBuilder() {
 					createMessage(
 						'assistant',
 						'plan',
-						`Here's the plan for **${ plan.plugin_name }**:`,
+						sprintf(
+							/* translators: %s: plugin name */
+							__( "Here's the plan for **%s**:", 'ai' ),
+							plan.plugin_name
+						),
 						plan
 					)
 				);
@@ -280,7 +297,7 @@ export function usePluginBuilder() {
 					createMessage(
 						'assistant',
 						'loading',
-						'Preparing generated files...'
+						__( 'Preparing generated files...', 'ai' )
 					)
 				);
 
@@ -323,14 +340,14 @@ export function usePluginBuilder() {
 
 				// Phase 4: Basic Client-Side Security Scan
 				setState( 'reviewing' );
-				updateStep( 'Scanning files for security issues...' );
+				updateStep( __( 'Scanning files for security issues...', 'ai' ) );
 				const scanResult = scanFiles( newFiles );
 
 				const review: ReviewResult = {
 					passed: scanResult.passed,
 					review_summary: scanResult.passed
-						? 'No obvious dangerous patterns found.'
-						: 'Dangerous patterns detected in generated code.',
+						? __( 'No obvious dangerous patterns found.', 'ai' )
+						: __( 'Dangerous patterns detected in generated code.', 'ai' ),
 					suggestions: scanResult.issues.map( ( iss ) => ( {
 						action: 'Needs Review',
 						file_path: iss.file_path,
@@ -350,16 +367,24 @@ export function usePluginBuilder() {
 					createMessage(
 						'assistant',
 						'files',
-						"Here's the generated code:",
+						__( "Here's the generated code:", 'ai' ),
 						newFiles
 					)
 				);
 
 				setState( 'ready_to_install' );
-				log( 'success', `Done in ${ elapsed() }`, 'Ready to install' );
+				log(
+					'success',
+					sprintf(
+						/* translators: %s: elapsed time */
+						__( 'Done in %s', 'ai' ),
+						elapsed()
+					),
+					__( 'Ready to install', 'ai' )
+				);
 			} catch ( e: any ) {
 				handleError(
-					e.message || 'Failed during AI generation pipeline.'
+					e.message || __( 'Failed during AI generation pipeline.', 'ai' )
 				);
 			}
 		},
@@ -385,14 +410,16 @@ export function usePluginBuilder() {
 				createMessage(
 					'assistant',
 					'loading',
-					'Saving and activating plugin...'
+					__( 'Saving and activating plugin...', 'ai' )
 				)
 			);
 			log(
 				'info',
-				`Saving: ${ currentPlan.plugin_slug }${
-					force ? ' (forced)' : ''
-				}`
+				sprintf(
+					/* translators: %s: plugin slug */
+					__( 'Saving: %s', 'ai' ),
+					currentPlan.plugin_slug
+				) + ( force ? sprintf( ' (%s)', __( 'forced', 'ai' ) ) : '' )
 			);
 
 			try {
@@ -410,21 +437,23 @@ export function usePluginBuilder() {
 						createMessage(
 							'assistant',
 							'text',
-							`**Warning:** ${ result.warnings.join(
-								' '
-							) }\n\nClick "Install Anyway" to proceed.`
+							sprintf(
+								/* translators: %s: warning messages */
+								__( '**Warning:** %s\n\nClick "Install Anyway" to proceed.', 'ai' ),
+								result.warnings.join( ' ' )
+							)
 						)
 					);
 					log(
 						'warn',
-						'Slug conflict detected',
+						__( 'Slug conflict detected', 'ai' ),
 						result.warnings.join( '; ' )
 					);
 					return;
 				}
 
 				if ( 'written' in result && result.written ) {
-					updateStep( 'Activating plugin...' );
+					updateStep( __( 'Activating plugin...', 'ai' ) );
 					const pluginFile = result.plugin;
 
 					try {
@@ -441,15 +470,15 @@ export function usePluginBuilder() {
 						);
 						log(
 							'success',
-							'Plugin installed & activated',
+							__( 'Plugin installed & activated', 'ai' ),
 							pluginFile
 						);
 
 						// New Analysis Phase
 						addMessage(
-							createMessage('assistant', 'loading', 'Analyzing next steps...')
+							createMessage( 'assistant', 'loading', __( 'Analyzing next steps...', 'ai' ) )
 						);
-						updateStep('Checking plugin features...');
+						updateStep( __( 'Checking plugin features...', 'ai' ) );
 
 						try {
 							const existingCommands = select(commandsStore)
@@ -481,30 +510,34 @@ export function usePluginBuilder() {
 
 							removeLastLoading();
 							addMessage(
-								createMessage('assistant', 'analysis', '', {
+								createMessage( 'assistant', 'analysis', '', {
 									suggested_commands: analysis.suggested_commands || [],
 									all_commands: updatedCommands,
-								})
+								} )
 							);
-							log('success', 'Analysis complete. Suggested next steps generated.');
-						} catch (analysisErr: any) {
+							log( 'success', __( 'Analysis complete. Suggested next steps generated.', 'ai' ) );
+						} catch ( analysisErr: any ) {
 							removeLastLoading();
 							console.error( 'Analysis failed:', analysisErr );
 							addMessage(
 								createMessage(
 									'assistant',
 									'text',
-									`**Analysis Error:** ${ analysisErr.message }\n\nCheck browser console for details.`
+									sprintf(
+										/* translators: %s: error message */
+										__( '**Analysis Error:** %s\n\nCheck browser console for details.', 'ai' ),
+										analysisErr.message
+									)
 								)
 							);
-							log('warn', 'Failed to analyze next steps', analysisErr.message);
+							log( 'warn', __( 'Failed to analyze next steps', 'ai' ), analysisErr.message );
 						}
 					} catch ( activationError: any ) {
 						removeLastLoading();
 						setState( 'installed' );
 						let msg =
 							activationError.message ||
-							'Failed to activate the plugin.';
+							__( 'Failed to activate the plugin.', 'ai' );
 
 						let additionalData =
 							activationError.data?.additional_data ||
@@ -521,7 +554,7 @@ export function usePluginBuilder() {
 								);
 							}
 							// The UI will likely render this error string.
-							msg += `\n\n**Additional Data:**\n\`\`\`\n${ additionalData }\n\`\`\``;
+							msg += `\n\n**${ __( 'Additional Data:', 'ai' ) }**\n\`\`\`\n${ additionalData }\n\`\`\``;
 						}
 
 						addMessage(
@@ -534,7 +567,7 @@ export function usePluginBuilder() {
 						);
 						log(
 							'warn',
-							'Plugin installed (activation failed)',
+							__( 'Plugin installed (activation failed)', 'ai' ),
 							msg
 						);
 					}
@@ -544,7 +577,7 @@ export function usePluginBuilder() {
 				}
 			} catch ( e: any ) {
 				removeLastLoading();
-				const msg = e.message || 'Failed to save plugin files';
+				const msg = e.message || __( 'Failed to save plugin files', 'ai' );
 				handleError( msg );
 			}
 		},
@@ -562,6 +595,17 @@ export function usePluginBuilder() {
 	const forceInstallPlugin = useCallback( () => {
 		void installPlugin( true );
 	}, [ installPlugin ] );
+
+	const downloadPlugin = useCallback( async () => {
+		if ( ! currentPlan || state !== 'installed' ) return;
+
+		try {
+			await api.downloadPlugin( currentPlan.plugin_slug );
+			log( 'success', __( 'Plugin downloaded', 'ai' ), currentPlan.plugin_slug );
+		} catch ( e: any ) {
+			handleError( e.message || __( 'Failed to download plugin.', 'ai' ) );
+		}
+	}, [ currentPlan, state, log, handleError ] );
 
 	const reset = useCallback( () => {
 		setState( 'idle' );
@@ -596,6 +640,8 @@ export function usePluginBuilder() {
 		[ slugConflictWarnings ]
 	);
 
+	const isInstalled = useMemo( () => state === 'installed', [ state ] );
+
 	return {
 		state,
 		messages,
@@ -608,10 +654,12 @@ export function usePluginBuilder() {
 		tokenUsage,
 		isProcessing,
 		hasSlugConflict,
+		isInstalled,
 		slugConflictWarnings,
 		sendDescription,
 		installPlugin,
 		forceInstallPlugin,
+		downloadPlugin,
 		reset,
 	};
 }
