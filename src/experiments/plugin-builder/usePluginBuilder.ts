@@ -538,7 +538,7 @@ Do not stop until you have called finish.`;
 					updateStep( sprintf( __( 'Agent thinking (Turn %d)...', 'ai' ), turnCount ) );
 					
 					const result = await coderPromptBuilder.generateResult();
-						addTokenUsage( `Generator (Turn \${turnCount})`, result.modelMetadata.name || 'unknown', result.tokenUsage );
+						addTokenUsage( `Generator (Turn ${turnCount})`, result.modelMetadata.name || 'unknown', result.tokenUsage );
 
 						const candidate = result.candidates[0];
 						if ( candidate.message && Array.isArray( candidate.message.parts ) ) {
