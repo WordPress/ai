@@ -1,7 +1,7 @@
-import {useState, useEffect, useRef} from '@wordpress/element';
-import {__, sprintf} from '@wordpress/i18n';
-import {usePluginBuilder} from './usePluginBuilder';
-import {runAbility} from '../../utils/run-ability';
+import { useState, useEffect, useRef } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
+import { usePluginBuilder } from './usePluginBuilder';
+import { runAbility } from '../../utils/run-ability';
 
 function Spinner() {
 	return (
@@ -29,7 +29,7 @@ function Spinner() {
 }
 
 function SmallSpinner() {
-	return <span className="apb-spinner"/>;
+	return <span className="apb-spinner" />;
 }
 
 function EnhanceIcon() {
@@ -72,365 +72,405 @@ export default function App() {
 		logs,
 	} = usePluginBuilder();
 
-	const [input, setInput] = useState('');
-	const [isEnhancing, setIsEnhancing] = useState(false);
-	const [enhanceError, setEnhanceError] = useState<string | null>(null);
-	const messagesEndRef = useRef<HTMLDivElement>(null);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const [ input, setInput ] = useState( '' );
+	const [ isEnhancing, setIsEnhancing ] = useState( false );
+	const [ enhanceError, setEnhanceError ] = useState< string | null >( null );
+	const messagesEndRef = useRef< HTMLDivElement >( null );
+	const textareaRef = useRef< HTMLTextAreaElement >( null );
 
 	const examples = [
-		__('A dashboard widget showing recent drafts with quick edit links', 'ai'),
-		__('A plugin that adds reading time to blog posts', 'ai'),
-		__('A simple contact form with email notifications', 'ai'),
-		__('A maintenance mode plugin with countdown timer', 'ai'),
+		__(
+			'A dashboard widget showing recent drafts with quick edit links',
+			'ai'
+		),
+		__( 'A plugin that adds reading time to blog posts', 'ai' ),
+		__( 'A simple contact form with email notifications', 'ai' ),
+		__( 'A maintenance mode plugin with countdown timer', 'ai' ),
 	];
 
-	useEffect(() => {
-		if (messagesEndRef.current) {
-			messagesEndRef.current.scrollIntoView({behavior: 'smooth'});
+	useEffect( () => {
+		if ( messagesEndRef.current ) {
+			messagesEndRef.current.scrollIntoView( { behavior: 'smooth' } );
 		}
-	}, [messages.length]);
+	}, [ messages.length ] );
 
 	const adjustTextareaHeight = () => {
 		const textarea = textareaRef.current;
-		if (textarea) {
+		if ( textarea ) {
 			textarea.style.height = 'auto';
-			textarea.style.height = `${textarea.scrollHeight}px`;
+			textarea.style.height = `${ textarea.scrollHeight }px`;
 		}
 	};
 
-	useEffect(() => {
+	useEffect( () => {
 		adjustTextareaHeight();
-	}, [input]);
+	}, [ input ] );
 
 	const handleSend = () => {
-		if (!input.trim() || isProcessing) return;
-		sendDescription(input.trim());
-		setInput('');
+		if ( ! input.trim() || isProcessing ) return;
+		sendDescription( input.trim() );
+		setInput( '' );
 	};
 
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === 'Enter' && !e.shiftKey) {
+	const handleKeyDown = ( e: React.KeyboardEvent< HTMLTextAreaElement > ) => {
+		if ( e.key === 'Enter' && ! e.shiftKey ) {
 			e.preventDefault();
 			handleSend();
 		}
 	};
 
 	const handleEnhancePrompt = async () => {
-		if (!input.trim() || isEnhancing || isProcessing) return;
+		if ( ! input.trim() || isEnhancing || isProcessing ) return;
 
-		setIsEnhancing(true);
-		setEnhanceError(null);
+		setIsEnhancing( true );
+		setEnhanceError( null );
 
 		try {
-			const enhanced = await runAbility<string>(
+			const enhanced = await runAbility< string >(
 				'ai/plugin-prompt-enhancement',
-				{prompt: input.trim()}
+				{ prompt: input.trim() }
 			);
 
-			if (enhanced && typeof enhanced === 'string') {
-				setInput(enhanced);
+			if ( enhanced && typeof enhanced === 'string' ) {
+				setInput( enhanced );
 			}
-		} catch (error: any) {
+		} catch ( error: any ) {
 			setEnhanceError(
-				error?.message || __('Failed to enhance prompt.', 'ai')
+				error?.message || __( 'Failed to enhance prompt.', 'ai' )
 			);
 		} finally {
-			setIsEnhancing(false);
+			setIsEnhancing( false );
 		}
 	};
 
 	return (
 		<div className="apb-chat">
 			<div className="apb-chat__header">
-				<h2>{__('AI-Powered Plugin Builder', 'ai')}</h2>
+				<h2>{ __( 'AI-Powered Plugin Builder', 'ai' ) }</h2>
 				<div className="apb-chat__header-actions">
-					{messages.length > 0 ? (
-						<button className="apb-chat__reset" onClick={reset}>
-							{__('New Chat', 'ai')}
+					{ messages.length > 0 ? (
+						<button className="apb-chat__reset" onClick={ reset }>
+							{ __( 'New Chat', 'ai' ) }
 						</button>
 					) : (
 						<div className="apb-chat__status">
 							<div className="apb-chat__status-dot"></div>
-							{__('Ready', 'ai')}
+							{ __( 'Ready', 'ai' ) }
 						</div>
-					)}
+					) }
 				</div>
 			</div>
 
 			<div className="apb-chat__messages">
-				{messages.length === 0 ? (
+				{ messages.length === 0 ? (
 					<div className="apb-chat__empty">
 						<h3 className="apb-chat__empty-title">
-							{__('Code WordPress Plugins with AI', 'ai')}
+							{ __( 'Code WordPress Plugins with AI', 'ai' ) }
 						</h3>
 						<p className="apb-chat__empty-subtitle">
-							{__('Describe the functionality you need.', 'ai')}
+							{ __(
+								'Describe the functionality you need.',
+								'ai'
+							) }
 						</p>
 
 						<div className="apb-chat__examples">
-							{examples.map((example, i) => (
+							{ examples.map( ( example, i ) => (
 								<button
-									key={i}
+									key={ i }
 									className="apb-chat__example-btn"
-									onClick={() => setInput(example)}
+									onClick={ () => setInput( example ) }
 								>
-									{example}
+									{ example }
 								</button>
-							))}
+							) ) }
 						</div>
 					</div>
 				) : (
 					<div className="apb-chat__message-list">
-						{messages.map((msg) => (
+						{ messages.map( ( msg ) => (
 							<div
-								key={msg.id}
-								className={`apb-msg apb-msg--${msg.role}`}
+								key={ msg.id }
+								className={ `apb-msg apb-msg--${ msg.role }` }
 							>
-								{msg.role === 'assistant' && (
+								{ msg.role === 'assistant' && (
 									<div className="apb-avatar">🤖</div>
-								)}
+								) }
 								<div className="apb-msg__content">
-									{msg.type === 'text' && (
+									{ msg.type === 'text' && (
 										<div className="apb-bubble">
 											<p
-												dangerouslySetInnerHTML={{
+												dangerouslySetInnerHTML={ {
 													__html: msg.content.replace(
 														/\n/g,
 														'<br/>'
 													),
-												}}
+												} }
 											/>
 										</div>
-									)}
-									{msg.type === 'loading' && (
+									) }
+									{ msg.type === 'loading' && (
 										<div className="apb-bubble apb-bubble--loading">
-											<SmallSpinner/> {msg.content}
+											<SmallSpinner /> { msg.content }
 										</div>
-									)}
-									{msg.type === 'plan' && (
+									) }
+									{ msg.type === 'plan' && (
 										<div className="apb-bubble apb-bubble--plan">
 											<strong>
-												{sprintf(
+												{ sprintf(
 													/* translators: %s: plugin name */
-													__('Plugin Plan: %s', 'ai'),
+													__(
+														'Plugin Plan: %s',
+														'ai'
+													),
 													msg.data.plugin_name
-												)}
+												) }
 											</strong>
-											<p>{msg.data.description}</p>
+											<p>{ msg.data.description }</p>
 											<ul>
-												{msg.data.files.map(
+												{ msg.data.files.map(
 													(
 														file: any,
 														i: number
 													) => (
-														<li key={i}>
+														<li key={ i }>
 															<code>
-																{file.path}
-															</code>{' '}
-															-{' '}
-															{file.description}
+																{ file.path }
+															</code>{ ' ' }
+															-{ ' ' }
+															{ file.description }
 														</li>
 													)
-												)}
+												) }
 											</ul>
 										</div>
-									)}
-									{msg.type === 'files' && (
+									) }
+									{ msg.type === 'files' && (
 										<div className="apb-bubble apb-bubble--files">
 											<strong>
-												{sprintf(
+												{ sprintf(
 													/* translators: %d: number of files */
-													__('Generated Files: %d', 'ai'),
+													__(
+														'Generated Files: %d',
+														'ai'
+													),
 													msg.data.length
-												)}
+												) }
 											</strong>
 											<div
 												className="apb-actions"
-												style={{marginTop: '10px'}}
+												style={ { marginTop: '10px' } }
 											>
-												{!isInstalled && (
+												{ ! isInstalled && (
 													<button
 														className="button button-primary"
-														onClick={() =>
+														onClick={ () =>
 															installPlugin()
 														}
 													>
-														{__(
+														{ __(
 															'Install and Activate Plugin',
 															'ai'
-														)}
+														) }
 													</button>
-												)}
+												) }
 												<button
 													className="button button-secondary"
-													onClick={() =>
+													onClick={ () =>
 														downloadPlugin()
 													}
-													disabled={!isInstalled}
-													style={{
+													disabled={ ! isInstalled }
+													style={ {
 														marginLeft: isInstalled
 															? '0'
 															: '8px',
-													}}
+													} }
 													title={
 														isInstalled
 															? __(
-																'Download plugin as ZIP',
-																'ai'
-															)
+																	'Download plugin as ZIP',
+																	'ai'
+															  )
 															: __(
-																'Install the plugin first to download',
-																'ai'
-															)
+																	'Install the plugin first to download',
+																	'ai'
+															  )
 													}
 												>
-													{__('Download Plugin', 'ai')}
+													{ __(
+														'Download Plugin',
+														'ai'
+													) }
 												</button>
 											</div>
 										</div>
-									)}
-									{msg.type === 'install' && (
+									) }
+									{ msg.type === 'install' && (
 										<div className="apb-bubble apb-bubble--success">
-											{msg.data.activated
+											{ msg.data.activated
 												? __(
-													'Plugin installed and activated successfully!',
-													'ai'
-												)
-												: sprintf(
-													/* translators: %s: error message */
-													__(
-														'Installed, but activation failed: %s',
+														'Plugin installed and activated successfully!',
 														'ai'
-													),
-													msg.data.error
-												)}
+												  )
+												: sprintf(
+														/* translators: %s: error message */
+														__(
+															'Installed, but activation failed: %s',
+															'ai'
+														),
+														msg.data.error
+												  ) }
 										</div>
-									)}
-									{msg.type === 'error' && (
+									) }
+									{ msg.type === 'error' && (
 										<div className="apb-bubble apb-bubble--error">
-											{msg.content}
+											{ msg.content }
 										</div>
-									)}
-									{msg.type === 'analysis' && (
+									) }
+									{ msg.type === 'analysis' && (
 										<div className="apb-bubble apb-bubble--analysis">
-											<strong>Suggested Next Steps:</strong>
+											<strong>
+												Suggested Next Steps:
+											</strong>
 											<div
 												className="apb-actions"
-												style={{
+												style={ {
 													marginTop: '10px',
 													display: 'flex',
 													gap: '10px',
-													flexWrap: 'wrap'
-												}}
+													flexWrap: 'wrap',
+												} }
 											>
-												{msg.data?.suggested_commands?.map((cmdName: string, i: number) => {
-													const cmdObj = msg.data.all_commands?.find((c: any) => c.name === cmdName);
-													if (!cmdObj) return null;
+												{ msg.data?.suggested_commands?.map(
+													(
+														cmdName: string,
+														i: number
+													) => {
+														const cmdObj =
+															msg.data.all_commands?.find(
+																( c: any ) =>
+																	c.name ===
+																	cmdName
+															);
+														if ( ! cmdObj )
+															return null;
 
-													return (
-														<button
-															key={cmdName}
-															className={`button ${i === 0 ? 'button-primary' : 'button-secondary'}`}
-															onClick={() => {
-																if (typeof cmdObj.callback === 'function') {
-																	cmdObj.callback({
-																		close: () => {
-																		}
-																	});
-																}
-															}}
-														>
-															{cmdObj.label}
-														</button>
-													);
-												})}
+														return (
+															<button
+																key={ cmdName }
+																className={ `button ${
+																	i === 0
+																		? 'button-primary'
+																		: 'button-secondary'
+																}` }
+																onClick={ () => {
+																	if (
+																		typeof cmdObj.callback ===
+																		'function'
+																	) {
+																		cmdObj.callback(
+																			{
+																				close: () => {},
+																			}
+																		);
+																	}
+																} }
+															>
+																{ cmdObj.label }
+															</button>
+														);
+													}
+												) }
 											</div>
 										</div>
-									)}
+									) }
 								</div>
 							</div>
-						))}
-						<div ref={messagesEndRef}/>
+						) ) }
+						<div ref={ messagesEndRef } />
 					</div>
-				)}
+				) }
 
-				{hasSlugConflict && (
+				{ hasSlugConflict && (
 					<div className="apb-chat__conflict-actions">
 						<button
 							className="apb-chat__force-install button button-secondary"
-							onClick={forceInstallPlugin}
+							onClick={ forceInstallPlugin }
 						>
-							{__('Install Anyway', 'ai')}
+							{ __( 'Install Anyway', 'ai' ) }
 						</button>
 					</div>
-				)}
+				) }
 			</div>
 
 			<div className="apb-chat__footer">
 				<div className="apb-chat__input-wrapper">
 					<textarea
-						ref={textareaRef}
-						value={input}
-						onChange={(e) => setInput(e.target.value)}
+						ref={ textareaRef }
+						value={ input }
+						onChange={ ( e ) => setInput( e.target.value ) }
 						className="apb-chat__input"
-						disabled={isProcessing || isEnhancing}
-						rows={1}
-						onKeyDown={handleKeyDown}
-						placeholder={__(
+						disabled={ isProcessing || isEnhancing }
+						rows={ 1 }
+						onKeyDown={ handleKeyDown }
+						placeholder={ __(
 							'Describe what plugin you want to build...',
 							'ai'
-						)}
+						) }
 					/>
 					<button
 						className="apb-chat__send-btn"
-						disabled={isProcessing || isEnhancing || !input.trim()}
-						onClick={handleSend}
-						title={__('Send', 'ai')}
+						disabled={
+							isProcessing || isEnhancing || ! input.trim()
+						}
+						onClick={ handleSend }
+						title={ __( 'Send', 'ai' ) }
 					>
-						{isProcessing ? (
-							<Spinner/>
+						{ isProcessing ? (
+							<Spinner />
 						) : (
 							<span className="dashicons dashicons-arrow-up-alt"></span>
-						)}
+						) }
 					</button>
 					<button
 						className="apb-chat__prompt-tip-icon"
-						disabled={isProcessing || isEnhancing || !input.trim()}
-						onClick={handleEnhancePrompt}
-						title={__('Enhance prompt with AI', 'ai')}
+						disabled={
+							isProcessing || isEnhancing || ! input.trim()
+						}
+						onClick={ handleEnhancePrompt }
+						title={ __( 'Enhance prompt with AI', 'ai' ) }
 					>
 						<span className="apb-chat__prompt-tip-icon-wrapper">
-							{isEnhancing ? <SmallSpinner/> : <EnhanceIcon/>}
+							{ isEnhancing ? <SmallSpinner /> : <EnhanceIcon /> }
 							<div className="apb-chat__prompt-tip-tooltip">
-								{__(
+								{ __(
 									'Describe what your plugin should do • Mention specific features you need • Include where settings should appear • Click to enhance your prompt with AI',
 									'ai'
-								)}
+								) }
 							</div>
 						</span>
 						<span className="apb-chat__prompt-tip-text">
-							{__('Enhance with AI', 'ai')}
+							{ __( 'Enhance with AI', 'ai' ) }
 						</span>
 					</button>
 				</div>
-				{enhanceError && (
+				{ enhanceError && (
 					<div className="apb-chat__enhance-error">
-						{enhanceError}
+						{ enhanceError }
 					</div>
-				)}
-				{logs.length > 0 && (
+				) }
+				{ logs.length > 0 && (
 					<div
-						style={{
+						style={ {
 							marginTop: '5px',
 							fontSize: '11px',
 							color: '#666',
 							textAlign: 'right',
-						}}
+						} }
 					>
-						{logs[logs.length - 1].message}
+						{ logs[ logs.length - 1 ].message }
 					</div>
-				)}
+				) }
 			</div>
 		</div>
 	);

@@ -214,8 +214,8 @@
 	display: flex;
 	align-items: flex-start;
 	gap: 12px;
-	background: #fff;
-	border: 1px solid #8c8f94;
+	background: var(--card-bg);
+	border: 1px solid var(--ai-bubble-border);
 	border-radius: 4px;
 	padding: 8px 8px 45px 16px;
 	overflow: visible;
@@ -259,6 +259,9 @@
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
+    position: absolute;
+    bottom: 8px;
+    right: 15px;
 }
 
 .apb-chat__send-btn .dashicons {
@@ -268,8 +271,9 @@
 }
 
 .apb-chat__send-btn:disabled {
-	background: #c3c4c7;
+	background: var(--text-muted);
 	cursor: not-allowed;
+	opacity: 0.5;
 }
 
 .apb-chat__enhance-error {
@@ -292,12 +296,12 @@
 	height: 28px;
 	padding: 0 8px 0 0;
 	background: var(--card-bg);
-	border: 1px solid #e5e7eb;
+	border: 1px solid var(--ai-bubble-border);
 	border-radius: 4px;
 	cursor: pointer;
 	transition: background-color 0.15s ease, border-color 0.15s ease;
 	z-index: 10;
-	color: #6b7280;
+	color: var(--text-muted);
 }
 
 .apb-chat__prompt-tip-icon-wrapper {
@@ -320,11 +324,12 @@
 	font-size: 12px;
 	font-weight: 500;
 	white-space: nowrap;
-	color: #6b7280;
+	color: var(--text-muted);
 	transition: color 0.15s ease;
 }
 
 .apb-chat__prompt-tip-icon:hover:not(:disabled) {
+	background: var(--ai-bubble-bg);
 	border-color: var(--primary-color);
 }
 
@@ -337,8 +342,8 @@
 }
 
 .apb-chat__prompt-tip-icon:disabled {
-	background: #f9fafb;
-	color: #c3c4c7;
+	background: var(--ai-bubble-bg);
+	color: var(--text-muted);
 	cursor: not-allowed;
 	opacity: 0.6;
 }

@@ -182,7 +182,11 @@ export function usePluginBuilder() {
 			startTimeRef.current = Date.now();
 			setTokenUsage( null );
 
-			log( 'info', __( 'Request sent', 'ai' ), description.substring( 0, 100 ) );
+			log(
+				'info',
+				__( 'Request sent', 'ai' ),
+				description.substring( 0, 100 )
+			);
 			addMessage( createMessage( 'user', 'text', description ) );
 			addMessage(
 				createMessage(
@@ -195,9 +199,8 @@ export function usePluginBuilder() {
 			try {
 				// Phase 1: Intent Detection
 				updateStep( __( 'Detecting intent...', 'ai' ) );
-				const intentText = await window.wp.aiClient.prompt(
-					getIntentPrompt( description, previousPlan )
-				)
+				const intentText = await window.wp.aiClient
+					.prompt( getIntentPrompt( description, previousPlan ) )
 					.usingSystemInstruction( getSystemPrompt( 'detector' ) )
 					.usingTemperature( 0.1 )
 					.usingMaxTokens( 500 )
@@ -238,16 +241,19 @@ export function usePluginBuilder() {
 
 				// Phase 2: Planner
 				setState( 'planning' );
-				updateStep( __( 'Generating plugin architecture plan...', 'ai' ) );
+				updateStep(
+					__( 'Generating plugin architecture plan...', 'ai' )
+				);
 				const maxFiles = 10;
-				const plannerText = await window.wp.aiClient.prompt(
-					getPlannerPrompt(
-						description,
-						'simple',
-						maxFiles,
-						previousPlan
+				const plannerText = await window.wp.aiClient
+					.prompt(
+						getPlannerPrompt(
+							description,
+							'simple',
+							maxFiles,
+							previousPlan
+						)
 					)
-				)
 					.usingSystemInstruction( getSystemPrompt( 'planner' ) )
 					.usingMaxTokens( 16384 )
 					.usingTemperature( 0.3 )
@@ -308,13 +314,14 @@ export function usePluginBuilder() {
 				for ( const fileInfo of plan.files ) {
 					updateStep( `Writing ${ fileInfo.path }...` );
 
-					const codeText = await window.wp.aiClient.prompt(
-						getCoderPrompt(
-							plan,
-							fileInfo,
-							previousFiles.concat( newFiles )
+					const codeText = await window.wp.aiClient
+						.prompt(
+							getCoderPrompt(
+								plan,
+								fileInfo,
+								previousFiles.concat( newFiles )
+							)
 						)
-					)
 						.usingSystemInstruction(
 							getSystemPrompt( 'coder', fileInfo.type )
 						)
@@ -340,14 +347,19 @@ export function usePluginBuilder() {
 
 				// Phase 4: Basic Client-Side Security Scan
 				setState( 'reviewing' );
-				updateStep( __( 'Scanning files for security issues...', 'ai' ) );
+				updateStep(
+					__( 'Scanning files for security issues...', 'ai' )
+				);
 				const scanResult = scanFiles( newFiles );
 
 				const review: ReviewResult = {
 					passed: scanResult.passed,
 					review_summary: scanResult.passed
 						? __( 'No obvious dangerous patterns found.', 'ai' )
-						: __( 'Dangerous patterns detected in generated code.', 'ai' ),
+						: __(
+								'Dangerous patterns detected in generated code.',
+								'ai'
+						  ),
 					suggestions: scanResult.issues.map( ( iss ) => ( {
 						action: 'Needs Review',
 						file_path: iss.file_path,
@@ -384,7 +396,8 @@ export function usePluginBuilder() {
 				);
 			} catch ( e: any ) {
 				handleError(
-					e.message || __( 'Failed during AI generation pipeline.', 'ai' )
+					e.message ||
+						__( 'Failed during AI generation pipeline.', 'ai' )
 				);
 			}
 		},
@@ -439,7 +452,10 @@ export function usePluginBuilder() {
 							'text',
 							sprintf(
 								/* translators: %s: warning messages */
-								__( '**Warning:** %s\n\nClick "Install Anyway" to proceed.', 'ai' ),
+								__(
+									'**Warning:** %s\n\nClick "Install Anyway" to proceed.',
+									'ai'
+								),
 								result.warnings.join( ' ' )
 							)
 						)
@@ -476,46 +492,77 @@ export function usePluginBuilder() {
 
 						// New Analysis Phase
 						addMessage(
-							createMessage( 'assistant', 'loading', __( 'Analyzing next steps...', 'ai' ) )
+							createMessage(
+								'assistant',
+								'loading',
+								__( 'Analyzing next steps...', 'ai' )
+							)
 						);
 						updateStep( __( 'Checking plugin features...', 'ai' ) );
 
 						try {
-							const existingCommands = select(commandsStore)
+							const existingCommands = select( commandsStore )
 								.getCommands()
-								.map((c: any) => ({ name: c.name, label: c.label }));
+								.map( ( c: any ) => ( {
+									name: c.name,
+									label: c.label,
+								} ) );
 
-							const analyzerText = await window.wp.aiClient.prompt(getAnalyzerPrompt(currentFiles, existingCommands))
-								.usingSystemInstruction(getSystemPrompt('analyzer'))
-								.usingTemperature(0.2)
-								.usingMaxTokens(8000)
+							const analyzerText = await window.wp.aiClient
+								.prompt(
+									getAnalyzerPrompt(
+										currentFiles,
+										existingCommands
+									)
+								)
+								.usingSystemInstruction(
+									getSystemPrompt( 'analyzer' )
+								)
+								.usingTemperature( 0.2 )
+								.usingMaxTokens( 8000 )
 								.asJsonResponse()
 								.generateText();
 
-							const analysis: AnalysisResponse = parseJSON(analyzerText);
-							if (analysis.new_commands && analysis.new_commands.length > 0) {
-								for (const cmd of analysis.new_commands) {
-									dispatch(commandsStore).registerCommand({
+							const analysis: AnalysisResponse =
+								parseJSON( analyzerText );
+							if (
+								analysis.new_commands &&
+								analysis.new_commands.length > 0
+							) {
+								for ( const cmd of analysis.new_commands ) {
+									dispatch( commandsStore ).registerCommand( {
 										name: cmd.name,
 										label: cmd.label,
-										callback: ({ close }: { close?: () => void }) => {
+										callback: ( {
+											close,
+										}: {
+											close?: () => void;
+										} ) => {
 											document.location.href = cmd.url;
-											if (close) close();
+											if ( close ) close();
 										},
-									});
+									} );
 								}
 							}
 
-							const updatedCommands = select(commandsStore).getCommands();
+							const updatedCommands =
+								select( commandsStore ).getCommands();
 
 							removeLastLoading();
 							addMessage(
 								createMessage( 'assistant', 'analysis', '', {
-									suggested_commands: analysis.suggested_commands || [],
+									suggested_commands:
+										analysis.suggested_commands || [],
 									all_commands: updatedCommands,
 								} )
 							);
-							log( 'success', __( 'Analysis complete. Suggested next steps generated.', 'ai' ) );
+							log(
+								'success',
+								__(
+									'Analysis complete. Suggested next steps generated.',
+									'ai'
+								)
+							);
 						} catch ( analysisErr: any ) {
 							removeLastLoading();
 							console.error( 'Analysis failed:', analysisErr );
@@ -525,12 +572,19 @@ export function usePluginBuilder() {
 									'text',
 									sprintf(
 										/* translators: %s: error message */
-										__( '**Analysis Error:** %s\n\nCheck browser console for details.', 'ai' ),
+										__(
+											'**Analysis Error:** %s\n\nCheck browser console for details.',
+											'ai'
+										),
 										analysisErr.message
 									)
 								)
 							);
-							log( 'warn', __( 'Failed to analyze next steps', 'ai' ), analysisErr.message );
+							log(
+								'warn',
+								__( 'Failed to analyze next steps', 'ai' ),
+								analysisErr.message
+							);
 						}
 					} catch ( activationError: any ) {
 						removeLastLoading();
@@ -554,7 +608,10 @@ export function usePluginBuilder() {
 								);
 							}
 							// The UI will likely render this error string.
-							msg += `\n\n**${ __( 'Additional Data:', 'ai' ) }**\n\`\`\`\n${ additionalData }\n\`\`\``;
+							msg += `\n\n**${ __(
+								'Additional Data:',
+								'ai'
+							) }**\n\`\`\`\n${ additionalData }\n\`\`\``;
 						}
 
 						addMessage(
@@ -577,7 +634,8 @@ export function usePluginBuilder() {
 				}
 			} catch ( e: any ) {
 				removeLastLoading();
-				const msg = e.message || __( 'Failed to save plugin files', 'ai' );
+				const msg =
+					e.message || __( 'Failed to save plugin files', 'ai' );
 				handleError( msg );
 			}
 		},
@@ -601,9 +659,15 @@ export function usePluginBuilder() {
 
 		try {
 			await api.downloadPlugin( currentPlan.plugin_slug );
-			log( 'success', __( 'Plugin downloaded', 'ai' ), currentPlan.plugin_slug );
+			log(
+				'success',
+				__( 'Plugin downloaded', 'ai' ),
+				currentPlan.plugin_slug
+			);
 		} catch ( e: any ) {
-			handleError( e.message || __( 'Failed to download plugin.', 'ai' ) );
+			handleError(
+				e.message || __( 'Failed to download plugin.', 'ai' )
+			);
 		}
 	}, [ currentPlan, state, log, handleError ] );
 

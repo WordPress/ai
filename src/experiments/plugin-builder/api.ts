@@ -45,7 +45,9 @@ export async function downloadPlugin( pluginSlug: string ): Promise< void > {
 
 	if ( ! response.ok ) {
 		const text = await response.text();
-		throw new Error( text || __( 'Failed to generate ZIP archive.', 'ai' ) );
+		throw new Error(
+			text || __( 'Failed to generate ZIP archive.', 'ai' )
+		);
 	}
 
 	const blob = await response.blob();
