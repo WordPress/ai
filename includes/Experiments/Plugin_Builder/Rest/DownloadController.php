@@ -62,6 +62,10 @@ class DownloadController {
 	public function handle_rest( WP_REST_Request $request ) {
 		$plugin_file = $request->get_param( 'plugin_file' );
 
+		if ( 0 !== validate_file( $plugin_file ) ) {
+			return new WP_Error( 'invalid_param', __( 'Invalid plugin file path.', 'ai' ), array( 'status' => 400 ) );
+		}
+
 		$plugin_slug = dirname( $plugin_file );
 		$plugin_dir  = WP_PLUGIN_DIR . '/' . $plugin_slug;
 		if ( ! is_dir( $plugin_dir ) ) {
@@ -101,6 +105,10 @@ class DownloadController {
 
 		if ( ! current_user_can( 'install_plugins' ) || ! wp_verify_nonce( $nonce, 'ai_download_' . $plugin_file ) ) {
 			wp_die( esc_html__( 'Unauthorized.', 'ai' ), 403 );
+		}
+
+		if ( 0 !== validate_file( $plugin_file ) ) {
+			wp_die( esc_html__( 'Invalid plugin file path.', 'ai' ), 400 );
 		}
 
 		$plugin_slug = dirname( $plugin_file );
