@@ -490,7 +490,10 @@ export default function App() {
 															downloadPlugin()
 														}
 														disabled={
-															isProcessing
+															isProcessing ||
+															state !==
+																'installed' ||
+															! installedPluginFile
 														}
 														style={ {
 															marginLeft: messages
