@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { usePluginBuilder } from './usePluginBuilder';
+import { getChatHistory, getChatById } from './api';
+import type { ChatHistory } from './types';
 
 function Spinner() {
 	return (
@@ -41,9 +43,12 @@ export default function App() {
 		forceInstallPlugin,
 		reset,
 		logs,
+		activeChatId,
+		loadChat,
 	} = usePluginBuilder();
 
 	const [ input, setInput ] = useState( '' );
+	const [ recentChats, setRecentChats ] = useState< ChatHistory[] >( [] );
 	const messagesEndRef = useRef< HTMLDivElement >( null );
 
 	const examples = [
@@ -56,6 +61,33 @@ export default function App() {
 	useEffect( () => {
 		if ( messagesEndRef.current ) {
 			messagesEndRef.current.scrollIntoView( { behavior: 'smooth' } );
+		}
+	}, [ messages.length ] );
+
+	// On mount, check if there's a chat_id in the URL
+	useEffect( () => {
+		const urlParams = new URLSearchParams( window.location.search );
+		const queryChatId = urlParams.get( 'chat_id' );
+		
+		if ( queryChatId && messages.length === 0 ) {
+			getChatById( parseInt( queryChatId, 10 ) )
+				.then( ( chat ) => {
+					loadChat( chat );
+					
+					// Clean up the URL securely
+					const newUrl = new URL( window.location.href );
+					newUrl.searchParams.delete( 'chat_id' );
+					window.history.replaceState( {}, '', newUrl.toString() );
+				} )
+				.catch( ( err ) => console.error( 'Failed to fetch specific chat', err ) );
+		}
+	}, [ loadChat, messages.length ] );
+
+	useEffect( () => {
+		if ( messages.length === 0 ) {
+			getChatHistory()
+				.then( ( histories ) => setRecentChats( histories ) )
+				.catch( ( err ) => console.error( 'Failed to fetch histories', err ) );
 		}
 	}, [ messages.length ] );
 
@@ -111,6 +143,28 @@ export default function App() {
 								</button>
 							) ) }
 						</div>
+
+						{ recentChats && recentChats.length > 0 && (
+							<div className="apb-chat__history" style={ { marginTop: '40px' } }>
+								<h4 className="apb-chat__history-title" style={ { fontSize: '14px', marginBottom: '10px' } }>Recent Conversations</h4>
+								<ul className="apb-chat__history-list" style={ { listStyle: 'none', padding: 0 } }>
+									{ recentChats.map( chat => (
+										<li key={ chat.id } style={ { marginBottom: '8px' } }>
+											<button
+												className="apb-chat__history-btn button button-secondary"
+												onClick={ () => loadChat( chat ) }
+												style={ { width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between' } }
+											>
+												<span>{ chat.title || 'Plugin Builder Chat' }</span>
+												{ chat.plugin_slug && (
+													<span style={ { opacity: 0.6, fontSize: '11px' } }>{ chat.plugin_slug }</span>
+												) }
+											</button>
+										</li>
+									) ) }
+								</ul>
+							</div>
+						) }
 					</div>
 				) : (
 					<div className="apb-chat__message-list">
@@ -171,20 +225,22 @@ export default function App() {
 												Generated Files:{ ' ' }
 												{ msg.data.length }
 											</strong>
-											<div
-												className="apb-actions"
-												style={ { marginTop: '10px' } }
-											>
-												<button
-													className="button button-primary"
-													disabled={ isProcessing || state === 'installing' || state === 'installed' }
-													onClick={ () =>
-														installPlugin()
-													}
+											{ !messages.slice(messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated) && (
+												<div
+													className="apb-actions"
+													style={ { marginTop: '10px' } }
 												>
-													Install and Activate Plugin
-												</button>
-											</div>
+													<button
+														className="button button-primary"
+														disabled={ isProcessing || state === 'installing' || state === 'installed' }
+														onClick={ () =>
+															installPlugin()
+														}
+													>
+														{ messages.slice(0, messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated) ? 'Update Plugin Files' : 'Install and Activate Plugin' }
+													</button>
+												</div>
+											) }
 										</div>
 									) }
 									{ msg.type === 'install' && (
