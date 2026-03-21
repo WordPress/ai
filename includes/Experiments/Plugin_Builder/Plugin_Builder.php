@@ -146,6 +146,19 @@ class Plugin_Builder extends Abstract_Feature {
 				'show_in_rest'        => true,
 				'rest_base'           => 'abp-chats',
 				'supports'            => array( 'title', 'editor', 'custom-fields' ),
+				'capability_type'     => 'abp_chat',
+				'map_meta_cap'        => true,
+				'capabilities'        => array(
+					'read_post'          => 'install_plugins',
+					'read_private_posts' => 'install_plugins',
+					'edit_post'          => 'install_plugins',
+					'edit_posts'         => 'install_plugins',
+					'edit_others_posts'  => 'install_plugins',
+					'delete_post'        => 'install_plugins',
+					'delete_posts'       => 'install_plugins',
+					'delete_others_posts'=> 'install_plugins',
+					'publish_posts'      => 'install_plugins',
+				),
 			)
 		);
 	}
