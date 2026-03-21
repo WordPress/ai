@@ -62,6 +62,24 @@ export async function downloadPlugin( pluginFile: string ): Promise< void > {
 	URL.revokeObjectURL( blobUrl );
 }
 
+export async function executeAbility(
+	name: string,
+	input: any
+): Promise< any > {
+	return apiFetch( {
+		path: `/wp-abilities/v1/abilities/${ name }/run`,
+		method: 'POST',
+		data: { input },
+	} );
+}
+
+export async function discoverAbilities(): Promise< any > {
+	return apiFetch( {
+		path: `/wp-abilities/v1/abilities`,
+		method: 'GET',
+	} );
+}
+
 export async function activatePlugin( pluginFile: string ): Promise< any > {
 	// The WP Core REST API expects the plugin "file" which looks like "slug/slug.php"
 	// but the route encodes the slash, or you don't encode the slash?
@@ -86,6 +104,15 @@ export async function getChatById( id: number ): Promise< ChatHistory > {
 	return apiFetch< ChatHistory >( {
 		path: `${ NAMESPACE }/history/${ id }`,
 		method: 'GET',
+	} );
+}
+
+export async function deleteChatHistory(
+	id: number
+): Promise< { deleted: boolean } > {
+	return apiFetch< { deleted: boolean } >( {
+		path: `${ NAMESPACE }/history/${ id }`,
+		method: 'DELETE',
 	} );
 }
 
@@ -114,4 +141,32 @@ export async function saveChatHistory(
 			title,
 		},
 	} );
+}
+
+export async function listPlugins(): Promise< any > {
+	const perPage = 100;
+	let page = 1;
+	let allPlugins: any[] = [];
+
+	// Fetch all pages of plugins until a page returns fewer than perPage items.
+	while ( true ) {
+		const pageItems = await apiFetch< any[] >( {
+			path: `/wp/v2/plugins?per_page=${ perPage }&page=${ page }`,
+			method: 'GET',
+		} );
+
+		if ( ! Array.isArray( pageItems ) || pageItems.length === 0 ) {
+			break;
+		}
+
+		allPlugins = allPlugins.concat( pageItems );
+
+		if ( pageItems.length < perPage ) {
+			break;
+		}
+
+		page++;
+	}
+
+	return allPlugins;
 }

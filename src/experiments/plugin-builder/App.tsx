@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import { usePluginBuilder } from './usePluginBuilder';
+import { usePluginBuilder, AVAILABLE_TOOLS } from './usePluginBuilder';
 import { runAbility } from '../../utils/run-ability';
 import { AIBrainIcon } from './AIBrainIcon';
-import { getChatHistory, getChatById } from './api';
+import { getChatHistory, getChatById, deleteChatHistory } from './api';
 import type { ChatHistory } from './types';
 
 function Spinner() {
@@ -62,18 +62,19 @@ function EnhanceIcon() {
 
 export default function App() {
 	const {
+		state,
 		messages,
 		isProcessing,
 		hasSlugConflict,
-		isInstalled,
 		sendDescription,
 		installPlugin,
 		forceInstallPlugin,
 		downloadPlugin,
 		reset,
 		logs,
-		activeChatId,
 		loadChat,
+		tokenUsage,
+		cancelGeneration,
 	} = usePluginBuilder();
 
 	const [ input, setInput ] = useState( '' );
@@ -148,6 +149,24 @@ export default function App() {
 		setInput( '' );
 	};
 
+	const handleDeleteChat = async ( id: number, e: React.MouseEvent ) => {
+		e.stopPropagation();
+		if (
+			window.confirm(
+				__( 'Are you sure you want to delete this conversation?', 'ai' )
+			)
+		) {
+			try {
+				await deleteChatHistory( id );
+				setRecentChats( ( prevRecentChats ) =>
+					prevRecentChats.filter( ( chat ) => chat.id !== id )
+				);
+			} catch ( err ) {
+				console.error( 'Failed to delete chat', err );
+			}
+		}
+	};
+
 	const handleKeyDown = ( e: React.KeyboardEvent< HTMLTextAreaElement > ) => {
 		if ( e.key === 'Enter' && ! e.shiftKey ) {
 			e.preventDefault();
@@ -182,16 +201,11 @@ export default function App() {
 	return (
 		<div className="apb-chat">
 			<div className="apb-chat__header">
-				<div className="apb-chat__header-left">
-					<h2>🤖 AI-Powered Plugin Builder</h2>
-				</div>
+				<h2>{ __( 'AI-Powered Plugin Builder', 'ai' ) }</h2>
 				<div className="apb-chat__header-actions">
 					{ messages.length > 0 ? (
-						<button
-							className="apb-chat__reset button button-secondary"
-							onClick={ reset }
-						>
-							✨ { __( 'New Project', 'ai' ) }
+						<button className="apb-chat__reset" onClick={ reset }>
+							{ __( 'New Chat', 'ai' ) }
 						</button>
 					) : (
 						<div className="apb-chat__status">
@@ -202,6 +216,59 @@ export default function App() {
 				</div>
 			</div>
 
+			{ isProcessing && (
+				<div
+					className="apb-chat__progress-tracker"
+					style={ {
+						display: 'flex',
+						gap: '10px',
+						padding: '10px 20px',
+						background: '#f0f0f1',
+						borderBottom: '1px solid #ddd',
+						fontSize: '12px',
+						fontWeight: 600,
+						textTransform: 'uppercase',
+						letterSpacing: '0.5px',
+					} }
+				>
+					<span
+						style={ {
+							color: state === 'planning' ? '#2271b1' : '#8c8f94',
+						} }
+					>
+						{ __( '1. Planning', 'ai' ) }
+					</span>
+					<span style={ { color: '#dcdcde' } }>&rarr;</span>
+					<span
+						style={ {
+							color: state === 'coding' ? '#2271b1' : '#8c8f94',
+						} }
+					>
+						{ __( '2. Coding', 'ai' ) }
+					</span>
+					<span style={ { color: '#dcdcde' } }>&rarr;</span>
+					<span
+						style={ {
+							color:
+								state === 'reviewing' || state === 'fixing'
+									? '#2271b1'
+									: '#8c8f94',
+						} }
+					>
+						{ __( '3. Checking', 'ai' ) }
+					</span>
+					<span style={ { color: '#dcdcde' } }>&rarr;</span>
+					<span
+						style={ {
+							color:
+								state === 'installing' ? '#2271b1' : '#8c8f94',
+						} }
+					>
+						{ __( '4. Installing', 'ai' ) }
+					</span>
+				</div>
+			) }
+
 			<div className="apb-chat__messages">
 				{ messages.length === 0 ? (
 					<div className="apb-chat__empty">
@@ -211,7 +278,7 @@ export default function App() {
 						</h3>
 						<p className="apb-chat__empty-subtitle">
 							{ __(
-								'Describe the functionality you need.',
+								'Describe the functionality you need, and watch AI build your plugin in minutes.',
 								'ai'
 							) }
 						</p>
@@ -222,7 +289,6 @@ export default function App() {
 									key={ i }
 									className="apb-chat__example-btn"
 									onClick={ () => setInput( example ) }
-									title={ example }
 								>
 									{ example }
 								</button>
@@ -250,7 +316,11 @@ export default function App() {
 									{ recentChats.map( ( chat ) => (
 										<li
 											key={ chat.id }
-											style={ { marginBottom: '8px' } }
+											style={ {
+												marginBottom: '8px',
+												display: 'flex',
+												gap: '8px',
+											} }
 										>
 											<button
 												className="apb-chat__history-btn button button-secondary"
@@ -258,7 +328,7 @@ export default function App() {
 													loadChat( chat )
 												}
 												style={ {
-													width: '100%',
+													flexGrow: 1,
 													textAlign: 'left',
 													display: 'flex',
 													justifyContent:
@@ -283,6 +353,26 @@ export default function App() {
 													</span>
 												) }
 											</button>
+											<button
+												className="button button-link-delete"
+												style={ {
+													color: '#d63638',
+													borderColor: 'transparent',
+												} }
+												onClick={ ( e ) =>
+													chat.id !== undefined &&
+													handleDeleteChat(
+														chat.id,
+														e
+													)
+												}
+												title={ __(
+													'Delete conversation',
+													'ai'
+												) }
+											>
+												<span className="dashicons dashicons-trash"></span>
+											</button>
 										</li>
 									) ) }
 								</ul>
@@ -299,11 +389,7 @@ export default function App() {
 									);
 								}
 								if ( msg.type === 'analysis' ) {
-									return (
-										msg.data &&
-										msg.data.suggested_commands &&
-										msg.data.suggested_commands.length > 0
-									);
+									return true;
 								}
 								if ( msg.type === 'text' && ! msg.content ) {
 									return false;
@@ -320,7 +406,30 @@ export default function App() {
 									) }
 									<div className="apb-msg__content">
 										{ msg.type === 'text' && (
-											<div className="apb-bubble apb-bubble--text">
+											<div className="apb-bubble">
+												<p
+													dangerouslySetInnerHTML={ {
+														__html: msg.content.replace(
+															/\n/g,
+															'<br/>'
+														),
+													} }
+												/>
+											</div>
+										) }
+										{ msg.type === 'thought' && (
+											<div
+												className="apb-bubble apb-bubble--thought"
+												style={ {
+													opacity: 0.7,
+													fontStyle: 'italic',
+													backgroundColor: '#f0f0f1',
+													fontSize: '12px',
+												} }
+											>
+												<strong>
+													{ __( 'Thought:', 'ai' ) }
+												</strong>
 												<p
 													dangerouslySetInnerHTML={ {
 														__html: msg.content.replace(
@@ -338,21 +447,16 @@ export default function App() {
 										) }
 										{ msg.type === 'plan' && (
 											<div className="apb-bubble apb-bubble--plan">
-												<div className="apb-bubble__header">
-													<span className="apb-bubble__icon">
-														📋
-													</span>
-													<strong>
-														{ sprintf(
-															/* translators: %s: plugin name */
-															__(
-																'Plugin Plan: %s',
-																'ai'
-															),
-															msg.data.plugin_name
-														) }
-													</strong>
-												</div>
+												<strong>
+													{ sprintf(
+														/* translators: %s: plugin name */
+														__(
+															'Plugin Plan: %s',
+															'ai'
+														),
+														msg.data.plugin_name
+													) }
+												</strong>
 												<p>{ msg.data.description }</p>
 												<ul>
 													{ msg.data.files.map(
@@ -378,21 +482,16 @@ export default function App() {
 										) }
 										{ msg.type === 'files' && (
 											<div className="apb-bubble apb-bubble--files">
-												<div className="apb-bubble__header">
-													<span className="apb-bubble__icon">
-														📁
-													</span>
-													<strong>
-														{ sprintf(
-															/* translators: %d: number of files */
-															__(
-																'Generated Files: %d',
-																'ai'
-															),
-															msg.data.length
-														) }
-													</strong>
-												</div>
+												<strong>
+													{ sprintf(
+														/* translators: %d: number of files */
+														__(
+															'Generated Files: %d',
+															'ai'
+														),
+														msg.data.length
+													) }
+												</strong>
 												<div
 													className="apb-actions"
 													style={ {
@@ -416,7 +515,10 @@ export default function App() {
 															className="button button-primary"
 															disabled={
 																isProcessing ||
-																isInstalled
+																state ===
+																	'installing' ||
+																state ===
+																	'installed'
 															}
 															onClick={ () =>
 																installPlugin()
@@ -452,7 +554,10 @@ export default function App() {
 															downloadPlugin()
 														}
 														disabled={
-															! isInstalled
+															isProcessing ||
+															state !==
+																'installed' ||
+															! installedPluginFile
 														}
 														style={ {
 															marginLeft: messages
@@ -471,17 +576,10 @@ export default function App() {
 																? '0'
 																: '8px',
 														} }
-														title={
-															isInstalled
-																? __(
-																		'Download plugin as ZIP',
-																		'ai'
-																  )
-																: __(
-																		'Install the plugin first to download',
-																		'ai'
-																  )
-														}
+														title={ __(
+															'Download plugin as ZIP',
+															'ai'
+														) }
 													>
 														{ __(
 															'Download Plugin',
@@ -540,73 +638,217 @@ export default function App() {
 											) }
 										{ msg.type === 'analysis' && (
 											<div className="apb-bubble apb-bubble--analysis">
-												<div className="apb-bubble__header">
-													<span className="apb-bubble__icon">
-														💡
-													</span>
-													<strong>
-														{ __(
-															'Suggested Next Steps:',
-															'ai'
-														) }
-													</strong>
-												</div>
-												<div
-													className="apb-actions"
-													style={ {
-														marginTop: '10px',
-														display: 'flex',
-														gap: '10px',
-														flexWrap: 'wrap',
-													} }
-												>
-													{ msg.data?.suggested_commands?.map(
-														(
-															cmdName: string,
-															i: number
-														) => {
-															const cmdObj =
-																msg.data.all_commands?.find(
-																	(
-																		c: any
-																	) =>
-																		c.name ===
-																		cmdName
-																);
-															if ( ! cmdObj )
-																return null;
-
-															return (
-																<button
-																	key={
-																		cmdName
-																	}
-																	className={ `button ${
-																		i === 0
-																			? 'button-primary'
-																			: 'button-secondary'
-																	}` }
-																	onClick={ () => {
-																		if (
-																			typeof cmdObj.callback ===
-																			'function'
-																		) {
-																			cmdObj.callback(
-																				{
-																					close: () => {},
-																				}
-																			);
-																		}
-																	} }
-																>
+												{ msg.data?.explanation && (
+													<div
+														style={ {
+															marginBottom:
+																'15px',
+														} }
+													>
+														<h4
+															style={ {
+																margin: '0 0 8px 0',
+																fontSize:
+																	'14px',
+															} }
+														>
+															{ __(
+																'Plugin Overview',
+																'ai'
+															) }
+														</h4>
+														<ul
+															style={ {
+																margin: 0,
+																paddingLeft:
+																	'20px',
+																fontSize:
+																	'13px',
+																lineHeight:
+																	'1.5',
+															} }
+														>
+															{ msg.data
+																.explanation
+																.how_it_works && (
+																<li>
+																	<strong>
+																		{ __(
+																			'How it works:',
+																			'ai'
+																		) }
+																	</strong>{ ' ' }
 																	{
-																		cmdObj.label
+																		msg.data
+																			.explanation
+																			.how_it_works
 																	}
-																</button>
-															);
-														}
+																</li>
+															) }
+															{ msg.data
+																.explanation
+																.steps_to_use && (
+																<li>
+																	<strong>
+																		{ __(
+																			'Steps to use:',
+																			'ai'
+																		) }
+																	</strong>{ ' ' }
+																	{
+																		msg.data
+																			.explanation
+																			.steps_to_use
+																	}
+																</li>
+															) }
+															{ msg.data
+																.explanation
+																.where_to_configure && (
+																<li>
+																	<strong>
+																		{ __(
+																			'Configuration:',
+																			'ai'
+																		) }
+																	</strong>{ ' ' }
+																	{
+																		msg.data
+																			.explanation
+																			.where_to_configure
+																	}
+																</li>
+															) }
+															{ msg.data
+																.explanation
+																.saving_or_activation && (
+																<li>
+																	<strong>
+																		{ __(
+																			'Saving/Activation:',
+																			'ai'
+																		) }
+																	</strong>{ ' ' }
+																	{
+																		msg.data
+																			.explanation
+																			.saving_or_activation
+																	}
+																</li>
+															) }
+															{ msg.data
+																.explanation
+																.how_to_place && (
+																<li>
+																	<strong>
+																		{ __(
+																			'Placement:',
+																			'ai'
+																		) }
+																	</strong>{ ' ' }
+																	{
+																		msg.data
+																			.explanation
+																			.how_to_place
+																	}
+																</li>
+															) }
+															{ msg.data
+																.explanation
+																.dependencies && (
+																<li>
+																	<strong>
+																		{ __(
+																			'Dependencies:',
+																			'ai'
+																		) }
+																	</strong>{ ' ' }
+																	{
+																		msg.data
+																			.explanation
+																			.dependencies
+																	}
+																</li>
+															) }
+														</ul>
+													</div>
+												) }
+
+												{ msg.data
+													?.suggested_commands &&
+													msg.data.suggested_commands
+														.length > 0 && (
+														<div>
+															<strong>
+																{ __(
+																	'Suggested Next Steps:',
+																	'ai'
+																) }
+															</strong>
+															<div
+																className="apb-actions"
+																style={ {
+																	marginTop:
+																		'10px',
+																	display:
+																		'flex',
+																	gap: '10px',
+																	flexWrap:
+																		'wrap',
+																} }
+															>
+																{ msg.data?.suggested_commands?.map(
+																	(
+																		cmdName: string,
+																		i: number
+																	) => {
+																		const cmdObj =
+																			msg.data.all_commands?.find(
+																				(
+																					c: any
+																				) =>
+																					c.name ===
+																					cmdName
+																			);
+																		if (
+																			! cmdObj
+																		)
+																			return null;
+
+																		return (
+																			<button
+																				key={
+																					cmdName
+																				}
+																				className={ `button ${
+																					i ===
+																					0
+																						? 'button-primary'
+																						: 'button-secondary'
+																				}` }
+																				onClick={ () => {
+																					if (
+																						typeof cmdObj.callback ===
+																						'function'
+																					) {
+																						cmdObj.callback(
+																							{
+																								close: () => {},
+																							}
+																						);
+																					}
+																				} }
+																			>
+																				{
+																					cmdObj.label
+																				}
+																			</button>
+																		);
+																	}
+																) }
+															</div>
+														</div>
 													) }
-												</div>
 											</div>
 										) }
 									</div>
@@ -629,6 +871,30 @@ export default function App() {
 			</div>
 
 			<div className="apb-chat__footer">
+				<div
+					style={ {
+						display: 'flex',
+						justifyContent: 'space-between',
+						fontSize: '12px',
+						color: '#666',
+						paddingBottom: '10px',
+					} }
+				>
+					<div>
+						<strong>{ __( 'Available tools:', 'ai' ) }</strong>{ ' ' }
+						{ AVAILABLE_TOOLS.map( ( t ) => t.name ).join( ', ' ) }
+					</div>
+					{ tokenUsage && tokenUsage.total_tokens > 0 && (
+						<div>
+							<strong>{ __( 'Tokens Used:', 'ai' ) }</strong>{ ' ' }
+							{ tokenUsage.total_tokens } (
+							{ tokenUsage.total_input_tokens }{ ' ' }
+							{ __( 'in', 'ai' ) },{ ' ' }
+							{ tokenUsage.total_output_tokens }{ ' ' }
+							{ __( 'out', 'ai' ) })
+						</div>
+					) }
+				</div>
 				<div className="apb-chat__input-wrapper">
 					<textarea
 						ref={ textareaRef }
@@ -649,9 +915,13 @@ export default function App() {
 							isProcessing || isEnhancing || ! input.trim()
 						}
 						onClick={ handleSend }
-						title={ __( 'Submit', 'ai' ) }
+						title={ __( 'Send', 'ai' ) }
 					>
-						<span className="dashicons dashicons-arrow-up-alt"></span>
+						{ isProcessing ? (
+							<Spinner />
+						) : (
+							<span className="dashicons dashicons-arrow-up-alt"></span>
+						) }
 					</button>
 					<button
 						className="apb-chat__prompt-tip-icon"
@@ -688,6 +958,16 @@ export default function App() {
 							{ __( 'Enhance with AI', 'ai' ) }
 						</span>
 					</button>
+					{ isProcessing && (
+						<button
+							className="apb-chat__stop-btn button"
+							onClick={ cancelGeneration }
+							title={ __( 'Stop Generation', 'ai' ) }
+							style={ { marginLeft: '8px' } }
+						>
+							🛑
+						</button>
+					) }
 				</div>
 				{ enhanceError && (
 					<div className="apb-chat__enhance-error">
@@ -703,7 +983,7 @@ export default function App() {
 							textAlign: 'right',
 						} }
 					>
-						{ logs[ logs.length - 1 ]?.message }
+						{ logs[ logs.length - 1 ].message }
 					</div>
 				) }
 			</div>

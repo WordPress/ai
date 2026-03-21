@@ -11,9 +11,9 @@ namespace WordPress\AI\Experiments\Plugin_Builder\Rest;
 
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use WordPress\AI\Experiments\Plugin_Builder\Plugin_Builder;
 use WP_Error;
 use WP_REST_Request;
+use WordPress\AI\Experiments\Plugin_Builder\Plugin_Builder;
 use ZipArchive;
 
 /**
@@ -56,8 +56,8 @@ class DownloadController {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param WP_REST_Request $request The REST request.
-	 * @return WP_Error|void
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return \WP_Error|void
 	 */
 	public function handle_rest( WP_REST_Request $request ) {
 		$plugin_file = $request->get_param( 'plugin_file' );

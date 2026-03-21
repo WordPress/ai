@@ -61,7 +61,6 @@ class Plugin_Builder extends Abstract_Feature {
 			}
 		);
 
-
 		add_action( 'init', array( $this, 'register_post_type' ) );
 
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
@@ -124,8 +123,8 @@ class Plugin_Builder extends Abstract_Feature {
 
 		$query = new \WP_Query( $args );
 		if ( ! empty( $query->posts ) ) {
-			$post_id = $query->posts[0];
-			$url     = admin_url( 'plugins.php?page=ai-plugin-builder&chat_id=' . $post_id );
+			$post_id                 = $query->posts[0];
+			$url                     = admin_url( 'plugins.php?page=ai-plugin-builder&chat_id=' . $post_id );
 			$actions['edit_with_ai'] = '<a href="' . esc_url( $url ) . '" style="color: #6366f1; font-weight: 500;">' . esc_html__( 'Edit with AI ✨', 'ai' ) . '</a>';
 		}
 
@@ -141,24 +140,24 @@ class Plugin_Builder extends Abstract_Feature {
 		register_post_type(
 			'abp-chat',
 			array(
-				'label'               => __( 'Chat Histories', 'ai' ),
-				'public'              => false,
-				'show_ui'             => false,
-				'show_in_rest'        => true,
-				'rest_base'           => 'abp-chats',
-				'supports'            => array( 'title', 'custom-fields' ),
-				'capability_type'     => 'abp_chat',
-				'map_meta_cap'        => true,
-				'capabilities'        => array(
-					'read_post'          => 'install_plugins',
-					'read_private_posts' => 'install_plugins',
-					'edit_post'          => 'install_plugins',
-					'edit_posts'         => 'install_plugins',
-					'edit_others_posts'  => 'install_plugins',
-					'delete_post'        => 'install_plugins',
-					'delete_posts'       => 'install_plugins',
-					'delete_others_posts'=> 'install_plugins',
-					'publish_posts'      => 'install_plugins',
+				'label'           => __( 'Chat Histories', 'ai' ),
+				'public'          => false,
+				'show_ui'         => false,
+				'show_in_rest'    => true,
+				'rest_base'       => 'abp-chats',
+				'supports'        => array( 'title', 'custom-fields' ),
+				'capability_type' => 'abp_chat',
+				'map_meta_cap'    => true,
+				'capabilities'    => array(
+					'read_post'           => 'install_plugins',
+					'read_private_posts'  => 'install_plugins',
+					'edit_post'           => 'install_plugins',
+					'edit_posts'          => 'install_plugins',
+					'edit_others_posts'   => 'install_plugins',
+					'delete_post'         => 'install_plugins',
+					'delete_posts'        => 'install_plugins',
+					'delete_others_posts' => 'install_plugins',
+					'publish_posts'       => 'install_plugins',
 				),
 			)
 		);
@@ -233,6 +232,8 @@ class Plugin_Builder extends Abstract_Feature {
 			$assets['version'],
 			true
 		);
+
+		wp_set_script_translations( 'ai-plugin-builder', 'ai' );
 
 		wp_enqueue_style(
 			'ai-plugin-builder',
