@@ -18,7 +18,6 @@
 	background: var(--card-bg);
 	border-radius: var(--border-radius);
 	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-	overflow: hidden;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -208,16 +207,19 @@
 	padding: 16px 24px;
 	border-top: 1px solid var(--ai-bubble-border);
 	background: var(--card-bg);
+	overflow: visible;
 }
 
 .apb-chat__input-wrapper {
 	display: flex;
-	align-items: flex-end;
+	align-items: flex-start;
 	gap: 12px;
 	background: #fff;
 	border: 1px solid #8c8f94;
 	border-radius: 4px;
-	padding: 8px 8px 8px 16px;
+	padding: 8px 8px 45px 16px;
+	overflow: visible;
+	position: relative;
 }
 
 .apb-chat__input-wrapper:focus-within {
@@ -229,7 +231,7 @@
 	flex: 1;
 	border: none !important;
 	background: transparent;
-	padding: 4px 0;
+	padding: 4px 0 4px 0px;
 	font-size: 14px;
 	color: var(--text-main);
 	outline: none !important;
@@ -238,6 +240,12 @@
 	font-family: inherit;
 	line-height: 1.5;
 	min-height: 24px;
+	max-height: 150px;
+	overflow-y: auto;
+}
+
+.apb-chat__input:disabled {
+	background: transparent;
 }
 
 .apb-chat__send-btn {
@@ -253,9 +261,122 @@
 	cursor: pointer;
 }
 
+.apb-chat__send-btn .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+}
+
 .apb-chat__send-btn:disabled {
 	background: #c3c4c7;
 	cursor: not-allowed;
+}
+
+.apb-chat__enhance-error {
+	margin-top: 8px;
+	padding: 8px 12px;
+	font-size: 12px;
+	color: #dc2626;
+	background: #fef2f2;
+	border: 1px solid #fecaca;
+	border-radius: 4px;
+}
+
+.apb-chat__prompt-tip-icon {
+	position: absolute;
+	bottom: 8px;
+	left: 16px;
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	height: 28px;
+	padding: 0 8px 0 0;
+	background: var(--card-bg);
+	border: 1px solid #e5e7eb;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+	z-index: 10;
+	color: #6b7280;
+}
+
+.apb-chat__prompt-tip-icon-wrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+}
+
+.apb-chat__prompt-tip-icon .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+}
+
+.apb-chat__prompt-tip-text {
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	color: #6b7280;
+	transition: color 0.15s ease;
+}
+
+.apb-chat__prompt-tip-icon:hover:not(:disabled) {
+	border-color: var(--primary-color);
+}
+
+.apb-chat__prompt-tip-icon:hover:not(:disabled) .apb-chat__prompt-tip-icon-wrapper {
+	color: var(--primary-color);
+}
+
+.apb-chat__prompt-tip-icon:hover:not(:disabled) .apb-chat__prompt-tip-text {
+	color: var(--primary-color);
+}
+
+.apb-chat__prompt-tip-icon:disabled {
+	background: #f9fafb;
+	color: #c3c4c7;
+	cursor: not-allowed;
+	opacity: 0.5;
+}
+
+.apb-chat__prompt-tip-tooltip {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	width: 280px;
+	padding: 10px 12px;
+	font-size: 12px;
+	line-height: 1.5;
+	color: #fff;
+	background: #1f2937;
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.2s ease, visibility 0.2s ease;
+	pointer-events: none;
+	z-index: 1000;
+	text-align: center;
+}
+
+.apb-chat__prompt-tip-tooltip::after {
+	content: '';
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 6px solid transparent;
+	border-top-color: #1f2937;
+}
+
+.apb-chat__prompt-tip-icon-wrapper:hover .apb-chat__prompt-tip-tooltip {
+	opacity: 1;
+	visibility: visible;
 }
 
 .apb-bubble--plan ul {
