@@ -248,13 +248,13 @@ class ChatHistoryController extends WP_REST_Controller {
 		$post = get_post( $id );
 		
 		if ( ! $post || 'abp-chat' !== $post->post_type ) {
-			return new WP_Error( 'not_found', 'Chat history not found.', array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Chat history not found.', 'ai' ), array( 'status' => 404 ) );
 		}
 		
 		$result = wp_delete_post( $id, true );
 		
 		if ( ! $result ) {
-			return new WP_Error( 'cant_delete', 'Could not delete chat history.', array( 'status' => 500 ) );
+			return new WP_Error( 'cant_delete', __( 'Could not delete chat history.', 'ai' ), array( 'status' => 500 ) );
 		}
 		
 		return rest_ensure_response( array( 'deleted' => true ) );
