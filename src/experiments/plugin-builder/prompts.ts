@@ -15,7 +15,7 @@ export function getSystemPrompt(
 		case 'analyzer':
 			return 'You are an expert WordPress plugin analyzer. Return only valid JSON.';
 		case 'detector':
-			return `You are an intent classifier for a WordPress AI Plugin Builder. Your job is to determine what the user wants.
+			return `You are an intent classifier for a AI-Powered Plugin Builder. Your job is to determine what the user wants.
 
 Classify the user's intent into one of these categories:
 - plugin_request: User wants to create a new WordPress plugin (most common)
@@ -241,9 +241,10 @@ This is the main plugin file. It MUST start with the WordPress plugin header:
  * Plugin Name: ${ plan.plugin_name }
  * Description: ${ plan.description }
  * Version: 1.0.0
- * Author: WordPress AI Plugin Builder
+ * Author: AI-Powered Plugin Builder
  * License: GPL-2.0-or-later
  * Text Domain: ${ plan.plugin_slug }
+ * AI Plugin Built: true
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

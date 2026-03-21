@@ -1,4 +1,5 @@
 import apiFetch from '@wordpress/api-fetch';
+import { __ } from '@wordpress/i18n';
 import { WriteResponse, GeneratedFile } from './types';
 
 declare global {
@@ -44,7 +45,7 @@ export async function downloadPlugin( pluginSlug: string ): Promise< void > {
 
 	if ( ! response.ok ) {
 		const text = await response.text();
-		throw new Error( text || 'Failed to generate ZIP archive.' );
+		throw new Error( text || __( 'Failed to generate ZIP archive.', 'ai' ) );
 	}
 
 	const blob = await response.blob();

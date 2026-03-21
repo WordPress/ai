@@ -14,7 +14,6 @@ use WP_REST_Request;
 use WP_REST_Response;
 use WordPress\AI\Experiments\Plugin_Builder\Installer\PluginWriter;
 use WordPress\AI\Experiments\Plugin_Builder\Installer\SlugValidator;
-use WordPress\AI\Experiments\Plugin_Builder\Rest\DownloadController;
 
 /**
  * POST /wordpress-ai-plugin-builder/v1/write-files — write generated files to disk.
@@ -145,13 +144,6 @@ class WriteController {
 		$plugin_path = plugin_basename( $main_file );
 		if ( '.php' === substr( $plugin_path, -4 ) ) {
 			$plugin_path = substr( $plugin_path, 0, -4 );
-		}
-
-		// Track this slug so we can identify AI-generated plugins later.
-		$ai_slugs = get_option( DownloadController::OPTION_KEY, array() );
-		if ( ! in_array( $plugin_slug, (array) $ai_slugs, true ) ) {
-			$ai_slugs[] = $plugin_slug;
-			update_option( DownloadController::OPTION_KEY, $ai_slugs );
 		}
 
 		return new WP_REST_Response(
