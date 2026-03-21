@@ -853,7 +853,9 @@ Do not stop until you have called finish.`;
 												)
 											);
 										}
-									} else if ( needsSlugConfirmation( writeRes ) ) {
+									} else if (
+										needsSlugConfirmation( writeRes )
+									) {
 										// The backend is asking for explicit confirmation or adjustment of the plugin slug.
 										res = {
 											success: false,
