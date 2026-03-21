@@ -117,8 +117,8 @@ export default function App() {
 		) {
 			try {
 				await deleteChatHistory( id );
-				setRecentChats(
-					recentChats.filter( ( chat ) => chat.id !== id )
+				setRecentChats( ( prevRecentChats ) =>
+					prevRecentChats.filter( ( chat ) => chat.id !== id )
 				);
 			} catch ( err ) {
 				console.error( 'Failed to delete chat', err );
