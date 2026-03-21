@@ -70,6 +70,7 @@ export default function App() {
 		installPlugin,
 		forceInstallPlugin,
 		downloadPlugin,
+		installedPluginFile,
 		reset,
 		logs,
 		loadChat,
