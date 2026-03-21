@@ -1149,7 +1149,7 @@ Do not stop until you have called finish.`;
 								.map( ( c: any ) => ( {
 									name: c.name,
 									label: c.label,
-								} ) );
+							} ) );
 
 							const analyzerText = await window.wp.aiClient
 								.prompt(
