@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { usePluginBuilder } from './usePluginBuilder';
+import { AIBrainIcon } from './AIBrainIcon';
 
 function Spinner() {
 	return (
@@ -97,7 +98,7 @@ export default function App() {
 			<div className="apb-chat__messages">
 				{ messages.length === 0 ? (
 					<div className="apb-chat__empty">
-						<div className="apb-chat__empty-icon">🏗️</div>
+						<AIBrainIcon />
 						<h3 className="apb-chat__empty-title">
 							{ __( 'Code WordPress Plugins with AI', 'ai' ) }
 						</h3>
@@ -131,7 +132,7 @@ export default function App() {
 								) }
 								<div className="apb-msg__content">
 									{ msg.type === 'text' && (
-										<div className="apb-bubble">
+										<div className="apb-bubble apb-bubble--text">
 											<p
 												dangerouslySetInnerHTML={ {
 													__html: msg.content.replace(
@@ -149,13 +150,16 @@ export default function App() {
 									) }
 									{ msg.type === 'plan' && (
 										<div className="apb-bubble apb-bubble--plan">
-											<strong>
-												{ sprintf(
-													/* translators: %s: plugin name */
-													__( 'Plugin Plan: %s', 'ai' ),
-													msg.data.plugin_name
-												) }
-											</strong>
+											<div className="apb-bubble__header">
+												<span className="apb-bubble__icon">📋</span>
+												<strong>
+													{ sprintf(
+														/* translators: %s: plugin name */
+														__( 'Plugin Plan: %s', 'ai' ),
+														msg.data.plugin_name
+													) }
+												</strong>
+											</div>
 											<p>{ msg.data.description }</p>
 											<ul>
 												{ msg.data.files.map(
@@ -177,13 +181,16 @@ export default function App() {
 									) }
 									{ msg.type === 'files' && (
 										<div className="apb-bubble apb-bubble--files">
-											<strong>
-												{ sprintf(
-													/* translators: %d: number of files */
-													__( 'Generated Files: %d', 'ai' ),
-													msg.data.length
-												) }
-											</strong>
+											<div className="apb-bubble__header">
+												<span className="apb-bubble__icon">📁</span>
+												<strong>
+													{ sprintf(
+														/* translators: %d: number of files */
+														__( 'Generated Files: %d', 'ai' ),
+														msg.data.length
+													) }
+												</strong>
+											</div>
 											<div
 												className="apb-actions"
 												style={ { marginTop: '10px' } }
@@ -230,8 +237,7 @@ export default function App() {
 										</div>
 									) }
 									{ msg.type === 'install' && (
-										<div className="apb-bubble apb-bubble--success">
-											{ msg.data.activated
+										<div className="apb-bubble apb-bubble--success">											<span className="apb-bubble__icon">✅</span>											{ msg.data.activated
 												? __(
 														'Plugin installed and activated successfully!',
 														'ai'
@@ -248,12 +254,16 @@ export default function App() {
 									) }
 									{ msg.type === 'error' && (
 										<div className="apb-bubble apb-bubble--error">
+											<span className="apb-bubble__icon">❌</span>
 											{ msg.content }
 										</div>
 									) }
 									{ msg.type === 'analysis' && (
 										<div className="apb-bubble apb-bubble--analysis">
-											<strong>Suggested Next Steps:</strong>
+											<div className="apb-bubble__header">
+												<span className="apb-bubble__icon">💡</span>
+												<strong>Suggested Next Steps:</strong>
+											</div>
 											<div
 												className="apb-actions"
 												style={ { marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' } }
