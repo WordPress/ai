@@ -172,6 +172,30 @@ class Plugin_Builder extends Abstract_Feature {
 				'ability_class' => Plugin_Prompt_Enhancement::class,
 			),
 		);
+
+		wp_register_ability(
+			'ai/get-installed-plugins',
+			array(
+				'label'              => __( 'Get Installed Plugins', 'ai' ),
+				'description'        => __( 'Retrieves a list of installed plugins with their names and descriptions.', 'ai' ),
+				'execution_callback' => static function () {
+					$plugins = get_plugins();
+
+					$result = array();
+
+					foreach ( $plugins as $plugin_file => $plugin_data ) {
+						$result[] = array(
+							'file'        => $plugin_file,
+							'name'        => $plugin_data['Name'] ?? '',
+							'description' => $plugin_data['Description'] ?? '',
+							'active'      => is_plugin_active( $plugin_file ),
+						);
+					}
+
+					return $result;
+				},
+			),
+		);
 	}
 
 	/**

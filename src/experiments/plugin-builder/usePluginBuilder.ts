@@ -710,9 +710,7 @@ Do not stop until you have called finish.`;
 							);
 
 							try {
-								if ( fnName === 'list_plugins' ) {
-									res = await api.listPlugins();
-								} else if ( fnName === 'discover_abilities' ) {
+								if ( fnName === 'discover_abilities' ) {
 									res = await api.discoverAbilities();
 								} else if ( fnName === 'execute_ability' ) {
 									res = await api.executeAbility(
