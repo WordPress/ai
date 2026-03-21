@@ -158,8 +158,6 @@ export default function App() {
 									className="apb-chat__example-btn"
 									onClick={ () => setInput( example ) }
 									title={ example }
-									onClick={ () => setInput( example ) }
-									title={example}
 								>
 									{ example }
 								</button>
@@ -353,10 +351,7 @@ export default function App() {
 															className="button button-primary"
 															disabled={
 																isProcessing ||
-																state ===
-																	'installing' ||
-																state ===
-																	'installed'
+																isInstalled
 															}
 															onClick={ () =>
 																installPlugin()
