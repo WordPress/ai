@@ -602,12 +602,21 @@ Do not stop until you have called finish.`;
 										res = { error: 'File not found locally. Ensure you have written it first using write_file.' };
 									}
 								} else if ( fnName === 'finish' ) {
-										const finalSlug = args.plugin_slug && args.plugin_slug.startsWith('apb-') ? args.plugin_slug : plan.plugin_slug;
-										const writeRes = await api.writeFiles( finalSlug, newFiles, true );
-									
+									const finalSlug = args.plugin_slug && args.plugin_slug.startsWith( 'apb-' )
+										? ( args.plugin_slug as string )
+										: plan.plugin_slug;
+									const writeRes = await api.writeFiles( finalSlug, newFiles, true );
+
 									if ( writeRes.issues && writeRes.issues.length > 0 ) {
-										res = { success: false, issues: writeRes.issues, instruction: 'Fix these issues using write_file and call finish again.' };
+										res = {
+											success: false,
+											issues: writeRes.issues,
+											instruction:
+												'Fix these issues using write_file and call finish again.',
+										};
 									} else {
+										// Persist the final slug so subsequent operations use the correct plugin.
+										plan.plugin_slug = finalSlug;
 										isFinished = true;
 										res = { success: true, message: 'Plugin Generation Complete.' };
 									}
