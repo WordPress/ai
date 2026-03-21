@@ -126,7 +126,9 @@ export default function App() {
 					newUrl.searchParams.delete( 'chat_id' );
 					window.history.replaceState( {}, '', newUrl.toString() );
 				} )
-				.catch( ( err ) => console.error( 'Failed to fetch specific chat', err ) );
+				.catch( ( err ) =>
+					console.error( 'Failed to fetch specific chat', err )
+				);
 		}
 	}, [ loadChat, messages.length ] );
 
@@ -134,7 +136,9 @@ export default function App() {
 		if ( messages.length === 0 ) {
 			getChatHistory()
 				.then( ( histories ) => setRecentChats( histories ) )
-				.catch( ( err ) => console.error( 'Failed to fetch histories', err ) );
+				.catch( ( err ) =>
+					console.error( 'Failed to fetch histories', err )
+				);
 		}
 	}, [ messages.length ] );
 
@@ -219,19 +223,57 @@ export default function App() {
 						</div>
 
 						{ recentChats && recentChats.length > 0 && (
-							<div className="apb-chat__history" style={ { marginTop: '40px' } }>
-								<h4 className="apb-chat__history-title" style={ { fontSize: '14px', marginBottom: '10px' } }>{ __( 'Recent Conversations', 'ai' ) }</h4>
-								<ul className="apb-chat__history-list" style={ { listStyle: 'none', padding: 0 } }>
-									{ recentChats.map( chat => (
-										<li key={ chat.id } style={ { marginBottom: '8px' } }>
+							<div
+								className="apb-chat__history"
+								style={ { marginTop: '40px' } }
+							>
+								<h4
+									className="apb-chat__history-title"
+									style={ {
+										fontSize: '14px',
+										marginBottom: '10px',
+									} }
+								>
+									{ __( 'Recent Conversations', 'ai' ) }
+								</h4>
+								<ul
+									className="apb-chat__history-list"
+									style={ { listStyle: 'none', padding: 0 } }
+								>
+									{ recentChats.map( ( chat ) => (
+										<li
+											key={ chat.id }
+											style={ { marginBottom: '8px' } }
+										>
 											<button
 												className="apb-chat__history-btn button button-secondary"
-												onClick={ () => loadChat( chat ) }
-												style={ { width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between' } }
+												onClick={ () =>
+													loadChat( chat )
+												}
+												style={ {
+													width: '100%',
+													textAlign: 'left',
+													display: 'flex',
+													justifyContent:
+														'space-between',
+												} }
 											>
-												<span>{ chat.title || __( 'Plugin Builder Chat', 'ai' ) }</span>
+												<span>
+													{ chat.title ||
+														__(
+															'Plugin Builder Chat',
+															'ai'
+														) }
+												</span>
 												{ chat.plugin_slug && (
-													<span style={ { opacity: 0.6, fontSize: '11px' } }>{ chat.plugin_slug }</span>
+													<span
+														style={ {
+															opacity: 0.6,
+															fontSize: '11px',
+														} }
+													>
+														{ chat.plugin_slug }
+													</span>
 												) }
 											</button>
 										</li>
@@ -242,220 +284,308 @@ export default function App() {
 					</div>
 				) : (
 					<div className="apb-chat__message-list">
-						{ messages.filter(msg => {
-							if (msg.type === 'review') {
-								return msg.data && msg.data.passed === false;
-							}
-							if (msg.type === 'analysis') {
-								return msg.data && msg.data.suggested_commands && msg.data.suggested_commands.length > 0;
-							}
-							if (msg.type === 'text' && !msg.content) {
-								return false;
-							}
-							return true;
-						}).map( ( msg ) => (
-							<div
-								key={ msg.id }
-								className={ `apb-msg apb-msg--${ msg.role }` }
-							>
-								{ msg.role === 'assistant' && (
-									<div className="apb-avatar">🤖</div>
-								) }
-								<div className="apb-msg__content">
-									{ msg.type === 'text' && (
-										<div className="apb-bubble">
-											<p
-												dangerouslySetInnerHTML={ {
-													__html: msg.content.replace(
-														/\n/g,
-														'<br/>'
-													),
-												} }
-											/>
-										</div>
+						{ messages
+							.filter( ( msg ) => {
+								if ( msg.type === 'review' ) {
+									return (
+										msg.data && msg.data.passed === false
+									);
+								}
+								if ( msg.type === 'analysis' ) {
+									return (
+										msg.data &&
+										msg.data.suggested_commands &&
+										msg.data.suggested_commands.length > 0
+									);
+								}
+								if ( msg.type === 'text' && ! msg.content ) {
+									return false;
+								}
+								return true;
+							} )
+							.map( ( msg ) => (
+								<div
+									key={ msg.id }
+									className={ `apb-msg apb-msg--${ msg.role }` }
+								>
+									{ msg.role === 'assistant' && (
+										<div className="apb-avatar">🤖</div>
 									) }
-									{ msg.type === 'loading' && (
-										<div className="apb-bubble apb-bubble--loading">
-											<SmallSpinner /> { msg.content }
-										</div>
-									) }
-									{ msg.type === 'plan' && (
-										<div className="apb-bubble apb-bubble--plan">
-											<strong>
-												{ sprintf(
-													/* translators: %s: plugin name */
-													__(
-														'Plugin Plan: %s',
-														'ai'
-													),
-													msg.data.plugin_name
-												) }
-											</strong>
-											<p>{ msg.data.description }</p>
-											<ul>
-												{ msg.data.files.map(
-													(
-														file: any,
-														i: number
-													) => (
-														<li key={ i }>
-															<code>
-																{ file.path }
-															</code>{ ' ' }
-															-{ ' ' }
-															{ file.description }
-														</li>
-													)
-												) }
-											</ul>
-										</div>
-									) }
-									{ msg.type === 'files' && (
-										<div className="apb-bubble apb-bubble--files">
-											<strong>
-												{ sprintf(
-													/* translators: %d: number of files */
-													__(
-														'Generated Files: %d',
-														'ai'
-													),
-													msg.data.length
-												) }
-											</strong>
-											<div
-												className="apb-actions"
-												style={ { marginTop: '10px' } }
-											>
-												{ !messages.slice(messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated) && (
-													<button
-														className="button button-primary"
-														disabled={ isProcessing || state === 'installing' || state === 'installed' }
-														onClick={ () =>
-															installPlugin()
-														}
-													>
-														{ messages.slice(0, messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated)
-															? __( 'Update Plugin Files', 'ai' )
-															: __( 'Install and Activate Plugin', 'ai' ) }
-													</button>
-												) }
-												<button
-													className="button button-secondary"
-													onClick={ () =>
-														downloadPlugin()
-													}
-													disabled={ ! isInstalled }
-													style={ {
-														marginLeft: messages.slice(messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated)
-															? '0'
-															: '8px',
+									<div className="apb-msg__content">
+										{ msg.type === 'text' && (
+											<div className="apb-bubble">
+												<p
+													dangerouslySetInnerHTML={ {
+														__html: msg.content.replace(
+															/\n/g,
+															'<br/>'
+														),
 													} }
-													title={
-														isInstalled
-															? __(
-																	'Download plugin as ZIP',
-																	'ai'
-															  )
-															: __(
-																	'Install the plugin first to download',
-																	'ai'
-															  )
-													}
-												>
-													{ __(
-														'Download Plugin',
-														'ai'
-													) }
-												</button>
+												/>
 											</div>
-										</div>
-									) }
-									{ msg.type === 'install' && (
-										<div className="apb-bubble apb-bubble--success">
-											{ msg.data.activated
-												? __(
-														'Plugin installed and activated successfully!',
-														'ai'
-												  )
-												: sprintf(
-														/* translators: %s: error message */
+										) }
+										{ msg.type === 'loading' && (
+											<div className="apb-bubble apb-bubble--loading">
+												<SmallSpinner /> { msg.content }
+											</div>
+										) }
+										{ msg.type === 'plan' && (
+											<div className="apb-bubble apb-bubble--plan">
+												<strong>
+													{ sprintf(
+														/* translators: %s: plugin name */
 														__(
-															'Installed, but activation failed: %s',
+															'Plugin Plan: %s',
 															'ai'
 														),
-														msg.data.error
-												  ) }
-										</div>
-									) }
-									{ msg.type === 'error' && (
-										<div className="apb-bubble apb-bubble--error">
-											{ msg.content }
-										</div>
-									) }
-									{ msg.type === 'review' && msg.data && msg.data.passed === false && (
-										<div className="apb-bubble apb-bubble--error">
-											<strong>{ __( 'Security Review Failed', 'ai' ) }</strong>
-											<p>{ msg.data.review_summary }</p>
-										</div>
-									) }
-									{ msg.type === 'analysis' && (
-										<div className="apb-bubble apb-bubble--analysis">
-											<strong>{ __( 'Suggested Next Steps:', 'ai' ) }</strong>
-											<div
-												className="apb-actions"
-												style={ {
-													marginTop: '10px',
-													display: 'flex',
-													gap: '10px',
-													flexWrap: 'wrap',
-												} }
-											>
-												{ msg.data?.suggested_commands?.map(
-													(
-														cmdName: string,
-														i: number
-													) => {
-														const cmdObj =
-															msg.data.all_commands?.find(
-																( c: any ) =>
-																	c.name ===
-																	cmdName
-															);
-														if ( ! cmdObj )
-															return null;
-
-														return (
-															<button
-																key={ cmdName }
-																className={ `button ${
-																	i === 0
-																		? 'button-primary'
-																		: 'button-secondary'
-																}` }
-																onClick={ () => {
-																	if (
-																		typeof cmdObj.callback ===
-																		'function'
-																	) {
-																		cmdObj.callback(
-																			{
-																				close: () => {},
-																			}
-																		);
+														msg.data.plugin_name
+													) }
+												</strong>
+												<p>{ msg.data.description }</p>
+												<ul>
+													{ msg.data.files.map(
+														(
+															file: any,
+															i: number
+														) => (
+															<li key={ i }>
+																<code>
+																	{
+																		file.path
 																	}
-																} }
-															>
-																{ cmdObj.label }
-															</button>
-														);
-													}
-												) }
+																</code>{ ' ' }
+																-{ ' ' }
+																{
+																	file.description
+																}
+															</li>
+														)
+													) }
+												</ul>
 											</div>
-										</div>
-									) }
+										) }
+										{ msg.type === 'files' && (
+											<div className="apb-bubble apb-bubble--files">
+												<strong>
+													{ sprintf(
+														/* translators: %d: number of files */
+														__(
+															'Generated Files: %d',
+															'ai'
+														),
+														msg.data.length
+													) }
+												</strong>
+												<div
+													className="apb-actions"
+													style={ {
+														marginTop: '10px',
+													} }
+												>
+													{ ! messages
+														.slice(
+															messages.indexOf(
+																msg
+															)
+														)
+														.some(
+															( m ) =>
+																m.type ===
+																	'install' &&
+																m.data
+																	?.activated
+														) && (
+														<button
+															className="button button-primary"
+															disabled={
+																isProcessing ||
+																state ===
+																	'installing' ||
+																state ===
+																	'installed'
+															}
+															onClick={ () =>
+																installPlugin()
+															}
+														>
+															{ messages
+																.slice(
+																	0,
+																	messages.indexOf(
+																		msg
+																	)
+																)
+																.some(
+																	( m ) =>
+																		m.type ===
+																			'install' &&
+																		m.data
+																			?.activated
+																)
+																? __(
+																		'Update Plugin Files',
+																		'ai'
+																  )
+																: __(
+																		'Install and Activate Plugin',
+																		'ai'
+																  ) }
+														</button>
+													) }
+													<button
+														className="button button-secondary"
+														onClick={ () =>
+															downloadPlugin()
+														}
+														disabled={
+															! isInstalled
+														}
+														style={ {
+															marginLeft: messages
+																.slice(
+																	messages.indexOf(
+																		msg
+																	)
+																)
+																.some(
+																	( m ) =>
+																		m.type ===
+																			'install' &&
+																		m.data
+																			?.activated
+																)
+																? '0'
+																: '8px',
+														} }
+														title={
+															isInstalled
+																? __(
+																		'Download plugin as ZIP',
+																		'ai'
+																  )
+																: __(
+																		'Install the plugin first to download',
+																		'ai'
+																  )
+														}
+													>
+														{ __(
+															'Download Plugin',
+															'ai'
+														) }
+													</button>
+												</div>
+											</div>
+										) }
+										{ msg.type === 'install' && (
+											<div className="apb-bubble apb-bubble--success">
+												{ msg.data.activated
+													? __(
+															'Plugin installed and activated successfully!',
+															'ai'
+													  )
+													: sprintf(
+															/* translators: %s: error message */
+															__(
+																'Installed, but activation failed: %s',
+																'ai'
+															),
+															msg.data.error
+													  ) }
+											</div>
+										) }
+										{ msg.type === 'error' && (
+											<div className="apb-bubble apb-bubble--error">
+												{ msg.content }
+											</div>
+										) }
+										{ msg.type === 'review' &&
+											msg.data &&
+											msg.data.passed === false && (
+												<div className="apb-bubble apb-bubble--error">
+													<strong>
+														{ __(
+															'Security Review Failed',
+															'ai'
+														) }
+													</strong>
+													<p>
+														{
+															msg.data
+																.review_summary
+														}
+													</p>
+												</div>
+											) }
+										{ msg.type === 'analysis' && (
+											<div className="apb-bubble apb-bubble--analysis">
+												<strong>
+													{ __(
+														'Suggested Next Steps:',
+														'ai'
+													) }
+												</strong>
+												<div
+													className="apb-actions"
+													style={ {
+														marginTop: '10px',
+														display: 'flex',
+														gap: '10px',
+														flexWrap: 'wrap',
+													} }
+												>
+													{ msg.data?.suggested_commands?.map(
+														(
+															cmdName: string,
+															i: number
+														) => {
+															const cmdObj =
+																msg.data.all_commands?.find(
+																	(
+																		c: any
+																	) =>
+																		c.name ===
+																		cmdName
+																);
+															if ( ! cmdObj )
+																return null;
+
+															return (
+																<button
+																	key={
+																		cmdName
+																	}
+																	className={ `button ${
+																		i === 0
+																			? 'button-primary'
+																			: 'button-secondary'
+																	}` }
+																	onClick={ () => {
+																		if (
+																			typeof cmdObj.callback ===
+																			'function'
+																		) {
+																			cmdObj.callback(
+																				{
+																					close: () => {},
+																				}
+																			);
+																		}
+																	} }
+																>
+																	{
+																		cmdObj.label
+																	}
+																</button>
+															);
+														}
+													) }
+												</div>
+											</div>
+										) }
+									</div>
 								</div>
-							</div>
-						) ) }
+							) ) }
 						<div ref={ messagesEndRef } />
 					</div>
 				) }

@@ -182,4 +182,3 @@ export interface ChatHistory {
 	messages: ChatMessage[];
 	plugin_slug?: string;
 }
-
