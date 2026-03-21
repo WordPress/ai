@@ -14,8 +14,6 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Plugin_Builder\Rest\DownloadController;
 use WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
-use WordPress\AI_Client\AI_Client;
-use WP_Error;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -43,18 +41,9 @@ class Plugin_Builder extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'              => __( 'Plugin Builder', 'ai' ),
-			'description'        => __( 'Uses AI to create plugins in WordPress.', 'ai' ),
-			'category'           => Experiment_Category::ADMIN,
-			'check_requirements' => function () {
-				if ( ! class_exists( 'WordPress\AI_Client\AI_Client' ) ) {
-					return new WP_Error(
-						'missing_ai_client',
-						__( 'This feature requires the <a href="https://github.com/WordPress/wp-ai-client" target="_blank">WP AI Client</a> plugin. You must currently install this plugin from GitHub. Clone it into your plugins directory and run <code>npm install &amp;&amp; composer install &amp;&amp; npm run build</code>.', 'ai' )
-					);
-				}
-				return true;
-			},
+			'label'       => __( 'Plugin Builder', 'ai' ),
+			'description' => __( 'Uses AI to create plugins in WordPress.', 'ai' ),
+			'category'    => Experiment_Category::ADMIN,
 		);
 	}
 
@@ -69,7 +58,8 @@ class Plugin_Builder extends Abstract_Feature {
 			}
 		);
 
-		add_action( 'init', array( AI_Client::class, 'init' ) );
+
+		add_action( 'init', array( $this, 'register_post_type' ) );
 
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
@@ -80,8 +70,88 @@ class Plugin_Builder extends Abstract_Feature {
 			'rest_api_init',
 			static function () {
 				( new WriteController() )->register();
+				( new Rest\ChatHistoryController() )->register();
+				( new Rest\FilesController() )->register();
 				( new DownloadController() )->register();
 			}
+		);
+
+		// Add "Edit with AI" link to plugin rows.
+		add_filter( 'plugin_action_links', array( $this, 'add_edit_with_ai_link' ), 10, 2 );
+	}
+
+	/**
+	 * Adds "Edit with AI" link to plugins row.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array  $actions     Plugin action links.
+	 * @param string $plugin_file Plugin file path inside wp-content/plugins.
+	 * @return array
+	 */
+	public function add_edit_with_ai_link( $actions, $plugin_file ) {
+		if ( ! current_user_can( 'install_plugins' ) ) {
+			return $actions;
+		}
+
+		$plugin_slug = dirname( $plugin_file );
+		if ( '.' === $plugin_slug ) {
+			return $actions; // Don't match single-file plugins for simplicity.
+		}
+
+		// Find a chat that generated this plugin slug.
+		$args = array(
+			'post_type'      => 'abp-chat',
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'meta_query'     => array(
+				array(
+					'key'   => '_abp_plugin_slug',
+					'value' => $plugin_slug,
+				),
+			),
+		);
+
+		$query = new \WP_Query( $args );
+		if ( ! empty( $query->posts ) ) {
+			$post_id = $query->posts[0];
+			$url     = admin_url( 'plugins.php?page=ai-plugin-builder&chat_id=' . $post_id );
+			$actions['edit_with_ai'] = '<a href="' . esc_url( $url ) . '" style="color: #6366f1; font-weight: 500;">' . esc_html__( 'Edit with AI ✨', 'ai' ) . '</a>';
+		}
+
+		return $actions;
+	}
+
+	/**
+	 * Registers the custom post type for storing chat histories.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_post_type(): void {
+		register_post_type(
+			'abp-chat',
+			array(
+				'label'               => __( 'Chat Histories', 'ai' ),
+				'public'              => false,
+				'show_ui'             => false,
+				'show_in_rest'        => true,
+				'rest_base'           => 'abp-chats',
+				'supports'            => array( 'title', 'custom-fields' ),
+				'capability_type'     => 'abp_chat',
+				'map_meta_cap'        => true,
+				'capabilities'        => array(
+					'read_post'          => 'install_plugins',
+					'read_private_posts' => 'install_plugins',
+					'edit_post'          => 'install_plugins',
+					'edit_posts'         => 'install_plugins',
+					'edit_others_posts'  => 'install_plugins',
+					'delete_post'        => 'install_plugins',
+					'delete_posts'       => 'install_plugins',
+					'delete_others_posts'=> 'install_plugins',
+					'publish_posts'      => 'install_plugins',
+				),
+			)
 		);
 
 		// Admin-post handler for downloading an AI-generated plugin as a ZIP from the plugins list.

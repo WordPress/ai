@@ -174,3 +174,12 @@ export interface AnalysisResponse {
 	new_commands?: AnalysisNewCommand[];
 	suggested_commands?: string[];
 }
+
+export interface ChatHistory {
+	id?: number;
+	title?: string;
+	date?: string;
+	messages: ChatMessage[];
+	plugin_slug?: string;
+}
+
