@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { usePluginBuilder } from './usePluginBuilder';
+import { getChatHistory, getChatById } from './api';
+import type { ChatHistory } from './types';
 
 function Spinner() {
 	return (
@@ -44,9 +46,12 @@ export default function App() {
 		downloadPlugin,
 		reset,
 		logs,
+		activeChatId,
+		loadChat,
 	} = usePluginBuilder();
 
 	const [ input, setInput ] = useState( '' );
+	const [ recentChats, setRecentChats ] = useState< ChatHistory[] >( [] );
 	const messagesEndRef = useRef< HTMLDivElement >( null );
 
 	const examples = [
@@ -59,6 +64,33 @@ export default function App() {
 	useEffect( () => {
 		if ( messagesEndRef.current ) {
 			messagesEndRef.current.scrollIntoView( { behavior: 'smooth' } );
+		}
+	}, [ messages.length ] );
+
+	// On mount, check if there's a chat_id in the URL
+	useEffect( () => {
+		const urlParams = new URLSearchParams( window.location.search );
+		const queryChatId = urlParams.get( 'chat_id' );
+		
+		if ( queryChatId && messages.length === 0 ) {
+			getChatById( parseInt( queryChatId, 10 ) )
+				.then( ( chat ) => {
+					loadChat( chat );
+					
+					// Clean up the URL securely
+					const newUrl = new URL( window.location.href );
+					newUrl.searchParams.delete( 'chat_id' );
+					window.history.replaceState( {}, '', newUrl.toString() );
+				} )
+				.catch( ( err ) => console.error( 'Failed to fetch specific chat', err ) );
+		}
+	}, [ loadChat, messages.length ] );
+
+	useEffect( () => {
+		if ( messages.length === 0 ) {
+			getChatHistory()
+				.then( ( histories ) => setRecentChats( histories ) )
+				.catch( ( err ) => console.error( 'Failed to fetch histories', err ) );
 		}
 	}, [ messages.length ] );
 
@@ -114,10 +146,43 @@ export default function App() {
 								</button>
 							) ) }
 						</div>
+
+						{ recentChats && recentChats.length > 0 && (
+							<div className="apb-chat__history" style={ { marginTop: '40px' } }>
+								<h4 className="apb-chat__history-title" style={ { fontSize: '14px', marginBottom: '10px' } }>{ __( 'Recent Conversations', 'ai' ) }</h4>
+								<ul className="apb-chat__history-list" style={ { listStyle: 'none', padding: 0 } }>
+									{ recentChats.map( chat => (
+										<li key={ chat.id } style={ { marginBottom: '8px' } }>
+											<button
+												className="apb-chat__history-btn button button-secondary"
+												onClick={ () => loadChat( chat ) }
+												style={ { width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between' } }
+											>
+												<span>{ chat.title || __( 'Plugin Builder Chat', 'ai' ) }</span>
+												{ chat.plugin_slug && (
+													<span style={ { opacity: 0.6, fontSize: '11px' } }>{ chat.plugin_slug }</span>
+												) }
+											</button>
+										</li>
+									) ) }
+								</ul>
+							</div>
+						) }
 					</div>
 				) : (
 					<div className="apb-chat__message-list">
-						{ messages.map( ( msg ) => (
+						{ messages.filter(msg => {
+							if (msg.type === 'review') {
+								return msg.data && msg.data.passed === false;
+							}
+							if (msg.type === 'analysis') {
+								return msg.data && msg.data.suggested_commands && msg.data.suggested_commands.length > 0;
+							}
+							if (msg.type === 'text' && !msg.content) {
+								return false;
+							}
+							return true;
+						}).map( ( msg ) => (
 							<div
 								key={ msg.id }
 								className={ `apb-msg apb-msg--${ msg.role }` }
@@ -184,17 +249,17 @@ export default function App() {
 												className="apb-actions"
 												style={ { marginTop: '10px' } }
 											>
-												{ ! isInstalled && (
+												{ !messages.slice(messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated) && (
 													<button
 														className="button button-primary"
+														disabled={ isProcessing || state === 'installing' || state === 'installed' }
 														onClick={ () =>
 															installPlugin()
 														}
 													>
-														{ __(
-															'Install and Activate Plugin',
-															'ai'
-														) }
+														{ messages.slice(0, messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated)
+															? __( 'Update Plugin Files', 'ai' )
+															: __( 'Install and Activate Plugin', 'ai' ) }
 													</button>
 												) }
 												<button
@@ -204,7 +269,7 @@ export default function App() {
 													}
 													disabled={ ! isInstalled }
 													style={ {
-														marginLeft: isInstalled
+														marginLeft: messages.slice(messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated)
 															? '0'
 															: '8px',
 													} }
@@ -247,9 +312,15 @@ export default function App() {
 											{ msg.content }
 										</div>
 									) }
+									{ msg.type === 'review' && msg.data && msg.data.passed === false && (
+										<div className="apb-bubble apb-bubble--error">
+											<strong>{ __( 'Security Review Failed', 'ai' ) }</strong>
+											<p>{ msg.data.review_summary }</p>
+										</div>
+									) }
 									{ msg.type === 'analysis' && (
 										<div className="apb-bubble apb-bubble--analysis">
-											<strong>Suggested Next Steps:</strong>
+											<strong>{ __( 'Suggested Next Steps:', 'ai' ) }</strong>
 											<div
 												className="apb-actions"
 												style={ { marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' } }
