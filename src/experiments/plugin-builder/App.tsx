@@ -84,12 +84,12 @@ export default function App() {
 				<div className="apb-chat__header-actions">
 					{messages.length > 0 ? (
 						<button className="apb-chat__reset button button-secondary" onClick={reset}>
-							✨ New Project
+							✨ {__('New Project', 'ai')}
 						</button>
 					) : (
 						<div className="apb-chat__status">
 							<div className="apb-chat__status-dot"></div>
-							Ready
+							{__('Ready', 'ai')}
 						</div>
 					)}
 				</div>
