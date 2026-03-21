@@ -67,13 +67,14 @@ function parseJSON( json: string ): any {
 function mapChatMessagesToApiMessages( messages: ChatMessage[] ): any[] {
 	return messages
 		.filter( m => ['text', 'plan', 'review'].includes(m.type) )
+		.filter( m => m.content || m.data )
 		.map( m => {
-			let text = m.content;
+			let text = m.content || '';
 			if (m.type === 'plan' && m.data) {
 				text += '\n\nPlan:\n```json\n' + JSON.stringify({ plugin_name: m.data.plugin_name, description: m.data.description, files: m.data.files.map((f: any) => f.path) }) + '\n```';
 			}
 			return {
-				role: m.role,
+				role: m.role === 'assistant' ? 'model' : m.role,
 				parts: [ { type: 'text', text: text } ]
 			};
 		});
