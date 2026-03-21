@@ -950,7 +950,7 @@ Do not stop until you have called finish.`;
 			const isUpdate = messagesRef.current.some(
 				( m ) => m.type === 'install' && m.data?.activated
 			);
-			const _force = force;
+			const _force = force || isUpdate;
 
 			setState( 'installing' );
 			setSlugConflictWarnings( [] );
