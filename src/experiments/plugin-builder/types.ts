@@ -1,4 +1,13 @@
-export type BuilderState = 'idle' | 'planning' | 'coding' | 'reviewing' | 'fixing' | 'ready_to_install' | 'installing' | 'installed' | 'error';
+export type BuilderState =
+	| 'idle'
+	| 'planning'
+	| 'coding'
+	| 'reviewing'
+	| 'fixing'
+	| 'ready_to_install'
+	| 'installing'
+	| 'installed'
+	| 'error';
 
 export type LogLevel = 'info' | 'success' | 'warn' | 'error';
 
@@ -72,7 +81,15 @@ export interface TokenUsageSummary {
 export interface ChatMessage {
 	id: string;
 	role: 'user' | 'assistant';
-	type: 'text' | 'loading' | 'plan' | 'files' | 'review' | 'install' | 'error';
+	type:
+		| 'text'
+		| 'loading'
+		| 'plan'
+		| 'files'
+		| 'review'
+		| 'install'
+		| 'analysis'
+		| 'error';
 	content: string;
 	data?: any;
 	timestamp: Date;
@@ -80,7 +97,14 @@ export interface ChatMessage {
 
 export interface StatusResponse {
 	job_id: string;
-	status: 'queued' | 'planning' | 'coding' | 'reviewing' | 'fixing' | 'done' | 'error';
+	status:
+		| 'queued'
+		| 'planning'
+		| 'coding'
+		| 'reviewing'
+		| 'fixing'
+		| 'done'
+		| 'error';
 	current_step: string;
 	plan?: PluginPlan;
 	files?: GeneratedFile[];
@@ -104,30 +128,47 @@ export interface QuestionResponse {
 
 export type AnyGenerateResponse = GenerateResponse | QuestionResponse;
 
-export interface InstallSuccessResponse {
-	installed: true;
-	activated: boolean;
+export interface WriteSuccessResponse {
+	written: true;
 	plugin: string;
-	error?: string; // If activation failed
 }
 
-export interface InstallErrorResponse {
+export interface WriteErrorResponse {
 	error: string;
 	status?: number;
 }
 
-export interface InstallSlugConflictResponse {
+export interface WriteSlugConflictResponse {
 	needs_confirmation: true;
 	warnings: string[];
 	message: string;
 }
 
-export type InstallResponse = InstallSuccessResponse | InstallErrorResponse | InstallSlugConflictResponse;
+export type WriteResponse =
+	| WriteSuccessResponse
+	| WriteErrorResponse
+	| WriteSlugConflictResponse;
 
-export function isJobResponse(response: AnyGenerateResponse): response is GenerateResponse {
-	return response.type === 'plugin_request' || response.type === 'modification_request';
+export function isJobResponse(
+	response: AnyGenerateResponse
+): response is GenerateResponse {
+	return (
+		response.type === 'plugin_request' ||
+		response.type === 'modification_request'
+	);
 }
 
-export function needsSlugConfirmation(response: InstallResponse): response is InstallSlugConflictResponse {
+export function needsSlugConfirmation(response: WriteResponse): response is WriteSlugConflictResponse {
 	return 'needs_confirmation' in response && response.needs_confirmation;
+}
+
+export interface AnalysisNewCommand {
+	name: string;
+	label: string;
+	url: string;
+}
+
+export interface AnalysisResponse {
+	new_commands?: AnalysisNewCommand[];
+	suggested_commands?: string[];
 }

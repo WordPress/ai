@@ -1,17 +1,19 @@
 import { PluginFile, PluginPlan } from './types';
 
 export function getSystemPrompt(
-	role: 'planner' | 'coder' | 'reviewer' | 'detector',
+	role: 'planner' | 'coder' | 'reviewer' | 'detector' | 'analyzer',
 	fileType?: string
 ): string {
-	switch (role) {
+	switch ( role ) {
 		case 'planner':
 			return 'You are an expert WordPress plugin architect. Return only valid JSON.';
 		case 'coder':
-			const type = (fileType || 'PHP').toUpperCase();
-			return `You are an expert WordPress ${type} developer. Output ONLY raw code, no markdown.`;
+			const type = ( fileType || 'PHP' ).toUpperCase();
+			return `You are an expert WordPress ${ type } developer. Output ONLY raw code, no markdown.`;
 		case 'reviewer':
 			return 'You are a senior WordPress security reviewer. Return only valid JSON.';
+		case 'analyzer':
+			return 'You are an expert WordPress plugin analyzer. Return only valid JSON.';
 		case 'detector':
 			return `You are an intent classifier for a WordPress AI Plugin Builder. Your job is to determine what the user wants.
 
@@ -49,14 +51,14 @@ export function getIntentPrompt(
 	previousPlan: PluginPlan | null
 ): string {
 	let context = '';
-	if (previousPlan) {
+	if ( previousPlan ) {
 		context = `\n\nPREVIOUS CONTEXT: The user previously generated a plugin named "${
 			previousPlan.plugin_name || 'Unknown'
 		}" (slug: ${
 			previousPlan.plugin_slug || 'unknown'
 		}). If they're asking to modify, rename, or improve it, classify as modification_request.`;
 	}
-	return `User input: "${description}"${context}`;
+	return `User input: "${ description }"${ context }`;
 }
 
 export function getPlannerPrompt(
@@ -66,14 +68,14 @@ export function getPlannerPrompt(
 	previousPlan: PluginPlan | null
 ): string {
 	let contextSection = '';
-	if (previousPlan) {
+	if ( previousPlan ) {
 		const prevName = previousPlan.plugin_name || 'Unknown';
 		const prevSlug = previousPlan.plugin_slug || 'unknown';
 		let prevFilesList = '';
 
-		if (previousPlan.files && previousPlan.files.length > 0) {
-			for (const pf of previousPlan.files) {
-				prevFilesList += `  - ${pf.path}: ${pf.description}\n`;
+		if ( previousPlan.files && previousPlan.files.length > 0 ) {
+			for ( const pf of previousPlan.files ) {
+				prevFilesList += `  - ${ pf.path }: ${ pf.description }\n`;
 			}
 		}
 
@@ -81,9 +83,9 @@ export function getPlannerPrompt(
 ## PREVIOUS GENERATION CONTEXT
 The user previously generated a plugin. Consider their new request as a potential modification or iteration.
 
-**Previous Plugin**: ${prevName} (slug: \`${prevSlug}\`)
+**Previous Plugin**: ${ prevName } (slug: \`${ prevSlug }\`)
 **Previous Files**:
-${prevFilesList}
+${ prevFilesList }
 
 ### Modification Guidelines
 If the user is asking to modify, rename, fix, or improve the previous plugin:
@@ -104,7 +106,7 @@ If the user is asking for something completely different (new plugin), ignore th
 - Only plan for PHP, CSS, JS, and JSON files. No build steps, no npm, no composer dependencies.
 - The main plugin file must be at the root level (e.g., \`my-plugin.php\`), not inside a subdirectory.
 - All function and class names MUST be prefixed with the plugin slug (e.g., \`recipe_manager_register_cpt\`).
-- For simple plugins: 1-2 files. For complex plugins: up to ${maxFiles} files.
+- For simple plugins: 1-2 files. For complex plugins: up to ${ maxFiles } files.
 - Use WordPress coding standards and best practices.
 - IMPORTANT: Generate unique, descriptive plugin slugs (e.g., \`acme-maintenance-mode-2024\` instead of just \`maintenance-mode\`) to avoid conflicts with existing WordPress.org plugins.
 
@@ -125,7 +127,7 @@ If the user is asking for something completely different (new plugin), ignore th
 - Sanitize/validate input early, escape output late.
 - \`$wpdb->prepare()\` for ALL database queries with variables — never concatenate user input into SQL.
 - If the plugin registers REST endpoints: always provide \`permission_callback\`, use \`WP_REST_Request\` for params (never \`$_GET\`/\`$_POST\` directly), define \`args\` with \`validate_callback\`/\`sanitize_callback\`.
-${contextSection}
+${ contextSection }
 ## Output Format
 Return ONLY valid JSON matching this exact schema:
 
@@ -162,10 +164,10 @@ Return ONLY valid JSON matching this exact schema:
 \`\`\`
 
 ## User's Plugin Description
-${description}
+${ description }
 
 ## Requested Complexity
-${complexity}
+${ complexity }
 `;
 }
 
@@ -175,34 +177,34 @@ export function getCoderPrompt(
 	previousFiles: PluginFile[] = []
 ): string {
 	const fileType = fileInfo.type || 'php';
-	const previousContext = buildContext(previousFiles);
-	const planJson = JSON.stringify(plan, null, 2);
+	const previousContext = buildContext( previousFiles );
+	const planJson = JSON.stringify( plan, null, 2 );
 
-	if (fileType === 'css') {
+	if ( fileType === 'css' ) {
 		return `You are an expert WordPress frontend developer. Generate CSS code for a WordPress plugin admin/frontend stylesheet.
 
 ## Rules
 - Use clean, well-organized CSS.
-- Prefix all class names with the plugin slug to avoid conflicts (e.g., \`.${plan.plugin_slug}-wrapper\`).
+- Prefix all class names with the plugin slug to avoid conflicts (e.g., \`.${ plan.plugin_slug }-wrapper\`).
 - Use WordPress admin color variables where appropriate (\`--wp-admin-theme-color\`).
 - Mobile-responsive where applicable.
 - No CSS frameworks — plain CSS only.
 
 ## Plugin Plan
 \`\`\`json
-${planJson}
+${ planJson }
 \`\`\`
 
 ## File to Generate
-- **Path**: \`${fileInfo.path}\`
-- **Purpose**: ${fileInfo.description}
-${previousContext}
+- **Path**: \`${ fileInfo.path }\`
+- **Purpose**: ${ fileInfo.description }
+${ previousContext }
 ## Instructions
-Generate ONLY the CSS code for \`${fileInfo.path}\`. Do not include markdown code fences — output raw CSS.
+Generate ONLY the CSS code for \`${ fileInfo.path }\`. Do not include markdown code fences — output raw CSS.
 `;
 	}
 
-	if (fileType === 'js') {
+	if ( fileType === 'js' ) {
 		return `You are an expert WordPress JavaScript developer. Generate JavaScript code for a WordPress plugin.
 
 ## Rules
@@ -214,21 +216,21 @@ Generate ONLY the CSS code for \`${fileInfo.path}\`. Do not include markdown cod
 
 ## Plugin Plan
 \`\`\`json
-${planJson}
+${ planJson }
 \`\`\`
 
 ## File to Generate
-- **Path**: \`${fileInfo.path}\`
-- **Purpose**: ${fileInfo.description}
-${previousContext}
+- **Path**: \`${ fileInfo.path }\`
+- **Purpose**: ${ fileInfo.description }
+${ previousContext }
 ## Instructions
-Generate ONLY the JavaScript code for \`${fileInfo.path}\`. Do not include markdown code fences — output raw JavaScript.
+Generate ONLY the JavaScript code for \`${ fileInfo.path }\`. Do not include markdown code fences — output raw JavaScript.
 `;
 	}
 
 	// Default to PHP
 	let mainSection = '';
-	if (fileInfo.is_main) {
+	if ( fileInfo.is_main ) {
 		mainSection = `
 ## Main Plugin File Requirements
 This is the main plugin file. It MUST start with the WordPress plugin header:
@@ -236,12 +238,12 @@ This is the main plugin file. It MUST start with the WordPress plugin header:
 \`\`\`php
 <?php
 /**
- * Plugin Name: ${plan.plugin_name}
- * Description: ${plan.description}
+ * Plugin Name: ${ plan.plugin_name }
+ * Description: ${ plan.description }
  * Version: 1.0.0
  * Author: WordPress AI Plugin Builder
  * License: GPL-2.0-or-later
- * Text Domain: ${plan.plugin_slug}
+ * Text Domain: ${ plan.plugin_slug }
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -298,42 +300,91 @@ if ( ! defined( 'ABSPATH' ) ) {
 - Prefer Options API (\`get_option\`/\`update_option\`) for small config and state.
 - Use custom tables only when truly needed. Store a schema version in an option and provide an upgrade routine.
 - For cron tasks, ensure callbacks are idempotent (they may run late or multiple times).
-${mainSection}
+${ mainSection }
 
 ## Plugin Plan
 \`\`\`json
-${planJson}
+${ planJson }
 \`\`\`
 
 ## File to Generate
-- **Path**: \`${fileInfo.path}\`
-- **Purpose**: ${fileInfo.description}
-${previousContext}
+- **Path**: \`${ fileInfo.path }\`
+- **Purpose**: ${ fileInfo.description }
+${ previousContext }
 ## Instructions
-Generate ONLY the PHP code for \`${fileInfo.path}\`. Do not include markdown code fences — output raw PHP starting with \`<?php\`.
+Generate ONLY the PHP code for \`${ fileInfo.path }\`. Do not include markdown code fences — output raw PHP starting with \`<?php\`.
 `;
 }
 
-function buildContext(previousFiles: PluginFile[]): string {
-	if (!previousFiles || previousFiles.length === 0) {
+function buildContext( previousFiles: PluginFile[] ): string {
+	if ( ! previousFiles || previousFiles.length === 0 ) {
 		return '';
 	}
 
 	const maxLines = previousFiles.length <= 5 ? 2000 : 1000;
-	let prevSection = '\n## Previously Generated Files (for reference/consistency)\n';
+	let prevSection =
+		'\n## Previously Generated Files (for reference/consistency)\n';
 
-	for (const pf of previousFiles) {
+	for ( const pf of previousFiles ) {
 		const content = pf.content || '';
-		const lines = content.split('\n');
+		const lines = content.split( '\n' );
 		let truncatedContent = content;
 
-		if (lines.length > maxLines) {
+		if ( lines.length > maxLines ) {
 			const omitted = lines.length - maxLines;
-			truncatedContent = lines.slice(0, maxLines).join('\n') + `\n// ... truncated (${omitted} lines omitted)`;
+			truncatedContent =
+				lines.slice( 0, maxLines ).join( '\n' ) +
+				`\n// ... truncated (${ omitted } lines omitted)`;
 		}
 
-		prevSection += `### ${pf.path}\n\`\`\`\n${truncatedContent}\n\`\`\`\n`;
+		prevSection += `### ${ pf.path }\n\`\`\`\n${ truncatedContent }\n\`\`\`\n`;
 	}
 
 	return prevSection;
+}
+
+export function getAnalyzerPrompt(
+	files: PluginFile[],
+	existingCommands: { name: string; label: string }[]
+): string {
+	let filesContext = '';
+	for ( const f of files ) {
+		filesContext += `\n### ${ f.path }\n\`\`\`${ f.type }\n${ f.content || '' }\n\`\`\`\n`;
+	}
+
+	const cmdsJson = JSON.stringify( existingCommands, null, 2 );
+
+	return `Analyze the following newly generated WordPress plugin files to determine how a user can interact with it.
+
+## Your Task
+1. Check if the plugin registers any settings pages, admin menus, custom post types, or distinct frontend functionalities.
+2. Review the provided list of \`existingCommands\`.
+3. If the plugin adds an admin interface (like exactly an options page or a new menu item) that isn't already covered by \`existingCommands\`, you must register a new command for it. Provide its \`name\` (e.g., \`myplugin/settings\`), a clear \`label\` (e.g., \`Go to: MyPlugin Settings\`), and the exact \`url\` required to reach it (e.g., \`options-general.php?page=my-plugin\`).
+4. Finally, suggest 1 to 3 command \`name\`s that the user should likely execute next to observe the plugin in action. Use a mix of your newly registered commands or existing core commands. Order them by preference.
+
+## Existing Commands
+\`\`\`json
+${ cmdsJson }
+\`\`\`
+
+## Plugin Files
+${ filesContext }
+
+Return ONLY valid JSON matching this exact schema:
+
+\`\`\`json
+{
+  "new_commands": [
+    {
+      "name": "myplugin/settings",
+      "label": "Go to: MyPlugin Settings",
+      "url": "options-general.php?page=my-plugin"
+    }
+  ],
+  "suggested_commands": [
+    "myplugin/settings",
+    "core/dashboard"
+  ]
+}
+\`\`\``;
 }

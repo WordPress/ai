@@ -229,7 +229,7 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating an image.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param string $prompt The prompt to generate an image from.
 	 * @param string|null $reference_image Optional base64-encoded image to use as a reference for edits.

@@ -9,12 +9,14 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Contracts;
 
+use WP_Error;
+
 /**
  * Interface for all features.
  *
  * Every feature must implement this interface to be registered in the system.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 interface Feature {
 	/**
@@ -22,7 +24,7 @@ interface Feature {
 	 *
 	 * This should be a unique slug-style identifier (e.g., 'title-rewriter').
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return non-empty-string Feature ID.
 	 */
@@ -33,7 +35,7 @@ interface Feature {
 	 *
 	 * This should be a translated string suitable for display in the admin.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return non-empty-string Translated feature label.
 	 */
@@ -44,7 +46,7 @@ interface Feature {
 	 *
 	 * This should be a translated string explaining what the feature does.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return non-empty-string Translated feature description.
 	 */
@@ -55,7 +57,7 @@ interface Feature {
 	 *
 	 * Determines where the feature appears in the settings UI.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return non-empty-string The feature category.
 	 */
@@ -64,11 +66,20 @@ interface Feature {
 	/**
 	 * Gets the feature stability level.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return 'deprecated'|'experimental'|'stable'
 	 */
 	public function get_stability(): string;
+
+	/**
+	 * Check feature requirements.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return WP_Error|true
+	 */
+	public function check_requirements();
 
 	/**
 	 * Registers the feature's hooks and functionality.
@@ -76,14 +87,14 @@ interface Feature {
 	 * This method is called when the feature is initialized.
 	 * Use this to add actions, filters, and set up the feature.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function register(): void;
 
 	/**
 	 * Checks if the feature is currently enabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return bool True if enabled, false otherwise.
 	 */

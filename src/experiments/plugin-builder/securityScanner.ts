@@ -16,28 +16,28 @@ const DANGEROUS_PATTERNS = [
 	/\$_POST\b(?!.*\b(sanitize_|esc_|wp_verify_nonce|absint|intval))/i,
 ];
 
-export function scanFiles(files: PluginFile[]): {
+export function scanFiles( files: PluginFile[] ): {
 	passed: boolean;
 	issues: SecurityIssue[];
 } {
 	const issues: SecurityIssue[] = [];
 
-	for (const file of files) {
-		if (file.type !== 'php' || !file.content) {
+	for ( const file of files ) {
+		if ( file.type !== 'php' || ! file.content ) {
 			continue;
 		}
 
-		const lines = file.content.split('\n');
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i];
-			for (const pattern of DANGEROUS_PATTERNS) {
-				if (pattern.test(line)) {
-					issues.push({
+		const lines = file.content.split( '\n' );
+		for ( let i = 0; i < lines.length; i++ ) {
+			const line = lines[ i ];
+			for ( const pattern of DANGEROUS_PATTERNS ) {
+				if ( pattern.test( line ) ) {
+					issues.push( {
 						file_path: file.path,
 						line: i + 1,
 						pattern: pattern.toString(),
 						line_content: line.trim(),
-					});
+					} );
 				}
 			}
 		}
@@ -45,6 +45,6 @@ export function scanFiles(files: PluginFile[]): {
 
 	return {
 		passed: issues.length === 0,
-		issues: issues.slice(0, 10), // cap at 10 issues
+		issues: issues.slice( 0, 10 ), // cap at 10 issues
 	};
 }

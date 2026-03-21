@@ -3,7 +3,7 @@
  * Handles any routines or migrations necessary when upgrading to a new version of the plugin.
  *
  * @package WordPress\AI\Admin
- * @since x.x.x
+ * @since 0.6.0
  */
 
 declare( strict_types=1 );
@@ -21,20 +21,20 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 final class Upgrades {
 	/**
 	 * The key to store the version.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	private const VERSION_OPTION_KEY = 'wpai_version';
 
 	/**
 	 * The key to store failed upgrade information for the admin notice.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	private const FAILED_UPGRADE_OPTION_KEY = 'wpai_failed_upgrade_message';
 
@@ -43,7 +43,7 @@ final class Upgrades {
 	 *
 	 * New upgrade routine classes should be added here, in order of oldest to newest.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @var class-string<\WordPress\AI\Admin\Upgrades\Abstract_Upgrade>[]
 	 */
@@ -55,7 +55,7 @@ final class Upgrades {
 	/**
 	 * Initialize the class.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function init(): void {
 		// Runs as a fallback, in case the activation hook is missed.
@@ -67,7 +67,7 @@ final class Upgrades {
 	/**
 	 * Checks for and runs any pending upgrades.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public static function do_upgrades(): void {
 		$db_version = get_option( self::VERSION_OPTION_KEY, '' );
@@ -107,7 +107,7 @@ final class Upgrades {
 	/**
 	 * Displays an admin notice if a plugin upgrade failed, with the error message.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function failed_upgrade_notice(): void {
 		// Skip if there's no failures.

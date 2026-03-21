@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Plugin_Builder\Installer;
 
 use WP_Error;
+use WP_Filesystem_Base;
 
 /**
  * Writes generated plugin files to wp-content/plugins using WP_Filesystem.
@@ -23,10 +24,10 @@ class PluginWriter {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string               $plugin_slug Plugin slug (serves as the directory name).
+	 * @param string                           $plugin_slug Plugin slug (serves as the directory name).
 	 * @param array<int, array<string, mixed>> $files       Array of file associative arrays (must contain "path" and "content").
 	 *
-	 * @return array{main_file: string}|\WP_Error  The relative plugin path (slug/main.php) on success.
+	 * @return array{main_file: string}|WP_Error  The relative plugin path (slug/main.php) on success.
 	 */
 	public function write( string $plugin_slug, array $files ) {
 		$filesystem = $this->init_filesystem();
@@ -105,7 +106,7 @@ class PluginWriter {
 	/**
 	 * Initialize WP_Filesystem.
 	 *
-	 * @return \WP_Filesystem_Base|\WP_Error
+	 * @return WP_Filesystem_Base|WP_Error
 	 */
 	private function init_filesystem() {
 		global $wp_filesystem;

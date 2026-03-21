@@ -11,6 +11,9 @@ namespace WordPress\AI\Experiments\Plugin_Builder;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
+use WordPress\AI_Client\AI_Client;
+use WP_Error;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -38,9 +41,18 @@ class Plugin_Builder extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Plugin Builder', 'ai' ),
-			'description' => __( 'Uses AI to create plugins in WordPress.', 'ai' ),
-			'category'    => Experiment_Category::ADMIN,
+			'label'              => __( 'Plugin Builder', 'ai' ),
+			'description'        => __( 'Uses AI to create plugins in WordPress.', 'ai' ),
+			'category'           => Experiment_Category::ADMIN,
+			'check_requirements' => function () {
+				if ( ! class_exists( 'WordPress\AI_Client\AI_Client' ) ) {
+					return new WP_Error(
+						'missing_ai_client',
+						__( 'This feature requires the <a href="https://github.com/WordPress/wp-ai-client" target="_blank">WP AI Client</a> plugin. You must currently install this plugin from GitHub. Clone it into your plugins directory and run <code>npm install &amp;&amp; composer install &amp;&amp; npm run build</code>.', 'ai' )
+					);
+				}
+				return true;
+			},
 		);
 	}
 
@@ -55,7 +67,7 @@ class Plugin_Builder extends Abstract_Feature {
 			}
 		);
 
-		add_action( 'init', array( 'WordPress\AI_Client\AI_Client', 'init' ) );
+		add_action( 'init', array( AI_Client::class, 'init' ) );
 
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
@@ -64,7 +76,7 @@ class Plugin_Builder extends Abstract_Feature {
 		add_action(
 			'rest_api_init',
 			static function () {
-				( new \WordPress\AI\Experiments\Plugin_Builder\Rest\InstallController() )->register();
+				( new WriteController() )->register();
 			}
 		);
 	}
@@ -132,8 +144,7 @@ class Plugin_Builder extends Abstract_Feature {
 			'ai-plugin-builder',
 			plugins_url( 'build/experiments/style-plugin-builder.css', dirname( __DIR__, 2 ) ),
 			array(),
-			$assets['version'],
-			'all'
+			$assets['version']
 		);
 
 		wp_localize_script(

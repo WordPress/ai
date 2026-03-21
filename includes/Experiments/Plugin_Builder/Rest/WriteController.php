@@ -10,18 +10,17 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Plugin_Builder\Rest;
 
 use WP_Error;
+use WP_REST_Request;
 use WP_REST_Response;
-use WordPress\AI\Experiments\Plugin_Builder\Config;
-use WordPress\AI\Experiments\Plugin_Builder\Installer\PluginActivator;
 use WordPress\AI\Experiments\Plugin_Builder\Installer\PluginWriter;
 use WordPress\AI\Experiments\Plugin_Builder\Installer\SlugValidator;
 
 /**
- * POST /wordpress-ai-plugin-builder/v1/install — write generated files and activate.
+ * POST /wordpress-ai-plugin-builder/v1/write-files — write generated files to disk.
  *
  * @since x.x.x
  */
-class InstallController {
+class WriteController {
 
 	private const ROUTE_NAMESPACE = 'wordpress-ai-plugin-builder/v1';
 
@@ -33,12 +32,12 @@ class InstallController {
 	public function register(): void {
 		register_rest_route(
 			self::ROUTE_NAMESPACE,
-			'/install',
+			'/write-files',
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'handle' ),
 				'permission_callback' => static function () {
-					return current_user_can( Config::install_capability() );
+					return current_user_can( 'install_plugins' );
 				},
 				'args'                => array(
 					'plugin_slug' => array(
@@ -65,10 +64,10 @@ class InstallController {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WP_REST_Request $request The request.
-	 * @return \WP_REST_Response|\WP_Error
+	 * @param WP_REST_Request $request The request.
+	 * @return WP_REST_Response|WP_Error
 	 */
-	public function handle( \WP_REST_Request $request ) {
+	public function handle( WP_REST_Request $request ) {
 		$plugin_slug = $request->get_param( 'plugin_slug' );
 		$files       = $request->get_param( 'files' );
 		$force       = (bool) $request->get_param( 'force' );
@@ -137,27 +136,20 @@ class InstallController {
 
 		$main_file = $result['main_file'];
 
-		// Step 2: Activate the plugin.
-		$activator  = new PluginActivator();
-		$activation = $activator->activate( $main_file );
+		// Step 2: Return success with the main file path formatted for WP REST API.
+		if ( ! function_exists( 'plugin_basename' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
 
-		if ( is_wp_error( $activation ) ) {
-			return new WP_REST_Response(
-				array(
-					'installed' => true,
-					'activated' => false,
-					'error'     => $activation->get_error_message(),
-					'plugin'    => $main_file,
-				),
-				200
-			);
+		$plugin_path = plugin_basename( $main_file );
+		if ( '.php' === substr( $plugin_path, -4 ) ) {
+			$plugin_path = substr( $plugin_path, 0, -4 );
 		}
 
 		return new WP_REST_Response(
 			array(
-				'installed' => true,
-				'activated' => true,
-				'plugin'    => $main_file,
+				'written' => true,
+				'plugin'  => $plugin_path,
 			),
 			200
 		);

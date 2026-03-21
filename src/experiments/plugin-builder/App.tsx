@@ -3,21 +3,36 @@ import { usePluginBuilder } from './usePluginBuilder';
 
 function Spinner() {
 	return (
-		<svg className="apb-spinner-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-			<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+		<svg
+			className="apb-spinner-svg"
+			viewBox="0 0 24 24"
+			fill="none"
+			xmlns="http://www.w3.org/2000/svg"
+		>
+			<circle
+				className="opacity-25"
+				cx="12"
+				cy="12"
+				r="10"
+				stroke="currentColor"
+				strokeWidth="4"
+			></circle>
+			<path
+				className="opacity-75"
+				fill="currentColor"
+				d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+			></path>
 		</svg>
 	);
 }
 
 function SmallSpinner() {
-	return (
-		<span className="apb-spinner" />
-	);
+	return <span className="apb-spinner" />;
 }
 
 export default function App() {
 	const {
+		state,
 		messages,
 		isProcessing,
 		hasSlugConflict,
@@ -28,8 +43,8 @@ export default function App() {
 		logs,
 	} = usePluginBuilder();
 
-	const [input, setInput] = useState('');
-	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const [ input, setInput ] = useState( '' );
+	const messagesEndRef = useRef< HTMLDivElement >( null );
 
 	const examples = [
 		'A dashboard widget showing recent drafts with quick edit links',
@@ -38,20 +53,20 @@ export default function App() {
 		'A maintenance mode plugin with countdown timer',
 	];
 
-	useEffect(() => {
-		if (messagesEndRef.current) {
-			messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+	useEffect( () => {
+		if ( messagesEndRef.current ) {
+			messagesEndRef.current.scrollIntoView( { behavior: 'smooth' } );
 		}
-	}, [messages.length]);
+	}, [ messages.length ] );
 
 	const handleSend = () => {
-		if (!input.trim() || isProcessing) return;
-		sendDescription(input.trim());
-		setInput('');
+		if ( ! input.trim() || isProcessing ) return;
+		sendDescription( input.trim() );
+		setInput( '' );
 	};
 
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === 'Enter' && !e.shiftKey) {
+	const handleKeyDown = ( e: React.KeyboardEvent< HTMLTextAreaElement > ) => {
+		if ( e.key === 'Enter' && ! e.shiftKey ) {
 			e.preventDefault();
 			handleSend();
 		}
@@ -73,47 +88,60 @@ export default function App() {
 							<div className="apb-chat__status-dot"></div>
 							Ready
 						</div>
-					)}
+					) }
 				</div>
 			</div>
 
 			<div className="apb-chat__messages">
-				{messages.length === 0 ? (
+				{ messages.length === 0 ? (
 					<div className="apb-chat__empty">
 						<div className="apb-chat__empty-icon">🏗️</div>
 						<h3 className="apb-chat__empty-title">Code WordPress Plugins with AI</h3>
 						<p className="apb-chat__empty-subtitle">Describe the functionality you need, and watch AI build your plugin in minutes.</p>
 						
 						<div className="apb-chat__examples">
-							{examples.map((example, i) => (
+							{ examples.map( ( example, i ) => (
 								<button
-									key={i}
+									key={ i }
 									className="apb-chat__example-btn"
 									onClick={() => setInput(example)}
 									title={example}
+									onClick={ () => setInput( example ) }
 								>
-									→ {example}
+									{ example }
 								</button>
-							))}
+							) ) }
 						</div>
 					</div>
 				) : (
 					<div className="apb-chat__message-list">
-						{messages.map((msg) => (
-							<div key={msg.id} className={`apb-msg apb-msg--${msg.role}`}>
-								{msg.role === 'assistant' && <div className="apb-avatar">🤖</div>}
+						{ messages.map( ( msg ) => (
+							<div
+								key={ msg.id }
+								className={ `apb-msg apb-msg--${ msg.role }` }
+							>
+								{ msg.role === 'assistant' && (
+									<div className="apb-avatar">🤖</div>
+								) }
 								<div className="apb-msg__content">
-									{msg.type === 'text' && (
+									{ msg.type === 'text' && (
 										<div className="apb-bubble">
-											<p dangerouslySetInnerHTML={{ __html: msg.content.replace(/\n/g, '<br/>') }} />
+											<p
+												dangerouslySetInnerHTML={ {
+													__html: msg.content.replace(
+														/\n/g,
+														'<br/>'
+													),
+												} }
+											/>
 										</div>
-									)}
-									{msg.type === 'loading' && (
+									) }
+									{ msg.type === 'loading' && (
 										<div className="apb-bubble apb-bubble--loading">
-											<SmallSpinner /> {msg.content}
+											<SmallSpinner /> { msg.content }
 										</div>
-									)}
-									{msg.type === 'plan' && (
+									) }
+									{ msg.type === 'plan' && (
 										<div className="apb-bubble apb-bubble--plan">
 										<div className="apb-plan-header">
 											<strong>📋 Plugin Plan: {msg.data.plugin_name}</strong>
@@ -122,93 +150,142 @@ export default function App() {
 										<p>{msg.data.description}</p>
 										<div className="apb-files-section">
 											<strong>📁 Files ({msg.data.files.length}):</strong>
+											<strong>
+												Plugin Plan:{ ' ' }
+												{ msg.data.plugin_name }
+											</strong>
+											<p>{ msg.data.description }</p>
 											<ul>
-												{msg.data.files.map((file: any, i: number) => (
-													<li key={i}><code>{file.path}</code> — {file.description}</li>
-												))}
+												{ msg.data.files.map(
+													(
+														file: any,
+														i: number
+													) => (
+														<li key={ i }>
+															<code>
+																{ file.path }
+															</code>{ ' ' }
+															-{ ' ' }
+															{ file.description }
+														</li>
+													)
+												) }
 											</ul>
 										</div>
-										</div>
-									)}
-									{msg.type === 'files' && (
+									) }
+									{ msg.type === 'files' && (
 										<div className="apb-bubble apb-bubble--files">
-										<strong>✅ Files Generated Successfully</strong>
-										<p style={{ marginTop: '8px' }}>Your plugin code is ready to be installed and activated.</p>
-										<div style={{ marginTop: '12px' }}>
-											<button className="button button-primary" onClick={() => installPlugin()}>
-												🚀 Install & Activate Plugin
+											<strong>
+												Generated Files:{ ' ' }
+												{ msg.data.length }
+											</strong>
+											<div
+												className="apb-actions"
+												style={ { marginTop: '10px' } }
+											>
+												<button
+													className="button button-primary"
+													disabled={ isProcessing || state === 'installing' || state === 'installed' }
+													onClick={ () =>
+														installPlugin()
+													}
+												>
+													Install and Activate Plugin
 												</button>
 											</div>
 										</div>
-									)}
-									{msg.type === 'install' && (
-									<div className={`apb-bubble apb-bubble--${msg.data.activated ? 'success' : 'warning'}`}>
-										<strong>{msg.data.activated ? '🎉 Success!' : '⚠️ Partial Success'}</strong>
-										<p style={{ marginTop: '6px' }}>
-											{msg.data.activated 
-												? 'Your plugin has been installed and activated successfully!' 
-												: `Installed, but activation encountered an issue: ${msg.data.error}`
-											}
-										</p>
+									) }
+									{ msg.type === 'install' && (
+										<div className="apb-bubble apb-bubble--success">
+											{ msg.data.activated
+												? 'Plugin installed and activated successfully!'
+												: `Installed, but activation failed: ${ msg.data.error }` }
 										</div>
-									)}
-									{msg.type === 'error' && (
+									) }
+									{ msg.type === 'error' && (
 										<div className="apb-bubble apb-bubble--error">
-											<strong>❌ Error</strong>
-											<p style={{ marginTop: '6px' }}>{msg.content}</p>
+											{ msg.content }
 										</div>
-									)}
+									) }
+									{ msg.type === 'analysis' && (
+										<div className="apb-bubble apb-bubble--analysis">
+											<strong>Suggested Next Steps:</strong>
+											<div
+												className="apb-actions"
+												style={ { marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' } }
+											>
+												{ msg.data?.suggested_commands?.map( ( cmdName: string, i: number ) => {
+													const cmdObj = msg.data.all_commands?.find( ( c: any ) => c.name === cmdName );
+													if ( ! cmdObj ) return null;
+
+													return (
+														<button
+															key={ cmdName }
+															className={ `button ${ i === 0 ? 'button-primary' : 'button-secondary' }` }
+															onClick={ () => {
+																if ( typeof cmdObj.callback === 'function' ) {
+																	cmdObj.callback( { close: () => {} } );
+																}
+															} }
+														>
+															{ cmdObj.label }
+														</button>
+													);
+												} ) }
+											</div>
+										</div>
+									) }
 								</div>
 							</div>
-						))}
-						<div ref={messagesEndRef} />
+						) ) }
+						<div ref={ messagesEndRef } />
 					</div>
-				)}
+				) }
 
-				{hasSlugConflict && (
+				{ hasSlugConflict && (
 					<div className="apb-chat__conflict-actions">
-						<div className="apb-bubble apb-bubble--warning">
-							<strong>⚠️ Plugin Slug Conflict</strong>
-							<p style={{ marginTop: '6px' }}>A plugin with this slug already exists. You can install this version anyway to overwrite the existing files.</p>
-							<button className="button button-primary" style={{ marginTop: '10px' }} onClick={forceInstallPlugin}>
-								Proceed with Installation
-							</button>
-						</div>
+						<button
+							className="apb-chat__force-install button button-secondary"
+							onClick={ forceInstallPlugin }
+						>
+							Install Anyway
+						</button>
 					</div>
-				)}
+				) }
 			</div>
 
 			<div className="apb-chat__footer">
 				<div className="apb-chat__input-wrapper">
 					<textarea
-						value={input}
-						onChange={(e) => setInput(e.target.value)}
+						value={ input }
+						onChange={ ( e ) => setInput( e.target.value ) }
 						className="apb-chat__input"
-						disabled={isProcessing}
-						rows={1}
-						onKeyDown={handleKeyDown}
-						placeholder="Describe what plugin you want to build... (e.g., 'A contact form with email notifications')"
+						disabled={ isProcessing }
+						rows={ 1 }
+						onKeyDown={ handleKeyDown }
+						placeholder="Describe what plugin you want to build..."
 					/>
 					<button
-						className={`apb-chat__send-btn ${isProcessing ? 'is-loading' : ''}`}
-						disabled={isProcessing || !input.trim()}
-						onClick={handleSend}
-						title={isProcessing ? 'Building plugin...' : 'Send'}
+						className="apb-chat__send-btn"
+						disabled={ isProcessing || ! input.trim() }
+						onClick={ handleSend }
+						title="Send"
 					>
-						{isProcessing ? <Spinner /> : '🚀'}
+						{ isProcessing ? <Spinner /> : '🚀' }
 					</button>
 				</div>
-				{logs.length > 0 && (
-					<div className="apb-chat__logs">
-						<span className="apb-log-status">
-							{logs[logs.length - 1].level === 'error' && '❌'}
-							{logs[logs.length - 1].level === 'success' && '✓'}
-							{logs[logs.length - 1].level === 'info' && 'ℹ'}
-							{logs[logs.length - 1].level === 'warn' && '⚠'}
-						</span>
-						<span className="apb-log-message">{logs[logs.length - 1].message}</span>
+				{ logs.length > 0 && (
+					<div
+						style={ {
+							marginTop: '5px',
+							fontSize: '11px',
+							color: '#666',
+							textAlign: 'right',
+						} }
+					>
+						{ logs[ logs.length - 1 ].message }
 					</div>
-				)}
+				) }
 			</div>
 		</div>
 	);
