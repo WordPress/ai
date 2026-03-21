@@ -92,6 +92,17 @@ class ChatHistoryController extends WP_REST_Controller {
 						),
 					),
 				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_item' ),
+					'permission_callback' => array( $this, 'permissions_check' ),
+					'args'                => array(
+						'id' => array(
+							'type'     => 'integer',
+							'required' => true,
+						),
+					),
+				),
 			)
 		);
 	}
@@ -224,5 +235,28 @@ class ChatHistoryController extends WP_REST_Controller {
 			'title'       => $post_data['post_title'],
 			'plugin_slug' => $plugin_slug,
 		) );
+	}
+
+	/**
+	 * Deletes a single chat history item.
+	 *
+	 * @param WP_REST_Request $request Full data about the request.
+	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+	 */
+	public function delete_item( $request ) {
+		$id   = $request->get_param( 'id' );
+		$post = get_post( $id );
+		
+		if ( ! $post || 'abp-chat' !== $post->post_type ) {
+			return new WP_Error( 'not_found', 'Chat history not found.', array( 'status' => 404 ) );
+		}
+		
+		$result = wp_delete_post( $id, true );
+		
+		if ( ! $result ) {
+			return new WP_Error( 'cant_delete', 'Could not delete chat history.', array( 'status' => 500 ) );
+		}
+		
+		return rest_ensure_response( array( 'deleted' => true ) );
 	}
 }

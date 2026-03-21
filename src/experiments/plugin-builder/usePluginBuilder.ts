@@ -22,7 +22,6 @@ import {
 	getSystemPrompt,
 	getIntentPrompt,
 	getPlannerPrompt,
-	getCoderPrompt,
 	getAnalyzerPrompt,
 } from './prompts';
 import { scanFiles } from './securityScanner';
@@ -33,6 +32,81 @@ declare global {
 		wp: any;
 	}
 }
+
+export const AVAILABLE_TOOLS = [
+	{
+		name: 'discover_abilities',
+		description: 'Lists available WordPress abilities.',
+	},
+	{
+		name: 'execute_ability',
+		description: 'Executes a single WordPress ability.',
+		parameters: {
+			type: 'object',
+			properties: {
+				name: { type: 'string', description: 'Name of the ability' },
+				input: {
+					type: 'object',
+					description: 'Arguments for the ability',
+				},
+			},
+			required: [ 'name', 'input' ],
+		},
+	},
+	{
+		name: 'write_file',
+		description: 'Writes a file for the plugin.',
+		parameters: {
+			type: 'object',
+			properties: {
+				path: {
+					type: 'string',
+					description:
+						'Path to the file relative to the plugin root (e.g., plugin-slug.php)',
+				},
+				content: {
+					type: 'string',
+					description: 'Full content of the file',
+				},
+			},
+			required: [ 'path', 'content' ],
+		},
+	},
+	{
+		name: 'read_file',
+		description: 'Reads a previously generated file from the plugin.',
+		parameters: {
+			type: 'object',
+			properties: {
+				path: {
+					type: 'string',
+					description: 'Path to the file relative to the plugin root',
+				},
+			},
+			required: [ 'path' ],
+		},
+	},
+	{
+		name: 'list_plugins',
+		description:
+			'Lists all currently installed WordPress plugins. Use this to check for slug conflicts.',
+	},
+	{
+		name: 'finish',
+		description:
+			'Call this function ONLY when you have finished writing all files for the plugin.',
+		parameters: {
+			type: 'object',
+			properties: {
+				plugin_slug: {
+					type: 'string',
+					description:
+						'Override the planned slug if a conflict was detected. Must start with apb-',
+				},
+			},
+		},
+	},
+];
 
 let messageIdCounter = 0;
 let logIdCounter = 0;
@@ -67,41 +141,56 @@ function parseJSON( json: string ): any {
 
 function mapChatMessagesToApiMessages( messages: ChatMessage[] ): any[] {
 	const raw = messages
-		.filter( m => ['text', 'plan', 'review'].includes(m.type) )
-		.filter( m => m.content || m.data )
-		.map( m => {
+		.filter( ( m ) => [ 'text', 'plan', 'review' ].includes( m.type ) )
+		.filter( ( m ) => m.content || m.data )
+		.map( ( m ) => {
 			let text = m.content || '';
-			if (m.type === 'plan' && m.data) {
-				text += '\n\nPlan:\n```json\n' + JSON.stringify({ plugin_name: m.data.plugin_name, description: m.data.description, files: m.data.files.map((f: any) => f.path) }) + '\n```';
+			if ( m.type === 'plan' && m.data ) {
+				text +=
+					'\n\nPlan:\n```json\n' +
+					JSON.stringify( {
+						plugin_name: m.data.plugin_name,
+						description: m.data.description,
+						files: m.data.files.map( ( f: any ) => f.path ),
+					} ) +
+					'\n```';
 			}
 			return {
 				role: m.role === 'assistant' ? 'model' : m.role,
-				text: text
+				text: text,
 			};
-		});
+		} );
 
 	// The current request (user description) is inside raw.
 	// WP AI Client expects the messages array to end with 'user',
 	// so we leave it intact.
 
 	const merged: any[] = [];
-	for (const msg of raw) {
-		if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
-			merged[merged.length - 1].parts[0].text += '\n\n' + msg.text;
+	for ( const msg of raw ) {
+		if (
+			merged.length > 0 &&
+			merged[ merged.length - 1 ].role === msg.role
+		) {
+			merged[ merged.length - 1 ].parts[ 0 ].text += '\n\n' + msg.text;
 		} else {
-			merged.push({
+			merged.push( {
 				role: msg.role,
-				parts: [ { type: 'text', text: msg.text } ]
-			});
+				parts: [ { type: 'text', text: msg.text } ],
+			} );
 		}
 	}
 
 	// Ensure API history strict requirement: first item MUST be user if array is not empty
-	if (merged.length > 0 && merged[0].role === 'model') {
-		merged.unshift({
+	if ( merged.length > 0 && merged[ 0 ].role === 'model' ) {
+		merged.unshift( {
 			role: 'user',
-			parts: [ { type: 'text', text: 'Hello, please build a WordPress plugin for me.' } ]
-		});
+			parts: [
+				{
+					type: 'text',
+					text: 'Hello, please build a WordPress plugin for me.',
+				},
+			],
+		} );
 	}
 
 	return merged;
@@ -127,7 +216,9 @@ export function usePluginBuilder() {
 		string[]
 	>( [] );
 
-	const [ activeChatId, _setActiveChatId ] = useState< number | null >( null );
+	const [ activeChatId, _setActiveChatId ] = useState< number | null >(
+		null
+	);
 	const activeChatIdRef = useRef< number | null >( null );
 
 	const setActiveChatId = useCallback( ( id: number | null ) => {
@@ -138,51 +229,53 @@ export function usePluginBuilder() {
 	const [ chatTitle, _setChatTitle ] = useState< string >( '' );
 	const chatTitleRef = useRef< string >( '' );
 
+	const abortRef = useRef< boolean >( false );
+
 	const setChatTitle = useCallback( ( title: string ) => {
 		_setChatTitle( title );
 		chatTitleRef.current = title;
 	}, [] );
 
-	const tokenUsageRef = useRef< TokenUsageSummary >({
-    total_tokens: 0,
-    total_input_tokens: 0,
-    total_output_tokens: 0,
-    steps: [],
-});
+	const tokenUsageRef = useRef< TokenUsageSummary >( {
+		total_tokens: 0,
+		total_input_tokens: 0,
+		total_output_tokens: 0,
+		steps: [],
+	} );
 
-const addTokenUsage = useCallback(
-    ( stepName: string, modelName: string, tu: any ) => {
-        if ( ! tu ) return;
-        const updated = { ...tokenUsageRef.current };
-        updated.total_input_tokens += tu.promptTokens || 0;
-        updated.total_output_tokens += tu.completionTokens || 0;
-        updated.total_tokens += tu.totalTokens || 0;
-        const steps = [ ...updated.steps ];
-        steps.push( {
-            step: stepName,
-            model: modelName,
-            input_tokens: tu.promptTokens || 0,
-            output_tokens: tu.completionTokens || 0,
-        } );
-        updated.steps = steps;
-        tokenUsageRef.current = updated;
-        setTokenUsage( { ...updated } );
-    },
-    []
-);
+	const addTokenUsage = useCallback(
+		( stepName: string, modelName: string, tu: any ) => {
+			if ( ! tu ) return;
+			const updated = { ...tokenUsageRef.current };
+			updated.total_input_tokens += tu.promptTokens || 0;
+			updated.total_output_tokens += tu.completionTokens || 0;
+			updated.total_tokens += tu.totalTokens || 0;
+			const steps = [ ...updated.steps ];
+			steps.push( {
+				step: stepName,
+				model: modelName,
+				input_tokens: tu.promptTokens || 0,
+				output_tokens: tu.completionTokens || 0,
+			} );
+			updated.steps = steps;
+			tokenUsageRef.current = updated;
+			setTokenUsage( { ...updated } );
+		},
+		[]
+	);
 
-const resetTokenUsage = useCallback(() => {
-    const resetVal = {
-        total_tokens: 0,
-        total_input_tokens: 0,
-        total_output_tokens: 0,
-        steps: [],
-    };
-    tokenUsageRef.current = resetVal;
-    setTokenUsage(resetVal);
-}, []);
+	const resetTokenUsage = useCallback( () => {
+		const resetVal = {
+			total_tokens: 0,
+			total_input_tokens: 0,
+			total_output_tokens: 0,
+			steps: [],
+		};
+		tokenUsageRef.current = resetVal;
+		setTokenUsage( resetVal );
+	}, [] );
 
-const startTimeRef = useRef< number >( 0 );
+	const startTimeRef = useRef< number >( 0 );
 
 	const messagesRef = useRef< ChatMessage[] >( [] );
 
@@ -249,34 +342,61 @@ const startTimeRef = useRef< number >( 0 );
 		} );
 	}, [] );
 
+	const cancelGeneration = useCallback(
+		( e?: any ) => {
+			if ( e && e.preventDefault ) e.preventDefault();
+			abortRef.current = true;
+			setState( 'idle' );
+			removeLastLoading();
+			addMessage(
+				createMessage(
+					'assistant',
+					'text',
+					__( '🛑 Generation stopped by user.', 'ai' )
+				)
+			);
+		},
+		[ removeLastLoading, addMessage ]
+	);
+
 	// Save Chat
-	const performChatSave = useCallback( async ( currentSlug?: string ) => {
-		const latestMessages = messagesRef.current;
-		if ( latestMessages.length === 0 ) return;
+	const performChatSave = useCallback(
+		async ( currentSlug?: string ) => {
+			const latestMessages = messagesRef.current;
+			if ( latestMessages.length === 0 ) return;
 
-		const isNew = !activeChatIdRef.current;
-		const currentActiveId = activeChatIdRef.current;
+			const isNew = ! activeChatIdRef.current;
+			const currentActiveId = activeChatIdRef.current;
 
-		try {
-			let title = chatTitleRef.current;
-			if ( isNew ) {
-				const planMsg = latestMessages.slice().reverse().find( m => m.type === 'plan' );
-				if ( planMsg && planMsg.data?.plugin_name ) {
-					title = planMsg.data.plugin_name;
-				} else {
-					title = 'Plugin Builder Chat';
+			try {
+				let title = chatTitleRef.current;
+				if ( isNew ) {
+					const planMsg = latestMessages
+						.slice()
+						.reverse()
+						.find( ( m ) => m.type === 'plan' );
+					if ( planMsg && planMsg.data?.plugin_name ) {
+						title = planMsg.data.plugin_name;
+					} else {
+						title = 'Plugin Builder Chat';
+					}
+					setChatTitle( title );
 				}
-				setChatTitle( title );
+				const result = await api.saveChatHistory(
+					latestMessages,
+					currentSlug,
+					currentActiveId || undefined,
+					title
+				);
+				if ( result && result.id ) {
+					setActiveChatId( result.id );
+				}
+			} catch ( e ) {
+				console.error( 'Failed to save chat history:', e );
 			}
-			const result = await api.saveChatHistory( latestMessages, currentSlug, currentActiveId || undefined, title );
-			if ( result && result.id ) {
-				setActiveChatId( result.id );
-			}
-		} catch ( e ) {
-			console.error( 'Failed to save chat history:', e );
-		}
-	}, [ setChatTitle, setActiveChatId ] );
-
+		},
+		[ setChatTitle, setActiveChatId ]
+	);
 
 	const handleError = useCallback(
 		( message: string ) => {
@@ -317,7 +437,11 @@ const startTimeRef = useRef< number >( 0 );
 			startTimeRef.current = Date.now();
 			resetTokenUsage();
 
-			log( 'info', __( 'Request sent', 'ai' ), description.substring( 0, 100 ) );
+			log(
+				'info',
+				__( 'Request sent', 'ai' ),
+				description.substring( 0, 100 )
+			);
 			addMessage( createMessage( 'user', 'text', description ) );
 			addMessage(
 				createMessage(
@@ -327,26 +451,35 @@ const startTimeRef = useRef< number >( 0 );
 				)
 			);
 
+			abortRef.current = false;
+
 			try {
-				const apiHistory = mapChatMessagesToApiMessages( messagesRef.current );
+				const apiHistory = mapChatMessagesToApiMessages(
+					messagesRef.current
+				);
 
 				// Phase 1: Intent Detection
 				updateStep( __( 'Detecting intent...', 'ai' ) );
-				const intentPromptBuilder = window.wp.aiClient.prompt(
-					getIntentPrompt( description, previousPlan )
-				).usingSystemInstruction( getSystemPrompt( 'detector' ) )
+				const intentPromptBuilder = window.wp.aiClient
+					.prompt( getIntentPrompt( description, previousPlan ) )
+					.usingSystemInstruction( getSystemPrompt( 'detector' ) )
 					.usingTemperature( 0.1 )
 					.usingMaxTokens( 500 )
 					.asJsonResponse();
-				
+
 				if ( apiHistory.length > 0 ) {
 					intentPromptBuilder.withHistory( ...apiHistory );
 				}
 
-				const intentResult = await intentPromptBuilder.generateTextResult();
+				const intentResult =
+					await intentPromptBuilder.generateTextResult();
+				if ( abortRef.current ) return;
 				const intentText = intentResult.toText();
-				addTokenUsage( 'Intent Detection', intentResult.modelMetadata.name || 'unknown', intentResult.tokenUsage );
-
+				addTokenUsage(
+					'Intent Detection',
+					intentResult.modelMetadata.name || 'unknown',
+					intentResult.tokenUsage
+				);
 
 				let intentData;
 				try {
@@ -383,16 +516,19 @@ const startTimeRef = useRef< number >( 0 );
 
 				// Phase 2: Planner
 				setState( 'planning' );
-				updateStep( __( 'Generating plugin architecture plan...', 'ai' ) );
+				updateStep(
+					__( 'Generating plugin architecture plan...', 'ai' )
+				);
 				const maxFiles = 10;
-				const plannerBuilder = window.wp.aiClient.prompt(
-					getPlannerPrompt(
-						description,
-						'simple',
-						maxFiles,
-						previousPlan
+				const plannerBuilder = window.wp.aiClient
+					.prompt(
+						getPlannerPrompt(
+							description,
+							'simple',
+							maxFiles,
+							previousPlan
+						)
 					)
-				)
 					.usingSystemInstruction( getSystemPrompt( 'planner' ) )
 					.usingMaxTokens( 16384 )
 					.usingTemperature( 0.3 )
@@ -403,9 +539,13 @@ const startTimeRef = useRef< number >( 0 );
 				}
 
 				const plannerResult = await plannerBuilder.generateTextResult();
-					const plannerText = plannerResult.toText();
-					addTokenUsage( 'Planner', plannerResult.modelMetadata.name || 'unknown', plannerResult.tokenUsage );
-
+				if ( abortRef.current ) return;
+				const plannerText = plannerResult.toText();
+				addTokenUsage(
+					'Planner',
+					plannerResult.modelMetadata.name || 'unknown',
+					plannerResult.tokenUsage
+				);
 
 				let plan: PluginPlan;
 				try {
@@ -467,104 +607,89 @@ When you are completely finished writing all the code, you MUST call the finish 
 IMPORTANT: You MUST NOT call the finish tool in the same turn alongside other tools. Call it ALONE in a subsequent turn.
 Do not stop until you have called finish.`;
 
-				let coderPromptBuilder = window.wp.aiClient.prompt(
-					`Please build the plugin according to this plan:\n${JSON.stringify(plan, null, 2)}`
-				)
+				let coderPromptBuilder = window.wp.aiClient
+					.prompt(
+						`Please build the plugin according to this plan:\n${ JSON.stringify(
+							plan,
+							null,
+							2
+						) }`
+					)
 					.usingSystemInstruction( systemPrompt )
 					.usingTemperature( 0.2 )
 					.usingMaxTokens( 32768 )
-					.usingFunctionDeclarations(
-						{
-							name: 'discover_abilities',
-							description: 'Lists available WordPress abilities.',
-						},
-						{
-							name: 'execute_ability',
-							description: 'Executes a single WordPress ability.',
-							parameters: {
-								type: 'object',
-								properties: {
-									name: { type: 'string', description: 'Name of the ability' },
-									input: { type: 'object', description: 'Arguments for the ability' }
-								},
-								required: ['name', 'input']
-							}
-						},
-						{
-							name: 'write_file',
-							description: 'Writes a file for the plugin.',
-							parameters: {
-								type: 'object',
-								properties: {
-									path: { type: 'string', description: 'Path to the file relative to the plugin root (e.g., plugin-slug.php)' },
-									content: { type: 'string', description: 'Full content of the file' }
-								},
-								required: ['path', 'content']
-							}
-						},
-						{
-							name: 'read_file',
-							description: 'Reads a previously generated file from the plugin.',
-							parameters: {
-								type: 'object',
-								properties: {
-									path: { type: 'string', description: 'Path to the file relative to the plugin root' }
-								},
-								required: ['path']
-							}
-						},
-						{
-								name: 'list_plugins',
-								description: 'Lists all currently installed WordPress plugins. Use this to check for slug conflicts.',
-							},
-							{
-								name: 'finish',
-								description: 'Call this function ONLY when you have finished writing all files for the plugin.',
-								parameters: {
-									type: 'object',
-									properties: {
-										plugin_slug: { type: 'string', description: 'Override the planned slug if a conflict was detected. Must start with apb-' }
-									}
-								}
-							}
-					);
+					.usingFunctionDeclarations( ...AVAILABLE_TOOLS );
 
 				let isFinished = false;
 				let turnCount = 0;
 				const maxTurns = 10;
-				
-				while ( ! isFinished && turnCount < maxTurns ) {
-					turnCount++;
-					updateStep( sprintf( __( 'Agent thinking (Turn %d)...', 'ai' ), turnCount ) );
-					
-					const result = await coderPromptBuilder.generateResult();
-						addTokenUsage( `Generator (Turn ${turnCount})`, result.modelMetadata.name || 'unknown', result.tokenUsage );
 
-						const candidate = result.candidates[0];
-						if ( candidate.message && Array.isArray( candidate.message.parts ) ) {
-							candidate.message.parts.forEach( ( p: any ) => {
-								if ( p.channel === 'thought' && p.type === 'text' && p.text ) {
-									addMessage( createMessage( 'assistant', 'thought', p.text ) );
-								}
-							} );
-						}
+				while (
+					! isFinished &&
+					turnCount < maxTurns &&
+					! abortRef.current
+				) {
+					turnCount++;
+					updateStep(
+						sprintf(
+							__( 'Agent thinking (Turn %d)...', 'ai' ),
+							turnCount
+						)
+					);
+
+					const result = await coderPromptBuilder.generateResult();
+					if ( abortRef.current ) break;
+					addTokenUsage(
+						`Generator (Turn ${ turnCount })`,
+						result.modelMetadata.name || 'unknown',
+						result.tokenUsage
+					);
+
+					const candidate = result.candidates[ 0 ];
+					if (
+						candidate.message &&
+						Array.isArray( candidate.message.parts )
+					) {
+						candidate.message.parts.forEach( ( p: any ) => {
+							if (
+								p.channel === 'thought' &&
+								p.type === 'text' &&
+								p.text
+							) {
+								addMessage(
+									createMessage(
+										'assistant',
+										'thought',
+										p.text
+									)
+								);
+							}
+						} );
+					}
 
 					if ( candidate.finishReason === 'tool_calls' ) {
-						const toolCalls = candidate.message.parts.filter( (p: any) => p.type === 'function_call' );
+						const toolCalls = candidate.message.parts.filter(
+							( p: any ) => p.type === 'function_call'
+						);
 						toolCalls.sort( ( a: any, b: any ) => {
 							if ( a.functionCall.name === 'finish' ) return 1;
 							if ( b.functionCall.name === 'finish' ) return -1;
 							return 0;
 						} );
 						const responses: any[] = [];
-						
+
 						for ( const part of toolCalls ) {
 							const call = part.functionCall;
 							const fnName = call.name;
 							const args = call.args || {};
 							let res: any = null;
 
-							updateStep( sprintf( __( 'Executing tool: %s...', 'ai' ), fnName ) );
+							updateStep(
+								sprintf(
+									__( 'Executing tool: %s...', 'ai' ),
+									fnName
+								)
+							);
 
 							addMessage(
 								createMessage(
@@ -572,66 +697,168 @@ Do not stop until you have called finish.`;
 									'text',
 									sprintf(
 										/* translators: 1: tool name, 2: JSON arguments */
-										__( '<strong>🛠 Executing tool:</strong> <code>%1$s</code>', 'ai' ),
+										__(
+											'<strong>🛠 Executing tool:</strong> <code>%1$s</code>',
+											'ai'
+										),
 										fnName
 									)
 								)
 							);
 
 							try {
-									if ( fnName === 'list_plugins' ) {
-										res = await api.listPlugins();
-									} else if ( fnName === 'discover_abilities' ) {
-										res = await api.discoverAbilities();
+								if ( fnName === 'list_plugins' ) {
+									res = await api.listPlugins();
+								} else if ( fnName === 'discover_abilities' ) {
+									res = await api.discoverAbilities();
 								} else if ( fnName === 'execute_ability' ) {
-									res = await api.executeAbility( args.name as string, args.input );
+									res = await api.executeAbility(
+										args.name as string,
+										args.input
+									);
 								} else if ( fnName === 'write_file' ) {
-									const existingIndex = newFiles.findIndex(f => f.path === args.path);
-									if (existingIndex >= 0) {
-										newFiles[existingIndex].content = args.content as string;
+									const existingIndex = newFiles.findIndex(
+										( f ) => f.path === args.path
+									);
+									if ( existingIndex >= 0 ) {
+										newFiles[ existingIndex ].content =
+											args.content as string;
 									} else {
-										newFiles.push({ path: args.path as string, content: args.content as string, type: (args.path as string).endsWith('.php') ? 'php' : 'js', description: 'Generated' });
+										const filePath = args.path as string;
+										const planFile = plan?.files?.find(
+											( f: any ) => f.path === filePath
+										);
+										let fileType = planFile?.type;
+
+										if ( ! fileType ) {
+											const ext = filePath
+												.split( '.' )
+												.pop()
+												?.toLowerCase();
+											switch ( ext ) {
+												case 'php':
+													fileType = 'php';
+													break;
+												case 'js':
+													fileType = 'javascript';
+													break;
+												case 'ts':
+													fileType = 'typescript';
+													break;
+												case 'css':
+													fileType = 'css';
+													break;
+												case 'json':
+													fileType = 'json';
+													break;
+												case 'md':
+													fileType = 'markdown';
+													break;
+												case 'html':
+													fileType = 'html';
+													break;
+												default:
+													fileType = 'text';
+													break;
+											}
+										}
+
+										newFiles.push( {
+											path: filePath,
+											content: args.content as string,
+											type: fileType,
+											description:
+												planFile?.description ||
+												'Generated',
+										} );
 									}
-									setCurrentFiles( [...newFiles] );
+									setCurrentFiles( [ ...newFiles ] );
 									res = { success: true };
 								} else if ( fnName === 'read_file' ) {
-									const file = newFiles.find(f => f.path === args.path);
+									const file = newFiles.find(
+										( f ) => f.path === args.path
+									);
 									if ( file ) {
 										res = { content: file.content };
 									} else {
-										res = { error: 'File not found locally. Ensure you have written it first using write_file.' };
+										res = {
+											error: 'File not found locally. Ensure you have written it first using write_file.',
+										};
 									}
 								} else if ( fnName === 'finish' ) {
-									const finalSlug = args.plugin_slug && args.plugin_slug.startsWith( 'apb-' )
-										? ( args.plugin_slug as string )
-										: plan.plugin_slug;
-									const writeRes = await api.writeFiles( finalSlug, newFiles, true );
+									const finalSlug =
+										args.plugin_slug &&
+										args.plugin_slug.startsWith( 'apb-' )
+											? ( args.plugin_slug as string )
+											: plan.plugin_slug;
+									const writeRes = await api.writeFiles(
+										finalSlug,
+										newFiles,
+										true
+									);
 
-									if ( writeRes.issues && writeRes.issues.length > 0 ) {
+									if (
+										writeRes.issues &&
+										writeRes.issues.length > 0
+									) {
 										res = {
 											success: false,
 											issues: writeRes.issues,
 											instruction:
 												'Fix these issues using write_file and call finish again.',
 										};
+										addMessage(
+											createMessage(
+												'assistant',
+												'text',
+												sprintf(
+													/* translators: %d: number of issues */
+													__(
+														'<strong>Plugin check failed!</strong> Found %d issues. The agent will now attempt to fix them...',
+														'ai'
+													),
+													writeRes.issues.length
+												)
+											)
+										);
 									} else {
 										// Persist the final slug so subsequent operations use the correct plugin.
 										plan.plugin_slug = finalSlug;
 										isFinished = true;
-										res = { success: true, message: 'Plugin Generation Complete.' };
+										res = {
+											success: true,
+											message:
+												'Plugin Generation Complete.',
+										};
+										addMessage(
+											createMessage(
+												'assistant',
+												'text',
+												__(
+													'<strong>Plugin check passed!</strong> All generated files are valid.',
+													'ai'
+												)
+											)
+										);
 									}
 								} else {
 									res = { error: 'Unknown tool.' };
 								}
 							} catch ( e: any ) {
-								res = { error: e.message || 'Tool execution failed' };
+								res = {
+									error: e.message || 'Tool execution failed',
+								};
 							}
-							
-							responses.push({
+
+							responses.push( {
 								channel: 'content',
 								type: 'function_response',
-								functionResponse: { id: call.id, name: fnName, response: res }
-							});
+								functionResponse: {
+									id: call.id,
+									name: fnName,
+									response: res,
+								},
+							} );
 						}
 
 						coderPromptBuilder = coderPromptBuilder.withHistory(
@@ -647,14 +874,19 @@ Do not stop until you have called finish.`;
 
 				// Phase 4: Basic Client-Side Security Scan
 				setState( 'reviewing' );
-				updateStep( __( 'Scanning files for security issues...', 'ai' ) );
+				updateStep(
+					__( 'Scanning files for security issues...', 'ai' )
+				);
 				const scanResult = scanFiles( newFiles );
 
 				const review: ReviewResult = {
 					passed: scanResult.passed,
 					review_summary: scanResult.passed
 						? __( 'No obvious dangerous patterns found.', 'ai' )
-						: __( 'Dangerous patterns detected in generated code.', 'ai' ),
+						: __(
+								'Dangerous patterns detected in generated code.',
+								'ai'
+						  ),
 					suggestions: scanResult.issues.map( ( iss ) => ( {
 						action: 'Needs Review',
 						file_path: iss.file_path,
@@ -692,7 +924,8 @@ Do not stop until you have called finish.`;
 				void performChatSave( plan.plugin_slug );
 			} catch ( e: any ) {
 				handleError(
-					e.message || __( 'Failed during AI generation pipeline.', 'ai' )
+					e.message ||
+						__( 'Failed during AI generation pipeline.', 'ai' )
 				);
 				void performChatSave( currentPlan?.plugin_slug );
 			}
@@ -706,7 +939,7 @@ Do not stop until you have called finish.`;
 			removeLastLoading,
 			updateStep,
 			elapsed,
-			performChatSave
+			performChatSave,
 		]
 	);
 
@@ -714,7 +947,9 @@ Do not stop until you have called finish.`;
 		async ( force: boolean = false ) => {
 			if ( ! currentPlan || ! currentFiles.length ) return;
 
-			const isUpdate = messagesRef.current.some( m => m.type === 'install' && m.data?.activated );
+			const isUpdate = messagesRef.current.some(
+				( m ) => m.type === 'install' && m.data?.activated
+			);
 			const _force = force;
 
 			setState( 'installing' );
@@ -723,7 +958,9 @@ Do not stop until you have called finish.`;
 				createMessage(
 					'assistant',
 					'loading',
-					isUpdate ? __( 'Updating plugin files...', 'ai' ) : __( 'Saving and activating plugin...', 'ai' )
+					isUpdate
+						? __( 'Updating plugin files...', 'ai' )
+						: __( 'Saving and activating plugin...', 'ai' )
 				)
 			);
 			log(
@@ -752,7 +989,10 @@ Do not stop until you have called finish.`;
 							'text',
 							sprintf(
 								/* translators: %s: warning messages */
-								__( '<strong>Warning:</strong> %s\n\nClick "Install Anyway" to proceed.', 'ai' ),
+								__(
+									'<strong>Warning:</strong> %s\n\nClick "Install Anyway" to proceed.',
+									'ai'
+								),
 								result.warnings.join( ' ' )
 							)
 						)
@@ -769,7 +1009,7 @@ Do not stop until you have called finish.`;
 					const pluginFile = result.plugin;
 
 					try {
-						if ( !isUpdate ) {
+						if ( ! isUpdate ) {
 							updateStep( __( 'Activating plugin...', 'ai' ) );
 							await api.activatePlugin( pluginFile );
 							removeLastLoading();
@@ -790,12 +1030,17 @@ Do not stop until you have called finish.`;
 							removeLastLoading();
 							setState( 'idle' );
 							addMessage(
-								createMessage( 'assistant', 'install', __( 'Plugin files updated!', 'ai' ), {
-									installed: true,
-									activated: true,
-									plugin: pluginFile,
-									isUpdate: true,
-								} )
+								createMessage(
+									'assistant',
+									'install',
+									__( 'Plugin files updated!', 'ai' ),
+									{
+										installed: true,
+										activated: true,
+										plugin: pluginFile,
+										isUpdate: true,
+									}
+								)
 							);
 							log(
 								'success',
@@ -806,46 +1051,81 @@ Do not stop until you have called finish.`;
 
 						// New Analysis Phase
 						addMessage(
-							createMessage( 'assistant', 'loading', __( 'Analyzing next steps...', 'ai' ) )
+							createMessage(
+								'assistant',
+								'loading',
+								__( 'Analyzing next steps...', 'ai' )
+							)
 						);
 						updateStep( __( 'Checking plugin features...', 'ai' ) );
 
 						try {
-							const existingCommands = select(commandsStore)
-								.getCommands()
-								.map((c: any) => ({ name: c.name, label: c.label }));
+							if ( abortRef.current ) return;
 
-							const analyzerText = await window.wp.aiClient.prompt(getAnalyzerPrompt(currentFiles, existingCommands))
-								.usingSystemInstruction(getSystemPrompt('analyzer'))
-								.usingTemperature(0.2)
-								.usingMaxTokens(8000)
+							const existingCommands = select( commandsStore )
+								.getCommands()
+								.map( ( c: any ) => ( {
+									name: c.name,
+									label: c.label,
+								} ) );
+
+							const analyzerText = await window.wp.aiClient
+								.prompt(
+									getAnalyzerPrompt(
+										currentFiles,
+										existingCommands
+									)
+								)
+								.usingSystemInstruction(
+									getSystemPrompt( 'analyzer' )
+								)
+								.usingTemperature( 0.2 )
+								.usingMaxTokens( 8000 )
 								.asJsonResponse()
 								.generateText();
 
-							const analysis: AnalysisResponse = parseJSON(analyzerText);
-							if (analysis.new_commands && analysis.new_commands.length > 0) {
-								for (const cmd of analysis.new_commands) {
-									dispatch(commandsStore).registerCommand({
+							const analysis: AnalysisResponse =
+								parseJSON( analyzerText );
+							if (
+								analysis.new_commands &&
+								analysis.new_commands.length > 0
+							) {
+								for ( const cmd of analysis.new_commands ) {
+									dispatch( commandsStore ).registerCommand( {
 										name: cmd.name,
 										label: cmd.label,
-										callback: ({ close }: { close?: () => void }) => {
+										callback: ( {
+											close,
+										}: {
+											close?: () => void;
+										} ) => {
 											document.location.href = cmd.url;
-											if (close) close();
+											if ( close ) close();
 										},
-									});
+									} );
 								}
 							}
 
-							const updatedCommands = select(commandsStore).getCommands();
+							const updatedCommands =
+								select( commandsStore ).getCommands();
 
 							removeLastLoading();
 							addMessage(
 								createMessage( 'assistant', 'analysis', '', {
-									suggested_commands: analysis.suggested_commands || [],
+									explanation: analysis.explanation,
+									new_commands: analysis.new_commands || [],
+									suggested_commands:
+										analysis.suggested_commands || [],
 									all_commands: updatedCommands,
 								} )
 							);
-							log( 'success', __( 'Analysis complete. Suggested next steps generated.', 'ai' ) );
+							log(
+								'success',
+								__(
+									'Analysis complete. Suggested next steps generated.',
+									'ai'
+								)
+							);
 						} catch ( analysisErr: any ) {
 							removeLastLoading();
 							console.error( 'Analysis failed:', analysisErr );
@@ -854,13 +1134,20 @@ Do not stop until you have called finish.`;
 									'assistant',
 									'text',
 									sprintf(
-											/* translators: %s: error message */
-											__( '<strong>Analysis Error:</strong> %s\n\nCheck browser console for details.', 'ai' ),
-											analysisErr.message
-										)
+										/* translators: %s: error message */
+										__(
+											'<strong>Analysis Error:</strong> %s\n\nCheck browser console for details.',
+											'ai'
+										),
+										analysisErr.message
+									)
 								)
 							);
-							log( 'warn', __( 'Failed to analyze next steps', 'ai' ), analysisErr.message );
+							log(
+								'warn',
+								__( 'Failed to analyze next steps', 'ai' ),
+								analysisErr.message
+							);
 						}
 					} catch ( activationError: any ) {
 						removeLastLoading();
@@ -884,8 +1171,11 @@ Do not stop until you have called finish.`;
 								);
 							}
 							// The UI will likely render this error string.
-								msg += `\n\n${ __( 'Additional Data:', 'ai' ) }\n${ additionalData }\n`;
-							}
+							msg += `\n\n${ __(
+								'Additional Data:',
+								'ai'
+							) }\n${ additionalData }\n`;
+						}
 
 						addMessage(
 							createMessage( 'assistant', 'install', '', {
@@ -907,7 +1197,8 @@ Do not stop until you have called finish.`;
 				}
 			} catch ( e: any ) {
 				removeLastLoading();
-				const msg = e.message || __( 'Failed to save plugin files', 'ai' );
+				const msg =
+					e.message || __( 'Failed to save plugin files', 'ai' );
 				handleError( msg );
 			} finally {
 				void performChatSave( currentPlan.plugin_slug );
@@ -934,13 +1225,20 @@ Do not stop until you have called finish.`;
 
 		try {
 			await api.downloadPlugin( currentPlan.plugin_slug );
-			log( 'success', __( 'Plugin downloaded', 'ai' ), currentPlan.plugin_slug );
+			log(
+				'success',
+				__( 'Plugin downloaded', 'ai' ),
+				currentPlan.plugin_slug
+			);
 		} catch ( e: any ) {
-			handleError( e.message || __( 'Failed to download plugin.', 'ai' ) );
+			handleError(
+				e.message || __( 'Failed to download plugin.', 'ai' )
+			);
 		}
 	}, [ currentPlan, state, log, handleError ] );
 
 	const reset = useCallback( () => {
+		abortRef.current = false;
 		setState( 'idle' );
 		setMessages( [] );
 		messagesRef.current = [];
@@ -961,54 +1259,87 @@ Do not stop until you have called finish.`;
 		logIdCounter = 0;
 	}, [ setActiveChatId, setChatTitle ] );
 
-	const loadChat = useCallback( async ( chat: ChatHistory ) => {
-		reset();
-		setActiveChatId( chat.id || null );
-		activeChatIdRef.current = chat.id || null;
-		setChatTitle( chat.title || '' );
-		if ( chat.messages && chat.messages.length > 0 ) {
-			setMessages( chat.messages );
-			messagesRef.current = chat.messages;
-			const isInstalledLocally = chat.messages.some( m => m.type === 'install' && m.data?.activated );
-			setState( isInstalledLocally ? 'idle' : 'ready_to_install' );
-			
-			const lastPlan = chat.messages.slice().reverse().find( m => m.type === 'plan' );
-			if ( lastPlan && lastPlan.data ) {
-				setCurrentPlan( lastPlan.data as PluginPlan );
-			}
-			
-			// If installed, attempt to load physical files from local server.
-			if ( chat.plugin_slug && isInstalledLocally ) {
-				try {
-					const localFilesResponse = await api.getPluginFiles( chat.plugin_slug );
-					if ( localFilesResponse && localFilesResponse.files && localFilesResponse.files.length > 0 ) {
-						setCurrentFiles( localFilesResponse.files );
-					} else {
-						const lastFiles = chat.messages.slice().reverse().find( m => m.type === 'files' );
+	const loadChat = useCallback(
+		async ( chat: ChatHistory ) => {
+			reset();
+			setActiveChatId( chat.id || null );
+			activeChatIdRef.current = chat.id || null;
+			setChatTitle( chat.title || '' );
+			if ( chat.messages && chat.messages.length > 0 ) {
+				setMessages( chat.messages );
+				messagesRef.current = chat.messages;
+				const isInstalledLocally = chat.messages.some(
+					( m ) => m.type === 'install' && m.data?.activated
+				);
+				setState( isInstalledLocally ? 'idle' : 'ready_to_install' );
+
+				const lastPlan = chat.messages
+					.slice()
+					.reverse()
+					.find( ( m ) => m.type === 'plan' );
+				if ( lastPlan && lastPlan.data ) {
+					setCurrentPlan( lastPlan.data as PluginPlan );
+				}
+
+				// If installed, attempt to load physical files from local server.
+				if ( chat.plugin_slug && isInstalledLocally ) {
+					try {
+						const localFilesResponse = await api.getPluginFiles(
+							chat.plugin_slug
+						);
+						if (
+							localFilesResponse &&
+							localFilesResponse.files &&
+							localFilesResponse.files.length > 0
+						) {
+							setCurrentFiles( localFilesResponse.files );
+						} else {
+							const lastFiles = chat.messages
+								.slice()
+								.reverse()
+								.find( ( m ) => m.type === 'files' );
+							if ( lastFiles && lastFiles.data ) {
+								setCurrentFiles(
+									lastFiles.data as GeneratedFile[]
+								);
+							}
+						}
+					} catch ( e ) {
+						console.error(
+							'Failed to fetch physical files synchronously, falling back to history',
+							e
+						);
+						const lastFiles = chat.messages
+							.slice()
+							.reverse()
+							.find( ( m ) => m.type === 'files' );
 						if ( lastFiles && lastFiles.data ) {
-							setCurrentFiles( lastFiles.data as GeneratedFile[] );
+							setCurrentFiles(
+								lastFiles.data as GeneratedFile[]
+							);
 						}
 					}
-				} catch ( e ) {
-					console.error( 'Failed to fetch physical files synchronously, falling back to history', e );
-					const lastFiles = chat.messages.slice().reverse().find( m => m.type === 'files' );
+				} else {
+					const lastFiles = chat.messages
+						.slice()
+						.reverse()
+						.find( ( m ) => m.type === 'files' );
 					if ( lastFiles && lastFiles.data ) {
 						setCurrentFiles( lastFiles.data as GeneratedFile[] );
 					}
 				}
-			} else {
-				const lastFiles = chat.messages.slice().reverse().find( m => m.type === 'files' );
-				if ( lastFiles && lastFiles.data ) {
-					setCurrentFiles( lastFiles.data as GeneratedFile[] );
+
+				const lastReview = chat.messages
+					.slice()
+					.reverse()
+					.find( ( m ) => m.type === 'review' );
+				if ( lastReview && lastReview.data ) {
+					setCurrentReview( lastReview.data as ReviewResult );
 				}
 			}
-
-			const lastReview = chat.messages.slice().reverse().find( m => m.type === 'review' );
-			if ( lastReview && lastReview.data ) {
-				setCurrentReview( lastReview.data as ReviewResult );
-			}
-		}
-	}, [ reset, setActiveChatId, setChatTitle ] );
+		},
+		[ reset, setActiveChatId, setChatTitle ]
+	);
 
 	const isProcessing = useMemo(
 		() =>
@@ -1050,5 +1381,6 @@ Do not stop until you have called finish.`;
 		downloadPlugin,
 		reset,
 		loadChat,
+		cancelGeneration,
 	};
 }

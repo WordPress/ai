@@ -350,7 +350,9 @@ export function getAnalyzerPrompt(
 ): string {
 	let filesContext = '';
 	for ( const f of files ) {
-		filesContext += `\n### ${ f.path }\n\`\`\`${ f.type }\n${ f.content || '' }\n\`\`\`\n`;
+		filesContext += `\n### ${ f.path }\n\`\`\`${ f.type }\n${
+			f.content || ''
+		}\n\`\`\`\n`;
 	}
 
 	const cmdsJson = JSON.stringify( existingCommands, null, 2 );

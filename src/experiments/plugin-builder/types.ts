@@ -160,7 +160,9 @@ export function isJobResponse(
 	);
 }
 
-export function needsSlugConfirmation(response: WriteResponse): response is WriteSlugConflictResponse {
+export function needsSlugConfirmation(
+	response: WriteResponse
+): response is WriteSlugConflictResponse {
 	return 'needs_confirmation' in response && response.needs_confirmation;
 }
 
@@ -190,4 +192,3 @@ export interface ChatHistory {
 	messages: ChatMessage[];
 	plugin_slug?: string;
 }
-
