@@ -798,44 +798,96 @@ Do not stop until you have called finish.`;
 									);
 
 									if (
-										writeRes.issues &&
-										writeRes.issues.length > 0
+										'written' in writeRes &&
+										writeRes.written
 									) {
+										// Successful write; check for any issues reported.
+										if (
+											'issues' in writeRes &&
+											writeRes.issues &&
+											writeRes.issues.length > 0
+										) {
+											res = {
+												success: false,
+												issues: writeRes.issues,
+												instruction:
+													'Fix these issues using write_file and call finish again.',
+											};
+											addMessage(
+												createMessage(
+													'assistant',
+													'text',
+													sprintf(
+														/* translators: %d: number of issues */
+														__(
+															'<strong>Plugin check failed!</strong> Found %d issues. The agent will now attempt to fix them...',
+															'ai'
+														),
+														writeRes.issues.length
+													)
+												)
+											);
+										} else {
+											// Persist the final slug so subsequent operations use the correct plugin.
+											plan.plugin_slug = finalSlug;
+											isFinished = true;
+											res = {
+												success: true,
+												message:
+													'Plugin Generation Complete.',
+											};
+											addMessage(
+												createMessage(
+													'assistant',
+													'text',
+													__(
+														'<strong>Plugin check passed!</strong> All generated files are valid.',
+														'ai'
+													)
+												)
+											);
+										}
+									} else if (
+										'needsSlugConfirmation' in writeRes &&
+										writeRes.needsSlugConfirmation
+									) {
+										// The backend is asking for explicit confirmation or adjustment of the plugin slug.
 										res = {
 											success: false,
-											issues: writeRes.issues,
+											needsSlugConfirmation: true,
 											instruction:
-												'Fix these issues using write_file and call finish again.',
-										};
-										addMessage(
-											createMessage(
-												'assistant',
-												'text',
-												sprintf(
-													/* translators: %d: number of issues */
-													__(
-														'<strong>Plugin check failed!</strong> Found %d issues. The agent will now attempt to fix them...',
-														'ai'
-													),
-													writeRes.issues.length
-												)
-											)
-										);
-									} else {
-										// Persist the final slug so subsequent operations use the correct plugin.
-										plan.plugin_slug = finalSlug;
-										isFinished = true;
-										res = {
-											success: true,
-											message:
-												'Plugin Generation Complete.',
+												'Confirm the plugin_slug or provide a new, unique slug, then call finish again.',
 										};
 										addMessage(
 											createMessage(
 												'assistant',
 												'text',
 												__(
-													'<strong>Plugin check passed!</strong> All generated files are valid.',
+													'The plugin slug needs confirmation or adjustment before files can be written.',
+													'ai'
+												)
+											)
+										);
+									} else {
+										// Some other error occurred while trying to write the plugin files.
+										let errorMessage =
+											'Unable to write plugin files. Please review the requested changes and try again.';
+										if (
+											'error' in writeRes &&
+											writeRes.error
+										) {
+											errorMessage = writeRes.error;
+										}
+										res = {
+											success: false,
+											error: errorMessage,
+										};
+										addMessage(
+											createMessage(
+												'assistant',
+												'text',
+												__(
+													'There was an error saving the plugin files. Please try again or adjust your request.',
 													'ai'
 												)
 											)
