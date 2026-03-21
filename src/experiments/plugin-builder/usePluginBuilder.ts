@@ -138,7 +138,9 @@ export function usePluginBuilder() {
 	const [ tokenUsage, setTokenUsage ] = useState< TokenUsageSummary | null >(
 		null
 	);
-	const [ installedPluginFile, setInstalledPluginFile ] = useState< string | null >( null );
+	const [ installedPluginFile, setInstalledPluginFile ] = useState<
+		string | null
+	>( null );
 	const [ slugConflictWarnings, setSlugConflictWarnings ] = useState<
 		string[]
 	>( [] );
@@ -618,7 +620,11 @@ export function usePluginBuilder() {
 
 				if ( 'written' in result && result.written ) {
 					const pluginFile = result.plugin;
-					setInstalledPluginFile( pluginFile.endsWith( '.php' ) ? pluginFile : pluginFile + '.php' );
+					setInstalledPluginFile(
+						pluginFile.endsWith( '.php' )
+							? pluginFile
+							: pluginFile + '.php'
+					);
 
 					try {
 						if ( ! isUpdate ) {
@@ -829,7 +835,8 @@ export function usePluginBuilder() {
 	}, [ installPlugin ] );
 
 	const downloadPlugin = useCallback( async () => {
-		if ( ! currentPlan || ! installedPluginFile || state !== 'installed' ) return;
+		if ( ! currentPlan || ! installedPluginFile || state !== 'installed' )
+			return;
 
 		try {
 			await api.downloadPlugin( installedPluginFile );
@@ -879,9 +886,7 @@ export function usePluginBuilder() {
 				const installMessage = chat.messages
 					.slice()
 					.reverse()
-					.find(
-						( m ) => m.type === 'install' && m.data?.activated
-					);
+					.find( ( m ) => m.type === 'install' && m.data?.activated );
 				const isInstalledLocally = !! installMessage;
 				setState( isInstalledLocally ? 'idle' : 'ready_to_install' );
 				if ( installMessage?.data?.plugin ) {
