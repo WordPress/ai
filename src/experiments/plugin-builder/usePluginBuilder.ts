@@ -15,6 +15,7 @@ import {
 	TokenUsageSummary,
 	needsSlugConfirmation,
 	AnalysisResponse,
+	ChatHistory,
 } from './types';
 import * as api from './api';
 import {
@@ -43,7 +44,7 @@ function createMessage(
 	data?: any
 ): ChatMessage {
 	return {
-		id: String( ++messageIdCounter ),
+		id: String( ++messageIdCounter ) + '-' + Date.now(),
 		role,
 		type,
 		content,
@@ -62,6 +63,48 @@ function parseJSON( json: string ): any {
 	return JSON.parse(
 		json.replace( /^```json/, '' ).replace( /```\s*$/, '' )
 	);
+}
+
+function mapChatMessagesToApiMessages( messages: ChatMessage[] ): any[] {
+	const raw = messages
+		.filter( m => ['text', 'plan', 'review'].includes(m.type) )
+		.filter( m => m.content || m.data )
+		.map( m => {
+			let text = m.content || '';
+			if (m.type === 'plan' && m.data) {
+				text += '\n\nPlan:\n```json\n' + JSON.stringify({ plugin_name: m.data.plugin_name, description: m.data.description, files: m.data.files.map((f: any) => f.path) }) + '\n```';
+			}
+			return {
+				role: m.role === 'assistant' ? 'model' : m.role,
+				text: text
+			};
+		});
+
+	// The current request (user description) is inside raw.
+	// WP AI Client expects the messages array to end with 'user',
+	// so we leave it intact.
+
+	const merged: any[] = [];
+	for (const msg of raw) {
+		if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
+			merged[merged.length - 1].parts[0].text += '\n\n' + msg.text;
+		} else {
+			merged.push({
+				role: msg.role,
+				parts: [ { type: 'text', text: msg.text } ]
+			});
+		}
+	}
+
+	// Ensure API history strict requirement: first item MUST be user if array is not empty
+	if (merged.length > 0 && merged[0].role === 'model') {
+		merged.unshift({
+			role: 'user',
+			parts: [ { type: 'text', text: 'Hello, please build a WordPress plugin for me.' } ]
+		});
+	}
+
+	return merged;
 }
 
 export function usePluginBuilder() {
@@ -84,7 +127,24 @@ export function usePluginBuilder() {
 		string[]
 	>( [] );
 
+	const [ activeChatId, _setActiveChatId ] = useState< number | null >( null );
+	const activeChatIdRef = useRef< number | null >( null );
+
+	const setActiveChatId = useCallback( ( id: number | null ) => {
+		_setActiveChatId( id );
+		activeChatIdRef.current = id;
+	}, [] );
+
+	const [ chatTitle, _setChatTitle ] = useState< string >( '' );
+	const chatTitleRef = useRef< string >( '' );
+
+	const setChatTitle = useCallback( ( title: string ) => {
+		_setChatTitle( title );
+		chatTitleRef.current = title;
+	}, [] );
+
 	const startTimeRef = useRef< number >( 0 );
+	const messagesRef = useRef< ChatMessage[] >( [] );
 
 	// Logging
 	const log = useCallback(
@@ -110,7 +170,11 @@ export function usePluginBuilder() {
 	}, [] );
 
 	const addMessage = useCallback( ( msg: ChatMessage ) => {
-		setMessages( ( prev ) => [ ...prev, msg ] );
+		setMessages( ( prev ) => {
+			const next = [ ...prev, msg ];
+			messagesRef.current = next;
+			return next;
+		} );
 	}, [] );
 
 	const updateLastLoading = useCallback( ( content: string ) => {
@@ -122,6 +186,7 @@ export function usePluginBuilder() {
 				const realIndex = prev.length - 1 - index;
 				const newMsgs = [ ...prev ];
 				newMsgs[ realIndex ] = { ...newMsgs[ realIndex ], content };
+				messagesRef.current = newMsgs;
 				return newMsgs;
 			}
 			return prev;
@@ -137,11 +202,41 @@ export function usePluginBuilder() {
 				const realIndex = prev.length - 1 - index;
 				const newMsgs = [ ...prev ];
 				newMsgs.splice( realIndex, 1 );
+				messagesRef.current = newMsgs;
 				return newMsgs;
 			}
 			return prev;
 		} );
 	}, [] );
+
+	// Save Chat
+	const performChatSave = useCallback( async ( currentSlug?: string ) => {
+		const latestMessages = messagesRef.current;
+		if ( latestMessages.length === 0 ) return;
+
+		const isNew = !activeChatIdRef.current;
+		const currentActiveId = activeChatIdRef.current;
+
+		try {
+			let title = chatTitleRef.current;
+			if ( isNew ) {
+				const planMsg = latestMessages.slice().reverse().find( m => m.type === 'plan' );
+				if ( planMsg && planMsg.data?.plugin_name ) {
+					title = planMsg.data.plugin_name;
+				} else {
+					title = 'Plugin Builder Chat';
+				}
+				setChatTitle( title );
+			}
+			const result = await api.saveChatHistory( latestMessages, currentSlug, currentActiveId || undefined, title );
+			if ( result && result.id ) {
+				setActiveChatId( result.id );
+			}
+		} catch ( e ) {
+			console.error( 'Failed to save chat history:', e );
+		}
+	}, [ setChatTitle, setActiveChatId ] );
+
 
 	const handleError = useCallback(
 		( message: string ) => {
@@ -193,16 +288,22 @@ export function usePluginBuilder() {
 			);
 
 			try {
+				const apiHistory = mapChatMessagesToApiMessages( messagesRef.current );
+
 				// Phase 1: Intent Detection
 				updateStep( __( 'Detecting intent...', 'ai' ) );
-				const intentText = await window.wp.aiClient.prompt(
+				const intentPromptBuilder = window.wp.aiClient.prompt(
 					getIntentPrompt( description, previousPlan )
-				)
-					.usingSystemInstruction( getSystemPrompt( 'detector' ) )
+				).usingSystemInstruction( getSystemPrompt( 'detector' ) )
 					.usingTemperature( 0.1 )
 					.usingMaxTokens( 500 )
-					.asJsonResponse()
-					.generateText();
+					.asJsonResponse();
+				
+				if ( apiHistory.length > 0 ) {
+					intentPromptBuilder.withHistory( ...apiHistory );
+				}
+
+				const intentText = await intentPromptBuilder.generateText();
 
 				let intentData;
 				try {
@@ -225,6 +326,7 @@ export function usePluginBuilder() {
 						)
 					);
 					setState( previousPlan ? 'ready_to_install' : 'idle' );
+					void performChatSave( previousPlan?.plugin_slug );
 					return;
 				}
 
@@ -240,7 +342,7 @@ export function usePluginBuilder() {
 				setState( 'planning' );
 				updateStep( __( 'Generating plugin architecture plan...', 'ai' ) );
 				const maxFiles = 10;
-				const plannerText = await window.wp.aiClient.prompt(
+				const plannerBuilder = window.wp.aiClient.prompt(
 					getPlannerPrompt(
 						description,
 						'simple',
@@ -251,8 +353,13 @@ export function usePluginBuilder() {
 					.usingSystemInstruction( getSystemPrompt( 'planner' ) )
 					.usingMaxTokens( 16384 )
 					.usingTemperature( 0.3 )
-					.asJsonResponse()
-					.generateText();
+					.asJsonResponse();
+
+				if ( apiHistory.length > 0 ) {
+					plannerBuilder.withHistory( ...apiHistory );
+				}
+
+				const plannerText = await plannerBuilder.generateText();
 
 				let plan: PluginPlan;
 				try {
@@ -382,10 +489,12 @@ export function usePluginBuilder() {
 					),
 					__( 'Ready to install', 'ai' )
 				);
+				void performChatSave( plan.plugin_slug );
 			} catch ( e: any ) {
 				handleError(
 					e.message || __( 'Failed during AI generation pipeline.', 'ai' )
 				);
+				void performChatSave( currentPlan?.plugin_slug );
 			}
 		},
 		[
@@ -397,6 +506,7 @@ export function usePluginBuilder() {
 			removeLastLoading,
 			updateStep,
 			elapsed,
+			performChatSave
 		]
 	);
 
@@ -404,13 +514,16 @@ export function usePluginBuilder() {
 		async ( force: boolean = false ) => {
 			if ( ! currentPlan || ! currentFiles.length ) return;
 
+			const isUpdate = messagesRef.current.some( m => m.type === 'install' && m.data?.activated );
+			const _force = force || isUpdate;
+
 			setState( 'installing' );
 			setSlugConflictWarnings( [] );
 			addMessage(
 				createMessage(
 					'assistant',
 					'loading',
-					__( 'Saving and activating plugin...', 'ai' )
+					isUpdate ? __( 'Updating plugin files...', 'ai' ) : __( 'Saving and activating plugin...', 'ai' )
 				)
 			);
 			log(
@@ -419,14 +532,14 @@ export function usePluginBuilder() {
 					/* translators: %s: plugin slug */
 					__( 'Saving: %s', 'ai' ),
 					currentPlan.plugin_slug
-				) + ( force ? sprintf( ' (%s)', __( 'forced', 'ai' ) ) : '' )
+				) + ( _force ? sprintf( ' (%s)', __( 'forced', 'ai' ) ) : '' )
 			);
 
 			try {
 				const result = await api.writeFiles(
 					currentPlan.plugin_slug,
 					currentFiles,
-					force
+					_force
 				);
 
 				if ( needsSlugConfirmation( result ) ) {
@@ -453,26 +566,43 @@ export function usePluginBuilder() {
 				}
 
 				if ( 'written' in result && result.written ) {
-					updateStep( __( 'Activating plugin...', 'ai' ) );
 					const pluginFile = result.plugin;
 
 					try {
-						await api.activatePlugin( pluginFile );
-						removeLastLoading();
-						setState( 'installed' );
-						// Reusing 'install' message type for the success output
-						addMessage(
-							createMessage( 'assistant', 'install', '', {
-								installed: true,
-								activated: true,
-								plugin: pluginFile,
-							} )
-						);
-						log(
-							'success',
-							__( 'Plugin installed & activated', 'ai' ),
-							pluginFile
-						);
+						if ( !isUpdate ) {
+							updateStep( 'Activating plugin...' );
+							await api.activatePlugin( pluginFile );
+							removeLastLoading();
+							setState( 'installed' );
+							addMessage(
+								createMessage( 'assistant', 'install', '', {
+									installed: true,
+									activated: true,
+									plugin: pluginFile,
+								} )
+							);
+							log(
+								'success',
+								'Plugin installed & activated',
+								pluginFile
+							);
+						} else {
+							removeLastLoading();
+							setState( 'idle' );
+							addMessage(
+								createMessage( 'assistant', 'install', __( 'Plugin files updated!', 'ai' ), {
+									installed: true,
+									activated: true,
+									plugin: pluginFile,
+									isUpdate: true,
+								} )
+							);
+							log(
+								'success',
+								'Plugin files updated locally',
+								pluginFile
+							);
+						}
 
 						// New Analysis Phase
 						addMessage(
@@ -579,6 +709,8 @@ export function usePluginBuilder() {
 				removeLastLoading();
 				const msg = e.message || __( 'Failed to save plugin files', 'ai' );
 				handleError( msg );
+			} finally {
+				void performChatSave( currentPlan.plugin_slug );
 			}
 		},
 		[
@@ -589,6 +721,7 @@ export function usePluginBuilder() {
 			log,
 			removeLastLoading,
 			updateStep,
+			performChatSave,
 		]
 	);
 
@@ -610,6 +743,7 @@ export function usePluginBuilder() {
 	const reset = useCallback( () => {
 		setState( 'idle' );
 		setMessages( [] );
+		messagesRef.current = [];
 		setLogs( [] );
 		setCurrentPlan( null );
 		setCurrentFiles( [] );
@@ -619,9 +753,62 @@ export function usePluginBuilder() {
 		setTokenUsage( null );
 		startTimeRef.current = 0;
 		setSlugConflictWarnings( [] );
+		setActiveChatId( null );
+		activeChatIdRef.current = null;
+		setChatTitle( '' );
+		chatTitleRef.current = '';
 		messageIdCounter = 0;
 		logIdCounter = 0;
-	}, [] );
+	}, [ setActiveChatId, setChatTitle ] );
+
+	const loadChat = useCallback( async ( chat: ChatHistory ) => {
+		reset();
+		setActiveChatId( chat.id || null );
+		activeChatIdRef.current = chat.id || null;
+		setChatTitle( chat.title || '' );
+		if ( chat.messages && chat.messages.length > 0 ) {
+			setMessages( chat.messages );
+			messagesRef.current = chat.messages;
+			const isInstalledLocally = chat.messages.some( m => m.type === 'install' && m.data?.activated );
+			setState( isInstalledLocally ? 'idle' : 'ready_to_install' );
+			
+			const lastPlan = chat.messages.slice().reverse().find( m => m.type === 'plan' );
+			if ( lastPlan && lastPlan.data ) {
+				setCurrentPlan( lastPlan.data as PluginPlan );
+			}
+			
+			// If installed, attempt to load physical files from local server.
+			if ( chat.plugin_slug && isInstalledLocally ) {
+				try {
+					const localFilesResponse = await api.getPluginFiles( chat.plugin_slug );
+					if ( localFilesResponse && localFilesResponse.files && localFilesResponse.files.length > 0 ) {
+						setCurrentFiles( localFilesResponse.files );
+					} else {
+						const lastFiles = chat.messages.slice().reverse().find( m => m.type === 'files' );
+						if ( lastFiles && lastFiles.data ) {
+							setCurrentFiles( lastFiles.data as GeneratedFile[] );
+						}
+					}
+				} catch ( e ) {
+					console.error( 'Failed to fetch physical files synchronously, falling back to history', e );
+					const lastFiles = chat.messages.slice().reverse().find( m => m.type === 'files' );
+					if ( lastFiles && lastFiles.data ) {
+						setCurrentFiles( lastFiles.data as GeneratedFile[] );
+					}
+				}
+			} else {
+				const lastFiles = chat.messages.slice().reverse().find( m => m.type === 'files' );
+				if ( lastFiles && lastFiles.data ) {
+					setCurrentFiles( lastFiles.data as GeneratedFile[] );
+				}
+			}
+
+			const lastReview = chat.messages.slice().reverse().find( m => m.type === 'review' );
+			if ( lastReview && lastReview.data ) {
+				setCurrentReview( lastReview.data as ReviewResult );
+			}
+		}
+	}, [ reset, setActiveChatId, setChatTitle ] );
 
 	const isProcessing = useMemo(
 		() =>
@@ -656,10 +843,12 @@ export function usePluginBuilder() {
 		hasSlugConflict,
 		isInstalled,
 		slugConflictWarnings,
+		activeChatId,
 		sendDescription,
 		installPlugin,
 		forceInstallPlugin,
 		downloadPlugin,
 		reset,
+		loadChat,
 	};
 }
