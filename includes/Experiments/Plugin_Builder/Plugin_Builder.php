@@ -13,7 +13,6 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Plugin_Builder\Rest\DownloadController;
 use WordPress\AI\Experiments\Plugin_Builder\Rest\WriteController;
-use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -57,8 +56,6 @@ class Plugin_Builder extends Abstract_Feature {
 				return 300;
 			}
 		);
-
-		add_action( 'init', array( AI_Client::class, 'init' ) );
 
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
