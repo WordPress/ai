@@ -48,6 +48,7 @@ export default function App() {
 		logs,
 		loadChat,
 		tokenUsage,
+		cancelGeneration,
 	} = usePluginBuilder();
 
 	const [ input, setInput ] = useState( '' );
