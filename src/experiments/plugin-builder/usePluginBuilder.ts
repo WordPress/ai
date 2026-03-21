@@ -832,7 +832,10 @@ Do not stop until you have called finish.`;
 											);
 										} else {
 											// Persist the final slug so subsequent operations use the correct plugin.
-											plan.plugin_slug = finalSlug;
+											setCurrentPlan( ( prevPlan ) => ( {
+												...prevPlan,
+												plugin_slug: finalSlug,
+											} ) );
 											isFinished = true;
 											res = {
 												success: true,
