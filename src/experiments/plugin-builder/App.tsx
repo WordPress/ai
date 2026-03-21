@@ -262,7 +262,7 @@ export default function App() {
 										<div className="apb-bubble apb-bubble--analysis">
 											<div className="apb-bubble__header">
 												<span className="apb-bubble__icon">💡</span>
-												<strong>Suggested Next Steps:</strong>
+												<strong>{__('Suggested Next Steps:', 'ai')}</strong>
 											</div>
 											<div
 												className="apb-actions"
