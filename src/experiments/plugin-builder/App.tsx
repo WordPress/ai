@@ -664,10 +664,24 @@ export default function App() {
 						<span className="apb-chat__prompt-tip-icon-wrapper">
 							{ isEnhancing ? <SmallSpinner /> : <EnhanceIcon /> }
 							<div className="apb-chat__prompt-tip-tooltip">
-								{ __(
-									'Describe what your plugin should do • Mention specific features you need • Include where settings should appear • Click to enhance your prompt with AI',
-									'ai'
-								) }
+								{ [
+									__(
+										'Describe what your plugin should do',
+										'ai'
+									),
+									__(
+										'Mention specific features you need',
+										'ai'
+									),
+									__(
+										'Include where settings should appear',
+										'ai'
+									),
+									__(
+										'Click to enhance your prompt with AI',
+										'ai'
+									),
+								].join( ' \u2022 ' ) }
 							</div>
 						</span>
 						<span className="apb-chat__prompt-tip-text">
