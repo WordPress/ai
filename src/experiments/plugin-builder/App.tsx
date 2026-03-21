@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { usePluginBuilder, AVAILABLE_TOOLS } from './usePluginBuilder';
+import { AIBrainIcon } from './AIBrainIcon';
 import { getChatHistory, getChatById, deleteChatHistory } from './api';
 import type { ChatHistory } from './types';
 
@@ -207,12 +208,13 @@ export default function App() {
 			<div className="apb-chat__messages">
 				{ messages.length === 0 ? (
 					<div className="apb-chat__empty">
+						<AIBrainIcon />
 						<h3 className="apb-chat__empty-title">
 							{ __( 'Code WordPress Plugins with AI', 'ai' ) }
 						</h3>
 						<p className="apb-chat__empty-subtitle">
 							{ __(
-								'Describe the functionality you need.',
+								'Describe the functionality you need, and watch AI build your plugin in minutes.',
 								'ai'
 							) }
 						</p>
@@ -488,8 +490,7 @@ export default function App() {
 															downloadPlugin()
 														}
 														disabled={
-															isProcessing ||
-															! isInstalled
+															isProcessing
 														}
 														style={ {
 															marginLeft: messages
@@ -523,6 +524,10 @@ export default function App() {
 										) }
 										{ msg.type === 'install' && (
 											<div className="apb-bubble apb-bubble--success">
+												{ ' ' }
+												<span className="apb-bubble__icon">
+													✅
+												</span>{ ' ' }
 												{ msg.data.activated
 													? __(
 															'Plugin installed and activated successfully!',
@@ -540,6 +545,9 @@ export default function App() {
 										) }
 										{ msg.type === 'error' && (
 											<div className="apb-bubble apb-bubble--error">
+												<span className="apb-bubble__icon">
+													❌
+												</span>
 												{ msg.content }
 											</div>
 										) }

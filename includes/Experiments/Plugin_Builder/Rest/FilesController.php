@@ -9,11 +9,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Plugin_Builder\Rest;
 
+use WP_Error;
 use WP_REST_Controller;
 use WP_REST_Server;
-use WP_REST_Request;
-use WP_REST_Response;
-use WP_Error;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -62,8 +60,8 @@ class FilesController extends WP_REST_Controller {
 	/**
 	 * Checks if a given request has access to read plugin files.
 	 *
-	 * @param WP_REST_Request $request Full data about the request.
-	 * @return true|WP_Error True if the request has read access, WP_Error object otherwise.
+	 * @param \WP_REST_Request $request Full data about the request.
+	 * @return true|\WP_Error True if the request has read access, WP_Error object otherwise.
 	 */
 	public function permissions_check( $request ) {
 		if ( ! current_user_can( 'install_plugins' ) ) {
@@ -79,24 +77,26 @@ class FilesController extends WP_REST_Controller {
 	/**
 	 * Retrieves the files for a specific plugin slug.
 	 *
-	 * @param WP_REST_Request $request Full data about the request.
-	 * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+	 * @param \WP_REST_Request $request Full data about the request.
+	 * @return \WP_REST_Response|\WP_Error Response object on success, or WP_Error object on failure.
 	 */
 	public function get_item( $request ) {
 		$plugin_slug = $request->get_param( 'plugin_slug' );
-		
+
 		$plugin_dir = WP_PLUGIN_DIR . '/' . $plugin_slug;
-		
+
 		if ( ! is_dir( $plugin_dir ) ) {
 			return new WP_Error( 'not_found', 'Plugin directory not found.', array( 'status' => 404 ) );
 		}
 
 		$files = $this->get_files_recursive( $plugin_dir, $plugin_dir );
 
-		return rest_ensure_response( array(
-			'plugin_slug' => $plugin_slug,
-			'files'       => $files,
-		) );
+		return rest_ensure_response(
+			array(
+				'plugin_slug' => $plugin_slug,
+				'files'       => $files,
+			)
+		);
 	}
 
 	/**
@@ -115,7 +115,7 @@ class FilesController extends WP_REST_Controller {
 				if ( '.' !== $value && '..' !== $value ) {
 					// Prepare path relative to the plugin directory
 					$relative_path = str_replace( $base_dir . DIRECTORY_SEPARATOR, '', $path );
-					
+
 					// Get basic description from comments maybe, or just empty
 					$content = file_get_contents( $path );
 					if ( false !== $content ) {
