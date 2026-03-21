@@ -495,11 +495,7 @@ export default function App() {
 						onClick={ handleSend }
 						title={ __( 'Send', 'ai' ) }
 					>
-						{ isProcessing ? (
-							<Spinner />
-						) : (
-							<span className="dashicons dashicons-arrow-up-alt"></span>
-						) }
+						<span className="dashicons dashicons-arrow-up-alt"></span>
 					</button>
 					<button
 						className="apb-chat__prompt-tip-icon"
