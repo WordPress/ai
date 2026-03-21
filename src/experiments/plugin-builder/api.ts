@@ -45,7 +45,9 @@ export async function downloadPlugin( pluginSlug: string ): Promise< void > {
 
 	if ( ! response.ok ) {
 		const text = await response.text();
-		throw new Error( text || __( 'Failed to generate ZIP archive.', 'ai' ) );
+		throw new Error(
+			text || __( 'Failed to generate ZIP archive.', 'ai' )
+		);
 	}
 
 	const blob = await response.blob();
@@ -72,25 +74,27 @@ export async function activatePlugin( pluginFile: string ): Promise< any > {
 	} );
 }
 
-export async function getChatHistory(): Promise<ChatHistory[]> {
-	return apiFetch<ChatHistory[]>({
-		path: `${NAMESPACE}/history`,
+export async function getChatHistory(): Promise< ChatHistory[] > {
+	return apiFetch< ChatHistory[] >( {
+		path: `${ NAMESPACE }/history`,
 		method: 'GET',
-	});
+	} );
 }
 
-export async function getChatById( id: number ): Promise<ChatHistory> {
-	return apiFetch<ChatHistory>({
-		path: `${NAMESPACE}/history/${id}`,
+export async function getChatById( id: number ): Promise< ChatHistory > {
+	return apiFetch< ChatHistory >( {
+		path: `${ NAMESPACE }/history/${ id }`,
 		method: 'GET',
-	});
+	} );
 }
 
-export async function getPluginFiles( pluginSlug: string ): Promise<{ plugin_slug: string, files: GeneratedFile[] }> {
-	return apiFetch<{ plugin_slug: string, files: GeneratedFile[] }>({
-		path: `${NAMESPACE}/files/${pluginSlug}`,
+export async function getPluginFiles(
+	pluginSlug: string
+): Promise< { plugin_slug: string; files: GeneratedFile[] } > {
+	return apiFetch< { plugin_slug: string; files: GeneratedFile[] } >( {
+		path: `${ NAMESPACE }/files/${ pluginSlug }`,
 		method: 'GET',
-	});
+	} );
 }
 
 export async function saveChatHistory(
@@ -98,15 +102,15 @@ export async function saveChatHistory(
 	pluginSlug?: string,
 	postId?: number,
 	title?: string
-): Promise<ChatHistory> {
-	return apiFetch<ChatHistory>({
-		path: `${NAMESPACE}/history`,
+): Promise< ChatHistory > {
+	return apiFetch< ChatHistory >( {
+		path: `${ NAMESPACE }/history`,
 		method: 'POST',
 		data: {
-			messages: JSON.stringify(messages),
+			messages: JSON.stringify( messages ),
 			plugin_slug: pluginSlug,
 			post_id: postId,
 			title,
 		},
-	});
+	} );
 }
