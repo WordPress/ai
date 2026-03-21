@@ -361,7 +361,8 @@ export function getAnalyzerPrompt(
 1. Check if the plugin registers any settings pages, admin menus, custom post types, or distinct frontend functionalities.
 2. Review the provided list of \`existingCommands\`.
 3. If the plugin adds an admin interface (like exactly an options page or a new menu item) that isn't already covered by \`existingCommands\`, you must register a new command for it. Provide its \`name\` (e.g., \`myplugin/settings\`), a clear \`label\` (e.g., \`Go to: MyPlugin Settings\`), and the exact \`url\` required to reach it (e.g., \`options-general.php?page=my-plugin\`).
-4. Finally, suggest 1 to 3 command \`name\`s that the user should likely execute next to observe the plugin in action. Use a mix of your newly registered commands or existing core commands. Order them by preference.
+4. Provide a detailed final explanation of the plugin to reduce user confusion and improve usability. Fill out the "explanation" object accurately.
+5. Finally, suggest 1 to 3 command \`name\`s that the user should likely execute next to observe the plugin in action. Use a mix of your newly registered commands or existing core commands. Order them by preference.
 
 ## Existing Commands
 \`\`\`json
@@ -375,6 +376,14 @@ Return ONLY valid JSON matching this exact schema:
 
 \`\`\`json
 {
+  "explanation": {
+    "how_it_works": "Briefly explain what the plugin does.",
+    "steps_to_use": "What are the exact steps to use it?",
+    "where_to_configure": "Where can the user configure this in the WP admin?",
+    "saving_or_activation": "Are there any manual saving or activation steps required?",
+    "how_to_place": "How does the user place it on a page (shortcode, block, etc.)?",
+    "dependencies": "Are there any dependencies or prerequisites?"
+  },
   "new_commands": [
     {
       "name": "myplugin/settings",

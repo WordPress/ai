@@ -218,6 +218,8 @@ class Plugin_Builder extends Abstract_Feature {
 			true
 		);
 
+		wp_set_script_translations( 'ai-plugin-builder', 'ai' );
+
 		wp_enqueue_style(
 			'ai-plugin-builder',
 			plugins_url( 'build/experiments/style-plugin-builder.css', dirname( __DIR__, 2 ) ),

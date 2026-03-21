@@ -59,6 +59,21 @@ export async function downloadPlugin( pluginSlug: string ): Promise< void > {
 	URL.revokeObjectURL( blobUrl );
 }
 
+export async function executeAbility( name: string, input: any ): Promise< any > {
+	return apiFetch( {
+		path: `/wp-abilities/v1/abilities/${ name }/run`,
+		method: 'POST',
+		data: { input },
+	} );
+}
+
+export async function discoverAbilities(): Promise< any > {
+	return apiFetch( {
+		path: `/wp-abilities/v1/abilities`,
+		method: 'GET',
+	} );
+}
+
 export async function activatePlugin( pluginFile: string ): Promise< any > {
 	// The WP Core REST API expects the plugin "file" which looks like "slug/slug.php"
 	// but the route encodes the slash, or you don't encode the slash?
@@ -108,5 +123,12 @@ export async function saveChatHistory(
 			post_id: postId,
 			title,
 		},
+	});
+}
+
+export async function listPlugins(): Promise<any> {
+	return apiFetch({
+		path: `/wp/v2/plugins`,
+		method: 'GET',
 	});
 }

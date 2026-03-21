@@ -146,10 +146,64 @@ class WriteController {
 			$plugin_path = substr( $plugin_path, 0, -4 );
 		}
 
+		$issues = array();
+
+		// Step 3: Run Plugin Check via its PHP API if available.
+		if ( class_exists( '\WordPress\Plugin_Check\Checker\Abstract_Check_Runner' ) ) {
+			try {
+				$runner = new class extends \WordPress\Plugin_Check\Checker\Abstract_Check_Runner {
+					protected function get_plugin_param() { return ''; }
+					protected function get_check_slugs_param() { return array(); }
+					protected function get_check_exclude_slugs_param() { return array(); }
+					protected function get_include_experimental_param() { return false; }
+					protected function get_categories_param() { return array(); }
+					protected function get_slug_param() { return ''; }
+					protected function get_mode_param() { return 'new'; }
+					public static function is_plugin_check() { return false; }
+				};
+
+				$runner->set_plugin( plugin_basename( $main_file ) );
+				$runner->set_slug( $plugin_slug );
+				
+				$check_results = $runner->run();
+				
+				if ( $check_results ) {
+					$errors   = $check_results->get_errors();
+					$warnings = $check_results->get_warnings();
+
+					$flatten = function( $items, $type ) use ( &$issues ) {
+						foreach ( $items as $file => $lines ) {
+							foreach ( $lines as $line => $columns ) {
+								foreach ( $columns as $column => $messages ) {
+									foreach ( $messages as $message ) {
+										$issues[] = array_merge(
+											array(
+												'type'   => $type,
+												'file'   => $file,
+												'line'   => $line,
+												'column' => $column,
+											),
+											$message
+										);
+									}
+								}
+							}
+						}
+					};
+
+					$flatten( $errors, 'ERROR' );
+					$flatten( $warnings, 'WARNING' );
+				}
+			} catch ( \Exception $e ) {
+				$issues[] = '[ERROR] Checker exception: ' . $e->getMessage();
+			}
+		}
+
 		return new WP_REST_Response(
 			array(
 				'written' => true,
 				'plugin'  => $plugin_path,
+				'issues'  => $issues,
 			),
 			200
 		);

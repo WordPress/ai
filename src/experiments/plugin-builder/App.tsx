@@ -46,8 +46,8 @@ export default function App() {
 		downloadPlugin,
 		reset,
 		logs,
-		activeChatId,
 		loadChat,
+		tokenUsage,
 	} = usePluginBuilder();
 
 	const [ input, setInput ] = useState( '' );
@@ -176,7 +176,7 @@ export default function App() {
 								return msg.data && msg.data.passed === false;
 							}
 							if (msg.type === 'analysis') {
-								return msg.data && msg.data.suggested_commands && msg.data.suggested_commands.length > 0;
+								return true;
 							}
 							if (msg.type === 'text' && !msg.content) {
 								return false;
@@ -193,6 +193,19 @@ export default function App() {
 								<div className="apb-msg__content">
 									{ msg.type === 'text' && (
 										<div className="apb-bubble">
+											<p
+												dangerouslySetInnerHTML={ {
+													__html: msg.content.replace(
+														/\n/g,
+														'<br/>'
+													),
+												} }
+											/>
+										</div>
+									) }
+									{ msg.type === 'thought' && (
+										<div className="apb-bubble apb-bubble--thought" style={{ opacity: 0.7, fontStyle: 'italic', backgroundColor: '#f0f0f1', fontSize: '12px' }}>
+											<strong>{ __( 'Thought:', 'ai' ) }</strong>
 											<p
 												dangerouslySetInnerHTML={ {
 													__html: msg.content.replace(
@@ -320,11 +333,27 @@ export default function App() {
 									) }
 									{ msg.type === 'analysis' && (
 										<div className="apb-bubble apb-bubble--analysis">
-											<strong>{ __( 'Suggested Next Steps:', 'ai' ) }</strong>
-											<div
-												className="apb-actions"
-												style={ { marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' } }
-											>
+											{ msg.data?.explanation && (
+												<div style={ { marginBottom: '15px' } }>
+													<h4 style={ { margin: '0 0 8px 0', fontSize: '14px' } }>{ __( 'Plugin Overview', 'ai' ) }</h4>
+													<ul style={ { margin: 0, paddingLeft: '20px', fontSize: '13px', lineHeight: '1.5' } }>
+														{ msg.data.explanation.how_it_works && <li><strong>{ __( 'How it works:', 'ai' ) }</strong> { msg.data.explanation.how_it_works }</li> }
+														{ msg.data.explanation.steps_to_use && <li><strong>{ __( 'Steps to use:', 'ai' ) }</strong> { msg.data.explanation.steps_to_use }</li> }
+														{ msg.data.explanation.where_to_configure && <li><strong>{ __( 'Configuration:', 'ai' ) }</strong> { msg.data.explanation.where_to_configure }</li> }
+														{ msg.data.explanation.saving_or_activation && <li><strong>{ __( 'Saving/Activation:', 'ai' ) }</strong> { msg.data.explanation.saving_or_activation }</li> }
+														{ msg.data.explanation.how_to_place && <li><strong>{ __( 'Placement:', 'ai' ) }</strong> { msg.data.explanation.how_to_place }</li> }
+														{ msg.data.explanation.dependencies && <li><strong>{ __( 'Dependencies:', 'ai' ) }</strong> { msg.data.explanation.dependencies }</li> }
+													</ul>
+												</div>
+											) }
+
+											{ msg.data?.suggested_commands && msg.data.suggested_commands.length > 0 && (
+												<div>
+													<strong>{ __( 'Suggested Next Steps:', 'ai' ) }</strong>
+													<div
+														className="apb-actions"
+														style={ { marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' } }
+													>
 												{ msg.data?.suggested_commands?.map( ( cmdName: string, i: number ) => {
 													const cmdObj = msg.data.all_commands?.find( ( c: any ) => c.name === cmdName );
 													if ( ! cmdObj ) return null;
@@ -343,7 +372,9 @@ export default function App() {
 														</button>
 													);
 												} ) }
-											</div>
+													</div>
+												</div>
+											) }
 										</div>
 									) }
 								</div>
@@ -366,6 +397,16 @@ export default function App() {
 			</div>
 
 			<div className="apb-chat__footer">
+				<div style={ { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#666', paddingBottom: '10px' } }>
+					<div>
+						<strong>{ __( 'Available tools:', 'ai' ) }</strong> { 'discover_abilities, execute_ability, write_file, read_file, finish' }
+					</div>
+					{ tokenUsage && tokenUsage.total_tokens > 0 && (
+						<div>
+							<strong>{ __( 'Tokens Used:', 'ai' ) }</strong> { tokenUsage.total_tokens } ({ tokenUsage.total_input_tokens } { __( 'in', 'ai' ) }, { tokenUsage.total_output_tokens } { __( 'out', 'ai' ) })
+						</div>
+					) }
+				</div>
 				<div className="apb-chat__input-wrapper">
 					<textarea
 						value={ input }

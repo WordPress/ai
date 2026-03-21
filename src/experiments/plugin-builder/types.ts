@@ -89,7 +89,8 @@ export interface ChatMessage {
 		| 'review'
 		| 'install'
 		| 'analysis'
-		| 'error';
+		| 'error'
+		| 'thought';
 	content: string;
 	data?: any;
 	timestamp: Date;
@@ -131,6 +132,7 @@ export type AnyGenerateResponse = GenerateResponse | QuestionResponse;
 export interface WriteSuccessResponse {
 	written: true;
 	plugin: string;
+	issues?: any[];
 }
 
 export interface WriteErrorResponse {
@@ -169,6 +171,14 @@ export interface AnalysisNewCommand {
 }
 
 export interface AnalysisResponse {
+	explanation?: {
+		how_it_works?: string;
+		steps_to_use?: string;
+		where_to_configure?: string;
+		saving_or_activation?: string;
+		how_to_place?: string;
+		dependencies?: string;
+	};
 	new_commands?: AnalysisNewCommand[];
 	suggested_commands?: string[];
 }
