@@ -522,7 +522,7 @@ export default function App() {
 																	'installed'
 															}
 															onClick={ () =>
-																installPlugin()
+																forceInstallPlugin()
 															}
 														>
 															{ messages
