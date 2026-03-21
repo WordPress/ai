@@ -19,6 +19,7 @@ use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
+use WordPress\AI_Client\AI_Client;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -172,6 +173,7 @@ function load(): void {
 
 	// Load required files.
 	require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
+	require_once WPAI_PLUGIN_DIR . 'vendor/wordpress/wp-ai-client/functions.php';
 	require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
 
 	// Handle any pending upgrades.
@@ -196,6 +198,9 @@ function load(): void {
  */
 function initialize_features(): void {
 	try {
+		// Initialize the bundled WP AI Client (registers REST routes, JS API, etc.).
+		AI_Client::init();
+
 		// Experiments are hooked into our Loader, so we need to register them first.
 		$experiments = new Experiments();
 		$experiments->init();

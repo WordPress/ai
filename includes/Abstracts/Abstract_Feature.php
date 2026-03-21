@@ -13,8 +13,6 @@ use InvalidArgumentException;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Settings\Settings_Registration;
-use WP_Error;
-
 /**
  * Base implementation for features.
  *
@@ -70,12 +68,6 @@ abstract class Abstract_Feature implements Feature {
 	private string $stability;
 
 	/**
-	 * The feature's callback to check requirements.
-	 * @var ?callable(): (true|WP_Error)
-	 */
-	private $check_requirements_callback;
-
-	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -109,10 +101,6 @@ abstract class Abstract_Feature implements Feature {
 			$metadata['category'] = Feature_Category::OTHER;
 		}
 
-		if ( isset( $metadata['check_requirements'] ) ) {
-			$this->check_requirements_callback = $metadata['check_requirements'];
-		}
-
 		$this->label       = $metadata['label'];
 		$this->description = $metadata['description'];
 		$this->category    = $metadata['category'];
@@ -131,8 +119,7 @@ abstract class Abstract_Feature implements Feature {
 	 *  label: string,
 	 *  description: string,
 	 *  category?: string,
-	 *  stability?: 'deprecated'|'experimental'|'stable',
-	 *  check_requirements?: callable(): (true|WP_Error),
+	 *  stability?: 'deprecated'|'experimental'|'stable'
 	 * } Feature metadata.
 	 */
 	abstract protected function load_metadata(): array;
@@ -211,16 +198,6 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	final public function get_stability(): string {
 		return $this->stability;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	final public function check_requirements() {
-		if ( $this->check_requirements_callback !== null ) {
-			return call_user_func( $this->check_requirements_callback );
-		}
-		return true;
 	}
 
 	/**
