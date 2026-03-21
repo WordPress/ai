@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
 import { usePluginBuilder } from './usePluginBuilder';
 import { getChatHistory, getChatById } from './api';
 import type { ChatHistory } from './types';
@@ -38,9 +39,11 @@ export default function App() {
 		messages,
 		isProcessing,
 		hasSlugConflict,
+		isInstalled,
 		sendDescription,
 		installPlugin,
 		forceInstallPlugin,
+		downloadPlugin,
 		reset,
 		logs,
 		activeChatId,
@@ -52,10 +55,10 @@ export default function App() {
 	const messagesEndRef = useRef< HTMLDivElement >( null );
 
 	const examples = [
-		'A dashboard widget showing recent drafts with quick edit links',
-		'A plugin that adds reading time to blog posts',
-		'A simple contact form with email notifications',
-		'A maintenance mode plugin with countdown timer',
+		__( 'A dashboard widget showing recent drafts with quick edit links', 'ai' ),
+		__( 'A plugin that adds reading time to blog posts', 'ai' ),
+		__( 'A simple contact form with email notifications', 'ai' ),
+		__( 'A maintenance mode plugin with countdown timer', 'ai' ),
 	];
 
 	useEffect( () => {
@@ -107,16 +110,16 @@ export default function App() {
 	return (
 		<div className="apb-chat">
 			<div className="apb-chat__header">
-				<h2>WordPress AI Plugin Builder</h2>
+				<h2>{ __( 'AI-Powered Plugin Builder', 'ai' ) }</h2>
 				<div className="apb-chat__header-actions">
 					{ messages.length > 0 ? (
 						<button className="apb-chat__reset" onClick={ reset }>
-							New Chat
+							{ __( 'New Chat', 'ai' ) }
 						</button>
 					) : (
 						<div className="apb-chat__status">
 							<div className="apb-chat__status-dot"></div>
-							Ready
+							{ __( 'Ready', 'ai' ) }
 						</div>
 					) }
 				</div>
@@ -126,10 +129,10 @@ export default function App() {
 				{ messages.length === 0 ? (
 					<div className="apb-chat__empty">
 						<h3 className="apb-chat__empty-title">
-							Code WordPress Plugins with AI
+							{ __( 'Code WordPress Plugins with AI', 'ai' ) }
 						</h3>
 						<p className="apb-chat__empty-subtitle">
-							Describe the functionality you need.
+							{ __( 'Describe the functionality you need.', 'ai' ) }
 						</p>
 
 						<div className="apb-chat__examples">
@@ -146,7 +149,7 @@ export default function App() {
 
 						{ recentChats && recentChats.length > 0 && (
 							<div className="apb-chat__history" style={ { marginTop: '40px' } }>
-								<h4 className="apb-chat__history-title" style={ { fontSize: '14px', marginBottom: '10px' } }>Recent Conversations</h4>
+								<h4 className="apb-chat__history-title" style={ { fontSize: '14px', marginBottom: '10px' } }>{ __( 'Recent Conversations', 'ai' ) }</h4>
 								<ul className="apb-chat__history-list" style={ { listStyle: 'none', padding: 0 } }>
 									{ recentChats.map( chat => (
 										<li key={ chat.id } style={ { marginBottom: '8px' } }>
@@ -155,7 +158,7 @@ export default function App() {
 												onClick={ () => loadChat( chat ) }
 												style={ { width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between' } }
 											>
-												<span>{ chat.title || 'Plugin Builder Chat' }</span>
+												<span>{ chat.title || __( 'Plugin Builder Chat', 'ai' ) }</span>
 												{ chat.plugin_slug && (
 													<span style={ { opacity: 0.6, fontSize: '11px' } }>{ chat.plugin_slug }</span>
 												) }
@@ -168,7 +171,18 @@ export default function App() {
 					</div>
 				) : (
 					<div className="apb-chat__message-list">
-						{ messages.map( ( msg ) => (
+						{ messages.filter(msg => {
+							if (msg.type === 'review') {
+								return msg.data && msg.data.passed === false;
+							}
+							if (msg.type === 'analysis') {
+								return msg.data && msg.data.suggested_commands && msg.data.suggested_commands.length > 0;
+							}
+							if (msg.type === 'text' && !msg.content) {
+								return false;
+							}
+							return true;
+						}).map( ( msg ) => (
 							<div
 								key={ msg.id }
 								className={ `apb-msg apb-msg--${ msg.role }` }
@@ -197,8 +211,11 @@ export default function App() {
 									{ msg.type === 'plan' && (
 										<div className="apb-bubble apb-bubble--plan">
 											<strong>
-												Plugin Plan:{ ' ' }
-												{ msg.data.plugin_name }
+												{ sprintf(
+													/* translators: %s: plugin name */
+													__( 'Plugin Plan: %s', 'ai' ),
+													msg.data.plugin_name
+												) }
 											</strong>
 											<p>{ msg.data.description }</p>
 											<ul>
@@ -222,14 +239,17 @@ export default function App() {
 									{ msg.type === 'files' && (
 										<div className="apb-bubble apb-bubble--files">
 											<strong>
-												Generated Files:{ ' ' }
-												{ msg.data.length }
+												{ sprintf(
+													/* translators: %d: number of files */
+													__( 'Generated Files: %d', 'ai' ),
+													msg.data.length
+												) }
 											</strong>
-											{ !messages.slice(messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated) && (
-												<div
-													className="apb-actions"
-													style={ { marginTop: '10px' } }
-												>
+											<div
+												className="apb-actions"
+												style={ { marginTop: '10px' } }
+											>
+												{ !messages.slice(messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated) && (
 													<button
 														className="button button-primary"
 														disabled={ isProcessing || state === 'installing' || state === 'installed' }
@@ -237,17 +257,54 @@ export default function App() {
 															installPlugin()
 														}
 													>
-														{ messages.slice(0, messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated) ? 'Update Plugin Files' : 'Install and Activate Plugin' }
+														{ messages.slice(0, messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated)
+															? __( 'Update Plugin Files', 'ai' )
+															: __( 'Install and Activate Plugin', 'ai' ) }
 													</button>
-												</div>
-											) }
+												) }
+												<button
+													className="button button-secondary"
+													onClick={ () =>
+														downloadPlugin()
+													}
+													disabled={ ! isInstalled }
+													style={ {
+														marginLeft: messages.slice(messages.indexOf(msg)).some(m => m.type === 'install' && m.data?.activated)
+															? '0'
+															: '8px',
+													} }
+													title={
+														isInstalled
+															? __(
+																	'Download plugin as ZIP',
+																	'ai'
+															  )
+															: __(
+																	'Install the plugin first to download',
+																	'ai'
+															  )
+													}
+												>
+													{ __( 'Download Plugin', 'ai' ) }
+												</button>
+											</div>
 										</div>
 									) }
 									{ msg.type === 'install' && (
 										<div className="apb-bubble apb-bubble--success">
 											{ msg.data.activated
-												? 'Plugin installed and activated successfully!'
-												: `Installed, but activation failed: ${ msg.data.error }` }
+												? __(
+														'Plugin installed and activated successfully!',
+														'ai'
+												  )
+												: sprintf(
+														/* translators: %s: error message */
+														__(
+															'Installed, but activation failed: %s',
+															'ai'
+														),
+														msg.data.error
+												  ) }
 										</div>
 									) }
 									{ msg.type === 'error' && (
@@ -255,9 +312,15 @@ export default function App() {
 											{ msg.content }
 										</div>
 									) }
+									{ msg.type === 'review' && msg.data && msg.data.passed === false && (
+										<div className="apb-bubble apb-bubble--error">
+											<strong>{ __( 'Security Review Failed', 'ai' ) }</strong>
+											<p>{ msg.data.review_summary }</p>
+										</div>
+									) }
 									{ msg.type === 'analysis' && (
 										<div className="apb-bubble apb-bubble--analysis">
-											<strong>Suggested Next Steps:</strong>
+											<strong>{ __( 'Suggested Next Steps:', 'ai' ) }</strong>
 											<div
 												className="apb-actions"
 												style={ { marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' } }
@@ -296,7 +359,7 @@ export default function App() {
 							className="apb-chat__force-install button button-secondary"
 							onClick={ forceInstallPlugin }
 						>
-							Install Anyway
+							{ __( 'Install Anyway', 'ai' ) }
 						</button>
 					</div>
 				) }
@@ -311,13 +374,16 @@ export default function App() {
 						disabled={ isProcessing }
 						rows={ 1 }
 						onKeyDown={ handleKeyDown }
-						placeholder="Describe what plugin you want to build..."
+						placeholder={ __(
+							'Describe what plugin you want to build...',
+							'ai'
+						) }
 					/>
 					<button
 						className="apb-chat__send-btn"
 						disabled={ isProcessing || ! input.trim() }
 						onClick={ handleSend }
-						title="Send"
+						title={ __( 'Send', 'ai' ) }
 					>
 						{ isProcessing ? <Spinner /> : '🚀' }
 					</button>
