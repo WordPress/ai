@@ -65,7 +65,7 @@ function parseJSON( json: string ): any {
 }
 
 function mapChatMessagesToApiMessages( messages: ChatMessage[] ): any[] {
-	return messages
+	const raw = messages
 		.filter( m => ['text', 'plan', 'review'].includes(m.type) )
 		.filter( m => m.content || m.data )
 		.map( m => {
@@ -75,9 +75,35 @@ function mapChatMessagesToApiMessages( messages: ChatMessage[] ): any[] {
 			}
 			return {
 				role: m.role === 'assistant' ? 'model' : m.role,
-				parts: [ { type: 'text', text: text } ]
+				text: text
 			};
 		});
+
+	// The current request (user description) is inside raw.
+	// WP AI Client expects the messages array to end with 'user',
+	// so we leave it intact.
+
+	const merged: any[] = [];
+	for (const msg of raw) {
+		if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
+			merged[merged.length - 1].parts[0].text += '\n\n' + msg.text;
+		} else {
+			merged.push({
+				role: msg.role,
+				parts: [ { type: 'text', text: msg.text } ]
+			});
+		}
+	}
+
+	// Ensure API history strict requirement: first item MUST be user if array is not empty
+	if (merged.length > 0 && merged[0].role === 'model') {
+		merged.unshift({
+			role: 'user',
+			parts: [ { type: 'text', text: 'Hello, please build a WordPress plugin for me.' } ]
+		});
+	}
+
+	return merged;
 }
 
 export function usePluginBuilder() {
@@ -463,19 +489,22 @@ export function usePluginBuilder() {
 		async ( force: boolean = false ) => {
 			if ( ! currentPlan || ! currentFiles.length ) return;
 
+			const isUpdate = messagesRef.current.some( m => m.type === 'install' && m.data?.activated );
+			const _force = force || isUpdate;
+
 			setState( 'installing' );
 			setSlugConflictWarnings( [] );
 			addMessage(
 				createMessage(
 					'assistant',
 					'loading',
-					'Saving and activating plugin...'
+					isUpdate ? 'Updating plugin files...' : 'Saving and activating plugin...'
 				)
 			);
 			log(
 				'info',
 				`Saving: ${ currentPlan.plugin_slug }${
-					force ? ' (forced)' : ''
+					_force ? ' (forced)' : ''
 				}`
 			);
 
@@ -483,7 +512,7 @@ export function usePluginBuilder() {
 				const result = await api.writeFiles(
 					currentPlan.plugin_slug,
 					currentFiles,
-					force
+					_force
 				);
 
 				if ( needsSlugConfirmation( result ) ) {
@@ -509,7 +538,6 @@ export function usePluginBuilder() {
 
 				if ( 'written' in result && result.written ) {
 					const pluginFile = result.plugin;
-					const isUpdate = messagesRef.current.some( m => m.type === 'install' && m.data?.activated );
 
 					try {
 						if ( !isUpdate ) {

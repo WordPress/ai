@@ -134,7 +134,7 @@ class ChatHistoryController extends WP_REST_Controller {
 		$data = array();
 		
 		foreach ( $query->posts as $post ) {
-			$messages_json = get_post_meta( $post->ID, '_abp_messages', true );
+			$messages_json = $post->post_content ?: get_post_meta( $post->ID, '_abp_messages', true );
 			$plugin_slug   = get_post_meta( $post->ID, '_abp_plugin_slug', true );
 			
 			$data[] = array(
@@ -163,7 +163,7 @@ class ChatHistoryController extends WP_REST_Controller {
 			return new WP_Error( 'not_found', 'Chat history not found.', array( 'status' => 404 ) );
 		}
 		
-		$messages_json = get_post_meta( $post->ID, '_abp_messages', true );
+		$messages_json = $post->post_content ?: get_post_meta( $post->ID, '_abp_messages', true );
 		$plugin_slug   = get_post_meta( $post->ID, '_abp_plugin_slug', true );
 		
 		$data = array(
@@ -196,6 +196,7 @@ class ChatHistoryController extends WP_REST_Controller {
 		$post_data = array(
 			'post_type'    => 'abp-chat',
 			'post_title'   => sanitize_text_field( $title ),
+			'post_content' => wp_slash( $messages ),
 			'post_status'  => 'publish',
 		);
 		
@@ -213,8 +214,6 @@ class ChatHistoryController extends WP_REST_Controller {
 		}
 		
 		$post_id = $result;
-		
-		update_post_meta( $post_id, '_abp_messages', wp_slash( $messages ) );
 		
 		if ( $plugin_slug ) {
 			update_post_meta( $post_id, '_abp_plugin_slug', sanitize_text_field( $plugin_slug ) );
