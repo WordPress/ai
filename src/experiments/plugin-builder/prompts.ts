@@ -108,7 +108,7 @@ If the user is asking for something completely different (new plugin), ignore th
 - All function and class names MUST be prefixed with the plugin slug (e.g., \`recipe_manager_register_cpt\`).
 - For simple plugins: 1-2 files. For complex plugins: up to ${ maxFiles } files.
 - Use WordPress coding standards and best practices.
-- IMPORTANT: Generate unique, descriptive plugin slugs (e.g., \`acme-maintenance-mode-2024\` instead of just \`maintenance-mode\`) to avoid conflicts with existing WordPress.org plugins.
+- IMPORTANT: Plugin slugs MUST be descriptive and start with the \`apb-\` prefix (AI Plugin Builder). For example: \`apb-maintenance-mode\`, \`apb-contact-form\`, \`apb-gallery\`. This helps to ensure uniqueness and avoids conflicts with existing WordPress.org plugins.
 
 ## Architecture Guidelines (from WordPress Agent Skills)
 - Main plugin file contains the plugin header and bootstraps the plugin.
