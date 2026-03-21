@@ -38,11 +38,9 @@ class SlugValidator {
 			return $result;
 		}
 
-		// Check if already installed locally (blocking).
+		// Check if already installed locally (warning).
 		if ( $this->is_installed_locally( $slug ) ) {
-			$result['valid'] = false;
-			$result['error'] = 'A plugin with this slug is already installed on this site.';
-			return $result;
+			$result['warnings'][] = 'A plugin with this slug is already installed on this site.';
 		}
 
 		// Check WordPress.org (warning only, non-blocking).

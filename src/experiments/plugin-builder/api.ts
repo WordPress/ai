@@ -1,6 +1,6 @@
 import apiFetch from '@wordpress/api-fetch';
 import { __ } from '@wordpress/i18n';
-import { WriteResponse, GeneratedFile } from './types';
+import { WriteResponse, GeneratedFile, ChatHistory } from './types';
 
 declare global {
 	interface Window {
@@ -70,4 +70,43 @@ export async function activatePlugin( pluginFile: string ): Promise< any > {
 			status: 'active',
 		},
 	} );
+}
+
+export async function getChatHistory(): Promise<ChatHistory[]> {
+	return apiFetch<ChatHistory[]>({
+		path: `${NAMESPACE}/history`,
+		method: 'GET',
+	});
+}
+
+export async function getChatById( id: number ): Promise<ChatHistory> {
+	return apiFetch<ChatHistory>({
+		path: `${NAMESPACE}/history/${id}`,
+		method: 'GET',
+	});
+}
+
+export async function getPluginFiles( pluginSlug: string ): Promise<{ plugin_slug: string, files: GeneratedFile[] }> {
+	return apiFetch<{ plugin_slug: string, files: GeneratedFile[] }>({
+		path: `${NAMESPACE}/files/${pluginSlug}`,
+		method: 'GET',
+	});
+}
+
+export async function saveChatHistory(
+	messages: any[],
+	pluginSlug?: string,
+	postId?: number,
+	title?: string
+): Promise<ChatHistory> {
+	return apiFetch<ChatHistory>({
+		path: `${NAMESPACE}/history`,
+		method: 'POST',
+		data: {
+			messages: JSON.stringify(messages),
+			plugin_slug: pluginSlug,
+			post_id: postId,
+			title,
+		},
+	});
 }
