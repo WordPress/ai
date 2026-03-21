@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { usePluginBuilder } from './usePluginBuilder';
 import { runAbility } from '../../utils/run-ability';
+import { AIBrainIcon } from './AIBrainIcon';
 import { getChatHistory, getChatById } from './api';
 import type { ChatHistory } from './types';
 
@@ -61,7 +62,6 @@ function EnhanceIcon() {
 
 export default function App() {
 	const {
-		state,
 		messages,
 		isProcessing,
 		hasSlugConflict,
@@ -182,11 +182,16 @@ export default function App() {
 	return (
 		<div className="apb-chat">
 			<div className="apb-chat__header">
-				<h2>{ __( 'AI-Powered Plugin Builder', 'ai' ) }</h2>
+				<div className="apb-chat__header-left">
+					<h2>🤖 AI-Powered Plugin Builder</h2>
+				</div>
 				<div className="apb-chat__header-actions">
 					{ messages.length > 0 ? (
-						<button className="apb-chat__reset" onClick={ reset }>
-							{ __( 'New Chat', 'ai' ) }
+						<button
+							className="apb-chat__reset button button-secondary"
+							onClick={ reset }
+						>
+							✨ { __( 'New Project', 'ai' ) }
 						</button>
 					) : (
 						<div className="apb-chat__status">
@@ -200,6 +205,7 @@ export default function App() {
 			<div className="apb-chat__messages">
 				{ messages.length === 0 ? (
 					<div className="apb-chat__empty">
+						<AIBrainIcon />
 						<h3 className="apb-chat__empty-title">
 							{ __( 'Code WordPress Plugins with AI', 'ai' ) }
 						</h3>
@@ -216,6 +222,7 @@ export default function App() {
 									key={ i }
 									className="apb-chat__example-btn"
 									onClick={ () => setInput( example ) }
+									title={ example }
 								>
 									{ example }
 								</button>
@@ -313,7 +320,7 @@ export default function App() {
 									) }
 									<div className="apb-msg__content">
 										{ msg.type === 'text' && (
-											<div className="apb-bubble">
+											<div className="apb-bubble apb-bubble--text">
 												<p
 													dangerouslySetInnerHTML={ {
 														__html: msg.content.replace(
@@ -331,16 +338,21 @@ export default function App() {
 										) }
 										{ msg.type === 'plan' && (
 											<div className="apb-bubble apb-bubble--plan">
-												<strong>
-													{ sprintf(
-														/* translators: %s: plugin name */
-														__(
-															'Plugin Plan: %s',
-															'ai'
-														),
-														msg.data.plugin_name
-													) }
-												</strong>
+												<div className="apb-bubble__header">
+													<span className="apb-bubble__icon">
+														📋
+													</span>
+													<strong>
+														{ sprintf(
+															/* translators: %s: plugin name */
+															__(
+																'Plugin Plan: %s',
+																'ai'
+															),
+															msg.data.plugin_name
+														) }
+													</strong>
+												</div>
 												<p>{ msg.data.description }</p>
 												<ul>
 													{ msg.data.files.map(
@@ -366,16 +378,21 @@ export default function App() {
 										) }
 										{ msg.type === 'files' && (
 											<div className="apb-bubble apb-bubble--files">
-												<strong>
-													{ sprintf(
-														/* translators: %d: number of files */
-														__(
-															'Generated Files: %d',
-															'ai'
-														),
-														msg.data.length
-													) }
-												</strong>
+												<div className="apb-bubble__header">
+													<span className="apb-bubble__icon">
+														📁
+													</span>
+													<strong>
+														{ sprintf(
+															/* translators: %d: number of files */
+															__(
+																'Generated Files: %d',
+																'ai'
+															),
+															msg.data.length
+														) }
+													</strong>
+												</div>
 												<div
 													className="apb-actions"
 													style={ {
@@ -399,10 +416,7 @@ export default function App() {
 															className="button button-primary"
 															disabled={
 																isProcessing ||
-																state ===
-																	'installing' ||
-																state ===
-																	'installed'
+																isInstalled
 															}
 															onClick={ () =>
 																installPlugin()
@@ -479,6 +493,10 @@ export default function App() {
 										) }
 										{ msg.type === 'install' && (
 											<div className="apb-bubble apb-bubble--success">
+												{ ' ' }
+												<span className="apb-bubble__icon">
+													✅
+												</span>{ ' ' }
 												{ msg.data.activated
 													? __(
 															'Plugin installed and activated successfully!',
@@ -496,6 +514,9 @@ export default function App() {
 										) }
 										{ msg.type === 'error' && (
 											<div className="apb-bubble apb-bubble--error">
+												<span className="apb-bubble__icon">
+													❌
+												</span>
 												{ msg.content }
 											</div>
 										) }
@@ -519,12 +540,17 @@ export default function App() {
 											) }
 										{ msg.type === 'analysis' && (
 											<div className="apb-bubble apb-bubble--analysis">
-												<strong>
-													{ __(
-														'Suggested Next Steps:',
-														'ai'
-													) }
-												</strong>
+												<div className="apb-bubble__header">
+													<span className="apb-bubble__icon">
+														💡
+													</span>
+													<strong>
+														{ __(
+															'Suggested Next Steps:',
+															'ai'
+														) }
+													</strong>
+												</div>
 												<div
 													className="apb-actions"
 													style={ {
@@ -623,7 +649,7 @@ export default function App() {
 							isProcessing || isEnhancing || ! input.trim()
 						}
 						onClick={ handleSend }
-						title={ __( 'Send', 'ai' ) }
+						title={ __( 'Submit', 'ai' ) }
 					>
 						<span className="dashicons dashicons-arrow-up-alt"></span>
 					</button>
@@ -663,7 +689,7 @@ export default function App() {
 							textAlign: 'right',
 						} }
 					>
-						{ logs[ logs.length - 1 ].message }
+						{ logs[ logs.length - 1 ]?.message }
 					</div>
 				) }
 			</div>
