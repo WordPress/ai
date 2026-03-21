@@ -326,9 +326,9 @@ export default function App() {
 						className="apb-chat__send-btn"
 						disabled={ isProcessing || ! input.trim() }
 						onClick={ handleSend }
-						title={ __( 'Send', 'ai' ) }
+						title={ __( 'Submit', 'ai' ) }
 					>
-						{ isProcessing ? <Spinner /> : '🚀' }
+						{ isProcessing ? <Spinner /> : <span style={ { fontWeight: 'bold', fontSize: '1.2em' } }>↑</span> }
 					</button>
 				</div>
 				{ logs.length > 0 && (
