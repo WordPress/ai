@@ -37,9 +37,8 @@ spl_autoload_register(
 
 			if ( file_exists( $file ) ) {
 				require $file; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+				return;
 			}
-
-			return;
 		}
 	}
 );
