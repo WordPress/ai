@@ -706,7 +706,7 @@ Do not stop until you have called finish.`;
 			if ( ! currentPlan || ! currentFiles.length ) return;
 
 			const isUpdate = messagesRef.current.some( m => m.type === 'install' && m.data?.activated );
-			const _force = true; // Always force install, as the finish() tool already created the directory, which would otherwise trigger a false conflict.
+			const _force = force;
 
 			setState( 'installing' );
 			setSlugConflictWarnings( [] );
