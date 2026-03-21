@@ -206,7 +206,7 @@ export default function App() {
 				<div className="apb-chat__header-actions">
 					{ messages.length > 0 ? (
 						<button className="apb-chat__reset" onClick={ reset }>
-							{ __( 'New Chat', 'ai' ) }
+							✨ { __( 'New Chat', 'ai' ) }
 						</button>
 					) : (
 						<div className="apb-chat__status">
@@ -961,7 +961,7 @@ export default function App() {
 					</button>
 					{ isProcessing && (
 						<button
-							className="apb-chat__stop-btn button"
+							className="apb-chat__stop-btn"
 							onClick={ cancelGeneration }
 							title={ __( 'Stop Generation', 'ai' ) }
 							style={ { marginLeft: '8px' } }
