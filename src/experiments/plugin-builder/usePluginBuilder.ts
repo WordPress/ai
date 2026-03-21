@@ -123,6 +123,7 @@ export function usePluginBuilder() {
 	const [ tokenUsage, setTokenUsage ] = useState< TokenUsageSummary | null >(
 		null
 	);
+	const [ installedPluginFile, setInstalledPluginFile ] = useState< string | null >( null );
 	const [ slugConflictWarnings, setSlugConflictWarnings ] = useState<
 		string[]
 	>( [] );
@@ -567,6 +568,7 @@ export function usePluginBuilder() {
 
 				if ( 'written' in result && result.written ) {
 					const pluginFile = result.plugin;
+					setInstalledPluginFile( pluginFile.endsWith( '.php' ) ? pluginFile : pluginFile + '.php' );
 
 					try {
 						if ( !isUpdate ) {
@@ -730,15 +732,15 @@ export function usePluginBuilder() {
 	}, [ installPlugin ] );
 
 	const downloadPlugin = useCallback( async () => {
-		if ( ! currentPlan || state !== 'installed' ) return;
+		if ( ! currentPlan || ! installedPluginFile || state !== 'installed' ) return;
 
 		try {
-			await api.downloadPlugin( currentPlan.plugin_slug );
+			await api.downloadPlugin( installedPluginFile );
 			log( 'success', __( 'Plugin downloaded', 'ai' ), currentPlan.plugin_slug );
 		} catch ( e: any ) {
 			handleError( e.message || __( 'Failed to download plugin.', 'ai' ) );
 		}
-	}, [ currentPlan, state, log, handleError ] );
+	}, [ currentPlan, installedPluginFile, state, log, handleError ] );
 
 	const reset = useCallback( () => {
 		setState( 'idle' );
@@ -752,6 +754,7 @@ export function usePluginBuilder() {
 		setError( null );
 		setTokenUsage( null );
 		startTimeRef.current = 0;
+		setInstalledPluginFile( null );
 		setSlugConflictWarnings( [] );
 		setActiveChatId( null );
 		activeChatIdRef.current = null;
@@ -769,8 +772,13 @@ export function usePluginBuilder() {
 		if ( chat.messages && chat.messages.length > 0 ) {
 			setMessages( chat.messages );
 			messagesRef.current = chat.messages;
-			const isInstalledLocally = chat.messages.some( m => m.type === 'install' && m.data?.activated );
+			const installMessage = chat.messages.slice().reverse().find( m => m.type === 'install' && m.data?.activated );
+			const isInstalledLocally = !! installMessage;
 			setState( isInstalledLocally ? 'idle' : 'ready_to_install' );
+			if ( installMessage?.data?.plugin ) {
+				const pf = installMessage.data.plugin as string;
+				setInstalledPluginFile( pf.endsWith( '.php' ) ? pf : pf + '.php' );
+			}
 			
 			const lastPlan = chat.messages.slice().reverse().find( m => m.type === 'plan' );
 			if ( lastPlan && lastPlan.data ) {

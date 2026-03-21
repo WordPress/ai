@@ -30,11 +30,11 @@ export async function writeFiles(
 	} );
 }
 
-export async function downloadPlugin( pluginSlug: string ): Promise< void > {
+export async function downloadPlugin( pluginFile: string ): Promise< void > {
 	const { restUrl, nonce } = window.aiPluginBuilder;
 
 	const url = new URL( `${ restUrl }download` );
-	url.searchParams.set( 'plugin_slug', pluginSlug );
+	url.searchParams.set( 'plugin_file', pluginFile );
 
 	const response = await fetch( url.toString(), {
 		method: 'GET',
@@ -52,6 +52,7 @@ export async function downloadPlugin( pluginSlug: string ): Promise< void > {
 	const blobUrl = URL.createObjectURL( blob );
 	const anchor = document.createElement( 'a' );
 	anchor.href = blobUrl;
+	const pluginSlug = pluginFile.split( '/' )[ 0 ];
 	anchor.download = `${ pluginSlug }.zip`;
 	document.body.appendChild( anchor );
 	anchor.click();
