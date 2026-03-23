@@ -140,7 +140,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_image_edit() returns WP_Error for invalid base64.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_generate_image_edit_with_invalid_base64(): void {
 		$reflection = new \ReflectionClass( $this->ability );

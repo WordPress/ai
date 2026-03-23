@@ -20,13 +20,13 @@ defined( 'ABSPATH' ) || exit;
  * Provides a simple storage mechanism for registered features.
  * Feature initialization is handled by the Loader class.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 final class Registry {
 	/**
 	 * Registered features.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var \WordPress\AI\Contracts\Feature[]
 	 */
 	private array $features = array();
@@ -34,7 +34,7 @@ final class Registry {
 	/**
 	 * Registers a feature.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param \WordPress\AI\Contracts\Feature $feature Feature instance to register.
 	 * @return bool True if registered successfully, false if already exists or invalid.
@@ -53,7 +53,7 @@ final class Registry {
 	/**
 	 * Gets a feature by ID.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param string $id Feature identifier.
 	 * @return \WordPress\AI\Contracts\Feature|null Feature instance or null if not found.
@@ -65,7 +65,7 @@ final class Registry {
 	/**
 	 * Gets all registered features.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return \WordPress\AI\Contracts\Feature[] Array of feature instances keyed by feature ID.
 	 */
@@ -76,7 +76,7 @@ final class Registry {
 	/**
 	 * Checks if a feature is registered.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param string $id Feature identifier.
 	 * @return bool True if registered, false otherwise.

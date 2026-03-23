@@ -1,9 +1,9 @@
 <?php
 /**
- * Upgrade routines for version x.x.x.
+ * Upgrade routines for version 0.6.0.
  *
  * @package WordPress\AI\Admin\Upgrades
- * @since x.x.x
+ * @since 0.6.0
  */
 
 declare( strict_types=1 );
@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Upgrade routine for migrating legacy ai_experiment options to the wpai_* equivalents.
  *
- * @since x.x.x
+ * @since 0.6.0
  * @internal
  */
 class V0_6_0 extends Abstract_Upgrade {
@@ -24,7 +24,7 @@ class V0_6_0 extends Abstract_Upgrade {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public static string $version = '0.6.0';
 
@@ -35,7 +35,7 @@ class V0_6_0 extends Abstract_Upgrade {
 	 *
 	 * Reads the old options, copies them, then deletes the old options.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	protected function upgrade(): void {
 		// Update the global options first.

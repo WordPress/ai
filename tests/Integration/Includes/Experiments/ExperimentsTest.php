@@ -14,13 +14,13 @@ use WordPress\AI\Experiments\Experiments;
 /**
  * Tests for the Experiments class.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 class ExperimentsTest extends WP_UnitTestCase {
 	/**
 	 * Test that init hooks into the correct filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_init_hooks_filter() {
 		$experiments = new Experiments();
