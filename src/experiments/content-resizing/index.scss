@@ -12,7 +12,7 @@
 	padding: 32px 0;
 
 	p {
-		color: #757575;
+		color: var(--wp-components-color-gray-700, #757575);
 		margin: 0;
 	}
 }
