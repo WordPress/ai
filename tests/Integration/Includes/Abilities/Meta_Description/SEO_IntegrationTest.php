@@ -134,4 +134,39 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( '_custom_override_key', $meta_key, 'Meta key should be overridable via filter' );
 	}
+
+	/**
+	 * Test that detect_active_plugin() returns the slug when a supported plugin is active.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_detect_active_plugin_returns_slug_when_plugin_active() {
+		// Force a known plugin into the active plugins list.
+		$active = get_option( 'active_plugins', array() );
+		update_option( 'active_plugins', array_merge( $active, array( 'wordpress-seo/wp-seo.php' ) ) );
+
+		$result = SEO_Integration::detect_active_plugin();
+
+		$this->assertEquals( 'yoast-seo', $result, 'Should return the slug of the active plugin' );
+
+		// Restore.
+		update_option( 'active_plugins', $active );
+	}
+
+	/**
+	 * Test that get_meta_key() auto-detects active plugin when no slug provided.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_get_meta_key_auto_detects_active_plugin() {
+		$active = get_option( 'active_plugins', array() );
+		update_option( 'active_plugins', array_merge( $active, array( 'wordpress-seo/wp-seo.php' ) ) );
+
+		$meta_key = SEO_Integration::get_meta_key();
+
+		$this->assertEquals( '_yoast_wpseo_metadesc', $meta_key, 'Should return the meta key of the detected active plugin' );
+
+		// Restore.
+		update_option( 'active_plugins', $active );
+	}
 }

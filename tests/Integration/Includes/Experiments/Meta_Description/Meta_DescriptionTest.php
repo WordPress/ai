@@ -87,4 +87,110 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 
 		remove_all_filters( 'wpai_feature_meta-description_enabled' );
 	}
+
+	/**
+	 * Tests that register() hooks all required actions.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_register_hooks_actions(): void {
+		$experiment = new Meta_Description();
+		$experiment->register();
+
+		$this->assertNotFalse(
+			has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ),
+			'register_abilities should be hooked to wp_abilities_api_init'
+		);
+		$this->assertNotFalse(
+			has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ),
+			'enqueue_assets should be hooked to admin_enqueue_scripts'
+		);
+		$this->assertNotFalse(
+			has_action( 'init', array( $experiment, 'register_post_meta' ) ),
+			'register_post_meta should be hooked to init'
+		);
+	}
+
+	/**
+	 * Tests that register_abilities() hooks into the abilities API.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_register_abilities(): void {
+		$experiment = new Meta_Description();
+		$experiment->register();
+
+		$this->assertNotFalse(
+			has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ),
+			'register_abilities should be hooked to wp_abilities_api_init'
+		);
+	}
+
+	/**
+	 * Tests that register_post_meta() registers fallback meta when no SEO plugin is active.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_register_post_meta_registers_fallback(): void {
+		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
+		$this->setExpectedIncorrectUsage( 'register_meta' );
+
+		$experiment = new Meta_Description();
+		$experiment->register_post_meta();
+
+		$meta = get_registered_meta_keys( 'post', 'post' );
+		$this->assertArrayHasKey( '_meta_description', $meta, 'Fallback meta key should be registered for post type' );
+		$this->assertTrue( $meta['_meta_description']['show_in_rest'], 'Meta key should be available in REST API' );
+		$this->assertEquals( 'string', $meta['_meta_description']['type'], 'Meta key type should be string' );
+	}
+
+	/**
+	 * Tests that register_post_meta() skips attachment post type.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_register_post_meta_skips_attachment(): void {
+		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
+		$this->setExpectedIncorrectUsage( 'register_meta' );
+
+		$experiment = new Meta_Description();
+		$experiment->register_post_meta();
+
+		$meta = get_registered_meta_keys( 'post', 'attachment' );
+		$this->assertArrayNotHasKey( '_meta_description', $meta, 'Meta key should not be registered for attachment post type' );
+	}
+
+	/**
+	 * Tests that register_post_meta() does not register when SEO plugin is active.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_register_post_meta_skips_when_seo_plugin_active(): void {
+		// Simulate an active SEO plugin via the active_plugins option.
+		$active = get_option( 'active_plugins', array() );
+		update_option( 'active_plugins', array_merge( $active, array( 'wordpress-seo/wp-seo.php' ) ) );
+
+		$experiment = new Meta_Description();
+		$experiment->register_post_meta();
+
+		$meta = get_registered_meta_keys( 'post', 'post' );
+		$this->assertArrayNotHasKey( '_yoast_wpseo_metadesc', $meta, 'Should not register SEO plugin meta key' );
+		$this->assertArrayNotHasKey( '_meta_description', $meta, 'Should not register fallback meta when SEO plugin is active' );
+
+		// Restore.
+		update_option( 'active_plugins', $active );
+	}
+
+	/**
+	 * Tests that enqueue_assets() does not load on irrelevant screens.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_enqueue_assets_skips_irrelevant_screens(): void {
+		$experiment = new Meta_Description();
+		$experiment->register();
+
+		$experiment->enqueue_assets( 'options-general.php' );
+		$this->assertFalse( wp_script_is( 'ai_meta_description', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
+	}
 }

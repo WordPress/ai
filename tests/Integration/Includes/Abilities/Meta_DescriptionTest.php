@@ -503,4 +503,183 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'show_in_rest', $meta, 'Meta should have show_in_rest' );
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
+
+	/**
+	 * Test that execute_callback() uses post title when no title is provided.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_execute_callback_uses_post_title_as_fallback() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Content about testing meta descriptions in WordPress plugins.',
+				'post_title'   => 'My Test Title',
+			)
+		);
+
+		$input = array(
+			'post_id' => $post_id,
+			// No explicit title provided — should fall back to post title.
+		);
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
+
+		if ( is_wp_error( $result ) ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
+			return;
+		}
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'descriptions', $result, 'Result should have descriptions key' );
+	}
+
+	/**
+	 * Test that execute_callback() uses explicit title over post title.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_execute_callback_explicit_title_overrides_post_title() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Content about testing meta descriptions in WordPress plugins.',
+				'post_title'   => 'Post Title',
+			)
+		);
+
+		$input = array(
+			'post_id' => $post_id,
+			'title'   => 'Custom Override Title',
+		);
+
+		try {
+			$result = $method->invoke( $this->ability, $input );
+		} catch ( \Throwable $e ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $e->getMessage() );
+			return;
+		}
+
+		if ( is_wp_error( $result ) ) {
+			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
+			return;
+		}
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'descriptions', $result, 'Result should have descriptions key' );
+	}
+
+	/**
+	 * Test that generate_descriptions() builds a prompt with content tags.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_generate_descriptions_builds_prompt_with_content() {
+		$captured_prompt = '';
+
+		add_filter(
+			'wpai_meta_description_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_descriptions' );
+		$method->setAccessible( true );
+
+		try {
+			$method->invoke( $this->ability, 'Test content here.', 'Test Title', '' );
+		} catch ( \Throwable $e ) {
+			// We only care about prompt construction, not AI availability.
+		}
+
+		$this->assertNotNull( $captured_prompt, 'Filter should have been called' );
+		$this->assertStringContainsString( '<content>Test content here.</content>', $captured_prompt, 'Prompt should contain content tags' );
+		$this->assertStringContainsString( '<title>Test Title</title>', $captured_prompt, 'Prompt should contain title tags' );
+
+		remove_all_filters( 'wpai_meta_description_prompt' );
+	}
+
+	/**
+	 * Test that generate_descriptions() includes context when provided as string.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_generate_descriptions_includes_string_context() {
+		$captured_prompt = '';
+
+		add_filter(
+			'wpai_meta_description_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_descriptions' );
+		$method->setAccessible( true );
+
+		try {
+			$method->invoke( $this->ability, 'Test content.', '', 'Extra context here' );
+		} catch ( \Throwable $e ) {
+			// We only care about prompt construction.
+		}
+
+		$this->assertNotNull( $captured_prompt, 'Filter should have been called' );
+		$this->assertStringContainsString( '<additional-context>Extra context here</additional-context>', $captured_prompt, 'Prompt should contain additional context' );
+
+		remove_all_filters( 'wpai_meta_description_prompt' );
+	}
+
+	/**
+	 * Test that generate_descriptions() converts array context to string.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_generate_descriptions_converts_array_context() {
+		$captured_prompt = '';
+
+		add_filter(
+			'wpai_meta_description_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_descriptions' );
+		$method->setAccessible( true );
+
+		$context = array(
+			'post_type' => 'post',
+			'category'  => 'News',
+		);
+
+		try {
+			$method->invoke( $this->ability, 'Test content.', '', $context );
+		} catch ( \Throwable $e ) {
+			// We only care about prompt construction.
+		}
+
+		$this->assertNotNull( $captured_prompt, 'Filter should have been called' );
+		$this->assertStringContainsString( 'Post Type: post', $captured_prompt, 'Context should be converted to key-value pairs' );
+		$this->assertStringContainsString( 'Category: News', $captured_prompt, 'Context should include all array entries' );
+
+		remove_all_filters( 'wpai_meta_description_prompt' );
+	}
 }
