@@ -17,6 +17,28 @@ import './index.scss';
 
 const { aiContentResizingData } = window as any;
 
+// Register the aiOriginalContent attribute on paragraph blocks.
+addFilter(
+	'blocks.registerBlockType',
+	'ai/content-resizing-attribute',
+	( settings, name ) => {
+		if ( name !== 'core/paragraph' ) {
+			return settings;
+		}
+
+		return {
+			...settings,
+			attributes: {
+				...settings.attributes,
+				aiOriginalContent: {
+					type: 'string',
+					default: '',
+				},
+			},
+		};
+	}
+);
+
 const withContentResizing = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props: any ) => {
 		if (

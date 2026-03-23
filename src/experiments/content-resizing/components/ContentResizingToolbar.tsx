@@ -92,6 +92,21 @@ const ICON_REPHRASE = (
 );
 
 /**
+ * Undo icon: arrow curving back to the left.
+ */
+const ICON_UNDO = (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		width="24"
+		height="24"
+		fill="currentColor"
+	>
+		<path d="M12.5 8c-2.65 0-5.05 1.04-6.83 2.74L3 8v9h9l-2.83-2.83A7.004 7.004 0 0119 12h2A9.02 9.02 0 0012.5 8z" />
+	</svg>
+);
+
+/**
  * Content resizing toolbar component.
  *
  * @param props           Component props.
@@ -112,14 +127,20 @@ export default function ContentResizingToolbar( {
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
 
-	const blockContent = useSelect(
+	const { blockContent, originalContent } = useSelect(
 		( select ) => {
 			// eslint-disable-next-line dot-notation -- getBlock from store index signature
 			const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
-			return ( block?.attributes?.content as string ) ?? '';
+			return {
+				blockContent: ( block?.attributes?.content as string ) ?? '',
+				originalContent:
+					( block?.attributes?.aiOriginalContent as string ) ?? '',
+			};
 		},
 		[ clientId ]
 	);
+
+	const hasOriginalContent = originalContent.length > 0;
 
 	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
 	const noticesDispatch = useDispatch( noticesStore ) as any;
@@ -163,7 +184,6 @@ export default function ContentResizingToolbar( {
 								'An error occurred while resizing content.',
 								'ai'
 						  );
-
 				noticesDispatch.createErrorNotice( message, {
 					id: 'ai_content_resizing_error',
 					isDismissible: true,
@@ -176,61 +196,99 @@ export default function ContentResizingToolbar( {
 		[ blockContent, noticesDispatch ]
 	);
 
-	/**
-	 * Handles accepting the suggested content.
-	 */
 	const handleAccept = useCallback( () => {
 		if ( suggestedContent !== null ) {
+			// Save the current content as original before replacing,
+			// but only if we don't already have an original saved.
+			const original = hasOriginalContent
+				? originalContent
+				: blockContent;
+
 			blockEditorDispatch.updateBlockAttributes( clientId, {
 				content: suggestedContent,
+				aiOriginalContent: original,
 			} );
 		}
 		setSuggestedContent( null );
 		setLastAction( null );
 		setIsModalOpen( false );
-	}, [ blockEditorDispatch, clientId, suggestedContent ] );
+	}, [
+		blockContent,
+		blockEditorDispatch,
+		clientId,
+		hasOriginalContent,
+		originalContent,
+		suggestedContent,
+	] );
 
-	/**
-	 * Handles closing the modal.
-	 */
+	const handleUndo = useCallback( () => {
+		if ( hasOriginalContent ) {
+			blockEditorDispatch.updateBlockAttributes( clientId, {
+				content: originalContent,
+				aiOriginalContent: '',
+			} );
+		}
+	}, [ blockEditorDispatch, clientId, hasOriginalContent, originalContent ] );
+
 	const closeModal = useCallback( () => {
 		setSuggestedContent( null );
 		setLastAction( null );
 		setIsModalOpen( false );
 	}, [] );
 
-	/**
-	 * Handles retrying the action.
-	 */
 	const handleRetry = useCallback( () => {
 		if ( lastAction ) {
 			handleAction( lastAction );
 		}
 	}, [ handleAction, lastAction ] );
 
+	const controls: Array< {
+		title: string;
+		icon: JSX.Element;
+		onClick: () => void;
+	} > = [];
+
+	// If we have original content,
+	// add the undo control at the beginning of the dropdown.
+	if ( hasOriginalContent ) {
+		controls.push( {
+			title: __( 'Undo AI changes', 'ai' ) as string,
+			icon: ICON_UNDO,
+			onClick: handleUndo,
+		} );
+	}
+
+	controls.push(
+		{
+			title: __( 'Shorten', 'ai' ) as string,
+			icon: ICON_SHORTEN,
+			onClick: () => handleAction( 'shorten' ),
+		},
+		{
+			title: __( 'Expand', 'ai' ) as string,
+			icon: ICON_EXPAND,
+			onClick: () => handleAction( 'expand' ),
+		},
+		{
+			title: __( 'Rephrase', 'ai' ) as string,
+			icon: ICON_REPHRASE,
+			onClick: () => handleAction( 'rephrase' ),
+		}
+	);
+
 	return (
 		<>
-			<ToolbarGroup>
+			<ToolbarGroup
+				className={
+					hasOriginalContent
+						? 'ai-content-resizing-toolbar--has-changes'
+						: ''
+				}
+			>
 				<ToolbarDropdownMenu
 					icon={ ICON_AI }
 					label={ __( 'AI Content Resize', 'ai' ) }
-					controls={ [
-						{
-							title: __( 'Shorten', 'ai' ),
-							icon: ICON_SHORTEN,
-							onClick: () => handleAction( 'shorten' ),
-						},
-						{
-							title: __( 'Expand', 'ai' ),
-							icon: ICON_EXPAND,
-							onClick: () => handleAction( 'expand' ),
-						},
-						{
-							title: __( 'Rephrase', 'ai' ),
-							icon: ICON_REPHRASE,
-							onClick: () => handleAction( 'rephrase' ),
-						},
-					] }
+					controls={ controls }
 				/>
 			</ToolbarGroup>
 			{ isModalOpen && (
