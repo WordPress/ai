@@ -38,7 +38,7 @@ class Content_Resizing extends Abstract_Ability {
 	 *
 	 * @var int
 	 */
-	protected const SHORTEN_MIN_WORDS = 10;
+	protected const SHORTEN_MIN_WORDS = 5;
 
 	/**
 	 * {@inheritDoc}
@@ -105,12 +105,29 @@ class Content_Resizing extends Abstract_Ability {
 		if ( 'shorten' === $args['action'] && str_word_count( wp_strip_all_tags( $content ) ) < self::SHORTEN_MIN_WORDS ) {
 			return new WP_Error(
 				'content_too_short',
-				esc_html__( 'Text is too short to shorten further.', 'ai' )
+				sprintf(
+					/* translators: %d: Minimum word count. */
+					esc_html__( 'A minimum of %d words is required to shorten the content.', 'ai' ),
+					self::SHORTEN_MIN_WORDS
+				)
 			);
 		}
 
+		$prompt = $this->build_prompt( $content, $args['action'] );
+
+		/**
+		 * Filters the prompt for the content resizing.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $prompt The prompt to use for the content resizing.
+		 * @param string $action The resizing action to perform.
+		 * @return string The filtered prompt.
+		 */
+		$prompt = (string) apply_filters( 'wpai_content_resizing_prompt', $prompt, $args['action'] );
+
 		// Generate the resized content.
-		$result = $this->generate_resized_content( $content, $args['action'] );
+		$result = $this->generate_resized_content( $prompt, $args['action'] );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -126,7 +143,7 @@ class Content_Resizing extends Abstract_Ability {
 		}
 
 		// Return the resized content in the format the Ability expects.
-		return sanitize_text_field( trim( $result ) );
+		return wp_kses_post( $result );
 	}
 
 	/**
@@ -157,20 +174,67 @@ class Content_Resizing extends Abstract_Ability {
 	}
 
 	/**
-	 * Generates resized content using the AI client.
+	 * Builds the the prompt for content resizing.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $content The content to resize.
 	 * @param string $action  The resizing action to perform.
+	 * @return string The prompt.
+	 */
+	protected function build_prompt( $content, $action = self::ACTION_DEFAULT ) {
+		$prompt_parts = array();
+
+		// Determine the action-specific instruction.
+		$action_desc = 'Rephrase the content using different wording and sentence structure while preserving the exact same meaning, tone, and level of detail. The output should be approximately the same length as the input.';
+		if ( 'shorten' === $action ) {
+			$action_desc = 'Condense the following text to roughly half its current length. Preserve the core meaning, key facts, and tone. Remove redundancy and filler. Do not add new information.';
+		} elseif ( 'expand' === $action ) {
+			$action_desc = 'Expand the following text to roughly 1.5 to 2 times its current length. Add supporting detail, elaboration, or examples that are consistent with the original meaning and tone. Do not introduce contradictory information.';
+		}
+
+		/**
+		 * Filters the action description for the content resizing.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $action_desc The action description to use for the content resizing.
+		 * @param string $action      The resizing action to perform.
+		 * @return string The filtered action description.
+		 */
+		$action_desc = (string) apply_filters( 'wpai_content_resizing_action_description', $action_desc, $action );
+
+		$prompt_parts[] = '<goal>' . $action_desc . '</goal>';
+		$prompt_parts[] = '<content>' . $content . '</content>';
+
+		return implode( "\n", $prompt_parts );
+	}
+
+	/**
+	 * Generates resized content using the AI client.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to use for the content resizing.
+	 * @param string $action The resizing action to perform.
 	 * @return string|\WP_Error The resized content, or a WP_Error if there was an error.
 	 */
-	protected function generate_resized_content( string $content, string $action ) {
-		$content = '<content>' . $content . '</content>';
+	protected function generate_resized_content( string $prompt, string $action ) {
+		/**
+		 * Filters the temperature for the content resizing.
+		 * Default is 0.7.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param float  $temperature The temperature to use for the content resizing.
+		 * @param string $action      The resizing action to perform.
+		 * @return float The filtered temperature.
+		 */
+		$temperature = (float) apply_filters( 'wpai_content_resizing_temperature', 0.7, $action );
 
-		return wp_ai_client_prompt( $content )
-			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'action' => $action ) ) )
-			->using_temperature( 0.7 )
+		return wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_temperature( $temperature )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->generate_text();
 	}

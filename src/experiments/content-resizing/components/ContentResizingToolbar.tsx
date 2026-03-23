@@ -80,7 +80,7 @@ export default function ContentResizingToolbar( {
 		async ( action: ContentResizingAction ) => {
 			if ( action === 'shorten' ) {
 				const wordCount = count( blockContent, 'words', {} );
-				// We need at least 5 words to shorten the string.
+				// We need at least 5 words to shorten the content.
 				if ( wordCount < SHORTEN_MIN_WORDS ) {
 					noticesDispatch.createErrorNotice(
 						__( 'Text is too short to shorten further.', 'ai' ),
