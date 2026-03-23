@@ -6,7 +6,7 @@
  *
  * @package WordPress\AI\Experiments
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 
 declare( strict_types=1 );
@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
  * Provides type-safe-ish constants for experiment categorization.
  * These values correspond to where experiments are displayed in the settings UI.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 class Experiment_Category extends Feature_Category {
 
@@ -33,7 +33,7 @@ class Experiment_Category extends Feature_Category {
 	 *
 	 * Experiments in this category appear in the Editor Experiments.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @var string
 	 */
@@ -44,7 +44,7 @@ class Experiment_Category extends Feature_Category {
 	 *
 	 * Experiments in this category appear in the WordPress admin context.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @var string
 	 */
