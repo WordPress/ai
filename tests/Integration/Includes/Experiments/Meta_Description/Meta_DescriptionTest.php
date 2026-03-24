@@ -94,6 +94,9 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_hooks_actions(): void {
+		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
+		$this->setExpectedIncorrectUsage( 'register_meta' );
+
 		$experiment = new Meta_Description();
 		$experiment->register();
 
@@ -105,10 +108,9 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 			has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ),
 			'enqueue_assets should be hooked to admin_enqueue_scripts'
 		);
-		$this->assertNotFalse(
-			has_action( 'init', array( $experiment, 'register_post_meta' ) ),
-			'register_post_meta should be hooked to init'
-		);
+
+		$meta = get_registered_meta_keys( 'post', 'post' );
+		$this->assertArrayHasKey( '_meta_description', $meta, 'register_post_meta should be called during register()' );
 	}
 
 	/**
@@ -117,6 +119,9 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_abilities(): void {
+		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
+		$this->setExpectedIncorrectUsage( 'register_meta' );
+
 		$experiment = new Meta_Description();
 		$experiment->register();
 
@@ -187,6 +192,9 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_skips_irrelevant_screens(): void {
+		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
+		$this->setExpectedIncorrectUsage( 'register_meta' );
+
 		$experiment = new Meta_Description();
 		$experiment->register();
 
