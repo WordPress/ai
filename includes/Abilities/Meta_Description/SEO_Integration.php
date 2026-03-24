@@ -16,14 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Handles detection of active SEO plugins and their meta description storage keys.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class SEO_Integration {
 
 	/**
 	 * Fallback meta key when no SEO plugin is detected.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	public const FALLBACK_META_KEY = '_meta_description';
@@ -31,7 +31,7 @@ class SEO_Integration {
 	/**
 	 * Returns the list of supported SEO plugins and their meta keys.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, array{file: string, meta_key: string}> Map of plugin slug to detection info.
 	 */
@@ -60,7 +60,7 @@ class SEO_Integration {
 		 *
 		 * Allows developers to register additional SEO plugins or modify existing entries.
 		 *
-		 * @since 0.6.0
+		 * @since x.x.x
 		 *
 		 * @param array<string, array{file: string, meta_key: string}> $plugins Map of plugin slug to detection info.
 		 */
@@ -70,7 +70,7 @@ class SEO_Integration {
 	/**
 	 * Detects the currently active SEO plugin.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return string|null The slug of the active SEO plugin, or null if none detected.
 	 */
@@ -91,7 +91,7 @@ class SEO_Integration {
 	/**
 	 * Returns the meta key to use for storing the meta description.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string|null $plugin_slug Optional. The SEO plugin slug. If null, auto-detects.
 	 * @return string The meta key.
@@ -111,7 +111,7 @@ class SEO_Integration {
 		/**
 		 * Filters the meta key used to store the meta description.
 		 *
-		 * @since 0.6.0
+		 * @since x.x.x
 		 *
 		 * @param string      $key         The meta key.
 		 * @param string|null $plugin_slug The detected SEO plugin slug, or null.

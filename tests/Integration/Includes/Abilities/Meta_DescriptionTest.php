@@ -15,7 +15,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 /**
  * Test experiment for Meta_Description Ability tests.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class Test_Meta_Description_Experiment extends Abstract_Feature {
 	/**
@@ -38,7 +38,7 @@ class Test_Meta_Description_Experiment extends Abstract_Feature {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -48,7 +48,7 @@ class Test_Meta_Description_Experiment extends Abstract_Feature {
 /**
  * Meta_Description Ability test case.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class Meta_DescriptionTest extends WP_UnitTestCase {
 
@@ -69,7 +69,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -87,7 +87,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -97,7 +97,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -112,7 +112,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -144,7 +144,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -163,7 +163,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() returns a non-empty system instruction.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_get_system_instruction_returns_system_instruction() {
 		$system_instruction = $this->ability->get_system_instruction();
@@ -176,7 +176,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles content parameter correctly.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_with_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -218,7 +218,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles post_id parameter correctly.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_with_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -255,7 +255,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when post_id points to non-existent post.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_with_invalid_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -274,7 +274,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_without_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -291,7 +291,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() prefers explicit content over post content.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_explicit_content_overrides_post_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -329,7 +329,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -347,7 +347,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_posts capability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -366,7 +366,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -384,7 +384,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_post capability on specific post.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_post_id_and_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -409,7 +409,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_post capability on specific post.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_post_id_without_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -435,7 +435,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for non-existent post.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_nonexistent_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -454,7 +454,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns false for post type without show_in_rest.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_permission_callback_with_post_type_without_show_in_rest() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -490,7 +490,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -507,7 +507,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() uses post title when no title is provided.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_uses_post_title_as_fallback() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -545,7 +545,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() uses explicit title over post title.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_execute_callback_explicit_title_overrides_post_title() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -583,7 +583,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_descriptions() builds a prompt with content tags.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_generate_descriptions_builds_prompt_with_content() {
 		$captured_prompt = '';
@@ -616,7 +616,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_descriptions() includes context when provided as string.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_generate_descriptions_includes_string_context() {
 		$captured_prompt = '';
@@ -648,7 +648,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_descriptions() converts array context to string.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_generate_descriptions_converts_array_context() {
 		$captured_prompt = '';

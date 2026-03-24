@@ -16,14 +16,14 @@ use WordPress\AI\Features\Registry;
 /**
  * Meta_Description experiment test case.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class Meta_DescriptionTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -49,7 +49,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -63,7 +63,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment reports correct metadata.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_experiment_registration(): void {
 		$experiment = new Meta_Description();
@@ -77,7 +77,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment can be disabled via the filter.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_experiment_can_be_disabled_via_filter(): void {
 		add_filter( 'wpai_feature_meta-description_enabled', '__return_false' );
@@ -91,7 +91,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register() hooks all required actions.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_register_hooks_actions(): void {
 		$experiment = new Meta_Description();
@@ -114,7 +114,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_abilities() hooks into the abilities API.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_register_abilities(): void {
 		$experiment = new Meta_Description();
@@ -129,7 +129,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_post_meta() registers fallback meta when no SEO plugin is active.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_register_post_meta_registers_fallback(): void {
 		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
@@ -147,7 +147,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_post_meta() skips attachment post type.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_register_post_meta_skips_attachment(): void {
 		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
@@ -163,7 +163,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_post_meta() does not register when SEO plugin is active.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_register_post_meta_skips_when_seo_plugin_active(): void {
 		// Simulate an active SEO plugin via the active_plugins option.
@@ -184,7 +184,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() does not load on irrelevant screens.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_skips_irrelevant_screens(): void {
 		$experiment = new Meta_Description();
