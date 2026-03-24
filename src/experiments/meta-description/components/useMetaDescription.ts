@@ -54,22 +54,19 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		MetaDescriptionSuggestion[]
 	>( [] );
 
-	const { postId, content, title, currentDescription } = useSelect(
-		( select ) => {
-			const editor = select( editorStore );
-			const meta = editor.getEditedPostAttribute( 'meta' ) as
-				| Record< string, string >
-				| undefined;
+	const { postId, content, title, meta } = useSelect( ( select ) => {
+		const editor = select( editorStore );
+		const currentMeta = editor.getEditedPostAttribute( 'meta' ) as
+			| Record< string, string >
+			| undefined;
 
-			return {
-				postId: editor.getCurrentPostId() as number,
-				content: editor.getEditedPostContent(),
-				title: editor.getEditedPostAttribute( 'title' ) as string,
-				currentDescription: meta?.[ metaKey ] ?? '',
-			};
-		},
-		[ metaKey ]
-	);
+		return {
+			postId: editor.getCurrentPostId() as number,
+			content: editor.getEditedPostContent(),
+			title: editor.getEditedPostAttribute( 'title' ) as string,
+			meta: currentMeta,
+		};
+	}, [] );
 
 	const generateDescriptions = useCallback( async () => {
 		setIsGenerating( true );
@@ -118,17 +115,18 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		( text: string ) => {
 			editPost( {
 				meta: {
+					...meta,
 					[ metaKey ]: text,
 				},
 			} );
 		},
-		[ editPost, metaKey ]
+		[ editPost, metaKey, meta ]
 	);
 
 	return {
 		isGenerating,
 		suggestions,
-		currentDescription,
+		currentDescription: meta?.[ metaKey ] ?? '',
 		metaKey,
 		hasSeoPlugin,
 		generateDescriptions,

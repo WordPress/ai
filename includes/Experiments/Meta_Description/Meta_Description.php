@@ -106,9 +106,6 @@ class Meta_Description extends Abstract_Feature {
 					'single'            => true,
 					'type'              => 'string',
 					'revisions_enabled' => true,
-					'auth_callback'     => static function () {
-						return current_user_can( 'edit_posts' );
-					},
 				)
 			);
 		}
