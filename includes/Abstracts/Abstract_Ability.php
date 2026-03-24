@@ -36,7 +36,7 @@ abstract class Abstract_Ability extends WP_Ability {
 				'category'            => $this->category(),
 				'input_schema'        => $this->input_schema(),
 				'output_schema'       => $this->output_schema(),
-				'execute_callback'    => array( $this, 'filtered_execute_callback' ),
+				'execute_callback'    => array( $this, 'do_execute' ),
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => $this->meta(),
 			)
@@ -44,48 +44,15 @@ abstract class Abstract_Ability extends WP_Ability {
 	}
 
 	/**
-	 * Wraps execute_callback to apply result filters.
+	 * Public wrapper for execute_callback.
 	 *
-	 * @since 0.5.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $input The input arguments to the ability.
-	 * @return mixed|\WP_Error The filtered result of the ability execution, or a WP_Error on failure.
+	 * @return mixed|\WP_Error The result of the ability execution, or a WP_Error on failure.
 	 */
-	public function filtered_execute_callback( $input ) {
-		$result = $this->execute_callback( $input );
-
-		// Don't filter WP_Error results.
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-
-		$name = $this->get_name();
-
-		/**
-		 * Filters the result of any ability execution.
-		 *
-		 * @since 0.5.0
-		 *
-		 * @param mixed  $result The result of the ability execution.
-		 * @param string $name   The name of the ability.
-		 * @param mixed  $input  The input arguments to the ability.
-		 */
-		$result = apply_filters( 'ai_experiments_ability_result', $result, $name, $input );
-
-		/**
-		 * Filters the result of a specific ability execution.
-		 *
-		 * The dynamic portion of the hook name, `$name`, refers to the ability name
-		 * (e.g., 'ai/title-generation', 'ai/summarization').
-		 *
-		 * @since 0.5.0
-		 *
-		 * @param mixed $result The result of the ability execution.
-		 * @param mixed $input  The input arguments to the ability.
-		 */
-		$result = apply_filters( "ai_experiments_ability_result_{$name}", $result, $input );
-
-		return $result;
+	public function do_execute( $input ) {
+		return $this->execute_callback( $input );
 	}
 
 	/**
@@ -175,13 +142,13 @@ abstract class Abstract_Ability extends WP_Ability {
 		/**
 		 * Filters the system instruction for an ability.
 		 *
-		 * @since 0.5.0
+		 * @since x.x.x
 		 *
 		 * @param string $instruction The system instruction text.
 		 * @param string $name        The name of the ability.
 		 * @param array  $data        The data passed to the system instruction file.
 		 */
-		return apply_filters( 'ai_experiments_system_instruction', $instruction, $this->get_name(), $data );
+		return apply_filters( 'wpai_system_instruction', $instruction, $this->get_name(), $data );
 	}
 
 	/**
