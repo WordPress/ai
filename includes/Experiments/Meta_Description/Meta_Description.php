@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Provides AI-generated meta description suggestions in the post editor with
  * automatic SEO plugin integration for storing descriptions in the correct meta field.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class Meta_Description extends Abstract_Feature {
 
@@ -50,18 +50,18 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'init', array( $this, 'register_post_meta' ) );
+		$this->register_post_meta();
 	}
 
 	/**
 	 * Registers the meta description ability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -80,7 +80,7 @@ class Meta_Description extends Abstract_Feature {
 	 * This ensures the meta key is accessible through the WordPress data layer
 	 * when no SEO plugin is active to manage it.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function register_post_meta(): void {
 		$meta_key   = SEO_Integration::get_meta_key();
@@ -106,6 +106,9 @@ class Meta_Description extends Abstract_Feature {
 					'single'            => true,
 					'type'              => 'string',
 					'revisions_enabled' => true,
+					'auth_callback'     => static function () {
+						return current_user_can( 'edit_posts' );
+					},
 				)
 			);
 		}
@@ -114,7 +117,7 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
