@@ -144,7 +144,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	}
 	await globalToggle.uncheck();
 	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
-	await expect( page.getByText( 'Settings saved.' ) ).toBeVisible();
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };
 
 /**
@@ -168,45 +168,65 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	}
 	await globalToggle.check();
 	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
-	await expect( page.getByText( 'Settings saved.' ) ).toBeVisible();
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };
 
 /**
  * Enables a specific experiment.
  *
- * @param admin        The admin fixture from the test context.
- * @param page         The page object.
- * @param experimentId The ID of the experiment to enable.
+ * @param admin           The admin fixture from the test context.
+ * @param page            The page object.
+ * @param experimentLabel The display label of the experiment (e.g. 'Abilities Explorer').
  */
 export const enableExperiment = async (
 	admin: Admin,
 	page: Page,
-	experimentId: string
+	experimentLabel: string
 ) => {
 	await visitSettingsPage( admin );
-	await page.locator( `#wpai_feature_${ experimentId }_enabled` ).check();
+	const checkbox = page.getByRole( 'checkbox', {
+		name: experimentLabel,
+	} );
+	await expect( checkbox ).toBeVisible( { timeout: 10000 } );
+
+	// Nothing to do if this experiment is already enabled.
+	if ( await checkbox.isChecked() ) {
+		return;
+	}
+
+	await checkbox.check();
 	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
 
 	// Ensure the save was successful.
-	await expect( page.getByText( 'Settings saved.' ) ).toBeVisible();
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };
 
 /**
  * Disables a specific experiment.
  *
- * @param admin        The admin fixture from the test context.
- * @param page         The page object.
- * @param experimentId The ID of the experiment to disable.
+ * @param admin           The admin fixture from the test context.
+ * @param page            The page object.
+ * @param experimentLabel The display label of the experiment (e.g. 'Abilities Explorer').
  */
 export const disableExperiment = async (
 	admin: Admin,
 	page: Page,
-	experimentId: string
+	experimentLabel: string
 ) => {
 	await visitSettingsPage( admin );
-	await page.locator( `#wpai_feature_${ experimentId }_enabled` ).uncheck();
+	const checkbox = page.getByRole( 'checkbox', {
+		name: experimentLabel,
+	} );
+	await expect( checkbox ).toBeVisible( { timeout: 10000 } );
+
+	// Nothing to do if this experiment is already disabled.
+	if ( ! ( await checkbox.isChecked() ) ) {
+		return;
+	}
+
+	await checkbox.uncheck();
 	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
 
 	// Ensure the save was successful.
-	await expect( page.getByText( 'Settings saved.' ) ).toBeVisible();
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };

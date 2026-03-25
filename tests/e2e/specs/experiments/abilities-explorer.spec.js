@@ -22,7 +22,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'abilities-explorer' );
+		await enableExperiment( admin, page, 'Abilities Explorer' );
 	} );
 
 	test( 'Can access the Abilities Explorer page when enabled', async ( {
@@ -33,7 +33,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'abilities-explorer' );
+		await enableExperiment( admin, page, 'Abilities Explorer' );
 
 		// Ensure the Abilities Explorer page is visible in the admin sidebar.
 		await admin.visitAdminPage( 'tools.php' );
@@ -135,7 +135,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'abilities-explorer' );
+		await enableExperiment( admin, page, 'Abilities Explorer' );
 
 		// Visit the Abilities Explorer page.
 		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
@@ -168,7 +168,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'abilities-explorer' );
+		await enableExperiment( admin, page, 'Abilities Explorer' );
 
 		// Visit the Abilities Explorer page.
 		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
@@ -221,7 +221,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'abilities-explorer' );
+		await enableExperiment( admin, page, 'Abilities Explorer' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -243,7 +243,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Abilities Explorer Experiment.
-		await disableExperiment( admin, page, 'abilities-explorer' );
+		await disableExperiment( admin, page, 'Abilities Explorer' );
 
 		// Ensure the Abilities Explorer page is not visible in the admin Tools sidebar.
 		await admin.visitAdminPage( 'tools.php' );

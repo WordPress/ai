@@ -42,9 +42,11 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure the no AI Connectors error message is displayed.
 		await expect(
-			page.getByText(
-				'The AI plugin requires a valid AI Connector to function properly'
-			)
+			page
+				.locator( '#ai-wp-admin-app' )
+				.getByText(
+					'The AI plugin requires a valid AI Connector to function properly'
+				)
 		).toBeVisible();
 	} );
 
