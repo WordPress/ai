@@ -14,29 +14,16 @@ if ( fs.existsSync( bootAssetPath ) ) {
 }
 
 const dependencies = [
-	'react',
-	'react-dom',
 	'react-jsx-runtime',
-	'wp-commands',
-	'wp-components',
-	'wp-compose',
-	'wp-core-data',
-	'wp-data',
-	'wp-editor',
-	'wp-element',
-	'wp-html-entities',
-	'wp-i18n',
-	'wp-keyboard-shortcuts',
-	'wp-keycodes',
-	'wp-notices',
-	'wp-primitives',
-	'wp-private-apis',
-	'wp-theme',
-	'wp-url',
 ];
 
 const dependencyList = dependencies.map( ( handle ) => `'${ handle }'` ).join( ', ' );
-const fileContents = `<?php return array('dependencies' => array(${ dependencyList }), 'version' => 'wp-build-fallback');`;
+const fileContents = `<?php
+$core_asset = ABSPATH . WPINC . '/js/dist/script-modules/boot/index.min.asset.php';
+if ( file_exists( $core_asset ) ) {
+	return require $core_asset;
+}
+return array('dependencies' => array(${ dependencyList }), 'version' => 'wp-build-fallback');`;
 
 fs.mkdirSync( path.dirname( bootAssetPath ), { recursive: true } );
 fs.writeFileSync( bootAssetPath, fileContents );
