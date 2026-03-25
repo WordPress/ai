@@ -14,7 +14,7 @@ import { DataForm } from '@wordpress/dataviews';
 import { useCallback, useMemo } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
-import type { Field, Form } from '@wordpress/dataviews';
+import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 
 /**
  * Internal dependencies
@@ -44,6 +44,8 @@ function getPageData(): PageData {
 		};
 	}
 }
+
+const PAGE_DATA = getPageData();
 
 const GLOBAL_FIELD: Field< AISettings > = {
 	id: 'wpai_features_enabled',
@@ -115,14 +117,7 @@ const AI_SETTING_KEYS = [ GLOBAL_FIELD, ...EXPERIMENT_FIELDS ].map(
 function DisabledCheckbox( {
 	field,
 	data,
-}: {
-	field: {
-		label: string;
-		description?: string;
-		getValue: ( args: { item: AISettings } ) => unknown;
-	};
-	data: AISettings;
-} ) {
+}: DataFormControlProps< AISettings > ) {
 	return (
 		<CheckboxControl
 			__nextHasNoMarginBottom
@@ -192,11 +187,12 @@ const form: Form = {
 };
 
 function AISettingsPage() {
-	const pageData = getPageData();
+	const PAGE_DATA = PAGE_DATA;
 
 	const { siteSettings, hasEdits, isSaving, isLoading } = useSelect(
 		( select ) => {
-			const store = select( coreStore ) as any;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
+			const store: any = select( coreStore );
 			return {
 				siteSettings: store.getEditedEntityRecord( 'root', 'site' ) as
 					| Record< string, unknown >
@@ -240,7 +236,7 @@ function AISettingsPage() {
 				...field,
 				Edit: globalEnabled
 					? ( 'checkbox' as const )
-					: ( DisabledCheckbox as any ),
+					: DisabledCheckbox,
 			} ) ),
 		],
 		[ globalEnabled ]
@@ -302,9 +298,9 @@ function AISettingsPage() {
 			}
 		>
 			<div className="ai-settings-page">
-				{ ! pageData.hasValidCredentials && (
+				{ ! PAGE_DATA.hasValidCredentials && (
 					<Notice status="error" isDismissible={ false }>
-						{ ! pageData.hasCredentials
+						{ ! PAGE_DATA.hasCredentials
 							? __(
 									'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
 									'ai'
@@ -313,8 +309,8 @@ function AISettingsPage() {
 									'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
 									'ai'
 							  ) }{ ' ' }
-						{ pageData.connectorsUrl && (
-							<a href={ pageData.connectorsUrl }>
+						{ PAGE_DATA.connectorsUrl && (
+							<a href={ PAGE_DATA.connectorsUrl }>
 								{ __( 'Manage Connectors', 'ai' ) }
 							</a>
 						) }
