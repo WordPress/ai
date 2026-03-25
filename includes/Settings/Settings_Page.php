@@ -54,7 +54,7 @@ class Settings_Page {
 	 *
 	 * @var string
 	 */
-	private const NEW_PAGE_SLUG = 'ai-new-wp-admin';
+	private const WP_BUILD_PAGE_SLUG = 'ai-wp-admin';
 
 	/**
 	 * Constructor.
@@ -86,6 +86,18 @@ class Settings_Page {
 	 * @return void
 	 */
 	public function register_menu(): void {
+		if ( function_exists( 'ai_ai_wp_admin_render_page' ) ) {
+			add_options_page(
+				__( 'AI', 'ai' ),
+				__( 'AI', 'ai' ),
+				'manage_options',
+				self::WP_BUILD_PAGE_SLUG,
+				'ai_ai_wp_admin_render_page', // @phpstan-ignore argument.type (function verified by function_exists above)
+				2
+			);
+			return;
+		}
+
 		$page_hook = add_options_page(
 			__( 'AI', 'ai' ),
 			__( 'AI', 'ai' ),
@@ -94,18 +106,6 @@ class Settings_Page {
 			array( $this, 'render_page' ),
 			2
 		);
-
-		if ( function_exists( 'ai_ai_new_wp_admin_render_page' ) ) {
-			add_submenu_page(
-				'options-general.php',
-				__( 'AI (New)', 'ai' ),
-				__( 'AI (New)', 'ai' ),
-				'manage_options',
-				self::NEW_PAGE_SLUG,
-				'ai_ai_new_wp_admin_render_page', // @phpstan-ignore argument.type (function verified by function_exists above)
-				3
-			);
-		}
 
 		// Hook into the specific page load to enqueue styles.
 		if ( ! $page_hook ) {

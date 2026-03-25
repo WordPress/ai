@@ -137,7 +137,7 @@ function check_wp_version(): bool {
 function plugin_action_links( array $links ): array {
 	$settings_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
-		admin_url( 'options-general.php?page=ai' ),
+		admin_url( 'options-general.php?page=ai-wp-admin' ),
 		esc_html__( 'Settings', 'ai' )
 	);
 

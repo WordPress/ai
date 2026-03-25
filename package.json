@@ -10,7 +10,7 @@
     "name": "ai",
     "handlePrefix": "ai",
     "pages": [
-      "ai-new"
+      "ai"
     ]
   },
   "files": [
