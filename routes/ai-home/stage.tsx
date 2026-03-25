@@ -278,9 +278,4 @@ function AISettingsPage() {
 		</Page>
 	);
 }
-
-function Stage() {
-	return <AISettingsPage />;
-}
-
-export const stage = Stage;
+export const stage = AISettingsPage;
