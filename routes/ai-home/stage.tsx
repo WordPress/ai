@@ -1,12 +1,18 @@
 /**
  * WordPress dependencies
  */
-import { useState, useEffect, useCallback } from '@wordpress/element';
+import { Page } from '@wordpress/admin-ui';
 import apiFetch from '@wordpress/api-fetch';
 import { Button, Spinner } from '@wordpress/components';
 import { DataForm } from '@wordpress/dataviews';
+import { useState, useEffect, useCallback } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import type { Field, Form } from '@wordpress/dataviews';
+
+/**
+ * Internal dependencies
+ */
+import './style.scss';
 
 type AISettings = {
 	wpai_features_enabled: boolean;
@@ -180,7 +186,7 @@ const form: Form = {
 	],
 };
 
-function AISettingsForm() {
+function AISettingsPage() {
 	const [ data, setData ] = useState< AISettings >( DEFAULT_SETTINGS );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ isSaving, setIsSaving ] = useState( false );
@@ -226,32 +232,44 @@ function AISettingsForm() {
 		}
 	}, [ data ] );
 
-	if ( isLoading ) {
-		return <Spinner />;
-	}
-
 	return (
-		<div style={ { maxWidth: '800px' } }>
-			<DataForm< AISettings >
-				data={ data }
-				fields={ fields }
-				form={ form }
-				onChange={ handleChange }
-			/>
-			<div style={ { marginTop: '16px' } }>
-				<Button
-					variant="primary"
-					onClick={ handleSave }
-					isBusy={ isSaving }
-					disabled={ ! hasEdits || isSaving }
-				>
-					{ __( 'Save Changes', 'ai' ) }
-				</Button>
+		<Page
+			title={ __( 'AI', 'ai' ) }
+			subTitle={ __(
+				'Configure AI features and experiments for your WordPress site.',
+				'ai'
+			) }
+		>
+			<div className="ai-settings-page">
+				{ isLoading ? (
+					<Spinner />
+				) : (
+					<>
+						<DataForm< AISettings >
+							data={ data }
+							fields={ fields }
+							form={ form }
+							onChange={ handleChange }
+						/>
+						<div className="ai-settings-page__save">
+							<Button
+								variant="primary"
+								onClick={ handleSave }
+								isBusy={ isSaving }
+								disabled={ ! hasEdits || isSaving }
+							>
+								{ __( 'Save Changes', 'ai' ) }
+							</Button>
+						</div>
+					</>
+				) }
 			</div>
-		</div>
+		</Page>
 	);
 }
 
-export function stage() {
-	return <AISettingsForm />;
+function Stage() {
+	return <AISettingsPage />;
 }
+
+export const stage = Stage;
