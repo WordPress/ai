@@ -39,6 +39,10 @@ class Provider_Metadata_Registry {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function get_metadata(): array {
+		if ( ! class_exists( AiClient::class ) ) {
+			return array();
+		}
+
 		$registry    = AiClient::defaultRegistry();
 		$providers   = array();
 		$overrides   = self::get_branding_overrides();
