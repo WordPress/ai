@@ -1,5 +1,5 @@
 /**
- * Shared hook for contextual tagging logic.
+ * Shared hook for content classification logic.
  */
 
 /**
@@ -19,17 +19,17 @@ import apiFetch from '@wordpress/api-fetch';
  */
 import { runAbility } from '../../../utils/run-ability';
 import type {
-	ContextualTaggingAbilityInput,
-	ContextualTaggingResponse,
+	ContentClassificationAbilityInput,
+	ContentClassificationResponse,
 	TagSuggestion,
-	ContextualTaggingData,
+	ContentClassificationData,
 } from '../types';
 
 const MINIMUM_WORD_COUNT = 150;
-const NOTICE_ID = 'ai_contextual_tagging_error';
+const NOTICE_ID = 'ai_content_classification_error';
 
-const getSettings = (): ContextualTaggingData =>
-	( window as any ).aiContextualTaggingData ?? {
+const getSettings = (): ContentClassificationData =>
+	( window as any ).aiContentClassificationData ?? {
 		enabled: false,
 		strategy: 'existing_only',
 		maxSuggestions: 5,
@@ -52,7 +52,7 @@ async function generateSuggestions(
 	strategy: string,
 	maxSuggestions: number
 ): Promise< TagSuggestion[] > {
-	const params: ContextualTaggingAbilityInput = {
+	const params: ContentClassificationAbilityInput = {
 		content,
 		post_id: postId,
 		taxonomy,
@@ -60,8 +60,8 @@ async function generateSuggestions(
 		max_suggestions: maxSuggestions,
 	};
 
-	const response = await runAbility< ContextualTaggingResponse >(
-		'ai/contextual-tagging',
+	const response = await runAbility< ContentClassificationResponse >(
+		'ai/content-classification',
 		params
 	);
 
@@ -103,12 +103,12 @@ async function getAssignedTermNames( taxonomy: string ): Promise< string[] > {
 }
 
 /**
- * Hook for contextual tagging functionality.
+ * Hook for content classification functionality.
  *
  * @param taxonomy The taxonomy to generate suggestions for.
  * @return Object with generation state, suggestions, and handlers.
  */
-export function useContextualTagging( taxonomy: string ): {
+export function useContentClassification( taxonomy: string ): {
 	isGenerating: boolean;
 	suggestions: TagSuggestion[];
 	hasEnoughContent: boolean;

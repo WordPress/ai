@@ -1,11 +1,11 @@
 /**
- * Type definitions for contextual tagging experiment.
+ * Type definitions for content classification experiment.
  */
 
 /**
- * Input parameters for the ai/contextual-tagging ability.
+ * Input parameters for the ai/content-classification ability.
  */
-export interface ContextualTaggingAbilityInput {
+export interface ContentClassificationAbilityInput {
 	content: string;
 	post_id: number;
 	taxonomy: string;
@@ -25,16 +25,16 @@ export interface TagSuggestion {
 }
 
 /**
- * Response from the ai/contextual-tagging ability.
+ * Response from the ai/content-classification ability.
  */
-export interface ContextualTaggingResponse {
+export interface ContentClassificationResponse {
 	suggestions: TagSuggestion[];
 }
 
 /**
  * Localized data from the PHP side.
  */
-export interface ContextualTaggingData {
+export interface ContentClassificationData {
 	enabled: boolean;
 	strategy: string;
 	maxSuggestions: number;

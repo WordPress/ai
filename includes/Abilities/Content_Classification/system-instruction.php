@@ -1,8 +1,8 @@
 <?php
 /**
- * System instruction for the Contextual Tagging ability.
+ * System instruction for the Content Classification ability.
  *
- * @package WordPress\AI\Abilities\Contextual_Tagging
+ * @package WordPress\AI\Abilities\Content_Classification
  */
 
 // Exit if accessed directly.

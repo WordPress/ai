@@ -1,32 +1,32 @@
 <?php
 /**
- * Contextual tagging WordPress Ability implementation.
+ * Content classification WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities\Contextual_Tagging;
+namespace WordPress\AI\Abilities\Content_Classification;
 
 use WP_Error;
 use WP_Post;
 use WP_Post_Type;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI\Experiments\Contextual_Tagging\Contextual_Tagging as Contextual_Tagging_Experiment;
+use WordPress\AI\Experiments\Content_Classification\Content_Classification as Content_Classification_Experiment;
 
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
 
 /**
- * Contextual tagging WordPress Ability.
+ * Content classification WordPress Ability.
  *
  * Generates taxonomy term suggestions based on post content analysis.
  *
  * @since x.x.x
  */
-class Contextual_Tagging extends Abstract_Ability {
+class Content_Classification extends Abstract_Ability {
 
 	/**
 	 * Returns the input schema of the ability.
@@ -57,7 +57,7 @@ class Contextual_Tagging extends Abstract_Ability {
 				),
 				'strategy'        => array(
 					'type'              => 'string',
-					'default'           => Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY,
+					'default'           => Content_Classification_Experiment::STRATEGY_EXISTING_ONLY,
 					'sanitize_callback' => 'sanitize_key',
 					'description'       => esc_html__( 'The suggestion strategy: existing_only or allow_new.', 'ai' ),
 				),
@@ -65,7 +65,7 @@ class Contextual_Tagging extends Abstract_Ability {
 					'type'              => 'integer',
 					'minimum'           => 1,
 					'maximum'           => 10,
-					'default'           => Contextual_Tagging_Experiment::DEFAULT_MAX_SUGGESTIONS,
+					'default'           => Content_Classification_Experiment::DEFAULT_MAX_SUGGESTIONS,
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Maximum number of suggestions to generate.', 'ai' ),
 				),
@@ -129,8 +129,8 @@ class Contextual_Tagging extends Abstract_Ability {
 				'content'         => null,
 				'post_id'         => null,
 				'taxonomy'        => 'post_tag',
-				'strategy'        => Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY,
-				'max_suggestions' => (int) Contextual_Tagging_Experiment::DEFAULT_MAX_SUGGESTIONS,
+				'strategy'        => Content_Classification_Experiment::STRATEGY_EXISTING_ONLY,
+				'max_suggestions' => (int) Content_Classification_Experiment::DEFAULT_MAX_SUGGESTIONS,
 			),
 		);
 
@@ -322,7 +322,7 @@ class Contextual_Tagging extends Abstract_Ability {
 		 * @param string                       $taxonomy       The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
 		 * @param array<string>                $assigned_terms Terms already assigned to the post.
 		 */
-		$prompt = (string) apply_filters( 'wpai_contextual_tagging_prompt', $prompt, $context, $taxonomy, $assigned_terms );
+		$prompt = (string) apply_filters( 'wpai_content_classification_prompt', $prompt, $context, $taxonomy, $assigned_terms );
 
 		// Generate the suggestions using the AI client with structured output.
 		$result = wp_ai_client_prompt( $prompt )
@@ -364,7 +364,7 @@ class Contextual_Tagging extends Abstract_Ability {
 		 * @param string                                                                       $taxonomy       The taxonomy slug (e.g., 'post_tag', 'category').
 		 * @param string                                                                       $strategy       The suggestion strategy ('existing_only' or 'allow_new').
 		 */
-		return (array) apply_filters( 'wpai_contextual_tagging_suggestions', $suggestions, $taxonomy, $strategy );
+		return (array) apply_filters( 'wpai_content_classification_suggestions', $suggestions, $taxonomy, $strategy );
 	}
 
 	/**
@@ -514,7 +514,7 @@ class Contextual_Tagging extends Abstract_Ability {
 			}
 
 			// For existing_only strategy, skip terms that don't exist.
-			if ( Contextual_Tagging_Experiment::STRATEGY_EXISTING_ONLY === $strategy && $is_new ) {
+			if ( Content_Classification_Experiment::STRATEGY_EXISTING_ONLY === $strategy && $is_new ) {
 				continue;
 			}
 

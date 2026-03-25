@@ -1,15 +1,15 @@
 <?php
 /**
- * Contextual tagging experiment implementation.
+ * Content classification experiment implementation.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Experiments\Contextual_Tagging;
+namespace WordPress\AI\Experiments\Content_Classification;
 
-use WordPress\AI\Abilities\Contextual_Tagging\Contextual_Tagging as Contextual_Tagging_Ability;
+use WordPress\AI\Abilities\Content_Classification\Content_Classification as Content_Classification_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
@@ -20,14 +20,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Contextual tagging experiment.
+ * Content classification experiment.
  *
  * Provides AI-powered suggestions for post taxonomies
  * based on a comprehensive analysis of the post content.
  *
  * @since x.x.x
  */
-class Contextual_Tagging extends Abstract_Feature {
+class Content_Classification extends Abstract_Feature {
 
 	/**
 	 * The default taxonomy strategy.
@@ -60,7 +60,7 @@ class Contextual_Tagging extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
-		return 'contextual-tagging';
+		return 'content-classification';
 	}
 
 	/**
@@ -68,7 +68,7 @@ class Contextual_Tagging extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Contextual Tagging', 'ai' ),
+			'label'       => __( 'Content Classification', 'ai' ),
 			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
@@ -93,7 +93,7 @@ class Contextual_Tagging extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
-				'ability_class' => Contextual_Tagging_Ability::class,
+				'ability_class' => Content_Classification_Ability::class,
 			),
 		);
 	}
@@ -127,11 +127,11 @@ class Contextual_Tagging extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'contextual_tagging', 'experiments/contextual-tagging' );
-		Asset_Loader::enqueue_style( 'contextual_tagging', 'experiments/contextual-tagging' );
+		Asset_Loader::enqueue_script( 'content_classification', 'experiments/content-classification' );
+		Asset_Loader::enqueue_style( 'content_classification', 'experiments/content-classification' );
 		Asset_Loader::localize_script(
-			'contextual_tagging',
-			'ContextualTaggingData',
+			'content_classification',
+			'ContentClassificationData',
 			array(
 				'enabled'        => $this->is_enabled(),
 				'strategy'       => $this->get_strategy(),
@@ -179,7 +179,7 @@ class Contextual_Tagging extends Abstract_Feature {
 		$current_max            = get_option( $this->get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
 		?>
 		<fieldset class="ai-experiments__item-fields">
-			<legend class="screen-reader-text"><?php esc_html_e( 'Contextual Tagging Settings', 'ai' ); ?></legend>
+			<legend class="screen-reader-text"><?php esc_html_e( 'Content Classification Settings', 'ai' ); ?></legend>
 			<table class="ai-experiments__settings-table" role="presentation">
 				<tr>
 					<td>
@@ -253,7 +253,7 @@ class Contextual_Tagging extends Abstract_Feature {
 	}
 
 	/**
-	 * Gets the strategy to use for contextual tagging.
+	 * Gets the strategy to use for content classification.
 	 *
 	 * @since x.x.x
 	 *
@@ -263,21 +263,21 @@ class Contextual_Tagging extends Abstract_Feature {
 		$strategy = get_option( $this->get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY );
 
 		/**
-		 * Filters the strategy to use for contextual tagging.
+		 * Filters the strategy to use for content classification.
 		 *
 		 * @since x.x.x
 		 *
 		 * @param string $strategy The strategy to use.
 		 * @return string The filtered strategy.
 		 */
-		$strategy = apply_filters( 'wpai_contextual_tagging_strategy', $strategy );
+		$strategy = apply_filters( 'wpai_content_classification_strategy', $strategy );
 
 		// Return the sanitized strategy value.
 		return $this->sanitize_strategy( $strategy );
 	}
 
 	/**
-	 * Gets the maximum number of suggestions to generate for contextual tagging.
+	 * Gets the maximum number of suggestions to generate for content classification.
 	 *
 	 * @since x.x.x
 	 *
@@ -287,13 +287,13 @@ class Contextual_Tagging extends Abstract_Feature {
 		$max_suggestions = (int) get_option( $this->get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
 
 		/**
-		 * Filters the maximum number of suggestions to generate for contextual tagging.
+		 * Filters the maximum number of suggestions to generate for content classification.
 		 *
 		 * @since x.x.x
 		 *
 		 * @param int $max_suggestions The maximum number of suggestions to generate.
 		 * @return int The filtered max suggestions.
 		 */
-		return apply_filters( 'wpai_contextual_tagging_max_suggestions', $max_suggestions );
+		return apply_filters( 'wpai_content_classification_max_suggestions', $max_suggestions );
 	}
 }

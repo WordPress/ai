@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the Contextual_Tagging Ability class.
+ * Integration tests for the Content_Classification Ability class.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities
  */
@@ -9,20 +9,20 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
 use WP_Error;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Contextual_Tagging\Contextual_Tagging;
+use WordPress\AI\Abilities\Content_Classification\Content_Classification;
 use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
- * Test experiment for Contextual_Tagging Ability tests.
+ * Test experiment for Content_Classification Ability tests.
  *
  * @since x.x.x
  */
-class Test_Contextual_Tagging_Experiment extends Abstract_Feature {
+class Test_Content_Classification_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
-		return 'contextual-tagging';
+		return 'content-classification';
 	}
 
 	/**
@@ -30,7 +30,7 @@ class Test_Contextual_Tagging_Experiment extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => 'Contextual Tagging',
+			'label'       => 'Content Classification',
 			'description' => 'AI-powered suggestions for post tags and categories.',
 		);
 	}
@@ -46,23 +46,23 @@ class Test_Contextual_Tagging_Experiment extends Abstract_Feature {
 }
 
 /**
- * Contextual_Tagging Ability test case.
+ * Content_Classification Ability test case.
  *
  * @since x.x.x
  */
-class Contextual_TaggingTest extends WP_UnitTestCase {
+class Content_ClassificationTest extends WP_UnitTestCase {
 
 	/**
-	 * Contextual_Tagging ability instance.
+	 * Content_Classification ability instance.
 	 *
-	 * @var \WordPress\AI\Abilities\Contextual_Tagging\Contextual_Tagging
+	 * @var \WordPress\AI\Abilities\Content_Classification\Content_Classification
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Contextual_Tagging_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Content_Classification_Experiment
 	 */
 	private $experiment;
 
@@ -74,9 +74,9 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$this->experiment = new Test_Contextual_Tagging_Experiment();
-		$this->ability    = new Contextual_Tagging(
-			'ai/contextual-tagging',
+		$this->experiment = new Test_Content_Classification_Experiment();
+		$this->ability    = new Content_Classification(
+			'ai/content-classification',
 			array(
 				'label'       => $this->experiment->get_label(),
 				'description' => $this->experiment->get_description(),
@@ -91,8 +91,8 @@ class Contextual_TaggingTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		remove_all_filters( 'wpai_contextual_tagging_content' );
-		remove_all_filters( 'wpai_contextual_tagging_suggestions' );
+		remove_all_filters( 'wpai_content_classification_content' );
+		remove_all_filters( 'wpai_content_classification_suggestions' );
 		parent::tearDown();
 	}
 

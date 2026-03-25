@@ -1,5 +1,5 @@
 /**
- * Contextual tagging experiment plugin registration.
+ * Content classification experiment plugin registration.
  */
 
 /**
@@ -25,10 +25,10 @@ const SUPPORTED_TAXONOMIES = [ 'post_tag', 'category' ];
  * @param OriginalComponent The original taxonomy selector component.
  * @return The wrapped component.
  */
-function withContextualTagging(
+function withContentClassification(
 	OriginalComponent: React.ComponentType< any >
 ) {
-	return function ContextualTaggingWrapper( props: any ) {
+	return function ContentClassificationWrapper( props: any ) {
 		const { slug } = props;
 
 		if ( ! SUPPORTED_TAXONOMIES.includes( slug ) ) {
@@ -46,6 +46,6 @@ function withContextualTagging(
 
 addFilter(
 	'editor.PostTaxonomyType',
-	'ai/contextual-tagging',
-	withContextualTagging
+	'ai/content-classification',
+	withContentClassification
 );

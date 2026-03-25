@@ -14,7 +14,7 @@ import { close as closeIcon, update } from '@wordpress/icons';
 /**
  * Internal dependencies
  */
-import { useContextualTagging } from './useContextualTagging';
+import { useContentClassification } from './useContentClassification';
 import type { TagSuggestion } from '../types';
 
 interface SuggestionPanelProps {
@@ -42,7 +42,7 @@ export default function SuggestionPanel( {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
-	} = useContextualTagging( taxonomy );
+	} = useContentClassification( taxonomy );
 
 	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
 	const taxonomyLabel: string = taxonomyObject?.name ?? taxonomy;
@@ -50,7 +50,7 @@ export default function SuggestionPanel( {
 	const hasSuggestions = suggestions.length > 0;
 
 	return (
-		<div className="ai-contextual-tagging">
+		<div className="ai-content-classification">
 			{ ! hasSuggestions && (
 				<Button
 					icon={ update }
@@ -58,7 +58,7 @@ export default function SuggestionPanel( {
 					onClick={ handleGenerate }
 					disabled={ isGenerating || ! hasEnoughContent }
 					isBusy={ isGenerating }
-					className="ai-contextual-tagging__generate-button"
+					className="ai-content-classification__generate-button"
 					__next40pxDefaultSize
 				>
 					{ isGenerating
@@ -72,7 +72,7 @@ export default function SuggestionPanel( {
 			) }
 
 			{ ! hasEnoughContent && ! hasSuggestions && (
-				<p className="ai-contextual-tagging__hint components-base-control__help">
+				<p className="ai-content-classification__hint components-base-control__help">
 					{ __(
 						'Add more content to enable AI suggestions (approximately 150 words).',
 						'ai'
@@ -81,26 +81,26 @@ export default function SuggestionPanel( {
 			) }
 
 			{ hasSuggestions && (
-				<div className="ai-contextual-tagging__suggestions">
-					<h3 className="ai-contextual-tagging__suggestions-title">
+				<div className="ai-content-classification__suggestions">
+					<h3 className="ai-content-classification__suggestions-title">
 						{ sprintf(
 							/* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
 							__( 'Suggested %s', 'ai' ),
 							taxonomyLabel
 						) }
 					</h3>
-					<div className="ai-contextual-tagging__pills">
+					<div className="ai-content-classification__pills">
 						{ suggestions.map( ( suggestion: TagSuggestion ) => (
 							<span
 								key={ suggestion.term }
-								className={ `ai-contextual-tagging__pill${
+								className={ `ai-content-classification__pill${
 									suggestion.is_new
-										? ' ai-contextual-tagging__pill--new'
+										? ' ai-content-classification__pill--new'
 										: ''
 								}` }
 							>
 								<Button
-									className="ai-contextual-tagging__pill-accept"
+									className="ai-content-classification__pill-accept"
 									onClick={ () => handleAccept( suggestion ) }
 									label={ sprintf(
 										/* translators: %s: Term name. */
@@ -109,19 +109,19 @@ export default function SuggestionPanel( {
 									) }
 								>
 									{ suggestion.parent && (
-										<span className="ai-contextual-tagging__pill-parent">
+										<span className="ai-content-classification__pill-parent">
 											{ suggestion.parent + ' › ' }
 										</span>
 									) }
 									{ suggestion.term }
 									{ suggestion.is_new && (
-										<span className="ai-contextual-tagging__pill-badge">
+										<span className="ai-content-classification__pill-badge">
 											{ __( 'new', 'ai' ) }
 										</span>
 									) }
 								</Button>
 								<Button
-									className="ai-contextual-tagging__pill-dismiss"
+									className="ai-content-classification__pill-dismiss"
 									icon={ closeIcon }
 									iconSize={ 16 }
 									onClick={ () =>
@@ -136,7 +136,7 @@ export default function SuggestionPanel( {
 							</span>
 						) ) }
 					</div>
-					<Flex gap={ 3 } className="ai-contextual-tagging__actions">
+					<Flex gap={ 3 } className="ai-content-classification__actions">
 						<FlexItem>
 							<Button
 								variant="link"

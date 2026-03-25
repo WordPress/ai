@@ -19,9 +19,9 @@ module.exports = {
 			'src/admin/settings',
 			'index.scss'
 		),
-		'experiments/contextual-tagging': path.resolve(
+		'experiments/content-classification': path.resolve(
 			process.cwd(),
-			'src/experiments/contextual-tagging',
+			'src/experiments/content-classification',
 			'index.tsx'
 		),
 		'experiments/abilities-explorer': path.resolve(
