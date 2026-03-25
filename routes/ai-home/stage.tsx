@@ -24,95 +24,171 @@ import AIIcon from './ai-icon';
 
 type AISettings = Record< string, boolean >;
 
+interface FeatureGroupData {
+	id: string;
+	label: string;
+	description: string;
+}
+
+interface FeatureData {
+	id: string;
+	settingName: string;
+	label: string;
+	description: string;
+	category: string;
+}
+
 interface PageData {
 	hasCredentials: boolean;
 	hasValidCredentials: boolean;
 	connectorsUrl: string;
+	featureGroups: FeatureGroupData[];
+	features: FeatureData[];
+}
+
+const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
+const GLOBAL_FIELD_ID = 'wpai_features_enabled';
+
+function isRecord( value: unknown ): value is Record< string, unknown > {
+	return typeof value === 'object' && value !== null;
+}
+
+function toStringValue( value: unknown ): string {
+	return typeof value === 'string' ? value : '';
+}
+
+function isDefined< T >( value: T | null ): value is T {
+	return value !== null;
+}
+
+function parseFeatureGroup( value: unknown ): FeatureGroupData | null {
+	if ( ! isRecord( value ) ) {
+		return null;
+	}
+
+	const featureGroup = value as Partial< FeatureGroupData >;
+	const id = toStringValue( featureGroup.id );
+	if ( ! id ) {
+		return null;
+	}
+
+	return {
+		id,
+		label: toStringValue( featureGroup.label ) || id,
+		description: toStringValue( featureGroup.description ),
+	};
+}
+
+function parseFeature( value: unknown ): FeatureData | null {
+	if ( ! isRecord( value ) ) {
+		return null;
+	}
+
+	const feature = value as Partial< FeatureData >;
+	const settingName = toStringValue( feature.settingName );
+	if ( ! settingName ) {
+		return null;
+	}
+
+	const id =
+		toStringValue( feature.id ) ||
+		getFeatureIdFromSettingName( settingName );
+
+	return {
+		id,
+		settingName,
+		label: toStringValue( feature.label ) || getDefaultLabel( id ),
+		description: toStringValue( feature.description ),
+		category: toStringValue( feature.category ) || 'other',
+	};
+}
+
+function getFeatureIdFromSettingName( settingName: string ): string {
+	const match = FEATURE_SETTING_PATTERN.exec( settingName );
+	return match?.[ 1 ] ?? settingName;
+}
+
+function getDefaultLabel( key: string ): string {
+	return key
+		.split( /[-_]/ )
+		.filter( Boolean )
+		.map( ( part ) => part[ 0 ]?.toUpperCase() + part.slice( 1 ) )
+		.join( ' ' );
+}
+
+function getSectionId( groupId: string ): string {
+	return `feature-group-${ groupId.replace( /[^a-zA-Z0-9_-]/g, '-' ) }`;
+}
+
+function buildFallbackFeatureGroups(
+	features: FeatureData[]
+): FeatureGroupData[] {
+	const categories = Array.from(
+		new Set( features.map( ( feature ) => feature.category || 'other' ) )
+	);
+
+	return categories.map( ( category ) => ( {
+		id: category,
+		label:
+			category === 'other'
+				? __( 'Other Features', 'ai' )
+				: getDefaultLabel( category ),
+		description:
+			category === 'other'
+				? __( 'Additional AI-powered features.', 'ai' )
+				: '',
+	} ) );
 }
 
 function getPageData(): PageData {
+	const fallback: PageData = {
+		hasCredentials: false,
+		hasValidCredentials: false,
+		connectorsUrl: '',
+		featureGroups: [],
+		features: [],
+	};
+
 	try {
-		return JSON.parse(
+		const rawData = JSON.parse(
 			document.getElementById( 'wp-script-module-data-ai-wp-admin' )
 				?.textContent ?? '{}'
 		);
-	} catch {
+
+		if ( ! isRecord( rawData ) ) {
+			return fallback;
+		}
+
+		const pageData = rawData as Partial< PageData >;
+		const featureGroups = Array.isArray( pageData.featureGroups )
+			? pageData.featureGroups
+					.map( parseFeatureGroup )
+					.filter( isDefined )
+			: [];
+
+		const features = Array.isArray( pageData.features )
+			? pageData.features.map( parseFeature ).filter( isDefined )
+			: [];
+
 		return {
-			hasCredentials: false,
-			hasValidCredentials: false,
-			connectorsUrl: '',
+			hasCredentials: Boolean( pageData.hasCredentials ),
+			hasValidCredentials: Boolean( pageData.hasValidCredentials ),
+			connectorsUrl: toStringValue( pageData.connectorsUrl ),
+			featureGroups,
+			features,
 		};
+	} catch {
+		return fallback;
 	}
 }
 
 const PAGE_DATA = getPageData();
 
 const GLOBAL_FIELD: Field< AISettings > = {
-	id: 'wpai_features_enabled',
+	id: GLOBAL_FIELD_ID,
 	label: __( 'Enable AI', 'ai' ),
 	type: 'boolean',
 };
-
-const EXPERIMENT_FIELDS: Field< AISettings >[] = [
-	{
-		id: 'wpai_feature_excerpt-generation_enabled',
-		label: __( 'Excerpt Generation', 'ai' ),
-		description: __( 'Generates excerpt suggestions from content', 'ai' ),
-		type: 'boolean',
-	},
-	{
-		id: 'wpai_feature_alt-text-generation_enabled',
-		label: __( 'Alt Text Generation', 'ai' ),
-		description: __(
-			'Generates descriptive alt text for images using AI vision models.',
-			'ai'
-		),
-		type: 'boolean',
-	},
-	{
-		id: 'wpai_feature_image-generation_enabled',
-		label: __( 'Image Generation and Editing', 'ai' ),
-		description: __( 'Generate and edit images using AI', 'ai' ),
-		type: 'boolean',
-	},
-	{
-		id: 'wpai_feature_review-notes_enabled',
-		label: __( 'Review Notes', 'ai' ),
-		description: __(
-			'Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.',
-			'ai'
-		),
-		type: 'boolean',
-	},
-	{
-		id: 'wpai_feature_summarization_enabled',
-		label: __( 'Content Summarization', 'ai' ),
-		description: __(
-			'Summarizes long-form content into digestible overviews',
-			'ai'
-		),
-		type: 'boolean',
-	},
-	{
-		id: 'wpai_feature_title-generation_enabled',
-		label: __( 'Title Generation', 'ai' ),
-		description: __( 'Generates title suggestions from content', 'ai' ),
-		type: 'boolean',
-	},
-	{
-		id: 'wpai_feature_abilities-explorer_enabled',
-		label: __( 'Abilities Explorer', 'ai' ),
-		description: __(
-			'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.',
-			'ai'
-		),
-		type: 'boolean',
-	},
-];
-
-const AI_SETTING_KEYS = [ GLOBAL_FIELD, ...EXPERIMENT_FIELDS ].map(
-	( f ) => f.id
-);
 
 function DisabledCheckbox( {
 	field,
@@ -129,62 +205,6 @@ function DisabledCheckbox( {
 		/>
 	);
 }
-
-const form: Form = {
-	fields: [
-		{
-			id: 'generalSettings',
-			label: __( 'General Settings', 'ai' ),
-			description: __(
-				'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-				'ai'
-			),
-			layout: {
-				type: 'card',
-				withHeader: true,
-				isCollapsible: false,
-			},
-			children: [ 'wpai_features_enabled' ],
-		},
-		{
-			id: 'editorExperiments',
-			label: __( 'Editor Experiments', 'ai' ),
-			description: __(
-				'AI-powered experiments for the block editor, including content generation and enhancement tools.',
-				'ai'
-			),
-			layout: {
-				type: 'card',
-				withHeader: true,
-				isOpened: true,
-				isCollapsible: true,
-			},
-			children: [
-				'wpai_feature_excerpt-generation_enabled',
-				'wpai_feature_alt-text-generation_enabled',
-				'wpai_feature_image-generation_enabled',
-				'wpai_feature_review-notes_enabled',
-				'wpai_feature_summarization_enabled',
-				'wpai_feature_title-generation_enabled',
-			],
-		},
-		{
-			id: 'adminExperiments',
-			label: __( 'Admin Experiments', 'ai' ),
-			description: __(
-				'AI-powered experiments for the WordPress admin area, including exploration and testing tools.',
-				'ai'
-			),
-			layout: {
-				type: 'card',
-				withHeader: true,
-				isOpened: true,
-				isCollapsible: true,
-			},
-			children: [ 'wpai_feature_abilities-explorer_enabled' ],
-		},
-	],
-};
 
 function AISettingsPage() {
 	const { siteSettings, hasEdits, isSaving, isLoading } = useSelect(
@@ -217,28 +237,158 @@ function AISettingsPage() {
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
 
+	const featureDefinitions = useMemo< FeatureData[] >( () => {
+		const sourceFeatures =
+			PAGE_DATA.features.length > 0
+				? PAGE_DATA.features
+				: Object.keys( siteSettings ?? {} )
+						.filter( ( key ) =>
+							FEATURE_SETTING_PATTERN.test( key )
+						)
+						.sort()
+						.map( ( settingName ) => {
+							const id =
+								getFeatureIdFromSettingName( settingName );
+							return {
+								id,
+								settingName,
+								label: getDefaultLabel( id ),
+								description: '',
+								category: 'other',
+							};
+						} );
+
+		const uniqueFeatures: FeatureData[] = [];
+		const seenSettingNames = new Set< string >();
+		for ( const feature of sourceFeatures ) {
+			if ( seenSettingNames.has( feature.settingName ) ) {
+				continue;
+			}
+
+			seenSettingNames.add( feature.settingName );
+			uniqueFeatures.push( feature );
+		}
+
+		return uniqueFeatures;
+	}, [ siteSettings ] );
+
+	const featureGroups = useMemo< FeatureGroupData[] >(
+		() =>
+			PAGE_DATA.featureGroups.length > 0
+				? PAGE_DATA.featureGroups
+				: buildFallbackFeatureGroups( featureDefinitions ),
+		[ featureDefinitions ]
+	);
+
+	const aiSettingKeys = useMemo( () => {
+		const settingKeys = new Set< string >( [ GLOBAL_FIELD_ID ] );
+
+		for ( const feature of featureDefinitions ) {
+			settingKeys.add( feature.settingName );
+		}
+
+		return Array.from( settingKeys );
+	}, [ featureDefinitions ] );
+
 	const data: AISettings = useMemo( () => {
 		const aiSettings: AISettings = {};
-		for ( const key of AI_SETTING_KEYS ) {
+		for ( const key of aiSettingKeys ) {
 			aiSettings[ key ] = Boolean( siteSettings?.[ key ] ?? false );
 		}
 		return aiSettings;
-	}, [ siteSettings ] );
+	}, [ aiSettingKeys, siteSettings ] );
 
 	const globalEnabled = data[ GLOBAL_FIELD.id ];
 
 	const fields = useMemo< Field< AISettings >[] >(
 		() => [
 			GLOBAL_FIELD,
-			...EXPERIMENT_FIELDS.map( ( field ) => ( {
-				...field,
+			...featureDefinitions.map( ( feature ) => ( {
+				id: feature.settingName,
+				label: feature.label,
+				description: feature.description,
+				type: 'boolean' as const,
 				Edit: globalEnabled
 					? ( 'checkbox' as const )
 					: DisabledCheckbox,
 			} ) ),
 		],
-		[ globalEnabled ]
+		[ featureDefinitions, globalEnabled ]
 	);
+
+	const form = useMemo< Form >( () => {
+		const groupedFields = new Map< string, string[] >();
+		for ( const feature of featureDefinitions ) {
+			const category = feature.category || 'other';
+			const categoryFields = groupedFields.get( category ) ?? [];
+			categoryFields.push( feature.settingName );
+			groupedFields.set( category, categoryFields );
+		}
+
+		const sectionFields: NonNullable< Form[ 'fields' ] > = [];
+		const seenCategories = new Set< string >();
+
+		for ( const group of featureGroups ) {
+			const children = groupedFields.get( group.id ) ?? [];
+
+			if ( children.length === 0 ) {
+				continue;
+			}
+
+			seenCategories.add( group.id );
+			sectionFields.push( {
+				id: getSectionId( group.id ),
+				label: group.label,
+				description: group.description,
+				layout: {
+					type: 'card',
+					withHeader: true,
+					isOpened: true,
+					isCollapsible: true,
+				},
+				children,
+			} );
+		}
+
+		for ( const [ category, children ] of groupedFields.entries() ) {
+			if ( children.length === 0 || seenCategories.has( category ) ) {
+				continue;
+			}
+
+			sectionFields.push( {
+				id: getSectionId( category ),
+				label: getDefaultLabel( category ),
+				description: '',
+				layout: {
+					type: 'card',
+					withHeader: true,
+					isOpened: true,
+					isCollapsible: true,
+				},
+				children,
+			} );
+		}
+
+		return {
+			fields: [
+				{
+					id: 'generalSettings',
+					label: __( 'General Settings', 'ai' ),
+					description: __(
+						'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
+						'ai'
+					),
+					layout: {
+						type: 'card',
+						withHeader: true,
+						isCollapsible: false,
+					},
+					children: [ GLOBAL_FIELD_ID ],
+				},
+				...sectionFields,
+			],
+		};
+	}, [ featureDefinitions, featureGroups ] );
 
 	const handleChange = useCallback(
 		( edits: Record< string, unknown > ) => {
