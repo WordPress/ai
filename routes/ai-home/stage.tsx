@@ -25,7 +25,6 @@ const AI_SETTING_KEYS = [
 	'wpai_feature_image-generation_enabled',
 	'wpai_feature_review-notes_enabled',
 	'wpai_feature_abilities-explorer_enabled',
-	'wpai_feature_example-experiment_enabled',
 ];
 
 const DEFAULT_SETTINGS: AISettings = Object.fromEntries(
@@ -99,15 +98,6 @@ const EXPERIMENT_FIELDS: Field< AISettings >[] = [
 		),
 		type: 'boolean',
 	},
-	{
-		id: 'wpai_feature_example-experiment_enabled',
-		label: __( 'Example Experiment', 'ai' ),
-		description: __(
-			'Demonstrates the AI experiment system with example hooks and functionality.',
-			'ai'
-		),
-		type: 'boolean',
-	},
 ];
 
 function DisabledCheckbox( { field, data }: any ) {
@@ -176,7 +166,6 @@ const form: Form = {
 			},
 			children: [
 				'wpai_feature_abilities-explorer_enabled',
-				'wpai_feature_example-experiment_enabled',
 			],
 		},
 	],
