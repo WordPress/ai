@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Provides cost estimation for AI requests across multiple providers.
  *

@@ -11,6 +11,8 @@ namespace WordPress\AI\Logging;
 
 use WordPress\AiClient\AiClient;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Initializes logging integration with the AI Client SDK.
  *

@@ -16,6 +16,8 @@ use WP_REST_Response;
 use WP_REST_Server;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Provides `/ai/v1/logs` routes for the AI Request Logs admin UI.
  *

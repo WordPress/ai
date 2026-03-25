@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Handles database table creation and schema migrations for AI request logs.
  *

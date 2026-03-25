@@ -21,6 +21,8 @@ use function esc_attr;
 use function esc_html_e;
 use function register_setting;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Provides AI request logging for observability and cost tracking.
  *

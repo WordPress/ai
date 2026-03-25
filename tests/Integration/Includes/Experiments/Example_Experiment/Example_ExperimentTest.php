@@ -46,6 +46,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		$registry->register_feature( $example_experiment );
 
 		$loader->initialize_features();
+		do_action( 'rest_api_init', rest_get_server() );
 
 		$experiment = $registry->get_feature( 'example-experiment' );
 		$this->assertInstanceOf( Example_Experiment::class, $experiment, 'Example experiment should be registered in the registry.' );

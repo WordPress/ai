@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Handles storage, retrieval, and aggregation of AI request logs.
  *

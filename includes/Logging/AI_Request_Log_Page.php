@@ -12,6 +12,8 @@ namespace WordPress\AI\Logging;
 use WordPress\AI\Admin\Provider_Metadata_Registry;
 use WordPress\AI\Asset_Loader;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Renders the AI Request Logs screen under Tools.
  *

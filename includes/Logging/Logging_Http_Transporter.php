@@ -15,6 +15,8 @@ use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Providers\Http\DTO\Response;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Decorates an HTTP transporter to add logging for AI requests.
  *

@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Extracts and normalizes log data from AI HTTP requests and responses.
  *

@@ -16,6 +16,8 @@ use function update_option;
 use function wp_next_scheduled;
 use function wp_schedule_event;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Facade for AI request logging functionality.
  *
