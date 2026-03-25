@@ -387,13 +387,16 @@ function initialize_features(): void {
 				add_action(
 					'admin_menu',
 					static function () {
-						if ( isset( $_GET['page'] ) && 'ai-wp-admin' === $_GET['page'] ) {
-							_doing_it_wrong(
-								'initialize_features',
-								esc_html__( 'AI settings page render function not found. Run npm run build:routes to generate build assets.', 'ai' ),
-								'0.6.0'
-							);
+						// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
+						if ( ! isset( $_GET['page'] ) || 'ai-wp-admin' !== $_GET['page'] ) {
+							return;
 						}
+
+						_doing_it_wrong(
+							'initialize_features',
+							esc_html__( 'AI settings page render function not found. Run npm run build:routes to generate build assets.', 'ai' ),
+							'0.6.0'
+						);
 					}
 				);
 			}
