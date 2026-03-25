@@ -74,7 +74,7 @@ class AI_Request_Log_Page {
 
 		Asset_Loader::localize_script(
 			'ai_request_logs',
-			'AiRequestLogsSettings',
+			'RequestLogsSettings',
 			array(
 				'rest'             => array(
 					'nonce'  => wp_create_nonce( 'wp_rest' ),

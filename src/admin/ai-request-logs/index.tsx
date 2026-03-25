@@ -38,6 +38,8 @@ import type {
 } from './types';
 
 const settings: LocalizedSettings =
+	window.aiRequestLogsSettings ??
+	window.aiAiRequestLogsSettings ??
 	window.AiRequestLogsSettings ??
 	( () => {
 		throw new Error( 'AiRequestLogsSettings is not defined.' );

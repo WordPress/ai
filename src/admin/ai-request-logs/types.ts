@@ -87,6 +87,8 @@ export interface LocalizedSettings {
 
 declare global {
 	interface Window {
+		aiRequestLogsSettings?: LocalizedSettings;
+		aiAiRequestLogsSettings?: LocalizedSettings;
 		AiRequestLogsSettings?: LocalizedSettings;
 	}
 }
