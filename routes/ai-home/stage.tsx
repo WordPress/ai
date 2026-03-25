@@ -3,9 +3,9 @@
  */
 import { Page } from '@wordpress/admin-ui';
 import apiFetch from '@wordpress/api-fetch';
-import { Button, Spinner } from '@wordpress/components';
+import { Button, CheckboxControl, Spinner } from '@wordpress/components';
 import { DataForm } from '@wordpress/dataviews';
-import { useState, useEffect, useCallback } from '@wordpress/element';
+import { useState, useEffect, useCallback, useMemo } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import type { Field, Form } from '@wordpress/dataviews';
 
@@ -32,12 +32,13 @@ const DEFAULT_SETTINGS: AISettings = Object.fromEntries(
 	AI_SETTING_KEYS.map( ( key ) => [ key, false ] )
 );
 
-const fields: Field< AISettings >[] = [
-	{
-		id: 'wpai_features_enabled',
-		label: __( 'Enable AI', 'ai' ),
-		type: 'boolean',
-	},
+const GLOBAL_FIELD: Field< AISettings > = {
+	id: 'wpai_features_enabled',
+	label: __( 'Enable AI', 'ai' ),
+	type: 'boolean',
+};
+
+const EXPERIMENT_FIELDS: Field< AISettings >[] = [
 	{
 		id: 'wpai_feature_excerpt-generation_enabled',
 		label: __( 'Excerpt Generation', 'ai' ),
@@ -109,6 +110,27 @@ const fields: Field< AISettings >[] = [
 	},
 ];
 
+function DisabledCheckbox( {
+	field,
+	data,
+	hideLabelFromVision,
+}: {
+	field: { label: string; description?: string; getValue: ( args: { item: AISettings } ) => boolean };
+	data: AISettings;
+	hideLabelFromVision?: boolean;
+} ) {
+	return (
+		<CheckboxControl
+			__nextHasNoMarginBottom
+			label={ hideLabelFromVision ? '' : field.label }
+			help={ field.description ?? '' }
+			checked={ !! field.getValue( { item: data } ) }
+			onChange={ () => {} }
+			disabled
+		/>
+	);
+}
+
 const form: Form = {
 	fields: [
 		{
@@ -173,6 +195,20 @@ function AISettingsPage() {
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ isSaving, setIsSaving ] = useState( false );
 	const [ hasEdits, setHasEdits ] = useState( false );
+
+	const globalEnabled = data[ 'wpai_features_enabled' ];
+
+	const fields = useMemo< Field< AISettings >[] >(
+		() => [
+			GLOBAL_FIELD,
+			...EXPERIMENT_FIELDS.map( ( field ) =>
+				globalEnabled
+					? field
+					: { ...field, Edit: DisabledCheckbox }
+			),
+		],
+		[ globalEnabled ]
+	);
 
 	useEffect( () => {
 		apiFetch< Record< string, unknown > >( {
