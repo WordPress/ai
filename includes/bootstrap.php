@@ -17,7 +17,6 @@ use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
-use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
 // Exit if accessed directly.
@@ -215,10 +214,21 @@ function initialize_features(): void {
 		$settings_registration = new Settings_Registration( $registry );
 		$settings_registration->init();
 
-		// Initialize admin settings page.
-		if ( is_admin() ) {
-			$settings_page = new Settings_Page( $registry );
-			$settings_page->init();
+		// Register admin settings page menu item.
+		if ( is_admin() && function_exists( 'ai_ai_wp_admin_render_page' ) ) {
+			add_action(
+				'admin_menu',
+				static function () {
+					add_options_page(
+						__( 'AI', 'ai' ),
+						__( 'AI', 'ai' ),
+						'manage_options',
+						'ai-wp-admin',
+						'ai_ai_wp_admin_render_page', // @phpstan-ignore argument.type
+						2
+					);
+				}
+			);
 		}
 
 		// Register our post-related WordPress Abilities.
