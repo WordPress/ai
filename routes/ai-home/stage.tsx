@@ -110,20 +110,12 @@ const EXPERIMENT_FIELDS: Field< AISettings >[] = [
 	},
 ];
 
-function DisabledCheckbox( {
-	field,
-	data,
-	hideLabelFromVision,
-}: {
-	field: { label: string; description?: string; getValue: ( args: { item: AISettings } ) => boolean };
-	data: AISettings;
-	hideLabelFromVision?: boolean;
-} ) {
+function DisabledCheckbox( { field, data }: any ) {
 	return (
 		<CheckboxControl
 			__nextHasNoMarginBottom
-			label={ hideLabelFromVision ? '' : field.label }
-			help={ field.description ?? '' }
+			label={ field.label }
+			help={ field.description }
 			checked={ !! field.getValue( { item: data } ) }
 			onChange={ () => {} }
 			disabled
@@ -201,11 +193,12 @@ function AISettingsPage() {
 	const fields = useMemo< Field< AISettings >[] >(
 		() => [
 			GLOBAL_FIELD,
-			...EXPERIMENT_FIELDS.map( ( field ) =>
-				globalEnabled
-					? field
-					: { ...field, Edit: DisabledCheckbox }
-			),
+			...EXPERIMENT_FIELDS.map( ( field ) => ( {
+				...field,
+				Edit: globalEnabled
+					? ( 'checkbox' as const )
+					: DisabledCheckbox,
+			} ) ),
 		],
 		[ globalEnabled ]
 	);
