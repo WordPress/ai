@@ -126,8 +126,6 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
 		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
-		$this->assertArrayHasKey( 'candidates', $schema['properties'], 'Schema should have candidates property' );
-
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['content']['sanitize_callback'], 'Content should use sanitize_text_field' );
@@ -135,11 +133,6 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		// Verify context property (can be string or numeric post ID).
 		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'Context should be string type' );
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['context']['sanitize_callback'], 'Context should use sanitize_text_field' );
-
-		// Verify candidates property.
-		$this->assertEquals( 'integer', $schema['properties']['candidates']['type'], 'candidates should be integer type' );
-		$this->assertEquals( 1, $schema['properties']['candidates']['minimum'], 'candidates minimum should be 1' );
-		$this->assertEquals( 10, $schema['properties']['candidates']['maximum'], 'candidates maximum should be 10' );
 	}
 
 	/**
@@ -187,8 +180,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$input = array(
-			'content'    => 'This is some test content.',
-			'candidates' => 3,
+			'content' => 'This is some test content.',
 		);
 
 		try {
@@ -207,7 +199,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
 		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		$this->assertCount( 3, $result['titles'], 'Should have 3 titles' );
+		$this->assertCount( 1, $result['titles'], 'Should have 1 title' );
 	}
 
 	/**
@@ -229,8 +221,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		);
 
 		$input = array(
-			'context'    => $post_id,
-			'candidates' => 2,
+			'context' => $post_id,
 		);
 
 		try {
@@ -249,7 +240,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
 		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		$this->assertCount( 2, $result['titles'], 'Should have 2 titles' );
+		$this->assertCount( 1, $result['titles'], 'Should have 1 title' );
 	}
 
 	/**
@@ -318,7 +309,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertArrayHasKey( 'titles', $result, 'Result should have titles key' );
 		$this->assertIsArray( $result['titles'], 'Titles should be an array' );
-		$this->assertCount( 3, $result['titles'], 'Should have 3 titles by default' );
+		$this->assertCount( 1, $result['titles'], 'Should have 1 title by default' );
 	}
 
 	/**
