@@ -1,3 +1,8 @@
+/**
+ * wp-build pages expect build/modules/boot/index.min.asset.php, but this plugin
+ * does not ship a local boot package. We ensure that file exists by proxying
+ * Core's boot asset file, with a tiny fallback for local development.
+ */
 const fs = require( 'fs' );
 const path = require( 'path' );
 
