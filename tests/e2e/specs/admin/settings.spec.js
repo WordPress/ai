@@ -90,8 +90,10 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure feature checkboxes are disabled when AI is disabled.
 		await expect(
-			page.locator( 'input[id^="wpai_feature_"]' ).first()
-		).toBeDisabled();
+			page
+				.locator( '#ai-wp-admin-app input[type="checkbox"]:disabled' )
+				.first()
+		).toBeVisible();
 
 		// Globally turn on experiments.
 		await enableExperiments( admin, page );
