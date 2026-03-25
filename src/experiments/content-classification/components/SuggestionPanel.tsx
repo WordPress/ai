@@ -136,7 +136,10 @@ export default function SuggestionPanel( {
 							</span>
 						) ) }
 					</div>
-					<Flex gap={ 3 } className="ai-content-classification__actions">
+					<Flex
+						gap={ 3 }
+						className="ai-content-classification__actions"
+					>
 						<FlexItem>
 							<Button
 								variant="link"
