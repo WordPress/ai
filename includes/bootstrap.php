@@ -177,7 +177,7 @@ function load(): void {
 	// Load auto-generated wp-build registration if present.
 	$build_registration = WPAI_PLUGIN_DIR . 'build/build.php';
 	if ( file_exists( $build_registration ) ) {
-		require_once $build_registration;
+		require_once $build_registration; // @phpstan-ignore requireOnce.fileNotFound
 	}
 
 		// Handle any pending upgrades.

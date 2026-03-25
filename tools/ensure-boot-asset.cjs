@@ -3,6 +3,9 @@
  * does not ship a local boot package. We ensure that file exists by proxying
  * Core's boot asset file, with a tiny fallback for local development.
  */
+/**
+ * External dependencies
+ */
 const fs = require( 'fs' );
 const path = require( 'path' );
 
@@ -18,11 +21,11 @@ if ( fs.existsSync( bootAssetPath ) ) {
 	process.exit( 0 );
 }
 
-const dependencies = [
-	'react-jsx-runtime',
-];
+const dependencies = [ 'react-jsx-runtime' ];
 
-const dependencyList = dependencies.map( ( handle ) => `'${ handle }'` ).join( ', ' );
+const dependencyList = dependencies
+	.map( ( handle ) => `'${ handle }'` )
+	.join( ', ' );
 const fileContents = `<?php
 $core_asset = ABSPATH . WPINC . '/js/dist/script-modules/boot/index.min.asset.php';
 if ( file_exists( $core_asset ) ) {

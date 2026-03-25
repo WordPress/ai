@@ -102,7 +102,7 @@ class Settings_Page {
 				__( 'AI (New)', 'ai' ),
 				'manage_options',
 				self::NEW_PAGE_SLUG,
-				'ai_ai_new_wp_admin_render_page',
+				'ai_ai_new_wp_admin_render_page', // @phpstan-ignore argument.type (function verified by function_exists above)
 				3
 			);
 		}
