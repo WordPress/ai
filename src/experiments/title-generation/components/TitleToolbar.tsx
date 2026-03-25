@@ -14,7 +14,7 @@ import {
 	ToolbarGroup,
 	ToolbarButton,
 } from '@wordpress/components';
-import { dispatch, select, useDispatch } from '@wordpress/data';
+import { dispatch, select } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
@@ -25,6 +25,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { useEditorDispatch } from '../../../utils/editor-dispatch';
 import type {
 	TitleGenerationAbilityInput,
 	GeneratedTitlesData,
@@ -162,7 +163,7 @@ export default function TitleToolbar(): JSX.Element | null {
 	const content = select( editorStore ).getEditedPostContent();
 	const title = select( editorStore ).getEditedPostAttribute( 'title' );
 
-	const { editPost } = useDispatch( editorStore );
+	const { editPost } = useEditorDispatch();
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 	const [ isOpen, setOpen ] = useState< boolean >( false );

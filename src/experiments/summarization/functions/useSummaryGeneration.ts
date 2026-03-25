@@ -7,7 +7,7 @@
  */
 import { createBlock, type BlockInstance } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { dispatch, useDispatch, useSelect } from '@wordpress/data';
+import { dispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useEffect, useState } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
@@ -16,6 +16,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { generateSummary } from './generate-summary';
+import { useEditorDispatch } from '../../../utils/editor-dispatch';
 
 /**
  * Summary generation hook.
@@ -29,7 +30,7 @@ export function useSummaryGeneration() {
 			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
 		};
 	} );
-	const { editPost } = useDispatch( editorStore );
+	const { editPost } = useEditorDispatch();
 	const [ isSummarizing, setIsSummarizing ] = useState( false );
 	const [ summary, setSummary ] = useState( '' );
 

@@ -13,8 +13,6 @@ import {
 	Spinner,
 } from '@wordpress/components';
 import { BlockSettingsMenuControls } from '@wordpress/block-editor';
-import { useDispatch } from '@wordpress/data';
-import { store as editPostStore } from '@wordpress/edit-post';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
@@ -28,6 +26,7 @@ import {
 	useReviewBlock,
 	useReviewNotes,
 } from '../hooks/useReviewNotes';
+import { useEditPostDispatch } from '../../../utils/editor-dispatch';
 
 /**
  * ReviewNotesPlugin component.
@@ -40,7 +39,7 @@ export default function ReviewNotesPlugin() {
 	const { isReviewing, progress, total, lastRunCount, runReview } =
 		useReviewNotes();
 	const { isReviewing: isReviewingBlock, reviewBlock } = useReviewBlock();
-	const { openGeneralSidebar } = useDispatch( editPostStore );
+	const { openGeneralSidebar } = useEditPostDispatch();
 	const openNotesPanel = () =>
 		openGeneralSidebar?.( 'edit-post/collab-sidebar' );
 

@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { dispatch, select, useDispatch } from '@wordpress/data';
+import { dispatch, select } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
@@ -14,6 +14,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { useEditorDispatch } from '../../../utils/editor-dispatch';
 import type { ExcerptGenerationAbilityInput } from '../types';
 
 /**
@@ -57,7 +58,7 @@ export function useExcerptGeneration(): {
 	const postId = select( editorStore ).getCurrentPostId();
 	const content = select( editorStore ).getEditedPostContent();
 	const excerpt = select( editorStore ).getEditedPostAttribute( 'excerpt' );
-	const { editPost } = useDispatch( editorStore );
+	const { editPost } = useEditorDispatch();
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 
 	const handleGenerate = async () => {

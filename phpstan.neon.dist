@@ -19,6 +19,8 @@ parameters:
 			max: 80400
 		bootstrapFiles:
 				- ai.php
+		scanFiles:
+				- stubs/wordpress-ai-client.php
 		paths:
 				- ai.php
 				- includes/

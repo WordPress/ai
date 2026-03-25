@@ -19,6 +19,11 @@ module.exports = {
 			'src/admin/settings',
 			'index.scss'
 		),
+		'admin/ai-request-logs': path.resolve(
+			process.cwd(),
+			'src/admin/ai-request-logs',
+			'index.tsx'
+		),
 		'experiments/abilities-explorer': path.resolve(
 			process.cwd(),
 			'src/experiments/abilities-explorer',
