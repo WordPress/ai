@@ -56,7 +56,7 @@ export const visitAdminPage = async ( admin: Admin, path: string ) => {
  * @param admin The admin fixture from the test context.
  */
 export const visitSettingsPage = async ( admin: Admin ) => {
-	await admin.visitAdminPage( 'options-general.php?page=ai' );
+	await admin.visitAdminPage( 'options-general.php?page=ai-wp-admin' );
 };
 
 /**
@@ -132,27 +132,19 @@ export const clearConnector = async (
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
-	// Wait for page to fully load before finding button
-	await page.waitForSelector( 'button.ai-experiments__toggle-button', {
-		timeout: 10000,
+	// Wait for page to fully load before finding the global toggle.
+	const globalToggle = page.getByRole( 'checkbox', {
+		name: 'Enable AI',
 	} );
+	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
 
-	// Click the disable button if it exists. Otherwise we assume the experiments are already disabled.
-	const button = page.locator( 'button.ai-experiments__toggle-button', {
-		hasText: 'Disable AI',
-	} );
-	if ( ( await button.count() ) === 0 ) {
+	// Nothing to do if experiments are already disabled.
+	if ( ! ( await globalToggle.isChecked() ) ) {
 		return;
 	}
-	await button.click();
-
-	// Wait for page reload and ensure the save was successful.
-	await page.waitForLoadState( 'load' );
-	await expect(
-		page.locator( '.wrap .notice-success', {
-			hasText: 'Settings saved',
-		} )
-	).toHaveCount( 1 );
+	await globalToggle.uncheck();
+	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
+	await expect( page.getByText( 'Settings saved.' ) ).toBeVisible();
 };
 
 /**
@@ -164,27 +156,19 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
-	// Wait for page to fully load before finding button
-	await page.waitForSelector( 'button.ai-experiments__toggle-button', {
-		timeout: 10000,
+	// Wait for page to fully load before finding the global toggle.
+	const globalToggle = page.getByRole( 'checkbox', {
+		name: 'Enable AI',
 	} );
+	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
 
-	// Click the enable button if it exists. Otherwise we assume the experiments are already enabled.
-	const button = page.locator( 'button.ai-experiments__toggle-button', {
-		hasText: 'Enable AI',
-	} );
-	if ( ( await button.count() ) === 0 ) {
+	// Nothing to do if experiments are already enabled.
+	if ( await globalToggle.isChecked() ) {
 		return;
 	}
-	await button.click();
-
-	// Wait for page reload and ensure the save was successful.
-	await page.waitForLoadState( 'load' );
-	await expect(
-		page.locator( '.wrap .notice-success', {
-			hasText: 'Settings saved',
-		} )
-	).toHaveCount( 1 );
+	await globalToggle.check();
+	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
+	await expect( page.getByText( 'Settings saved.' ) ).toBeVisible();
 };
 
 /**
@@ -201,14 +185,10 @@ export const enableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 	await page.locator( `#wpai_feature_${ experimentId }_enabled` ).check();
-	await page.locator( '#submit' ).click();
+	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
 
 	// Ensure the save was successful.
-	await expect(
-		page.locator( '.wrap .notice-success', {
-			hasText: 'Settings saved',
-		} )
-	).toHaveCount( 1 );
+	await expect( page.getByText( 'Settings saved.' ) ).toBeVisible();
 };
 
 /**
@@ -225,12 +205,8 @@ export const disableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 	await page.locator( `#wpai_feature_${ experimentId }_enabled` ).uncheck();
-	await page.locator( '#submit' ).click();
+	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
 
 	// Ensure the save was successful.
-	await expect(
-		page.locator( '.wrap .notice-success', {
-			hasText: 'Settings saved',
-		} )
-	).toHaveCount( 1 );
+	await expect( page.getByText( 'Settings saved.' ) ).toBeVisible();
 };

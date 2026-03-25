@@ -35,16 +35,17 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure the page title is correct.
 		await expect(
-			page.locator( '.wrap h1', { hasText: 'AI' } )
-		).toHaveCount( 1 );
+			page.getByText(
+				'Configure AI features and experiments for your WordPress site.'
+			)
+		).toBeVisible();
 
 		// Ensure the no AI Connectors error message is displayed.
 		await expect(
-			page.locator( '.wrap .notice-error', {
-				hasText:
-					'The AI plugin requires a valid AI Connector to function properly',
-			} )
-		).toHaveCount( 1 );
+			page.getByText(
+				'The AI plugin requires a valid AI Connector to function properly'
+			)
+		).toBeVisible();
 	} );
 
 	test( 'Can visit the Connectors page and add a valid OpenAI Connector', async ( {
@@ -80,42 +81,28 @@ test.describe( 'Plugin settings', () => {
 		// Globally disable experiments.
 		await disableExperiments( admin, page );
 
-		// Ensure the experiments disabled notice is displayed.
+		// Ensure global AI setting is disabled.
 		await expect(
-			page
-				.locator( '.ai-experiments__notice', {
-					hasText:
-						'Enable AI above to configure individual experiment settings',
-				} )
-				.first()
-		).toHaveCount( 1 );
+			page.getByRole( 'checkbox', { name: 'Enable AI' } )
+		).not.toBeChecked();
+
+		// Ensure feature checkboxes are disabled when AI is disabled.
+		await expect(
+			page.locator( 'input[id^="wpai_feature_"]' ).first()
+		).toBeDisabled();
 
 		// Globally turn on experiments.
 		await enableExperiments( admin, page );
 
-		// Ensure the experiments disabled notice is removed.
-		await expect( page.locator( '.ai-experiments__notice' ) ).toHaveCount(
-			0
-		);
+		// Ensure global AI setting is enabled.
+		await expect(
+			page.getByRole( 'checkbox', { name: 'Enable AI' } )
+		).toBeChecked();
 
 		// Ensure we see the editor experiments section.
-		await expect(
-			page.locator(
-				'.ai-experiments__card .ai-experiments__card-heading',
-				{
-					hasText: 'Editor Experiments',
-				}
-			)
-		).toHaveCount( 1 );
+		await expect( page.getByText( 'Editor Experiments' ) ).toBeVisible();
 
 		// Ensure we see the admin experiments section.
-		await expect(
-			page.locator(
-				'.ai-experiments__card .ai-experiments__card-heading',
-				{
-					hasText: 'Admin Experiments',
-				}
-			)
-		).toHaveCount( 1 );
+		await expect( page.getByText( 'Admin Experiments' ) ).toBeVisible();
 	} );
 } );
