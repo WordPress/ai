@@ -10,8 +10,9 @@
   },
   "dependencies": {
     "@wordpress/admin-ui": "*",
-    "@wordpress/api-fetch": "*",
     "@wordpress/components": "*",
+    "@wordpress/core-data": "*",
+    "@wordpress/data": "*",
     "@wordpress/dataviews": "*",
     "@wordpress/element": "*",
     "@wordpress/i18n": "*"

@@ -2,10 +2,11 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import apiFetch from '@wordpress/api-fetch';
 import { Button, CheckboxControl, Spinner } from '@wordpress/components';
+import { store as coreStore } from '@wordpress/core-data';
+import { useSelect, useDispatch } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
-import { useState, useEffect, useCallback, useMemo } from '@wordpress/element';
+import { useCallback, useMemo } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import type { Field, Form } from '@wordpress/dataviews';
 
@@ -27,10 +28,6 @@ const AI_SETTING_KEYS = [
 	'wpai_feature_review-notes_enabled',
 	'wpai_feature_abilities-explorer_enabled',
 ];
-
-const DEFAULT_SETTINGS: AISettings = Object.fromEntries(
-	AI_SETTING_KEYS.map( ( key ) => [ key, false ] )
-);
 
 const GLOBAL_FIELD: Field< AISettings > = {
 	id: 'wpai_features_enabled',
@@ -165,10 +162,31 @@ const form: Form = {
 };
 
 function AISettingsPage() {
-	const [ data, setData ] = useState< AISettings >( DEFAULT_SETTINGS );
-	const [ isLoading, setIsLoading ] = useState( true );
-	const [ isSaving, setIsSaving ] = useState( false );
-	const [ hasEdits, setHasEdits ] = useState( false );
+	const { data, hasEdits, isSaving, isLoading } = useSelect( ( select ) => {
+		const store = select( coreStore ) as any;
+		const siteRecord = store.getEditedEntityRecord( 'root', 'site' ) as
+			| Record< string, unknown >
+			| undefined;
+		const hasResolved = store.hasFinishedResolution( 'getEntityRecord', [
+			'root',
+			'site',
+		] );
+
+		const aiSettings: AISettings = {};
+		for ( const key of AI_SETTING_KEYS ) {
+			aiSettings[ key ] = Boolean( siteRecord?.[ key ] ?? false );
+		}
+
+		return {
+			data: aiSettings,
+			hasEdits: store.hasEditsForEntityRecord( 'root', 'site' ),
+			isSaving: store.isSavingEntityRecord( 'root', 'site' ),
+			isLoading: ! hasResolved,
+		};
+	}, [] );
+
+	const { editEntityRecord, saveEditedEntityRecord } =
+		useDispatch( coreStore );
 
 	// eslint-disable-next-line dot-notation
 	const globalEnabled = data[ 'wpai_features_enabled' ];
@@ -186,42 +204,16 @@ function AISettingsPage() {
 		[ globalEnabled ]
 	);
 
-	useEffect( () => {
-		apiFetch< Record< string, unknown > >( {
-			path: '/wp/v2/settings',
-		} ).then( ( settings ) => {
-			const aiSettings: AISettings = { ...DEFAULT_SETTINGS };
-			for ( const key of AI_SETTING_KEYS ) {
-				if ( key in settings ) {
-					aiSettings[ key ] = Boolean( settings[ key ] ?? false );
-				}
-			}
-			setData( aiSettings );
-			setIsLoading( false );
-		} );
-	}, [] );
-
-	const handleChange = useCallback( ( edits: Record< string, unknown > ) => {
-		setData( ( prev ) => ( {
-			...prev,
-			...( edits as AISettings ),
-		} ) );
-		setHasEdits( true );
-	}, [] );
+	const handleChange = useCallback(
+		( edits: Record< string, unknown > ) => {
+			( editEntityRecord as any )( 'root', 'site', undefined, edits );
+		},
+		[ editEntityRecord ]
+	);
 
 	const handleSave = useCallback( async () => {
-		setIsSaving( true );
-		try {
-			await apiFetch( {
-				path: '/wp/v2/settings',
-				method: 'POST',
-				data,
-			} );
-			setHasEdits( false );
-		} finally {
-			setIsSaving( false );
-		}
-	}, [ data ] );
+		await ( saveEditedEntityRecord as any )( 'root', 'site' );
+	}, [ saveEditedEntityRecord ] );
 
 	return (
 		<Page
