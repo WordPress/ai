@@ -170,12 +170,18 @@ function load(): void {
 		return;
 	}
 
-	// Load required files.
-	require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
-	require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
+		// Load required files.
+		require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
+		require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
 
-	// Handle any pending upgrades.
-	( new Upgrades() )->init();
+		// Load auto-generated wp-build registration if present.
+		$build_registration = WPAI_PLUGIN_DIR . 'build/build.php';
+		if ( file_exists( $build_registration ) ) {
+			require_once $build_registration;
+		}
+
+		// Handle any pending upgrades.
+		( new Upgrades() )->init();
 
 	// Handle deprecated code.
 	( new Deprecated() )->init();

@@ -48,6 +48,15 @@ class Settings_Page {
 	private const PAGE_SLUG = 'ai';
 
 	/**
+	 * The wp-build settings page slug.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @var string
+	 */
+	private const NEW_PAGE_SLUG = 'ai-new-wp-admin';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
@@ -85,6 +94,18 @@ class Settings_Page {
 			array( $this, 'render_page' ),
 			2
 		);
+
+		if ( function_exists( 'ai_ai_new_wp_admin_render_page' ) ) {
+			add_submenu_page(
+				'options-general.php',
+				__( 'AI (New)', 'ai' ),
+				__( 'AI (New)', 'ai' ),
+				'manage_options',
+				self::NEW_PAGE_SLUG,
+				'ai_ai_new_wp_admin_render_page',
+				3
+			);
+		}
 
 		// Hook into the specific page load to enqueue styles.
 		if ( ! $page_hook ) {
