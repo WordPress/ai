@@ -14,41 +14,23 @@ import type { Field, Form } from '@wordpress/dataviews';
  */
 import './style.scss';
 
-type AISettings = {
-	wpai_features_enabled: boolean;
-	wpai_feature_excerpt_generation_enabled: boolean;
-	wpai_feature_title_generation_enabled: boolean;
-	wpai_feature_alt_text_generation_enabled: boolean;
-	wpai_feature_summarization_enabled: boolean;
-	wpai_feature_image_generation_enabled: boolean;
-	wpai_feature_review_notes_enabled: boolean;
-	wpai_feature_abilities_explorer_enabled: boolean;
-	wpai_feature_example_experiment_enabled: boolean;
-};
+type AISettings = Record< string, boolean >;
 
-const AI_SETTING_KEYS: ( keyof AISettings )[] = [
+const AI_SETTING_KEYS = [
 	'wpai_features_enabled',
-	'wpai_feature_excerpt_generation_enabled',
-	'wpai_feature_title_generation_enabled',
-	'wpai_feature_alt_text_generation_enabled',
+	'wpai_feature_excerpt-generation_enabled',
+	'wpai_feature_title-generation_enabled',
+	'wpai_feature_alt-text-generation_enabled',
 	'wpai_feature_summarization_enabled',
-	'wpai_feature_image_generation_enabled',
-	'wpai_feature_review_notes_enabled',
-	'wpai_feature_abilities_explorer_enabled',
-	'wpai_feature_example_experiment_enabled',
+	'wpai_feature_image-generation_enabled',
+	'wpai_feature_review-notes_enabled',
+	'wpai_feature_abilities-explorer_enabled',
+	'wpai_feature_example-experiment_enabled',
 ];
 
-const DEFAULT_SETTINGS: AISettings = {
-	wpai_features_enabled: false,
-	wpai_feature_excerpt_generation_enabled: false,
-	wpai_feature_title_generation_enabled: false,
-	wpai_feature_alt_text_generation_enabled: false,
-	wpai_feature_summarization_enabled: false,
-	wpai_feature_image_generation_enabled: false,
-	wpai_feature_review_notes_enabled: false,
-	wpai_feature_abilities_explorer_enabled: false,
-	wpai_feature_example_experiment_enabled: false,
-};
+const DEFAULT_SETTINGS: AISettings = Object.fromEntries(
+	AI_SETTING_KEYS.map( ( key ) => [ key, false ] )
+);
 
 const fields: Field< AISettings >[] = [
 	{
@@ -57,7 +39,7 @@ const fields: Field< AISettings >[] = [
 		type: 'boolean',
 	},
 	{
-		id: 'wpai_feature_excerpt_generation_enabled',
+		id: 'wpai_feature_excerpt-generation_enabled',
 		label: __( 'Excerpt Generation', 'ai' ),
 		description: __(
 			'Generates excerpt suggestions from content',
@@ -66,7 +48,7 @@ const fields: Field< AISettings >[] = [
 		type: 'boolean',
 	},
 	{
-		id: 'wpai_feature_alt_text_generation_enabled',
+		id: 'wpai_feature_alt-text-generation_enabled',
 		label: __( 'Alt Text Generation', 'ai' ),
 		description: __(
 			'Generates descriptive alt text for images using AI vision models.',
@@ -75,13 +57,13 @@ const fields: Field< AISettings >[] = [
 		type: 'boolean',
 	},
 	{
-		id: 'wpai_feature_image_generation_enabled',
+		id: 'wpai_feature_image-generation_enabled',
 		label: __( 'Image Generation and Editing', 'ai' ),
 		description: __( 'Generate and edit images using AI', 'ai' ),
 		type: 'boolean',
 	},
 	{
-		id: 'wpai_feature_review_notes_enabled',
+		id: 'wpai_feature_review-notes_enabled',
 		label: __( 'Review Notes', 'ai' ),
 		description: __(
 			'Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.',
@@ -99,7 +81,7 @@ const fields: Field< AISettings >[] = [
 		type: 'boolean',
 	},
 	{
-		id: 'wpai_feature_title_generation_enabled',
+		id: 'wpai_feature_title-generation_enabled',
 		label: __( 'Title Generation', 'ai' ),
 		description: __(
 			'Generates title suggestions from content',
@@ -108,7 +90,7 @@ const fields: Field< AISettings >[] = [
 		type: 'boolean',
 	},
 	{
-		id: 'wpai_feature_abilities_explorer_enabled',
+		id: 'wpai_feature_abilities-explorer_enabled',
 		label: __( 'Abilities Explorer', 'ai' ),
 		description: __(
 			'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.',
@@ -117,7 +99,7 @@ const fields: Field< AISettings >[] = [
 		type: 'boolean',
 	},
 	{
-		id: 'wpai_feature_example_experiment_enabled',
+		id: 'wpai_feature_example-experiment_enabled',
 		label: __( 'Example Experiment', 'ai' ),
 		description: __(
 			'Demonstrates the AI experiment system with example hooks and functionality.',
@@ -157,12 +139,12 @@ const form: Form = {
 				isCollapsible: true,
 			},
 			children: [
-				'wpai_feature_excerpt_generation_enabled',
-				'wpai_feature_alt_text_generation_enabled',
-				'wpai_feature_image_generation_enabled',
-				'wpai_feature_review_notes_enabled',
+				'wpai_feature_excerpt-generation_enabled',
+				'wpai_feature_alt-text-generation_enabled',
+				'wpai_feature_image-generation_enabled',
+				'wpai_feature_review-notes_enabled',
 				'wpai_feature_summarization_enabled',
-				'wpai_feature_title_generation_enabled',
+				'wpai_feature_title-generation_enabled',
 			],
 		},
 		{
@@ -179,8 +161,8 @@ const form: Form = {
 				isCollapsible: true,
 			},
 			children: [
-				'wpai_feature_abilities_explorer_enabled',
-				'wpai_feature_example_experiment_enabled',
+				'wpai_feature_abilities-explorer_enabled',
+				'wpai_feature_example-experiment_enabled',
 			],
 		},
 	],
@@ -199,7 +181,7 @@ function AISettingsPage() {
 			const aiSettings: AISettings = { ...DEFAULT_SETTINGS };
 			for ( const key of AI_SETTING_KEYS ) {
 				if ( key in settings ) {
-					aiSettings[ key ] = Boolean( settings[ key ] );
+					aiSettings[ key ] = Boolean( settings[ key ] ?? false );
 				}
 			}
 			setData( aiSettings );
@@ -211,7 +193,7 @@ function AISettingsPage() {
 		( edits: Record< string, unknown > ) => {
 			setData( ( prev ) => ( {
 				...prev,
-				...edits,
+				...( edits as AISettings ),
 			} ) );
 			setHasEdits( true );
 		},
