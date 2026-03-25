@@ -72,10 +72,7 @@ const EXPERIMENT_FIELDS: Field< AISettings >[] = [
 	{
 		id: 'wpai_feature_excerpt-generation_enabled',
 		label: __( 'Excerpt Generation', 'ai' ),
-		description: __(
-			'Generates excerpt suggestions from content',
-			'ai'
-		),
+		description: __( 'Generates excerpt suggestions from content', 'ai' ),
 		type: 'boolean',
 	},
 	{
@@ -114,10 +111,7 @@ const EXPERIMENT_FIELDS: Field< AISettings >[] = [
 	{
 		id: 'wpai_feature_title-generation_enabled',
 		label: __( 'Title Generation', 'ai' ),
-		description: __(
-			'Generates title suggestions from content',
-			'ai'
-		),
+		description: __( 'Generates title suggestions from content', 'ai' ),
 		type: 'boolean',
 	},
 	{
@@ -195,9 +189,7 @@ const form: Form = {
 				isOpened: true,
 				isCollapsible: true,
 			},
-			children: [
-				'wpai_feature_abilities-explorer_enabled',
-			],
+			children: [ 'wpai_feature_abilities-explorer_enabled' ],
 		},
 	],
 };
@@ -208,6 +200,7 @@ function AISettingsPage() {
 	const [ isSaving, setIsSaving ] = useState( false );
 	const [ hasEdits, setHasEdits ] = useState( false );
 
+	// eslint-disable-next-line dot-notation
 	const globalEnabled = data[ 'wpai_features_enabled' ];
 
 	const fields = useMemo< Field< AISettings >[] >(
@@ -238,16 +231,13 @@ function AISettingsPage() {
 		} );
 	}, [] );
 
-	const handleChange = useCallback(
-		( edits: Record< string, unknown > ) => {
-			setData( ( prev ) => ( {
-				...prev,
-				...( edits as AISettings ),
-			} ) );
-			setHasEdits( true );
-		},
-		[]
-	);
+	const handleChange = useCallback( ( edits: Record< string, unknown > ) => {
+		setData( ( prev ) => ( {
+			...prev,
+			...( edits as AISettings ),
+		} ) );
+		setHasEdits( true );
+	}, [] );
 
 	const handleSave = useCallback( async () => {
 		setIsSaving( true );

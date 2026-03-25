@@ -7,5 +7,13 @@
     "page": [
       "ai-new"
     ]
+  },
+  "dependencies": {
+    "@wordpress/admin-ui": "*",
+    "@wordpress/api-fetch": "*",
+    "@wordpress/components": "*",
+    "@wordpress/dataviews": "*",
+    "@wordpress/element": "*",
+    "@wordpress/i18n": "*"
   }
 }
