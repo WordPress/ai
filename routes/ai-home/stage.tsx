@@ -162,31 +162,34 @@ const form: Form = {
 };
 
 function AISettingsPage() {
-	const { data, hasEdits, isSaving, isLoading } = useSelect( ( select ) => {
-		const store = select( coreStore ) as any;
-		const siteRecord = store.getEditedEntityRecord( 'root', 'site' ) as
-			| Record< string, unknown >
-			| undefined;
-		const hasResolved = store.hasFinishedResolution( 'getEntityRecord', [
-			'root',
-			'site',
-		] );
-
-		const aiSettings: AISettings = {};
-		for ( const key of AI_SETTING_KEYS ) {
-			aiSettings[ key ] = Boolean( siteRecord?.[ key ] ?? false );
-		}
-
-		return {
-			data: aiSettings,
-			hasEdits: store.hasEditsForEntityRecord( 'root', 'site' ),
-			isSaving: store.isSavingEntityRecord( 'root', 'site' ),
-			isLoading: ! hasResolved,
-		};
-	}, [] );
+	const { siteSettings, hasEdits, isSaving, isLoading } = useSelect(
+		( select ) => {
+			const store = select( coreStore ) as any;
+			return {
+				siteSettings: store.getEditedEntityRecord( 'root', 'site' ) as
+					| Record< string, unknown >
+					| undefined,
+				hasEdits: store.hasEditsForEntityRecord( 'root', 'site' ),
+				isSaving: store.isSavingEntityRecord( 'root', 'site' ),
+				isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
+					'root',
+					'site',
+				] ),
+			};
+		},
+		[]
+	);
 
 	const { editEntityRecord, saveEditedEntityRecord } =
 		useDispatch( coreStore );
+
+	const data: AISettings = useMemo( () => {
+		const aiSettings: AISettings = {};
+		for ( const key of AI_SETTING_KEYS ) {
+			aiSettings[ key ] = Boolean( siteSettings?.[ key ] ?? false );
+		}
+		return aiSettings;
+	}, [ siteSettings ] );
 
 	// eslint-disable-next-line dot-notation
 	const globalEnabled = data[ 'wpai_features_enabled' ];
