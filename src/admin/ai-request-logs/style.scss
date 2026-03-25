@@ -1,4 +1,3 @@
-@use '../dataviews';
 @use '../common';
 
 .ai-request-logs__app {
@@ -9,7 +8,6 @@
 	}
 }
 
-// Summary Cards
 .ai-request-logs__summary {
 	margin-bottom: 24px;
 }
@@ -41,7 +39,6 @@
 	margin-top: 4px;
 }
 
-// Main layout
 .ai-request-logs__main {
 	display: grid;
 	grid-template-columns: 1fr 320px;
@@ -53,7 +50,6 @@
 	}
 }
 
-// Cards
 .ai-request-logs__card {
 	.components-card__header {
 		display: flex;
@@ -73,9 +69,74 @@
 	color: #757575;
 }
 
-// Filters
-.ai-request-logs__dataviews {
-	margin-top: 16px;
+.ai-request-logs__controls {
+	display: grid;
+	gap: 16px;
+	margin-bottom: 20px;
+}
+
+.ai-request-logs__search {
+	max-width: 380px;
+
+	.components-base-control {
+		margin-bottom: 0;
+	}
+}
+
+.ai-request-logs__filters {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: 12px 16px;
+
+	.components-base-control {
+		margin-bottom: 0;
+	}
+}
+
+.ai-request-logs__controls-footer {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.ai-request-logs__loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 40px 16px;
+	color: #50575e;
+}
+
+.ai-request-logs__table-wrap {
+	overflow-x: auto;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+}
+
+.ai-request-logs__table {
+	width: 100%;
+	border-collapse: collapse;
+	background: #fff;
+
+	th,
+	td {
+		padding: 14px 16px;
+		border-bottom: 1px solid #f0f0f1;
+		text-align: left;
+		vertical-align: top;
+	}
+
+	th {
+		font-size: 12px;
+		font-weight: 600;
+		color: #50575e;
+		background: #f6f7f7;
+		white-space: nowrap;
+	}
+
+	tbody tr:last-child td {
+		border-bottom: 0;
+	}
 }
 
 .ai-request-logs__cell--time {
@@ -85,12 +146,19 @@
 }
 
 .ai-request-logs__operation {
+	min-width: 280px;
+
 	code {
+		display: inline-block;
 		font-size: 12px;
 		background: #f0f0f0;
 		padding: 2px 6px;
 		border-radius: 3px;
 	}
+}
+
+.ai-request-logs__operation-meta {
+	margin-top: 8px;
 }
 
 .ai-request-logs__error-preview {
@@ -105,7 +173,6 @@
 	margin-top: 4px;
 }
 
-// Provider cell - two row layout
 .ai-request-logs__provider-cell {
 	position: relative;
 	cursor: default;
@@ -139,14 +206,29 @@
 	font-size: 11px;
 	color: #757575;
 	margin-top: 2px;
-	padding-left: 22px; // align with text after icon
+	padding-left: 22px;
 }
 
 .ai-request-logs__cell-muted {
 	color: #757575;
 }
 
-// White popover styling
+.ai-request-logs__metric {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 88px;
+}
+
+.ai-request-logs__metric-secondary {
+	font-size: 11px;
+	color: #757575;
+}
+
+.ai-request-logs__table-actions {
+	white-space: nowrap;
+}
+
 .ai-request-logs__provider-popover {
 	.components-popover__content {
 		background: #fff;
@@ -221,7 +303,6 @@
 	}
 }
 
-// Status badges
 .ai-request-logs__status {
 	display: inline-block;
 	padding: 2px 8px;
@@ -299,7 +380,35 @@
 	padding: 40px;
 }
 
-// Settings panel
+.ai-request-logs__pagination {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-top: 16px;
+
+	@media (max-width: 782px) {
+		flex-direction: column;
+		align-items: stretch;
+	}
+}
+
+.ai-request-logs__pagination-summary,
+.ai-request-logs__pagination-page {
+	font-size: 12px;
+	color: #50575e;
+}
+
+.ai-request-logs__pagination-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+
+	@media (max-width: 782px) {
+		justify-content: space-between;
+	}
+}
+
 .ai-request-logs__settings {
 	.components-toggle-control {
 		margin-bottom: 24px;
@@ -336,7 +445,6 @@
 	}
 }
 
-// Modal
 .ai-request-logs__modal {
 	.components-modal__content {
 		width: 100%;

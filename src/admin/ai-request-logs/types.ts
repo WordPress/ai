@@ -61,6 +61,16 @@ export interface FilterOptions {
 	operations: string[];
 }
 
+export interface LogsQuery {
+	page: number;
+	search: string;
+	type: string;
+	status: string;
+	provider: string;
+	operation: string;
+	tokensFilter: string;
+}
+
 export interface LogSettings {
 	enabled: boolean;
 	retentionDays: number;

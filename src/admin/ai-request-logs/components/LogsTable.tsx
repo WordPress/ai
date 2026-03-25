@@ -7,27 +7,23 @@ import {
 	CardBody,
 	CardHeader,
 	Popover,
+	SearchControl,
+	SelectControl,
+	Spinner,
 } from '@wordpress/components';
-import { DataViews } from '@wordpress/dataviews/wp';
-import type {
-	DataViewRenderFieldProps,
-	Field as DataViewField,
-	Filter,
-	View,
-} from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * External dependencies
  */
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 /**
  * Internal dependencies
  */
 import { getProviderIconComponent } from '../../components/provider-icons';
-import type { FilterOptions, LogEntry } from '../types';
 import type { ProviderMetadata } from '../../types/providers';
+import type { FilterOptions, LogEntry, LogsQuery } from '../types';
 
 interface LogsTableProps {
 	logs: LogEntry[];
@@ -36,10 +32,20 @@ interface LogsTableProps {
 	loading: boolean;
 	totalPages: number;
 	total: number;
-	view: View;
-	setView: ( next: View | ( ( prev: View ) => View ) ) => void;
+	query: LogsQuery;
+	setQuery: React.Dispatch< React.SetStateAction< LogsQuery > >;
 	providerMetadata: Record< string, ProviderMetadata >;
 }
+
+const EMPTY_QUERY: LogsQuery = {
+	page: 1,
+	search: '',
+	type: '',
+	status: '',
+	provider: '',
+	operation: '',
+	tokensFilter: '',
+};
 
 const formatTimestamp = ( timestamp: string ): string => {
 	const date = new Date( timestamp + 'Z' );
@@ -47,32 +53,38 @@ const formatTimestamp = ( timestamp: string ): string => {
 };
 
 const formatDuration = ( ms: number | null ): string => {
-	if ( ms === null ) {
+	if ( null === ms ) {
 		return '-';
 	}
+
 	if ( ms < 1000 ) {
-		return ms + 'ms';
+		return `${ ms }ms`;
 	}
-	return ( ms / 1000 ).toFixed( 1 ) + 's';
+
+	return `${ ( ms / 1000 ).toFixed( 1 ) }s`;
 };
 
 const formatTokens = ( tokens: number | null ): string => {
-	if ( tokens === null ) {
+	if ( null === tokens ) {
 		return '-';
 	}
+
 	if ( tokens >= 1000 ) {
-		return ( tokens / 1000 ).toFixed( 1 ) + 'K';
+		return `${ ( tokens / 1000 ).toFixed( 1 ) }K`;
 	}
+
 	return tokens.toLocaleString();
 };
 
 const formatTokensPerSecond = ( value: number | null ): string => {
-	if ( value === null ) {
+	if ( null === value ) {
 		return '-';
 	}
+
 	if ( value >= 1000 ) {
-		return ( value / 1000 ).toFixed( 1 ) + 'K';
+		return `${ ( value / 1000 ).toFixed( 1 ) }K`;
 	}
+
 	return value.toFixed( 1 );
 };
 
@@ -130,49 +142,75 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	loading,
 	totalPages,
 	total,
-	view,
-	setView,
+	query,
+	setQuery,
 	providerMetadata,
 } ) => {
-	const typeElements = useMemo(
-		() =>
-			filterOptions.types.map( ( value ) => ( {
+	const updateQuery = (
+		field: keyof LogsQuery,
+		value: LogsQuery[ keyof LogsQuery ]
+	) => {
+		setQuery( ( previous ) => ( {
+			...previous,
+			[ field ]: value,
+			page: 'page' === field ? Number( value ) : 1,
+		} ) );
+	};
+
+	const clearFilters = () => {
+		setQuery( EMPTY_QUERY );
+	};
+
+	const typeOptions = useMemo(
+		() => [
+			{ label: __( 'All types', 'ai' ), value: '' },
+			...filterOptions.types.map( ( value ) => ( {
 				label: formatSelectLabel( value ),
 				value,
 			} ) ),
+		],
 		[ filterOptions.types ]
 	);
 
-	const statusElements = useMemo(
-		() =>
-			filterOptions.statuses.map( ( value ) => ( {
+	const statusOptions = useMemo(
+		() => [
+			{ label: __( 'All statuses', 'ai' ), value: '' },
+			...filterOptions.statuses.map( ( value ) => ( {
 				label: formatSelectLabel( value ),
 				value,
 			} ) ),
+		],
 		[ filterOptions.statuses ]
 	);
 
-	const providerElements = useMemo(
-		() =>
-			filterOptions.providers.map( ( value ) => ( {
+	const providerOptions = useMemo(
+		() => [
+			{ label: __( 'All providers', 'ai' ), value: '' },
+			...filterOptions.providers.map( ( value ) => ( {
 				label: value,
 				value,
 			} ) ),
+		],
 		[ filterOptions.providers ]
 	);
 
-	const operationElements = useMemo(
-		() =>
-			( filterOptions.operations ?? [] ).map( ( value ) => ( {
+	const operationOptions = useMemo(
+		() => [
+			{ label: __( 'All operations', 'ai' ), value: '' },
+			...( filterOptions.operations ?? [] ).map( ( value ) => ( {
 				label: formatSelectLabel( value ),
 				value,
 			} ) ),
+		],
 		[ filterOptions.operations ]
 	);
 
-	// Token filter elements with useful ranges
-	const tokenFilterElements = useMemo(
+	const tokenFilterOptions = useMemo(
 		() => [
+			{
+				label: __( 'All token counts', 'ai' ),
+				value: '',
+			},
 			{
 				label: __( 'Has Tokens (> 0)', 'ai' ),
 				value: 'gt:0',
@@ -213,214 +251,21 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		[]
 	);
 
-	const fields = useMemo< DataViewField< LogEntry >[] >(
-		() => [
-			{
-				id: 'timestamp',
-				label: __( 'Time', 'ai' ),
-				type: 'datetime',
-				getValue: ( { item } ) => item.timestamp,
-				enableSorting: false,
-				render: ( { item } ) => (
-					<span className="ai-request-logs__cell--time">
-						{ formatTimestamp( item.timestamp ) }
-					</span>
-				),
-			},
-			{
-				id: 'operation',
-				label: __( 'Operation', 'ai' ),
-				type: 'text',
-				getValue: ( { item } ) => item.operation,
-				elements: operationElements,
-				filterBy:
-					operationElements.length > 0
-						? { operators: [ 'isAny' ] }
-						: false,
-				render: ( { item } ) => (
-					<div className="ai-request-logs__operation">
-						<code>{ item.operation }</code>
-						{ getSourceLabel( item ) && (
-							<div className="ai-request-logs__source-preview">
-								{ getSourceLabel( item ) }
-							</div>
-						) }
-						{ item.error_message && (
-							<div className="ai-request-logs__error-preview">
-								{ item.error_message.substring( 0, 50 ) }
-								{ item.error_message.length > 50 ? '…' : '' }
-							</div>
-						) }
-					</div>
-				),
-			},
-			{
-				id: 'request_kind',
-				label: __( 'Request Type', 'ai' ),
-				type: 'text',
-				getValue: ( { item } ) => getRequestKind( item ),
-				filterBy: false,
-				enableHiding: false,
-				render: ( { item }: DataViewRenderFieldProps< LogEntry > ) => (
-					<span
-						className={ `ai-request-logs__kind ai-request-logs__kind--${ getRequestKind(
-							item
-						) }` }
-					>
-						{ formatSelectLabel( getRequestKind( item ) ) }
-					</span>
-				),
-			},
-			{
-				id: 'type',
-				label: __( 'Type', 'ai' ),
-				type: 'text',
-				getValue: ( { item } ) => item.type,
-				elements: typeElements,
-				filterBy:
-					typeElements.length > 0 ? { operators: [ 'is' ] } : false,
-				enableHiding: false,
-				isVisible: () => false,
-			},
-			{
-				id: 'provider',
-				label: __( 'Provider / Model', 'ai' ),
-				type: 'text',
-				getValue: ( { item } ) => item.provider ?? '',
-				elements: providerElements,
-				filterBy:
-					providerElements.length > 0
-						? { operators: [ 'is' ] }
-						: false,
-				render: ( { item } ) => (
-					<ProviderCell
-						provider={ item.provider }
-						model={ item.model }
-						metadata={
-							item.provider
-								? providerMetadata[ item.provider ]
-								: undefined
-						}
-					/>
-				),
-			},
-			{
-				id: 'tokens_total',
-				label: __( 'Tokens', 'ai' ),
-				type: 'text',
-				getValue: ( { item } ) => {
-					// Return filter value for matching
-					const tokens = item.tokens_total ?? 0;
-					if ( tokens === 0 || item.tokens_total === null ) {
-						return 'none';
-					}
-					if ( tokens > 10000 ) {
-						return 'gt:10000';
-					}
-					if ( tokens > 5000 ) {
-						return 'gt:5000';
-					}
-					if ( tokens > 1000 ) {
-						return 'gt:1000';
-					}
-					return 'gt:0';
-				},
-				elements: tokenFilterElements,
-				filterBy: { operators: [ 'is' ] },
-				render: ( { item } ) => formatTokens( item.tokens_total ),
-			},
-			{
-				id: 'duration_ms',
-				label: __( 'Duration', 'ai' ),
-				type: 'number',
-				getValue: ( { item } ) => item.duration_ms ?? 0,
-				render: ( { item } ) => formatDuration( item.duration_ms ),
-			},
-			{
-				id: 'tokens_per_second',
-				label: __( 'Tokens/s', 'ai' ),
-				type: 'number',
-				getValue: ( { item } ) => item.tokens_per_second ?? 0,
-				render: ( { item } ) =>
-					formatTokensPerSecond( item.tokens_per_second ),
-			},
-			{
-				id: 'status',
-				label: __( 'Status', 'ai' ),
-				type: 'text',
-				getValue: ( { item } ) => item.status,
-				elements: statusElements,
-				filterBy:
-					statusElements.length > 0 ? { operators: [ 'is' ] } : false,
-				render: ( { item } ) => (
-					<span
-						className={ `ai-request-logs__status ${ getStatusClass(
-							item.status
-						) }` }
-					>
-						{ formatSelectLabel( item.status ) }
-					</span>
-				),
-			},
-			{
-				id: 'actions',
-				label: __( 'Details', 'ai' ),
-				type: 'text',
-				enableSorting: false,
-				enableHiding: false,
-				filterBy: false,
-				render: ( { item } ) => (
-					<Button
-						variant="tertiary"
-						size="small"
-						onClick={ () => onViewLog( item ) }
-					>
-						{ __( 'View', 'ai' ) }
-					</Button>
-				),
-			},
-		],
-		[
-			onViewLog,
-			operationElements,
-			providerElements,
-			providerMetadata,
-			statusElements,
-			tokenFilterElements,
-			typeElements,
-		]
-	);
-
-	const handleViewChange = useCallback(
-		( nextView: View ) => {
-			// Deduplicate filters by field so persisted views stay stable.
-			const filters = nextView.filters ?? [];
-			const deduplicatedFilters = filters.reduce(
-				( acc: Filter[], filter ) => {
-					const existingIndex = acc.findIndex(
-						( entry ) => entry.field === filter.field
-					);
-					if ( existingIndex >= 0 ) {
-						acc[ existingIndex ] = filter;
-					} else {
-						acc.push( filter );
-					}
-					return acc;
-				},
-				[]
-			);
-
-			setView( {
-				...nextView,
-				filters: deduplicatedFilters,
-			} );
-		},
-		[ setView ]
-	);
-
 	const hasActiveFilters = Boolean(
-		view.search || ( view.filters && view.filters.length > 0 )
+		query.search ||
+			query.type ||
+			query.status ||
+			query.provider ||
+			query.operation ||
+			query.tokensFilter
 	);
+	const emptyMessage = hasActiveFilters
+		? __( 'No logs match your filters.', 'ai' )
+		: __( 'No AI requests have been logged yet.', 'ai' );
+
+	const rangeStart = 0 === total ? 0 : ( query.page - 1 ) * 25 + 1;
+	const rangeEnd = Math.min( query.page * 25, total );
+	const shouldShowTable = ! loading && logs.length > 0;
 
 	return (
 		<Card className="ai-request-logs__card ai-request-logs__table-card">
@@ -437,38 +282,278 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				) }
 			</CardHeader>
 			<CardBody>
-				<DataViews
-					data={ logs }
-					fields={ fields }
-					view={ view }
-					onChangeView={ handleViewChange }
-					getItemId={ ( item ) => item.id }
-					defaultLayouts={ {
-						table: {
-							layout: {
-								density: 'comfortable',
-								enableMoving: false,
-							},
-						},
-					} }
-					isLoading={ loading }
-					paginationInfo={ {
-						totalItems: total,
-						totalPages,
-					} }
-					config={ { perPageSizes: [ 25 ] } }
-					empty={
-						<p className="ai-request-logs__empty">
-							{ hasActiveFilters
-								? __( 'No logs match your filters.', 'ai' )
-								: __(
-										'No AI requests have been logged yet.',
-										'ai'
-								  ) }
-						</p>
-					}
-					searchLabel={ __( 'Search logs', 'ai' ) }
-				/>
+				<div className="ai-request-logs__controls">
+					<div className="ai-request-logs__search">
+						<SearchControl
+							label={ __( 'Search logs', 'ai' ) }
+							value={ query.search }
+							onChange={ ( value ) =>
+								updateQuery( 'search', value )
+							}
+							placeholder={ __(
+								'Search operations, previews, and errors',
+								'ai'
+							) }
+							__nextHasNoMarginBottom
+						/>
+					</div>
+
+					<div className="ai-request-logs__filters">
+						<SelectControl
+							label={ __( 'Type', 'ai' ) }
+							value={ query.type }
+							options={ typeOptions }
+							onChange={ ( value ) =>
+								updateQuery( 'type', value )
+							}
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+						<SelectControl
+							label={ __( 'Status', 'ai' ) }
+							value={ query.status }
+							options={ statusOptions }
+							onChange={ ( value ) =>
+								updateQuery( 'status', value )
+							}
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+						<SelectControl
+							label={ __( 'Provider', 'ai' ) }
+							value={ query.provider }
+							options={ providerOptions }
+							onChange={ ( value ) =>
+								updateQuery( 'provider', value )
+							}
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+						<SelectControl
+							label={ __( 'Operation', 'ai' ) }
+							value={ query.operation }
+							options={ operationOptions }
+							onChange={ ( value ) =>
+								updateQuery( 'operation', value )
+							}
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+						<SelectControl
+							label={ __( 'Tokens', 'ai' ) }
+							value={ query.tokensFilter }
+							options={ tokenFilterOptions }
+							onChange={ ( value ) =>
+								updateQuery( 'tokensFilter', value )
+							}
+							__nextHasNoMarginBottom
+							__next40pxDefaultSize
+						/>
+					</div>
+
+					{ hasActiveFilters && (
+						<div className="ai-request-logs__controls-footer">
+							<Button variant="tertiary" onClick={ clearFilters }>
+								{ __( 'Clear filters', 'ai' ) }
+							</Button>
+						</div>
+					) }
+				</div>
+
+				{ loading && (
+					<div className="ai-request-logs__loading">
+						<Spinner />
+						<span>{ __( 'Loading request logs…', 'ai' ) }</span>
+					</div>
+				) }
+
+				{ ! loading && 0 === logs.length && (
+					<p className="ai-request-logs__empty">{ emptyMessage }</p>
+				) }
+
+				{ shouldShowTable && (
+					<>
+						<div className="ai-request-logs__table-wrap">
+							<table className="ai-request-logs__table">
+								<thead>
+									<tr>
+										<th scope="col">
+											{ __( 'Time', 'ai' ) }
+										</th>
+										<th scope="col">
+											{ __( 'Operation', 'ai' ) }
+										</th>
+										<th scope="col">
+											{ __( 'Provider / Model', 'ai' ) }
+										</th>
+										<th scope="col">
+											{ __( 'Tokens', 'ai' ) }
+										</th>
+										<th scope="col">
+											{ __( 'Duration', 'ai' ) }
+										</th>
+										<th scope="col">
+											{ __( 'Status', 'ai' ) }
+										</th>
+										<th scope="col">
+											{ __( 'Details', 'ai' ) }
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									{ logs.map( ( log ) => (
+										<tr key={ log.id }>
+											<td>
+												<span className="ai-request-logs__cell--time">
+													{ formatTimestamp(
+														log.timestamp
+													) }
+												</span>
+											</td>
+											<td>
+												<div className="ai-request-logs__operation">
+													<code>
+														{ log.operation }
+													</code>
+													<div className="ai-request-logs__operation-meta">
+														<span
+															className={ `ai-request-logs__kind ai-request-logs__kind--${ getRequestKind(
+																log
+															) }` }
+														>
+															{ formatSelectLabel(
+																getRequestKind(
+																	log
+																)
+															) }
+														</span>
+													</div>
+													{ getSourceLabel( log ) && (
+														<div className="ai-request-logs__source-preview">
+															{ getSourceLabel(
+																log
+															) }
+														</div>
+													) }
+													{ log.error_message && (
+														<div className="ai-request-logs__error-preview">
+															{ log.error_message.substring(
+																0,
+																80
+															) }
+															{ log.error_message
+																.length > 80
+																? '…'
+																: '' }
+														</div>
+													) }
+												</div>
+											</td>
+											<td>
+												<ProviderCell
+													provider={ log.provider }
+													model={ log.model }
+													metadata={
+														log.provider
+															? providerMetadata[
+																	log.provider
+															  ]
+															: undefined
+													}
+												/>
+											</td>
+											<td>
+												<div className="ai-request-logs__metric">
+													<span>
+														{ formatTokens(
+															log.tokens_total
+														) }
+													</span>
+													<span className="ai-request-logs__metric-secondary">
+														{ sprintf(
+															/* translators: %s: tokens per second. */
+															__( '%s/s', 'ai' ),
+															formatTokensPerSecond(
+																log.tokens_per_second
+															)
+														) }
+													</span>
+												</div>
+											</td>
+											<td>
+												{ formatDuration(
+													log.duration_ms
+												) }
+											</td>
+											<td>
+												<span
+													className={ `ai-request-logs__status ${ getStatusClass(
+														log.status
+													) }` }
+												>
+													{ formatSelectLabel(
+														log.status
+													) }
+												</span>
+											</td>
+											<td className="ai-request-logs__table-actions">
+												<Button
+													variant="tertiary"
+													size="small"
+													onClick={ () =>
+														onViewLog( log )
+													}
+												>
+													{ __( 'View', 'ai' ) }
+												</Button>
+											</td>
+										</tr>
+									) ) }
+								</tbody>
+							</table>
+						</div>
+
+						<div className="ai-request-logs__pagination">
+							<span className="ai-request-logs__pagination-summary">
+								{ sprintf(
+									/* translators: 1: first visible result, 2: last visible result, 3: total results. */
+									__( '%1$d-%2$d of %3$d', 'ai' ),
+									rangeStart,
+									rangeEnd,
+									total
+								) }
+							</span>
+							<div className="ai-request-logs__pagination-actions">
+								<Button
+									variant="secondary"
+									disabled={ query.page <= 1 }
+									onClick={ () =>
+										updateQuery( 'page', query.page - 1 )
+									}
+								>
+									{ __( 'Previous', 'ai' ) }
+								</Button>
+								<span className="ai-request-logs__pagination-page">
+									{ sprintf(
+										/* translators: 1: current page number, 2: total page count. */
+										__( 'Page %1$d of %2$d', 'ai' ),
+										query.page,
+										totalPages
+									) }
+								</span>
+								<Button
+									variant="secondary"
+									disabled={ query.page >= totalPages }
+									onClick={ () =>
+										updateQuery( 'page', query.page + 1 )
+									}
+								>
+									{ __( 'Next', 'ai' ) }
+								</Button>
+							</div>
+						</div>
+					</>
+				) }
 			</CardBody>
 		</Card>
 	);
