@@ -108,7 +108,11 @@ class AI_Request_Log_Page {
 			<div class="ai-admin-header">
 				<div class="ai-admin-header__inner">
 					<div class="ai-admin-header__left">
-						<span class="ai-admin-header__icon"><?php echo wp_kses_post( $this->get_plugin_icon_svg() ); ?></span>
+						<span class="ai-admin-header__icon">
+							<?php if ( $this->get_plugin_icon_url() ) : ?>
+								<img src="<?php echo esc_url( $this->get_plugin_icon_url() ); ?>" alt="" aria-hidden="true" />
+							<?php endif; ?>
+						</span>
 						<div class="ai-admin-header__title">
 							<h1><?php esc_html_e( 'AI Request Logs', 'ai' ); ?></h1>
 						</div>
@@ -122,21 +126,23 @@ class AI_Request_Log_Page {
 	}
 
 	/**
-	 * Returns the colored plugin icon SVG for the screen header.
+	 * Returns the plugin icon asset URL for the screen header.
 	 *
 	 * @since 0.6.0
 	 *
-	 * @return string SVG markup or an empty string.
+	 * @return string Asset URL or an empty string.
 	 */
-	private function get_plugin_icon_svg(): string {
-		$icon_path = WPAI_PLUGIN_DIR . '.wordpress-org/icon.svg';
-
-		if ( ! file_exists( $icon_path ) ) {
-			return '';
+	private function get_plugin_icon_url(): string {
+		$svg_path = WPAI_PLUGIN_DIR . '.wordpress-org/icon.svg';
+		if ( file_exists( $svg_path ) ) {
+			return WPAI_PLUGIN_URL . '.wordpress-org/icon.svg';
 		}
 
-		$icon = file_get_contents( $icon_path ); // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown -- Local plugin asset.
+		$png_path = WPAI_PLUGIN_DIR . '.wordpress-org/icon-128x128.png';
+		if ( file_exists( $png_path ) ) {
+			return WPAI_PLUGIN_URL . '.wordpress-org/icon-128x128.png';
+		}
 
-		return is_string( $icon ) ? $icon : '';
+		return '';
 	}
 }
