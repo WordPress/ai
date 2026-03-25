@@ -57,8 +57,8 @@ function toStringValue( value: unknown ): string {
 	return typeof value === 'string' ? value : '';
 }
 
-function isDefined< T >( value: T | null ): value is T {
-	return value !== null;
+function isDefined< T >( value: T | null | undefined ): value is T {
+	return value !== null && value !== undefined;
 }
 
 function parseFeatureGroup( value: unknown ): FeatureGroupData | null {
@@ -200,6 +200,7 @@ function DisabledCheckbox( {
 			label={ field.label }
 			help={ field.description }
 			checked={ !! field.getValue( { item: data } ) }
+			// No-op handler required to satisfy React's controlled-component warning; the checkbox is disabled.
 			onChange={ () => {} }
 			disabled
 		/>
@@ -483,6 +484,7 @@ function AISettingsPage() {
 								onClick={ handleSave }
 								isBusy={ isSaving }
 								disabled={ ! hasEdits || isSaving }
+								aria-busy={ isSaving }
 							>
 								{ __( 'Save Changes', 'ai' ) }
 							</Button>

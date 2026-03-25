@@ -355,41 +355,49 @@ function initialize_features(): void {
 		$settings_registration->init();
 
 		// Register admin settings page menu item.
-		if ( is_admin() && ! function_exists( 'ai_ai_wp_admin_render_page' ) ) {
-			_doing_it_wrong(
-				__FUNCTION__,
-				esc_html__( 'AI settings page render function not found. Run npm run build:routes to generate build assets.', 'ai' ),
-				'0.6.0'
-			);
-		}
-		if ( is_admin() && function_exists( 'ai_ai_wp_admin_render_page' ) ) {
-			add_action(
-				'admin_menu',
-				static function () {
-					add_options_page(
-						__( 'AI', 'ai' ),
-						__( 'AI', 'ai' ),
-						'manage_options',
-						'ai-wp-admin',
-						'ai_ai_wp_admin_render_page', // @phpstan-ignore argument.type
-						2
-					);
-				}
-			);
+		if ( is_admin() ) {
+			if ( function_exists( 'ai_ai_wp_admin_render_page' ) ) {
+				add_action(
+					'admin_menu',
+					static function () {
+						add_options_page(
+							__( 'AI', 'ai' ),
+							__( 'AI', 'ai' ),
+							'manage_options',
+							'ai-wp-admin',
+							'ai_ai_wp_admin_render_page', // @phpstan-ignore argument.type
+							2
+						);
+					}
+				);
 
-			// Expose credential status to the settings page script module.
-			add_filter(
-				'script_module_data_ai-wp-admin',
-				static function ( array $data ) use ( $registry ): array {
-					$feature_metadata            = get_settings_feature_metadata( $registry );
-					$data['hasCredentials']      = has_ai_credentials();
-					$data['hasValidCredentials'] = has_valid_ai_credentials();
-					$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
-					$data['featureGroups']       = $feature_metadata['groups'] ?? array();
-					$data['features']            = $feature_metadata['features'] ?? array();
-					return $data;
-				}
-			);
+				// Expose credential status to the settings page script module.
+				add_filter(
+					'script_module_data_ai-wp-admin',
+					static function ( array $data ) use ( $registry ): array {
+						$feature_metadata            = get_settings_feature_metadata( $registry );
+						$data['hasCredentials']      = has_ai_credentials();
+						$data['hasValidCredentials'] = has_valid_ai_credentials();
+						$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
+						$data['featureGroups']       = $feature_metadata['groups'] ?? array();
+						$data['features']            = $feature_metadata['features'] ?? array();
+						return $data;
+					}
+				);
+			} else {
+				add_action(
+					'admin_menu',
+					static function () {
+						if ( isset( $_GET['page'] ) && 'ai-wp-admin' === $_GET['page'] ) {
+							_doing_it_wrong(
+								'initialize_features',
+								esc_html__( 'AI settings page render function not found. Run npm run build:routes to generate build assets.', 'ai' ),
+								'0.6.0'
+							);
+						}
+					}
+				);
+			}
 		}
 
 		// Register our post-related WordPress Abilities.
