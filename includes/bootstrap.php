@@ -174,11 +174,11 @@ function load(): void {
 		require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
 		require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
 
-		// Load auto-generated wp-build registration if present.
-		$build_registration = WPAI_PLUGIN_DIR . 'build/build.php';
-		if ( file_exists( $build_registration ) ) {
-			require_once $build_registration;
-		}
+	// Load auto-generated wp-build registration if present.
+	$build_registration = WPAI_PLUGIN_DIR . 'build/build.php';
+	if ( file_exists( $build_registration ) ) {
+		require_once $build_registration;
+	}
 
 		// Handle any pending upgrades.
 		( new Upgrades() )->init();
