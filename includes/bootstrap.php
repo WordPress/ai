@@ -169,9 +169,9 @@ function load(): void {
 		return;
 	}
 
-		// Load required files.
-		require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
-		require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
+	// Load required files.
+	require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
+	require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
 
 	// Load auto-generated wp-build registration if present.
 	$build_registration = WPAI_PLUGIN_DIR . 'build/build.php';
@@ -179,8 +179,8 @@ function load(): void {
 		require_once $build_registration; // @phpstan-ignore requireOnce.fileNotFound
 	}
 
-		// Handle any pending upgrades.
-		( new Upgrades() )->init();
+	// Handle any pending upgrades.
+	( new Upgrades() )->init();
 
 	// Handle deprecated code.
 	( new Deprecated() )->init();
@@ -227,6 +227,17 @@ function initialize_features(): void {
 						'ai_ai_wp_admin_render_page', // @phpstan-ignore argument.type
 						2
 					);
+				}
+			);
+
+			// Expose credential status to the settings page script module.
+			add_filter(
+				'script_module_data_ai-wp-admin',
+				static function ( array $data ): array {
+					$data['hasCredentials']      = has_ai_credentials();
+					$data['hasValidCredentials'] = has_valid_ai_credentials();
+					$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
+					return $data;
 				}
 			);
 		}

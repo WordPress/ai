@@ -2,12 +2,18 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import { Button, CheckboxControl, Spinner } from '@wordpress/components';
+import {
+	Button,
+	CheckboxControl,
+	Notice,
+	Spinner,
+} from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
 import { useCallback, useMemo } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { store as noticesStore } from '@wordpress/notices';
 import type { Field, Form } from '@wordpress/dataviews';
 
 /**
@@ -18,16 +24,26 @@ import AIIcon from './ai-icon';
 
 type AISettings = Record< string, boolean >;
 
-const AI_SETTING_KEYS = [
-	'wpai_features_enabled',
-	'wpai_feature_excerpt-generation_enabled',
-	'wpai_feature_title-generation_enabled',
-	'wpai_feature_alt-text-generation_enabled',
-	'wpai_feature_summarization_enabled',
-	'wpai_feature_image-generation_enabled',
-	'wpai_feature_review-notes_enabled',
-	'wpai_feature_abilities-explorer_enabled',
-];
+interface PageData {
+	hasCredentials: boolean;
+	hasValidCredentials: boolean;
+	connectorsUrl: string;
+}
+
+function getPageData(): PageData {
+	try {
+		return JSON.parse(
+			document.getElementById( 'wp-script-module-data-ai-wp-admin' )
+				?.textContent ?? '{}'
+		);
+	} catch {
+		return {
+			hasCredentials: false,
+			hasValidCredentials: false,
+			connectorsUrl: '',
+		};
+	}
+}
 
 const GLOBAL_FIELD: Field< AISettings > = {
 	id: 'wpai_features_enabled',
@@ -92,7 +108,21 @@ const EXPERIMENT_FIELDS: Field< AISettings >[] = [
 	},
 ];
 
-function DisabledCheckbox( { field, data }: any ) {
+const AI_SETTING_KEYS = [ GLOBAL_FIELD, ...EXPERIMENT_FIELDS ].map(
+	( f ) => f.id
+);
+
+function DisabledCheckbox( {
+	field,
+	data,
+}: {
+	field: {
+		label: string;
+		description?: string;
+		getValue: ( args: { item: AISettings } ) => unknown;
+	};
+	data: AISettings;
+} ) {
 	return (
 		<CheckboxControl
 			__nextHasNoMarginBottom
@@ -162,6 +192,8 @@ const form: Form = {
 };
 
 function AISettingsPage() {
+	const pageData = getPageData();
+
 	const { siteSettings, hasEdits, isSaving, isLoading } = useSelect(
 		( select ) => {
 			const store = select( coreStore ) as any;
@@ -169,12 +201,18 @@ function AISettingsPage() {
 				siteSettings: store.getEditedEntityRecord( 'root', 'site' ) as
 					| Record< string, unknown >
 					| undefined,
-				hasEdits: store.hasEditsForEntityRecord( 'root', 'site' ),
-				isSaving: store.isSavingEntityRecord( 'root', 'site' ),
+				hasEdits: store.hasEditsForEntityRecord(
+					'root',
+					'site'
+				) as boolean,
+				isSaving: store.isSavingEntityRecord(
+					'root',
+					'site'
+				) as boolean,
 				isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
 					'root',
 					'site',
-				] ),
+				] ) as boolean,
 			};
 		},
 		[]
@@ -182,6 +220,8 @@ function AISettingsPage() {
 
 	const { editEntityRecord, saveEditedEntityRecord } =
 		useDispatch( coreStore );
+	const { createSuccessNotice, createErrorNotice } =
+		useDispatch( noticesStore );
 
 	const data: AISettings = useMemo( () => {
 		const aiSettings: AISettings = {};
@@ -191,8 +231,7 @@ function AISettingsPage() {
 		return aiSettings;
 	}, [ siteSettings ] );
 
-	// eslint-disable-next-line dot-notation
-	const globalEnabled = data[ 'wpai_features_enabled' ];
+	const globalEnabled = data[ GLOBAL_FIELD.id ];
 
 	const fields = useMemo< Field< AISettings >[] >(
 		() => [
@@ -201,7 +240,7 @@ function AISettingsPage() {
 				...field,
 				Edit: globalEnabled
 					? ( 'checkbox' as const )
-					: DisabledCheckbox,
+					: ( DisabledCheckbox as any ),
 			} ) ),
 		],
 		[ globalEnabled ]
@@ -209,14 +248,25 @@ function AISettingsPage() {
 
 	const handleChange = useCallback(
 		( edits: Record< string, unknown > ) => {
-			( editEntityRecord as any )( 'root', 'site', undefined, edits );
+			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
+			editEntityRecord( 'root', 'site', undefined, edits );
 		},
 		[ editEntityRecord ]
 	);
 
 	const handleSave = useCallback( async () => {
-		await ( saveEditedEntityRecord as any )( 'root', 'site' );
-	}, [ saveEditedEntityRecord ] );
+		try {
+			// @ts-expect-error -- core-data types don't expose saveEditedEntityRecord for 'root'/'site' args.
+			await saveEditedEntityRecord( 'root', 'site' );
+			createSuccessNotice( __( 'Settings saved.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		} catch {
+			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		}
+	}, [ saveEditedEntityRecord, createSuccessNotice, createErrorNotice ] );
 
 	return (
 		<Page
@@ -252,6 +302,24 @@ function AISettingsPage() {
 			}
 		>
 			<div className="ai-settings-page">
+				{ ! pageData.hasValidCredentials && (
+					<Notice status="error" isDismissible={ false }>
+						{ ! pageData.hasCredentials
+							? __(
+									'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
+									'ai'
+							  )
+							: __(
+									'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+									'ai'
+							  ) }{ ' ' }
+						{ pageData.connectorsUrl && (
+							<a href={ pageData.connectorsUrl }>
+								{ __( 'Manage Connectors', 'ai' ) }
+							</a>
+						) }
+					</Notice>
+				) }
 				{ isLoading ? (
 					<Spinner />
 				) : (

@@ -15,6 +15,7 @@
     "@wordpress/data": "*",
     "@wordpress/dataviews": "*",
     "@wordpress/element": "*",
-    "@wordpress/i18n": "*"
+    "@wordpress/i18n": "*",
+    "@wordpress/notices": "*"
   }
 }
