@@ -187,8 +187,6 @@ const form: Form = {
 };
 
 function AISettingsPage() {
-	const PAGE_DATA = PAGE_DATA;
-
 	const { siteSettings, hasEdits, isSaving, isLoading } = useSelect(
 		( select ) => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
@@ -310,9 +308,12 @@ function AISettingsPage() {
 									'ai'
 							  ) }{ ' ' }
 						{ PAGE_DATA.connectorsUrl && (
-							<a href={ PAGE_DATA.connectorsUrl }>
+							<Button
+								variant="link"
+								href={ PAGE_DATA.connectorsUrl }
+							>
 								{ __( 'Manage Connectors', 'ai' ) }
-							</a>
+							</Button>
 						) }
 					</Notice>
 				) }

@@ -215,6 +215,13 @@ function initialize_features(): void {
 		$settings_registration->init();
 
 		// Register admin settings page menu item.
+		if ( is_admin() && ! function_exists( 'ai_ai_wp_admin_render_page' ) ) {
+			_doing_it_wrong(
+				__FUNCTION__,
+				esc_html__( 'AI settings page render function not found. Run npm run build:routes to generate build assets.', 'ai' ),
+				'0.6.0'
+			);
+		}
 		if ( is_admin() && function_exists( 'ai_ai_wp_admin_render_page' ) ) {
 			add_action(
 				'admin_menu',

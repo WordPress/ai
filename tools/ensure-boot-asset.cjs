@@ -10,7 +10,7 @@ const fs = require( 'fs' );
 const path = require( 'path' );
 
 const bootAssetPath = path.join(
-	process.cwd(),
+	path.dirname( __dirname ),
 	'build',
 	'modules',
 	'boot',
