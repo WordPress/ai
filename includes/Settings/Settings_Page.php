@@ -15,6 +15,8 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Permissions\Permissions_Manager;
+use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
@@ -190,16 +192,18 @@ class Settings_Page {
 						</div>
 					</div>
 
-					<?php
+					<?php $this->render_plugin_permissions_section( $global_enabled ); ?>
+
+				<?php
 					// Group experiments by category, normalizing unknown categories to OTHER.
 					$known_categories        = array( Experiment_Category::EDITOR, Experiment_Category::ADMIN );
 					$experiments_by_category = array();
-					foreach ( $this->registry->get_all_features() as $experiment ) {
-						$category                               = in_array( $experiment->get_category(), $known_categories, true )
-							? $experiment->get_category()
-							: Feature_Category::OTHER;
-						$experiments_by_category[ $category ][] = $experiment;
-					}
+				foreach ( $this->registry->get_all_features() as $experiment ) {
+					$category                               = in_array( $experiment->get_category(), $known_categories, true )
+						? $experiment->get_category()
+						: Feature_Category::OTHER;
+					$experiments_by_category[ $category ][] = $experiment;
+				}
 
 					$this->render_experiments_section(
 						'ai-experiments-editor-heading',
@@ -224,7 +228,7 @@ class Settings_Page {
 						$experiments_by_category[ Feature_Category::OTHER ] ?? array(),
 						$global_enabled
 					);
-					?>
+				?>
 				</div>
 
 				<?php submit_button(); ?>
@@ -253,6 +257,120 @@ class Settings_Page {
 				})();
 			</script>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Renders the plugin permissions section.
+	 *
+	 * Displays a card allowing site admins to grant or revoke AI provider access
+	 * for each third-party plugin that has registered via `wpai_register_plugins`.
+	 * Also allows configuring per-plugin provider routing preferences.
+	 *
+	 * The section is hidden if no plugins have registered themselves.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param bool $global_enabled Whether the global AI toggle is currently on.
+	 * @return void
+	 */
+	private function render_plugin_permissions_section( bool $global_enabled ): void {
+		$permissions_manager = Permissions_Manager::get_instance();
+		$plugins             = $permissions_manager->get_plugin_registry()->get_all_plugins();
+
+		if ( empty( $plugins ) ) {
+			return;
+		}
+
+		// Build the list of available provider slugs from the global preferences.
+		$known_providers = array_unique(
+			array_column( get_preferred_models_for_text_generation(), 0 )
+		);
+		?>
+
+		<div class="ai-experiments__card" role="region" aria-labelledby="ai-plugin-permissions-heading">
+			<div class="ai-experiments__card-heading">
+				<h2 id="ai-plugin-permissions-heading"><?php esc_html_e( 'Plugin Permissions', 'ai' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'Control which plugins are allowed to use connected AI providers. Only plugins that have declared their intent to use AI appear here.', 'ai' ); ?>
+				</p>
+
+				<?php if ( ! $global_enabled ) : ?>
+					<div class="notice notice-info inline ai-experiments__notice" role="status" aria-live="polite">
+						<p><?php esc_html_e( 'Enable AI above to configure plugin permissions.', 'ai' ); ?></p>
+					</div>
+				<?php endif; ?>
+			</div>
+
+			<ul class="ai-experiments__list">
+				<?php foreach ( $plugins as $plugin ) : ?>
+					<?php
+					$plugin_key       = $permissions_manager->sanitize_option_key( $plugin['id'] );
+					$access_option    = Permissions_Manager::PLUGIN_ACCESS_OPTION_PREFIX . $plugin_key;
+					$providers_option = Permissions_Manager::PLUGIN_PROVIDER_OPTION_PREFIX . $plugin_key;
+					$plugin_access    = (bool) get_option( $access_option, false );
+					$plugin_providers = (string) get_option( $providers_option, '' );
+					$disabled_class   = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
+					$desc_id          = 'ai-plugin-' . esc_attr( $plugin_key ) . '-desc';
+					$providers_id     = 'ai-plugin-' . esc_attr( $plugin_key ) . '-providers';
+					?>
+
+					<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
+						<div class="ai-experiments__item-header">
+							<label class="components-toggle-control" for="<?php echo esc_attr( $access_option ); ?>">
+								<input
+									type="checkbox"
+									name="<?php echo esc_attr( $access_option ); ?>"
+									id="<?php echo esc_attr( $access_option ); ?>"
+									value="1"
+									<?php checked( $plugin_access ); ?>
+									<?php disabled( ! $global_enabled ); ?>
+									<?php if ( ! empty( $plugin['description'] ) ) : ?>
+										aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
+									<?php endif; ?>
+								/>
+								<span>
+									<strong><?php echo esc_html( $plugin['name'] ); ?></strong>
+								</span>
+							</label>
+						</div>
+
+						<?php if ( ! empty( $plugin['description'] ) ) : ?>
+							<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
+								<?php echo esc_html( $plugin['description'] ); ?>
+							</p>
+						<?php endif; ?>
+
+						<div class="ai-plugin-provider-routing">
+							<label for="<?php echo esc_attr( $providers_id ); ?>">
+								<?php esc_html_e( 'Limit to providers (optional)', 'ai' ); ?>
+							</label>
+							<input
+								type="text"
+								name="<?php echo esc_attr( $providers_option ); ?>"
+								id="<?php echo esc_attr( $providers_id ); ?>"
+								value="<?php echo esc_attr( $plugin_providers ); ?>"
+								placeholder="<?php echo esc_attr( implode( ', ', $known_providers ) ); ?>"
+								<?php disabled( ! $global_enabled ); ?>
+								class="regular-text"
+							/>
+							<p class="description">
+								<?php
+								echo esc_html(
+									sprintf(
+										/* translators: %s: comma-separated list of available provider slugs. */
+										__( 'Comma-separated list of provider slugs this plugin may use (e.g. %s). Leave empty to allow all configured providers.', 'ai' ),
+										implode( ', ', $known_providers )
+									)
+								);
+								?>
+							</p>
+						</div>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+
 		<?php
 	}
 

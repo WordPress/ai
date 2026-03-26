@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use Throwable;
+use WordPress\AI\Permissions\Permissions_Manager;
 use WordPress\AI\Services\AI_Service;
 
 /**
@@ -292,6 +293,31 @@ function get_preferred_vision_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred vision models.
 	 */
 	return (array) apply_filters( 'wpai_preferred_vision_models', $preferred_models );
+}
+
+/**
+ * Checks whether a plugin has been granted access to connected AI providers.
+ *
+ * Plugins must first register themselves via the `wpai_register_plugins` action hook.
+ * Site admins can then grant or revoke access per plugin on the AI settings page.
+ *
+ * This also checks the global AI features toggle — if AI is globally disabled,
+ * this returns false regardless of the plugin's individual access setting.
+ *
+ * Example usage:
+ * ```php
+ * if ( ! WordPress\AI\plugin_has_ai_access( 'my-plugin' ) ) {
+ *     return new WP_Error( 'ai_access_denied', 'AI access is not enabled for this plugin.' );
+ * }
+ * ```
+ *
+ * @since 1.0.0
+ *
+ * @param string $plugin_id The plugin identifier used during registration.
+ * @return bool True if the plugin has been granted AI access, false otherwise.
+ */
+function plugin_has_ai_access( string $plugin_id ): bool {
+	return Permissions_Manager::get_instance()->plugin_has_access( $plugin_id );
 }
 
 /**

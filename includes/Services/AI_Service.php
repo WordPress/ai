@@ -11,8 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Services;
 
+use WordPress\AI\Permissions\Permissions_Manager;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
-
 use function WordPress\AI\get_preferred_models_for_text_generation;
 
 /**
@@ -131,6 +131,73 @@ class AI_Service {
 		}
 
 		// Apply options via ModelConfig if any are provided.
+		if ( ! empty( $options ) ) {
+			$config_array = $this->map_options_to_config( $options );
+			if ( ! empty( $config_array ) ) {
+				$config  = ModelConfig::fromArray( $config_array );
+				$builder = $builder->using_model_config( $config );
+			}
+		}
+
+		return $builder;
+	}
+
+	/**
+	 * Creates a text generation prompt builder scoped to a specific plugin.
+	 *
+	 * Performs an access check for the plugin before creating the prompt builder.
+	 * Returns null if the plugin has not been granted AI access by the site admin,
+	 * so callers should check the return value before proceeding.
+	 *
+	 * If the site admin has configured provider routing preferences for the plugin,
+	 * the prompt builder will be limited to those providers. Otherwise it falls back
+	 * to the global preferred models list.
+	 *
+	 * Example usage:
+	 * ```php
+	 * $service = WordPress\AI\get_ai_service();
+	 * $builder = $service->create_textgen_prompt_for_plugin( 'my-plugin', 'Summarize this' );
+	 * if ( null === $builder ) {
+	 *     return new WP_Error( 'ai_access_denied', 'AI access is not enabled for this plugin.' );
+	 * }
+	 * $text = $builder->generate_text();
+	 * ```
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string               $plugin_id The plugin identifier used during registration.
+	 * @param string|null          $prompt    Optional. Initial prompt content.
+	 * @param array<string, mixed> $options   Optional. Same options as {@see AI_Service::create_textgen_prompt()}.
+	 * @return \WP_AI_Client_Prompt_Builder|null The configured prompt builder, or null if access is denied.
+	 */
+	public function create_textgen_prompt_for_plugin( string $plugin_id, ?string $prompt = null, array $options = array() ) {
+		$permissions = Permissions_Manager::get_instance();
+
+		if ( ! $permissions->plugin_has_access( $plugin_id ) ) {
+			return null;
+		}
+
+		$builder = wp_ai_client_prompt( $prompt );
+
+		// Use plugin-specific provider preferences, or fall back to global.
+		$provider_prefs = $permissions->get_plugin_provider_preferences( $plugin_id );
+		if ( ! empty( $provider_prefs ) ) {
+			$all_models = get_preferred_models_for_text_generation();
+			$filtered   = array_values(
+				array_filter(
+					$all_models,
+					static fn( array $m ): bool => in_array( $m[0], $provider_prefs, true )
+				)
+			);
+			$models     = ! empty( $filtered ) ? $filtered : $all_models;
+		} else {
+			$models = get_preferred_models_for_text_generation();
+		}
+
+		if ( ! empty( $models ) ) {
+			$builder = $builder->using_model_preference( ...$models );
+		}
+
 		if ( ! empty( $options ) ) {
 			$config_array = $this->map_options_to_config( $options );
 			if ( ! empty( $config_array ) ) {

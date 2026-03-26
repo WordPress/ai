@@ -17,6 +17,7 @@ use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Permissions\Permissions_Manager;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -204,6 +205,10 @@ function initialize_features(): void {
 		$loader   = new Loader( $registry );
 		$loader->register_features();
 		$loader->initialize_features();
+
+		// Initialize plugin permissions registry.
+		$permissions_manager = Permissions_Manager::get_instance();
+		$permissions_manager->initialize();
 
 		// Initialize settings registration.
 		$settings_registration = new Settings_Registration( $registry );

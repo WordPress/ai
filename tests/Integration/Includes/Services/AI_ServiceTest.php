@@ -8,7 +8,9 @@
 namespace WordPress\AI\Tests\Integration\Includes\Services;
 
 use WP_UnitTestCase;
+use WordPress\AI\Permissions\Permissions_Manager;
 use WordPress\AI\Services\AI_Service;
+use WordPress\AI\Settings\Settings_Registration;
 
 use function WordPress\AI\get_ai_service;
 
@@ -37,11 +39,19 @@ class AI_Service_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Teardown test case.
+	 * Resets permission state and cleans up options after each test.
 	 *
 	 * @since 0.2.1
 	 */
 	public function tearDown(): void {
+		// Reset the Permissions_Manager singleton so permission state does not bleed between tests.
+		$reflection = new \ReflectionClass( Permissions_Manager::class );
+		$prop       = $reflection->getProperty( 'instance' );
+		$prop->setAccessible( true );
+		$prop->setValue( null, null );
+
+		delete_option( Settings_Registration::GLOBAL_OPTION );
+
 		parent::tearDown();
 	}
 
@@ -104,6 +114,101 @@ class AI_Service_Test extends WP_UnitTestCase {
 			$builder,
 			'Should return WP_AI_Client_Prompt_Builder instance with options applied'
 		);
+	}
+
+	// -------------------------------------------------------------------------
+	// create_textgen_prompt_for_plugin
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Tests that create_textgen_prompt_for_plugin returns null when the plugin is not registered.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_create_textgen_prompt_for_plugin_returns_null_for_unregistered_plugin(): void {
+		update_option( Settings_Registration::GLOBAL_OPTION, true );
+
+		$builder = $this->service->create_textgen_prompt_for_plugin( 'unregistered-plugin', 'Hello' );
+
+		$this->assertNull( $builder );
+	}
+
+	/**
+	 * Tests that create_textgen_prompt_for_plugin returns null when global AI is disabled.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_create_textgen_prompt_for_plugin_returns_null_when_global_disabled(): void {
+		update_option( Settings_Registration::GLOBAL_OPTION, false );
+
+		$manager  = Permissions_Manager::get_instance();
+		$registry = $manager->get_plugin_registry();
+		$registry->register_plugin( 'my-plugin' );
+
+		$plugin_key = $manager->sanitize_option_key( 'my-plugin' );
+		update_option( Permissions_Manager::PLUGIN_ACCESS_OPTION_PREFIX . $plugin_key, true );
+
+		$builder = $this->service->create_textgen_prompt_for_plugin( 'my-plugin', 'Hello' );
+
+		$this->assertNull( $builder );
+	}
+
+	/**
+	 * Tests that create_textgen_prompt_for_plugin returns null when the plugin has not been granted access.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_create_textgen_prompt_for_plugin_returns_null_when_access_not_granted(): void {
+		update_option( Settings_Registration::GLOBAL_OPTION, true );
+
+		$manager  = Permissions_Manager::get_instance();
+		$registry = $manager->get_plugin_registry();
+		$registry->register_plugin( 'my-plugin' );
+
+		// Access option deliberately NOT set (defaults to false).
+		$builder = $this->service->create_textgen_prompt_for_plugin( 'my-plugin', 'Hello' );
+
+		$this->assertNull( $builder );
+	}
+
+	/**
+	 * Tests that create_textgen_prompt_for_plugin returns a prompt builder when the plugin has been granted access.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_create_textgen_prompt_for_plugin_returns_builder_when_access_granted(): void {
+		update_option( Settings_Registration::GLOBAL_OPTION, true );
+
+		$manager  = Permissions_Manager::get_instance();
+		$registry = $manager->get_plugin_registry();
+		$registry->register_plugin( 'my-plugin' );
+
+		$plugin_key = $manager->sanitize_option_key( 'my-plugin' );
+		update_option( Permissions_Manager::PLUGIN_ACCESS_OPTION_PREFIX . $plugin_key, true );
+
+		$builder = $this->service->create_textgen_prompt_for_plugin( 'my-plugin', 'Hello' );
+
+		$this->assertInstanceOf( \WP_AI_Client_Prompt_Builder::class, $builder );
+	}
+
+	/**
+	 * Tests that create_textgen_prompt_for_plugin accepts a null prompt argument.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_create_textgen_prompt_for_plugin_accepts_null_prompt(): void {
+		update_option( Settings_Registration::GLOBAL_OPTION, true );
+
+		$manager  = Permissions_Manager::get_instance();
+		$registry = $manager->get_plugin_registry();
+		$registry->register_plugin( 'my-plugin' );
+
+		$plugin_key = $manager->sanitize_option_key( 'my-plugin' );
+		update_option( Permissions_Manager::PLUGIN_ACCESS_OPTION_PREFIX . $plugin_key, true );
+
+		$builder = $this->service->create_textgen_prompt_for_plugin( 'my-plugin' );
+
+		$this->assertInstanceOf( \WP_AI_Client_Prompt_Builder::class, $builder );
 	}
 
 	/**
