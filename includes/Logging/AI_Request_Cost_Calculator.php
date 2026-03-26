@@ -101,58 +101,58 @@ class AI_Request_Cost_Calculator {
 		),
 		'anthropic' => array(
 			// Claude 4.6 (current model ID format: claude-{role}-{version}).
-			'claude-opus-4-6'       => array(
+			'claude-opus-4-6'   => array(
 				'input'  => 0.015,
 				'output' => 0.075,
 			),
-			'claude-sonnet-4-6'     => array(
+			'claude-sonnet-4-6' => array(
 				'input'  => 0.003,
 				'output' => 0.015,
 			),
 			// Claude 4.5.
-			'claude-opus-4-5'       => array(
+			'claude-opus-4-5'   => array(
 				'input'  => 0.015,
 				'output' => 0.075,
 			),
-			'claude-sonnet-4-5'     => array(
+			'claude-sonnet-4-5' => array(
 				'input'  => 0.003,
 				'output' => 0.015,
 			),
-			'claude-haiku-4-5'      => array(
+			'claude-haiku-4-5'  => array(
 				'input'  => 0.001,
 				'output' => 0.005,
 			),
 			// Alternate naming variants (marketing names).
-			'claude-4.5-opus'       => array(
+			'claude-4.5-opus'   => array(
 				'input'  => 0.015,
 				'output' => 0.075,
 			),
-			'claude-4.5-sonnet'     => array(
+			'claude-4.5-sonnet' => array(
 				'input'  => 0.003,
 				'output' => 0.015,
 			),
-			'claude-4.5-haiku'      => array(
+			'claude-4.5-haiku'  => array(
 				'input'  => 0.001,
 				'output' => 0.005,
 			),
 			// Claude 3.5 / 3.
-			'claude-3-5-sonnet'     => array(
+			'claude-3-5-sonnet' => array(
 				'input'  => 0.003,
 				'output' => 0.015,
 			),
-			'claude-3-5-haiku'      => array(
+			'claude-3-5-haiku'  => array(
 				'input'  => 0.001,
 				'output' => 0.005,
 			),
-			'claude-3-opus'         => array(
+			'claude-3-opus'     => array(
 				'input'  => 0.015,
 				'output' => 0.075,
 			),
-			'claude-3-sonnet'       => array(
+			'claude-3-sonnet'   => array(
 				'input'  => 0.003,
 				'output' => 0.015,
 			),
-			'claude-3-haiku'        => array(
+			'claude-3-haiku'    => array(
 				'input'  => 0.00025,
 				'output' => 0.00125,
 			),

@@ -2,15 +2,18 @@
  * WordPress dependencies
  */
 const defaultConfig = require( '@wordpress/scripts/config/webpack.config' );
+// eslint-disable-next-line import/no-extraneous-dependencies
 const DependencyExtractionWebpackPlugin = require( '@wordpress/dependency-extraction-webpack-plugin' );
 const {
 	defaultRequestToExternal,
 	defaultRequestToHandle,
+	// eslint-disable-next-line import/no-extraneous-dependencies
 } = require( '@wordpress/dependency-extraction-webpack-plugin/lib/util' );
 
 /**
  * External dependencies
  */
+// eslint-disable-next-line import/no-extraneous-dependencies
 const CopyWebpackPlugin = require( 'copy-webpack-plugin' );
 const RemoveEmptyScriptsPlugin = require( 'webpack-remove-empty-scripts' );
 const path = require( 'path' );
@@ -19,10 +22,7 @@ const path = require( 'path' );
  * Packages that should be bundled rather than externalized because they
  * are not registered as WP script handles in all supported versions.
  */
-const BUNDLED_PACKAGES = new Set( [
-	'@wordpress/dataviews',
-	'@wordpress/ui',
-] );
+const BUNDLED_PACKAGES = new Set( [ '@wordpress/dataviews', '@wordpress/ui' ] );
 
 /**
  * Replace the default DependencyExtractionWebpackPlugin with one that

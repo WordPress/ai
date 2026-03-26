@@ -123,6 +123,8 @@ const getSourceLabel = ( entry: LogEntry ): string | null => {
 /**
  * Translates the DataViews view state into the LogsQuery shape
  * consumed by the parent's REST fetcher.
+ * @param view
+ * @param availableOperations
  */
 const viewToQuery = (
 	view: Record< string, unknown >,
@@ -146,10 +148,7 @@ const viewToQuery = (
 	let operations: string[];
 	if ( operationFilter && Array.isArray( operationFilter.value ) ) {
 		operations = operationFilter.value as string[];
-	} else if (
-		operationFilter &&
-		typeof operationFilter.value === 'string'
-	) {
+	} else if ( operationFilter && typeof operationFilter.value === 'string' ) {
 		operations = [ operationFilter.value ];
 	} else {
 		operations = getDefaultOperationSelection( availableOperations );
@@ -158,26 +157,22 @@ const viewToQuery = (
 	return {
 		page: ( ( view.page as number ) ?? 1 ) || 1,
 		search: ( ( view.search as string ) ?? '' ) || '',
-		type:
-			typeof typeFilter?.value === 'string' ? typeFilter.value : '',
+		type: typeof typeFilter?.value === 'string' ? typeFilter.value : '',
 		status:
-			typeof statusFilter?.value === 'string'
-				? statusFilter.value
-				: '',
+			typeof statusFilter?.value === 'string' ? statusFilter.value : '',
 		provider:
 			typeof providerFilter?.value === 'string'
 				? providerFilter.value
 				: '',
 		operation: operations,
 		tokensFilter:
-			typeof tokensFilter?.value === 'string'
-				? tokensFilter.value
-				: '',
+			typeof tokensFilter?.value === 'string' ? tokensFilter.value : '',
 	};
 };
 
 /**
  * Translates LogsQuery back into a DataViews-compatible view object.
+ * @param query
  */
 const queryToView = ( query: LogsQuery ) => {
 	const filters: Array< {
@@ -282,7 +277,15 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 	return (
 		<div
 			className="ai-request-logs__provider-cell"
+			role="button"
+			tabIndex={ 0 }
 			onClick={ () => setIsPopoverVisible( ( prev ) => ! prev ) }
+			onKeyDown={ ( e ) => {
+				if ( 'Enter' === e.key || ' ' === e.key ) {
+					e.preventDefault();
+					setIsPopoverVisible( ( prev ) => ! prev );
+				}
+			} }
 		>
 			<div className="ai-request-logs__provider-row">
 				<span className="ai-request-logs__provider-icon">
@@ -362,9 +365,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 
 	const onChangeView = useCallback(
 		( nextView: Record< string, unknown > ) => {
-			setQuery(
-				viewToQuery( nextView, filterOptions.operations ?? [] )
-			);
+			setQuery( viewToQuery( nextView, filterOptions.operations ?? [] ) );
 		},
 		[ filterOptions.operations, setQuery ]
 	);
@@ -489,9 +490,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 							{ sprintf(
 								/* translators: %s: tokens per second. */
 								__( '%s/s', 'ai' ),
-								formatTokensPerSecond(
-									item.tokens_per_second
-								)
+								formatTokensPerSecond( item.tokens_per_second )
 							) }
 						</span>
 					</div>

@@ -79,7 +79,7 @@ class AI_Request_Log_Page {
 				'ai-dataviews',
 				WPAI_PLUGIN_URL . 'build/admin/dataviews.css',
 				array(),
-				filemtime( $dataviews_css )
+				(string) filemtime( $dataviews_css )
 			);
 		}
 
