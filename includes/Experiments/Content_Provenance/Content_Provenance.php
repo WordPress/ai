@@ -11,11 +11,11 @@ namespace WordPress\AI\Experiments\Content_Provenance;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Content_Provenance\Signing\BYOK_Signer;
 use WordPress\AI\Experiments\Content_Provenance\Signing\Connected_Signer;
 use WordPress\AI\Experiments\Content_Provenance\Signing\Local_Signer;
 use WordPress\AI\Experiments\Content_Provenance\Signing\Signing_Interface;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -807,7 +807,7 @@ class Content_Provenance extends Abstract_Feature {
 	 *
 	 * @since 0.5.0
 	 *
-	 * @return Signing_Interface
+	 * @return \WordPress\AI\Experiments\Content_Provenance\Signing\Signing_Interface
 	 */
 	public function get_public_signer(): Signing_Interface {
 		return $this->get_signer();
@@ -821,7 +821,7 @@ class Content_Provenance extends Abstract_Feature {
 	 *
 	 * @since 0.5.0
 	 *
-	 * @return Signing_Interface
+	 * @return \WordPress\AI\Experiments\Content_Provenance\Signing\Signing_Interface
 	 */
 	private function get_signer(): Signing_Interface {
 		$raw_tier = $this->get_signing_option( 'signing_tier' );

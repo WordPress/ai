@@ -47,23 +47,23 @@ Verifies C2PA provenance embedded in text. No authentication required.
 
 ## Hooks
 
-### `ai_experiments_register_experiments`
+### `wpai_register_features`
 
 Register a custom signing backend or extend behaviour:
 
 ```php
-add_action( 'ai_experiments_register_experiments', function( $registry ) {
+add_action( 'wpai_register_features', function( $registry ) {
     // Access the content provenance experiment.
-    $experiment = $registry->get_experiment( 'content-provenance' );
+    $experiment = $registry->get_feature( 'content-provenance' );
 } );
 ```
 
-### `ai_content_provenance_experiment_instance`
+### `wpai_content_provenance_experiment_instance`
 
 Provides the Content_Provenance experiment instance to the C2PA_Sign ability:
 
 ```php
-add_filter( 'ai_content_provenance_experiment_instance', function( $experiment ) {
+add_filter( 'wpai_content_provenance_experiment_instance', function( $experiment ) {
     // Return a custom Content_Provenance instance if needed.
     return $experiment;
 } );

@@ -203,7 +203,7 @@ class C2PA_Sign_Test extends WP_UnitTestCase {
 		$experiment = new \WordPress\AI\Experiments\Content_Provenance\Content_Provenance();
 
 		add_filter(
-			'ai_content_provenance_experiment_instance',
+			'wpai_content_provenance_experiment_instance',
 			static function () use ( $experiment ) {
 				return $experiment;
 			}
@@ -214,7 +214,7 @@ class C2PA_Sign_Test extends WP_UnitTestCase {
 		$ref->setAccessible( true );
 		$result = $ref->invoke( $ability, array( 'text' => 'Content via experiment signer.' ) );
 
-		remove_all_filters( 'ai_content_provenance_experiment_instance' );
+		remove_all_filters( 'wpai_content_provenance_experiment_instance' );
 
 		$this->assertIsArray( $result );
 		$this->assertArrayHasKey( 'signed_text', $result );
@@ -260,7 +260,7 @@ class C2PA_Sign_Test extends WP_UnitTestCase {
 		$mock_experiment->method( 'get_public_signer' )->willReturn( $mock_signer );
 
 		add_filter(
-			'ai_content_provenance_experiment_instance',
+			'wpai_content_provenance_experiment_instance',
 			static function () use ( $mock_experiment ) {
 				return $mock_experiment;
 			}
@@ -271,7 +271,7 @@ class C2PA_Sign_Test extends WP_UnitTestCase {
 		$ref->setAccessible( true );
 		$result = $ref->invoke( $ability, array( 'text' => 'Content to sign.' ) );
 
-		remove_all_filters( 'ai_content_provenance_experiment_instance' );
+		remove_all_filters( 'wpai_content_provenance_experiment_instance' );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'signer_error', $result->get_error_code() );

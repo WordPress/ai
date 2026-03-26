@@ -183,7 +183,7 @@ class C2PA_Sign extends Abstract_Ability {
 	 */
 	private function get_experiment(): ?\WordPress\AI\Experiments\Content_Provenance\Content_Provenance {
 		// The experiment registry is not always accessible here; use a filter for loose coupling.
-		return apply_filters( 'ai_content_provenance_experiment_instance', null );
+		return apply_filters( 'wpai_content_provenance_experiment_instance', null );
 	}
 
 	/**
