@@ -63,6 +63,15 @@ class Asset_Loader {
 			);
 		}
 
+		// Remove dependencies that are not registered in the current WP version
+		// (e.g. wp-ui from bundled @wordpress/dataviews on older installs).
+		$asset_data['dependencies'] = array_filter(
+			$asset_data['dependencies'],
+			static function ( string $dep ): bool {
+				return wp_scripts()->query( $dep ) !== false;
+			}
+		);
+
 		wp_enqueue_script(
 			'ai_' . $handle,
 			$script_url,

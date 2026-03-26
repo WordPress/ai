@@ -54,6 +54,7 @@
     "@wordpress/compose": "^7.34.0",
     "@wordpress/core-data": "^7.37.0",
     "@wordpress/data": "^10.34.0",
+    "@wordpress/dataviews": "^13.1.0",
     "@wordpress/dom-ready": "^4.38.0",
     "@wordpress/edit-post": "^8.36.0",
     "@wordpress/editor": "^14.34.0",
