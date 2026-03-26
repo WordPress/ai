@@ -1,0 +1,13 @@
+name = "cdn-provenance-worker"
+main = "cdn-provenance-worker.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+WORDPRESS_REST_URL = "https://YOUR_WORDPRESS_SITE/wp-json"
+
+# KV namespace for caching manifest URL lookups.
+# Create with: wrangler kv:namespace create "CDN_PROVENANCE_CACHE"
+# Then replace the id below with the output.
+[[kv_namespaces]]
+binding = "CDN_PROVENANCE_CACHE"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

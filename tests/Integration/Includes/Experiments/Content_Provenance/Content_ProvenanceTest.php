@@ -10,13 +10,13 @@ declare( strict_types=1 );
 namespace WordPress\AI\Tests\Integration\Experiments\Content_Provenance;
 
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\Content_Provenance\C2PA_Manifest_Builder;
+use WordPress\AI\Experiments\Content_Provenance\Content_Provenance;
+use WordPress\AI\Experiments\Content_Provenance\Unicode_Embedder;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
-use WordPress\AI\Experiments\Content_Provenance\C2PA_Manifest_Builder;
-use WordPress\AI\Experiments\Content_Provenance\Content_Provenance;
-use WordPress\AI\Experiments\Content_Provenance\Unicode_Embedder;
 
 /**
  * Content_Provenance integration test case.
