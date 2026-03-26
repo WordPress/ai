@@ -80,14 +80,13 @@ class Permissions_ManagerTest extends WP_UnitTestCase {
 	 */
 	public function test_initialize_fires_register_plugins_action(): void {
 		$received = null;
-		add_action(
-			'wpai_register_plugins',
-			static function ( $registry ) use ( &$received ): void {
-				$received = $registry;
-			}
-		);
+		$callback = function ( $registry ) use ( &$received ): void {
+			$received = $registry;
+		};
 
+		add_action( 'wpai_register_plugins', $callback );
 		$this->manager->initialize();
+		remove_action( 'wpai_register_plugins', $callback );
 
 		$this->assertInstanceOf(
 			\WordPress\AI\Permissions\Plugin_Registry::class,
@@ -103,15 +102,14 @@ class Permissions_ManagerTest extends WP_UnitTestCase {
 	 */
 	public function test_initialize_is_idempotent(): void {
 		$call_count = 0;
-		add_action(
-			'wpai_register_plugins',
-			static function () use ( &$call_count ): void {
-				$call_count++;
-			}
-		);
+		$callback   = function () use ( &$call_count ): void {
+			$call_count++;
+		};
 
+		add_action( 'wpai_register_plugins', $callback );
 		$this->manager->initialize();
 		$this->manager->initialize();
+		remove_action( 'wpai_register_plugins', $callback );
 
 		$this->assertSame( 1, $call_count );
 	}

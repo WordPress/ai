@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Manages plugin-level permissions for AI provider access.
- * Its final class to prevent extension, ensuring a single 
+ * Its final class to prevent extension, ensuring a single
  * source of truth for plugin permissions logic.
  *
  * Provides a central point for:
