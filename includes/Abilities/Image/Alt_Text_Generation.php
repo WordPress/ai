@@ -25,15 +25,6 @@ use function WordPress\AI\normalize_content;
 class Alt_Text_Generation extends Abstract_Ability {
 
 	/**
-	 * The maximum character length for generated alt text.
-	 *
-	 * @since 0.3.0
-	 *
-	 * @var int
-	 */
-	protected const MAX_ALT_TEXT_LENGTH = 125;
-
-	/**
 	 * {@inheritDoc}
 	 *
 	 * @since 0.3.0
@@ -202,11 +193,6 @@ class Alt_Text_Generation extends Abstract_Ability {
 		// Clean up the result.
 		$alt_text = trim( $result );
 		$alt_text = trim( $alt_text, '"\'.' );
-
-		// Truncate if too long.
-		if ( mb_strlen( $alt_text, 'UTF-8' ) > self::MAX_ALT_TEXT_LENGTH ) {
-			$alt_text = mb_substr( $alt_text, 0, self::MAX_ALT_TEXT_LENGTH - 3, 'UTF-8' ) . '...';
-		}
 
 		return $alt_text;
 	}
