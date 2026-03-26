@@ -10,10 +10,10 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Image_Provenance;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Content_Provenance\C2PA_Manifest_Builder;
 use WordPress\AI\Experiments\Content_Provenance\Signing\Local_Signer;
 use WordPress\AI\Experiments\Content_Provenance\Signing\Signing_Interface;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
