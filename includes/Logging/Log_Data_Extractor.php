@@ -284,6 +284,14 @@ class Log_Data_Extractor {
 		}
 
 		// Path-based detection.
+		if (
+			'models' === basename( $path_lower ) ||
+			false !== strpos( $path_lower, '/models?' ) ||
+			false !== strpos( $path_lower, '/models/' )
+		) {
+			return 'metadata';
+		}
+
 		if ( false !== strpos( $path_lower, 'embeddings' ) ) {
 			return 'embeddings';
 		}

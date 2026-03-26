@@ -29,6 +29,11 @@ import { createRoot } from 'react-dom/client';
 import HeaderPeriodSelector from './components/HeaderPeriodSelector';
 import LogDetailModal from './components/LogDetailModal';
 import LogsTable from './components/LogsTable';
+import {
+	getDefaultLogsQuery,
+	normalizeLogsQuery,
+	serializeOperationSelection,
+} from './query';
 import SettingsPanel from './components/SettingsPanel';
 import SummaryCards from './components/SummaryCards';
 import type {
@@ -50,15 +55,9 @@ const settings: LocalizedSettings =
 
 const providerMetadata = settings.providerMetadata ?? {};
 const LOGS_QUERY_STORAGE_KEY = 'ai.requestLogs.query';
-
-const DEFAULT_LOGS_QUERY: LogsQuery = {
-	page: 1,
-	search: '',
-	type: '',
-	status: '',
-	provider: '',
-	operation: '',
-	tokensFilter: '',
+const INITIAL_FILTERS: FilterOptions = {
+	...settings.initialState.filters,
+	operations: settings.initialState.filters.operations ?? [],
 };
 
 apiFetch.use( apiFetch.createNonceMiddleware( settings.rest.nonce ) );
@@ -84,53 +83,20 @@ const getErrorMessage = ( error: unknown ): string => {
 	return __( 'Something went wrong. Please try again.', 'ai' );
 };
 
-const normalizeLogsQuery = ( raw: unknown ): LogsQuery => {
-	const parsed =
-		raw && typeof raw === 'object' ? ( raw as Partial< LogsQuery > ) : {};
-
-	return {
-		page:
-			typeof parsed.page === 'number' && parsed.page > 0
-				? Math.floor( parsed.page )
-				: DEFAULT_LOGS_QUERY.page,
-		search:
-			typeof parsed.search === 'string'
-				? parsed.search
-				: DEFAULT_LOGS_QUERY.search,
-		type:
-			typeof parsed.type === 'string'
-				? parsed.type
-				: DEFAULT_LOGS_QUERY.type,
-		status:
-			typeof parsed.status === 'string'
-				? parsed.status
-				: DEFAULT_LOGS_QUERY.status,
-		provider:
-			typeof parsed.provider === 'string'
-				? parsed.provider
-				: DEFAULT_LOGS_QUERY.provider,
-		operation:
-			typeof parsed.operation === 'string'
-				? parsed.operation
-				: DEFAULT_LOGS_QUERY.operation,
-		tokensFilter:
-			typeof parsed.tokensFilter === 'string'
-				? parsed.tokensFilter
-				: DEFAULT_LOGS_QUERY.tokensFilter,
-	};
-};
-
 const getInitialLogsQuery = (): LogsQuery => {
 	try {
 		const persisted = window.localStorage.getItem( LOGS_QUERY_STORAGE_KEY );
 
 		if ( ! persisted ) {
-			return DEFAULT_LOGS_QUERY;
+			return getDefaultLogsQuery( INITIAL_FILTERS.operations );
 		}
 
-		return normalizeLogsQuery( JSON.parse( persisted ) );
+		return normalizeLogsQuery(
+			JSON.parse( persisted ),
+			INITIAL_FILTERS.operations
+		);
 	} catch {
-		return DEFAULT_LOGS_QUERY;
+		return getDefaultLogsQuery( INITIAL_FILTERS.operations );
 	}
 };
 
@@ -153,11 +119,14 @@ const App: React.FC = () => {
 	const [ total, setTotal ] = useState( 0 );
 	const [ logsQuery, setLogsQuery ] =
 		useState< LogsQuery >( getInitialLogsQuery );
+	const serializedOperationSelection = serializeOperationSelection(
+		logsQuery.operation
+	);
+	const hasOperationSelection = logsQuery.operation.length > 0;
 	const deferredSearch = useDeferredValue( logsQuery.search );
 
-	const [ filterOptions, setFilterOptions ] = useState< FilterOptions >(
-		settings.initialState.filters
-	);
+	const [ filterOptions, setFilterOptions ] =
+		useState< FilterOptions >( INITIAL_FILTERS );
 
 	const [ selectedLog, setSelectedLog ] = useState< LogEntry | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
@@ -207,8 +176,8 @@ const App: React.FC = () => {
 			if ( logsQuery.provider ) {
 				params.append( 'provider', logsQuery.provider );
 			}
-			if ( logsQuery.operation ) {
-				params.append( 'operation', logsQuery.operation );
+			if ( hasOperationSelection ) {
+				params.append( 'operation', serializedOperationSelection );
 			}
 			if ( logsQuery.tokensFilter ) {
 				params.append( 'tokens_filter', logsQuery.tokensFilter );
@@ -239,12 +208,13 @@ const App: React.FC = () => {
 		}
 	}, [
 		deferredSearch,
-		logsQuery.operation,
 		logsQuery.page,
 		logsQuery.provider,
 		logsQuery.status,
 		logsQuery.tokensFilter,
 		logsQuery.type,
+		hasOperationSelection,
+		serializedOperationSelection,
 	] );
 
 	const fetchFilters = useCallback( async () => {
@@ -253,10 +223,15 @@ const App: React.FC = () => {
 				path: settings.rest.routes.filters,
 			} );
 
-			setFilterOptions( {
+			const nextFilters = {
 				...response,
 				operations: response.operations ?? [],
-			} );
+			};
+
+			setFilterOptions( nextFilters );
+			setLogsQuery( ( previous ) =>
+				normalizeLogsQuery( previous, nextFilters.operations )
+			);
 		} catch {
 			showNotice(
 				'error',

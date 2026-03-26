@@ -23,6 +23,11 @@ import React, { useMemo, useState } from 'react';
  */
 import { getProviderIconComponent } from '../../components/provider-icons';
 import type { ProviderMetadata } from '../../types/providers';
+import {
+	areOperationsEqual,
+	getDefaultLogsQuery,
+	isModelDiscoveryOperation,
+} from '../query';
 import type { FilterOptions, LogEntry, LogsQuery } from '../types';
 
 interface LogsTableProps {
@@ -36,16 +41,6 @@ interface LogsTableProps {
 	setQuery: React.Dispatch< React.SetStateAction< LogsQuery > >;
 	providerMetadata: Record< string, ProviderMetadata >;
 }
-
-const EMPTY_QUERY: LogsQuery = {
-	page: 1,
-	search: '',
-	type: '',
-	status: '',
-	provider: '',
-	operation: '',
-	tokensFilter: '',
-};
 
 const formatTimestamp = ( timestamp: string ): string => {
 	const date = new Date( timestamp + 'Z' );
@@ -157,8 +152,33 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 		} ) );
 	};
 
+	const defaultQuery = useMemo(
+		() => getDefaultLogsQuery( filterOptions.operations ?? [] ),
+		[ filterOptions.operations ]
+	);
+	const modelDiscoveryOperations = useMemo(
+		() =>
+			( filterOptions.operations ?? [] ).filter(
+				isModelDiscoveryOperation
+			),
+		[ filterOptions.operations ]
+	);
+	const hasModelDiscoverySelection = modelDiscoveryOperations.some(
+		( operation ) => query.operation.includes( operation )
+	);
+	const hasOperationFilter = ! areOperationsEqual(
+		query.operation,
+		defaultQuery.operation
+	);
+
 	const clearFilters = () => {
-		setQuery( EMPTY_QUERY );
+		setQuery( defaultQuery );
+	};
+
+	const includeModelDiscoveryRequests = () => {
+		updateQuery( 'operation', [
+			...new Set( [ ...query.operation, ...modelDiscoveryOperations ] ),
+		] );
 	};
 
 	const typeOptions = useMemo(
@@ -195,13 +215,11 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	);
 
 	const operationOptions = useMemo(
-		() => [
-			{ label: __( 'All operations', 'ai' ), value: '' },
-			...( filterOptions.operations ?? [] ).map( ( value ) => ( {
-				label: formatSelectLabel( value ),
+		() =>
+			( filterOptions.operations ?? [] ).map( ( value ) => ( {
+				label: value,
 				value,
 			} ) ),
-		],
 		[ filterOptions.operations ]
 	);
 
@@ -256,7 +274,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			query.type ||
 			query.status ||
 			query.provider ||
-			query.operation ||
+			hasOperationFilter ||
 			query.tokensFilter
 	);
 	const emptyMessage = hasActiveFilters
@@ -329,16 +347,43 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 							__nextHasNoMarginBottom
 							__next40pxDefaultSize
 						/>
-						<SelectControl
-							label={ __( 'Operation', 'ai' ) }
-							value={ query.operation }
-							options={ operationOptions }
-							onChange={ ( value ) =>
-								updateQuery( 'operation', value )
-							}
-							__nextHasNoMarginBottom
-							__next40pxDefaultSize
-						/>
+						<div className="ai-request-logs__operations-filter">
+							<SelectControl
+								label={ __( 'Operations', 'ai' ) }
+								value={ query.operation }
+								options={ operationOptions }
+								onChange={ ( value ) =>
+									updateQuery( 'operation', value )
+								}
+								multiple
+								help={
+									modelDiscoveryOperations.length > 0
+										? __(
+												'Model discovery requests are hidden by default. Use Command on macOS or Ctrl on Windows/Linux to select multiple operations.',
+												'ai'
+										  )
+										: __(
+												'Use Command on macOS or Ctrl on Windows/Linux to select multiple operations.',
+												'ai'
+										  )
+								}
+								__nextHasNoMarginBottom
+							/>
+							{ modelDiscoveryOperations.length > 0 &&
+								! hasModelDiscoverySelection && (
+									<Button
+										variant="tertiary"
+										onClick={
+											includeModelDiscoveryRequests
+										}
+									>
+										{ __(
+											'Include model discovery requests',
+											'ai'
+										) }
+									</Button>
+								) }
+						</div>
 						<SelectControl
 							label={ __( 'Tokens', 'ai' ) }
 							value={ query.tokensFilter }

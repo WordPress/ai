@@ -63,7 +63,7 @@ add_filter( 'wpai_request_log_tokens', function( $tokens, $response ) {
 ```
 
 ### `wpai_request_log_kind`
-Filters the detected request kind (text, image, embeddings, audio).
+Filters the detected request kind (text, image, embeddings, audio, metadata).
 
 ```php
 add_filter( 'wpai_request_log_kind', function( $kind, $provider, $path, $payload ) {
@@ -79,6 +79,7 @@ add_filter( 'wpai_request_log_kind', function( $kind, $provider, $path, $payload
 2. The React app:
    - Configures `@wordpress/api-fetch` with the nonce/root.
    - Fetches logs (`GET /ai/v1/logs` with search/filter params) and displays them in a table with pagination.
+   - Uses a persisted operations multi-select that excludes `*:models` discovery calls by default so capability lookups do not drown out actual request traffic unless the user opts in.
    - Fetches summaries (`GET /ai/v1/logs/summary`) for the KPI cards, including `minute`, `hour`, `day`, `week`, `month`, and `all` periods, and filter metadata (`GET /ai/v1/logs/filters`).
    - Posts to `/ai/v1/logs` to toggle logging and retention, and sends `DELETE /ai/v1/logs` to purge the table.
 3. On the backend, every AI HTTP request flows through `Logging_Http_Transporter`, which records metrics via `AI_Request_Log_Manager::log()` before returning the response to callers. Logs are stored in the `wp_ai_request_logs` table alongside JSON-encoded context for later inspection.
@@ -86,7 +87,7 @@ add_filter( 'wpai_request_log_kind', function( $kind, $provider, $path, $payload
 ## Testing
 1. Enable Experiments globally, toggle **AI Request Logging**, and ensure valid AI credentials exist (the experiment won't enable otherwise).
 2. Trigger an AI-powered feature (e.g., Type Ahead or Title Generation) so the system issues at least one completion request.
-3. Navigate to `Tools → AI Request Logs`. Confirm the chart and table populate and that the "Logging enabled" toggle reflects the current setting.
+3. Navigate to `Tools → AI Request Logs`. Confirm the chart and table populate, that the "Logging enabled" toggle reflects the current setting, and that `*:models` discovery calls only appear after you explicitly include them in the operations filter.
 4. Change the retention days value, save, and verify the option persists (reload the page or inspect `wpai_request_logs_retention_days`).
 5. Click "Purge logs", confirm the success notice, and check the table empties.
 6. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.

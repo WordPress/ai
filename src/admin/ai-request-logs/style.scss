@@ -41,7 +41,7 @@
 
 .ai-request-logs__main {
 	display: grid;
-	grid-template-columns: 1fr 320px;
+	grid-template-columns: minmax(0, 1fr) 320px;
 	gap: 24px;
 	align-items: start;
 
@@ -51,6 +51,8 @@
 }
 
 .ai-request-logs__card {
+	min-width: 0;
+
 	.components-card__header {
 		display: flex;
 		justify-content: space-between;
@@ -93,6 +95,23 @@
 	}
 }
 
+.ai-request-logs__operations-filter {
+	display: grid;
+	gap: 8px;
+
+	.components-select-control__input[multiple] {
+		min-height: 108px;
+	}
+
+	.components-base-control__help {
+		margin-top: 8px;
+	}
+
+	.components-button {
+		justify-self: start;
+	}
+}
+
 .ai-request-logs__controls-footer {
 	display: flex;
 	justify-content: flex-end;
@@ -111,6 +130,7 @@
 	overflow-x: auto;
 	border: 1px solid #e0e0e0;
 	border-radius: 4px;
+	max-width: 100%;
 }
 
 .ai-request-logs__table {
@@ -348,6 +368,11 @@
 .ai-request-logs__kind--embeddings {
 	background: #eef2ff;
 	color: #4338ca;
+}
+
+.ai-request-logs__kind--metadata {
+	background: #eff6ff;
+	color: #1d4ed8;
 }
 
 .ai-request-logs__image-grid {

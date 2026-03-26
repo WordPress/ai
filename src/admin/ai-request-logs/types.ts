@@ -67,7 +67,7 @@ export interface LogsQuery {
 	type: string;
 	status: string;
 	provider: string;
-	operation: string;
+	operation: string[];
 	tokensFilter: string;
 }
 
