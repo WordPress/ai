@@ -53,6 +53,12 @@ class Content_ProvenanceTest extends WP_UnitTestCase {
 	 * @since 0.5.0
 	 */
 	public function tearDown(): void {
+		// Reset the REST server to prevent cross-test contamination.
+		$GLOBALS['wp_rest_server'] = null;
+
+		// Remove the Experiments filter added by init() so it doesn't leak into later tests.
+		remove_filter( 'wpai_default_feature_classes', array( Experiments::class, 'register_default_experiment_classes' ), 9 );
+
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_content-provenance_enabled' );
 		delete_option( '_c2pa_local_keypair' );

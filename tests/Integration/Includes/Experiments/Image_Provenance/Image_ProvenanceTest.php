@@ -38,6 +38,9 @@ class Image_ProvenanceTest extends WP_UnitTestCase {
 	 * Tear down.
 	 */
 	public function tearDown(): void {
+		// Remove the Experiments filter if added during this test.
+		remove_filter( 'wpai_default_feature_classes', array( Experiments::class, 'register_default_experiment_classes' ), 9 );
+
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_image-provenance_enabled' );
 		delete_option( 'wpai_feature_image-provenance_field_auto_sign_images' );
