@@ -14,14 +14,14 @@ use WordPress\AI\Admin\Activation;
  * Activation test case.
  *
  * @covers \WordPress\AI\Admin\Activation
- * @since x.x.x
+ * @since 0.6.0
  */
 class ActivationTest extends WP_UnitTestCase {
 
 	/**
 	 * Cleans up options before each test.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -32,7 +32,7 @@ class ActivationTest extends WP_UnitTestCase {
 	/**
 	 * Cleans up options after each test.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function tearDown(): void {
 		delete_option( 'wpai_version' );
@@ -43,7 +43,7 @@ class ActivationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that activation_callback() triggers upgrades.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_activation_callback_triggers_upgrades() {
 		Activation::activation_callback();

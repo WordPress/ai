@@ -463,10 +463,10 @@ test.describe( 'Image Editing Experiment', () => {
 			.first();
 		await editImageButton.click();
 
-		// Ensure there are three preset buttons.
+		// Ensure there are five preset buttons.
 		await expect(
 			page.locator( '.ai-media-library-editor__presets button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 5 );
 
 		// Find the Expand Background button and click on it.
 		const expandBGBtn = page
@@ -496,6 +496,56 @@ test.describe( 'Image Editing Experiment', () => {
 		await expect( startOverBtn ).toBeVisible();
 
 		startOverBtn.click();
+
+		// Find the Remove Item button and click on it.
+		const removeItemBtn = page
+			.locator( '.ai-media-library-editor__presets button', {
+				hasText: 'Remove Item',
+			} )
+			.first();
+		await removeItemBtn.click();
+
+		// Wait a second.
+		await page.waitForTimeout( 1000 );
+
+		// Ensure the mask canvas is visible.
+		await expect(
+			page.locator( '.ai-media-library-editor__masking' )
+		).toBeVisible();
+
+		// Click the Cancel button.
+		let cancelBtn = page.locator(
+			'.ai-media-library-editor__masking-sidebar-actions button',
+			{
+				hasText: 'Cancel',
+			}
+		);
+		await cancelBtn.click();
+
+		// Find the Replace Item button and click on it.
+		const replaceItemBtn = page
+			.locator( '.ai-media-library-editor__presets button', {
+				hasText: 'Replace Item',
+			} )
+			.first();
+		await replaceItemBtn.click();
+
+		// Wait a second.
+		await page.waitForTimeout( 1000 );
+
+		// Ensure the mask canvas is visible.
+		await expect(
+			page.locator( '.ai-media-library-editor__masking' )
+		).toBeVisible();
+
+		// Click the Cancel button.
+		cancelBtn = page.locator(
+			'.ai-media-library-editor__masking-sidebar-actions button',
+			{
+				hasText: 'Cancel',
+			}
+		);
+		await cancelBtn.click();
 
 		// Find the Remove background button and click on it.
 		const removeBGBtn = page

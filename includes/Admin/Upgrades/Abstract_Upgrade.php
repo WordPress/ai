@@ -7,7 +7,7 @@
  * Error are caught during the upgrade routine and stored in an option for use in an admin notice.
  *
  * @package WordPress\AI\Admin\Upgrades
- * @since x.x.x
+ * @since 0.6.0
  */
 
 declare( strict_types=1 );
@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 abstract class Abstract_Upgrade {
 
@@ -31,7 +31,7 @@ abstract class Abstract_Upgrade {
 	 *
 	 * This should be overloaded
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @var string
 	 */
@@ -42,7 +42,7 @@ abstract class Abstract_Upgrade {
 	 *
 	 * This is the version we're migrating from.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @var string
 	 */
@@ -51,7 +51,7 @@ abstract class Abstract_Upgrade {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param string $db_version The version of the plugin in the database.
 	 *
@@ -69,7 +69,7 @@ abstract class Abstract_Upgrade {
 	/**
 	 * Performs the upgrade routine.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return true|\WP_Error True on success, or a WP_Error on failure.
 	 */

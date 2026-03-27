@@ -5,7 +5,7 @@
  * Originally this file was located in `includes/Migrations/Credential_Migration.php`, which is why the since tags don't match.
  *
  * @package WordPress\AI\Admin\Upgrades
- * @since x.x.x
+ * @since 0.6.0
  */
 
 declare( strict_types=1 );
@@ -18,14 +18,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Upgrade routine for migrating provider credentials to the new Connectors-based storage format.
  *
- * @since x.x.x
+ * @since 0.6.0
  * @internal
  */
 class V0_5_0 extends Abstract_Upgrade {
 	/**
 	 * The legacy option that stored all provider credentials as an array.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 * @var string
 	 */
 	private const OLD_OPTION = 'wp_ai_client_provider_credentials';
@@ -42,7 +42,7 @@ class V0_5_0 extends Abstract_Upgrade {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public static string $version = '0.5.0';
 
@@ -54,7 +54,7 @@ class V0_5_0 extends Abstract_Upgrade {
 	 * Reads the old combined credentials option and, for each known provider,
 	 * copies the credential to the new option only when the new option is empty.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	protected function upgrade(): void {
 		$old_credentials = get_option( self::OLD_OPTION, array() );
