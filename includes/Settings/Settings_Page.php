@@ -341,6 +341,24 @@ class Settings_Page {
 							</p>
 						<?php endif; ?>
 
+					<?php if ( ! empty( $plugin['capabilities'] ) ) : ?>
+						<p class="description ai-plugin-capabilities">
+							<strong><?php esc_html_e( 'Requested capabilities:', 'ai' ); ?></strong>
+							<?php
+							$capability_labels = array_map(
+								static function ( string $cap ): string {
+									return '<code>' . esc_html( $cap ) . '</code>';
+								},
+								$plugin['capabilities']
+							);
+							echo wp_kses(
+								implode( ', ', $capability_labels ),
+								array( 'code' => array() )
+							);
+							?>
+						</p>
+					<?php endif; ?>
+
 						<div class="ai-plugin-provider-routing">
 							<label for="<?php echo esc_attr( $providers_id ); ?>">
 								<?php esc_html_e( 'Limit to providers (optional)', 'ai' ); ?>

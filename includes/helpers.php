@@ -304,20 +304,30 @@ function get_preferred_vision_models(): array {
  * This also checks the global AI features toggle — if AI is globally disabled,
  * this returns false regardless of the plugin's individual access setting.
  *
+ * When a capability is specified, the check additionally verifies that the
+ * plugin declared that capability during registration. Plugins that registered
+ * without listing any capabilities are allowed for backward compatibility.
+ *
  * Example usage:
  * ```php
  * if ( ! WordPress\AI\plugin_has_ai_access( 'my-plugin' ) ) {
  *     return new WP_Error( 'ai_access_denied', 'AI access is not enabled for this plugin.' );
  * }
+ *
+ * // Check for a specific capability.
+ * if ( ! WordPress\AI\plugin_has_ai_access( 'my-plugin', 'image_generation' ) ) {
+ *     return new WP_Error( 'ai_scope_denied', 'This plugin has not been granted image generation access.' );
+ * }
  * ```
  *
  * @since 1.0.0
  *
- * @param string $plugin_id The plugin identifier used during registration.
- * @return bool True if the plugin has been granted AI access, false otherwise.
+ * @param string $plugin_id  The plugin identifier used during registration.
+ * @param string $capability Optional. A specific AI capability to check (e.g. 'text_generation').
+ * @return bool True if the plugin has been granted AI access (and the requested capability), false otherwise.
  */
-function plugin_has_ai_access( string $plugin_id ): bool {
-	return Permissions_Manager::get_instance()->plugin_has_access( $plugin_id );
+function plugin_has_ai_access( string $plugin_id, string $capability = '' ): bool {
+	return Permissions_Manager::get_instance()->plugin_has_access( $plugin_id, $capability );
 }
 
 /**

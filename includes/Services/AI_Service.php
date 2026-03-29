@@ -173,7 +173,7 @@ class AI_Service {
 	public function create_textgen_prompt_for_plugin( string $plugin_id, ?string $prompt = null, array $options = array() ) {
 		$permissions = Permissions_Manager::get_instance();
 
-		if ( ! $permissions->plugin_has_access( $plugin_id ) ) {
+		if ( ! $permissions->plugin_has_access( $plugin_id, 'text_generation' ) ) {
 			return null;
 		}
 

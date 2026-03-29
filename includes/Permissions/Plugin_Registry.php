@@ -37,7 +37,7 @@ final class Plugin_Registry {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @var array<string, array{id: string, name: string, description: string}>
+	 * @var array<string, array{id: string, name: string, description: string, capabilities: list<string>}>
 	 */
 	private array $plugins = array();
 
@@ -49,11 +49,13 @@ final class Plugin_Registry {
 	 * @since 1.0.0
 	 *
 	 * @param string $plugin_id Unique plugin identifier (e.g. 'my-plugin').
-	 * @param array{name?: string, description?: string} $args {
+	 * @param array{name?: string, description?: string, capabilities?: list<string>} $args {
 	 *     Optional plugin arguments.
 	 *
-	 *     @type string $name        Human-readable plugin name. Defaults to the plugin ID.
-	 *     @type string $description Brief description of how AI is used by this plugin.
+	 *     @type string       $name         Human-readable plugin name. Defaults to the plugin ID.
+	 *     @type string       $description  Brief description of how AI is used by this plugin.
+	 *     @type list<string> $capabilities List of AI capability slugs this plugin requires
+	 *                                      (e.g. 'text_generation', 'image_generation'). Defaults to empty.
 	 * }
 	 * @return void
 	 */
@@ -62,10 +64,20 @@ final class Plugin_Registry {
 			return;
 		}
 
+		$capabilities = array();
+		if ( isset( $args['capabilities'] ) && is_array( $args['capabilities'] ) ) {
+			$capabilities = array_values(
+				array_filter(
+					array_map( 'sanitize_key', $args['capabilities'] )
+				)
+			);
+		}
+
 		$this->plugins[ $plugin_id ] = array(
-			'id'          => $plugin_id,
-			'name'        => sanitize_text_field( $args['name'] ?? $plugin_id ),
-			'description' => sanitize_textarea_field( $args['description'] ?? '' ),
+			'id'           => $plugin_id,
+			'name'         => sanitize_text_field( $args['name'] ?? $plugin_id ),
+			'description'  => sanitize_textarea_field( $args['description'] ?? '' ),
+			'capabilities' => $capabilities,
 		);
 	}
 
@@ -74,7 +86,7 @@ final class Plugin_Registry {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return array<string, array{id: string, name: string, description: string}>
+	 * @return array<string, array{id: string, name: string, description: string, capabilities: list<string>}>
 	 */
 	public function get_all_plugins(): array {
 		return $this->plugins;
@@ -86,7 +98,7 @@ final class Plugin_Registry {
 	 * @since 1.0.0
 	 *
 	 * @param string $plugin_id The plugin identifier.
-	 * @return array{id: string, name: string, description: string}|null Plugin data, or null if not found.
+	 * @return array{id: string, name: string, description: string, capabilities: list<string>}|null Plugin data, or null if not found.
 	 */
 	public function get_plugin( string $plugin_id ): ?array {
 		return $this->plugins[ $plugin_id ] ?? null;

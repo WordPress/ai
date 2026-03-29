@@ -49,6 +49,23 @@ final class Permissions_Manager {
 	public const PLUGIN_PROVIDER_OPTION_PREFIX = 'wpai_plugin_providers_';
 
 	/**
+	 * Known AI capabilities that plugins may request.
+	 *
+	 * @since 1.0.0
+	 * @var list<string>
+	 */
+	public const KNOWN_CAPABILITIES = array(
+		'text_generation',
+		'chat_history',
+		'image_generation',
+		'embedding_generation',
+		'text_to_speech_conversion',
+		'speech_generation',
+		'music_generation',
+		'video_generation',
+	);
+
+	/**
 	 * Singleton instance.
 	 *
 	 * @since 1.0.0
@@ -156,12 +173,20 @@ final class Permissions_Manager {
 	 * Also checks the global AI features toggle — if AI is globally disabled,
 	 * this returns false regardless of the plugin's individual access setting.
 	 *
+	 * When a capability is specified, the method additionally verifies that
+	 * the plugin explicitly registered that capability during plugin registration.
+	 * This mirrors how OAuth scopes work: a plugin must declare what it intends
+	 * to use, and the admin grants blanket access, but the system still enforces
+	 * that only declared capabilities are consumable.
+	 *
 	 * @since 1.0.0
 	 *
-	 * @param string $plugin_id The plugin identifier.
-	 * @return bool True if the plugin is allowed to use AI providers, false otherwise.
+	 * @param string $plugin_id  The plugin identifier.
+	 * @param string $capability Optional. A specific AI capability to check (e.g. 'text_generation').
+	 *                           If empty, only the general access check is performed.
+	 * @return bool True if the plugin is allowed to use AI providers (and the requested capability), false otherwise.
 	 */
-	public function plugin_has_access( string $plugin_id ): bool {
+	public function plugin_has_access( string $plugin_id, string $capability = '' ): bool {
 		// Unregistered plugins are always denied.
 		if ( ! $this->plugin_registry->has_plugin( $plugin_id ) ) {
 			return false;
@@ -181,10 +206,30 @@ final class Permissions_Manager {
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param bool   $has_access Whether the plugin has been granted access.
-		 * @param string $plugin_id  The plugin identifier.
+		 * @param bool   $has_access  Whether the plugin has been granted access.
+		 * @param string $plugin_id   The plugin identifier.
+		 * @param string $capability  The requested capability (empty string if none).
 		 */
-		return (bool) apply_filters( 'wpai_plugin_ai_access', $has_access, $plugin_id );
+		$has_access = (bool) apply_filters( 'wpai_plugin_ai_access', $has_access, $plugin_id, $capability );
+
+		if ( ! $has_access ) {
+			return false;
+		}
+
+		// If a specific capability was requested, verify the plugin declared it.
+		if ( '' !== $capability ) {
+			$plugin = $this->plugin_registry->get_plugin( $plugin_id );
+			if ( null === $plugin || empty( $plugin['capabilities'] ) ) {
+				// Plugin registered without capabilities — allow for backward compatibility.
+				return true;
+			}
+
+			if ( ! in_array( $capability, $plugin['capabilities'], true ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**

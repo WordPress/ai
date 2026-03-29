@@ -32,3 +32,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'WPAI_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once WPAI_DIR . 'includes/bootstrap.php';
+// add_action( 'wpai_register_plugins', function( $registry ) {
+//     $registry->register_plugin( 'my-plugin', array(
+//         'name'        => 'My Plugin',
+//         'description' => 'Uses AI for content generation.',
+//     ) );
+// } );

@@ -325,4 +325,116 @@ class Permissions_ManagerTest extends WP_UnitTestCase {
 	public function test_sanitize_option_key_preserves_valid_chars(): void {
 		$this->assertSame( 'my_plugin_123', $this->manager->sanitize_option_key( 'my_plugin_123' ) );
 	}
+
+	// -------------------------------------------------------------------------
+	// plugin_has_access — capability scopes
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Helper to register a plugin with access granted and the global toggle on.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string               $plugin_id    The plugin identifier.
+	 * @param array<string, mixed> $args         Registration arguments.
+	 */
+	private function grant_plugin_access( string $plugin_id, array $args = array() ): void {
+		update_option( Settings_Registration::GLOBAL_OPTION, true );
+
+		$registry = $this->manager->get_plugin_registry();
+		$registry->register_plugin( $plugin_id, $args );
+
+		$plugin_key = $this->manager->sanitize_option_key( $plugin_id );
+		update_option( Permissions_Manager::PLUGIN_ACCESS_OPTION_PREFIX . $plugin_key, true );
+	}
+
+	/**
+	 * Tests that a plugin with a declared capability is granted access for that capability.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_allows_declared_capability(): void {
+		$this->grant_plugin_access( 'cap-plugin', array(
+			'capabilities' => array( 'text_generation', 'image_generation' ),
+		) );
+
+		$this->assertTrue( $this->manager->plugin_has_access( 'cap-plugin', 'text_generation' ) );
+		$this->assertTrue( $this->manager->plugin_has_access( 'cap-plugin', 'image_generation' ) );
+	}
+
+	/**
+	 * Tests that a plugin is denied access for a capability it did not declare.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_denies_undeclared_capability(): void {
+		$this->grant_plugin_access( 'cap-plugin', array(
+			'capabilities' => array( 'text_generation' ),
+		) );
+
+		$this->assertFalse( $this->manager->plugin_has_access( 'cap-plugin', 'image_generation' ) );
+	}
+
+	/**
+	 * Tests backward compatibility: a plugin registered without capabilities is allowed for any capability.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_allows_any_capability_when_none_declared(): void {
+		$this->grant_plugin_access( 'legacy-plugin' );
+
+		$this->assertTrue( $this->manager->plugin_has_access( 'legacy-plugin', 'text_generation' ) );
+		$this->assertTrue( $this->manager->plugin_has_access( 'legacy-plugin', 'image_generation' ) );
+	}
+
+	/**
+	 * Tests that calling plugin_has_access without a capability still performs only the general check.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_without_capability_skips_scope_check(): void {
+		$this->grant_plugin_access( 'cap-plugin', array(
+			'capabilities' => array( 'text_generation' ),
+		) );
+
+		// General access check (no capability) should pass.
+		$this->assertTrue( $this->manager->plugin_has_access( 'cap-plugin' ) );
+	}
+
+	/**
+	 * Tests that the wpai_plugin_ai_access filter receives the capability as the third argument.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_filter_receives_capability(): void {
+		$this->grant_plugin_access( 'cap-plugin', array(
+			'capabilities' => array( 'text_generation' ),
+		) );
+
+		$received_cap = null;
+		$callback     = static function ( bool $access, string $plugin_id, string $capability ) use ( &$received_cap ): bool {
+			$received_cap = $capability;
+			return $access;
+		};
+
+		add_filter( 'wpai_plugin_ai_access', $callback, 10, 3 );
+		$this->manager->plugin_has_access( 'cap-plugin', 'text_generation' );
+		remove_filter( 'wpai_plugin_ai_access', $callback, 10 );
+
+		$this->assertSame( 'text_generation', $received_cap );
+	}
+
+	/**
+	 * Tests that KNOWN_CAPABILITIES constant is defined and contains expected entries.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_known_capabilities_constant_contains_expected_values(): void {
+		$caps = Permissions_Manager::KNOWN_CAPABILITIES;
+
+		$this->assertContains( 'text_generation', $caps );
+		$this->assertContains( 'image_generation', $caps );
+		$this->assertContains( 'embedding_generation', $caps );
+		$this->assertGreaterThanOrEqual( 5, count( $caps ) );
+	}
 }
