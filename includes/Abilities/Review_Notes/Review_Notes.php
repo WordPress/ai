@@ -38,7 +38,16 @@ class Review_Notes extends Abstract_Ability {
 	 * @var list<string>
 	 */
 	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition
-	protected const SUPPORTED_REVIEW_TYPES = array( 'accessibility', 'readability', 'grammar', 'seo' );
+	protected const SUPPORTED_REVIEW_TYPES = array( 'accessibility', 'readability', 'grammar', 'seo', 'guidelines' );
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since 0.7.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy', 'additional' );
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -376,6 +385,12 @@ class Review_Notes extends Abstract_Ability {
 
 		if ( ! empty( $existing_notes ) ) {
 			$prompt_parts[] = '<existing-notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $existing_notes ) ) . '</existing-notes>';
+		}
+
+		// Inject content guidelines with block-specific guidelines if available.
+		$guidelines = $this->get_content_guidelines_for_prompt( $block_type );
+		if ( $guidelines ) {
+			$prompt_parts[] = $guidelines;
 		}
 
 		return implode( "\n", $prompt_parts );
