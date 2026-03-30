@@ -102,7 +102,45 @@ abstract class Abstract_Ability extends WP_Ability {
 	abstract protected function meta(): array;
 
 	/**
+	 * Returns the guideline categories this ability uses.
+	 *
+	 * Override in subclasses to opt into content guidelines.
+	 * Return an empty array to skip guidelines (default).
+	 *
+	 * Valid categories: 'site', 'copy', 'images', 'additional'.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return list<string> Guideline category slugs.
+	 */
+	protected function guideline_categories(): array {
+		return array();
+	}
+
+	/**
+	 * Returns formatted content guidelines for prompt injection.
+	 *
+	 * Uses guideline_categories() to determine which categories to include.
+	 * Returns empty string when guidelines are unavailable or no categories declared.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string|null $block_name Optional block name for block-specific guidelines.
+	 * @return string Formatted guidelines XML string, or empty string.
+	 */
+	protected function get_content_guidelines_for_prompt( ?string $block_name = null ): string {
+		$categories = $this->guideline_categories();
+		if ( empty( $categories ) ) {
+			return '';
+		}
+		return \WordPress\AI\format_content_guidelines_for_prompt( $categories, $block_name );
+	}
+
+	/**
 	 * Gets the system instruction for the feature.
+	 *
+	 * When guideline_categories() returns a non-empty array, automatically appends
+	 * a guidelines awareness paragraph to the base system instruction.
 	 *
 	 * @since 0.1.0
 	 *
@@ -113,7 +151,13 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return string The system instruction for the feature.
 	 */
 	public function get_system_instruction( ?string $filename = null, array $data = array() ): string {
-		return $this->load_system_instruction_from_file( $filename, $data );
+		$instruction = $this->load_system_instruction_from_file( $filename, $data );
+
+		if ( '' !== $instruction && ! empty( $this->guideline_categories() ) ) {
+			$instruction .= "\n\n" . 'If content guidelines are provided in &lt;content-guidelines&gt; tags, follow them as the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
+		}
+
+		return $instruction;
 	}
 
 	/**
