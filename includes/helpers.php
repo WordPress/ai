@@ -308,6 +308,8 @@ function has_ai_credentials(): bool {
 
 	$connectors = wp_get_connectors();
 
+	$has_credentials = false;
+
 	foreach ( $connectors as $connector_data ) {
 		if ( 'ai_provider' !== $connector_data['type'] ) {
 			continue;
@@ -322,7 +324,8 @@ function has_ai_credentials(): bool {
 			continue;
 		}
 
-		return true;
+		$has_credentials = true;
+		break;
 	}
 
 	/**
@@ -336,7 +339,7 @@ function has_ai_credentials(): bool {
 	 * @param bool  $has_credentials Whether AI credentials are available.
 	 * @param array $connectors      The registered connectors.
 	 */
-	return (bool) apply_filters( 'wpai_has_ai_credentials', false, $connectors );
+	return (bool) apply_filters( 'wpai_has_ai_credentials', $has_credentials, $connectors );
 }
 
 /**
