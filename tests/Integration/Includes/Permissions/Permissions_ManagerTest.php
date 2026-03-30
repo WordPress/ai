@@ -437,4 +437,74 @@ class Permissions_ManagerTest extends WP_UnitTestCase {
 		$this->assertContains( 'embedding_generation', $caps );
 		$this->assertGreaterThanOrEqual( 5, count( $caps ) );
 	}
+
+	// -------------------------------------------------------------------------
+	// plugin_has_access — per-capability admin toggles
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Tests that a declared capability is allowed when no per-capability option has been set (default on).
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_capability_defaults_to_enabled(): void {
+		$this->grant_plugin_access( 'cap-plugin', array(
+			'capabilities' => array( 'text_generation' ),
+		) );
+
+		// No per-capability option set — should default to true.
+		$this->assertTrue( $this->manager->plugin_has_access( 'cap-plugin', 'text_generation' ) );
+	}
+
+	/**
+	 * Tests that an admin can disable a specific declared capability.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_denies_capability_when_admin_disabled_it(): void {
+		$this->grant_plugin_access( 'cap-plugin', array(
+			'capabilities' => array( 'text_generation', 'image_generation' ),
+		) );
+
+		$plugin_key = $this->manager->sanitize_option_key( 'cap-plugin' );
+		update_option( Permissions_Manager::PLUGIN_CAPABILITY_OPTION_PREFIX . $plugin_key . '_image_generation', false );
+
+		$this->assertTrue( $this->manager->plugin_has_access( 'cap-plugin', 'text_generation' ) );
+		$this->assertFalse( $this->manager->plugin_has_access( 'cap-plugin', 'image_generation' ) );
+	}
+
+	/**
+	 * Tests that re-enabling a previously disabled capability restores access.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_restores_capability_when_admin_re_enables_it(): void {
+		$this->grant_plugin_access( 'cap-plugin', array(
+			'capabilities' => array( 'text_generation' ),
+		) );
+
+		$plugin_key = $this->manager->sanitize_option_key( 'cap-plugin' );
+		$option     = Permissions_Manager::PLUGIN_CAPABILITY_OPTION_PREFIX . $plugin_key . '_text_generation';
+
+		update_option( $option, false );
+		$this->assertFalse( $this->manager->plugin_has_access( 'cap-plugin', 'text_generation' ) );
+
+		update_option( $option, true );
+		$this->assertTrue( $this->manager->plugin_has_access( 'cap-plugin', 'text_generation' ) );
+	}
+
+	/**
+	 * Tests that per-capability toggles are ignored for plugins without declared capabilities (backward compat).
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_plugin_has_access_capability_toggle_ignored_for_legacy_plugins(): void {
+		$this->grant_plugin_access( 'legacy-plugin' );
+
+		// Even if someone sets the cap option to false, legacy plugins are unaffected.
+		$plugin_key = $this->manager->sanitize_option_key( 'legacy-plugin' );
+		update_option( Permissions_Manager::PLUGIN_CAPABILITY_OPTION_PREFIX . $plugin_key . '_text_generation', false );
+
+		$this->assertTrue( $this->manager->plugin_has_access( 'legacy-plugin', 'text_generation' ) );
+	}
 }

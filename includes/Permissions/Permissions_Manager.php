@@ -49,21 +49,16 @@ final class Permissions_Manager {
 	public const PLUGIN_PROVIDER_OPTION_PREFIX = 'wpai_plugin_providers_';
 
 	/**
-	 * Known AI capabilities that plugins may request.
+	 * Option name prefix for per-capability admin toggles.
+	 *
+	 * Full option name: `wpai_plugin_cap_{sanitized_plugin_id}_{capability}`.
+	 * Defaults to true — all declared capabilities are enabled unless an admin explicitly disables one.
 	 *
 	 * @since 1.0.0
-	 * @var list<string>
+	 * @var string
 	 */
-	public const KNOWN_CAPABILITIES = array(
-		'text_generation',
-		'chat_history',
-		'image_generation',
-		'embedding_generation',
-		'text_to_speech_conversion',
-		'speech_generation',
-		'music_generation',
-		'video_generation',
-	);
+	public const PLUGIN_CAPABILITY_OPTION_PREFIX = 'wpai_plugin_cap_';
+
 
 	/**
 	 * Singleton instance.
@@ -216,7 +211,7 @@ final class Permissions_Manager {
 			return false;
 		}
 
-		// If a specific capability was requested, verify the plugin declared it.
+		// If a specific capability was requested, verify the plugin declared it and the admin has not disabled it.
 		if ( '' !== $capability ) {
 			$plugin = $this->plugin_registry->get_plugin( $plugin_id );
 			if ( null === $plugin || empty( $plugin['capabilities'] ) ) {
@@ -225,6 +220,14 @@ final class Permissions_Manager {
 			}
 
 			if ( ! in_array( $capability, $plugin['capabilities'], true ) ) {
+				return false;
+			}
+
+			// Check whether the admin has explicitly disabled this specific capability.
+			// Defaults to true so all declared capabilities are on when a plugin is first granted access.
+			$cap_option = self::PLUGIN_CAPABILITY_OPTION_PREFIX
+				. $this->sanitize_option_key( $plugin_id ) . '_' . $capability;
+			if ( ! (bool) get_option( $cap_option, true ) ) {
 				return false;
 			}
 		}

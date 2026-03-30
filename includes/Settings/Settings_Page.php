@@ -16,7 +16,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Permissions\Permissions_Manager;
-use function WordPress\AI\get_preferred_models_for_text_generation;
+use function WordPress\AI\get_available_ai_providers;
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
@@ -132,6 +132,15 @@ class Settings_Page {
 		}
 
 		$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		$has_plugins    = ! empty( Permissions_Manager::get_instance()->get_plugin_registry()->get_all_plugins() );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'general';
+		$valid_tabs = $has_plugins ? array( 'general', 'plugin-permissions' ) : array( 'general' );
+		if ( ! in_array( $active_tab, $valid_tabs, true ) ) {
+			$active_tab = 'general';
+		}
+		$general_tab_url     = admin_url( 'options-general.php?page=' . self::PAGE_SLUG );
+		$permissions_tab_url = admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=plugin-permissions' );
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
@@ -159,80 +168,115 @@ class Settings_Page {
 
 			<?php settings_errors( 'ai_experiments' ); ?>
 
-			<form method="post" action="options.php" id="ai-experiments-form">
-				<?php
-				settings_fields( Settings_Registration::OPTION_GROUP );
-				?>
+			<nav class="nav-tab-wrapper wp-clearfix" aria-label="<?php esc_attr_e( 'AI settings tabs', 'ai' ); ?>">
+				<a
+					href="<?php echo esc_url( $general_tab_url ); ?>"
+					class="nav-tab <?php echo 'general' === $active_tab ? 'nav-tab-active' : ''; ?>"
+				>
+					<?php esc_html_e( 'General', 'ai' ); ?>
+				</a>
+				<?php if ( $has_plugins ) : ?>
+					<a
+						href="<?php echo esc_url( $permissions_tab_url ); ?>"
+						class="nav-tab <?php echo 'plugin-permissions' === $active_tab ? 'nav-tab-active' : ''; ?>"
+					>
+						<?php esc_html_e( 'Plugin Permissions', 'ai' ); ?>
+					</a>
+				<?php endif; ?>
+			</nav>
 
-				<div class="ai-experiments">
-					<!-- Global Toggle Section -->
-					<div class="ai-experiments__card ai-experiments__card--global">
-						<div class="ai-experiments__card-heading">
-							<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
-							<p class="description" id="ai-experiments-global-desc">
-								<?php esc_html_e( 'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
-							</p>
+			<form method="post" action="options.php" id="ai-experiments-form">
+				<?php settings_fields( Settings_Registration::OPTION_GROUP ); ?>
+
+				<!-- General tab -->
+				<div class="ai-tab-panel <?php echo 'general' === $active_tab ? 'ai-tab-panel--active' : ''; ?>">
+					<div class="ai-experiments">
+						<!-- Global Toggle Section -->
+						<div class="ai-experiments__card ai-experiments__card--global">
+							<div class="ai-experiments__card-heading">
+								<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
+								<p class="description" id="ai-experiments-global-desc">
+									<?php esc_html_e( 'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
+								</p>
+							</div>
+
+							<div class="ai-experiments__toggle">
+								<input
+									type="hidden"
+									name="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
+									id="ai-experiments-enabled"
+									value="<?php echo $global_enabled ? '1' : '0'; ?>"
+								/>
+								<button
+									type="button"
+									class="button <?php echo $global_enabled ? 'button-secondary' : 'button-primary'; ?> ai-experiments__toggle-button"
+									data-ai-toggle-global="<?php echo $global_enabled ? '0' : '1'; ?>"
+									aria-describedby="ai-experiments-global-desc"
+								>
+									<?php echo $global_enabled ? esc_html__( 'Disable AI', 'ai' ) : esc_html__( 'Enable AI', 'ai' ); ?>
+								</button>
+							</div>
 						</div>
 
-						<div class="ai-experiments__toggle">
-							<input
-								type="hidden"
-								name="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
-								id="ai-experiments-enabled"
-								value="<?php echo $global_enabled ? '1' : '0'; ?>"
-							/>
-							<button
-								type="button"
-								class="button <?php echo $global_enabled ? 'button-secondary' : 'button-primary'; ?> ai-experiments__toggle-button"
-								data-ai-toggle-global="<?php echo $global_enabled ? '0' : '1'; ?>"
-								aria-describedby="ai-experiments-global-desc"
-							>
-								<?php echo $global_enabled ? esc_html__( 'Disable AI', 'ai' ) : esc_html__( 'Enable AI', 'ai' ); ?>
-							</button>
+						<?php
+						// Group experiments by category, normalizing unknown categories to OTHER.
+						$known_categories        = array( Experiment_Category::EDITOR, Experiment_Category::ADMIN );
+						$experiments_by_category = array();
+						foreach ( $this->registry->get_all_features() as $experiment ) {
+							$category                               = in_array( $experiment->get_category(), $known_categories, true )
+								? $experiment->get_category()
+								: Feature_Category::OTHER;
+							$experiments_by_category[ $category ][] = $experiment;
+						}
+
+						$this->render_experiments_section(
+							'ai-experiments-editor-heading',
+							__( 'Editor Experiments', 'ai' ),
+							__( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
+							$experiments_by_category[ Experiment_Category::EDITOR ] ?? array(),
+							$global_enabled
+						);
+
+						$this->render_experiments_section(
+							'ai-experiments-admin-heading',
+							__( 'Admin Experiments', 'ai' ),
+							__( 'AI-powered experiments for the WordPress admin area, including exploration and testing tools.', 'ai' ),
+							$experiments_by_category[ Experiment_Category::ADMIN ] ?? array(),
+							$global_enabled
+						);
+
+						$this->render_experiments_section(
+							'ai-experiments-other-heading',
+							__( 'Other Experiments', 'ai' ),
+							__( 'Additional experiments that do not fit into a specific category.', 'ai' ),
+							$experiments_by_category[ Feature_Category::OTHER ] ?? array(),
+							$global_enabled
+						);
+						?>
+					</div>
+				</div>
+
+				<!-- Plugin Permissions tab -->
+				<?php if ( $has_plugins ) : ?>
+					<div class="ai-tab-panel <?php echo 'plugin-permissions' === $active_tab ? 'ai-tab-panel--active' : ''; ?>">
+						<div class="ai-experiments">
+							<?php $this->render_plugin_permissions_section( $global_enabled ); ?>
 						</div>
 					</div>
-
-					<?php $this->render_plugin_permissions_section( $global_enabled ); ?>
-
-				<?php
-					// Group experiments by category, normalizing unknown categories to OTHER.
-					$known_categories        = array( Experiment_Category::EDITOR, Experiment_Category::ADMIN );
-					$experiments_by_category = array();
-				foreach ( $this->registry->get_all_features() as $experiment ) {
-					$category                               = in_array( $experiment->get_category(), $known_categories, true )
-						? $experiment->get_category()
-						: Feature_Category::OTHER;
-					$experiments_by_category[ $category ][] = $experiment;
-				}
-
-					$this->render_experiments_section(
-						'ai-experiments-editor-heading',
-						__( 'Editor Experiments', 'ai' ),
-						__( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
-						$experiments_by_category[ Experiment_Category::EDITOR ] ?? array(),
-						$global_enabled
-					);
-
-					$this->render_experiments_section(
-						'ai-experiments-admin-heading',
-						__( 'Admin Experiments', 'ai' ),
-						__( 'AI-powered experiments for the WordPress admin area, including exploration and testing tools.', 'ai' ),
-						$experiments_by_category[ Experiment_Category::ADMIN ] ?? array(),
-						$global_enabled
-					);
-
-					$this->render_experiments_section(
-						'ai-experiments-other-heading',
-						__( 'Other Experiments', 'ai' ),
-						__( 'Additional experiments that do not fit into a specific category.', 'ai' ),
-						$experiments_by_category[ Feature_Category::OTHER ] ?? array(),
-						$global_enabled
-					);
-				?>
-				</div>
+				<?php endif; ?>
 
 				<?php submit_button(); ?>
 			</form>
+
+			<style>
+				.ai-tab-panel { display: none; }
+				.ai-tab-panel--active { display: block; }
+				.nav-tab-wrapper { margin-bottom: 0; }
+				.nav-tab-wrapper + form .ai-experiments { margin-top: 20px; }
+				.ai-provider-select { min-width: 220px; height: auto; min-height: 80px; }
+				.ai-plugin-provider-routing { margin-top: 10px; }
+				.ai-plugin-provider-routing > label { display: block; margin-bottom: 4px; font-weight: 600; }
+			</style>
 
 			<script>
 				(function() {
@@ -253,6 +297,17 @@ class Settings_Page {
 						}
 
 						form.submit();
+					});
+
+					// Sync each provider multi-select to its hidden input on change.
+					document.querySelectorAll('.ai-provider-select').forEach(function(select) {
+						function syncToHidden() {
+							const hiddenInput = document.getElementById(select.dataset.hiddenInput);
+							if (!hiddenInput) return;
+							const selected = Array.from(select.selectedOptions).map(function(o) { return o.value; });
+							hiddenInput.value = selected.join(',');
+						}
+						select.addEventListener('change', syncToHidden);
 					});
 				})();
 			</script>
@@ -282,10 +337,8 @@ class Settings_Page {
 			return;
 		}
 
-		// Build the list of available provider slugs from the global preferences.
-		$known_providers = array_unique(
-			array_column( get_preferred_models_for_text_generation(), 0 )
-		);
+		// Build the list of available providers from the live connector registry.
+		$available_providers = get_available_ai_providers();
 		?>
 
 		<div class="ai-experiments__card" role="region" aria-labelledby="ai-plugin-permissions-heading">
@@ -297,7 +350,7 @@ class Settings_Page {
 
 				<?php if ( ! $global_enabled ) : ?>
 					<div class="notice notice-info inline ai-experiments__notice" role="status" aria-live="polite">
-						<p><?php esc_html_e( 'Enable AI above to configure plugin permissions.', 'ai' ); ?></p>
+						<p><?php esc_html_e( 'Enable AI on the General tab to configure plugin permissions.', 'ai' ); ?></p>
 					</div>
 				<?php endif; ?>
 			</div>
@@ -342,47 +395,75 @@ class Settings_Page {
 						<?php endif; ?>
 
 					<?php if ( ! empty( $plugin['capabilities'] ) ) : ?>
-						<p class="description ai-plugin-capabilities">
-							<strong><?php esc_html_e( 'Requested capabilities:', 'ai' ); ?></strong>
-							<?php
-							$capability_labels = array_map(
-								static function ( string $cap ): string {
-									return '<code>' . esc_html( $cap ) . '</code>';
-								},
-								$plugin['capabilities']
-							);
-							echo wp_kses(
-								implode( ', ', $capability_labels ),
-								array( 'code' => array() )
-							);
-							?>
-						</p>
+						<fieldset class="ai-plugin-capabilities">
+							<legend class="description">
+								<strong><?php esc_html_e( 'Permitted capabilities:', 'ai' ); ?></strong>
+							</legend>
+							<ul>
+								<?php foreach ( $plugin['capabilities'] as $capability ) : ?>
+									<?php
+									$cap_option  = Permissions_Manager::PLUGIN_CAPABILITY_OPTION_PREFIX . $plugin_key . '_' . $capability;
+									$cap_enabled = (bool) get_option( $cap_option, true );
+									$cap_id      = 'ai-plugin-' . esc_attr( $plugin_key ) . '-cap-' . esc_attr( $capability );
+									?>
+									<li>
+										<label for="<?php echo esc_attr( $cap_id ); ?>">
+											<input
+												type="checkbox"
+												name="<?php echo esc_attr( $cap_option ); ?>"
+												id="<?php echo esc_attr( $cap_id ); ?>"
+												value="1"
+												<?php checked( $cap_enabled ); ?>
+												<?php disabled( ! $global_enabled ); ?>
+											/>
+											<code><?php echo esc_html( $capability ); ?></code>
+										</label>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+						</fieldset>
 					<?php endif; ?>
 
+						<?php
+						$selected_providers = array_filter( array_map( 'trim', explode( ',', $plugin_providers ) ) );
+						$hidden_id          = $providers_id . '_hidden';
+						?>
 						<div class="ai-plugin-provider-routing">
 							<label for="<?php echo esc_attr( $providers_id ); ?>">
 								<?php esc_html_e( 'Limit to providers (optional)', 'ai' ); ?>
 							</label>
+							<!-- Hidden input holds the comma-separated value that gets submitted -->
 							<input
-								type="text"
+								type="hidden"
 								name="<?php echo esc_attr( $providers_option ); ?>"
-								id="<?php echo esc_attr( $providers_id ); ?>"
+								id="<?php echo esc_attr( $hidden_id ); ?>"
 								value="<?php echo esc_attr( $plugin_providers ); ?>"
-								placeholder="<?php echo esc_attr( implode( ', ', $known_providers ) ); ?>"
-								<?php disabled( ! $global_enabled ); ?>
-								class="regular-text"
 							/>
-							<p class="description">
-								<?php
-								echo esc_html(
-									sprintf(
-										/* translators: %s: comma-separated list of available provider slugs. */
-										__( 'Comma-separated list of provider slugs this plugin may use (e.g. %s). Leave empty to allow all configured providers.', 'ai' ),
-										implode( ', ', $known_providers )
-									)
-								);
-								?>
-							</p>
+							<?php if ( ! empty( $available_providers ) ) : ?>
+								<select
+									multiple
+									id="<?php echo esc_attr( $providers_id ); ?>"
+									data-hidden-input="<?php echo esc_attr( $hidden_id ); ?>"
+									class="ai-provider-select"
+									<?php disabled( ! $global_enabled ); ?>
+								>
+									<?php foreach ( $available_providers as $slug => $display_name ) : ?>
+										<option
+											value="<?php echo esc_attr( $slug ); ?>"
+											<?php selected( in_array( $slug, $selected_providers, true ) ); ?>
+										>
+											<?php echo esc_html( $display_name ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description">
+									<?php esc_html_e( 'Select one or more providers this plugin may use. Leave all unselected to allow all configured providers.', 'ai' ); ?>
+								</p>
+							<?php else : ?>
+								<p class="description">
+									<?php esc_html_e( 'No AI providers are currently connected.', 'ai' ); ?>
+								</p>
+							<?php endif; ?>
 						</div>
 					</li>
 				<?php endforeach; ?>

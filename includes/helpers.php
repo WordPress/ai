@@ -296,6 +296,69 @@ function get_preferred_vision_models(): array {
 }
 
 /**
+ * Returns the available AI provider slugs registered as connectors.
+ *
+ * Reads the live connector registry so the list always reflects what is
+ * actually configured on the site. Third-party provider plugins that register
+ * via `wp_connectors_init` are included automatically.
+ *
+ * Use the `wpai_available_providers` filter to add custom provider slugs that
+ * are not registered as WordPress connectors (e.g. a self-hosted provider).
+ *
+ * Example usage:
+ * ```php
+ * add_filter( 'wpai_available_providers', function( array $providers ): array {
+ *     $providers['my-provider'] = 'My Custom Provider';
+ *     return $providers;
+ * } );
+ * ```
+ *
+ * @since 1.0.0
+ *
+ * @return array<string, string> Provider slugs mapped to display names (e.g. ['anthropic' => 'Anthropic']).
+ */
+function get_available_ai_providers(): array {
+	$providers = array();
+
+	if ( function_exists( 'wp_get_connectors' ) ) {
+		foreach ( wp_get_connectors() as $connector_id => $connector_data ) {
+			if ( 'ai_provider' !== ( $connector_data['type'] ?? '' ) ) {
+				continue;
+			}
+			$providers[ $connector_id ] = $connector_data['name'] ?? $connector_id;
+		}
+	}
+
+	/**
+	 * Filters the list of available AI providers shown in the Plugin Permissions settings.
+	 *
+	 * Add entries for custom or self-hosted providers that are not registered as
+	 * WordPress connectors. The array keys are provider slugs used in routing
+	 * (e.g. 'anthropic') and the values are human-readable display names.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array<string, string> $providers Provider slugs mapped to display names.
+	 * @return array<string, string>
+	 */
+	return (array) apply_filters( 'wpai_available_providers', $providers );
+}
+
+/**
+ * Returns the preferred models for image generation.
+ *
+ * Alias of {@see get_preferred_image_models()} following the consistent
+ * `get_preferred_models_for_{capability}` naming convention.
+ *
+ * @since 1.0.0
+ *
+ * @return array<int, array{string, string}> The preferred models for image generation.
+ */
+function get_preferred_models_for_image_generation(): array {
+	return get_preferred_image_models();
+}
+
+/**
  * Checks whether a plugin has been granted access to connected AI providers.
  *
  * Plugins must first register themselves via the `wpai_register_plugins` action hook.

@@ -153,6 +153,20 @@ class Settings_Registration {
 					'sanitize_callback' => array( $this, 'sanitize_provider_preferences' ),
 				)
 			);
+
+			// Register a boolean toggle for each declared capability.
+			// Defaults to true — capabilities are on when a plugin is first granted access.
+			foreach ( $plugin['capabilities'] as $capability ) {
+				register_setting(
+					self::OPTION_GROUP,
+					Permissions_Manager::PLUGIN_CAPABILITY_OPTION_PREFIX . $plugin_key . '_' . $capability,
+					array(
+						'type'              => 'boolean',
+						'default'           => true,
+						'sanitize_callback' => 'rest_sanitize_boolean',
+					)
+				);
+			}
 		}
 	}
 
