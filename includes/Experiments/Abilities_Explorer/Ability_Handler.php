@@ -105,6 +105,7 @@ class Ability_Handler {
 			'name'          => $ability->get_label(),
 			'description'   => $ability->get_description(),
 			'provider'      => self::detect_provider( $name, $meta ),
+			'tags'          => self::get_ability_tags( $name ),
 			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
 			'raw_data'      => array(
@@ -116,6 +117,111 @@ class Ability_Handler {
 				'meta'          => $meta,
 			),
 		);
+	}
+
+	/**
+	 * Get tags for an ability based on its slug.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $slug Ability slug.
+	 * @return array<string> Tags for the ability.
+	 */
+	public static function get_ability_tags( string $slug ): array {
+		$parts        = explode( '/', $slug );
+		$ability_name = end( $parts );
+		$namespace    = $parts[0] ?? '';
+
+
+		/**
+		 * Filters the keyword-to-category map used when auto-tagging abilities.
+		 *
+		 * Third-party plugins can add new categories or extend existing ones by
+		 * hooking into this filter. Each key is the category label shown in the
+		 * UI; each value is an array of slug substrings that trigger that category.
+		 *
+		 * Example:
+		 *   add_filter( 'ai_ability_category_map', function( $map ) {
+		 *       $map['WooCommerce'] = [ 'product', 'order', 'cart' ];
+		 *       $map['SEO']         = [ 'meta', 'seo', 'sitemap' ];
+		 *       return $map;
+		 *   } );
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param array<string, array<string>> $map Category label => keyword slugs.
+		 */
+		$tag_keywords = apply_filters(
+			'ai_ability_category_map',
+			[
+				'Image'     => [ 'image', 'alt-text' ],
+				'Editorial' => [ 'summariz', 'excerpt', 'title', 'review' ],
+				'Content'   => [ 'post', 'terms', 'taxonomy', 'page' ],
+				'System'    => [ 'environment', 'diagnostic', 'debug' ],
+			]
+		);
+
+		$tags = [];
+		foreach ( $tag_keywords as $tag => $keywords ) {
+			foreach ( $keywords as $keyword ) {
+				if ( false !== strpos( $ability_name, $keyword ) ) {
+					$tags[] = $tag;
+					break;
+				}
+			}
+		}
+
+		// Core abilities always get System tag.
+		if ( in_array( $namespace, [ 'wordpress', 'wp', 'core' ], true ) ) {
+			if ( ! in_array( 'System', $tags, true ) ) {
+				$tags[] = 'System';
+			}
+		}
+
+		$unique = array_unique( $tags );
+		$unique = ! empty( $unique ) ? $unique : [ 'Other' ];
+
+		/**
+		 * Filters the final resolved category tags for a specific ability.
+		 *
+		 * Use this hook to explicitly override or append categories for a
+		 * specific ability slug, bypassing keyword matching entirely.
+		 *
+		 * Example:
+		 *   add_filter( 'ai_ability_tags', function( $tags, $slug ) {
+		 *       if ( 'my-plugin/generate-meta-description' === $slug ) {
+		 *           return array( 'SEO' );
+		 *       }
+		 *       return $tags;
+		 *   }, 10, 2 );
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param array<string> $tags Resolved category tags for this ability.
+		 * @param string        $slug The full ability slug, e.g. 'my-plugin/do-thing'.
+		 */
+		return (array) apply_filters( 'ai_ability_tags', $unique, $slug );
+	}
+
+	/**
+	 * Get all unique tags across all abilities.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @return array<string> Sorted list of all unique tags.
+	 */
+	public static function get_all_tags(): array {
+		$abilities = self::get_all_abilities();
+		$tags      = [];
+
+		foreach ( $abilities as $ability ) {
+			$tags = array_merge( $tags, $ability['tags'] );
+		}
+
+		$tags = array_unique( $tags );
+		sort( $tags );
+
+		return $tags;
 	}
 
 	/**
