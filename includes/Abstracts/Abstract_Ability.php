@@ -36,23 +36,11 @@ abstract class Abstract_Ability extends WP_Ability {
 				'category'            => $this->category(),
 				'input_schema'        => $this->input_schema(),
 				'output_schema'       => $this->output_schema(),
-				'execute_callback'    => array( $this, 'do_execute' ),
+				'execute_callback'    => array( $this, 'execute_callback' ),
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => $this->meta(),
 			)
 		);
-	}
-
-	/**
-	 * Public wrapper for execute_callback.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param mixed $input The input arguments to the ability.
-	 * @return mixed|\WP_Error The result of the ability execution, or a WP_Error on failure.
-	 */
-	public function do_execute( $input ) {
-		return $this->execute_callback( $input );
 	}
 
 	/**
