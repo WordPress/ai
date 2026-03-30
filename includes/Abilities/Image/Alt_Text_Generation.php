@@ -36,6 +36,15 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.7.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'images' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.3.0
 	 */
 	protected function input_schema(): array {
@@ -377,6 +386,12 @@ class Alt_Text_Generation extends Abstract_Ability {
 		// If we have additional context, add it to the prompt.
 		if ( ! empty( $context ) ) {
 			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
+		}
+
+		// Inject content guidelines if available.
+		$guidelines = $this->get_content_guidelines_for_prompt();
+		if ( $guidelines ) {
+			$prompt .= "\n\n" . $guidelines;
 		}
 
 		return $prompt;
