@@ -306,9 +306,29 @@ class Settings_Page {
 					<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
 						<div class="ai-experiments__item-header">
 							<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
+								<?php
+								// Disabled checkboxes are omitted from POST; hidden fields keep per-feature values when AI is off.
+								if ( $global_enabled ) {
+									?>
+								<input
+									type="hidden"
+									name="<?php echo esc_attr( $experiment_option ); ?>"
+									value="0"
+								/>
+									<?php
+								} else {
+									?>
+								<input
+									type="hidden"
+									name="<?php echo esc_attr( $experiment_option ); ?>"
+									value="<?php echo $experiment_enabled ? '1' : '0'; ?>"
+								/>
+									<?php
+								}
+								?>
 								<input
 									type="checkbox"
-									name="<?php echo esc_attr( $experiment_option ); ?>"
+									<?php echo $global_enabled ? 'name="' . esc_attr( $experiment_option ) . '"' : ''; ?>
 									id="<?php echo esc_attr( $experiment_option ); ?>"
 									value="1"
 									<?php checked( $experiment_enabled ); ?>

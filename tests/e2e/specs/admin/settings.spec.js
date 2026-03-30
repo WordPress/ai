@@ -9,6 +9,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnectors,
 	disableExperiments,
+	enableExperiment,
 	enableExperiments,
 	visitConnectorsPage,
 	visitSettingsPage,
@@ -116,5 +117,21 @@ test.describe( 'Plugin settings', () => {
 				}
 			)
 		).toHaveCount( 1 );
+	} );
+
+	test( 'Per-experiment settings persist after disabling and re-enabling AI', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'title-generation' );
+
+		await disableExperiments( admin, page );
+		await enableExperiments( admin, page );
+
+		await visitSettingsPage( admin );
+		await expect(
+			page.locator( '#wpai_feature_title-generation_enabled' )
+		).toBeChecked();
 	} );
 } );
