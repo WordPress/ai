@@ -128,6 +128,9 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_handle_bulk_action_adds_query_args_for_images(): void {
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
 		$image_id = self::factory()->attachment->create_upload_object(
 			dirname( __FILE__ ) . '/../../../../data/sample.png'
 		);
@@ -146,6 +149,9 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_handle_bulk_action_filters_out_non_images(): void {
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
 		$non_image_id = self::factory()->post->create(
 			array(
 				'post_type'      => 'attachment',
@@ -171,6 +177,22 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$result     = $experiment->handle_bulk_action( $redirect, 'delete', array( 1, 2, 3 ) );
 
 		$this->assertSame( $redirect, $result );
+	}
+
+	/**
+	 * Test that the bulk action handler requires upload_files capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_requires_capability(): void {
+		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber_id );
+
+		$experiment = new Alt_Text_Generation();
+		$redirect   = 'https://example.com/wp-admin/upload.php';
+		$result     = $experiment->handle_bulk_action( $redirect, 'ai_generate_alt_text', array( 1 ) );
+
+		$this->assertSame( $redirect, $result, 'Redirect should be unchanged when user lacks upload_files capability.' );
 	}
 
 	/**
