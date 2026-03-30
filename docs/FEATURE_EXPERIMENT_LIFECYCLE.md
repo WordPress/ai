@@ -21,7 +21,7 @@ On the AI settings screen:
 - **Features** are presented prominently with richer UI and visual emphasis
 - **Experiments** are listed below as simpler controls (e.g., checkboxes)
 
-All functionality is registered with a declared type (`feature`, `experiment`, or `deprecated`) which controls how it is surfaced in the UI and communicates stability expectations to contributors and users.
+All functionality is registered with a declared stability type (`stable`, `experimental`, or `deprecated`) which controls how it is surfaced in the UI and communicates stability expectations to contributors and users.
 
 ### Promoting an Experiment to a Feature
 
@@ -33,7 +33,7 @@ An Experiment may be promoted to a Feature when it demonstrates:
 - **Technical reliability** — Errors are handled gracefully and performance is acceptable.
 - **Maintainability** — Contributors are confident supporting it long-term.
 
-When promoting, update the registration type from `experiment` to `feature`, move it into the Features section of the AI settings UI, remove experimental labeling, review for backward compatibility or data migrations, and update documentation and release notes accordingly.
+When promoting, update the stability type from `experimental` to `stable`, move the code from the `Experiments` directory to the `Features` directory, move the settings into the Features section of the AI settings UI, remove experimental labeling, review for backward compatibility or data migrations, and update documentation and release notes accordingly.
 
 Promotion is expected to be one-way.  Reclassifying a Feature back to an Experiment should be rare and avoided.
 
