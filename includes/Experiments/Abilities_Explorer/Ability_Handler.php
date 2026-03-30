@@ -132,7 +132,6 @@ class Ability_Handler {
 		$ability_name = end( $parts );
 		$namespace    = $parts[0] ?? '';
 
-
 		/**
 		 * Filters the keyword-to-category map used when auto-tagging abilities.
 		 *
@@ -141,7 +140,7 @@ class Ability_Handler {
 		 * UI; each value is an array of slug substrings that trigger that category.
 		 *
 		 * Example:
-		 *   add_filter( 'ai_ability_category_map', function( $map ) {
+		 *   add_filter( 'wpai_ability_category_map', function( $map ) {
 		 *       $map['WooCommerce'] = [ 'product', 'order', 'cart' ];
 		 *       $map['SEO']         = [ 'meta', 'seo', 'sitemap' ];
 		 *       return $map;
@@ -152,16 +151,16 @@ class Ability_Handler {
 		 * @param array<string, array<string>> $map Category label => keyword slugs.
 		 */
 		$tag_keywords = apply_filters(
-			'ai_ability_category_map',
-			[
-				'Image'     => [ 'image', 'alt-text' ],
-				'Editorial' => [ 'summariz', 'excerpt', 'title', 'review' ],
-				'Content'   => [ 'post', 'terms', 'taxonomy', 'page' ],
-				'System'    => [ 'environment', 'diagnostic', 'debug' ],
-			]
+			'wpai_ability_category_map',
+			array(
+				'Image'     => array( 'image', 'alt-text' ),
+				'Editorial' => array( 'summariz', 'excerpt', 'title', 'review' ),
+				'Content'   => array( 'post', 'terms', 'taxonomy', 'page' ),
+				'System'    => array( 'environment', 'diagnostic', 'debug' ),
+			)
 		);
 
-		$tags = [];
+		$tags = array();
 		foreach ( $tag_keywords as $tag => $keywords ) {
 			foreach ( $keywords as $keyword ) {
 				if ( false !== strpos( $ability_name, $keyword ) ) {
@@ -172,14 +171,14 @@ class Ability_Handler {
 		}
 
 		// Core abilities always get System tag.
-		if ( in_array( $namespace, [ 'wordpress', 'wp', 'core' ], true ) ) {
+		if ( in_array( $namespace, array( 'wordpress', 'wp', 'core' ), true ) ) {
 			if ( ! in_array( 'System', $tags, true ) ) {
 				$tags[] = 'System';
 			}
 		}
 
 		$unique = array_unique( $tags );
-		$unique = ! empty( $unique ) ? $unique : [ 'Other' ];
+		$unique = ! empty( $unique ) ? $unique : array( 'Other' );
 
 		/**
 		 * Filters the final resolved category tags for a specific ability.
@@ -188,7 +187,7 @@ class Ability_Handler {
 		 * specific ability slug, bypassing keyword matching entirely.
 		 *
 		 * Example:
-		 *   add_filter( 'ai_ability_tags', function( $tags, $slug ) {
+		 *   add_filter( 'wpai_ability_tags', function( $tags, $slug ) {
 		 *       if ( 'my-plugin/generate-meta-description' === $slug ) {
 		 *           return array( 'SEO' );
 		 *       }
@@ -200,7 +199,7 @@ class Ability_Handler {
 		 * @param array<string> $tags Resolved category tags for this ability.
 		 * @param string        $slug The full ability slug, e.g. 'my-plugin/do-thing'.
 		 */
-		return (array) apply_filters( 'ai_ability_tags', $unique, $slug );
+		return (array) apply_filters( 'wpai_ability_tags', $unique, $slug );
 	}
 
 	/**
@@ -212,7 +211,7 @@ class Ability_Handler {
 	 */
 	public static function get_all_tags(): array {
 		$abilities = self::get_all_abilities();
-		$tags      = [];
+		$tags      = array();
 
 		foreach ( $abilities as $ability ) {
 			$tags = array_merge( $tags, $ability['tags'] );

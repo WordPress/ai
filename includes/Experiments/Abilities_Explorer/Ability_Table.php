@@ -36,7 +36,7 @@ class Ability_Table extends \WP_List_Table {
 	 *
 	 * @var array<array<string,mixed>>
 	 */
-	private array $all_abilities = [];
+	private array $all_abilities = array();
 
 	/**
 	 * Constructor.
@@ -91,8 +91,8 @@ class Ability_Table extends \WP_List_Table {
 		$this->_column_headers = array( $columns, $hidden, $sortable );
 
 		// Get abilities once and store the full list for filter option derivation.
-		$abilities            = Ability_Handler::get_all_abilities();
-		$this->all_abilities  = $abilities;
+		$abilities           = Ability_Handler::get_all_abilities();
+		$this->all_abilities = $abilities;
 
 		// Apply search filter.
 		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -124,7 +124,7 @@ class Ability_Table extends \WP_List_Table {
 			$abilities = array_filter(
 				$abilities,
 				static function ( $ability ) use ( $category_filter ) {
-					return in_array( $category_filter, $ability['tags'] ?? [], true );
+					return in_array( $category_filter, $ability['tags'] ?? array(), true );
 				}
 			);
 		}
@@ -173,7 +173,7 @@ class Ability_Table extends \WP_List_Table {
 		$tags = array();
 
 		foreach ( $this->all_abilities as $ability ) {
-			$tags = array_merge( $tags, $ability['tags'] ?? [] );
+			$tags = array_merge( $tags, $ability['tags'] ?? array() );
 		}
 
 		$tags = array_unique( $tags );
@@ -192,7 +192,7 @@ class Ability_Table extends \WP_List_Table {
 	 * @param array<string,mixed> $item Item data.
 	 */
 	public function single_row( $item ): void {
-		$tags = implode( ',', $item['tags'] ?? [] );
+		$tags = implode( ',', $item['tags'] ?? array() );
 		echo '<tr data-tags="' . esc_attr( $tags ) . '">';
 		$this->single_row_columns( $item );
 		echo '</tr>';
