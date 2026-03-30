@@ -35,6 +35,15 @@ class Title_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.7.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.1.0
 	 */
 	protected function input_schema(): array {
@@ -256,6 +265,12 @@ class Title_Generation extends Abstract_Ability {
 		// If we have additional context, add it to the content.
 		if ( $context ) {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
+		}
+
+		// Inject content guidelines if available.
+		$guidelines = $this->get_content_guidelines_for_prompt();
+		if ( $guidelines ) {
+			$content .= "\n\n" . $guidelines;
 		}
 
 		// Generate the titles using the AI client.
