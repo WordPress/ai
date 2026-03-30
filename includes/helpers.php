@@ -331,7 +331,7 @@ function has_ai_credentials(): bool {
 	 * Allows third-party plugins to declare credential availability for
 	 * connectors that do not rely on API key settings.
 	 *
-	 * @since 0.6.1
+	 * @since x.x.x
 	 *
 	 * @param bool  $has_credentials Whether AI credentials are available.
 	 * @param array $connectors      The registered connectors.
