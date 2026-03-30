@@ -52,7 +52,7 @@ class Summarization extends Abstract_Ability {
 					'description'       => esc_html__( 'Additional context to use when summarizing the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
 				),
 				'length'  => array(
-					'type'        => 'enum',
+					'type'        => 'string',
 					'enum'        => array( 'short', 'medium', 'long' ),
 					'default'     => self::LENGTH_DEFAULT,
 					'description' => esc_html__( 'The length of the summary.', 'ai' ),
