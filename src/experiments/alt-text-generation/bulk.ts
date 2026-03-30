@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
 
 /**
@@ -19,7 +19,6 @@ type AbilityResponse = {
 
 type BulkData = {
 	attachmentIds: number[];
-	nonce: string;
 };
 
 declare global {
@@ -77,12 +76,10 @@ async function processBulkAltText(): Promise< void > {
 		return;
 	}
 
-	const { attachmentIds, nonce } = data;
+	const { attachmentIds } = data;
 	const total = attachmentIds.length;
 	let processed = 0;
-	let errors = 0;
-
-	apiFetch.use( apiFetch.createNonceMiddleware( nonce ) );
+	const failedIds: number[] = [];
 
 	const initialMessage = sprintf(
 		// translators: 1: number processed so far, 2: total number of images
@@ -113,7 +110,7 @@ async function processBulkAltText(): Promise< void > {
 				data: { alt_text: altText },
 			} );
 		} catch {
-			errors++;
+			failedIds.push( id );
 		}
 
 		processed++;
@@ -126,24 +123,29 @@ async function processBulkAltText(): Promise< void > {
 		);
 	}
 
-	const successCount = processed - errors;
+	const successCount = processed - failedIds.length;
 
-	if ( errors === 0 ) {
+	if ( failedIds.length === 0 ) {
 		statusParagraph.textContent = sprintf(
 			// translators: %d: number of images
-			__( 'Alt text generated for all %d images.', 'ai' ),
+			_n(
+				'Alt text generated for %d image.',
+				'Alt text generated for all %d images.',
+				successCount,
+				'ai'
+			),
 			successCount
 		);
 	} else {
 		statusParagraph.textContent = sprintf(
-			// translators: 1: number successfully processed, 2: total images, 3: number of errors
+			// translators: 1: number successfully processed, 2: total images, 3: comma-separated list of failed attachment IDs
 			__(
-				'Alt text generated for %1$d of %2$d images. %3$d could not be processed.',
+				'Alt text generated for %1$d of %2$d images. Failed attachment IDs: %3$s.',
 				'ai'
 			),
 			successCount,
 			total,
-			errors
+			failedIds.join( ', ' )
 		);
 	}
 }

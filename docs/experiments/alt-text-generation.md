@@ -19,7 +19,7 @@ When enabled, the Alt Text Generation experiment adds "Generate/Regenerate Alt T
 - Generate or regenerate alt text from the Image block inspector, media modal, or attachment edit screen
 - Optional context can be passed (e.g., surrounding post content) to improve relevance
 - Supports both attachment IDs (media library images) and image URLs (including external and data URIs)
-- Output is trimmed and truncated to 125 characters to align with accessibility guidance
+- Output is trimmed and cleaned up (surrounding quotes and trailing periods removed)
 - Single shared ability (`ai/alt-text-generation`) usable from the UI or directly via REST API
 
 ### For Developers
@@ -64,7 +64,7 @@ The ability can be called directly via REST API for automation, bulk processing,
 
 4. **Ability execution flow:**
    - **Resolve image:** If `attachment_id` is set, load the attachment file or image URL and convert to a data URI. If `image_url` is set, accept data URIs as-is, map local upload URLs to the filesystem when possible, or download the URL to a temp file and convert to a data URI.
-   - **Generate:** Build a short prompt (e.g. "Generate alt text for this image." plus optional "Context: …"). Call the AI client with the system instruction from `alt-text-system-instruction.php`, the image as a file reference, and preferred vision models. Trim and strip surrounding quotes; truncate to 125 characters.
+   - **Generate:** Build a short prompt (e.g. "Generate alt text for this image." plus optional "Context: …"). Call the AI client with the system instruction from `alt-text-system-instruction.php`, the image as a file reference, and preferred vision models. Trim and strip surrounding quotes and trailing periods.
    - **Return:** `array( 'alt_text' => sanitize_text_field( $result ) )`.
 
 ### Input Schemas
@@ -246,10 +246,6 @@ includes/Abilities/Image/alt-text-system-instruction.php
 
 This instruction defines how the AI should generate alt text (e.g., concise, descriptive, under 125 characters, no "Image of…" prefix, plain text only). You can change tone, length guidance, or rules for decorative images.
 
-### Customizing Maximum Alt Text Length
-
-The ability truncates generated alt text to 125 characters (see `MAX_ALT_TEXT_LENGTH` in `Alt_Text_Generation.php`). To allow longer descriptions, change the constant and consider updating the system instruction to match.
-
 ### Adding Custom UI Elements
 
 - **Block editor:** Edit `src/experiments/alt-text-generation/components/AltTextControls.tsx` to change labels, layout, or add context input. The block filter is in `src/experiments/alt-text-generation/index.tsx`.
@@ -312,7 +308,7 @@ npm run test:php
 
 ### Accessibility
 
-- Generated alt text is trimmed and truncated to 125 characters to align with common accessibility guidance for concise alt text.
+- The system instruction guides the AI to keep alt text concise (under 125 characters when possible) but no hard truncation is applied, so longer descriptions are preserved in full.
 - The system instruction directs the model to avoid "Image of…" prefixes, to describe content objectively, and to return an empty string for decorative images.
 
 ### Limitations

@@ -229,7 +229,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @return string The redirect URL, possibly with bulk alt text query args appended.
 	 */
 	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
-		if ( 'ai_generate_alt_text' !== $doaction ) {
+		if ( 'ai_generate_alt_text' !== $doaction || ! current_user_can( 'upload_files' ) ) {
 			return $redirect_url;
 		}
 
@@ -273,7 +273,6 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'AltTextGenerationBulkData',
 			array(
 				'attachmentIds' => $ids,
-				'nonce'         => wp_create_nonce( 'wp_rest' ),
 			)
 		);
 	}
