@@ -182,6 +182,7 @@ export function useRefineNotes(): {
 
 			let refinedBlocksCount = 0;
 			let processedBlocksCount = 0;
+			let failedBlocksCount = 0;
 			const notesToResolve: number[] = [];
 
 			// Process in batches of 4 (similar to Review Notes)
@@ -280,6 +281,7 @@ export function useRefineNotes(): {
 								`[AI Refine Notes] Failed to refine block ${ block.clientId }`,
 								e
 							);
+							failedBlocksCount++;
 						} finally {
 							processedBlocksCount++;
 							setProgress( processedBlocksCount );
@@ -299,6 +301,18 @@ export function useRefineNotes(): {
 				(
 					dispatch( coreStore ) as any
 				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+			}
+
+			// If every block failed, surface an error notice.
+			if ( failedBlocksCount > 0 && refinedBlocksCount === 0 ) {
+				( dispatch( noticesStore ) as any ).createErrorNotice(
+					__( 'AI refinement failed for all blocks.', 'ai' ),
+					{
+						id: 'ai_refine_notes_error',
+						isDismissible: true,
+					}
+				);
+				return;
 			}
 
 			if ( refinedBlocksCount > 0 ) {
