@@ -190,7 +190,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function generate_alt_text( array $image_reference, string $context = '' ) {
 		$result = wp_ai_client_prompt( $this->build_prompt( $context ) )
 			->with_file( $image_reference['reference'] )
-			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
+			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php', array( 'locale' => get_locale() ) ) )
 			->using_temperature( 0.3 )
 			->using_model_preference( ...get_preferred_vision_models() )
 			->generate_text();
