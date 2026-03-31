@@ -14,11 +14,10 @@ module.exports = {
 	...defaultConfig,
 	output: {
 		...defaultConfig.output,
-		// Extend the default keep regex to preserve wp-build output directories
-		// (modules, pages, routes, scripts, styles) during watch mode, so that
-		// wp-scripts and wp-build can coexist in the same build/ folder.
+		// Extend the default keep regex to preserve wp-build output during
+		// watch mode, so wp-scripts and wp-build can coexist in build/.
 		clean: {
-			keep: /^(fonts|images|modules|pages|routes|scripts|styles)\b/,
+			keep: /^(fonts|images|modules|pages|routes|scripts|styles)\b|^(build|constants)\.php$/,
 		},
 	},
 	entry: {
