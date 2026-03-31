@@ -17,6 +17,7 @@ import type { ImageBlockAttributes } from './types';
 interface BlockEditProps {
 	clientId: string;
 	name: string;
+	isSelected: boolean;
 	attributes: ImageBlockAttributes;
 	setAttributes: ( attributes: Partial< ImageBlockAttributes > ) => void;
 }
@@ -34,8 +35,8 @@ const { aiAltTextGenerationData } = window as AltTextGenerationData;
  */
 const withAltTextGeneration = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props: BlockEditProps ) => {
-		// Only add controls to the image block.
-		if ( props.name !== 'core/image' ) {
+		// Only add controls to the selected image block.
+		if ( props.name !== 'core/image' || ! props.isSelected ) {
 			return <BlockEdit { ...props } />;
 		}
 
