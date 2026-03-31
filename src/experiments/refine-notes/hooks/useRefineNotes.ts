@@ -280,7 +280,6 @@ export function useRefineNotes(): {
 								`[AI Refine Notes] Failed to refine block ${ block.clientId }`,
 								e
 							);
-							throw e;
 						} finally {
 							processedBlocksCount++;
 							setProgress( processedBlocksCount );
@@ -330,14 +329,19 @@ export function useRefineNotes(): {
 					 ).getCurrentPostLastRevisionId() as number | null;
 				}
 
-				const noticeActions = lastRevisionId
-					? [
-							{
-								label: __( 'Review in Revisions', 'ai' ),
-								url: `/wp-admin/revision.php?revision=${ lastRevisionId }`,
-							},
-					  ]
-					: [];
+				const adminUrl = aiRefineNotesData?.admin_url as
+					| string
+					| undefined;
+
+				const noticeActions =
+					lastRevisionId && adminUrl
+						? [
+								{
+									label: __( 'Review in Revisions', 'ai' ),
+									url: `${ adminUrl }revision.php?revision=${ lastRevisionId }`,
+								},
+						  ]
+						: [];
 
 				( dispatch( noticesStore ) as any ).createSuccessNotice(
 					sprintf(

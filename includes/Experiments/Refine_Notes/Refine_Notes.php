@@ -95,6 +95,7 @@ class Refine_Notes extends Abstract_Feature {
 			array(
 				'enabled'   => $this->is_enabled(),
 				'rest_base' => $rest_base,
+				'admin_url' => admin_url(),
 			)
 		);
 	}

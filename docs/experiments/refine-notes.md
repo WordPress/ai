@@ -79,13 +79,14 @@ array(
     ),
     'block_content'  => array(
         'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
+        'sanitize_callback' => 'wp_kses_post',
         'description'       => 'The content of the block to refine.',
     ),
     'notes' => array(
-        'type'        => 'array',
-        'items'       => array( 'type' => 'string' ),
-        'description' => 'The editorial feedback notes to apply to the block.',
+        'type'              => 'array',
+        'items'             => array( 'type' => 'string' ),
+        'sanitize_callback' => 'sanitize_text_field (per item)',
+        'description'       => 'The feedback Notes to apply to the block.',
     ),
     'context'        => array(
         'type'              => 'string',

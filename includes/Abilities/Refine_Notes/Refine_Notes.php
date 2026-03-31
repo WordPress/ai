@@ -51,11 +51,14 @@ class Refine_Notes extends Abstract_Ability {
 					'description'       => esc_html__( 'The content of the block to refine.', 'ai' ),
 				),
 				'notes'         => array(
-					'type'        => 'array',
-					'items'       => array(
+					'type'              => 'array',
+					'items'             => array(
 						'type' => 'string',
 					),
-					'description' => esc_html__( 'The feedback Notes to apply to the block.', 'ai' ),
+					'sanitize_callback' => static function ( $notes ) {
+						return array_map( 'sanitize_text_field', is_array( $notes ) ? $notes : array() );
+					},
+					'description'       => esc_html__( 'The feedback Notes to apply to the block.', 'ai' ),
 				),
 				'context'       => array(
 					'type'              => 'string',
