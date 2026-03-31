@@ -128,10 +128,18 @@ class Ability_Handler {
 	 * @return array<string> Tags for the ability.
 	 */
 	public static function get_ability_tags( \WP_Ability $ability ): array {
-		$slug     = $ability->get_name();
-		$category = $ability->get_category();
+		$slug          = $ability->get_name();
+		$category_slug = $ability->get_category();
 
-		$unique = ! empty( $category ) ? array( $category ) : array( 'Other' );
+		$category_label = 'Other';
+		if ( ! empty( $category_slug ) && function_exists( 'wp_get_ability_category' ) ) {
+			$category_obj = wp_get_ability_category( $category_slug );
+			if ( $category_obj ) {
+				$category_label = $category_obj->get_label();
+			}
+		}
+
+		$unique = array( $category_label );
 
 		/**
 		 * Filters the final resolved category tags for a specific ability.
