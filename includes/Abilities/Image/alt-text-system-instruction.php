@@ -18,7 +18,7 @@ if ( isset( $locale ) ) {
 	$return_locale = $locale;
 }
 
-// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed, PluginCheck.CodeAnalysis.Heredoc.NotAllowed
 return <<<INSTRUCTION
 You are an accessibility expert that generates alt text for images on websites.
 
