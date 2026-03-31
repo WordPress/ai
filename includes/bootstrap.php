@@ -19,6 +19,7 @@ use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
 // Exit if accessed directly.
@@ -156,7 +157,7 @@ function plugin_action_links( array $links ): array {
 /**
  * Gets feature group metadata for the settings UI.
  *
- * @since 0.6.0
+ * @since x.x.x
  *
  * @return array<string, array{label:string, description:string, order:int}>
  */
@@ -182,7 +183,7 @@ function get_settings_feature_groups(): array {
 	/**
 	 * Filters feature group metadata used by the settings UI.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, array{label:string, description:string, order:int}> $default_groups Feature group metadata keyed by category.
 	 */
@@ -194,7 +195,7 @@ function get_settings_feature_groups(): array {
 /**
  * Builds feature metadata used by the settings route UI.
  *
- * @since 0.6.0
+ * @since x.x.x
  *
  * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
  * @return array{
@@ -278,7 +279,7 @@ function get_settings_feature_metadata( Registry $registry ): array {
 	/**
 	 * Filters settings metadata passed to the settings route client.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param array{
 	 *   groups:list<array{id:string, label:string, description:string}>,
@@ -355,51 +356,7 @@ function initialize_features(): void {
 
 		// Register admin settings page menu item.
 		if ( is_admin() ) {
-			if ( function_exists( 'ai_ai_wp_admin_render_page' ) ) {
-				add_action(
-					'admin_menu',
-					static function () {
-						add_options_page(
-							__( 'AI', 'ai' ),
-							__( 'AI', 'ai' ),
-							'manage_options',
-							'ai-wp-admin',
-							'ai_ai_wp_admin_render_page', // @phpstan-ignore argument.type
-							2
-						);
-					}
-				);
-
-				// Expose credential status to the settings page script module.
-				add_filter(
-					'script_module_data_ai-wp-admin',
-					static function ( array $data ) use ( $registry ): array {
-						$feature_metadata            = get_settings_feature_metadata( $registry );
-						$data['hasCredentials']      = has_ai_credentials();
-						$data['hasValidCredentials'] = has_valid_ai_credentials();
-						$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
-						$data['featureGroups']       = $feature_metadata['groups'] ?? array();
-						$data['features']            = $feature_metadata['features'] ?? array();
-						return $data;
-					}
-				);
-			} else {
-				add_action(
-					'admin_menu',
-					static function () {
-						// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
-						if ( ! isset( $_GET['page'] ) || 'ai-wp-admin' !== $_GET['page'] ) {
-							return;
-						}
-
-						_doing_it_wrong(
-							'initialize_features',
-							esc_html__( 'AI settings page render function not found. Run npm run build:routes to generate build assets.', 'ai' ),
-							'0.6.0'
-						);
-					}
-				);
-			}
+			Settings_Page::init( $registry );
 		}
 
 		// Register our post-related WordPress Abilities.
@@ -442,7 +399,7 @@ add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
 /**
  * Triggers when the plugin is activated.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 register_activation_hook(
 	WPAI_PLUGIN_FILE,

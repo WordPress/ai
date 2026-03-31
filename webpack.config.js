@@ -12,6 +12,15 @@ const path = require( 'path' );
 // Extend the default webpack config.
 module.exports = {
 	...defaultConfig,
+	output: {
+		...defaultConfig.output,
+		// Extend the default keep regex to preserve wp-build output directories
+		// (modules, pages, routes, scripts, styles) during watch mode, so that
+		// wp-scripts and wp-build can coexist in the same build/ folder.
+		clean: {
+			keep: /^(fonts|images|modules|pages|routes|scripts|styles)\b/,
+		},
+	},
 	entry: {
 		...defaultConfig.entry(),
 		'admin/settings': path.resolve(
