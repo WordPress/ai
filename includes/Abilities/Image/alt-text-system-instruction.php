@@ -10,10 +10,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+
 // Determine the locale from the passed in global.
-$default_locale = 'en_US';
+$return_locale = 'en_US';
 if ( isset( $locale ) ) {
-	$default_locale = $locale;
+	$return_locale = $locale;
 }
 
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
@@ -31,7 +33,7 @@ Requirements for the alt text:
 - Include relevant details: People, objects, actions, colors, and context when meaningful
 - Consider context: If context is provided, ensure the alt text is relevant to the surrounding content
 - Plain text only: No markdown, quotes, or special formatting
-- If you are given CONTENT in the <additional-context> tag, ensure the alt text you return matches the language of that content. For example, if the content is in English, the alt text should be in English. If the content is in Spanish, the alt text should be in Spanish. If you are not given CONTENT in the <additional-context> tag, ensure the alt text you return is in this locale: {$default_locale}
+- If you are given CONTENT in the <additional-context> tag, ensure the alt text you return matches the language of that content. For example, if the content is in English, the alt text should be in English. If the content is in Spanish, the alt text should be in Spanish. If you are not given CONTENT in the <additional-context> tag, ensure the alt text you return is in this locale: {$return_locale}
 
 For images containing text, include the text in your description if it's essential to understanding the image.
 
