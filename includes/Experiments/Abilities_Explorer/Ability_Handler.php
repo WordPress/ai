@@ -105,7 +105,7 @@ class Ability_Handler {
 			'name'          => $ability->get_label(),
 			'description'   => $ability->get_description(),
 			'provider'      => self::detect_provider( $name, $meta ),
-			'tags'          => self::get_ability_tags( $name ),
+			'tags'          => self::get_ability_tags( $ability ),
 			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
 			'raw_data'      => array(
@@ -120,65 +120,18 @@ class Ability_Handler {
 	}
 
 	/**
-	 * Get tags for an ability based on its slug.
+	 * Get tags for an ability.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
-	 * @param string $slug Ability slug.
+	 * @param \WP_Ability $ability Ability object.
 	 * @return array<string> Tags for the ability.
 	 */
-	public static function get_ability_tags( string $slug ): array {
-		$parts        = explode( '/', $slug );
-		$ability_name = end( $parts );
-		$namespace    = $parts[0] ?? '';
+	public static function get_ability_tags( \WP_Ability $ability ): array {
+		$slug     = $ability->get_name();
+		$category = $ability->get_category();
 
-		/**
-		 * Filters the keyword-to-category map used when auto-tagging abilities.
-		 *
-		 * Third-party plugins can add new categories or extend existing ones by
-		 * hooking into this filter. Each key is the category label shown in the
-		 * UI; each value is an array of slug substrings that trigger that category.
-		 *
-		 * Example:
-		 *   add_filter( 'wpai_ability_category_map', function( $map ) {
-		 *       $map['WooCommerce'] = [ 'product', 'order', 'cart' ];
-		 *       $map['SEO']         = [ 'meta', 'seo', 'sitemap' ];
-		 *       return $map;
-		 *   } );
-		 *
-		 * @since 0.6.0
-		 *
-		 * @param array<string, array<string>> $map Category label => keyword slugs.
-		 */
-		$tag_keywords = apply_filters(
-			'wpai_ability_category_map',
-			array(
-				'Image'     => array( 'image', 'alt-text' ),
-				'Editorial' => array( 'summariz', 'excerpt', 'title', 'review' ),
-				'Content'   => array( 'post', 'terms', 'taxonomy', 'page' ),
-				'System'    => array( 'environment', 'diagnostic', 'debug' ),
-			)
-		);
-
-		$tags = array();
-		foreach ( $tag_keywords as $tag => $keywords ) {
-			foreach ( $keywords as $keyword ) {
-				if ( false !== strpos( $ability_name, $keyword ) ) {
-					$tags[] = $tag;
-					break;
-				}
-			}
-		}
-
-		// Core abilities always get System tag.
-		if ( in_array( $namespace, array( 'wordpress', 'wp', 'core' ), true ) ) {
-			if ( ! in_array( 'System', $tags, true ) ) {
-				$tags[] = 'System';
-			}
-		}
-
-		$unique = array_unique( $tags );
-		$unique = ! empty( $unique ) ? $unique : array( 'Other' );
+		$unique = ! empty( $category ) ? array( $category ) : array( 'Other' );
 
 		/**
 		 * Filters the final resolved category tags for a specific ability.
@@ -194,7 +147,7 @@ class Ability_Handler {
 		 *       return $tags;
 		 *   }, 10, 2 );
 		 *
-		 * @since 0.6.0
+		 * @since x.x.x
 		 *
 		 * @param array<string> $tags Resolved category tags for this ability.
 		 * @param string        $slug The full ability slug, e.g. 'my-plugin/do-thing'.
@@ -205,7 +158,7 @@ class Ability_Handler {
 	/**
 	 * Get all unique tags across all abilities.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return array<string> Sorted list of all unique tags.
 	 */

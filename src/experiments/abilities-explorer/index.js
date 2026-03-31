@@ -551,9 +551,7 @@ import './index.scss';
 
 	initWhenReady( function () {
 		if ( aiAbilityExplorer?.enabled ) {
-			AiAbilityExplorer.initTestRunner();
-			AiAbilityExplorer.initCopyButtons();
-			AiAbilityExplorer.initValidation();
+			AiAbilityExplorer.init();
 		}
 	} );
 } )();
