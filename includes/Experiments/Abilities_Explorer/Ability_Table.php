@@ -32,7 +32,7 @@ class Ability_Table extends \WP_List_Table {
 	/**
 	 * Full list of abilities before pagination, used to derive filter options.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @var array<array<string,mixed>>
 	 */
@@ -124,7 +124,7 @@ class Ability_Table extends \WP_List_Table {
 			$abilities = array_filter(
 				$abilities,
 				static function ( $ability ) use ( $category_filter ) {
-					return in_array( $category_filter, $ability['tags'] ?? array(), true );
+					return in_array( $category_filter, $ability['categories'] ?? array(), true );
 				}
 			);
 		}
@@ -163,37 +163,37 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Get sorted unique tags derived from the already-fetched ability list.
+	 * Get sorted unique categories derived from the already-fetched ability list.
 	 *
 	 * @since 0.6.0
 	 *
 	 * @return array<string>
 	 */
-	public function get_unique_tags(): array {
-		$tags = array();
+	public function get_unique_categories(): array {
+		$categories = array();
 
 		foreach ( $this->all_abilities as $ability ) {
-			$tags = array_merge( $tags, $ability['tags'] ?? array() );
+			$categories = array_merge( $categories, $ability['categories'] ?? array() );
 		}
 
-		$tags = array_unique( $tags );
-		sort( $tags );
+		$categories = array_unique( $categories );
+		sort( $categories );
 
-		return $tags;
+		return $categories;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Adds data-tags attribute so the JS category filter can work client-side.
+	 * Adds data-categories attribute so the JS category filter can work client-side.
 	 *
 	 * @since 0.6.0
 	 *
 	 * @param array<string,mixed> $item Item data.
 	 */
 	public function single_row( $item ): void {
-		$tags = implode( ',', $item['tags'] ?? array() );
-		echo '<tr data-tags="' . esc_attr( $tags ) . '">';
+		$categories = implode( ',', $item['categories'] ?? array() );
+		echo '<tr data-categories="' . esc_attr( $categories ) . '">';
 		$this->single_row_columns( $item );
 		echo '</tr>';
 	}
@@ -313,8 +313,8 @@ class Ability_Table extends \WP_List_Table {
 
 			<select name="category" id="filter-by-category">
 				<option value="all" <?php selected( $category_filter, 'all' ); ?>><?php esc_html_e( 'All Categories', 'ai' ); ?></option>
-				<?php foreach ( $this->get_unique_tags() as $tag ) : ?>
-					<option value="<?php echo esc_attr( $tag ); ?>" <?php selected( $category_filter, $tag ); ?>><?php echo esc_html( $tag ); ?></option>
+				<?php foreach ( $this->get_unique_categories() as $category ) : ?>
+					<option value="<?php echo esc_attr( $category ); ?>" <?php selected( $category_filter, $category ); ?>><?php echo esc_html( $category ); ?></option>
 				<?php endforeach; ?>
 			</select>
 
