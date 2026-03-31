@@ -139,7 +139,7 @@ class Ability_Handler {
 			}
 		}
 
-		$unique = array( $category_label );
+		$categories = array( $category_label );
 
 		/**
 		 * Filters the final resolved categories for a specific ability.
@@ -160,7 +160,7 @@ class Ability_Handler {
 		 * @param array<string> $categories Resolved categories for this ability.
 		 * @param string        $slug       The full ability slug, e.g. 'my-plugin/do-thing'.
 		 */
-		return (array) apply_filters( 'wpai_ability_categories', $unique, $slug );
+		return (array) apply_filters( 'wpai_ability_categories', $categories, $slug );
 	}
 
 	/**
