@@ -41,7 +41,7 @@ class Settings_Page {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param Registry $registry The feature registry.
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 * @return void
 	 */
 	public static function init( Registry $registry ): void {
