@@ -252,11 +252,11 @@ class Summarization extends Abstract_Ability {
 	}
 
 	/**
-	 * Gets a prompt builder for generating review notes.
+	 * Gets a prompt builder for generating a summary.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $prompt The prompt to generate review notes from.
+	 * @param string $prompt The prompt to generate a summary from.
 	 * @param string $length The desired length of the summary.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */

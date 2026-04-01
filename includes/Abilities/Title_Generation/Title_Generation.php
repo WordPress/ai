@@ -258,12 +258,37 @@ class Title_Generation extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
+		$prompt_builder = $this->get_prompt_builder( $content, $candidates );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
 		// Generate the titles using the AI client.
-		return wp_ai_client_prompt( $content )
+		return $prompt_builder->generate_texts();
+	}
+
+	/**
+	 * Gets a prompt builder for generating titles.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to generate titles from.
+	 * @param int $candidates The number of titles to generate.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt, int $candidates ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
-			->using_candidate_count( (int) $candidates )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->generate_texts();
+			->using_candidate_count( $candidates )
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		// Return a more specific error if there isn't a model that supports text generation.
+		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
+			return new WP_Error( 'unsupported_model', esc_html__( 'Title generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' ) );
+		}
+
+		return $prompt_builder;
 	}
 }
