@@ -410,6 +410,54 @@ PHP;
 	}
 
 	/**
+	 * Test that get_system_instruction() returns the instruction on consecutive calls with the same file.
+	 *
+	 * Surfaces an issue: require_once on line 162 of Abstract_Ability returns true (not the string)
+	 * on the second call, causing the method to silently return an empty string.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_system_instruction_returns_instruction_on_consecutive_calls() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		// Get the test ability's directory using reflection.
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+
+		// Create a temporary system instruction file.
+		$test_file    = trailingslashit( $feature_dir ) . 'test-system-instruction-consecutive.php';
+		$test_content = <<<'PHP'
+<?php
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
+return <<<INSTRUCTION
+You are a test assistant for consecutive calls.
+INSTRUCTION;
+PHP;
+		file_put_contents( $test_file, $test_content );
+
+		try {
+			$first_result  = $ability->get_system_instruction( 'test-system-instruction-consecutive.php' );
+			$second_result = $ability->get_system_instruction( 'test-system-instruction-consecutive.php' );
+
+			$this->assertNotEmpty( $first_result, 'First call should return the instruction' );
+			$this->assertNotEmpty( $second_result, 'Second call should also return the instruction, but require_once causes it to return empty' );
+			$this->assertSame( $first_result, $second_result, 'Both calls should return the same instruction' );
+		} finally {
+			if ( file_exists( $test_file ) ) {
+				wp_delete_file( $test_file );
+			}
+		}
+	}
+
+	/**
 	 * Test that get_system_instruction() with empty data array works correctly.
 	 *
 	 * @since 0.1.0
