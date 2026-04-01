@@ -391,7 +391,7 @@ test.describe( 'Image Editing Experiment', () => {
 		);
 		await expect( startOverBtn ).toBeVisible();
 
-		startOverBtn.click();
+		await startOverBtn.click();
 
 		// Add a prompt and generate the image.
 		await page
@@ -495,7 +495,7 @@ test.describe( 'Image Editing Experiment', () => {
 		);
 		await expect( startOverBtn ).toBeVisible();
 
-		startOverBtn.click();
+		await startOverBtn.click();
 
 		// Find the Remove Item button and click on it.
 		const removeItemBtn = page
@@ -573,12 +573,17 @@ test.describe( 'Image Editing Experiment', () => {
 		);
 		await expect( generateAnotherBtn ).toBeVisible();
 
-		generateAnotherBtn.click();
+		await generateAnotherBtn.click();
 
 		// Ensure the images are visible in the modal.
 		await expect(
 			page.locator( '.ai-media-library-editor__preview-image' )
 		).toHaveCount( 2 );
+
+		// Ensure generation has completed and history is updated.
+		await expect(
+			page.locator( '.ai-image-history-nav__counter' )
+		).toHaveText( '2 / 2' );
 
 		// Click the previous image navigation arrow.
 		let previousImgBtn = page
