@@ -384,10 +384,11 @@ PHP
 	}
 
 	/**
-	 * Test that get_system_instruction() returns the instruction on consecutive calls with the same file.
+	 * Regression test: get_system_instruction() must return the instruction on every call with the same file.
 	 *
-	 * Surfaces an issue: require_once on line 162 of Abstract_Ability returns true (not the string)
-	 * on the second call, causing the method to silently return an empty string.
+	 * Previously, the implementation used require_once for explicit filenames, which returns true
+	 * (not the file's return value) on subsequent calls, causing the method to silently return an
+	 * empty string. This test ensures that consecutive calls always return the correct string.
 	 *
 	 * @since 0.1.0
 	 */
@@ -407,7 +408,7 @@ PHP
 		$second_result = $this->ability->get_system_instruction( 'test-system-instruction-consecutive.php' );
 
 		$this->assertNotEmpty( $first_result, 'First call should return the instruction' );
-		$this->assertNotEmpty( $second_result, 'Second call should also return the instruction, but require_once causes it to return empty' );
+		$this->assertNotEmpty( $second_result, 'Second call should also return the instruction' );
 		$this->assertSame( $first_result, $second_result, 'Both calls should return the same instruction' );
 	}
 
