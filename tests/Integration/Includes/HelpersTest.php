@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
+use WordPress\AI\Services\Content_Guidelines;
 
 /**
  * Helper functions test case.
@@ -26,6 +27,7 @@ class HelpersTest extends WP_UnitTestCase {
 		// Create a user with proper permissions for reading posts.
 		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $user_id );
+		Content_Guidelines::reset_cache();
 	}
 
 	/**
@@ -34,6 +36,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
+		Content_Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		parent::tearDown();
 	}
@@ -577,5 +580,79 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertEquals( 'test-vision-model', $result[0][1], 'Model name should be test-vision-model' );
 
 		remove_all_filters( 'wpai_preferred_vision_models' );
+	}
+
+	/**
+	 * Test that get_content_guidelines() returns guidelines filtered by category.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_content_guidelines_returns_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site' => 'Use a professional tone.',
+				'copy' => 'Keep sentences under 25 words.',
+			)
+		);
+
+		$result = \WordPress\AI\get_content_guidelines( 'site' );
+
+		$this->assertIsArray( $result, 'Should return an array' );
+		$this->assertArrayHasKey( 'site', $result, 'Should have site key' );
+		$this->assertEquals( 'Use a professional tone.', $result['site'] );
+	}
+
+	/**
+	 * Registers the wp_content_guideline CPT for testing.
+	 *
+	 * @return void
+	 */
+	private function register_guidelines_cpt(): void {
+		if ( post_type_exists( 'wp_content_guideline' ) ) {
+			return;
+		}
+
+		// phpcs:disable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
+		register_post_type(
+			'wp_content_guideline',
+			array( 'public' => false )
+		);
+		// phpcs:enable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
+	}
+
+	/**
+	 * Creates a guidelines post with the given category meta values.
+	 *
+	 * @param array<string, string> $categories Keyed array of category => guideline text.
+	 * @return int The created post ID.
+	 */
+	private function create_guidelines_post( array $categories ): int {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'wp_content_guideline',
+				'post_status' => 'publish',
+				'post_title'  => 'Content Guidelines',
+			)
+		);
+
+		$meta_key_map = array(
+			'copy'       => '_content_guideline_copy',
+			'images'     => '_content_guideline_images',
+			'site'       => '_content_guideline_site',
+			'additional' => '_content_guideline_additional',
+		);
+
+		foreach ( $categories as $category => $value ) {
+			if ( ! isset( $meta_key_map[ $category ] ) ) {
+				continue;
+			}
+
+			update_post_meta( $post_id, $meta_key_map[ $category ], $value );
+		}
+
+		Content_Guidelines::reset_cache();
+
+		return $post_id;
 	}
 }
