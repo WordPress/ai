@@ -124,7 +124,7 @@ class Ability_Table extends \WP_List_Table {
 			$abilities = array_filter(
 				$abilities,
 				static function ( $ability ) use ( $category_filter ) {
-					return in_array( $category_filter, $ability['categories'] ?? array(), true );
+					return ( $ability['category'] ?? '' ) === $category_filter;
 				}
 			);
 		}
@@ -173,29 +173,17 @@ class Ability_Table extends \WP_List_Table {
 		$categories = array();
 
 		foreach ( $this->all_abilities as $ability ) {
-			$categories = array_merge( $categories, $ability['categories'] ?? array() );
+			if ( empty( $ability['category'] ) ) {
+				continue;
+			}
+
+			$categories[] = $ability['category'];
 		}
 
 		$categories = array_unique( $categories );
 		sort( $categories );
 
 		return $categories;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 *
-	 * Adds data-categories attribute so the JS category filter can work client-side.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string,mixed> $item Item data.
-	 */
-	public function single_row( $item ): void {
-		$categories = implode( ',', $item['categories'] ?? array() );
-		echo '<tr data-categories="' . esc_attr( $categories ) . '">';
-		$this->single_row_columns( $item );
-		echo '</tr>';
 	}
 
 	/**

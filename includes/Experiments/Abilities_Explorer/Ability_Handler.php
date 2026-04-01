@@ -105,7 +105,7 @@ class Ability_Handler {
 			'name'          => $ability->get_label(),
 			'description'   => $ability->get_description(),
 			'provider'      => self::detect_provider( $name, $meta ),
-			'categories'    => self::get_ability_categories( $ability ),
+			'category'      => self::get_ability_category( $ability ),
 			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
 			'raw_data'      => array(
@@ -120,14 +120,14 @@ class Ability_Handler {
 	}
 
 	/**
-	 * Get categories for an ability.
+	 * Get the category for an ability.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Ability $ability Ability object.
-	 * @return array<string> Categories for the ability.
+	 * @return string Category for the ability.
 	 */
-	public static function get_ability_categories( \WP_Ability $ability ): array {
+	public static function get_ability_category( \WP_Ability $ability ): string {
 		$slug          = $ability->get_name();
 		$category_slug = $ability->get_category();
 
@@ -139,49 +139,26 @@ class Ability_Handler {
 			}
 		}
 
-		$categories = array( $category_label );
-
 		/**
-		 * Filters the final resolved categories for a specific ability.
+		 * Filters the final resolved category for a specific ability.
 		 *
-		 * Use this hook to explicitly override or append categories for a
-		 * specific ability slug, bypassing keyword matching entirely.
+		 * Use this hook to explicitly override the category for a
+		 * specific ability slug.
 		 *
 		 * Example:
-		 *   add_filter( 'wpai_ability_categories', function( $categories, $slug ) {
+		 *   add_filter( 'wpai_ability_category', function( $category, $slug ) {
 		 *       if ( 'my-plugin/generate-meta-description' === $slug ) {
-		 *           return array( 'SEO' );
+		 *           return 'SEO';
 		 *       }
-		 *       return $categories;
+		 *       return $category;
 		 *   }, 10, 2 );
 		 *
 		 * @since x.x.x
 		 *
-		 * @param array<string> $categories Resolved categories for this ability.
-		 * @param string        $slug       The full ability slug, e.g. 'my-plugin/do-thing'.
+		 * @param string $category Resolved category for this ability.
+		 * @param string $slug     The full ability slug, e.g. 'my-plugin/do-thing'.
 		 */
-		return (array) apply_filters( 'wpai_ability_categories', $categories, $slug );
-	}
-
-	/**
-	 * Get all unique categories across all abilities.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string> Sorted list of all unique categories.
-	 */
-	public static function get_all_categories(): array {
-		$abilities  = self::get_all_abilities();
-		$categories = array();
-
-		foreach ( $abilities as $ability ) {
-			$categories = array_merge( $categories, $ability['categories'] );
-		}
-
-		$categories = array_unique( $categories );
-		sort( $categories );
-
-		return $categories;
+		return (string) apply_filters( 'wpai_ability_category', $category_label, $slug );
 	}
 
 	/**
