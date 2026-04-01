@@ -37,7 +37,6 @@ const clearConnectorFromItem = async ( connectorItem: Locator ) => {
 	const candidate = connectorItem.getByRole( 'button', { name: /Remove/i } );
 	if ( ( await candidate.count() ) > 0 ) {
 		await candidate.first().click();
-		return;
 	}
 };
 
