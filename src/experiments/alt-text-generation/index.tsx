@@ -35,24 +35,22 @@ const { aiAltTextGenerationData } = window as AltTextGenerationData;
  */
 const withAltTextGeneration = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props: BlockEditProps ) => {
-		// Only add controls to the selected image block.
-		if ( props.name !== 'core/image' || ! props.isSelected ) {
-			return <BlockEdit { ...props } />;
-		}
-
-		// Don't render if disabled.
-		if ( ! aiAltTextGenerationData?.enabled ) {
-			return <BlockEdit { ...props } />;
-		}
+		// Only show controls if we have a selected image block and the experiment is enabled.
+		const showControls =
+			props.name === 'core/image' &&
+			props.isSelected &&
+			aiAltTextGenerationData?.enabled;
 
 		return (
 			<>
 				<BlockEdit { ...props } />
-				<AltTextControls
-					clientId={ props.clientId }
-					attributes={ props.attributes }
-					setAttributes={ props.setAttributes }
-				/>
+				{ showControls && (
+					<AltTextControls
+						clientId={ props.clientId }
+						attributes={ props.attributes }
+						setAttributes={ props.setAttributes }
+					/>
+				) }
 			</>
 		);
 	};
