@@ -149,25 +149,32 @@ class Test_Ability_Experiment extends Abstract_Feature {
 class Abstract_AbilityTest extends WP_UnitTestCase {
 
 	/**
+	 * Test experiment instance.
+	 *
+	 * @var Test_Ability_Experiment
+	 */
+	private Test_Ability_Experiment $experiment;
+
+	/**
 	 * Test ability instance.
 	 *
 	 * @var Test_Ability
 	 */
-	private $ability;
+	private Test_Ability $ability;
 
 	/**
 	 * Directory where the Test_Ability class file resides.
 	 *
 	 * @var string
 	 */
-	private $feature_dir;
+	private string $feature_dir;
 
 	/**
 	 * Temporary files created during tests, cleaned up in tearDown.
 	 *
 	 * @var string[]
 	 */
-	private $temp_files = array();
+	private array $temp_files = array();
 
 	/**
 	 * Set up test case.
@@ -183,12 +190,12 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		$experiment    = new Test_Ability_Experiment();
-		$this->ability = new Test_Ability(
+		$this->experiment = new Test_Ability_Experiment();
+		$this->ability    = new Test_Ability(
 			'test-ability',
 			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
 			)
 		);
 
@@ -233,6 +240,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_constructor_sets_up_ability() {
+		$this->assertSame( $this->experiment->get_label(), $this->ability->get_label(), 'Label should be stored in ability' );
 		$this->assertSame( 'Test Ability Experiment', $this->ability->get_label(), 'Label should be stored in ability' );
 	}
 
@@ -242,6 +250,8 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_constructor_calls_parent_with_properties() {
+		// Verify the ability was registered with WordPress Abilities API.
+		// We can't directly test parent::__construct, but we can verify the ability exists.
 		$this->assertInstanceOf( Abstract_Ability::class, $this->ability, 'Ability should be instance of Abstract_Ability' );
 	}
 
@@ -258,6 +268,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $this->ability );
 
+		$this->assertEquals( $this->experiment->get_label(), $result, 'Label should match experiment label' );
 		$this->assertEquals( 'Test Ability Experiment', $result, 'Label should be correct' );
 	}
 
@@ -274,6 +285,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $this->ability );
 
+		$this->assertEquals( $this->experiment->get_description(), $result, 'Description should match experiment description' );
 		$this->assertEquals( 'A test experiment for ability testing', $result, 'Description should be correct' );
 	}
 
