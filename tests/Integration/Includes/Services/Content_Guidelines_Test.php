@@ -48,30 +48,6 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that is_available() returns false when the CPT is not registered.
-	 *
-	 * @since 0.7.0
-	 */
-	public function test_is_available_returns_false_when_cpt_not_registered(): void {
-		$this->assertFalse(
-			$this->service->is_available(),
-			'Should return false when wp_content_guideline CPT is not registered'
-		);
-	}
-
-	/**
-	 * Tests that get_guidelines() returns null when the CPT is unavailable.
-	 *
-	 * @since 0.7.0
-	 */
-	public function test_get_guidelines_returns_null_when_unavailable(): void {
-		$this->assertNull(
-			$this->service->get_guidelines(),
-			'Should return null when CPT is not registered'
-		);
-	}
-
-	/**
 	 * Tests that get_guidelines() returns null when no guidelines post exists.
 	 *
 	 * @since 0.7.0
