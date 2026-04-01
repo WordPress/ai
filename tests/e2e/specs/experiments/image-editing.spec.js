@@ -35,21 +35,22 @@ test.describe( 'Image Editing Experiment', () => {
 
 		await visitConnectorsPage( admin );
 
+		const googleConnector = page.locator( '[role="listitem"]', {
+			has: page.getByRole( 'heading', { name: 'Google', exact: true } ),
+		} );
+
 		// Add dummy credentials for Google.
-		await page
-			.locator( '.connector-item--ai-provider-for-google button' )
+		await googleConnector
+			.getByRole( 'button', { name: /Set up|Edit/i } )
 			.click();
-		await page
-			.locator(
-				'.connector-item--ai-provider-for-google input[type="text"]'
-			)
+		await googleConnector
+			.getByRole( 'textbox' )
+			.first()
 			.fill( 'valid-api-key' );
 
 		// Save the credentials.
-		await page
-			.locator(
-				'.connector-item--ai-provider-for-google .connector-settings button'
-			)
+		await googleConnector
+			.getByRole( 'button', { name: /Save|Update/i } )
 			.click();
 	} );
 
