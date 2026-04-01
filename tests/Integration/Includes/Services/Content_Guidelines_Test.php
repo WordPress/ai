@@ -289,6 +289,47 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that get_guidelines() returns null when a post exists but has no guideline meta.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_guidelines_returns_null_when_post_has_no_meta(): void {
+		$this->register_guidelines_cpt();
+
+		// Create a guidelines post with no meta values.
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'wp_content_guideline',
+				'post_status' => 'publish',
+				'post_title'  => 'Empty Guidelines',
+			)
+		);
+
+		$this->assertNull(
+			$this->service->get_guidelines(),
+			'Should return null when post exists but has no guideline meta'
+		);
+	}
+
+	/**
+	 * Tests that get_block_guidelines() returns null when disabled by filter.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_block_guidelines_returns_null_when_disabled_by_filter(): void {
+		$this->register_guidelines_cpt();
+		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
+		update_post_meta( $post_id, '_content_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+
+		add_filter( 'wpai_use_content_guidelines', '__return_false' );
+
+		$this->assertNull(
+			$this->service->get_block_guidelines( 'core/paragraph' ),
+			'Should return null when filter disables guidelines'
+		);
+	}
+
+	/**
 	 * Tests that format_for_prompt() skips empty categories.
 	 *
 	 * @since 0.7.0
