@@ -1,12 +1,44 @@
 /**
  * External dependencies
  */
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * WordPress dependencies
  */
 import { type Admin, expect } from '@wordpress/e2e-test-utils-playwright';
+
+const CONNECTOR_LABELS: Record< string, string > = {
+	'ai-provider-for-openai': 'OpenAI',
+	'ai-provider-for-google': 'Google',
+	'ai-provider-for-anthropic': 'Anthropic',
+};
+
+const getConnectorItem = ( page: Page, connectorId: string ) => {
+	const label = CONNECTOR_LABELS[ connectorId ];
+
+	if ( ! label ) {
+		return null;
+	}
+
+	return page.locator( '[role="listitem"]', {
+		has: page.getByRole( 'heading', { name: label, exact: true } ),
+	} );
+};
+
+const clearConnectorFromItem = async ( connectorItem: Locator ) => {
+	const editBtn = connectorItem.getByRole( 'button', { name: 'Edit' } );
+	if ( ( await editBtn.count() ) === 0 ) {
+		return;
+	}
+
+	await editBtn.click();
+
+	const candidate = connectorItem.getByRole( 'button', { name: /Remove/i } );
+	if ( ( await candidate.count() ) > 0 ) {
+		await candidate.first().click();
+	}
+};
 
 /**
  * Visits a specific admin page.
@@ -55,20 +87,10 @@ export const clearConnectors = async ( admin: Admin, page: Page ) => {
 	];
 
 	for ( const provider of providers ) {
-		const editBtn = page.locator( `.connector-item--${ provider } button`, {
-			hasText: 'Edit',
-		} );
-
-		if ( ( await editBtn.count() ) === 0 ) {
-			continue;
+		const connectorItem = getConnectorItem( page, provider );
+		if ( connectorItem ) {
+			await clearConnectorFromItem( connectorItem );
 		}
-
-		await editBtn.click();
-		await page
-			.locator(
-				`.connector-item--${ provider } .connector-settings button`
-			)
-			.click();
 	}
 
 	// Wait for save.
@@ -92,20 +114,10 @@ export const clearConnector = async (
 	// Wait for page to fully load before finding button
 	await page.waitForTimeout( 1000 );
 
-	const editBtn = page.locator( `.connector-item--${ connectorId } button`, {
-		hasText: 'Edit',
-	} );
-
-	if ( ( await editBtn.count() ) === 0 ) {
-		return;
+	const connectorItem = getConnectorItem( page, connectorId );
+	if ( connectorItem ) {
+		await clearConnectorFromItem( connectorItem );
 	}
-
-	await editBtn.click();
-	await page
-		.locator(
-			`.connector-item--${ connectorId } .connector-settings button`
-		)
-		.click();
 
 	// Wait for save.
 	await page.waitForTimeout( 1000 );
