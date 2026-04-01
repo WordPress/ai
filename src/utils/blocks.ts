@@ -94,7 +94,7 @@ export function replaceBlockWithPlaceholder(
 		return content;
 	}
 
-	const serializedBlock = serialize( block );
+	const serializedBlock = serialize( [ block ] );
 	if ( ! serializedBlock || ! content.includes( serializedBlock ) ) {
 		return content;
 	}
@@ -112,7 +112,7 @@ export function replaceBlockWithPlaceholder(
 
 	for ( const flatBlock of flatBlocks ) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- block shape comes from editor store
-		const flatSerialized = serialize( flatBlock as any );
+		const flatSerialized = serialize( [ flatBlock as any ] );
 		if ( flatSerialized !== serializedBlock ) {
 			continue;
 		}
