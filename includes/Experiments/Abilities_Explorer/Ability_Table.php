@@ -165,7 +165,7 @@ class Ability_Table extends \WP_List_Table {
 	/**
 	 * Get sorted unique categories derived from the already-fetched ability list.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return array<string>
 	 */
@@ -187,7 +187,7 @@ class Ability_Table extends \WP_List_Table {
 	 *
 	 * Adds data-categories attribute so the JS category filter can work client-side.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @param array<string,mixed> $item Item data.
 	 */

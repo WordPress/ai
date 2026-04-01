@@ -131,7 +131,7 @@ class Ability_Handler {
 		$slug          = $ability->get_name();
 		$category_slug = $ability->get_category();
 
-		$category_label = 'Other';
+		$category_label = esc_html__( 'Other', 'ai' );
 		if ( ! empty( $category_slug ) && function_exists( 'wp_get_ability_category' ) ) {
 			$category_obj = wp_get_ability_category( $category_slug );
 			if ( $category_obj ) {
