@@ -231,7 +231,11 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	private function create_system_instruction_file( string $filename, string $content ): void {
 		$path               = trailingslashit( $this->feature_dir ) . $filename;
 		$this->temp_files[] = $path;
-		file_put_contents( $path, $content );
+		$result             = @file_put_contents( $path, $content );
+
+		if ( false === $result ) {
+			$this->fail( sprintf( 'Failed to create system instruction file at path: %s', $path ) );
+		}
 	}
 
 	/**
