@@ -108,6 +108,22 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that guideline_categories() returns site and images.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_guideline_categories_returns_site_and_images(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'guideline_categories' );
+		$method->setAccessible( true );
+
+		$this->assertSame(
+			array( 'site', 'images' ),
+			$method->invoke( $this->ability )
+		);
+	}
+
+	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
 	 * @since 0.2.0
