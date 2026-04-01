@@ -30,6 +30,15 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.7.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'images' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
@@ -236,6 +245,12 @@ class Generate_Image extends Abstract_Ability {
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
 	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
+		// Inject content guidelines if available.
+		$guidelines = $this->get_content_guidelines_for_prompt();
+		if ( $guidelines ) {
+			$prompt .= "\n\n" . $guidelines;
+		}
+
 		$request_options = new RequestOptions();
 		$request_options->setTimeout( 90 );
 
