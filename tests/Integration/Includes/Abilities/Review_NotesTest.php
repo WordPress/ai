@@ -11,6 +11,7 @@ use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Review_Notes\Review_Notes;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Services\Content_Guidelines;
 
 /**
  * Test experiment for Review_Notes_Ability tests.
@@ -92,6 +93,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
+		Content_Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		parent::tearDown();
 	}
@@ -595,5 +597,110 @@ class Review_NotesTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'seo', $result );
 		$this->assertArrayHasKey( 'accessibility', $result );
 		$this->assertCount( 2, $result );
+	}
+
+	// -------------------------------------------------------------------------
+	// Content Guidelines integration
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Tests that guideline_categories() returns site, copy, and additional.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_guideline_categories_returns_site_copy_and_additional(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'guideline_categories' );
+		$method->setAccessible( true );
+
+		$this->assertSame(
+			array( 'site', 'copy', 'additional' ),
+			$method->invoke( $this->ability )
+		);
+	}
+
+	/**
+	 * Tests that create_prompt() includes content guidelines when available.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_create_prompt_includes_content_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site' => 'Use a professional tone.',
+				'copy' => 'Keep sentences under 25 words.',
+			)
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'create_prompt' );
+		$method->setAccessible( true );
+
+		$prompt = $method->invoke(
+			$this->ability,
+			'core/paragraph',
+			'This is legitimate content.',
+			'',
+			array(),
+			array( 'readability' )
+		);
+
+		$this->assertStringContainsString( '<content-guidelines>', $prompt );
+		$this->assertStringContainsString( '<site-context>Use a professional tone.</site-context>', $prompt );
+		$this->assertStringContainsString( '<copy-guidelines>Keep sentences under 25 words.</copy-guidelines>', $prompt );
+	}
+
+	/**
+	 * Registers the wp_content_guideline CPT for testing.
+	 *
+	 * @return void
+	 */
+	private function register_guidelines_cpt(): void {
+		if ( post_type_exists( 'wp_content_guideline' ) ) {
+			return;
+		}
+
+		// phpcs:disable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
+		register_post_type(
+			'wp_content_guideline',
+			array( 'public' => false )
+		);
+		// phpcs:enable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
+	}
+
+	/**
+	 * Creates a guidelines post with the given category meta values.
+	 *
+	 * @param array<string, string> $categories Keyed array of category => guideline text.
+	 * @return int The created post ID.
+	 */
+	private function create_guidelines_post( array $categories ): int {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'wp_content_guideline',
+				'post_status' => 'publish',
+				'post_title'  => 'Content Guidelines',
+			)
+		);
+
+		$meta_key_map = array(
+			'copy'       => '_content_guideline_copy',
+			'images'     => '_content_guideline_images',
+			'site'       => '_content_guideline_site',
+			'additional' => '_content_guideline_additional',
+		);
+
+		foreach ( $categories as $category => $value ) {
+			if ( ! isset( $meta_key_map[ $category ] ) ) {
+				continue;
+			}
+
+			update_post_meta( $post_id, $meta_key_map[ $category ], $value );
+		}
+
+		Content_Guidelines::reset_cache();
+
+		return $post_id;
 	}
 }
