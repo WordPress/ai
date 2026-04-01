@@ -126,7 +126,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	public function test_default_guideline_categories_is_empty(): void {
 		$ability = new Test_Ability_No_Guidelines(
 			'ai/test-no-guidelines',
-			array( 'label' => 'Test No Guidelines' )
+			array(
+				'label'       => 'Test No Guidelines',
+				'description' => 'Test ability without guidelines.',
+			)
 		);
 
 		$reflection = new \ReflectionClass( $ability );
@@ -144,7 +147,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	public function test_get_content_guidelines_for_prompt_returns_empty_when_no_categories(): void {
 		$ability = new Test_Ability_No_Guidelines(
 			'ai/test-no-guidelines',
-			array( 'label' => 'Test No Guidelines' )
+			array(
+				'label'       => 'Test No Guidelines',
+				'description' => 'Test ability without guidelines.',
+			)
 		);
 
 		$reflection = new \ReflectionClass( $ability );
@@ -163,7 +169,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	public function test_get_system_instruction_does_not_append_when_no_categories(): void {
 		$ability = new Test_Ability_No_Guidelines(
 			'ai/test-no-guidelines',
-			array( 'label' => 'Test No Guidelines' )
+			array(
+				'label'       => 'Test No Guidelines',
+				'description' => 'Test ability without guidelines.',
+			)
 		);
 
 		$instruction = $ability->get_system_instruction();
@@ -184,7 +193,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	public function test_get_system_instruction_appends_guidelines_paragraph(): void {
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
-			array( 'label' => 'Test With Guidelines' )
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
 		);
 
 		// Create a temporary system instruction file.
@@ -218,7 +230,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	public function test_get_system_instruction_does_not_append_when_base_empty(): void {
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
-			array( 'label' => 'Test With Guidelines' )
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
 		);
 
 		// No system instruction file exists for this test ability.
@@ -244,7 +259,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
-			array( 'label' => 'Test With Guidelines' )
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
 		);
 
 		$result = $ability->public_get_content_guidelines_for_prompt();
@@ -266,7 +284,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
-			array( 'label' => 'Test With Guidelines' )
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
 		);
 
 		$result = $ability->public_get_content_guidelines_for_prompt( 'core/paragraph' );
