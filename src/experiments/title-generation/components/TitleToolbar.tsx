@@ -146,7 +146,7 @@ async function generateTitles(
 			return [];
 		} )
 		.catch( ( error ) => {
-			throw new Error( `Error generating titles: ${ error.message }` );
+			throw new Error( error.message );
 		} );
 }
 
