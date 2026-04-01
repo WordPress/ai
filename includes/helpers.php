@@ -143,7 +143,11 @@ function get_preferred_models_for_text_generation(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-haiku-4-5',
+			'claude-sonnet-4-6',
+		),
+		array(
+			'google',
+			'gemini-3-flash-preview',
 		),
 		array(
 			'google',
@@ -151,11 +155,11 @@ function get_preferred_models_for_text_generation(): array {
 		),
 		array(
 			'openai',
-			'gpt-4o-mini',
+			'gpt-5.4-mini',
 		),
 		array(
 			'openai',
-			'gpt-4.1',
+			'gpt-4.1-mini',
 		),
 	);
 
@@ -237,15 +241,7 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-1',
-		),
-		array(
-			'openai',
 			'gpt-image-1-mini',
-		),
-		array(
-			'openai',
-			'dall-e-3',
 		),
 	);
 
@@ -271,7 +267,11 @@ function get_preferred_vision_models(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-haiku-4-5-20251001',
+			'claude-sonnet-4-6',
+		),
+		array(
+			'google',
+			'gemini-3-flash-preview',
 		),
 		array(
 			'google',
@@ -279,7 +279,11 @@ function get_preferred_vision_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-5-nano',
+			'gpt-5.4-mini',
+		),
+		array(
+			'openai',
+			'gpt-4.1-mini',
 		),
 	);
 
