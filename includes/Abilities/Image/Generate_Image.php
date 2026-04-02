@@ -37,14 +37,12 @@ class Generate_Image extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'prompt'    => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Prompt used to generate an image.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Prompt used to generate an image.', 'ai' ),
 				),
 				'reference' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Optional base64-encoded image to use as a reference image for edits.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Optional base64-encoded image to use as a reference image for edits.', 'ai' ),
 				),
 			),
 			'required'   => array( 'prompt' ),
@@ -112,10 +110,11 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
-		$reference_image = ! empty( $input['reference'] ) ? (string) $input['reference'] : null;
+		$prompt          = isset( $input['prompt'] ) ? sanitize_text_field( $input['prompt'] ) : '';
+		$reference_image = ! empty( $input['reference'] ) ? sanitize_text_field( $input['reference'] ) : null;
 
 		// Generate the image.
-		$result = $this->generate_image( $input['prompt'], $reference_image );
+		$result = $this->generate_image( $prompt, $reference_image );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
