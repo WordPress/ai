@@ -133,6 +133,9 @@ export async function runAbility< T = unknown >(
 
 		logFallbackWarning();
 	} catch ( error ) {
+		// eslint-disable-next-line no-console
+		console.error( error );
+
 		if ( ! shouldFallbackToRest( error ) ) {
 			throw error;
 		}
