@@ -31,34 +31,28 @@ class Import_Base64_Image extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'data'        => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The base64 encoded image data to import into the media library.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The base64 encoded image data to import into the media library.', 'ai' ),
 				),
 				'filename'    => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The filename of the image.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The filename of the image.', 'ai' ),
 				),
 				'title'       => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The title of the image.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The title of the image.', 'ai' ),
 				),
 				'description' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The description of the image.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The description of the image.', 'ai' ),
 				),
 				'alt_text'    => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The alt text of the image.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The alt text of the image.', 'ai' ),
 				),
 				'mime_type'   => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The MIME type of the image.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The MIME type of the image.', 'ai' ),
 				),
 				'meta'        => array(
 					'type'        => 'array',
@@ -67,14 +61,12 @@ class Import_Base64_Image extends Abstract_Ability {
 						'type'                 => 'object',
 						'properties'           => array(
 							'key'   => array(
-								'type'              => 'string',
-								'sanitize_callback' => 'sanitize_key',
-								'description'       => esc_html__( 'The key of the meta data.', 'ai' ),
+								'type'        => 'string',
+								'description' => esc_html__( 'The key of the meta data.', 'ai' ),
 							),
 							'value' => array(
-								'type'              => 'string',
-								'sanitize_callback' => 'sanitize_text_field',
-								'description'       => esc_html__( 'The value of the meta data.', 'ai' ),
+								'type'        => 'string',
+								'description' => esc_html__( 'The value of the meta data.', 'ai' ),
 							),
 						),
 						'required'             => array( 'key', 'value' ),
@@ -139,6 +131,7 @@ class Import_Base64_Image extends Abstract_Ability {
 		$args = wp_parse_args(
 			$input,
 			array(
+				'data'        => '',
 				'filename'    => 'ai-generated-image-' . time(),
 				'title'       => '',
 				'description' => '',
@@ -148,9 +141,12 @@ class Import_Base64_Image extends Abstract_Ability {
 			),
 		);
 
+		$args['data']      = ! empty( $args['data'] ) ? sanitize_text_field( $args['data'] ) : '';
+		$args['mime_type'] = isset( $args['mime_type'] ) ? sanitize_text_field( $args['mime_type'] ) : null;
+
 		// Verify the data is a base64 encoded string.
 		try {
-			$file = new File( $input['data'], $args['mime_type'] );
+			$file = new File( $args['data'], $args['mime_type'] );
 		} catch ( Throwable $t ) {
 			return new WP_Error(
 				'invalid_data',
