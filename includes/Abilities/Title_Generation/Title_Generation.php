@@ -119,7 +119,7 @@ class Title_Generation extends Abstract_Ability {
 			}
 		} else {
 			$content = normalize_content( $args['content'] ?? '' );
-			$context = $args['context'] ?? '';
+			$context = isset( $args['context'] ) ? sanitize_text_field( $args['context'] ) : '';
 		}
 
 		// If we have no content, return an error.
@@ -252,7 +252,7 @@ class Title_Generation extends Abstract_Ability {
 
 		// If we have additional context, add it to the content.
 		if ( $context ) {
-			$content .= "\n\n<additional-context>" . sanitize_text_field( $context ) . '</additional-context>';
+			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
 		// Generate the titles using the AI client.

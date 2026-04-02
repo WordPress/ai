@@ -42,14 +42,12 @@ class Summarization extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'content' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Content to summarize.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Content to summarize.', 'ai' ),
 				),
 				'context' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Additional context to use when summarizing the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Additional context to use when summarizing the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
 				),
 				'length'  => array(
 					'type'        => 'string',
@@ -112,7 +110,7 @@ class Summarization extends Abstract_Ability {
 			}
 		} else {
 			$content = normalize_content( $args['content'] ?? '' );
-			$context = $args['context'] ?? '';
+			$context = isset( $args['context'] ) ? sanitize_text_field( $args['context'] ) : '';
 		}
 
 		// If we have no content, return an error.
