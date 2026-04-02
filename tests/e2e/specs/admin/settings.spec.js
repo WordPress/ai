@@ -57,21 +57,22 @@ test.describe( 'Plugin settings', () => {
 
 		await visitConnectorsPage( admin );
 
+		const openAIConnector = page.locator( '[role="listitem"]', {
+			has: page.getByRole( 'heading', { name: 'OpenAI', exact: true } ),
+		} );
+
 		// Add dummy credentials for OpenAI.
-		await page
-			.locator( '.connector-item--ai-provider-for-openai button' )
+		await openAIConnector
+			.getByRole( 'button', { name: /Set up|Edit/i } )
 			.click();
-		await page
-			.locator(
-				'.connector-item--ai-provider-for-openai input[type="text"]'
-			)
+		await openAIConnector
+			.getByRole( 'textbox' )
+			.first()
 			.fill( 'valid-api-key' );
 
 		// Save the credentials.
-		await page
-			.locator(
-				'.connector-item--ai-provider-for-openai .connector-settings button'
-			)
+		await openAIConnector
+			.getByRole( 'button', { name: /Save|Update/i } )
 			.click();
 	} );
 

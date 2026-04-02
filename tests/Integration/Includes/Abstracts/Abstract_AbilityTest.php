@@ -149,6 +149,34 @@ class Test_Ability_Experiment extends Abstract_Feature {
 class Abstract_AbilityTest extends WP_UnitTestCase {
 
 	/**
+	 * Test experiment instance.
+	 *
+	 * @var Test_Ability_Experiment
+	 */
+	private Test_Ability_Experiment $experiment;
+
+	/**
+	 * Test ability instance.
+	 *
+	 * @var Test_Ability
+	 */
+	private Test_Ability $ability;
+
+	/**
+	 * Directory where the Test_Ability class file resides.
+	 *
+	 * @var string
+	 */
+	private string $feature_dir;
+
+	/**
+	 * Temporary files created during tests, cleaned up in tearDown.
+	 *
+	 * @var string[]
+	 */
+	private array $temp_files = array();
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since 0.1.0
@@ -161,6 +189,19 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+
+		$this->experiment = new Test_Ability_Experiment();
+		$this->ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+
+		$reflection       = new \ReflectionClass( $this->ability );
+		$file_name        = $reflection->getFileName();
+		$this->feature_dir = dirname( $file_name );
 	}
 
 	/**
@@ -169,9 +210,32 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
+		foreach ( $this->temp_files as $file ) {
+			if ( file_exists( $file ) ) {
+				wp_delete_file( $file );
+			}
+		}
+		$this->temp_files = array();
+
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
+	}
+
+	/**
+	 * Creates a temporary system instruction file and registers it for cleanup.
+	 *
+	 * @param string $filename The filename to create inside the feature directory.
+	 * @param string $content  The PHP file content.
+	 */
+	private function create_system_instruction_file( string $filename, string $content ): void {
+		$path               = trailingslashit( $this->feature_dir ) . $filename;
+		$this->temp_files[] = $path;
+		$result             = @file_put_contents( $path, $content );
+
+		if ( false === $result ) {
+			$this->fail( sprintf( 'Failed to create system instruction file at path: %s', $path ) );
+		}
 	}
 
 	/**
@@ -180,16 +244,8 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_constructor_sets_up_ability() {
-		$experiment = new Test_Ability_Experiment();
-		$ability    = new Test_Ability(
-			'test-ability',
-			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
-			)
-		);
-
-		$this->assertSame( $experiment->get_label(), $ability->get_label(), 'Label should be stored in ability' );
+		$this->assertSame( $this->experiment->get_label(), $this->ability->get_label(), 'Label should be stored in ability' );
+		$this->assertSame( 'Test Ability Experiment', $this->ability->get_label(), 'Label should be stored in ability' );
 	}
 
 	/**
@@ -198,18 +254,9 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_constructor_calls_parent_with_properties() {
-		$experiment = new Test_Ability_Experiment();
-		$ability    = new Test_Ability(
-			'test-ability',
-			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
-			)
-		);
-
 		// Verify the ability was registered with WordPress Abilities API.
 		// We can't directly test parent::__construct, but we can verify the ability exists.
-		$this->assertInstanceOf( Abstract_Ability::class, $ability, 'Ability should be instance of Abstract_Ability' );
+		$this->assertInstanceOf( Abstract_Ability::class, $this->ability, 'Ability should be instance of Abstract_Ability' );
 	}
 
 	/**
@@ -218,23 +265,14 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_label_delegates_to_experiment() {
-		$experiment = new Test_Ability_Experiment();
-		$ability    = new Test_Ability(
-			'test-ability',
-			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
-			)
-		);
-
 		// Use reflection to test protected method.
-		$reflection = new \ReflectionClass( $ability );
+		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'get_label' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $ability );
+		$result = $method->invoke( $this->ability );
 
-		$this->assertEquals( $experiment->get_label(), $result, 'Label should match experiment label' );
+		$this->assertEquals( $this->experiment->get_label(), $result, 'Label should match experiment label' );
 		$this->assertEquals( 'Test Ability Experiment', $result, 'Label should be correct' );
 	}
 
@@ -244,23 +282,14 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_description_delegates_to_experiment() {
-		$experiment = new Test_Ability_Experiment();
-		$ability    = new Test_Ability(
-			'test-ability',
-			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
-			)
-		);
-
 		// Use reflection to test protected method.
-		$reflection = new \ReflectionClass( $ability );
+		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'get_description' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $ability );
+		$result = $method->invoke( $this->ability );
 
-		$this->assertEquals( $experiment->get_description(), $result, 'Description should match experiment description' );
+		$this->assertEquals( $this->experiment->get_description(), $result, 'Description should match experiment description' );
 		$this->assertEquals( 'A test experiment for ability testing', $result, 'Description should be correct' );
 	}
 
@@ -283,16 +312,7 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_get_system_instruction_returns_empty_when_no_file() {
-		$experiment = new Test_Ability_Experiment();
-		$ability    = new Test_Ability(
-			'test-ability',
-			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
-			)
-		);
-
-		$system_instruction = $ability->get_system_instruction();
+		$system_instruction = $this->ability->get_system_instruction();
 
 		// Test ability doesn't have a system instruction file, so should return empty string.
 		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
@@ -305,23 +325,9 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_get_system_instruction_with_data_parameter() {
-		$experiment = new Test_Ability_Experiment();
-		$ability    = new Test_Ability(
-			'test-ability',
-			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
-			)
-		);
-
-		// Get the test ability's directory using reflection.
-		$reflection  = new \ReflectionClass( $ability );
-		$file_name   = $reflection->getFileName();
-		$feature_dir = dirname( $file_name );
-
-		// Create a temporary system instruction file that uses data variables.
-		$test_file    = trailingslashit( $feature_dir ) . 'test-system-instruction.php';
-		$test_content = <<<'PHP'
+		$this->create_system_instruction_file(
+			'test-system-instruction.php',
+			<<<'PHP'
 <?php
 // Process the length variable if provided.
 $length_desc = 'medium length';
@@ -337,30 +343,21 @@ if ( isset( $length ) ) {
 return <<<INSTRUCTION
 You are a test assistant. The length is {$length_desc} and the tone is {$tone}. Max words: {$max_words}.
 INSTRUCTION;
-PHP;
-		file_put_contents( $test_file, $test_content );
+PHP
+		);
 
-		try {
-			// Test with data parameter.
-			$data = array(
-				'length'    => 'short',
-				'tone'      => 'professional',
-				'max_words' => 100,
-			);
+		$data = array(
+			'length'    => 'short',
+			'tone'      => 'professional',
+			'max_words' => 100,
+		);
 
-			$system_instruction = $ability->get_system_instruction( 'test-system-instruction.php', $data );
+		$system_instruction = $this->ability->get_system_instruction( 'test-system-instruction.php', $data );
 
-			// Verify the data was interpolated into the system instruction.
-			$this->assertIsString( $system_instruction, 'System instruction should be a string' );
-			$this->assertStringContainsString( 'short length', $system_instruction, 'System instruction should contain processed length value' );
-			$this->assertStringContainsString( 'professional', $system_instruction, 'System instruction should contain tone value' );
-			$this->assertStringContainsString( '100', $system_instruction, 'System instruction should contain max_words value' );
-		} finally {
-			// Clean up the test file.
-			if ( file_exists( $test_file ) ) {
-				wp_delete_file( $test_file );
-			}
-		}
+		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
+		$this->assertStringContainsString( 'short length', $system_instruction, 'System instruction should contain processed length value' );
+		$this->assertStringContainsString( 'professional', $system_instruction, 'System instruction should contain tone value' );
+		$this->assertStringContainsString( '100', $system_instruction, 'System instruction should contain max_words value' );
 	}
 
 	/**
@@ -369,44 +366,50 @@ PHP;
 	 * @since 0.1.0
 	 */
 	public function test_get_system_instruction_without_data_parameter() {
-		$experiment = new Test_Ability_Experiment();
-		$ability    = new Test_Ability(
-			'test-ability',
-			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
-			)
-		);
-
-		// Get the test ability's directory using reflection.
-		$reflection  = new \ReflectionClass( $ability );
-		$file_name   = $reflection->getFileName();
-		$feature_dir = dirname( $file_name );
-
-		// Create a temporary system instruction file without using data variables.
-		$test_file    = trailingslashit( $feature_dir ) . 'test-system-instruction-simple.php';
-		$test_content = <<<'PHP'
+		$this->create_system_instruction_file(
+			'test-system-instruction-simple.php',
+			<<<'PHP'
 <?php
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 return <<<INSTRUCTION
 You are a test assistant without data variables.
 INSTRUCTION;
-PHP;
-		file_put_contents( $test_file, $test_content );
+PHP
+		);
 
-		try {
-			// Test without data parameter (should still work).
-			$system_instruction = $ability->get_system_instruction( 'test-system-instruction-simple.php' );
+		$system_instruction = $this->ability->get_system_instruction( 'test-system-instruction-simple.php' );
 
-			// Verify it returns the content.
-			$this->assertIsString( $system_instruction, 'System instruction should be a string' );
-			$this->assertStringContainsString( 'test assistant', $system_instruction, 'System instruction should contain expected content' );
-		} finally {
-			// Clean up the test file.
-			if ( file_exists( $test_file ) ) {
-				wp_delete_file( $test_file );
-			}
-		}
+		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
+		$this->assertStringContainsString( 'test assistant', $system_instruction, 'System instruction should contain expected content' );
+	}
+
+	/**
+	 * Regression test: get_system_instruction() must return the instruction on every call with the same file.
+	 *
+	 * Previously, the implementation used require_once for explicit filenames, which returns true
+	 * (not the file's return value) on subsequent calls, causing the method to silently return an
+	 * empty string. This test ensures that consecutive calls always return the correct string.
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_get_system_instruction_returns_instruction_on_consecutive_calls() {
+		$this->create_system_instruction_file(
+			'test-system-instruction-consecutive.php',
+			<<<'PHP'
+<?php
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
+return <<<INSTRUCTION
+You are a test assistant for consecutive calls.
+INSTRUCTION;
+PHP
+		);
+
+		$first_result  = $this->ability->get_system_instruction( 'test-system-instruction-consecutive.php' );
+		$second_result = $this->ability->get_system_instruction( 'test-system-instruction-consecutive.php' );
+
+		$this->assertNotEmpty( $first_result, 'First call should return the instruction' );
+		$this->assertNotEmpty( $second_result, 'Second call should also return the instruction' );
+		$this->assertSame( $first_result, $second_result, 'Both calls should return the same instruction' );
 	}
 
 	/**
@@ -415,43 +418,20 @@ PHP;
 	 * @since 0.1.0
 	 */
 	public function test_get_system_instruction_with_empty_data_array() {
-		$experiment = new Test_Ability_Experiment();
-		$ability    = new Test_Ability(
-			'test-ability',
-			array(
-				'label'       => $experiment->get_label(),
-				'description' => $experiment->get_description(),
-			)
-		);
-
-		// Get the test ability's directory using reflection.
-		$reflection  = new \ReflectionClass( $ability );
-		$file_name   = $reflection->getFileName();
-		$feature_dir = dirname( $file_name );
-
-		// Create a temporary system instruction file.
-		$test_file    = trailingslashit( $feature_dir ) . 'test-system-instruction-empty.php';
-		$test_content = <<<'PHP'
+		$this->create_system_instruction_file(
+			'test-system-instruction-empty.php',
+			<<<'PHP'
 <?php
 // phpcs:ignore Squiz.PHP.Heredoc.NotAllowed
 return <<<INSTRUCTION
 You are a test assistant.
 INSTRUCTION;
-PHP;
-		file_put_contents( $test_file, $test_content );
+PHP
+		);
 
-		try {
-			// Test with empty data array.
-			$system_instruction = $ability->get_system_instruction( 'test-system-instruction-empty.php', array() );
+		$system_instruction = $this->ability->get_system_instruction( 'test-system-instruction-empty.php', array() );
 
-			// Verify it returns the content.
-			$this->assertIsString( $system_instruction, 'System instruction should be a string' );
-			$this->assertStringContainsString( 'test assistant', $system_instruction, 'System instruction should contain expected content' );
-		} finally {
-			// Clean up the test file.
-			if ( file_exists( $test_file ) ) {
-				wp_delete_file( $test_file );
-			}
-		}
+		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
+		$this->assertStringContainsString( 'test assistant', $system_instruction, 'System instruction should contain expected content' );
 	}
 }
