@@ -84,7 +84,7 @@ jobs:
 
           const blueprint = {
             preferredVersions: {
-              wp: "beta",
+              wp: 'beta',
             },
             steps: [
               {
