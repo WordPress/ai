@@ -223,7 +223,7 @@ class Content_Classification extends Abstract_Ability {
 		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
 
 		if ( $post_id ) {
-			$post = get_post( $args['post_id'] );
+			$post = get_post( $post_id );
 
 			// Ensure the post exists.
 			if ( ! $post instanceof WP_Post ) {
