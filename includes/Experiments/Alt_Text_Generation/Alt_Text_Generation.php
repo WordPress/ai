@@ -144,6 +144,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			return;
 		}
 
+		wp_enqueue_script_module( '@wordpress/core-abilities' );
 		Asset_Loader::enqueue_script( 'alt_text_generation_media', 'experiments/alt-text-generation-media' );
 		Asset_Loader::localize_script(
 			'alt_text_generation_media',
