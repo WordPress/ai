@@ -280,7 +280,7 @@ This file returns a string that instructs the AI on how to generate meta descrip
 You can filter the assembled prompt before it is sent to the AI model:
 
 ```php
-add_filter( 'ai_meta_description_prompt', function( $prompt, $content, $title ) {
+add_filter( 'wpai_meta_description_prompt', function( $prompt, $content, $title ) {
     // Append custom instructions to the prompt
     $prompt .= "\n\n<instruction>Focus on the environmental impact angle.</instruction>";
     return $prompt;
@@ -292,7 +292,7 @@ add_filter( 'ai_meta_description_prompt', function( $prompt, $content, $title ) 
 You can change how many description candidates are generated:
 
 ```php
-add_filter( 'ai_meta_description_candidate_count', function( $count ) {
+add_filter( 'wpai_meta_description_candidate_count', function( $count ) {
     return 5; // Generate 5 suggestions instead of the default 3
 } );
 ```
@@ -302,7 +302,7 @@ add_filter( 'ai_meta_description_candidate_count', function( $count ) {
 You can adjust the AI temperature for more creative or more consistent results:
 
 ```php
-add_filter( 'ai_meta_description_result_temperature', function( $temperature ) {
+add_filter( 'wpai_meta_description_result_temperature', function( $temperature ) {
     return 0.3; // Lower temperature for more consistent output
 } );
 ```
@@ -312,7 +312,7 @@ add_filter( 'ai_meta_description_result_temperature', function( $temperature ) {
 You can add support for additional SEO plugins:
 
 ```php
-add_filter( 'ai_meta_description_seo_plugins', function( $plugins ) {
+add_filter( 'wpai_meta_description_seo_plugins', function( $plugins ) {
     $plugins['my-seo-plugin'] = array(
         'file'     => 'my-seo-plugin/my-seo-plugin.php',
         'meta_key' => '_my_seo_meta_description',
@@ -326,7 +326,7 @@ add_filter( 'ai_meta_description_seo_plugins', function( $plugins ) {
 You can override the resolved meta key regardless of which SEO plugin is detected:
 
 ```php
-add_filter( 'ai_meta_description_meta_key', function( $key, $plugin_slug ) {
+add_filter( 'wpai_meta_description_meta_key', function( $key, $plugin_slug ) {
     return '_custom_meta_description_key';
 }, 10, 2 );
 ```
@@ -336,7 +336,7 @@ add_filter( 'ai_meta_description_meta_key', function( $key, $plugin_slug ) {
 You can filter which AI models are used for meta description generation using the `ai_experiments_preferred_models_for_text_generation` filter:
 
 ```php
-add_filter( 'ai_experiments_preferred_models_for_text_generation', function( $models ) {
+add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $models ) {
     return array(
         array( 'openai', 'gpt-4' ),
         array( 'anthropic', 'claude-haiku-4-5' ),
@@ -350,13 +350,13 @@ The `normalize_content()` helper function processes content before sending it to
 
 ```php
 // Filter content before normalization
-add_filter( 'ai_experiments_pre_normalize_content', function( $content ) {
+add_filter( 'wpai_experiments_pre_normalize_content', function( $content ) {
     // Custom preprocessing
     return $content;
 } );
 
 // Filter content after normalization
-add_filter( 'ai_experiments_normalize_content', function( $content ) {
+add_filter( 'wpai_experiments_normalize_content', function( $content ) {
     // Custom post-processing
     return $content;
 } );
