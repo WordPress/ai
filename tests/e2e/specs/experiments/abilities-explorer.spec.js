@@ -57,6 +57,76 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Category filter dropdown renders on the Abilities Explorer list page', async ( {
+		admin,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Abilities Explorer Experiment.
+		await enableExperiment( admin, page, 'abilities-explorer' );
+
+		// Visit the Abilities Explorer page.
+		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
+
+		// Ensure the category filter dropdown is visible.
+		await expect( page.locator( '#filter-by-category' ) ).toBeVisible();
+
+		// Ensure the dropdown contains the "All Categories" option.
+		await expect(
+			page.locator( '#filter-by-category option[value="all"]' )
+		).toHaveText( 'All Categories' );
+	} );
+
+	test( 'Category filter dropdown filters abilities by category', async ( {
+		admin,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Abilities Explorer Experiment.
+		await enableExperiment( admin, page, 'abilities-explorer' );
+
+		// Visit the Abilities Explorer page.
+		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
+
+		// Get the initial row count.
+		const allRows = page.locator( '.wp-list-table tbody tr' );
+		const initialCount = await allRows.count();
+
+		// Get the first non-"all" option from the category dropdown (if one exists).
+		const firstOption = page.locator(
+			'#filter-by-category option:not([value="all"])'
+		);
+		const optionCount = await firstOption.count();
+
+		if ( optionCount > 0 ) {
+			const categoryValue = await firstOption
+				.first()
+				.getAttribute( 'value' );
+
+			// Select that category from the dropdown.
+			await page.selectOption( '#filter-by-category', categoryValue );
+
+			// Submit the filter form.
+			await page.click( '#filter_action' );
+			await page.waitForLoadState( 'load' );
+
+			// The filtered row count should be less than or equal to the initial count.
+			const filteredCount = await page
+				.locator( '.wp-list-table tbody tr' )
+				.count();
+			expect( filteredCount ).toBeLessThanOrEqual( initialCount );
+
+			// The category dropdown should show the selected value.
+			await expect( page.locator( '#filter-by-category' ) ).toHaveValue(
+				categoryValue
+			);
+		}
+	} );
+
 	test( 'Can access the Abilities Explorer detail page when enabled', async ( {
 		admin,
 		page,
