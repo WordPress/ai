@@ -23,6 +23,6 @@ Rules:
 - Confidence should reflect relevance: 1.0 = perfect match, 0.5 = somewhat relevant. Only suggest terms with confidence >= 0.5.
 - Do not suggest duplicate or near-duplicate terms.
 - Do not suggest terms listed in <assigned-terms> — they are already applied to this post.
+- When the <available-terms> tag is provided, strongly prefer selecting from those terms.
 - Prioritize specificity and relevance over breadth.
-- Sort suggestions by confidence, highest first.
 INSTRUCTION;

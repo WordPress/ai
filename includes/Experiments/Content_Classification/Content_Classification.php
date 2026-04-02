@@ -294,6 +294,8 @@ class Content_Classification extends Abstract_Feature {
 		 * @param int $max_suggestions The maximum number of suggestions to generate.
 		 * @return int The filtered max suggestions.
 		 */
-		return apply_filters( 'wpai_content_classification_max_suggestions', $max_suggestions );
+		return $this->sanitize_max_suggestions(
+			apply_filters( 'wpai_content_classification_max_suggestions', $max_suggestions )
+		);
 	}
 }

@@ -305,9 +305,16 @@ class Content_Classification extends Abstract_Ability {
 			);
 		}
 
+		// When using existing_only strategy, send the top terms to the LLM
+		// so it can select from actual terms rather than guessing.
+		$available_terms = array();
+		if ( Content_Classification_Experiment::STRATEGY_EXISTING_ONLY === $strategy ) {
+			$available_terms = $this->get_top_terms( $taxonomy );
+		}
+
 		// Build the prompt.
 		// We supply the currently assigned terms to avoid redundant suggestions.
-		$prompt = $this->build_prompt( $context, $taxonomy, $assigned_terms );
+		$prompt = $this->build_prompt( $context, $taxonomy, $assigned_terms, $available_terms );
 
 		/**
 		 * Filters the prompt string before it is sent to the AI model for taxonomy suggestion generation.
@@ -317,12 +324,13 @@ class Content_Classification extends Abstract_Ability {
 		 *
 		 * @since x.x.x
 		 *
-		 * @param string                       $prompt         The prompt string to be sent to the AI model.
-		 * @param string|array<string, string> $context        The context to generate suggestions from.
-		 * @param string                       $taxonomy       The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
-		 * @param array<string>                $assigned_terms Terms already assigned to the post.
+		 * @param string                       $prompt          The prompt string to be sent to the AI model.
+		 * @param string|array<string, string> $context         The context to generate suggestions from.
+		 * @param string                       $taxonomy        The taxonomy slug being suggested for (e.g., 'post_tag', 'category').
+		 * @param array<string>                $assigned_terms  Terms already assigned to the post.
+		 * @param array<string>                $available_terms Available terms to suggest from.
 		 */
-		$prompt = (string) apply_filters( 'wpai_content_classification_prompt', $prompt, $context, $taxonomy, $assigned_terms );
+		$prompt = (string) apply_filters( 'wpai_content_classification_prompt', $prompt, $context, $taxonomy, $assigned_terms, $available_terms );
 
 		// Generate the suggestions using the AI client with structured output.
 		$result = wp_ai_client_prompt( $prompt )
@@ -336,8 +344,10 @@ class Content_Classification extends Abstract_Ability {
 			return $result;
 		}
 
-		// Fetch existing terms for post-processing (matching, not for the prompt).
-		$existing_terms = $this->get_existing_terms( $taxonomy );
+		// Only fetch existing terms when we need them for post-processing (existing_only strategy).
+		$existing_terms = Content_Classification_Experiment::STRATEGY_EXISTING_ONLY === $strategy
+			? $this->get_existing_terms( $taxonomy )
+			: array();
 
 		// Parse, match against existing terms, filter, and limit.
 		$suggestions = $this->parse_suggestions( $result, $existing_terms, $strategy, $assigned_terms, $max_suggestions );
@@ -392,6 +402,37 @@ class Content_Classification extends Abstract_Ability {
 	}
 
 	/**
+	 * Gets the top terms for a taxonomy, ordered by usage count.
+	 *
+	 * Used to provide the LLM with a set of existing terms to select from
+	 * when using the existing_only strategy, improving match quality.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy to get terms for.
+	 * @param int    $limit    Maximum number of terms to return.
+	 * @return array<string> List of term names ordered by count descending.
+	 */
+	protected function get_top_terms( string $taxonomy, int $limit = 100 ): array {
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'fields'     => 'names',
+				'orderby'    => 'count',
+				'order'      => 'DESC',
+				'number'     => $limit,
+			)
+		);
+
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		}
+
+		return (array) $terms;
+	}
+
+	/**
 	 * Gets a human-readable label for the taxonomy.
 	 *
 	 * @since x.x.x
@@ -414,12 +455,13 @@ class Content_Classification extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string        $context        The content to analyze.
-	 * @param string        $taxonomy       The taxonomy slug.
-	 * @param array<string> $assigned_terms Terms already assigned to the post.
+	 * @param string        $context         The content to analyze.
+	 * @param string        $taxonomy        The taxonomy slug.
+	 * @param array<string> $assigned_terms  Terms already assigned to the post.
+	 * @param array<string> $available_terms Available terms to suggest from.
 	 * @return string The formatted prompt.
 	 */
-	protected function build_prompt( string $context, string $taxonomy, array $assigned_terms = array() ): string {
+	protected function build_prompt( string $context, string $taxonomy, array $assigned_terms = array(), array $available_terms = array() ): string {
 		$prompt_parts = array();
 
 		$prompt_parts[] = '<taxonomy>' . $taxonomy . '</taxonomy>';
@@ -427,6 +469,10 @@ class Content_Classification extends Abstract_Ability {
 
 		if ( ! empty( $assigned_terms ) ) {
 			$prompt_parts[] = '<assigned-terms>' . implode( ', ', $assigned_terms ) . '</assigned-terms>';
+		}
+
+		if ( ! empty( $available_terms ) ) {
+			$prompt_parts[] = '<available-terms>' . implode( ', ', $available_terms ) . '</available-terms>';
 		}
 
 		return implode( "\n", $prompt_parts );
