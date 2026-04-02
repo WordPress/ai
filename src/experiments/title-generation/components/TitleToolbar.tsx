@@ -17,10 +17,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import type {
-	TitleGenerationAbilityInput,
-	GeneratedTitlesData,
-} from '../types';
+import type { TitleGenerationAbilityInput, GeneratedTitleData } from '../types';
 
 const { aiTitleGenerationData } = window as any;
 
@@ -40,7 +37,7 @@ async function generateTitle(
 		content,
 	};
 
-	const response = await runAbility< GeneratedTitlesData >(
+	const response = await runAbility< GeneratedTitleData >(
 		'ai/title-generation',
 		params
 	);
@@ -48,14 +45,14 @@ async function generateTitle(
 	if (
 		response &&
 		typeof response === 'object' &&
-		'titles' in response &&
-		Array.isArray( response.titles ) &&
-		response.titles.length > 0
+		'title' in response &&
+		typeof response.title === 'string' &&
+		response.title.length > 0
 	) {
-		return response.titles[ 0 ] as string;
+		return response.title;
 	}
 
-	throw new Error( __( 'No title suggestions were generated.', 'ai' ) );
+	throw new Error( __( 'No title suggestion was generated.', 'ai' ) );
 }
 
 /**

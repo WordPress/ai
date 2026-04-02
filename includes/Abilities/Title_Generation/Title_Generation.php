@@ -55,12 +55,9 @@ class Title_Generation extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'titles' => array(
-					'type'        => 'array',
-					'description' => esc_html__( 'Generated title suggestions.', 'ai' ),
-					'items'       => array(
-						'type' => 'string',
-					),
+				'title' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'Generated title suggestion.', 'ai' ),
 				),
 			),
 		);
@@ -115,30 +112,25 @@ class Title_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Generate the titles.
-		$result = $this->generate_titles( $content, $context );
+		// Generate the title.
+		$result = $this->generate_title( $content, $context );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
-		// If we have no results, return an error.
+		// If we have no result, return an error.
 		if ( empty( $result ) ) {
 			return new WP_Error(
 				'no_results',
-				esc_html__( 'No title suggestions were generated.', 'ai' )
+				esc_html__( 'No title suggestion was generated.', 'ai' )
 			);
 		}
 
-		// Return the titles in the format the Ability expects.
+		// Return the title in the format the Ability expects.
 		return array(
-			'titles' => array_map(
-				static function ( $title ) {
-					return sanitize_text_field( trim( $title, ' "\'' ) );
-				},
-				$result
-			),
+			'title' => sanitize_text_field( trim( $result, ' "\'' ) ),
 		);
 	}
 
@@ -205,15 +197,15 @@ class Title_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Generates title suggestions from the given content.
+	 * Generates a title suggestion from the given content.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $content The content to generate title suggestions for.
+	 * @param string                       $content The content to generate a title suggestion for.
 	 * @param string|array<string, string> $context Additional context to use.
-	 * @return array<string>|\WP_Error The generated title wrapped in an array, or a WP_Error if there was an error.
+	 * @return string|\WP_Error The generated title, or a WP_Error if there was an error.
 	 */
-	protected function generate_titles( string $content, $context ) {
+	protected function generate_title( string $content, $context ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -250,6 +242,6 @@ class Title_Generation extends Abstract_Ability {
 			return $result;
 		}
 
-		return array( $result );
+		return $result;
 	}
 }
