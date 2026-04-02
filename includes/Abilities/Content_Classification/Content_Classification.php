@@ -230,7 +230,7 @@ class Content_Classification extends Abstract_Ability {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), $post_id )
 				);
 			}
 
