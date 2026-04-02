@@ -203,7 +203,7 @@ abstract class Abstract_Ability extends WP_Ability {
 
 			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
 				// PHP files should return a string directly.
-				$content = require_once $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+				$content = require $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 
 				return is_string( $content ) ? esc_html( $content ) : '';
 			}
