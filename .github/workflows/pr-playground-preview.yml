@@ -83,6 +83,9 @@ jobs:
           }
 
           const blueprint = {
+            "preferredVersions": {
+              "wp": "beta"
+            },
             steps: [
               {
                 step: 'installPlugin',
