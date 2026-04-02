@@ -43,19 +43,16 @@ class Alt_Text_Generation extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'attachment_id' => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'The attachment ID of the image to generate alt text for.', 'ai' ),
+					'type'        => 'integer',
+					'description' => esc_html__( 'The attachment ID of the image to generate alt text for.', 'ai' ),
 				),
 				'image_url'     => array(
-					'type'              => 'string',
-					'sanitize_callback' => array( $this, 'sanitize_image_reference_input' ),
-					'description'       => esc_html__( 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.', 'ai' ),
 				),
 				'context'       => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_textarea_field',
-					'description'       => esc_html__( 'Optional context about the image or surrounding content to improve alt text relevance.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Optional context about the image or surrounding content to improve alt text relevance.', 'ai' ),
 				),
 			),
 		);
@@ -137,6 +134,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		// If an image URL is provided, get the image from the URL.
 		if ( ! empty( $args['image_url'] ) ) {
+			$args['image_url'] = $this->sanitize_image_reference_input( $args['image_url'] );
+
 			// Preserve data URIs as-is so the AI client can read the inline bytes.
 			if ( 0 === strpos( $args['image_url'], 'data:' ) ) {
 				return $this->prepare_reference_result( $args['image_url'] );
