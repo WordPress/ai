@@ -76,19 +76,16 @@ array(
     'type'       => 'object',
     'properties' => array(
         'attachment_id' => array(
-            'type'              => 'integer',
-            'sanitize_callback' => 'absint',
-            'description'       => 'The attachment ID of the image to generate alt text for.',
+            'type'        => 'integer',
+            'description' => 'The attachment ID of the image to generate alt text for.',
         ),
         'image_url'     => array(
-            'type'              => 'string',
-            'sanitize_callback' => array( $this, 'sanitize_image_reference_input' ),
-            'description'       => 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.',
+            'type'        => 'string',
+            'description' => 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.',
         ),
         'context'       => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_textarea_field',
-            'description'       => 'Optional context about the image or surrounding content to improve alt text relevance.',
+            'type'        => 'string',
+            'description' => 'Optional context about the image or surrounding content to improve alt text relevance.',
         ),
     ),
 )

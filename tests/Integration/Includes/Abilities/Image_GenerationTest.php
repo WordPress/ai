@@ -128,12 +128,10 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		// Verify prompt property.
 		$this->assertEquals( 'string', $schema['properties']['prompt']['type'], 'Prompt should be string type' );
-		$this->assertEquals( 'sanitize_text_field', $schema['properties']['prompt']['sanitize_callback'], 'Prompt should use sanitize_text_field' );
 
 		// Verify reference_image property.
 		$this->assertArrayHasKey( 'reference', $schema['properties'], 'Schema should have reference property' );
 		$this->assertEquals( 'string', $schema['properties']['reference']['type'], 'reference should be string type' );
-		$this->assertEquals( 'sanitize_text_field', $schema['properties']['reference']['sanitize_callback'], 'reference should use sanitize_text_field' );
 		$this->assertNotContains( 'reference', $schema['required'], 'reference should not be required' );
 	}
 

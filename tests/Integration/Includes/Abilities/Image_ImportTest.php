@@ -143,7 +143,6 @@ class Image_ImportTest extends WP_UnitTestCase {
 
 		// Verify data property.
 		$this->assertEquals( 'string', $schema['properties']['data']['type'], 'Data should be string type' );
-		$this->assertEquals( 'sanitize_text_field', $schema['properties']['data']['sanitize_callback'], 'Data should use sanitize_text_field' );
 
 		// Verify optional properties.
 		$this->assertEquals( 'string', $schema['properties']['filename']['type'], 'Filename should be string type' );

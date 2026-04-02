@@ -133,13 +133,10 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
 
 		$this->assertEquals( 'integer', $schema['properties']['attachment_id']['type'], 'attachment_id should be integer type' );
-		$this->assertEquals( 'absint', $schema['properties']['attachment_id']['sanitize_callback'], 'attachment_id should use absint' );
 
 		$this->assertEquals( 'string', $schema['properties']['image_url']['type'], 'image_url should be string type' );
-		$this->assertIsArray( $schema['properties']['image_url']['sanitize_callback'], 'image_url should use callback array' );
 
 		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'context should be string type' );
-		$this->assertEquals( 'sanitize_textarea_field', $schema['properties']['context']['sanitize_callback'], 'context should use sanitize_textarea_field' );
 	}
 
 	/**

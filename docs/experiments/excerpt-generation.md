@@ -64,14 +64,12 @@ The ability accepts the following input parameters:
 ```php
 array(
     'content' => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'Content to generate an excerpt suggestion for.',
+        'type'        => 'string',
+        'description' => 'Content to generate an excerpt suggestion for.',
     ),
     'context' => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'Additional context to use when generating an excerpt. Can be a string of additional context or a post ID (as string) that will be used to get context from that post. If no content is provided but a valid post ID is used, the content from that post will be used.',
+        'type'        => 'string',
+        'description' => 'Additional context to use when generating an excerpt. Can be a string of additional context or a post ID (as string) that will be used to get context from that post. If no content is provided but a valid post ID is used, the content from that post will be used.',
     ),
 )
 ```

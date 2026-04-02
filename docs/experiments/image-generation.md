@@ -115,19 +115,16 @@ array(
     'type'       => 'object',
     'properties' => array(
         'content' => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'The content to use as inspiration for the generated image.',
+            'type'        => 'string',
+            'description' => 'The content to use as inspiration for the generated image.',
         ),
         'context' => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'Any additional context to help generate the prompt. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists).',
+            'type'        => 'string',
+            'description' => 'Any additional context to help generate the prompt. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists).',
         ),
         'style'   => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'Any additional style instructions to apply to the generated image.',
+            'type'        => 'string',
+            'description' => 'Any additional style instructions to apply to the generated image.',
         ),
     ),
     'required'   => array( 'content' ),
@@ -141,14 +138,12 @@ array(
     'type'       => 'object',
     'properties' => array(
         'prompt'    => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'Prompt used to generate an image.',
+            'type'        => 'string',
+            'description' => 'Prompt used to generate an image.',
         ),
         'reference' => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'Optional base64-encoded image to use as a reference for editing.',
+            'type'        => 'string',
+            'description' => 'Optional base64-encoded image to use as a reference for editing.',
         ),
     ),
     'required'   => array( 'prompt' ),
@@ -162,34 +157,28 @@ array(
     'type'       => 'object',
     'properties' => array(
         'data'        => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'The base64 encoded image data to import into the media library.',
+            'type'        => 'string',
+            'description' => 'The base64 encoded image data to import into the media library.',
         ),
         'filename'    => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'The filename of the image.',
+            'type'        => 'string',
+            'description' => 'The filename of the image.',
         ),
         'title'       => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'The title of the image.',
+            'type'        => 'string',
+            'description' => 'The title of the image.',
         ),
         'description' => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'The description of the image.',
+            'type'        => 'string',
+            'description' => 'The description of the image.',
         ),
         'alt_text'    => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'The alt text of the image.',
+            'type'        => 'string',
+            'description' => 'The alt text of the image.',
         ),
         'mime_type'   => array(
-            'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'The MIME type of the image.',
+            'type'        => 'string',
+            'description' => 'The MIME type of the image.',
         ),
         'meta'        => array(
             'type'        => 'array',
@@ -198,14 +187,12 @@ array(
                 'type'                 => 'object',
                 'properties'           => array(
                     'key'   => array(
-                        'type'              => 'string',
-                        'sanitize_callback' => 'sanitize_key',
-                        'description'       => 'The key of the meta data.',
+                        'type'        => 'string',
+                        'description' => 'The key of the meta data.',
                     ),
                     'value' => array(
-                        'type'              => 'string',
-                        'sanitize_callback' => 'sanitize_text_field',
-                        'description'       => 'The value of the meta data.',
+                        'type'        => 'string',
+                        'description' => 'The value of the meta data.',
                     ),
                 ),
                 'required'             => array( 'key', 'value' ),

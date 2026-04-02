@@ -92,23 +92,19 @@ Blocks with fewer than 20 characters of text content are skipped. The review is 
 ```php
 array(
     'block_type'     => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'The block type, e.g. core/paragraph, core/heading.',
+        'type'        => 'string',
+        'description' => 'The block type, e.g. core/paragraph, core/heading.',
     ),
     'block_content'  => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'The plain-text content of the block to review.',
+        'type'        => 'string',
+        'description' => 'The plain-text content of the block to review.',
     ),
     'context'        => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'Surrounding content to improve review relevance.',
+        'type'        => 'string',
+        'description' => 'Surrounding content to improve review relevance.',
     ),
     'post_id'        => array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'absint',
+        'type'        => 'integer',
         'description' => 'ID of the post being reviewed.',
     ),
     'existing_notes' => array(

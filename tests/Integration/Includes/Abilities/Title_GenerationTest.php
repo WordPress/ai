@@ -130,11 +130,9 @@ class Title_GenerationTest extends WP_UnitTestCase {
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
-		$this->assertEquals( 'sanitize_text_field', $schema['properties']['content']['sanitize_callback'], 'Content should use sanitize_text_field' );
 
 		// Verify context property (can be string or numeric post ID).
 		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'Context should be string type' );
-		$this->assertEquals( 'sanitize_text_field', $schema['properties']['context']['sanitize_callback'], 'Context should use sanitize_text_field' );
 
 		// Verify candidates property.
 		$this->assertEquals( 'integer', $schema['properties']['candidates']['type'], 'candidates should be integer type' );
