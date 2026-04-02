@@ -222,4 +222,40 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 3, $experiment->get_max_suggestions() );
 	}
+
+	/**
+	 * Test that get_max_suggestions() sanitizes filtered value that exceeds maximum.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_max_suggestions_sanitizes_filtered_value_above_max() {
+		$experiment = new Content_Classification();
+
+		add_filter(
+			'wpai_content_classification_max_suggestions',
+			static function () {
+				return 50;
+			}
+		);
+
+		$this->assertEquals( 10, $experiment->get_max_suggestions(), 'Filtered value above 10 should be clamped to 10' );
+	}
+
+	/**
+	 * Test that get_max_suggestions() sanitizes filtered value below minimum.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_max_suggestions_sanitizes_filtered_value_below_min() {
+		$experiment = new Content_Classification();
+
+		add_filter(
+			'wpai_content_classification_max_suggestions',
+			static function () {
+				return 0;
+			}
+		);
+
+		$this->assertEquals( 1, $experiment->get_max_suggestions(), 'Filtered value of 0 should be clamped to 1' );
+	}
 }

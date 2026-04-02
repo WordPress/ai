@@ -560,6 +560,229 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that build_prompt() includes available terms when provided.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_prompt_includes_available_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_prompt' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', array(), array( 'php', 'wordpress', 'javascript' ) );
+
+		$this->assertStringContainsString( '<available-terms>php, wordpress, javascript</available-terms>', $result, 'Should include available terms' );
+	}
+
+	/**
+	 * Test that build_prompt() omits available terms tag when empty.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_prompt_omits_empty_available_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_prompt' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', array(), array() );
+
+		$this->assertStringNotContainsString( '<available-terms>', $result, 'Should not include available terms when empty' );
+	}
+
+	/**
+	 * Test that get_existing_terms() returns term names for a valid taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_existing_terms_returns_term_names() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_existing_terms' );
+		$method->setAccessible( true );
+
+		// Create some terms.
+		wp_insert_term( 'PHP', 'post_tag' );
+		wp_insert_term( 'JavaScript', 'post_tag' );
+
+		$result = $method->invoke( $this->ability, 'post_tag' );
+
+		$this->assertIsArray( $result );
+		$this->assertContains( 'PHP', $result );
+		$this->assertContains( 'JavaScript', $result );
+	}
+
+	/**
+	 * Test that get_existing_terms() returns empty array for invalid taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_existing_terms_returns_empty_for_invalid_taxonomy() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_existing_terms' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'nonexistent_taxonomy' );
+
+		$this->assertIsArray( $result );
+		$this->assertEmpty( $result );
+	}
+
+	/**
+	 * Test that get_top_terms() returns terms ordered by count.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_top_terms_returns_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_top_terms' );
+		$method->setAccessible( true );
+
+		wp_insert_term( 'TopTerm', 'post_tag' );
+		wp_insert_term( 'AnotherTerm', 'post_tag' );
+
+		$result = $method->invoke( $this->ability, 'post_tag' );
+
+		$this->assertIsArray( $result );
+		$this->assertContains( 'TopTerm', $result );
+		$this->assertContains( 'AnotherTerm', $result );
+	}
+
+	/**
+	 * Test that get_top_terms() respects the limit parameter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_top_terms_respects_limit() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_top_terms' );
+		$method->setAccessible( true );
+
+		wp_insert_term( 'Term1', 'post_tag' );
+		wp_insert_term( 'Term2', 'post_tag' );
+		wp_insert_term( 'Term3', 'post_tag' );
+
+		$result = $method->invoke( $this->ability, 'post_tag', 2 );
+
+		$this->assertIsArray( $result );
+		$this->assertCount( 2, $result, 'Should be limited to 2 terms' );
+	}
+
+	/**
+	 * Test that get_top_terms() returns empty array for invalid taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_top_terms_returns_empty_for_invalid_taxonomy() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_top_terms' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'nonexistent_taxonomy' );
+
+		$this->assertIsArray( $result );
+		$this->assertEmpty( $result );
+	}
+
+	/**
+	 * Test that get_taxonomy_label() returns the human-readable label.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_taxonomy_label_returns_label() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_taxonomy_label' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'post_tag' );
+
+		$this->assertEquals( 'tags', $result, 'Should return the lowercase plural label for post_tag' );
+	}
+
+	/**
+	 * Test that get_taxonomy_label() returns slug for invalid taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_taxonomy_label_returns_slug_for_invalid_taxonomy() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_taxonomy_label' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'nonexistent_taxonomy' );
+
+		$this->assertEquals( 'nonexistent_taxonomy', $result, 'Should fall back to taxonomy slug' );
+	}
+
+	/**
+	 * Test that permission_callback() returns true for user with edit_post capability on a specific post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_with_post_id_and_edit_capability() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertTrue( $result, 'Permission should be granted for user with edit_post capability' );
+	}
+
+	/**
+	 * Test that permission_callback() returns error for user without edit_post capability on a specific post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_with_post_id_without_edit_capability() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
+	}
+
+	/**
+	 * Test that permission_callback() returns error for non-existent post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_with_nonexistent_post_id() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => 99999 ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'post_not_found', $result->get_error_code(), 'Error code should be post_not_found' );
+	}
+
+	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
 	 * @since x.x.x
