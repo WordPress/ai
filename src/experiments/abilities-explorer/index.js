@@ -541,17 +541,17 @@ import './index.scss';
 		},
 	};
 
-	// Don't render if disabled.
-	if ( ! aiAbilityExplorer?.enabled ) {
-		return null;
+	function initWhenReady( fn ) {
+		if ( document.readyState === 'loading' ) {
+			document.addEventListener( 'DOMContentLoaded', fn );
+		} else {
+			fn();
+		}
 	}
 
-	// Initialize on document ready.
-	if ( document.readyState === 'loading' ) {
-		document.addEventListener( 'DOMContentLoaded', function () {
+	initWhenReady( function () {
+		if ( aiAbilityExplorer?.enabled ) {
 			AiAbilityExplorer.init();
-		} );
-	} else {
-		AiAbilityExplorer.init();
-	}
+		}
+	} );
 } )();
