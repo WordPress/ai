@@ -52,24 +52,20 @@ class Review_Notes extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'block_type'     => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The block type, e.g. core/paragraph, core/heading.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The block type, e.g. core/paragraph, core/heading.', 'ai' ),
 				),
 				'block_content'  => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The plain-text content of the block to review.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The plain-text content of the block to review.', 'ai' ),
 				),
 				'context'        => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Surrounding content to improve review relevance.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Surrounding content to improve review relevance.', 'ai' ),
 				),
 				'post_id'        => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'ID of the post being reviewed.', 'ai' ),
+					'type'        => 'integer',
+					'description' => esc_html__( 'ID of the post being reviewed.', 'ai' ),
 				),
 				'existing_notes' => array(
 					'type'        => 'array',
