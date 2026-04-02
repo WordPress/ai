@@ -33,19 +33,16 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'content' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The content to use as inspiration for the generated image.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The content to use as inspiration for the generated image.', 'ai' ),
 				),
 				'context' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Any additional context to help generate the prompt. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists).', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Any additional context to help generate the prompt. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists).', 'ai' ),
 				),
 				'style'   => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Any additional style instructions to apply to the generated image.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Any additional style instructions to apply to the generated image.', 'ai' ),
 				),
 			),
 			'required'   => array( 'content' ),
@@ -80,6 +77,8 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			),
 		);
 
+		$args['style'] = is_string( $args['style'] ) ? sanitize_text_field( $args['style'] ) : null;
+
 		// If a post ID is provided, ensure the post exists before using it.
 		if ( is_numeric( $args['context'] ) ) {
 			$post = get_post( (int) $args['context'] );
@@ -103,7 +102,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			}
 		} else {
 			$content = normalize_content( $args['content'] ?? '' );
-			$context = $args['context'] ?? '';
+			$context = isset( $args['context'] ) ? sanitize_text_field( $args['context'] ) : '';
 		}
 
 		// If we have no content, return an error.
