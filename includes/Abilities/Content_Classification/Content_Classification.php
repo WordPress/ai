@@ -223,14 +223,14 @@ class Content_Classification extends Abstract_Ability {
 		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
 
 		if ( $post_id ) {
-			$post = get_post( $args['post_id'] );
+			$post = get_post( $post_id );
 
 			// Ensure the post exists.
 			if ( ! $post instanceof WP_Post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), $post_id )
 				);
 			}
 
