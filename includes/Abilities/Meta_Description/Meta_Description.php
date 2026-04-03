@@ -42,19 +42,16 @@ class Meta_Description extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'content' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Post content to generate a meta description for.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Post content to generate a meta description for.', 'ai' ),
 				),
 				'title'   => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The post title, used to avoid duplication in the generated description.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The post title, used to avoid duplication in the generated description.', 'ai' ),
 				),
 				'post_id' => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'The post ID to generate a meta description for. If provided without content, the post content will be used.', 'ai' ),
+					'type'        => 'integer',
+					'description' => esc_html__( 'The post ID to generate a meta description for. If provided without content, the post content will be used.', 'ai' ),
 				),
 			),
 		);
@@ -242,10 +239,6 @@ class Meta_Description extends Abstract_Ability {
 
 		$prompt = '<content>' . $content . '</content>';
 
-		if ( ! empty( $title ) ) {
-			$prompt .= "\n\n<title>" . $title . '</title>';
-		}
-
 		if ( ! empty( $context ) ) {
 			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
@@ -272,21 +265,13 @@ class Meta_Description extends Abstract_Ability {
 		 */
 		$candidate_count = (int) apply_filters( 'wpai_meta_description_candidate_count', self::DEFAULT_CANDIDATE_COUNT );
 
-		/**
-		 * Filters the temperature for the result of the meta description generation.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param float $result_temperature The temperature for the result of the meta description generation.
-		 */
-		$result_temperature = (float) apply_filters( 'wpai_meta_description_result_temperature', 0.7 );
+		$builder = $this->get_prompt_builder( $prompt );
 
-		$results = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( $result_temperature )
-			->using_candidate_count( $candidate_count )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->generate_texts();
+		if ( is_wp_error( $builder ) ) {
+			return $builder;
+		}
+
+		$results = $builder->using_candidate_count( $candidate_count )->generate_texts();
 
 		if ( is_wp_error( $results ) ) {
 			return $results;
@@ -315,5 +300,39 @@ class Meta_Description extends Abstract_Ability {
 		}
 
 		return $descriptions;
+	}
+
+	/**
+	 * Returns a prompt builder for meta description generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to build.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
+	 */
+	private function get_prompt_builder( string $prompt ) {
+		/**
+		 * Filters the temperature for the result of the meta description generation.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param float $result_temperature The temperature for the result of the meta description generation.
+		 */
+		$result_temperature = (float) apply_filters( 'wpai_meta_description_result_temperature', 0.7 );
+
+		$builder = wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_temperature( $result_temperature )
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		// Return a more specific error if there isn't a model that supports text generation.
+		if ( ! $builder->is_supported_for_text_generation() ) {
+			return new WP_Error(
+				'unsupported_model',
+				esc_html__( 'Meta description generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+			);
+		}
+
+		return $builder;
 	}
 }

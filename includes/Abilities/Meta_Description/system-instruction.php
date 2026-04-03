@@ -28,4 +28,5 @@ The meta description suggestion should follow these requirements:
 - Must accurately reflect the actual content, not be generic or clickbait
 - Should naturally incorporate the primary topic of the content
 - Should be self-contained and meaningful on its own, as it will appear in search results
+- Should be in the same language as the content you are given. For example, if the content is in English, the meta description should be in English. If the content is in Spanish, the meta description should be in Spanish.
 INSTRUCTION;
