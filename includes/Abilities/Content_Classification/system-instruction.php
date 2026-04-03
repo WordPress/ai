@@ -25,4 +25,5 @@ Rules:
 - Do not suggest terms listed in <assigned-terms> — they are already applied to this post.
 - When the <available-terms> tag is provided, strongly prefer selecting from those terms.
 - Prioritize specificity and relevance over breadth.
+- Ensure the terms you suggest match the language of the content you are given. For example, if the content is in English, suggest English terms. If the content is in Spanish, suggest Spanish terms.
 INSTRUCTION;
