@@ -69,18 +69,25 @@ class SEO_Integration {
 
 	/**
 	 * Detects the currently active SEO plugin.
+	 * Cache is flushed when a plugin is deactivated.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return string|null The slug of the active SEO plugin, or null if none detected.
 	 */
 	public static function detect_active_plugin(): ?string {
+		$active_plugin = wp_cache_get( 'wpai_active_seo_plugin', 'wpai' );
+		if ( ! empty( $active_plugin ) ) {
+			return $active_plugin;
+		}
+
 		if ( ! function_exists( 'is_plugin_active' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
 		foreach ( self::get_supported_plugins() as $slug => $info ) {
 			if ( is_plugin_active( $info['file'] ) ) {
+				wp_cache_set( 'wpai_active_seo_plugin', $slug, 'wpai' );
 				return $slug;
 			}
 		}

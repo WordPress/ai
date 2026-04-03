@@ -55,6 +55,8 @@ class Meta_Description extends Abstract_Feature {
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );
+
 		$this->register_post_meta();
 	}
 
@@ -105,9 +107,9 @@ class Meta_Description extends Abstract_Feature {
 					'show_in_rest'      => true,
 					'single'            => true,
 					'type'              => 'string',
-					'revisions_enabled' => true,
-					'auth_callback'     => static function () {
-						return current_user_can( 'edit_posts' );
+					'revisions_enabled' => post_type_supports( $post_type, 'revisions' ),
+					'auth_callback'     => static function ( $allowed, $meta_key, $post_id ) {
+						return current_user_can( 'edit_post', $post_id );
 					},
 				)
 			);
@@ -149,5 +151,16 @@ class Meta_Description extends Abstract_Feature {
 				'seoPlugin' => $seo_plugin,
 			)
 		);
+	}
+
+	/**
+	 * Clears the active SEO plugin cache when a plugin is deactivated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $plugin The plugin that was deactivated.
+	 */
+	public function clear_active_plugin_cache(): void {
+		wp_cache_delete( 'wpai_active_seo_plugin', 'wpai' );
 	}
 }
