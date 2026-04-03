@@ -53,6 +53,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		wp_cache_delete( 'wpai_active_seo_plugin', 'wpai' );
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_meta-description_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
@@ -94,9 +95,6 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_hooks_actions(): void {
-		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
-		$this->setExpectedIncorrectUsage( 'register_meta' );
-
 		$experiment = new Meta_Description();
 		$experiment->register();
 
@@ -119,9 +117,6 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_abilities(): void {
-		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
-		$this->setExpectedIncorrectUsage( 'register_meta' );
-
 		$experiment = new Meta_Description();
 		$experiment->register();
 
@@ -137,9 +132,6 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_post_meta_registers_fallback(): void {
-		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
-		$this->setExpectedIncorrectUsage( 'register_meta' );
-
 		$experiment = new Meta_Description();
 		$experiment->register_post_meta();
 
@@ -155,9 +147,6 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_post_meta_skips_attachment(): void {
-		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
-		$this->setExpectedIncorrectUsage( 'register_meta' );
-
 		$experiment = new Meta_Description();
 		$experiment->register_post_meta();
 
@@ -171,6 +160,9 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_post_meta_skips_when_seo_plugin_active(): void {
+		// Clear the cache from setUp so detect_active_plugin() re-checks.
+		wp_cache_delete( 'wpai_active_seo_plugin', 'wpai' );
+
 		// Simulate an active SEO plugin via the active_plugins option.
 		$active = get_option( 'active_plugins', array() );
 		update_option( 'active_plugins', array_merge( $active, array( 'wordpress-seo/wp-seo.php' ) ) );
@@ -192,9 +184,6 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_skips_irrelevant_screens(): void {
-		// WordPress may warn about revisions_enabled on non-revisioned subtypes.
-		$this->setExpectedIncorrectUsage( 'register_meta' );
-
 		$experiment = new Meta_Description();
 		$experiment->register();
 

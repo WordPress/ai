@@ -104,11 +104,10 @@ class Meta_Description extends Abstract_Feature {
 				$post_type,
 				$meta_key,
 				array(
-					'show_in_rest'      => true,
-					'single'            => true,
-					'type'              => 'string',
-					'revisions_enabled' => post_type_supports( $post_type, 'revisions' ),
-					'auth_callback'     => static function ( $allowed, $meta_key, $post_id ) {
+					'show_in_rest'  => true,
+					'single'        => true,
+					'type'          => 'string',
+					'auth_callback' => static function ( $allowed, $meta_key, $post_id ) {
 						return current_user_can( 'edit_post', $post_id );
 					},
 				)
@@ -157,8 +156,6 @@ class Meta_Description extends Abstract_Feature {
 	 * Clears the active SEO plugin cache when a plugin is deactivated.
 	 *
 	 * @since x.x.x
-	 *
-	 * @param string $plugin The plugin that was deactivated.
 	 */
 	public function clear_active_plugin_cache(): void {
 		wp_cache_delete( 'wpai_active_seo_plugin', 'wpai' );
