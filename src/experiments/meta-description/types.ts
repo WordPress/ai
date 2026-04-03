@@ -24,7 +24,7 @@ export interface MetaDescriptionSuggestion {
  * Response from the ai/meta-description ability.
  */
 export interface MetaDescriptionAbilityResponse {
-	descriptions: MetaDescriptionSuggestion[];
+	description: MetaDescriptionSuggestion;
 }
 
 /**

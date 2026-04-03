@@ -35,43 +35,6 @@
 	}
 }
 
-// Suggestion card.
-.ai-meta-description__suggestion-card {
-	display: block;
-	width: 100%;
-	padding: 12px;
-	margin-bottom: 8px;
-	text-align: left;
-	background: var(--wp--preset--color--background, #f0f0f0);
-	border: 2px solid transparent;
-	border-radius: 4px;
-	cursor: pointer;
-	height: auto;
-
-	&:hover {
-		background: var(--wp-admin-border-color-lighter, #dcdcde);
-	}
-
-	&--selected {
-		border-color: var(--wp-admin-theme-color, #3858e9);
-		background: color-mix(in srgb, var(--wp-admin-theme-color, #3858e9) 8%, white) !important;
-
-		&:hover {
-			background: color-mix(in srgb, var(--wp-admin-theme-color, #3858e9) 12%, white) !important;
-		}
-	}
-
-	.ai-meta-description__suggestion-text {
-		display: block;
-		margin-bottom: 4px;
-		font-size: 13px;
-		line-height: 1.5;
-		white-space: normal;
-		word-wrap: break-word;
-		color: var(--wp--preset--color--foreground, #1e1e1e);
-	}
-}
-
 // Modal layout.
 .ai-meta-description-modal {
 	&__content {
@@ -84,12 +47,6 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-	}
-
-	&__suggestions-label {
-		margin: 0 0 8px;
-		font-size: 13px;
-		color: var(--wp--preset--color--foreground, #757575);
 	}
 
 	&__editor {

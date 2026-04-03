@@ -153,8 +153,10 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		$this->assertIsArray( $schema, 'Output schema should be an array' );
 		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
-		$this->assertArrayHasKey( 'descriptions', $schema['properties'], 'Schema should have descriptions property' );
-		$this->assertEquals( 'array', $schema['properties']['descriptions']['type'], 'Descriptions should be array type' );
+		$this->assertArrayHasKey( 'description', $schema['properties'], 'Schema should have description property' );
+		$this->assertEquals( 'object', $schema['properties']['description']['type'], 'Description should be object type' );
+		$this->assertArrayHasKey( 'text', $schema['properties']['description']['properties'], 'Description should have text property' );
+		$this->assertArrayHasKey( 'character_count', $schema['properties']['description']['properties'], 'Description should have character_count property' );
 	}
 
 	/**
@@ -198,18 +200,16 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'descriptions', $result, 'Result should have descriptions key' );
-		$this->assertIsArray( $result['descriptions'], 'Descriptions should be an array' );
-		$this->assertNotEmpty( $result['descriptions'], 'Descriptions should not be empty' );
+		$this->assertArrayHasKey( 'description', $result, 'Result should have description key' );
+		$this->assertIsArray( $result['description'], 'Description should be an array' );
 
-		// Verify each description has the expected structure.
-		foreach ( $result['descriptions'] as $description ) {
-			$this->assertArrayHasKey( 'text', $description, 'Description should have text key' );
-			$this->assertArrayHasKey( 'character_count', $description, 'Description should have character_count key' );
-			$this->assertIsString( $description['text'], 'Description text should be a string' );
-			$this->assertIsInt( $description['character_count'], 'Character count should be an integer' );
-			$this->assertEquals( mb_strlen( $description['text'] ), $description['character_count'], 'Character count should match text length' );
-		}
+		// Verify the description has the expected structure.
+		$description = $result['description'];
+		$this->assertArrayHasKey( 'text', $description, 'Description should have text key' );
+		$this->assertArrayHasKey( 'character_count', $description, 'Description should have character_count key' );
+		$this->assertIsString( $description['text'], 'Description text should be a string' );
+		$this->assertIsInt( $description['character_count'], 'Character count should be an integer' );
+		$this->assertEquals( mb_strlen( $description['text'] ), $description['character_count'], 'Character count should match text length' );
 	}
 
 	/**
@@ -246,7 +246,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'descriptions', $result, 'Result should have descriptions key' );
+		$this->assertArrayHasKey( 'description', $result, 'Result should have description key' );
 	}
 
 	/**
@@ -320,7 +320,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'descriptions', $result, 'Result should have descriptions key' );
+		$this->assertArrayHasKey( 'description', $result, 'Result should have description key' );
 	}
 
 	/**
@@ -536,7 +536,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'descriptions', $result, 'Result should have descriptions key' );
+		$this->assertArrayHasKey( 'description', $result, 'Result should have description key' );
 	}
 
 	/**
@@ -574,15 +574,15 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'descriptions', $result, 'Result should have descriptions key' );
+		$this->assertArrayHasKey( 'description', $result, 'Result should have description key' );
 	}
 
 	/**
-	 * Test that generate_descriptions() builds a prompt with content tags.
+	 * Test that generate_description() builds a prompt with content tags.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_generate_descriptions_builds_prompt_with_content() {
+	public function test_generate_description_builds_prompt_with_content() {
 		$captured_prompt = '';
 
 		add_filter(
@@ -594,7 +594,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		);
 
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'generate_descriptions' );
+		$method     = $reflection->getMethod( 'generate_description' );
 		$method->setAccessible( true );
 
 		try {
@@ -611,11 +611,11 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that generate_descriptions() includes context when provided as string.
+	 * Test that generate_description() includes context when provided as string.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_generate_descriptions_includes_string_context() {
+	public function test_generate_description_includes_string_context() {
 		$captured_prompt = '';
 
 		add_filter(
@@ -627,7 +627,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		);
 
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'generate_descriptions' );
+		$method     = $reflection->getMethod( 'generate_description' );
 		$method->setAccessible( true );
 
 		try {
@@ -643,11 +643,11 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that generate_descriptions() converts array context to string.
+	 * Test that generate_description() converts array context to string.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_generate_descriptions_converts_array_context() {
+	public function test_generate_description_converts_array_context() {
 		$captured_prompt = '';
 
 		add_filter(
@@ -659,7 +659,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		);
 
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'generate_descriptions' );
+		$method     = $reflection->getMethod( 'generate_description' );
 		$method->setAccessible( true );
 
 		$context = array(

@@ -25,14 +25,6 @@ use function WordPress\AI\normalize_content;
 class Meta_Description extends Abstract_Ability {
 
 	/**
-	 * Default number of suggestions to generate.
-	 *
-	 * @since x.x.x
-	 * @var int
-	 */
-	public const DEFAULT_CANDIDATE_COUNT = 3;
-
-	/**
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
@@ -65,22 +57,19 @@ class Meta_Description extends Abstract_Ability {
 	protected function output_schema(): array {
 		return array(
 			'type'        => 'object',
-			'description' => esc_html__( 'Generated meta description suggestions.', 'ai' ),
+			'description' => esc_html__( 'Generated meta description suggestion.', 'ai' ),
 			'properties'  => array(
-				'descriptions' => array(
-					'type'        => 'array',
-					'description' => esc_html__( 'Array of meta description suggestions.', 'ai' ),
-					'items'       => array(
-						'type'       => 'object',
-						'properties' => array(
-							'text'            => array(
-								'type'        => 'string',
-								'description' => esc_html__( 'The meta description text.', 'ai' ),
-							),
-							'character_count' => array(
-								'type'        => 'integer',
-								'description' => esc_html__( 'The character count of the description.', 'ai' ),
-							),
+				'description' => array(
+					'type'        => 'object',
+					'description' => esc_html__( 'The meta description suggestion.', 'ai' ),
+					'properties'  => array(
+						'text'            => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The meta description text.', 'ai' ),
+						),
+						'character_count' => array(
+							'type'        => 'integer',
+							'description' => esc_html__( 'The character count of the description.', 'ai' ),
 						),
 					),
 				),
@@ -145,19 +134,19 @@ class Meta_Description extends Abstract_Ability {
 			);
 		}
 
-		$descriptions = $this->generate_descriptions( $content, $title, $context );
-		if ( is_wp_error( $descriptions ) ) {
-			return $descriptions;
+		$description = $this->generate_description( $content, $title, $context );
+		if ( is_wp_error( $description ) ) {
+			return $description;
 		}
 
-		if ( empty( $descriptions ) ) {
+		if ( empty( $description ) ) {
 			return new WP_Error(
 				'no_results',
-				esc_html__( 'No meta description suggestions were generated.', 'ai' )
+				esc_html__( 'No meta description suggestion was generated.', 'ai' )
 			);
 		}
 
-		return array( 'descriptions' => $descriptions );
+		return array( 'description' => $description );
 	}
 
 	/**
@@ -212,15 +201,16 @@ class Meta_Description extends Abstract_Ability {
 	}
 
 	/**
-	 * Generate meta description suggestions from the given content.
+	 * Generate a meta description suggestion from the given content.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string                       $content The content to generate descriptions from.
+	 * @param string                       $content The content to generate a description from.
+	 * @param string                       $title   The post title.
 	 * @param string|array<string, string> $context Additional context to use.
-	 * @return array<int, array{text: string, character_count: int}>|\WP_Error The generated descriptions, or a WP_Error.
+	 * @return array{text: string, character_count: int}|\WP_Error The generated description, or a WP_Error.
 	 */
-	protected function generate_descriptions( string $content, string $title, $context ) {
+	protected function generate_description( string $content, string $title, $context ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -261,50 +251,31 @@ class Meta_Description extends Abstract_Ability {
 		 */
 		$prompt = (string) apply_filters( 'wpai_meta_description_prompt', $prompt, $content, $title );
 
-		/**
-		 * Filters the number of meta description candidates to generate.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param int $candidate_count The number of candidates to request from the AI model.
-		 */
-		$candidate_count = (int) apply_filters( 'wpai_meta_description_candidate_count', self::DEFAULT_CANDIDATE_COUNT );
-
 		$builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $builder ) ) {
 			return $builder;
 		}
 
-		$results = $builder->using_candidate_count( $candidate_count )->generate_texts();
+		$result = $builder->generate_text();
 
-		if ( is_wp_error( $results ) ) {
-			return $results;
+		if ( is_wp_error( $result ) ) {
+			return $result;
 		}
 
-		if ( ! is_array( $results ) ) {
+		if ( ! is_string( $result ) || empty( trim( $result ) ) ) {
 			return new WP_Error(
 				'no_results',
-				esc_html__( 'No meta description suggestions were generated.', 'ai' )
+				esc_html__( 'No meta description suggestion was generated.', 'ai' )
 			);
 		}
 
-		$descriptions = array();
+		$text = sanitize_text_field( trim( $result, ' "\'' ) );
 
-		foreach ( $results as $result ) {
-			if ( ! is_string( $result ) || empty( trim( $result ) ) ) {
-				continue;
-			}
-
-			$text = sanitize_text_field( trim( $result, ' "\'' ) );
-
-			$descriptions[] = array(
-				'text'            => $text,
-				'character_count' => mb_strlen( $text ),
-			);
-		}
-
-		return $descriptions;
+		return array(
+			'text'            => $text,
+			'character_count' => mb_strlen( $text ),
+		);
 	}
 
 	/**

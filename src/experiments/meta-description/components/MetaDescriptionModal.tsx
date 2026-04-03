@@ -1,11 +1,11 @@
 /**
- * Modal component for generating and editing meta description suggestions.
+ * Modal component for generating and editing a meta description suggestion.
  */
 
 /**
  * WordPress dependencies
  */
-import { useState } from '@wordpress/element';
+import { useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Modal, Button, TextareaControl } from '@wordpress/components';
 import { useCopyToClipboard } from '@wordpress/compose';
@@ -15,43 +15,40 @@ import { store as noticesStore } from '@wordpress/notices';
 /**
  * Internal dependencies
  */
-import SuggestionCard from './SuggestionCard';
 import CharacterCount from './CharacterCount';
 import type { MetaDescriptionSuggestion } from '../types';
 
 interface MetaDescriptionModalProps {
 	isGenerating: boolean;
-	suggestions: MetaDescriptionSuggestion[];
-	initialDescription: string;
+	suggestion: MetaDescriptionSuggestion | null;
+	editableText: string;
+	onEditableTextChange: ( text: string ) => void;
 	onGenerate: () => Promise< void >;
 	onApply: ( text: string ) => void;
 	onClose: () => void;
 }
 
 /**
- * Modal for generating, selecting, and editing meta descriptions.
+ * Modal for generating and editing a meta description.
  *
- * @param props                    Component props.
- * @param props.isGenerating       Whether generation is in progress.
- * @param props.suggestions        Array of generated suggestions.
- * @param props.initialDescription Pre-existing description to edit.
- * @param props.onGenerate         Callback to trigger generation.
- * @param props.onApply            Callback to apply the description.
- * @param props.onClose            Callback to close the modal.
+ * @param props                      Component props.
+ * @param props.isGenerating         Whether generation is in progress.
+ * @param props.suggestion           The generated suggestion.
+ * @param props.editableText         The current editable text value.
+ * @param props.onEditableTextChange Callback to update the editable text.
+ * @param props.onGenerate           Callback to trigger generation.
+ * @param props.onApply              Callback to apply the description.
+ * @param props.onClose              Callback to close the modal.
  */
 export default function MetaDescriptionModal( {
 	isGenerating,
-	suggestions,
-	initialDescription,
+	suggestion,
+	editableText,
+	onEditableTextChange,
 	onGenerate,
 	onApply,
 	onClose,
 }: MetaDescriptionModalProps ): JSX.Element {
-	const [ selectedIndex, setSelectedIndex ] = useState< number | null >(
-		null
-	);
-	const [ editableText, setEditableText ] = useState( initialDescription );
-
 	const { createSuccessNotice } = dispatch( noticesStore );
 
 	const copyButtonRef = useCopyToClipboard< HTMLButtonElement >(
@@ -67,21 +64,16 @@ export default function MetaDescriptionModal( {
 		}
 	);
 
-	const handleSelectSuggestion = ( index: number, text: string ) => {
-		setSelectedIndex( index );
-		setEditableText( text );
-	};
+	// Populate the textarea when a new suggestion arrives.
+	useEffect( () => {
+		if ( suggestion?.text ) {
+			onEditableTextChange( suggestion.text );
+		}
+	}, [ suggestion, onEditableTextChange ] );
 
-	const handleApply = () => {
-		onApply( editableText );
-		onClose();
-	};
-
-	const hasSuggestions = suggestions.length > 0;
-
-	let generateButtonLabel: string = hasSuggestions
-		? __( 'Regenerate Suggestions', 'ai' )
-		: __( 'Generate Suggestions', 'ai' );
+	let generateButtonLabel: string = suggestion
+		? __( 'Regenerate', 'ai' )
+		: __( 'Generate', 'ai' );
 
 	if ( isGenerating ) {
 		generateButtonLabel = __( 'Generating', 'ai' );
@@ -107,38 +99,12 @@ export default function MetaDescriptionModal( {
 					</Button>
 				</div>
 
-				{ /* Suggestion cards */ }
-				{ hasSuggestions && (
-					<div className="ai-meta-description-modal__suggestions">
-						<p className="ai-meta-description-modal__suggestions-label">
-							{ __(
-								'Select a suggestion to use as a starting point:',
-								'ai'
-							) }
-						</p>
-						{ suggestions.map( ( suggestion, index ) => (
-							<SuggestionCard
-								key={ index }
-								text={ suggestion.text }
-								characterCount={ suggestion.character_count }
-								isSelected={ selectedIndex === index }
-								onSelect={ () =>
-									handleSelectSuggestion(
-										index,
-										suggestion.text
-									)
-								}
-							/>
-						) ) }
-					</div>
-				) }
-
 				{ /* Editable textarea */ }
 				<div className="ai-meta-description-modal__editor">
 					<TextareaControl
 						label={ __( 'Meta description', 'ai' ) }
 						value={ editableText }
-						onChange={ setEditableText }
+						onChange={ onEditableTextChange }
 						rows={ 3 }
 						help={ __(
 							'Aim for 140–160 characters for optimal display in search results.',
@@ -153,7 +119,10 @@ export default function MetaDescriptionModal( {
 				<div className="ai-meta-description-modal__actions">
 					<Button
 						variant="primary"
-						onClick={ handleApply }
+						onClick={ () => {
+							onApply( editableText );
+							onClose();
+						} }
 						disabled={ editableText.trim().length === 0 }
 					>
 						{ __( 'Apply', 'ai' ) }

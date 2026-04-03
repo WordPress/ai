@@ -28,18 +28,18 @@ const getLocalized = (): MetaDescriptionData | undefined =>
 
 interface UseMetaDescriptionReturn {
 	isGenerating: boolean;
-	suggestions: MetaDescriptionSuggestion[];
+	suggestion: MetaDescriptionSuggestion | null;
 	currentDescription: string;
 	metaKey: string;
 	hasSeoPlugin: boolean;
-	generateDescriptions: () => Promise< void >;
+	generateDescription: () => Promise< void >;
 	applyDescription: ( text: string ) => void;
 }
 
 /**
  * Hook providing meta description generation state and actions.
  *
- * @return Object with generation state, suggestions, and handlers.
+ * @return Object with generation state, suggestion, and handlers.
  */
 export function useMetaDescription(): UseMetaDescriptionReturn {
 	const localized = getLocalized();
@@ -50,9 +50,8 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
 
 	const [ isGenerating, setIsGenerating ] = useState( false );
-	const [ suggestions, setSuggestions ] = useState<
-		MetaDescriptionSuggestion[]
-	>( [] );
+	const [ suggestion, setSuggestion ] =
+		useState< MetaDescriptionSuggestion | null >( null );
 
 	const { postId, content, title, meta } = useSelect( ( select ) => {
 		const editor = select( editorStore );
@@ -68,15 +67,15 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		};
 	}, [] );
 
-	const generateDescriptions = useCallback( async () => {
+	const generateDescription = useCallback( async () => {
 		setIsGenerating( true );
-		setSuggestions( [] );
+		setSuggestion( null );
 
 		// Clear any existing notices.
 		removeNotice( NOTICE_ID );
 
 		try {
-			// Generate the meta descriptions.
+			// Generate the meta description.
 			const params: MetaDescriptionAbilityInput = {
 				content,
 				title,
@@ -88,11 +87,11 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				params
 			);
 
-			if ( response?.descriptions && response.descriptions.length > 0 ) {
-				setSuggestions( response.descriptions );
+			if ( response?.description ) {
+				setSuggestion( response.description );
 			} else {
 				createErrorNotice(
-					'No meta description suggestions were generated.',
+					'No meta description suggestion was generated.',
 					{ id: NOTICE_ID, isDismissible: true }
 				);
 			}
@@ -100,7 +99,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 			const message =
 				typeof error === 'string'
 					? error
-					: error?.message ?? 'Failed to generate meta descriptions.';
+					: error?.message ?? 'Failed to generate meta description.';
 
 			createErrorNotice( message, {
 				id: NOTICE_ID,
@@ -125,11 +124,11 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 
 	return {
 		isGenerating,
-		suggestions,
+		suggestion,
 		currentDescription: meta?.[ metaKey ] ?? '',
 		metaKey,
 		hasSeoPlugin,
-		generateDescriptions,
+		generateDescription,
 		applyDescription,
 	};
 }

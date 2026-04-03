@@ -26,33 +26,37 @@ import CharacterCount from './CharacterCount';
 export default function MetaDescriptionPanel(): JSX.Element {
 	const {
 		isGenerating,
-		suggestions,
+		suggestion,
 		currentDescription,
-		generateDescriptions,
+		generateDescription,
 		applyDescription,
 	} = useMetaDescription();
 
 	const [ isModalOpen, setIsModalOpen ] = useState( false );
+	const [ editableText, setEditableText ] = useState( '' );
 
 	const hasDescription =
 		currentDescription && currentDescription.trim().length > 0;
 
 	const handleOpenModal = async () => {
+		setEditableText( currentDescription );
 		setIsModalOpen( true );
 
-		// Auto-generate on first open if no suggestions yet and no existing description.
-		if ( suggestions.length === 0 && ! hasDescription ) {
-			await generateDescriptions();
+		// Auto-generate on first open if no existing description.
+		if ( ! hasDescription ) {
+			await generateDescription();
 		}
 	};
 
 	const handleOpenEditModal = () => {
+		setEditableText( currentDescription );
 		setIsModalOpen( true );
 	};
 
 	const handleRegenerate = async () => {
+		setEditableText( currentDescription );
 		setIsModalOpen( true );
-		await generateDescriptions();
+		await generateDescription();
 	};
 
 	return (
@@ -94,9 +98,10 @@ export default function MetaDescriptionPanel(): JSX.Element {
 			{ isModalOpen && (
 				<MetaDescriptionModal
 					isGenerating={ isGenerating }
-					suggestions={ suggestions }
-					initialDescription={ currentDescription }
-					onGenerate={ generateDescriptions }
+					suggestion={ suggestion }
+					editableText={ editableText }
+					onEditableTextChange={ setEditableText }
+					onGenerate={ generateDescription }
 					onApply={ applyDescription }
 					onClose={ () => setIsModalOpen( false ) }
 				/>
