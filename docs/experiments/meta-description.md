@@ -12,9 +12,9 @@ When enabled, the Meta Description experiment adds a "Meta Description" panel to
 
 **Key Features:**
 
-- Generates multiple meta description suggestions (default: 3) from post content and title
+- Generates a meta description suggestion from post content and title
 - Suggestions target the optimal 140–160 character range for search engine display
-- Editable textarea allows fine-tuning suggestions before applying
+- Editable textarea allows fine-tuning the suggestion before applying
 - Live character count with color-coded indicator (green for 140–160, yellow outside range)
 - Automatic SEO plugin detection — writes to the correct meta field for Yoast SEO, Rank Math, All in One SEO, and SEOPress
 - Falls back to a standard post meta field (`_meta_description`) when no SEO plugin is active
@@ -26,7 +26,7 @@ When enabled, the Meta Description experiment adds a "Meta Description" panel to
 1. Open or create a post in the editor
 2. Find the "Meta Description" panel in the sidebar
 3. Click "Generate meta description" to open the modal
-4. Review the AI-generated suggestions and select one (or edit the textarea directly)
+4. Review the AI-generated suggestion in the textarea and edit as needed
 5. Click "Apply" to save the description to the appropriate meta field
 6. Save/update the post as usual
 
@@ -60,7 +60,7 @@ The ability can be called directly via REST API, making it useful for automation
 2. **React Side:**
    - The React entry point (`index.tsx`) registers a `PluginDocumentSettingPanel` in the editor sidebar
    - `MetaDescriptionPanel` component shows the current description with edit/regenerate actions, or a generate button if none exists
-   - Clicking generate or edit opens `MetaDescriptionModal` which displays suggestion cards and an editable textarea
+   - Clicking generate or edit opens `MetaDescriptionModal` which displays an editable textarea populated with the generated suggestion
    - `useMetaDescription` hook:
      - Gets current post ID, content, title, and existing meta description from the editor store
      - Calls the ability via `runAbility()` when generation is triggered
@@ -72,7 +72,7 @@ The ability can be called directly via REST API, making it useful for automation
    - If `post_id` is provided, fetches post content and context using `get_post_context()`
    - Normalizes content using `normalize_content()` helper
    - Sends content to AI client with system instruction targeting 140–160 character descriptions
-   - Returns an object with an array of description suggestions, each including the text and character count
+   - Returns an object with a single description suggestion, including the text and character count
 
 ### Input Schema
 
@@ -81,39 +81,33 @@ The ability accepts the following input parameters:
 ```php
 array(
     'content' => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'Post content to generate a meta description for.',
+        'type'        => 'string',
+        'description' => 'Post content to generate a meta description for.',
     ),
     'title'   => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'The post title, used to avoid duplication in the generated description.',
+        'type'        => 'string',
+        'description' => 'The post title, used to avoid duplication in the generated description.',
     ),
     'post_id' => array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'absint',
-        'description'       => 'The post ID to generate a meta description for. If provided without content, the post content will be used.',
+        'type'        => 'integer',
+        'description' => 'The post ID to generate a meta description for. If provided without content, the post content will be used.',
     ),
 )
 ```
 
 ### Output Schema
 
-The ability returns an object containing an array of description suggestions:
+The ability returns an object containing a single description suggestion:
 
 ```php
 array(
     'type'       => 'object',
     'properties' => array(
-        'descriptions' => array(
-            'type'  => 'array',
-            'items' => array(
-                'type'       => 'object',
-                'properties' => array(
-                    'text'            => array( 'type' => 'string' ),
-                    'character_count' => array( 'type' => 'integer' ),
-                ),
+        'description' => array(
+            'type'       => 'object',
+            'properties' => array(
+                'text'            => array( 'type' => 'string' ),
+                'character_count' => array( 'type' => 'integer' ),
             ),
         ),
     ),
@@ -185,20 +179,10 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/meta-des
 
 ```json
 {
-  "descriptions": [
-    {
-      "text": "Discover how artificial intelligence and machine learning are revolutionizing healthcare, finance, and transportation with data-driven insights and automation.",
-      "character_count": 156
-    },
-    {
-      "text": "Learn how AI transforms industries from healthcare to transportation through advanced machine learning algorithms and predictive analytics capabilities.",
-      "character_count": 153
-    },
-    {
-      "text": "Explore the impact of AI and machine learning across healthcare, finance, and transportation sectors, reshaping how industries process data and make decisions.",
-      "character_count": 160
-    }
-  ]
+  "description": {
+    "text": "Discover how artificial intelligence and machine learning are revolutionizing healthcare, finance, and transportation with data-driven insights and automation.",
+    "character_count": 156
+  }
 }
 ```
 
@@ -215,14 +199,14 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/meta-des
   }'
 ```
 
-This will automatically fetch the content and title from post ID 123 and generate meta description suggestions.
+This will automatically fetch the content and title from post ID 123 and generate a meta description suggestion.
 
 #### Example 3: Using WordPress API Fetch (in Gutenberg/Admin)
 
 ```javascript
 import apiFetch from '@wordpress/api-fetch';
 
-async function generateMetaDescriptions(content, title, postId = null) {
+async function generateMetaDescription(content, title, postId = null) {
   const input = { content, title };
   if (postId) {
     input.post_id = postId;
@@ -234,9 +218,9 @@ async function generateMetaDescriptions(content, title, postId = null) {
       method: 'POST',
       data: { input },
     });
-    return result.descriptions; // Array of { text, character_count }
+    return result.description; // { text, character_count }
   } catch (error) {
-    console.error('Error generating meta descriptions:', error);
+    console.error('Error generating meta description:', error);
     throw error;
   }
 }
@@ -287,16 +271,6 @@ add_filter( 'wpai_meta_description_prompt', function( $prompt, $content, $title 
 }, 10, 3 );
 ```
 
-### Filtering the Number of Suggestions
-
-You can change how many description candidates are generated:
-
-```php
-add_filter( 'wpai_meta_description_candidate_count', function( $count ) {
-    return 5; // Generate 5 suggestions instead of the default 3
-} );
-```
-
 ### Filtering the Result Temperature
 
 You can adjust the AI temperature for more creative or more consistent results:
@@ -333,7 +307,7 @@ add_filter( 'wpai_meta_description_meta_key', function( $key, $plugin_slug ) {
 
 ### Filtering Preferred Models
 
-You can filter which AI models are used for meta description generation using the `ai_experiments_preferred_models_for_text_generation` filter:
+You can filter which AI models are used for meta description generation using the `wpai_experiments_preferred_models_for_text_generation` filter:
 
 ```php
 add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $models ) {
@@ -375,12 +349,11 @@ add_filter( 'wpai_experiments_normalize_content', function( $content ) {
    - Create or edit a post with content
    - Find the "Meta Description" panel in the editor sidebar
    - Click "Generate meta description" to open the modal
-   - Verify that 3 suggestions are generated with character counts
-   - Select a suggestion and verify it populates the textarea
+   - Verify that a suggestion is generated and populates the textarea with a character count
    - Edit the text and verify the character count updates live
    - Click "Apply" and verify the description appears in the sidebar panel
    - Click "Edit description" and verify the modal opens with the current text
-   - Click the regenerate icon and verify new suggestions are generated
+   - Click the regenerate icon and verify a new suggestion is generated
    - Test "Copy to clipboard" and verify the text is copied
 
 3. **Test SEO plugin integration:**
@@ -424,7 +397,7 @@ npm run test:php
 
 - Meta description generation is an AI operation and may take several seconds
 - The UI shows a loading state (busy button) while generation is in progress
-- Multiple candidates are generated in a single API call using `candidate_count`
+- A single description is generated per API call
 
 ### Content Processing
 
@@ -437,7 +410,7 @@ npm run test:php
 
 - The ability uses `get_preferred_models_for_text_generation()` to determine which AI models to use
 - Models are tried in order until one succeeds
-- Temperature defaults to 0.7 for balanced creativity and consistency (filterable via `ai_meta_description_result_temperature`)
+- Temperature defaults to 0.7 for balanced creativity and consistency (filterable via `wpai_meta_description_result_temperature`)
 
 ### System Instruction
 
@@ -453,9 +426,9 @@ The system instruction guides the AI to:
 ### Limitations
 
 - Descriptions are generated in real-time and not cached
-- The ability does not support batch processing (one request generates multiple candidates for a single post)
+- The ability does not support batch processing (one request generates a single description for a single post)
 - Generated descriptions are suggestions and should be reviewed before publishing
-- SEO plugin integration is read/write only for supported plugins — unsupported plugins require the `ai_meta_description_seo_plugins` filter or copy-to-clipboard
+- SEO plugin integration is read/write only for supported plugins — unsupported plugins require the `wpai_meta_description_seo_plugins` filter or copy-to-clipboard
 - The experiment requires JavaScript to be enabled in the admin
 
 ## Related Files
