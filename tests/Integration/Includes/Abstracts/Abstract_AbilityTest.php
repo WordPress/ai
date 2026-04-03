@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
 
+use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
@@ -433,5 +434,105 @@ PHP
 
 		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
 		$this->assertStringContainsString( 'test assistant', $system_instruction, 'System instruction should contain expected content' );
+	}
+
+	/**
+	 * Test that ensure_text_generation_supported() returns WP_Error when text generation is not supported.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_ensure_text_generation_supported_returns_wp_error_when_unsupported(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'ensure_text_generation_supported' );
+		$method->setAccessible( true );
+
+		$prompt_builder = new class() {
+			/**
+			 * @return false
+			 */
+			public function is_supported_for_text_generation(): bool {
+				return false;
+			}
+		};
+
+		$result = $method->invoke( $this->ability, $prompt_builder, 'Text capability missing.' );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Should return WP_Error when unsupported' );
+		$this->assertSame( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
+		$this->assertSame( 'Text capability missing.', $result->get_error_message(), 'Message should be passed through' );
+	}
+
+	/**
+	 * Test that ensure_text_generation_supported() returns the builder when text generation is supported.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_ensure_text_generation_supported_returns_builder_when_supported(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'ensure_text_generation_supported' );
+		$method->setAccessible( true );
+
+		$prompt_builder = new class() {
+			/**
+			 * @return true
+			 */
+			public function is_supported_for_text_generation(): bool {
+				return true;
+			}
+		};
+
+		$result = $method->invoke( $this->ability, $prompt_builder, 'unused' );
+
+		$this->assertSame( $prompt_builder, $result, 'Should return the same builder instance when supported' );
+	}
+
+	/**
+	 * Test that ensure_image_generation_supported() returns WP_Error when image generation is not supported.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_ensure_image_generation_supported_returns_wp_error_when_unsupported(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'ensure_image_generation_supported' );
+		$method->setAccessible( true );
+
+		$prompt_builder = new class() {
+			/**
+			 * @return false
+			 */
+			public function is_supported_for_image_generation(): bool {
+				return false;
+			}
+		};
+
+		$result = $method->invoke( $this->ability, $prompt_builder, 'Image capability missing.' );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Should return WP_Error when unsupported' );
+		$this->assertSame( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
+		$this->assertSame( 'Image capability missing.', $result->get_error_message(), 'Message should be passed through' );
+	}
+
+	/**
+	 * Test that ensure_image_generation_supported() returns the builder when image generation is supported.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_ensure_image_generation_supported_returns_builder_when_supported(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'ensure_image_generation_supported' );
+		$method->setAccessible( true );
+
+		$prompt_builder = new class() {
+			/**
+			 * @return true
+			 */
+			public function is_supported_for_image_generation(): bool {
+				return true;
+			}
+		};
+
+		$result = $method->invoke( $this->ability, $prompt_builder, 'unused' );
+
+		$this->assertSame( $prompt_builder, $result, 'Should return the same builder instance when supported' );
 	}
 }
