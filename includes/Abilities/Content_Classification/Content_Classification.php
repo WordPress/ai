@@ -416,22 +416,24 @@ class Content_Classification extends Abstract_Ability {
 	 */
 	protected function suggestions_schema(): array {
 		return array(
-			'type'       => 'object',
-			'properties' => array(
+			'type'                 => 'object',
+			'properties'           => array(
 				'suggestions' => array(
 					'type'  => 'array',
 					'items' => array(
-						'type'       => 'object',
-						'properties' => array(
+						'type'                 => 'object',
+						'properties'           => array(
 							'term'       => array( 'type' => 'string' ),
 							'confidence' => array( 'type' => 'number' ),
 							'parent'     => array( 'type' => 'string' ),
 						),
-						'required'   => array( 'term', 'confidence' ),
+						'required'             => array( 'term', 'confidence', 'parent' ),
+						'additionalProperties' => false,
 					),
 				),
 			),
-			'required'   => array( 'suggestions' ),
+			'required'             => array( 'suggestions' ),
+			'additionalProperties' => false,
 		);
 	}
 
