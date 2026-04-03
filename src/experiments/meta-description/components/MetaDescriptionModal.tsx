@@ -87,18 +87,6 @@ export default function MetaDescriptionModal( {
 			size="medium"
 		>
 			<div className="ai-meta-description-modal__content">
-				{ /* Generation controls */ }
-				<div className="ai-meta-description-modal__generate">
-					<Button
-						variant="secondary"
-						onClick={ onGenerate }
-						disabled={ isGenerating }
-						isBusy={ isGenerating }
-					>
-						{ generateButtonLabel }
-					</Button>
-				</div>
-
 				{ /* Editable textarea */ }
 				<div className="ai-meta-description-modal__editor">
 					<TextareaControl
@@ -126,6 +114,14 @@ export default function MetaDescriptionModal( {
 						disabled={ editableText.trim().length === 0 }
 					>
 						{ __( 'Apply', 'ai' ) }
+					</Button>
+					<Button
+						variant="secondary"
+						onClick={ onGenerate }
+						disabled={ isGenerating }
+						isBusy={ isGenerating }
+					>
+						{ generateButtonLabel }
 					</Button>
 					<Button
 						ref={ copyButtonRef }
