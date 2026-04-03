@@ -121,7 +121,10 @@ class Meta_Description extends Abstract_Ability {
 
 			$post_context = get_post_context( $post->ID );
 			$content      = $post_context['content'] ?? '';
+
 			unset( $post_context['content'] );
+			unset( $post_context['title'] );
+
 			$context = $post_context;
 
 			// Use the post title if none was provided.
@@ -214,7 +217,6 @@ class Meta_Description extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string                       $content The content to generate descriptions from.
-	 * @param string                       $title   The post title.
 	 * @param string|array<string, string> $context Additional context to use.
 	 * @return array<int, array{text: string, character_count: int}>|\WP_Error The generated descriptions, or a WP_Error.
 	 */
@@ -237,10 +239,13 @@ class Meta_Description extends Abstract_Ability {
 			);
 		}
 
-		$prompt = '<content>' . $content . '</content>';
+		$prompt  = '<title>' . $title . '</title>';
+		$prompt .= '<content>' . $content . '</content>';
 
 		if ( ! empty( $context ) ) {
 			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
+		} else {
+			$prompt .= "\n\n<additional-context></additional-context>";
 		}
 
 		/**

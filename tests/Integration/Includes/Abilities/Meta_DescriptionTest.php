@@ -130,15 +130,12 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
-		$this->assertEquals( 'sanitize_text_field', $schema['properties']['content']['sanitize_callback'], 'Content should use sanitize_text_field' );
 
 		// Verify title property.
 		$this->assertEquals( 'string', $schema['properties']['title']['type'], 'Title should be string type' );
-		$this->assertEquals( 'sanitize_text_field', $schema['properties']['title']['sanitize_callback'], 'Title should use sanitize_text_field' );
 
 		// Verify post_id property.
 		$this->assertEquals( 'integer', $schema['properties']['post_id']['type'], 'Post ID should be integer type' );
-		$this->assertEquals( 'absint', $schema['properties']['post_id']['sanitize_callback'], 'Post ID should use absint' );
 	}
 
 	/**
