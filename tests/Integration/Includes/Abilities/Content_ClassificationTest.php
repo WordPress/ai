@@ -241,13 +241,13 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$response = '{"suggestions": [{"term": "development", "confidence": 0.9}, {"term": "plugins", "confidence": 0.8}]}';
 
-		$result = $method->invoke( $this->ability, $response, array( 'development' ), 'allow_new', array(), 5 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 5 );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertCount( 2, $result, 'Should have 2 suggestions' );
 		$this->assertEquals( 'development', $result[0]['term'], 'First suggestion should be development' );
-		$this->assertFalse( $result[0]['is_new'], 'Existing term should not be marked as new' );
-		$this->assertTrue( $result[1]['is_new'], 'Non-existing term should be marked as new' );
+		$this->assertTrue( $result[0]['is_new'], 'Term should be marked as new in allow_new strategy' );
+		$this->assertTrue( $result[1]['is_new'], 'Term should be marked as new in allow_new strategy' );
 	}
 
 	/**
@@ -262,7 +262,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$response = 'This is not valid JSON';
 
-		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 5 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 5 );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'invalid_response', $result->get_error_code(), 'Error code should be invalid_response' );
@@ -286,7 +286,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 			{"term": "e", "confidence": 0.5, "is_new": false}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 3 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 3 );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
 		$this->assertCount( 3, $result, 'Should be limited to 3 suggestions' );
@@ -309,7 +309,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 			{"term": "mid", "confidence": 0.6, "is_new": true}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 10 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
 
 		$this->assertEquals( 'high', $result[0]['term'], 'First should be highest confidence' );
 		$this->assertEquals( 'mid', $result[1]['term'], 'Second should be mid confidence' );
@@ -331,7 +331,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 			{"term": "under", "confidence": -0.5, "is_new": true}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 10 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
 
 		$this->assertEquals( 1.0, $result[0]['confidence'], 'Confidence above 1 should be clamped to 1.0' );
 		$this->assertEquals( 0.0, $result[1]['confidence'], 'Confidence below 0 should be clamped to 0.0' );
@@ -352,7 +352,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 			{"term": "finance", "confidence": 0.8, "is_new": false}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array( 'finance' ), 'allow_new', array(), 10 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
 
 		$this->assertArrayHasKey( 'parent', $result[0], 'First suggestion should have parent key' );
 		$this->assertEquals( 'technology', $result[0]['parent'], 'Parent should be technology' );
@@ -377,7 +377,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 			{"term": "also valid", "confidence": 0.6, "is_new": true}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 10 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
 
 		$this->assertCount( 2, $result, 'Should only have 2 valid suggestions' );
 		$this->assertEquals( 'valid', $result[0]['term'] );
@@ -396,7 +396,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$response = '{"suggestions": [{"term": "test", "is_new": true}]}';
 
-		$result = $method->invoke( $this->ability, $response, array(), 'allow_new', array(), 10 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
 
 		$this->assertEquals( 0.5, $result[0]['confidence'], 'Missing confidence should default to 0.5' );
 	}
@@ -411,76 +411,16 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
-		// AI says "tech" is new, but it exists in our list as "Tech".
+		// Create a real term so parse_suggestions can find it via get_existing_terms().
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Tech' ) );
+
+		// AI says "tech" is new, but it exists in the DB as "Tech".
 		$response = '{"suggestions": [{"term": "tech", "confidence": 0.9, "is_new": true}]}';
 
-		$result = $method->invoke( $this->ability, $response, array( 'Tech' ), 'allow_new', array(), 10 );
+		$result = $method->invoke( $this->ability, $response, 'existing_only', array(), 'post_tag', 10 );
 
 		$this->assertFalse( $result[0]['is_new'], 'Should be false because "Tech" exists (case-insensitive match)' );
 		$this->assertEquals( 'Tech', $result[0]['term'], 'Should use the original capitalized term name from the existing terms list' );
-	}
-
-	/**
-	 * Test that build_prompt() wraps content in XML tags.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_build_prompt_wraps_content() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_prompt' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag' );
-
-		$this->assertStringContainsString( '<content>Test content</content>', $result, 'Should wrap content in XML tags' );
-	}
-
-	/**
-	 * Test that build_prompt() does not include existing terms or strategy tags.
-	 *
-	 * Existing terms are no longer sent to the LLM to avoid scaling issues.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_build_prompt_excludes_existing_terms_and_strategy() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_prompt' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag' );
-
-		$this->assertStringNotContainsString( '<existing-terms>', $result, 'Should not include existing terms' );
-		$this->assertStringNotContainsString( '<strategy>', $result, 'Should not include strategy tag' );
-	}
-
-	/**
-	 * Test that build_prompt() includes assigned terms when provided.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_build_prompt_includes_assigned_terms() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_prompt' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', array( 'php', 'wordpress' ) );
-
-		$this->assertStringContainsString( '<assigned-terms>php, wordpress</assigned-terms>', $result, 'Should include assigned terms' );
-	}
-
-	/**
-	 * Test that build_prompt() omits assigned terms tag when empty.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_build_prompt_omits_empty_assigned_terms() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_prompt' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', array() );
-
-		$this->assertStringNotContainsString( '<assigned-terms>', $result, 'Should not include assigned terms when empty' );
 	}
 
 	/**
@@ -499,7 +439,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 			{"term": "python", "confidence": 0.7, "is_new": true}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array( 'php', 'javascript', 'python' ), 'allow_new', array( 'PHP' ), 10 );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array( 'PHP' ), 'post_tag', 10 );
 
 		$this->assertCount( 2, $result, 'Should exclude assigned term' );
 		$this->assertEquals( 'javascript', $result[0]['term'] );
@@ -516,13 +456,17 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
+		// Create real terms so parse_suggestions can find them via get_existing_terms().
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'php' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'javascript' ) );
+
 		$response = '{"suggestions": [
 			{"term": "php", "confidence": 0.9, "is_new": true},
 			{"term": "brand new term", "confidence": 0.85, "is_new": true},
 			{"term": "javascript", "confidence": 0.8, "is_new": true}
 		]}';
 
-		$result = $method->invoke( $this->ability, $response, array( 'php', 'javascript' ), 'existing_only', array(), 10 );
+		$result = $method->invoke( $this->ability, $response, 'existing_only', array(), 'post_tag', 10 );
 
 		$this->assertCount( 2, $result, 'Should only include existing terms' );
 		$this->assertEquals( 'php', $result[0]['term'] );
@@ -560,36 +504,6 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that build_prompt() includes available terms when provided.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_build_prompt_includes_available_terms() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_prompt' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', array(), array( 'php', 'wordpress', 'javascript' ) );
-
-		$this->assertStringContainsString( '<available-terms>php, wordpress, javascript</available-terms>', $result, 'Should include available terms' );
-	}
-
-	/**
-	 * Test that build_prompt() omits available terms tag when empty.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_build_prompt_omits_empty_available_terms() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_prompt' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'Test content', 'post_tag', array(), array() );
-
-		$this->assertStringNotContainsString( '<available-terms>', $result, 'Should not include available terms when empty' );
-	}
-
-	/**
 	 * Test that get_existing_terms() returns term names for a valid taxonomy.
 	 *
 	 * @since x.x.x
@@ -600,8 +514,8 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create some terms.
-		wp_insert_term( 'PHP', 'post_tag' );
-		wp_insert_term( 'JavaScript', 'post_tag' );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PHP' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'JavaScript' ) );
 
 		$result = $method->invoke( $this->ability, 'post_tag' );
 
@@ -636,8 +550,8 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'get_top_terms' );
 		$method->setAccessible( true );
 
-		wp_insert_term( 'TopTerm', 'post_tag' );
-		wp_insert_term( 'AnotherTerm', 'post_tag' );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'TopTerm' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'AnotherTerm' ) );
 
 		$result = $method->invoke( $this->ability, 'post_tag' );
 
@@ -656,9 +570,9 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'get_top_terms' );
 		$method->setAccessible( true );
 
-		wp_insert_term( 'Term1', 'post_tag' );
-		wp_insert_term( 'Term2', 'post_tag' );
-		wp_insert_term( 'Term3', 'post_tag' );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Term1' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Term2' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Term3' ) );
 
 		$result = $method->invoke( $this->ability, 'post_tag', 2 );
 
@@ -680,36 +594,6 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertIsArray( $result );
 		$this->assertEmpty( $result );
-	}
-
-	/**
-	 * Test that get_taxonomy_label() returns the human-readable label.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_taxonomy_label_returns_label() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'get_taxonomy_label' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'post_tag' );
-
-		$this->assertEquals( 'tags', $result, 'Should return the lowercase plural label for post_tag' );
-	}
-
-	/**
-	 * Test that get_taxonomy_label() returns slug for invalid taxonomy.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_taxonomy_label_returns_slug_for_invalid_taxonomy() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'get_taxonomy_label' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->ability, 'nonexistent_taxonomy' );
-
-		$this->assertEquals( 'nonexistent_taxonomy', $result, 'Should fall back to taxonomy slug' );
 	}
 
 	/**
