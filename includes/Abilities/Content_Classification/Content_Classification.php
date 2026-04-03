@@ -307,9 +307,23 @@ class Content_Classification extends Abstract_Ability {
 			$available_terms = $this->get_top_terms( $taxonomy );
 		}
 
-		// Build the prompt.
-		// We supply the currently assigned terms to avoid redundant suggestions.
-		$prompt = $this->build_prompt( $context, $taxonomy, $assigned_terms, $available_terms );
+		// Piece together the various prompt parts.
+		$prompt_parts = array();
+
+		$prompt_parts[] = '<taxonomy>' . $taxonomy . '</taxonomy>';
+		$prompt_parts[] = '<content>' . $context . '</content>';
+
+		// If we have currently assigned terms, add them to the prompt to avoid redundant suggestions.
+		if ( ! empty( $assigned_terms ) ) {
+			$prompt_parts[] = '<assigned-terms>' . implode( ', ', $assigned_terms ) . '</assigned-terms>';
+		}
+
+		// If we're using the existing_only strategy, add the top 100 terms to the prompt.
+		if ( ! empty( $available_terms ) ) {
+			$prompt_parts[] = '<available-terms>' . implode( ', ', $available_terms ) . '</available-terms>';
+		}
+
+		$prompt = implode( "\n", $prompt_parts );
 
 		/**
 		 * Filters the prompt string before it is sent to the AI model for taxonomy suggestion generation.
@@ -327,25 +341,21 @@ class Content_Classification extends Abstract_Ability {
 		 */
 		$prompt = (string) apply_filters( 'wpai_content_classification_prompt', $prompt, $context, $taxonomy, $assigned_terms, $available_terms );
 
+		$builder = $this->get_prompt_builder( $prompt );
+
+		if ( is_wp_error( $builder ) ) {
+			return $builder;
+		}
+
 		// Generate the suggestions using the AI client with structured output.
-		$result = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.5 )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->as_json_response( $this->suggestions_schema() )
-			->generate_text();
+		$result = $builder->as_json_response( $this->suggestions_schema() )->generate_text();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
-		// Only fetch existing terms when we need them for post-processing (existing_only strategy).
-		$existing_terms = Content_Classification_Experiment::STRATEGY_EXISTING_ONLY === $strategy
-			? $this->get_existing_terms( $taxonomy )
-			: array();
-
 		// Parse, match against existing terms, filter, and limit.
-		$suggestions = $this->parse_suggestions( $result, $existing_terms, $strategy, $assigned_terms, $max_suggestions );
+		$suggestions = $this->parse_suggestions( $result, $strategy, $assigned_terms, $taxonomy, $max_suggestions );
 
 		if ( is_wp_error( $suggestions ) ) {
 			return $suggestions;
@@ -373,104 +383,28 @@ class Content_Classification extends Abstract_Ability {
 	}
 
 	/**
-	 * Gets existing terms for a taxonomy.
+	 * Get the prompt builder for generating taxonomy term suggestions.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $taxonomy The taxonomy to get terms for.
-	 * @return array<string> List of existing term names.
+	 * @param string $prompt The prompt to use for generating taxonomy term suggestions.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
-	protected function get_existing_terms( string $taxonomy ): array {
-		$terms = get_terms(
-			array(
-				'taxonomy'   => $taxonomy,
-				'hide_empty' => false,
-				'fields'     => 'names',
-			)
-		);
+	private function get_prompt_builder( string $prompt ) {
+		$builder = wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_temperature( 0.5 )
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
 
-		if ( is_wp_error( $terms ) ) {
-			return array();
+		// Return a more specific error if there isn't a model that supports text generation.
+		if ( ! $builder->is_supported_for_text_generation() ) {
+			return new WP_Error(
+				'unsupported_model',
+				esc_html__( 'Term generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+			);
 		}
 
-		return (array) $terms;
-	}
-
-	/**
-	 * Gets the top terms for a taxonomy, ordered by usage count.
-	 *
-	 * Used to provide the LLM with a set of existing terms to select from
-	 * when using the existing_only strategy, improving match quality.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $taxonomy The taxonomy to get terms for.
-	 * @param int    $limit    Maximum number of terms to return.
-	 * @return array<string> List of term names ordered by count descending.
-	 */
-	protected function get_top_terms( string $taxonomy, int $limit = 100 ): array {
-		$terms = get_terms(
-			array(
-				'taxonomy'   => $taxonomy,
-				'hide_empty' => false,
-				'fields'     => 'names',
-				'orderby'    => 'count',
-				'order'      => 'DESC',
-				'number'     => $limit,
-			)
-		);
-
-		if ( is_wp_error( $terms ) ) {
-			return array();
-		}
-
-		return (array) $terms;
-	}
-
-	/**
-	 * Gets a human-readable label for the taxonomy.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $taxonomy The taxonomy slug.
-	 * @return string The taxonomy label.
-	 */
-	protected function get_taxonomy_label( string $taxonomy ): string {
-		$taxonomy_obj = get_taxonomy( $taxonomy );
-
-		if ( $taxonomy_obj ) {
-			return strtolower( $taxonomy_obj->labels->name );
-		}
-
-		return $taxonomy;
-	}
-
-	/**
-	 * Builds the prompt with XML-like content wrapping.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string        $context         The content to analyze.
-	 * @param string        $taxonomy        The taxonomy slug.
-	 * @param array<string> $assigned_terms  Terms already assigned to the post.
-	 * @param array<string> $available_terms Available terms to suggest from.
-	 * @return string The formatted prompt.
-	 */
-	protected function build_prompt( string $context, string $taxonomy, array $assigned_terms = array(), array $available_terms = array() ): string {
-		$prompt_parts = array();
-
-		$prompt_parts[] = '<taxonomy>' . $taxonomy . '</taxonomy>';
-		$prompt_parts[] = '<content>' . $context . '</content>';
-
-		if ( ! empty( $assigned_terms ) ) {
-			$prompt_parts[] = '<assigned-terms>' . implode( ', ', $assigned_terms ) . '</assigned-terms>';
-		}
-
-		if ( ! empty( $available_terms ) ) {
-			$prompt_parts[] = '<available-terms>' . implode( ', ', $available_terms ) . '</available-terms>';
-		}
-
-		return implode( "\n", $prompt_parts );
+		return $builder;
 	}
 
 	/**
@@ -511,13 +445,13 @@ class Content_Classification extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string        $response        The raw AI response.
-	 * @param array<string> $existing_terms  List of existing term names.
 	 * @param string        $strategy        The suggestion strategy ('existing_only' or 'allow_new').
 	 * @param array<string> $assigned_terms  Terms already assigned to the post.
+	 * @param string        $taxonomy        The taxonomy to suggest terms for.
 	 * @param int           $max_suggestions The maximum number of suggestions to return.
 	 * @return array<array{term: string, confidence: float, is_new: bool, parent?: string}>|\WP_Error Parsed suggestions or error.
 	 */
-	protected function parse_suggestions( string $response, array $existing_terms, string $strategy, array $assigned_terms, int $max_suggestions ) {
+	private function parse_suggestions( string $response, string $strategy, array $assigned_terms, string $taxonomy, int $max_suggestions ) {
 		$decoded = json_decode( $response, true );
 
 		if ( ! is_array( $decoded ) || ! isset( $decoded['suggestions'] ) || ! is_array( $decoded['suggestions'] ) ) {
@@ -527,17 +461,20 @@ class Content_Classification extends Abstract_Ability {
 			);
 		}
 
+		// Only fetch existing terms when we need them for post-processing (existing_only strategy).
+		$existing_terms = Content_Classification_Experiment::STRATEGY_EXISTING_ONLY === $strategy
+			? $this->get_existing_terms( $taxonomy )
+			: array();
+
 		// Build a lowercase → original name lookup for existing terms.
-		$existing_terms_map = array();
-		foreach ( $existing_terms as $existing_term ) {
-			$existing_terms_map[ strtolower( $existing_term ) ] = $existing_term;
+		// We don't use slugs here because the LLM may generate terms that don't match the taxonomy slug.
+		if ( ! empty( $existing_terms ) ) {
+			$existing_terms = array_combine( array_map( 'strtolower', $existing_terms ), $existing_terms );
 		}
 
 		// Build a lowercase set of assigned terms for filtering.
-		$assigned_terms_lower = array_map( 'strtolower', $assigned_terms );
-
-		$suggestions = array();
-
+		$assigned_terms = array_map( 'strtolower', $assigned_terms );
+		$suggestions    = array();
 		foreach ( $decoded['suggestions'] as $item ) {
 			if ( ! is_array( $item ) || empty( $item['term'] ) ) {
 				continue;
@@ -545,12 +482,12 @@ class Content_Classification extends Abstract_Ability {
 
 			$term       = sanitize_text_field( trim( $item['term'] ) );
 			$term_lower = strtolower( $term );
-			$is_new     = ! isset( $existing_terms_map[ $term_lower ] );
+			$is_new     = ! isset( $existing_terms[ $term_lower ] );
 			$confidence = isset( $item['confidence'] ) ? (float) $item['confidence'] : 0.5;
 
 			// Skip terms already assigned to the post.
 			// The agent should avoid suggesting these, but just in case we'll check here as well.
-			if ( in_array( $term_lower, $assigned_terms_lower, true ) ) {
+			if ( in_array( $term_lower, $assigned_terms, true ) ) {
 				continue;
 			}
 
@@ -561,7 +498,7 @@ class Content_Classification extends Abstract_Ability {
 
 			// Use the original capitalized name for existing terms.
 			if ( ! $is_new ) {
-				$term = $existing_terms_map[ $term_lower ];
+				$term = $existing_terms[ $term_lower ];
 			}
 
 			$suggestion = array(
@@ -587,5 +524,60 @@ class Content_Classification extends Abstract_Ability {
 
 		// Limit to max suggestions.
 		return array_slice( $suggestions, 0, $max_suggestions );
+	}
+
+	/**
+	 * Gets existing terms for a taxonomy.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy to get terms for.
+	 * @return array<string> List of existing term names.
+	 */
+	private function get_existing_terms( string $taxonomy ): array {
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'fields'     => 'names',
+			)
+		);
+
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		}
+
+		return (array) $terms;
+	}
+
+	/**
+	 * Gets the top terms for a taxonomy, ordered by usage count.
+	 *
+	 * Used to provide the LLM with a set of existing terms to select from
+	 * when using the existing_only strategy, improving match quality.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy to get terms for.
+	 * @param int    $limit    Maximum number of terms to return.
+	 * @return array<string> List of term names ordered by count descending.
+	 */
+	private function get_top_terms( string $taxonomy, int $limit = 100 ): array {
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'fields'     => 'names',
+				'orderby'    => 'count',
+				'order'      => 'DESC',
+				'number'     => $limit,
+			)
+		);
+
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		}
+
+		return (array) $terms;
 	}
 }
