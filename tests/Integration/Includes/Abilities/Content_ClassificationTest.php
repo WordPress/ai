@@ -773,4 +773,155 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'show_in_rest', $meta, 'Meta should have show_in_rest' );
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
+
+	/**
+	 * Test that get_prompt_builder() returns a WP_Error when no text generation model is available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_prompt_builder_returns_error_without_valid_model() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'Test prompt' );
+
+		// Without configured AI credentials, the builder should indicate no supported model.
+		if ( is_wp_error( $result ) ) {
+			$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
+		} else {
+			// If a model happens to be available in the test environment, verify it returns a builder.
+			$this->assertIsObject( $result, 'Should return a prompt builder object' );
+		}
+	}
+
+	/**
+	 * Test that generate_suggestions() returns a WP_Error when no AI model is available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_suggestions_returns_error_without_ai() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$this->ability,
+			array( 'content' => 'Test content for suggestions.' ),
+			'post_tag',
+			'allow_new',
+			5,
+			array()
+		);
+
+		// Without a configured AI provider, this should return a WP_Error.
+		$this->assertInstanceOf( WP_Error::class, $result, 'Should return WP_Error without AI provider' );
+	}
+
+	/**
+	 * Test that generate_suggestions() builds prompt with assigned terms.
+	 *
+	 * Verifies the prompt filter receives the expected assigned terms.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_suggestions_passes_assigned_terms_to_prompt_filter() {
+		$captured_prompt = '';
+
+		add_filter(
+			'wpai_content_classification_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		// This will fail at the AI client, but the filter fires before that.
+		$method->invoke(
+			$this->ability,
+			array( 'content' => 'Test content.' ),
+			'post_tag',
+			'allow_new',
+			5,
+			array( 'existing-tag' )
+		);
+
+		$this->assertStringContainsString( '<assigned-terms>existing-tag</assigned-terms>', $captured_prompt, 'Prompt should contain assigned terms' );
+		$this->assertStringContainsString( '<content>', $captured_prompt, 'Prompt should contain content tags' );
+		$this->assertStringContainsString( '<taxonomy>post_tag</taxonomy>', $captured_prompt, 'Prompt should contain taxonomy' );
+	}
+
+	/**
+	 * Test that generate_suggestions() includes available terms for existing_only strategy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_suggestions_includes_available_terms_for_existing_only() {
+		// Create terms so they appear in the prompt.
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'AvailableTerm' ) );
+
+		$captured_prompt = '';
+
+		add_filter(
+			'wpai_content_classification_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		$method->invoke(
+			$this->ability,
+			array( 'content' => 'Test content.' ),
+			'post_tag',
+			'existing_only',
+			5,
+			array()
+		);
+
+		$this->assertStringContainsString( '<available-terms>', $captured_prompt, 'Prompt should contain available terms for existing_only strategy' );
+		$this->assertStringContainsString( 'AvailableTerm', $captured_prompt, 'Prompt should include the created term' );
+	}
+
+	/**
+	 * Test that generate_suggestions() omits available terms for allow_new strategy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_suggestions_omits_available_terms_for_allow_new() {
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'SomeTerm' ) );
+
+		$captured_prompt = '';
+
+		add_filter(
+			'wpai_content_classification_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		$method->invoke(
+			$this->ability,
+			array( 'content' => 'Test content.' ),
+			'post_tag',
+			'allow_new',
+			5,
+			array()
+		);
+
+		$this->assertStringNotContainsString( '<available-terms>', $captured_prompt, 'Prompt should not contain available terms for allow_new strategy' );
+	}
 }
