@@ -92,7 +92,11 @@ export default function TitleToolbar(): JSX.Element | null {
 			);
 			editPost( { title: generatedTitle } );
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
+			const message =
+				typeof error === 'string'
+					? error
+					: error?.message ?? __( 'Failed to generate title.', 'ai' );
+			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
 				id: 'ai_title_generation_error',
 				isDismissible: true,
 			} );
