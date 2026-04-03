@@ -158,6 +158,6 @@ class Meta_Description extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function clear_active_plugin_cache(): void {
-		wp_cache_delete( 'wpai_active_seo_plugin', 'wpai' );
+		delete_transient( 'wpai_active_seo_plugin' );
 	}
 }
