@@ -26,7 +26,7 @@ class SEO_Integration {
 	 * @since x.x.x
 	 * @var string
 	 */
-	public const FALLBACK_META_KEY = '_meta_description';
+	public const FALLBACK_META_KEY = 'wpai_meta_description';
 
 	/**
 	 * Returns the list of supported SEO plugins and their meta keys.

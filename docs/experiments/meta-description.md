@@ -17,7 +17,7 @@ When enabled, the Meta Description experiment adds a "Meta Description" panel to
 - Editable textarea allows fine-tuning the suggestion before applying
 - Live character count with color-coded indicator (green for 140–160, yellow outside range)
 - Automatic SEO plugin detection — writes to the correct meta field for Yoast SEO, Rank Math, All in One SEO, and SEOPress
-- Falls back to a standard post meta field (`_meta_description`) when no SEO plugin is active
+- Falls back to a standard post meta field (`wpai_meta_description`) when no SEO plugin is active
 - Copy to clipboard functionality for use with unsupported SEO plugins or external tools
 - Works with any post type that has `show_in_rest` enabled
 
@@ -136,9 +136,9 @@ The `SEO_Integration` utility class detects active SEO plugins and resolves the 
 | Rank Math | `rank-math` | `rank_math_description` |
 | All in One SEO | `all-in-one-seo` | `_aioseo_description` |
 | SEOPress | `seopress` | `_seopress_titles_desc` |
-| None (fallback) | — | `_meta_description` |
+| None (fallback) | — | `wpai_meta_description` |
 
-When no SEO plugin is active, the experiment registers the fallback `_meta_description` meta key for REST-enabled post types so it can be read and written through the WordPress data layer.
+When no SEO plugin is active, the experiment registers the fallback `wpai_meta_description` meta key for REST-enabled post types so it can be read and written through the WordPress data layer.
 
 ## Using the Ability via REST API
 
@@ -358,7 +358,7 @@ add_filter( 'wpai_experiments_normalize_content', function( $content ) {
 
 3. **Test SEO plugin integration:**
    - With Yoast SEO active, verify the description is saved to `_yoast_wpseo_metadesc`
-   - Without any SEO plugin, verify the description is saved to `_meta_description`
+   - Without any SEO plugin, verify the description is saved to `wpai_meta_description`
    - Verify the correct meta key is displayed in the localized data
 
 4. **Test with different post types:**

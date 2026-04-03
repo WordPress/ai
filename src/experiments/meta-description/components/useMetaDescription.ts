@@ -43,7 +43,7 @@ interface UseMetaDescriptionReturn {
  */
 export function useMetaDescription(): UseMetaDescriptionReturn {
 	const localized = getLocalized();
-	const metaKey = localized?.metaKey ?? '_meta_description';
+	const metaKey = localized?.metaKey ?? 'wpai_meta_description';
 	const hasSeoPlugin = Boolean( localized?.seoPlugin );
 
 	const { editPost } = useDispatch( editorStore );

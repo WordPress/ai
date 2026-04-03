@@ -108,7 +108,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		);
 
 		$meta = get_registered_meta_keys( 'post', 'post' );
-		$this->assertArrayHasKey( '_meta_description', $meta, 'register_post_meta should be called during register()' );
+		$this->assertArrayHasKey( 'wpai_meta_description', $meta, 'register_post_meta should be called during register()' );
 	}
 
 	/**
@@ -136,9 +136,9 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		$experiment->register_post_meta();
 
 		$meta = get_registered_meta_keys( 'post', 'post' );
-		$this->assertArrayHasKey( '_meta_description', $meta, 'Fallback meta key should be registered for post type' );
-		$this->assertTrue( $meta['_meta_description']['show_in_rest'], 'Meta key should be available in REST API' );
-		$this->assertEquals( 'string', $meta['_meta_description']['type'], 'Meta key type should be string' );
+		$this->assertArrayHasKey( 'wpai_meta_description', $meta, 'Fallback meta key should be registered for post type' );
+		$this->assertTrue( $meta['wpai_meta_description']['show_in_rest'], 'Meta key should be available in REST API' );
+		$this->assertEquals( 'string', $meta['wpai_meta_description']['type'], 'Meta key type should be string' );
 	}
 
 	/**
@@ -151,7 +151,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		$experiment->register_post_meta();
 
 		$meta = get_registered_meta_keys( 'post', 'attachment' );
-		$this->assertArrayNotHasKey( '_meta_description', $meta, 'Meta key should not be registered for attachment post type' );
+		$this->assertArrayNotHasKey( 'wpai_meta_description', $meta, 'Meta key should not be registered for attachment post type' );
 	}
 
 	/**
@@ -172,7 +172,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 
 		$meta = get_registered_meta_keys( 'post', 'post' );
 		$this->assertArrayNotHasKey( '_yoast_wpseo_metadesc', $meta, 'Should not register SEO plugin meta key' );
-		$this->assertArrayNotHasKey( '_meta_description', $meta, 'Should not register fallback meta when SEO plugin is active' );
+		$this->assertArrayNotHasKey( 'wpai_meta_description', $meta, 'Should not register fallback meta when SEO plugin is active' );
 
 		// Restore.
 		update_option( 'active_plugins', $active );
