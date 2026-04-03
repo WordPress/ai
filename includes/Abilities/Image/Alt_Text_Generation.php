@@ -380,12 +380,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 			->using_temperature( 0.3 )
 			->using_model_preference( ...get_preferred_vision_models() );
 
-		// Return a more specific error if there isn't a model that supports text generation.
-		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
-			return new WP_Error( 'unsupported_model', esc_html__( 'Alt text generation failed. Please ensure you have a connected provider that supports both text generation and vision capabilities.', 'ai' ) );
-		}
-
-		return $prompt_builder;
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Alt text generation failed. Please ensure you have a connected provider that supports both text generation and vision capabilities.', 'ai' )
+		);
 	}
 
 	/**

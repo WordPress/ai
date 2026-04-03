@@ -284,11 +284,9 @@ class Title_Generation extends Abstract_Ability {
 			->using_candidate_count( $candidates )
 			->using_model_preference( ...get_preferred_models_for_text_generation() );
 
-		// Return a more specific error if there isn't a model that supports text generation.
-		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
-			return new WP_Error( 'unsupported_model', esc_html__( 'Title generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' ) );
-		}
-
-		return $prompt_builder;
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Title generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }
