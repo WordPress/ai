@@ -18,7 +18,7 @@ use function WordPress\AI\normalize_content;
 /**
  * Alt text generation WordPress Ability.
  *
- * Uses AI vision models to generate descriptive alt text for images.
+ * Uses AI vision models to propose alt text aligned with WCAG-oriented practice.
  *
  * @since 0.3.0
  */
@@ -32,6 +32,15 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @var int
 	 */
 	protected const MAX_ALT_TEXT_LENGTH = 125;
+
+	/**
+	 * Model output token that means the correct alternative text is empty (alt="").
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const DECORATIVE_ALT_TOKEN = '[[DECORATIVE_ALT]]';
 
 	/**
 	 * {@inheritDoc}
@@ -77,7 +86,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			'properties' => array(
 				'alt_text'      => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'Generated alt text for the image.', 'ai' ),
+					'description' => esc_html__( 'Generated alternative text for the image; may be empty when alt="" is correct.', 'ai' ),
 				),
 				'is_decorative' => array(
 					'type'        => 'boolean',
@@ -122,15 +131,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 			return $result;
 		}
 
-		if ( empty( $result ) ) {
-			return new WP_Error(
-				'no_results',
-				esc_html__( 'No alt text was generated.', 'ai' )
-			);
-		}
-
 		// Detect the decorative token from the AI response.
-		if ( '[[DECORATIVE_ALT]]' === trim( $result ) ) {
+		if ( 0 === strcasecmp( trim( $result ), self::DECORATIVE_ALT_TOKEN ) ) {
 			return array(
 				'alt_text'      => '',
 				'is_decorative' => true,
