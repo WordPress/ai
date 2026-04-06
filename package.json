@@ -15,6 +15,7 @@
   },
   "files": [
     "build",
+    "build-scripts",
     "includes",
     "vendor",
     "README.md",

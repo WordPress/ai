@@ -6,7 +6,8 @@ The plugin follows a modular, experiment-based architecture:
 ```
 ai/
 ├── ai.php                            # Plugin bootstrap
-├── build/                            # Built assets
+├── build/                            # wp-build route assets
+├── build-scripts/                    # wp-scripts built assets
 ├── docs/                             # Documentation
 │   ├── experiments/                  # Experiment specific documentation
 │   ├── ARCHITECTURE_OVERVIEW.md      # Architecture Overview
