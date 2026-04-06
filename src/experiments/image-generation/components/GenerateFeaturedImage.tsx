@@ -25,7 +25,6 @@ export default function GenerateFeaturedImage(): JSX.Element {
 	const { editPost } = useDispatch( editorStore );
 
 	const content = select( editorStore ).getEditedPostContent();
-	const postId = select( editorStore ).getCurrentPostId();
 	const featuredImage =
 		select( editorStore ).getEditedPostAttribute( 'featured_media' );
 
@@ -49,11 +48,9 @@ export default function GenerateFeaturedImage(): JSX.Element {
 		);
 
 		try {
-			const generatedImageData = await generateImage(
-				postId as number,
-				content,
-				{ onProgress: setProgressMessage }
-			);
+			const generatedImageData = await generateImage( content, {
+				onProgress: setProgressMessage,
+			} );
 			const importedImage = await uploadImage( generatedImageData, {
 				onProgress: setProgressMessage,
 			} );
