@@ -59,6 +59,11 @@ module.exports = {
 			'src/experiments/alt-text-generation',
 			'index.tsx'
 		),
+		'experiments/content-provenance': path.resolve(
+			process.cwd(),
+			'src/experiments/content-provenance',
+			'index.js'
+		),
 		'experiments/alt-text-generation-media': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',
