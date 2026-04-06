@@ -67,9 +67,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 					'description'       => esc_html__( 'Optional context about the image or surrounding content to improve alt text relevance.', 'ai' ),
 				),
 				'image_meta'    => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_textarea_field',
-					'description'       => esc_html__( 'Structured metadata about how the image block is used, such as whether it is linked.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Structured metadata about how the image block is used, such as whether it is linked.', 'ai' ),
 				),
 			),
 		);
