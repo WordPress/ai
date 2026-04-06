@@ -15,7 +15,7 @@ const IMAGE_PLACEHOLDER = '[[IMAGE_GOES_HERE]]';
 /**
  * Data about how the image block is used in the editor.
  */
-export interface ImageBlockUsageData {
+export interface ImageBlockMetaData {
 	linkDestination?: string | undefined;
 	href?: string | undefined;
 	linkTarget?: string | undefined;
@@ -31,30 +31,36 @@ export interface AltTextGenerationResult {
 }
 
 /**
- * Builds a human-readable image block usage string from block attributes.
+ * Builds a human-readable image block meta string from block attributes.
  *
- * @param {ImageBlockUsageData} usage The block usage data.
+ * @param {ImageBlockMetaData} meta The block meta data.
  * @return {string} A description of how the image block is used.
  */
-function buildImageBlockUsage( usage: ImageBlockUsageData ): string {
+function buildImageBlockMeta( meta: ImageBlockMetaData ): string {
 	const parts: string[] = [];
 
-	if ( usage.linkDestination && usage.linkDestination !== 'none' ) {
-		parts.push( 'Image is wrapped in a link.' );
-		parts.push( `Link destination type: ${ usage.linkDestination }` );
-		if ( usage.href ) {
-			parts.push( `Link URL: ${ usage.href }` );
+	if ( meta.linkDestination && meta.linkDestination !== 'none' ) {
+		parts.push(
+			'In the WordPress editor this image block is hyperlinked.'
+		);
+		if ( meta.href ) {
+			parts.push( `Link URL: ${ meta.href }` );
 		}
-		if ( usage.linkTarget === '_blank' ) {
+		parts.push( `Link destination setting: ${ meta.linkDestination }` );
+		if ( meta.linkTarget === '_blank' ) {
 			parts.push( 'Link opens in a new tab.' );
 		}
+		parts.push(
+			'When the image is the only content inside the link, alternative text should describe the link purpose or destination (not a visual description of the image).',
+			'If visible text in the same link already describes that purpose, respond with exactly [[DECORATIVE_ALT]] for empty alternative text.'
+		);
 	} else {
 		parts.push( 'Image is not linked.' );
 	}
 
-	if ( usage.caption && typeof usage.caption === 'string' ) {
+	if ( meta.caption && typeof meta.caption === 'string' ) {
 		// Strip HTML tags to get plain text from RichText values.
-		const plainCaption = usage.caption.replace( /<[^>]+>/g, '' ).trim();
+		const plainCaption = meta.caption.replace( /<[^>]+>/g, '' ).trim();
 		if ( plainCaption ) {
 			parts.push( `Image has a visible caption: "${ plainCaption }"` );
 		}
@@ -66,11 +72,11 @@ function buildImageBlockUsage( usage: ImageBlockUsageData ): string {
 /**
  * Generates alt text for an image using the AI ability.
  *
- * @param {number|undefined}              attachmentId    The attachment ID.
- * @param {string|undefined}              imageUrl        The image URL (fallback if no attachment ID).
- * @param {string|undefined}              content         The content of the post.
- * @param {string|undefined}              clientId        The client ID of the current image block.
- * @param {ImageBlockUsageData|undefined} imageBlockUsage Data about how the image block is used.
+ * @param {number|undefined}             attachmentId       The attachment ID.
+ * @param {string|undefined}             imageUrl           The image URL (fallback if no attachment ID).
+ * @param {string|undefined}             content            The content of the post.
+ * @param {string|undefined}             clientId           The client ID of the current image block.
+ * @param {ImageBlockMetaData|undefined} imageBlockMetaData Data about how the image block is used.
  * @return {Promise<AltTextGenerationResult>} The generated alt text result.
  */
 export async function generateAltText(
@@ -78,7 +84,7 @@ export async function generateAltText(
 	imageUrl?: string | undefined,
 	content?: string | undefined,
 	clientId?: string | undefined,
-	imageBlockUsage?: ImageBlockUsageData | undefined
+	imageBlockMetaData?: ImageBlockMetaData | undefined
 ): Promise< AltTextGenerationResult > {
 	const params: AltTextGenerationAbilityInput = {};
 
@@ -107,8 +113,8 @@ export async function generateAltText(
 		params.context = `Full article content, where the image has been replaced with the placeholder ${ IMAGE_PLACEHOLDER }: \n\n${ contentWithPlaceholder }`;
 	}
 
-	if ( imageBlockUsage ) {
-		params.image_meta = buildImageBlockUsage( imageBlockUsage );
+	if ( imageBlockMetaData ) {
+		params.image_meta = buildImageBlockMeta( imageBlockMetaData );
 	}
 
 	const response = await runAbility( 'ai/alt-text-generation', params );
