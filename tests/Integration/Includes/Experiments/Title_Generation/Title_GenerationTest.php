@@ -72,4 +72,56 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
+
+	/**
+	 * Test that register() adds the expected hooks.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_adds_hooks() {
+		$experiment = new Title_Generation();
+		$experiment->register();
+		$this->assertIsInt( has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ), 'Should register abilities hook' );
+		$this->assertIsInt( has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ), 'Should register assets hook' );
+	}
+
+	/**
+	 * Test that enqueue_assets() returns early for non-post screens.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_returns_early_for_non_post_screens() {
+		$experiment = new Title_Generation();
+
+		// Should not enqueue for a non-post screen.
+		$experiment->enqueue_assets( 'options-general.php' );
+
+		$this->assertFalse( wp_script_is( 'ai-experiments-title_generation', 'enqueued' ), 'Should not enqueue on options page' );
+	}
+
+	/**
+	 * Test that the experiment is not enabled when globally disabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_experiment_not_enabled_when_globally_disabled() {
+		update_option( 'wpai_features_enabled', false );
+
+		$experiment = new Title_Generation();
+
+		$this->assertFalse( $experiment->is_enabled(), 'Should not be enabled when global toggle is off' );
+	}
+
+	/**
+	 * Test that the experiment is not enabled when individually disabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_experiment_not_enabled_when_individually_disabled() {
+		update_option( 'wpai_feature_title-generation_enabled', false );
+
+		$experiment = new Title_Generation();
+
+		$this->assertFalse( $experiment->is_enabled(), 'Should not be enabled when feature toggle is off' );
+	}
 }
