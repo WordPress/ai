@@ -348,15 +348,54 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$response = '{"suggestions": [
-			{"term": "machine learning", "confidence": 0.9, "is_new": true, "parent": "technology"},
-			{"term": "finance", "confidence": 0.8, "is_new": false}
+			{"term": "Machine Learning", "confidence": 0.9, "parent": "Technology"},
+			{"term": "Finance", "confidence": 0.8}
+		]}';
+
+		// Use 'category' (hierarchical) so parent is preserved.
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'category', 10 );
+
+		$this->assertArrayHasKey( 'parent', $result[0], 'First suggestion should have parent key' );
+		$this->assertEquals( 'Technology', $result[0]['parent'], 'Parent should be Technology' );
+		$this->assertArrayNotHasKey( 'parent', $result[1], 'Second suggestion should not have parent key' );
+	}
+
+	/**
+	 * Test that parse_suggestions() strips parent for non-hierarchical taxonomies.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_strips_parent_for_non_hierarchical_taxonomy() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": "Machine Learning", "confidence": 0.9, "parent": "Technology"}
 		]}';
 
 		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
 
-		$this->assertArrayHasKey( 'parent', $result[0], 'First suggestion should have parent key' );
-		$this->assertEquals( 'technology', $result[0]['parent'], 'Parent should be technology' );
-		$this->assertArrayNotHasKey( 'parent', $result[1], 'Second suggestion should not have parent key' );
+		$this->assertArrayNotHasKey( 'parent', $result[0], 'Parent should be stripped for non-hierarchical taxonomy' );
+	}
+
+	/**
+	 * Test that parse_suggestions() strips parent when it matches the taxonomy slug.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_strips_taxonomy_slug_as_parent() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": "Machine Learning", "confidence": 0.9, "parent": "category"}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'category', 10 );
+
+		$this->assertArrayNotHasKey( 'parent', $result[0], 'Parent should be stripped when it matches the taxonomy slug' );
 	}
 
 	/**
@@ -495,12 +534,13 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'term', $item_props );
 		$this->assertArrayHasKey( 'confidence', $item_props );
 		$this->assertArrayNotHasKey( 'is_new', $item_props, 'is_new is determined server-side, not by the LLM' );
-		$this->assertArrayHasKey( 'parent', $item_props );
+		$this->assertArrayNotHasKey( 'parent', $item_props, 'parent is determined server-side from existing term hierarchy, not by the LLM' );
 
 		$required = $schema['properties']['suggestions']['items']['required'];
 		$this->assertContains( 'term', $required );
 		$this->assertContains( 'confidence', $required );
 		$this->assertNotContains( 'is_new', $required );
+		$this->assertNotContains( 'parent', $required, 'parent should not be required so the LLM can omit it' );
 	}
 
 	/**

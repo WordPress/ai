@@ -19,7 +19,7 @@ Goal: Analyze the provided content (wrapped in <content> tags, with any already-
 Rules:
 - The taxonomy to suggest terms for is wrapped in the <taxonomy> tag.
 - Suggest as many relevant terms as you can identify from the content.
-- The "term" field must contain ONLY the human-readable tag or category name (1-3 words).
+- The "term" field must contain ONLY the human-readable tag or category name (1-3 words), in Title Case (e.g., "Machine Learning", not "machine learning").
 - Confidence should reflect relevance: 1.0 = perfect match, 0.5 = somewhat relevant. Only suggest terms with confidence >= 0.5.
 - Do not suggest duplicate or near-duplicate terms.
 - Do not suggest terms listed in <assigned-terms> — they are already applied to this post.

@@ -217,9 +217,9 @@ async function addTermToPost(
 	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
 	const restBase = taxonomyObject?.rest_base ?? taxonomy;
 
-	// Resolve parent term ID for hierarchical taxonomies.
+	// Resolve parent term ID for hierarchical taxonomies only.
 	let parentId: number | undefined;
-	if ( suggestion.parent ) {
+	if ( suggestion.parent && taxonomyObject?.hierarchical ) {
 		const resolvedParent = await findOrCreateTerm(
 			taxonomy,
 			restBase,
@@ -290,7 +290,16 @@ async function findOrCreateTerm(
 		 ).saveEntityRecord( 'taxonomy', taxonomy, data );
 
 		return newTerm?.id ?? null;
-	} catch {
+	} catch ( error: any ) {
+		const { createErrorNotice } = dispatch( noticesStore ) as any;
+		createErrorNotice(
+			error?.message ||
+				`Could not add term "${ termName }". Please try again.`,
+			{
+				id: `${ NOTICE_ID }_term_${ termName }`,
+				isDismissible: true,
+			}
+		);
 		return null;
 	}
 }

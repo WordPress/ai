@@ -425,9 +425,8 @@ class Content_Classification extends Abstract_Ability {
 						'properties'           => array(
 							'term'       => array( 'type' => 'string' ),
 							'confidence' => array( 'type' => 'number' ),
-							'parent'     => array( 'type' => 'string' ),
 						),
-						'required'             => array( 'term', 'confidence', 'parent' ),
+						'required'             => array( 'term', 'confidence' ),
 						'additionalProperties' => false,
 					),
 				),
@@ -509,7 +508,13 @@ class Content_Classification extends Abstract_Ability {
 				'is_new'     => $is_new,
 			);
 
-			if ( ! empty( $item['parent'] ) ) {
+			// Only preserve parent for hierarchical taxonomies, and strip it
+			// when the AI returns the taxonomy slug itself as the parent.
+			if (
+				! empty( $item['parent'] )
+				&& is_taxonomy_hierarchical( $taxonomy )
+				&& strtolower( trim( $item['parent'] ) ) !== strtolower( $taxonomy )
+			) {
 				$suggestion['parent'] = sanitize_text_field( trim( $item['parent'] ) );
 			}
 
