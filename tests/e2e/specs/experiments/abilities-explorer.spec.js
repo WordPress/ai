@@ -65,7 +65,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'abilities-explorer' );
+		await enableExperiment( admin, page, 'Abilities Explorer' );
 
 		// Visit the Abilities Explorer page.
 		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
@@ -87,7 +87,7 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'abilities-explorer' );
+		await enableExperiment( admin, page, 'Abilities Explorer' );
 
 		// Visit the Abilities Explorer page.
 		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
