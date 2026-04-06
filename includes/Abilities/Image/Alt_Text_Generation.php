@@ -57,6 +57,11 @@ class Alt_Text_Generation extends Abstract_Ability {
 					'sanitize_callback' => 'sanitize_textarea_field',
 					'description'       => esc_html__( 'Optional context about the image or surrounding content to improve alt text relevance.', 'ai' ),
 				),
+				'image_meta'    => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_textarea_field',
+					'description'       => esc_html__( 'Structured metadata about how the image block is used, such as whether it is linked.', 'ai' ),
+				),
 			),
 		);
 	}
@@ -70,9 +75,13 @@ class Alt_Text_Generation extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'alt_text' => array(
+				'alt_text'      => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'Generated alt text for the image.', 'ai' ),
+				),
+				'is_decorative' => array(
+					'type'        => 'boolean',
+					'description' => esc_html__( 'Whether the image was determined to be decorative.', 'ai' ),
 				),
 			),
 		);
@@ -91,6 +100,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 				'attachment_id' => null,
 				'image_url'     => null,
 				'context'       => '',
+				'image_meta'    => '',
 			),
 		);
 
@@ -102,7 +112,11 @@ class Alt_Text_Generation extends Abstract_Ability {
 		}
 
 		// Generate the alt text.
-		$result = $this->generate_alt_text( $image_reference, normalize_content( $args['context'] ) );
+		$result = $this->generate_alt_text(
+			$image_reference,
+			normalize_content( $args['context'] ),
+			sanitize_textarea_field( $args['image_meta'] )
+		);
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -112,6 +126,14 @@ class Alt_Text_Generation extends Abstract_Ability {
 			return new WP_Error(
 				'no_results',
 				esc_html__( 'No alt text was generated.', 'ai' )
+			);
+		}
+
+		// Detect the decorative token from the AI response.
+		if ( '[[DECORATIVE_ALT]]' === trim( $result ) ) {
+			return array(
+				'alt_text'      => '',
+				'is_decorative' => true,
 			);
 		}
 
@@ -185,10 +207,11 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 *
 	 * @param array{reference: string} $image_reference Prepared image reference containing a data URI.
 	 * @param string                   $context         Optional context to improve alt text relevance.
+	 * @param string                   $image_meta      Optional metadata about how the image block is used.
 	 * @return string|\WP_Error The generated alt text or WP_Error on failure.
 	 */
-	protected function generate_alt_text( array $image_reference, string $context = '' ) {
-		$result = wp_ai_client_prompt( $this->build_prompt( $context ) )
+	protected function generate_alt_text( array $image_reference, string $context = '', string $image_meta = '' ) {
+		$result = wp_ai_client_prompt( $this->build_prompt( $context, $image_meta ) )
 			->with_file( $image_reference['reference'] )
 			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
 			->using_temperature( 0.3 )
@@ -368,11 +391,17 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param string $context Optional context about the image.
+	 * @param string $context    Optional context about the image.
+	 * @param string $image_meta Optional metadata about how the image block is used.
 	 * @return string The prompt for the AI.
 	 */
-	protected function build_prompt( string $context = '' ): string {
+	protected function build_prompt( string $context = '', string $image_meta = '' ): string {
 		$prompt = __( 'Generate alt text for this image.', 'ai' );
+
+		// If we have image block usage metadata, add it to the prompt.
+		if ( ! empty( $image_meta ) ) {
+			$prompt .= "\n\n<image-meta>" . $image_meta . '</image-meta>';
+		}
 
 		// If we have additional context, add it to the prompt.
 		if ( ! empty( $context ) ) {
