@@ -64,7 +64,7 @@ The ability can be called directly via REST API, making it useful for automation
      - Allows regenerating the summary from the block toolbar
 
 3. **Ability Execution:**
-   - Accepts `content` (string), `context` (string or post ID), and `length` (enum: 'short', 'medium', 'long') as input
+   - Accepts `content` (string), `context` (string or post ID), and `length` (string: 'short', 'medium', 'long') as input
    - If `context` is numeric, treats it as a post ID and fetches post content using `get_post_context()`
    - Normalizes content using `normalize_content()` helper
    - Sends content to AI client with system instruction for summarization (length-aware)
@@ -89,7 +89,7 @@ array(
             'description'       => 'Additional context to use when summarizing the content. Can be a string of additional context or a post ID (as string) that will be used to get context from that post. If no content is provided but a valid post ID is used, the content from that post will be used.',
         ),
         'length'  => array(
-            'type'        => 'enum',
+            'type'        => 'string',
             'enum'        => array( 'short', 'medium', 'long' ),
             'default'     => 'medium',
             'description' => 'The length of the summary.',
