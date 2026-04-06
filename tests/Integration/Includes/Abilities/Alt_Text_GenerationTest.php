@@ -35,7 +35,7 @@ class Test_Alt_Text_Generation_Experiment extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => 'Alt Text Generation',
-			'description' => 'Generates descriptive alt text for images using AI vision models.',
+			'description' => 'Generates accessible alternative text for images using AI vision models.',
 		);
 	}
 
