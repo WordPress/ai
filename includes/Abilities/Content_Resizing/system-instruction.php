@@ -20,6 +20,6 @@ Requirements:
 - Do not include any preamble, explanation, or commentary
 - Preserve all inline HTML links present in the original content.
 - Return content in the same format as it was provided.
-- Match the original language of the content
+- Match the original language of the content. For example, if the content is in English, return the content in English. If the content is in Spanish, return the content in Spanish.
 - Maintain the original perspective and voice
 INSTRUCTION;

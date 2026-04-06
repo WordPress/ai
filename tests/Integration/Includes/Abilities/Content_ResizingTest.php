@@ -387,13 +387,13 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that build_prompt() includes goal and content tags.
+	 * Test that structure_prompt() includes goal and content tags.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_build_prompt_includes_goal_and_content() {
+	public function test_structure_prompt_includes_goal_and_content() {
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_prompt' );
+		$method     = $reflection->getMethod( 'structure_prompt' );
 		$method->setAccessible( true );
 
 		$prompt = $method->invoke( $this->ability, 'Test content here.', 'shorten' );
@@ -406,13 +406,13 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that build_prompt() uses different descriptions per action.
+	 * Test that structure_prompt() uses different descriptions per action.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_build_prompt_varies_by_action() {
+	public function test_structure_prompt_varies_by_action() {
 		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_prompt' );
+		$method     = $reflection->getMethod( 'structure_prompt' );
 		$method->setAccessible( true );
 
 		$shorten_prompt  = $method->invoke( $this->ability, 'Test.', 'shorten' );

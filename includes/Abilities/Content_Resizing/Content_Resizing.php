@@ -113,7 +113,7 @@ class Content_Resizing extends Abstract_Ability {
 			);
 		}
 
-		$prompt = $this->build_prompt( $content, $args['action'] );
+		$prompt = $this->structure_prompt( $content, $args['action'] );
 
 		/**
 		 * Filters the prompt for the content resizing.
@@ -127,7 +127,7 @@ class Content_Resizing extends Abstract_Ability {
 		$prompt = (string) apply_filters( 'wpai_content_resizing_prompt', $prompt, $args['action'] );
 
 		// Generate the resized content.
-		$result = $this->generate_resized_content( $prompt, $args['action'] );
+		$result = $this->generate_resized_content( $prompt );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -182,7 +182,7 @@ class Content_Resizing extends Abstract_Ability {
 	 * @param string $action  The resizing action to perform.
 	 * @return string The prompt.
 	 */
-	protected function build_prompt( $content, $action = self::ACTION_DEFAULT ) {
+	private function structure_prompt( $content, $action = self::ACTION_DEFAULT ) {
 		$prompt_parts = array();
 
 		// Determine the action-specific instruction.
@@ -216,26 +216,39 @@ class Content_Resizing extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string $prompt The prompt to use for the content resizing.
-	 * @param string $action The resizing action to perform.
 	 * @return string|\WP_Error The resized content, or a WP_Error if there was an error.
 	 */
-	protected function generate_resized_content( string $prompt, string $action ) {
-		/**
-		 * Filters the temperature for the content resizing.
-		 * Default is 0.7.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param float  $temperature The temperature to use for the content resizing.
-		 * @param string $action      The resizing action to perform.
-		 * @return float The filtered temperature.
-		 */
-		$temperature = (float) apply_filters( 'wpai_content_resizing_temperature', 0.7, $action );
+	protected function generate_resized_content( string $prompt ) {
+		$builder = $this->get_prompt_builder( $prompt );
+		if ( is_wp_error( $builder ) ) {
+			return $builder;
+		}
 
-		return wp_ai_client_prompt( $prompt )
+		return $builder->generate_text();
+	}
+
+	/**
+	 * Returns a prompt builder for content resizing.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to build.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
+	 */
+	private function get_prompt_builder( string $prompt ) {
+		$builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( $temperature )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->generate_text();
+			->using_temperature( 0.7 )
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		// Return a more specific error if there isn't a model that supports text generation.
+		if ( ! $builder->is_supported_for_text_generation() ) {
+			return new WP_Error(
+				'unsupported_model',
+				esc_html__( 'Content resizing failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+			);
+		}
+
+		return $builder;
 	}
 }

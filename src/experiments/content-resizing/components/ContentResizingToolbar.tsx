@@ -249,10 +249,6 @@ export default function ContentResizingToolbar( {
 		onClick: () => void;
 	} > = [];
 
-	const dropdownLabel = hasOriginalContent
-		? __( 'Has AI Content', 'ai' )
-		: __( 'AI Content Resize', 'ai' );
-
 	// If we have original content,
 	// add the undo control at the beginning of the dropdown.
 	if ( hasOriginalContent ) {
@@ -292,7 +288,7 @@ export default function ContentResizingToolbar( {
 			>
 				<ToolbarDropdownMenu
 					icon={ ICON_AI }
-					label={ dropdownLabel }
+					label={ __( 'Resize Content', 'ai' ) }
 					controls={ controls }
 				/>
 			</ToolbarGroup>
