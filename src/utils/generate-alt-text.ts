@@ -51,7 +51,7 @@ export async function generateAltText(
 				: content;
 
 		// Prepare the context.
-		params.context = `What follows is the full article content, where the image has been replaced with the placeholder ${ IMAGE_PLACEHOLDER }. Use the surrounding text to understand the purpose, subject, and relevance of the image within the article. Be sure to describe only information not already conveyed in nearby text. CONTENT: \n\n${ contentWithPlaceholder }`;
+		params.context = contentWithPlaceholder;
 	}
 
 	const response = await runAbility( 'ai/alt-text-generation', params );
