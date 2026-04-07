@@ -606,7 +606,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that guideline_categories() returns site, copy, and additional.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_guideline_categories_returns_site_copy_and_additional(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -620,11 +620,11 @@ class Review_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that create_prompt() includes content guidelines when available.
+	 * Tests that get_system_instruction() includes content guidelines when available.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
-	public function test_create_prompt_includes_content_guidelines(): void {
+	public function test_get_system_instruction_includes_content_guidelines(): void {
 		$this->register_guidelines_cpt();
 		$this->create_guidelines_post(
 			array(
@@ -633,22 +633,11 @@ class Review_NotesTest extends WP_UnitTestCase {
 			)
 		);
 
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'create_prompt' );
-		$method->setAccessible( true );
+		$instruction = $this->ability->get_system_instruction( null, array(), 'core/paragraph' );
 
-		$prompt = $method->invoke(
-			$this->ability,
-			'core/paragraph',
-			'This is legitimate content.',
-			'',
-			array(),
-			array( 'readability' )
-		);
-
-		$this->assertStringContainsString( '<content-guidelines>', $prompt );
-		$this->assertStringContainsString( '<site-context>Use a professional tone.</site-context>', $prompt );
-		$this->assertStringContainsString( '<copy-guidelines>Keep sentences under 25 words.</copy-guidelines>', $prompt );
+		$this->assertStringContainsString( '<content-guidelines>', $instruction );
+		$this->assertStringContainsString( '<site-context>Use a professional tone.</site-context>', $instruction );
+		$this->assertStringContainsString( '<copy-guidelines>Keep sentences under 25 words.</copy-guidelines>', $instruction );
 	}
 
 	/**
