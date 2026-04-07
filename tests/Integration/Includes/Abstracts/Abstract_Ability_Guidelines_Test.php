@@ -14,7 +14,7 @@ use WordPress\AI\Services\Content_Guidelines;
 /**
  * Test ability that does NOT opt into guidelines (default behavior).
  *
- * @since 0.7.0
+ * @since x.x.x
  */
 class Test_Ability_No_Guidelines extends Abstract_Ability {
 
@@ -63,7 +63,7 @@ class Test_Ability_No_Guidelines extends Abstract_Ability {
 /**
  * Test ability that opts into guidelines.
  *
- * @since 0.7.0
+ * @since x.x.x
  */
 class Test_Ability_With_Guidelines extends Test_Ability_No_Guidelines {
 
@@ -88,14 +88,14 @@ class Test_Ability_With_Guidelines extends Test_Ability_No_Guidelines {
 /**
  * Abstract_Ability guidelines integration test case.
  *
- * @since 0.7.0
+ * @since x.x.x
  */
 class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -108,7 +108,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		Content_Guidelines::reset_cache();
@@ -121,7 +121,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that the default guideline_categories() returns an empty array.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_default_guideline_categories_is_empty(): void {
 		$ability = new Test_Ability_No_Guidelines(
@@ -142,7 +142,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_content_guidelines_for_prompt() returns empty when no categories are declared.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_get_content_guidelines_for_prompt_returns_empty_when_no_categories(): void {
 		$ability = new Test_Ability_No_Guidelines(
@@ -164,7 +164,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_system_instruction() does NOT append the guidelines paragraph
 	 * when no categories are declared.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_get_system_instruction_does_not_append_when_no_categories(): void {
 		$ability = new Test_Ability_No_Guidelines(
@@ -188,7 +188,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_system_instruction() appends the guidelines paragraph
 	 * when categories are declared and a system instruction file exists.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_get_system_instruction_appends_guidelines_paragraph(): void {
 		$ability = new Test_Ability_With_Guidelines(
@@ -225,7 +225,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_system_instruction() does NOT append the guidelines paragraph
 	 * when the base instruction is empty (no system instruction file).
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_get_system_instruction_does_not_append_when_base_empty(): void {
 		$ability = new Test_Ability_With_Guidelines(

@@ -19,14 +19,14 @@ use WP_Query;
  * Provides a centralized interface for fetching and formatting Content Guidelines
  * from the wp_content_guideline custom post type introduced in Gutenberg 22.7+.
  *
- * @since 0.7.0
+ * @since x.x.x
  */
 class Content_Guidelines {
 
 	/**
 	 * Singleton instance.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @var self|null
 	 */
@@ -35,7 +35,7 @@ class Content_Guidelines {
 	/**
 	 * Cached guidelines data.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @var array<string, string>|false|null False means not yet fetched.
 	 */
@@ -44,7 +44,7 @@ class Content_Guidelines {
 	/**
 	 * Cached guidelines post ID.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @var int|null
 	 */
@@ -53,7 +53,7 @@ class Content_Guidelines {
 	/**
 	 * Post meta keys for each guideline category.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @var array<string, string>
 	 */
@@ -68,7 +68,7 @@ class Content_Guidelines {
 	/**
 	 * XML tag names for each guideline category.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @var array<string, string>
 	 */
@@ -83,7 +83,7 @@ class Content_Guidelines {
 	/**
 	 * Default maximum character length per guideline category.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @var int
 	 */
@@ -92,7 +92,7 @@ class Content_Guidelines {
 	/**
 	 * Gets the singleton instance.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @return self The singleton instance.
 	 */
@@ -106,14 +106,14 @@ class Content_Guidelines {
 	/**
 	 * Private constructor to enforce singleton pattern.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	private function __construct() {}
 
 	/**
 	 * Checks if the Content Guidelines feature is available.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @return bool True if the wp_content_guideline CPT is registered.
 	 */
@@ -124,7 +124,7 @@ class Content_Guidelines {
 	/**
 	 * Retrieves content guidelines, optionally filtered by category.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param string|null $category Optional. Guideline category to retrieve ('site', 'copy', 'images', 'additional').
 	 * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
@@ -153,7 +153,7 @@ class Content_Guidelines {
 	/**
 	 * Retrieves guidelines for a specific block type.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param string $block_name The block name (e.g., 'core/paragraph').
 	 * @return string|null The block-specific guidelines, or null if unavailable.
@@ -183,7 +183,7 @@ class Content_Guidelines {
 	/**
 	 * Formats guidelines as an XML-tagged string suitable for prompt injection.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param list<string> $categories  Guideline category slugs to include.
 	 * @param string|null  $block_name  Optional block name for block-specific guidelines.
@@ -203,7 +203,7 @@ class Content_Guidelines {
 		/**
 		 * Filters the maximum character length per guideline category.
 		 *
-		 * @since 0.7.0
+		 * @since x.x.x
 		 *
 		 * @param int $max_length The maximum character length per category. Default 2000.
 		 * @return int The filtered maximum length.
@@ -249,7 +249,7 @@ class Content_Guidelines {
 	/**
 	 * Resets the internal cache. Intended for use in tests.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @return void
 	 */
@@ -261,7 +261,7 @@ class Content_Guidelines {
 	/**
 	 * Checks whether content guidelines should be used.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @return bool True if guidelines should be used.
 	 */
@@ -273,7 +273,7 @@ class Content_Guidelines {
 		/**
 		 * Filters whether content guidelines integration is enabled.
 		 *
-		 * @since 0.7.0
+		 * @since x.x.x
 		 *
 		 * @param bool $use_guidelines Whether to use content guidelines. Default true.
 		 * @return bool Whether to use content guidelines.
@@ -284,7 +284,7 @@ class Content_Guidelines {
 	/**
 	 * Fetches guidelines from the database, using cache when available.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
 	 */

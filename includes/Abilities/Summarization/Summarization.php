@@ -35,7 +35,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	protected function guideline_categories(): array {
 		return array( 'site', 'copy' );
