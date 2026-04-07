@@ -143,7 +143,6 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 		return;
 	}
 	await globalToggle.uncheck();
-	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
 	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };
 
@@ -167,7 +166,6 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 		return;
 	}
 	await globalToggle.check();
-	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
 	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };
 
@@ -195,7 +193,6 @@ export const enableExperiment = async (
 	}
 
 	await checkbox.check();
-	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
 
 	// Ensure the save was successful.
 	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
@@ -225,7 +222,6 @@ export const disableExperiment = async (
 	}
 
 	await checkbox.uncheck();
-	await page.getByRole( 'button', { name: 'Save Changes' } ).click();
 
 	// Ensure the save was successful.
 	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
