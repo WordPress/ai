@@ -2,17 +2,12 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import {
-	Button,
-	CheckboxControl,
-	Notice,
-	Spinner,
-} from '@wordpress/components';
+import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
 import { useCallback, useMemo } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 
@@ -188,19 +183,17 @@ const GLOBAL_FIELD: Field< AISettings > = {
 	id: GLOBAL_FIELD_ID,
 	label: __( 'Enable AI', 'ai' ),
 	type: 'boolean',
+	Edit: 'toggle',
 };
 
-function DisabledCheckbox( {
-	field,
-	data,
-}: DataFormControlProps< AISettings > ) {
+function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	return (
-		<CheckboxControl
+		<ToggleControl
 			__nextHasNoMarginBottom
 			label={ field.label }
 			help={ field.description }
 			checked={ !! field.getValue( { item: data } ) }
-			// No-op handler required to satisfy React's controlled-component warning; the checkbox is disabled.
+			// No-op handler required to satisfy React's controlled-component warning; the toggle is disabled.
 			onChange={ () => {} }
 			disabled
 		/>
@@ -208,30 +201,19 @@ function DisabledCheckbox( {
 }
 
 function AISettingsPage() {
-	const { siteSettings, hasEdits, isSaving, isLoading } = useSelect(
-		( select ) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
-			const store: any = select( coreStore );
-			return {
-				siteSettings: store.getEditedEntityRecord( 'root', 'site' ) as
-					| Record< string, unknown >
-					| undefined,
-				hasEdits: store.hasEditsForEntityRecord(
-					'root',
-					'site'
-				) as boolean,
-				isSaving: store.isSavingEntityRecord(
-					'root',
-					'site'
-				) as boolean,
-				isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
-					'root',
-					'site',
-				] ) as boolean,
-			};
-		},
-		[]
-	);
+	const { siteSettings, isLoading } = useSelect( ( select ) => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
+		const store: any = select( coreStore );
+		return {
+			siteSettings: store.getEditedEntityRecord( 'root', 'site' ) as
+				| Record< string, unknown >
+				| undefined,
+			isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
+				'root',
+				'site',
+			] ) as boolean,
+		};
+	}, [] );
 
 	const { editEntityRecord, saveEditedEntityRecord } =
 		useDispatch( coreStore );
@@ -309,9 +291,7 @@ function AISettingsPage() {
 				label: feature.label,
 				description: feature.description,
 				type: 'boolean' as const,
-				Edit: globalEnabled
-					? ( 'checkbox' as const )
-					: DisabledCheckbox,
+				Edit: globalEnabled ? ( 'toggle' as const ) : DisabledToggle,
 			} ) ),
 		],
 		[ featureDefinitions, globalEnabled ]
@@ -392,26 +372,50 @@ function AISettingsPage() {
 	}, [ featureDefinitions, featureGroups ] );
 
 	const handleChange = useCallback(
-		( edits: Record< string, unknown > ) => {
+		async ( edits: Record< string, unknown > ) => {
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
 			editEntityRecord( 'root', 'site', undefined, edits );
-		},
-		[ editEntityRecord ]
-	);
 
-	const handleSave = useCallback( async () => {
-		try {
-			// @ts-expect-error -- core-data types don't expose saveEditedEntityRecord for 'root'/'site' args.
-			await saveEditedEntityRecord( 'root', 'site' );
-			createSuccessNotice( __( 'Settings saved.', 'ai' ), {
-				type: 'snackbar',
-			} );
-		} catch {
-			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
-				type: 'snackbar',
-			} );
-		}
-	}, [ saveEditedEntityRecord, createSuccessNotice, createErrorNotice ] );
+			const entry = Object.entries( edits )[ 0 ];
+			let message: string;
+			if ( ! entry ) {
+				message = __( 'Settings saved.', 'ai' );
+			} else if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
+				message = entry[ 1 ]
+					? __( 'AI enabled.', 'ai' )
+					: __( 'AI disabled.', 'ai' );
+			} else {
+				const feature = featureDefinitions.find(
+					( f ) => f.settingName === entry[ 0 ]
+				);
+				const label = feature?.label ?? entry[ 0 ];
+				if ( entry[ 1 ] ) {
+					// translators: %s: Feature label.
+					message = sprintf( __( '%s enabled.', 'ai' ), label );
+				} else {
+					// translators: %s: Feature label.
+					message = sprintf( __( '%s disabled.', 'ai' ), label );
+				}
+			}
+
+			try {
+				// @ts-expect-error -- core-data types don't expose saveEditedEntityRecord for 'root'/'site' args.
+				await saveEditedEntityRecord( 'root', 'site' );
+				createSuccessNotice( message, { type: 'snackbar' } );
+			} catch {
+				createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
+					type: 'snackbar',
+				} );
+			}
+		},
+		[
+			editEntityRecord,
+			saveEditedEntityRecord,
+			createSuccessNotice,
+			createErrorNotice,
+			featureDefinitions,
+		]
+	);
 
 	return (
 		<Page
@@ -471,25 +475,12 @@ function AISettingsPage() {
 				{ isLoading ? (
 					<Spinner />
 				) : (
-					<>
-						<DataForm< AISettings >
-							data={ data }
-							fields={ fields }
-							form={ form }
-							onChange={ handleChange }
-						/>
-						<div className="ai-settings-page__save">
-							<Button
-								variant="primary"
-								onClick={ handleSave }
-								isBusy={ isSaving }
-								disabled={ ! hasEdits || isSaving }
-								aria-busy={ isSaving }
-							>
-								{ __( 'Save Changes', 'ai' ) }
-							</Button>
-						</div>
-					</>
+					<DataForm< AISettings >
+						data={ data }
+						fields={ fields }
+						form={ form }
+						onChange={ handleChange }
+					/>
 				) }
 			</div>
 		</Page>
