@@ -53,6 +53,11 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_is_available_returns_false_when_cpt_not_registered(): void {
+		// Ensure the CPT is not registered, as it may already exist in WP 7.0+.
+		if ( post_type_exists( 'wp_content_guideline' ) ) {
+			unregister_post_type( 'wp_content_guideline' );
+		}
+
 		$this->assertFalse(
 			$this->service->is_available(),
 			'Should return false when wp_content_guideline CPT is not registered'

@@ -240,7 +240,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	public function test_get_system_instruction_does_not_append_when_no_guidelines_exist(): void {
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
-			array( 'label' => 'Test With Guidelines' )
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
 		);
 
 		// Create a temporary system instruction file.
@@ -298,7 +301,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
-			array( 'label' => 'Test With Guidelines' )
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
 		);
 
 		// Create a temporary system instruction file.
