@@ -320,7 +320,7 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_guidelines() returns null when a post exists but has no guideline meta.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_get_guidelines_returns_null_when_post_has_no_meta(): void {
 		$this->register_guidelines_cpt();
@@ -343,7 +343,7 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_block_guidelines() returns null when disabled by filter.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_get_block_guidelines_returns_null_when_disabled_by_filter(): void {
 		$this->register_guidelines_cpt();

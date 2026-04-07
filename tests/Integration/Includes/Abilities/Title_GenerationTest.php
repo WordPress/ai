@@ -97,7 +97,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that guideline_categories() returns site and copy.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_guideline_categories_returns_site_and_copy(): void {
 		$reflection = new \ReflectionClass( $this->ability );
