@@ -190,7 +190,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function generate_alt_text( array $image_reference, string $context = '' ) {
 		$result = wp_ai_client_prompt( $this->build_prompt( $context ) )
 			->with_file( $image_reference['reference'] )
-			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php', array( 'locale' => get_locale() ) ) )
+			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
 			->using_temperature( 0.3 )
 			->using_model_preference( ...get_preferred_vision_models() )
 			->generate_text();
@@ -374,9 +374,16 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function build_prompt( string $context = '' ): string {
 		$prompt = __( 'Generate alt text for this image.', 'ai' );
 
-		// If we have additional context, add it to the prompt.
 		if ( ! empty( $context ) ) {
+			$prompt .= ' ' . __( 'Ensure the alt text you return matches the language of the content in the <additional-context> tag.', 'ai' );
+
 			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
+		} else {
+			$prompt .= ' ' . sprintf(
+				/* translators: %s: locale code, e.g. pl_PL */
+				__( 'Ensure the alt text you return matches the language of this locale: %s.', 'ai' ),
+				get_locale()
+			);
 		}
 
 		return $prompt;
