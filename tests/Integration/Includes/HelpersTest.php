@@ -261,6 +261,152 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the wpai_get_post_details filter modifies the ability output.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_get_post_details_filter_modifies_output() {
+		if ( ! function_exists( 'wp_get_ability' ) ) {
+			$this->markTestSkipped( 'WP_Ability class not available' );
+			return;
+		}
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_title'   => 'Original Title',
+				'post_content' => 'Original content',
+			)
+		);
+
+		$filter_callback = static function ( $details ) {
+			$details['title'] = 'Filtered Title';
+			return $details;
+		};
+
+		add_filter( 'wpai_get_post_details', $filter_callback );
+
+		$ability = wp_get_ability( 'ai/get-post-details' );
+		$this->assertNotNull( $ability, 'get-post-details ability should be registered' );
+
+		$result = $ability->execute( array( 'post_id' => $post_id ) );
+
+		remove_filter( 'wpai_get_post_details', $filter_callback );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'title', $result, 'Result should have title key' );
+		$this->assertEquals( 'Filtered Title', $result['title'], 'Filter should have modified the title' );
+	}
+
+	/**
+	 * Test that the wpai_get_post_details filter receives the correct arguments.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_get_post_details_filter_receives_arguments() {
+		if ( ! function_exists( 'wp_get_ability' ) ) {
+			$this->markTestSkipped( 'WP_Ability class not available' );
+			return;
+		}
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_title' => 'Test Post',
+			)
+		);
+
+		$captured_post_id = null;
+		$captured_fields  = null;
+		$filter_callback  = static function ( $details, $filter_post_id, $filter_fields ) use ( &$captured_post_id, &$captured_fields ) {
+			$captured_post_id = $filter_post_id;
+			$captured_fields  = $filter_fields;
+			return $details;
+		};
+
+		add_filter( 'wpai_get_post_details', $filter_callback, 10, 3 );
+
+		$ability = wp_get_ability( 'ai/get-post-details' );
+		$ability->execute(
+			array(
+				'post_id' => $post_id,
+				'fields'  => array( 'title', 'slug' ),
+			)
+		);
+
+		remove_filter( 'wpai_get_post_details', $filter_callback, 10 );
+
+		$this->assertSame( $post_id, $captured_post_id, 'Filter should receive the post ID' );
+		$this->assertSame( array( 'title', 'slug' ), $captured_fields, 'Filter should receive the requested fields' );
+	}
+
+	/**
+	 * Test that the wpai_get_post_terms filter modifies the ability output.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_get_post_terms_filter_modifies_output() {
+		if ( ! function_exists( 'wp_get_ability' ) ) {
+			$this->markTestSkipped( 'WP_Ability class not available' );
+			return;
+		}
+
+		$category_id = $this->factory->category->create( array( 'name' => 'Original Category' ) );
+		$post_id     = $this->factory->post->create();
+		wp_set_post_categories( $post_id, array( $category_id ) );
+
+		$filter_callback = static function () {
+			// Replace terms with an empty array.
+			return array();
+		};
+
+		add_filter( 'wpai_get_post_terms', $filter_callback );
+
+		$ability = wp_get_ability( 'ai/get-post-terms' );
+		$this->assertNotNull( $ability, 'get-post-terms ability should be registered' );
+
+		$result = $ability->execute( array( 'post_id' => $post_id ) );
+
+		remove_filter( 'wpai_get_post_terms', $filter_callback );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertEmpty( $result, 'Filter should have replaced the terms with an empty array' );
+	}
+
+	/**
+	 * Test that the wpai_get_post_terms filter receives the correct arguments.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_get_post_terms_filter_receives_arguments() {
+		if ( ! function_exists( 'wp_get_ability' ) ) {
+			$this->markTestSkipped( 'WP_Ability class not available' );
+			return;
+		}
+
+		$category_id = $this->factory->category->create( array( 'name' => 'Test Category' ) );
+		$post_id     = $this->factory->post->create();
+		wp_set_post_categories( $post_id, array( $category_id ) );
+
+		$captured_post_id    = null;
+		$captured_taxonomies = null;
+		$filter_callback     = static function ( $terms, $filter_post_id, $filter_taxonomies ) use ( &$captured_post_id, &$captured_taxonomies ) {
+			$captured_post_id    = $filter_post_id;
+			$captured_taxonomies = $filter_taxonomies;
+			return $terms;
+		};
+
+		add_filter( 'wpai_get_post_terms', $filter_callback, 10, 3 );
+
+		$ability = wp_get_ability( 'ai/get-post-terms' );
+		$ability->execute( array( 'post_id' => $post_id ) );
+
+		remove_filter( 'wpai_get_post_terms', $filter_callback, 10 );
+
+		$this->assertSame( $post_id, $captured_post_id, 'Filter should receive the post ID' );
+		$this->assertIsArray( $captured_taxonomies, 'Filter should receive an array of taxonomies' );
+		$this->assertContains( 'category', $captured_taxonomies, 'Allowed taxonomies should include category' );
+	}
+
+	/**
 	 * Test that get_preferred_models_for_text_generation() returns an array.
 	 *
 	 * @since 0.1.0
