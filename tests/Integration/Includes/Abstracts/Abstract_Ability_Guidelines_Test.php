@@ -185,12 +185,20 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_system_instruction() appends the guidelines paragraph
-	 * when categories are declared and a system instruction file exists.
+	 * Tests that get_system_instruction() appends actual guidelines to the system
+	 * instruction when categories are declared and guidelines exist.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_get_system_instruction_appends_guidelines_paragraph(): void {
+	public function test_get_system_instruction_appends_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site' => 'Professional tone.',
+				'copy' => 'Keep it short.',
+			)
+		);
+
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
 			array(
@@ -212,7 +220,9 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			$instruction = $ability->get_system_instruction();
 
 			$this->assertStringContainsString( 'You are a test assistant.', $instruction );
-			$this->assertStringContainsString( 'content-guidelines', $instruction );
+			$this->assertStringContainsString( '<content-guidelines>', $instruction );
+			$this->assertStringContainsString( '<site-context>Professional tone.</site-context>', $instruction );
+			$this->assertStringContainsString( '<copy-guidelines>Keep it short.</copy-guidelines>', $instruction );
 			$this->assertStringContainsString( 'Do not fabricate content to satisfy guidelines.', $instruction );
 		} finally {
 			if ( file_exists( $test_file ) ) {
@@ -222,7 +232,40 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_system_instruction() does NOT append the guidelines paragraph
+	 * Tests that get_system_instruction() does NOT append guidelines
+	 * when categories are declared but no guidelines exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_system_instruction_does_not_append_when_no_guidelines_exist(): void {
+		$ability = new Test_Ability_With_Guidelines(
+			'ai/test-with-guidelines',
+			array( 'label' => 'Test With Guidelines' )
+		);
+
+		// Create a temporary system instruction file.
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+		$test_file   = trailingslashit( $feature_dir ) . 'system-instruction.php';
+
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
+		file_put_contents( $test_file, "<?php\nreturn 'You are a test assistant.';" );
+
+		try {
+			$instruction = $ability->get_system_instruction();
+
+			$this->assertStringContainsString( 'You are a test assistant.', $instruction );
+			$this->assertStringNotContainsString( 'content-guidelines', $instruction );
+		} finally {
+			if ( file_exists( $test_file ) ) {
+				wp_delete_file( $test_file );
+			}
+		}
+	}
+
+	/**
+	 * Tests that get_system_instruction() does NOT append the guidelines
 	 * when the base instruction is empty (no system instruction file).
 	 *
 	 * @since x.x.x
@@ -243,10 +286,46 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that get_system_instruction() includes block-specific guidelines
+	 * when a block name is provided.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_system_instruction_includes_block_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
+		update_post_meta( $post_id, '_content_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+
+		$ability = new Test_Ability_With_Guidelines(
+			'ai/test-with-guidelines',
+			array( 'label' => 'Test With Guidelines' )
+		);
+
+		// Create a temporary system instruction file.
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+		$test_file   = trailingslashit( $feature_dir ) . 'system-instruction.php';
+
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
+		file_put_contents( $test_file, "<?php\nreturn 'You are a test assistant.';" );
+
+		try {
+			$instruction = $ability->get_system_instruction( null, array(), 'core/paragraph' );
+
+			$this->assertStringContainsString( '<block-guidelines>Keep paragraphs concise.</block-guidelines>', $instruction );
+		} finally {
+			if ( file_exists( $test_file ) ) {
+				wp_delete_file( $test_file );
+			}
+		}
+	}
+
+	/**
 	 * Tests that get_content_guidelines_for_prompt() returns formatted guidelines
 	 * when categories are declared and guidelines exist.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_get_content_guidelines_for_prompt_delegates_to_helper(): void {
 		$this->register_guidelines_cpt();
