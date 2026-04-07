@@ -250,12 +250,6 @@ class Summarization extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
-		// Inject content guidelines if available.
-		$guidelines = $this->get_content_guidelines_for_prompt();
-		if ( $guidelines ) {
-			$content .= "\n\n" . $guidelines;
-		}
-
 		// Generate the summary using the AI client.
 		return wp_ai_client_prompt( $content )
 			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )

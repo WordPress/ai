@@ -388,12 +388,6 @@ class Alt_Text_Generation extends Abstract_Ability {
 			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
-		// Inject content guidelines if available.
-		$guidelines = $this->get_content_guidelines_for_prompt();
-		if ( $guidelines ) {
-			$prompt .= "\n\n" . $guidelines;
-		}
-
 		return $prompt;
 	}
 

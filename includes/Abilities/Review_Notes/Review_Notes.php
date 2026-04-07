@@ -387,12 +387,6 @@ class Review_Notes extends Abstract_Ability {
 			$prompt_parts[] = '<existing-notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $existing_notes ) ) . '</existing-notes>';
 		}
 
-		// Inject content guidelines with block-specific guidelines if available.
-		$guidelines = $this->get_content_guidelines_for_prompt( $block_type );
-		if ( $guidelines ) {
-			$prompt_parts[] = $guidelines;
-		}
-
 		return implode( "\n", $prompt_parts );
 	}
 

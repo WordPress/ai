@@ -146,22 +146,28 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Gets the system instruction for the feature.
 	 *
-	 * When guideline_categories() returns a non-empty array, automatically appends
-	 * a guidelines awareness paragraph to the base system instruction.
+	 * When guideline_categories() returns a non-empty array and guidelines are
+	 * available, automatically appends them to the system instruction.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string|null            $filename Optional. Explicit filename to load. If not provided,
-	 *                                         attempts to load `system-instruction.php` or `prompt.php`.
-	 * @param array<string, mixed>   $data     Optional. Data to expose to the system instruction file.
-	 *                                         This data will be extracted as variables available in the file scope.
+	 * @param string|null            $filename   Optional. Explicit filename to load. If not provided,
+	 *                                           attempts to load `system-instruction.php` or `prompt.php`.
+	 * @param array<string, mixed>   $data       Optional. Data to expose to the system instruction file.
+	 *                                           This data will be extracted as variables available in the file scope.
+	 * @param string|null            $block_name Optional. Block name for block-specific guidelines.
 	 * @return string The system instruction for the feature.
 	 */
-	public function get_system_instruction( ?string $filename = null, array $data = array() ): string {
+	public function get_system_instruction( ?string $filename = null, array $data = array(), ?string $block_name = null ): string {
 		$instruction = $this->load_system_instruction_from_file( $filename, $data );
 
 		if ( '' !== $instruction && ! empty( $this->guideline_categories() ) ) {
-			$instruction .= "\n\n" . 'If content guidelines are provided in &lt;content-guidelines&gt; tags, follow them as the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
+			$guidelines = $this->get_content_guidelines_for_prompt( $block_name );
+
+			if ( $guidelines ) {
+				$instruction .= "\n\n" . 'The following content guidelines represent the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
+				$instruction .= "\n\n" . $guidelines;
+			}
 		}
 
 		return $instruction;
