@@ -31,7 +31,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment (which contains editing).
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		await visitConnectorsPage( admin );
 
@@ -63,7 +63,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -202,7 +202,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Visit the Media Library.
 		await visitAdminPage( admin, 'upload.php' );
@@ -313,7 +313,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Upload a test image so we have a URL the editor can load.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
@@ -445,7 +445,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Upload a test image so we have a URL the editor can load.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );

@@ -1,0 +1,21 @@
+.ai-settings-page {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 680px;
+	margin: 0 auto;
+	padding: 24px;
+
+	@media (max-width: 480px) {
+		padding: 8px;
+	}
+}
+
+.ai-settings-page .components-notice {
+	margin: 0 0 24px;
+}
+
+.ai-settings-page__save {
+	display: flex;
+	justify-content: flex-end;
+	padding-top: 16px;
+}

@@ -22,7 +22,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Content Summarization Experiment.
-		await enableExperiment( admin, page, 'summarization' );
+		await enableExperiment( admin, page, 'Content Summarization' );
 	} );
 
 	test( 'Can use the Content Summarization Experiment', async ( {
@@ -34,7 +34,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Content Summarization Experiment.
-		await enableExperiment( admin, page, 'summarization' );
+		await enableExperiment( admin, page, 'Content Summarization' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -88,7 +88,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Content Summarization Experiment.
-		await enableExperiment( admin, page, 'summarization' );
+		await enableExperiment( admin, page, 'Content Summarization' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -122,7 +122,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Content Summarization Experiment.
-		await disableExperiment( admin, page, 'summarization' );
+		await disableExperiment( admin, page, 'Content Summarization' );
 
 		// Create a new post.
 		await admin.createNewPost( {

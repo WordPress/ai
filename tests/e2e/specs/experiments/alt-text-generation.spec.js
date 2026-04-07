@@ -30,7 +30,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 	} );
 
 	test( 'Can use the Alt Text Generation Experiment in the Media Library', async ( {
@@ -42,7 +42,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
@@ -94,7 +94,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image so we have a URL the editor can load.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
@@ -235,7 +235,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -312,7 +312,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Alt Text Generation Experiment.
-		await disableExperiment( admin, page, 'alt-text-generation' );
+		await disableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );

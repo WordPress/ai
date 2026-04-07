@@ -19,6 +19,7 @@ Thumbs.db
 # Build output
 build/
 build-module/
+build-scripts/
 build-types/
 
 # Environment
