@@ -218,7 +218,7 @@ class Content_Guidelines {
 			}
 
 			$tag_name = self::CATEGORY_TAG_NAMES[ $category ] ?? $category;
-			$content  = $guidelines[ $category ];
+			$content  = wp_strip_all_tags( $guidelines[ $category ] );
 
 			if ( mb_strlen( $content, 'UTF-8' ) > $max_length ) {
 				$content = mb_substr( $content, 0, $max_length, 'UTF-8' );
@@ -231,7 +231,7 @@ class Content_Guidelines {
 		if ( null !== $block_name ) {
 			$block_guidelines = $this->get_block_guidelines( $block_name );
 			if ( null !== $block_guidelines ) {
-				$block_content = $block_guidelines;
+				$block_content = wp_strip_all_tags( $block_guidelines );
 				if ( mb_strlen( $block_content, 'UTF-8' ) > $max_length ) {
 					$block_content = mb_substr( $block_content, 0, $max_length, 'UTF-8' );
 				}
