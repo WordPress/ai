@@ -12,6 +12,10 @@ const path = require( 'path' );
 // Extend the default webpack config.
 module.exports = {
 	...defaultConfig,
+	output: {
+		...defaultConfig.output,
+		path: path.resolve( process.cwd(), 'build-scripts' ),
+	},
 	entry: {
 		...defaultConfig.entry(),
 		'admin/settings': path.resolve(

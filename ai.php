@@ -29,6 +29,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Shortcut constant to the path of this file.
  */
-define( 'WPAI_DIR', plugin_dir_path( __FILE__ ) );
+if ( ! defined( 'WPAI_DIR' ) ) {
+	define( 'WPAI_DIR', plugin_dir_path( __FILE__ ) );
+}
 
 require_once WPAI_DIR . 'includes/bootstrap.php';
