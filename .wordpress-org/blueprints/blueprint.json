@@ -1,6 +1,6 @@
 {
   "$schema": "https://playground.wordpress.net/blueprint-schema.json",
-  "landingPage": "/wp-admin/options-general.php?page=ai-experiments",
+  "landingPage": "/wp-admin/options-general.php?page=ai",
   "preferredVersions": {
     "php": "7.4",
     "wp": "latest"

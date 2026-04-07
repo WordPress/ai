@@ -23,7 +23,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 
 	test( 'Can generate a Featured Image', async ( {
@@ -35,7 +35,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -102,7 +102,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -153,7 +153,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		let useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -162,6 +162,14 @@ test.describe( 'Image Generation Experiment', () => {
 			}
 		);
 		await expect( useImageButton ).toBeVisible();
+
+		const refineButton = page.locator(
+			'.ai-generate-image-inline-modal__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -213,7 +221,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -254,7 +262,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -316,7 +324,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		let useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -325,6 +333,14 @@ test.describe( 'Image Generation Experiment', () => {
 			}
 		);
 		await expect( useImageButton ).toBeVisible();
+
+		const refineButton = page.locator(
+			'.ai-generate-image-inline-modal__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -367,7 +383,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -407,7 +423,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Visit the Media Library.
 		await visitAdminPage( admin, 'upload.php' );
@@ -450,7 +466,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-standalone__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 5 );
 
 		let saveImageButton = page.locator(
 			'.ai-generate-image-standalone__actions button',
@@ -460,10 +476,18 @@ test.describe( 'Image Generation Experiment', () => {
 		);
 		await expect( saveImageButton ).toBeVisible();
 
+		const refineButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
+
 		const generateAnotherButton = page.locator(
 			'.ai-generate-image-standalone__actions button',
 			{
-				hasText: 'Regenerate',
+				hasText: 'Generate Another Image',
 			}
 		);
 		await expect( generateAnotherButton ).toBeVisible();
@@ -496,7 +520,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-standalone__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 5 );
 
 		saveImageButton = page.locator(
 			'.ai-generate-image-standalone__actions button',
@@ -510,20 +534,11 @@ test.describe( 'Image Generation Experiment', () => {
 
 		// Ensure a success message is visible.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__success' )
+			page.locator( '.components-notice.is-success' )
 		).toBeVisible();
 
-		// Ensure we have two new buttons.
-		await expect(
-			page.locator( '.ai-generate-image-standalone__success button' )
-		).toHaveCount( 1 );
-
-		await expect(
-			page.locator( '.ai-generate-image-standalone__success a' )
-		).toHaveCount( 1 );
-
 		// View the image in the Media Library.
-		page.locator( '.ai-generate-image-standalone__success a' ).click();
+		page.locator( '.components-notice.is-success a' ).click();
 
 		// Ensure alt text is set.
 		await expect(
@@ -537,7 +552,7 @@ test.describe( 'Image Generation Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -588,7 +603,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Image Generation Experiment.
-		await disableExperiment( admin, page, 'image-generation' );
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {

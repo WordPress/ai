@@ -30,7 +30,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 	} );
 
 	test( 'Can use the Alt Text Generation Experiment in the Media Library', async ( {
@@ -42,7 +42,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
@@ -94,7 +94,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image so we have a URL the editor can load.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
@@ -166,14 +166,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.first()
 			.fill( '' );
 
-		// Click into the block settings sidebar.
-		const blockSettingsBtn = page
-			.locator( '.block-editor-block-inspector__tabs' )
-			.getByRole( 'tab', {
-				name: 'Settings',
-			} );
-		await blockSettingsBtn.click();
-
 		// Ensure the Generate button is visible in the sidebar.
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
@@ -194,21 +186,12 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.locator( '.ai-alt-text-controls button', { hasText: 'Apply' } )
 			.click();
 
-		// Click back to the block content sidebar.
-		const blockContentBtn = page
-			.locator( '.block-editor-block-inspector__tabs' )
-			.getByRole( 'tab', {
-				name: 'Content',
-			} );
-		await blockContentBtn.click();
-
 		// Ensure the generated alt text shows in the textarea.
 		await expect(
 			page.locator( '.components-tools-panel textarea' ).first()
 		).toHaveValue( /Edit or Delete Your First WordPress Post/ );
 
 		// Ensure the generate button text is updated.
-		await blockSettingsBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
 				hasText: 'Regenerate Alt Text',
@@ -216,14 +199,12 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		).toBeVisible();
 
 		// Remove alt text.
-		await blockContentBtn.click();
 		await page
 			.locator( '.components-tools-panel textarea' )
 			.first()
 			.fill( '' );
 
 		// Ensure the generate button text is updated.
-		await blockSettingsBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
 				hasText: 'Generate Alt Text',
@@ -239,7 +220,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.click();
 
 		// Ensure the generated alt text is not visible.
-		await blockContentBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls textarea' )
 		).not.toBeVisible();
@@ -255,7 +235,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -304,7 +284,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.locator( '.media-frame-content ul.attachments li:first-child' )
 			.click();
 
-		// Ensure the alt text generation button is visible and says Generate
+		// Ensure the alt text generation button is not visible.
 		await expect(
 			page.locator( '#ai-alt-text-generate-button' )
 		).not.toBeVisible();
@@ -332,7 +312,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Alt Text Generation Experiment.
-		await disableExperiment( admin, page, 'alt-text-generation' );
+		await disableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
@@ -378,7 +358,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.locator( '.media-frame-content ul.attachments li:first-child' )
 			.click();
 
-		// Ensure the alt text generation button is visible and says Generate
+		// Ensure the alt text generation button is not visible.
 		await expect(
 			page.locator( '#ai-alt-text-generate-button' )
 		).not.toBeVisible();

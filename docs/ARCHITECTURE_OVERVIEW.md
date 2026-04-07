@@ -6,7 +6,8 @@ The plugin follows a modular, experiment-based architecture:
 ```
 ai/
 ├── ai.php                            # Plugin bootstrap
-├── build/                            # Built assets
+├── build/                            # wp-build route assets
+├── build-scripts/                    # wp-scripts built assets
 ├── docs/                             # Documentation
 │   ├── experiments/                  # Experiment specific documentation
 │   ├── ARCHITECTURE_OVERVIEW.md      # Architecture Overview
@@ -16,16 +17,16 @@ ai/
 │   └── TESTING_REST_API.md           # Testing API strategy
 ├── includes/                         # Core plugin code
 │   ├── Abilities/                    # AI Ability implementations (Excerpt, Image, etc.)
-│   ├── Abstracts/                    # Base implementations (Abstract_Ability, Abstract_Experiment)
-│   ├── Contracts/                    # Interfaces (Experiment contract)
+│   ├── Abstracts/                    # Base implementations (Abstract_Ability, Abstract_Feature)
+│   ├── Contracts/                    # Interfaces (Feature contract)
 │   ├── Exception/                    # Custom exceptions
 │   ├── Experiments/                  # Experiment implementations (Abilities_Explorer, etc.)
+│   ├── Features/                     # Feature registration and loading (Loader.php, Registry.php, Feature_Category.php)
 │   ├── Services/                     # External services (AI_Service)
 │   ├── Settings/                     # Plugin settings and admin pages
 │   ├── Asset_Loader.php              # Asset loader utility class
 │   ├── bootstrap.php                 # Plugin initialization
-│   ├── Experiment_Loader.php         # Experiment loading logic
-│   ├── Experiment_Registry.php       # Experiment registration system
+│   ├── Deprecated.php                # Backward-compatibility layer for deprecated hooks/filters
 │   └── helpers.php                   # Helper functions
 ├── src/                              # Source asset files (JS/SCSS)
 │   ├── admin/                        # Admin-specific assets

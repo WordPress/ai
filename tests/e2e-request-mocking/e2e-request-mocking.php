@@ -18,9 +18,9 @@ add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 /**
  * Mock the HTTP requests and provide known responses.
  *
- * @param mixed $preempt Whether to preempt an HTTP request's return value.
- * @param array $parsed_args HTTP request arguments.
- * @param string $url The request URL.
+ * @param mixed  $preempt     Whether to preempt an HTTP request's return value.
+ * @param array  $parsed_args HTTP request arguments.
+ * @param string $url         The request URL.
  * @return array|bool The response.
  */
 function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
@@ -39,6 +39,29 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$response = file_get_contents( __DIR__ . '/responses/OpenAI/models.json' );
 	}
 
+	// Mock the Google models API response.
+	if ( str_contains( $url, 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000' ) ) {
+		// Handle invalid API key.
+		if (
+			isset( $parsed_args['headers']['X-Goog-Api-Key'] ) &&
+			str_contains( $parsed_args['headers']['X-Goog-Api-Key'], 'invalid-api-key' )
+		) {
+			return $preempt;
+		}
+
+		$response = file_get_contents( __DIR__ . '/responses/Google/models.json' );
+	}
+
+	// Mock the Google Imagen API response.
+	if ( str_contains( $url, 'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict' ) ) {
+		$response = file_get_contents( __DIR__ . '/responses/Google/imagen.json' );
+	}
+
+	// Mock the Google Gemini image API response.
+	if ( str_contains( $url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent' ) ) {
+		$response = file_get_contents( __DIR__ . '/responses/Google/gemini-image.json' );
+	}
+
 	// Mock the OpenAI responses API response.
 	if ( str_contains( $url, 'https://api.openai.com/v1/responses' ) ) {
 		$body = $parsed_args['body'] ?? '';
@@ -46,6 +69,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		// Route review-notes requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
+			// Route content-classification requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-responses.json' );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );
 		}
@@ -58,6 +84,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		// Route review-notes requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-completions.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
+			// Route content-classification requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-completions.json' );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}

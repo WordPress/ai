@@ -8,10 +8,10 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Abilities_Explorer;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiment_Category;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiment_Registry;
 use WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer;
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Abilities_Explorer test case.
@@ -22,14 +22,14 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Experiment registry instance.
 	 *
-	 * @var Experiment_Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
 	private $registry;
 
 	/**
 	 * Experiment loader instance.
 	 *
-	 * @var Experiment_Loader
+	 * @var \WordPress\AI\Features\Loader
 	 */
 	private $loader;
 
@@ -45,14 +45,14 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable experiments globally and individually.
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_abilities-explorer_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_abilities-explorer_enabled', true );
 
-		$this->registry = new Experiment_Registry();
-		$this->loader   = new Experiment_Loader( $this->registry );
+		$this->registry = new Registry();
+		$this->loader   = new Loader( $this->registry );
 	}
 
 	/**
@@ -62,10 +62,10 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_abilities-explorer_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_abilities-explorer_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -100,7 +100,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	 * @since 0.2.0
 	 */
 	public function test_experiment_is_disabled_when_option_not_set() {
-		delete_option( 'ai_experiment_abilities-explorer_enabled' );
+		delete_option( 'wpai_feature_abilities-explorer_enabled' );
 
 		$experiment = new Abilities_Explorer();
 
@@ -129,11 +129,11 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	 */
 	public function test_experiment_registration_in_registry() {
 		$experiment = new Abilities_Explorer();
-		$this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
 
-		$this->assertTrue( $this->registry->has_experiment( 'abilities-explorer' ) );
+		$this->assertTrue( $this->registry->has_feature( 'abilities-explorer' ) );
 
-		$registered = $this->registry->get_experiment( 'abilities-explorer' );
+		$registered = $this->registry->get_feature( 'abilities-explorer' );
 		$this->assertInstanceOf( Abilities_Explorer::class, $registered );
 	}
 }

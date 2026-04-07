@@ -51,19 +51,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return string The category of the ability.
 	 */
 	protected function category(): string {
-		return AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY;
-	}
-
-	/**
-	 * Returns the REST API path of the ability.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @param string $experiment_id The ID of the experiment.
-	 * @return string The REST API path of the ability.
-	 */
-	public static function path( string $experiment_id = '' ): string {
-		return 'wp-abilities/v1/abilities/ai/' . $experiment_id . '/run';
+		return WPAI_DEFAULT_ABILITY_CATEGORY;
 	}
 
 	/**
@@ -182,7 +170,7 @@ abstract class Abstract_Ability extends WP_Ability {
 
 			if ( file_exists( $file_path ) && is_readable( $file_path ) ) {
 				// PHP files should return a string directly.
-				$content = require_once $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+				$content = require $file_path; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 
 				return is_string( $content ) ? esc_html( $content ) : '';
 			}

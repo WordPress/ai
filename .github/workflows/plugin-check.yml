@@ -65,7 +65,10 @@ jobs:
                   # Exclude file_type because of the dev files present in the repository.
                   exclude-checks: |
                       file_type
+                  ignore-codes: |
+                      plugin_header_unsupported_plugin_name
                   exclude-directories: |
                       .github
+                      build
                       docs
                       tests

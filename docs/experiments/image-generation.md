@@ -11,13 +11,14 @@ The Image Generation experiment adds AI-powered image generation to the WordPres
 When enabled, the Image Generation experiment adds:
 
 - **Featured image panel:** A "Generate featured image" button that creates AI images from post content. The image is imported into the media library and set as the featured image. Images are marked with an "AI Generated Featured Image" label.
-- **Block buttons:** A "Generate Image" inline and toolbar button on Image, Cover, Media & Text, and Gallery blocks. Clicking it opens a modal where you describe the image, generate it, preview it, and insert it into the block.
+- **Block buttons:** A "Generate Image" inline and toolbar button on Image, Cover, Media & Text, and Gallery blocks. Clicking it opens a modal where you describe the image, generate it, preview it, optionally refine it (edit with follow-up prompts using the current image as reference), and insert it into the block.
 
 **Key Features:**
 
 - One-click featured image generation from post content
 - Inline image generation from supported blocks (Image, Cover, Media & Text, Gallery)
-- Modal flow for inline generation: describe → generate → preview → keep, or start over
+- Modal flow for inline generation: describe → generate → preview → keep, refine, or start over
+- Image refinement: use the current generated image as a reference for follow-up prompts (models that support edits use it as context)
 - Step-by-step progress messages during generation (e.g. "Generating image prompt", "Generating image", "Generating alt text", "Importing image")
 - Automatically imports generated images into the media library
 - Sets generated images as featured images or inserts them into blocks
@@ -32,7 +33,7 @@ The experiment consists of four main components:
 
 1. **Experiment Class** (`WordPress\AI\Experiments\Image_Generation\Image_Generation`): Handles registration, asset enqueuing, featured image and inline block editor UI integration, and post meta registration
 2. **Generate Image Prompt Ability** (`WordPress\AI\Abilities\Image\Generate_Image_Prompt`): Generates optimized image generation prompts from post content and context
-3. **Generate Image Ability** (`WordPress\AI\Abilities\Image\Generate_Image`): Generates base64-encoded images from prompts using AI models
+3. **Generate Image Ability** (`WordPress\AI\Abilities\Image\Generate_Image`): Generates base64-encoded images from prompts (and optionally from a reference image for refining) using AI models
 4. **Import Image Ability** (`WordPress\AI\Abilities\Image\Import_Base64_Image`): Imports base64-encoded images into the WordPress media library
 
 All three abilities can be called directly via REST API, making them useful for automation, bulk processing, or custom integrations.
@@ -79,8 +80,9 @@ All three abilities can be called directly via REST API, making them useful for 
      - `editor.BlockEdit` with `withGenerateImageToolbarButton` (`ai/image-generation-inline-toolbar`): adds a "Generate Image" toolbar button in block controls
      - `editor.MediaUpload` with `withGenerateImageInlineButton` (`ai/image-generation-inline-button`): adds an inline "Generate Image" button in the MediaUpload placeholder area (uses `updateBlockAttributes` from the block editor store since MediaUpload does not receive `setAttributes`)
    - When either button is clicked, `GenerateImageInlineModal` opens with an idle state (prompt input). The user submits a prompt and the modal:
-     - Calls `runAbility( 'ai/image-generation', { prompt } )`
-     - Shows preview with "Keep", and "Start Over" actions
+     - Calls `runAbility( 'ai/image-generation', { prompt } )` (or `{ prompt, reference }` when refining)
+     - Shows preview with "Keep", "Refine", and "Start Over" actions
+     - "Refine" switches to refinment state: user enters a follow-up prompt; the current image is passed as `reference` so models supporting edits can use it as context
      - "Keep" calls `uploadImage()` (with optional alt text generation) and `insertIntoBlock()` to insert the imported image into the block
    - `insertIntoBlock()` sets block attributes based on block type: `core/image` (id, url, alt), `core/cover` (id, url, alt, dimRatio: 50, isDark: false, sizeSlug: 'full'), `core/media-text` (mediaId, mediaUrl, mediaType), `core/gallery` (appends a new inner `core/image` block)
 
@@ -92,7 +94,8 @@ All three abilities can be called directly via REST API, making them useful for 
      - Uses AI with a dedicated system instruction to generate an optimized image generation prompt
      - Returns a plain text prompt string suitable for image generation models
    - **Image Generation** (via `ai/image-generation`):
-     - Accepts `prompt` (string) as required input
+     - Accepts `prompt` (string) as required input and optional `reference` (base64-encoded string) for image editing
+     - If `reference` is provided, uses it as a reference image for editing
      - Uses AI image generation models (via `get_preferred_image_models()`)
      - Sets request timeout to 90 seconds for longer generation times
      - Returns an object `{ image: { data, provider_metadata, model_metadata } }` where `data` is the base64-encoded image
@@ -137,10 +140,15 @@ array(
 array(
     'type'       => 'object',
     'properties' => array(
-        'prompt' => array(
+        'prompt'    => array(
             'type'              => 'string',
             'sanitize_callback' => 'sanitize_text_field',
             'description'       => 'Prompt used to generate an image.',
+        ),
+        'reference' => array(
+            'type'              => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'description'       => 'Optional base64-encoded image to use as a reference for editing.',
         ),
     ),
     'required'   => array( 'prompt' ),
@@ -681,10 +689,10 @@ This instruction tells the AI how to create image generation prompts from post c
 
 ### Filtering Preferred Image Models
 
-You can filter which AI image models are used for image generation using the `ai_experiments_preferred_image_models` filter:
+You can filter which AI image models are used for image generation using the `wpai_preferred_image_models` filter:
 
 ```php
-add_filter( 'ai_experiments_preferred_image_models', function( $models ) {
+add_filter( 'wpai_preferred_image_models', function( $models ) {
     // Prefer specific image models
     return array(
         array( 'openai', 'dall-e-3' ),
@@ -730,7 +738,7 @@ You can extend the React components to add custom UI elements:
 
 2. **Modify the inline generation modal:**
    - Edit `src/experiments/image-generation/components/GenerateImageInlineModal.tsx`
-   - The modal supports idle (prompt input), generating, and preview (keep/start over) states
+   - The modal supports idle (prompt input), generating, preview (keep/refine/start over) states
    - Customize the flow, UI copy, or add new actions
 
 3. **Add or change supported blocks for inline generation:**
@@ -771,7 +779,7 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
 ### Manual Testing
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Toggle **Image Generation** to enabled
    - Ensure you have valid AI credentials configured
 
@@ -788,7 +796,8 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
    - Add an Image, Cover, Media & Text, or Gallery block
    - Select the block and click the "Generate Image" toolbar or inline button
    - Enter a prompt (e.g. "A sunset over mountains") and click Generate
-   - Verify the preview appears with "Keep", and "Start Over"
+   - Verify the preview appears with "Keep", "Refine", and "Start Over"
+   - Click "Refine", add a follow-up prompt (e.g. "Add clouds"), and Generate; verify the image updates
    - Click "Keep" and verify the image is imported and inserted into the block
    - Test with each supported block type to ensure correct attribute mapping
 
@@ -845,7 +854,7 @@ npm run test:php
 - The ability uses `get_preferred_image_models()` to determine which AI image models to use
 - Models are tried in order until one succeeds
 - Default models include Google's Gemini (e.g. gemini-3-pro-image-preview, gemini-2.5-flash-image), Imagen, and OpenAI's DALL-E 3 and GPT-image models
-- All default models support image generation
+- All default models support image generation; the Google models also support image editing (when a reference image is provided)
 - Request timeout is set to 90 seconds to accommodate longer image generation times
 
 ### Prompt Generation

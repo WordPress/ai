@@ -42,7 +42,7 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered Post content.
 	 */
-	$content = (string) apply_filters( 'ai_experiments_pre_normalize_content', $content );
+	$content = (string) apply_filters( 'wpai_pre_normalize_content', $content );
 
 	// Strip HTML entities.
 	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content ) ?? $content;
@@ -68,7 +68,7 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered normalized content.
 	 */
-	$content = (string) apply_filters( 'ai_experiments_normalize_content', (string) $content );
+	$content = (string) apply_filters( 'wpai_normalize_content', (string) $content );
 
 	return trim( $content );
 }
@@ -143,7 +143,11 @@ function get_preferred_models_for_text_generation(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-haiku-4-5',
+			'claude-sonnet-4-6',
+		),
+		array(
+			'google',
+			'gemini-3-flash-preview',
 		),
 		array(
 			'google',
@@ -151,11 +155,11 @@ function get_preferred_models_for_text_generation(): array {
 		),
 		array(
 			'openai',
-			'gpt-4o-mini',
+			'gpt-5.4-mini',
 		),
 		array(
 			'openai',
-			'gpt-4.1',
+			'gpt-4.1-mini',
 		),
 	);
 
@@ -167,7 +171,7 @@ function get_preferred_models_for_text_generation(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_models_for_text_generation', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_text_models', $preferred_models );
 }
 
 /**
@@ -237,15 +241,7 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-1',
-		),
-		array(
-			'openai',
 			'gpt-image-1-mini',
-		),
-		array(
-			'openai',
-			'dall-e-3',
 		),
 	);
 
@@ -257,7 +253,7 @@ function get_preferred_image_models(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred image models.
 	 * @return array<int, array{string, string}> The filtered preferred image models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_image_models', $preferred_models );
 }
 
 /**
@@ -271,7 +267,11 @@ function get_preferred_vision_models(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-haiku-4-5-20251001',
+			'claude-sonnet-4-6',
+		),
+		array(
+			'google',
+			'gemini-3-flash-preview',
 		),
 		array(
 			'google',
@@ -279,7 +279,11 @@ function get_preferred_vision_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-5-nano',
+			'gpt-5.4-mini',
+		),
+		array(
+			'openai',
+			'gpt-4.1-mini',
 		),
 	);
 
@@ -291,7 +295,7 @@ function get_preferred_vision_models(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred vision models.
 	 * @return array<int, array{string, string}> The filtered preferred vision models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_vision_models', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_vision_models', $preferred_models );
 }
 
 /**
@@ -306,7 +310,11 @@ function has_ai_credentials(): bool {
 		return false;
 	}
 
-	foreach ( wp_get_connectors() as $connector_data ) {
+	$connectors = wp_get_connectors();
+
+	$has_credentials = false;
+
+	foreach ( $connectors as $connector_data ) {
 		if ( 'ai_provider' !== $connector_data['type'] ) {
 			continue;
 		}
@@ -320,10 +328,22 @@ function has_ai_credentials(): bool {
 			continue;
 		}
 
-		return true;
+		$has_credentials = true;
+		break;
 	}
 
-	return false;
+	/**
+	 * Filters whether AI credentials are available.
+	 *
+	 * Allows third-party plugins to declare credential availability for
+	 * connectors that do not rely on API key settings.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool  $has_credentials Whether AI credentials are available.
+	 * @param array $connectors      The registered connectors.
+	 */
+	return (bool) apply_filters( 'wpai_has_ai_credentials', $has_credentials, $connectors );
 }
 
 /**
@@ -349,7 +369,7 @@ function has_valid_ai_credentials(): bool {
 	 * @param bool|null $has_valid_credentials Whether valid credentials are available. Return null to use default check.
 	 * @return bool|null True if valid credentials are available, false otherwise, or null to use default check.
 	 */
-	$valid = apply_filters( 'ai_experiments_pre_has_valid_credentials_check', null );
+	$valid = apply_filters( 'wpai_pre_has_valid_credentials_check', null );
 	if ( null !== $valid ) {
 		return (bool) $valid;
 	}

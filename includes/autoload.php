@@ -1,7 +1,7 @@
 <?php
 
 /**
- * PSR-4 autoloader for the AI Experiments plugin.
+ * PSR-4 autoloader for the AI plugin.
  *
  * @since 0.5.0
  *
@@ -9,6 +9,11 @@
  */
 
 declare( strict_types=1 );
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 spl_autoload_register(
 	static function ( string $class_name ): void {
