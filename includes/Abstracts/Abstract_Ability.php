@@ -122,6 +122,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * Returns formatted content guidelines for prompt injection.
 	 *
 	 * Uses guideline_categories() to determine which categories to include.
+	 * Unsupported categories are silently dropped.
 	 * Returns empty string when guidelines are unavailable or no categories declared.
 	 *
 	 * @since x.x.x
@@ -130,7 +131,12 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return string Formatted guidelines XML string, or empty string.
 	 */
 	protected function get_content_guidelines_for_prompt( ?string $block_name = null ): string {
-		$categories = $this->guideline_categories();
+		$categories = array_values(
+			array_intersect(
+				$this->guideline_categories(),
+				array( 'site', 'copy', 'images', 'additional' )
+			)
+		);
 		if ( empty( $categories ) ) {
 			return '';
 		}
