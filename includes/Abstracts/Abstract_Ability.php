@@ -11,6 +11,7 @@ namespace WordPress\AI\Abstracts;
 
 use ReflectionClass;
 use WP_Ability;
+use function WordPress\AI\format_content_guidelines_for_prompt;
 
 /**
  * Base implementation for a WordPress Ability.
@@ -133,7 +134,7 @@ abstract class Abstract_Ability extends WP_Ability {
 		if ( empty( $categories ) ) {
 			return '';
 		}
-		return \WordPress\AI\format_content_guidelines_for_prompt( $categories, $block_name );
+		return format_content_guidelines_for_prompt( $categories, $block_name );
 	}
 
 	/**
