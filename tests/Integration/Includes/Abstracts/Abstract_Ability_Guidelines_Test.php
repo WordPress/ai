@@ -275,7 +275,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that block name is passed through for block-specific guidelines.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	public function test_block_name_passthrough_for_block_specific_guidelines(): void {
 		$this->register_guidelines_cpt();
