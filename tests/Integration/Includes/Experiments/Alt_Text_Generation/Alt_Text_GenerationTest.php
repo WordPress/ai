@@ -57,7 +57,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'ai_experiments_experiment_alt-text-generation_enabled' );
-		unset( $_GET['ai_bulk_alt_text'], $_GET['ai_attachment_ids'] );
+		unset( $_GET['wpai_bulk_alt_text'], $_GET['wpai_attachment_ids'] );
 		wp_dequeue_script( 'ai_alt_text_generation_bulk' );
 		wp_deregister_script( 'ai_alt_text_generation_bulk' );
 		parent::tearDown();
@@ -100,8 +100,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$experiment = new Alt_Text_Generation();
 		$actions    = $experiment->register_bulk_action( array() );
 
-		$this->assertArrayHasKey( 'ai_generate_alt_text', $actions );
-		$this->assertSame( 'Generate Alt Text', $actions['ai_generate_alt_text'] );
+		$this->assertArrayHasKey( 'wpai_generate_alt_text', $actions );
+		$this->assertSame( 'Generate Alt Text', $actions['wpai_generate_alt_text'] );
 	}
 
 	/**
@@ -117,7 +117,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$actions    = $experiment->register_bulk_action( $initial );
 
 		$this->assertSame( $initial, $actions );
-		$this->assertArrayNotHasKey( 'ai_generate_alt_text', $actions );
+		$this->assertArrayNotHasKey( 'wpai_generate_alt_text', $actions );
 
 		remove_all_filters( 'wpai_feature_alt-text-generation_enabled' );
 	}
@@ -137,10 +137,10 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$experiment   = new Alt_Text_Generation();
 		$redirect     = 'https://example.com/wp-admin/upload.php';
-		$result       = $experiment->handle_bulk_action( $redirect, 'ai_generate_alt_text', array( $image_id ) );
+		$result       = $experiment->handle_bulk_action( $redirect, 'wpai_generate_alt_text', array( $image_id ) );
 
-		$this->assertStringContainsString( 'ai_bulk_alt_text=1', $result );
-		$this->assertStringContainsString( 'ai_attachment_ids=' . $image_id, $result );
+		$this->assertStringContainsString( 'wpai_bulk_alt_text=1', $result );
+		$this->assertStringContainsString( 'wpai_attachment_ids=' . $image_id, $result );
 	}
 
 	/**
@@ -161,7 +161,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$experiment = new Alt_Text_Generation();
 		$redirect   = 'https://example.com/wp-admin/upload.php';
-		$result     = $experiment->handle_bulk_action( $redirect, 'ai_generate_alt_text', array( $non_image_id ) );
+		$result     = $experiment->handle_bulk_action( $redirect, 'wpai_generate_alt_text', array( $non_image_id ) );
 
 		$this->assertSame( $redirect, $result, 'Redirect should be unchanged when no image attachments are selected.' );
 	}
@@ -190,7 +190,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$experiment = new Alt_Text_Generation();
 		$redirect   = 'https://example.com/wp-admin/upload.php';
-		$result     = $experiment->handle_bulk_action( $redirect, 'ai_generate_alt_text', array( 1 ) );
+		$result     = $experiment->handle_bulk_action( $redirect, 'wpai_generate_alt_text', array( 1 ) );
 
 		$this->assertSame( $redirect, $result, 'Redirect should be unchanged when user lacks upload_files capability.' );
 	}
@@ -204,8 +204,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
 
-		$_GET['ai_bulk_alt_text']  = '1';
-		$_GET['ai_attachment_ids'] = '1,2';
+		$_GET['wpai_bulk_alt_text']  = '1';
+		$_GET['wpai_attachment_ids'] = '1,2';
 
 		// Asset_Loader::enqueue_script() bails early if the compiled JS file does not exist
 		// (build and test jobs run in parallel in CI). Create a stub so the enqueue proceeds.
@@ -253,8 +253,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	public function test_maybe_enqueue_bulk_script_skips_without_capability(): void {
 		wp_set_current_user( 0 );
 
-		$_GET['ai_bulk_alt_text']  = '1';
-		$_GET['ai_attachment_ids'] = '1,2';
+		$_GET['wpai_bulk_alt_text']  = '1';
+		$_GET['wpai_attachment_ids'] = '1,2';
 
 		$experiment = new Alt_Text_Generation();
 		$experiment->register();
@@ -272,8 +272,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
 
-		$_GET['ai_bulk_alt_text']  = '1';
-		$_GET['ai_attachment_ids'] = '0,0';
+		$_GET['wpai_bulk_alt_text']  = '1';
+		$_GET['wpai_attachment_ids'] = '0,0';
 
 		$experiment = new Alt_Text_Generation();
 		$experiment->register();

@@ -213,7 +213,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			return $actions;
 		}
 
-		$actions['ai_generate_alt_text'] = __( 'Generate Alt Text', 'ai' );
+		$actions['wpai_generate_alt_text'] = __( 'Generate Alt Text', 'ai' );
 
 		return $actions;
 	}
@@ -229,7 +229,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @return string The redirect URL, possibly with bulk alt text query args appended.
 	 */
 	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
-		if ( 'ai_generate_alt_text' !== $doaction || ! current_user_can( 'upload_files' ) ) {
+		if ( 'wpai_generate_alt_text' !== $doaction || ! current_user_can( 'upload_files' ) ) {
 			return $redirect_url;
 		}
 
@@ -241,8 +241,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 
 		return add_query_arg(
 			array(
-				'ai_bulk_alt_text'  => 1,
-				'ai_attachment_ids' => implode( ',', array_map( 'absint', $image_ids ) ),
+				'wpai_bulk_alt_text'  => 1,
+				'wpai_attachment_ids' => implode( ',', array_map( 'absint', $image_ids ) ),
 			),
 			$redirect_url
 		);
@@ -255,12 +255,12 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 */
 	private function maybe_enqueue_bulk_script(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for script enqueue only; no privileged action taken.
-		if ( ! isset( $_GET['ai_bulk_alt_text'] ) || ! current_user_can( 'upload_files' ) ) {
+		if ( ! isset( $_GET['wpai_bulk_alt_text'] ) || ! current_user_can( 'upload_files' ) ) {
 			return;
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for script enqueue only; no privileged action taken.
-		$raw_ids = isset( $_GET['ai_attachment_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['ai_attachment_ids'] ) ) : '';
+		$raw_ids = isset( $_GET['wpai_attachment_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_attachment_ids'] ) ) : '';
 		$ids     = array_values( array_filter( array_map( 'absint', explode( ',', $raw_ids ) ) ) );
 
 		if ( empty( $ids ) ) {

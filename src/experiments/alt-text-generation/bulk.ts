@@ -151,5 +151,10 @@ async function processBulkAltText(): Promise< void > {
 }
 
 document.addEventListener( 'DOMContentLoaded', () => {
-	void processBulkAltText();
+	void processBulkAltText().then( () => {
+		const url = new URL( window.location.href );
+		url.searchParams.delete( 'wpai_bulk_alt_text' );
+		url.searchParams.delete( 'wpai_attachment_ids' );
+		window.history.replaceState( {}, '', url.toString() );
+	} );
 } );
