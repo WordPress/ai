@@ -516,6 +516,9 @@ function AISettingsPage() {
 
 	const globalEnabled = data[ GLOBAL_FIELD.id ];
 
+	// Guard against concurrent auto-save requests from rapid toggle clicks.
+	const savingRef = useRef( false );
+
 	// Stable references for feature edit components to prevent React remounts
 	// when siteSettings changes (which would reset InlineFeatureSettings state).
 	// Stores the feature reference alongside the component so the cache is
@@ -642,6 +645,11 @@ function AISettingsPage() {
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
+			if ( savingRef.current ) {
+				return;
+			}
+			savingRef.current = true;
+
 			// Capture previous values for rollback on failure.
 			const previousValues: Record< string, unknown > = {};
 			for ( const key of Object.keys( edits ) ) {
@@ -684,6 +692,8 @@ function AISettingsPage() {
 				createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
 					type: 'snackbar',
 				} );
+			} finally {
+				savingRef.current = false;
 			}
 		},
 		[
