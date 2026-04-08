@@ -4,15 +4,9 @@
 import { Page } from '@wordpress/admin-ui';
 import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
-import { useSelect, useDispatch } from '@wordpress/data';
+import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from '@wordpress/element';
+import { useCallback, useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
@@ -246,6 +240,30 @@ const GLOBAL_FIELD: Field< AISettings > = {
 	Edit: 'toggle',
 };
 
+function buildToggleMessage(
+	edits: Record< string, unknown >,
+	featureDefinitions: FeatureData[]
+): string {
+	const entry = Object.entries( edits )[ 0 ];
+	if ( ! entry ) {
+		return __( 'Settings saved.', 'ai' );
+	}
+	if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
+		return entry[ 1 ]
+			? __( 'AI enabled.', 'ai' )
+			: __( 'AI disabled.', 'ai' );
+	}
+	const feature = featureDefinitions.find(
+		( f ) => f.settingName === entry[ 0 ]
+	);
+	const label = feature?.label ?? entry[ 0 ];
+	return entry[ 1 ]
+		? // translators: %s: Feature label.
+		  sprintf( __( '%s enabled.', 'ai' ), label )
+		: // translators: %s: Feature label.
+		  sprintf( __( '%s disabled.', 'ai' ), label );
+}
+
 function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	return (
 		<ToggleControl
@@ -260,52 +278,52 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	);
 }
 
-/**
- * Inline sub-settings form for an experiment's custom fields.
- * Rendered below the toggle inside the same card, with its own Save button.
- *
- * @param {Object}      root0         Component props.
- * @param {FeatureData} root0.feature The feature with custom settings fields.
- */
-function InlineFeatureSettings( {
-	feature,
-}: {
-	feature: FeatureData;
-} ) {
-	// Read siteSettings directly from the store so this component can
-	// re-render independently without forcing its parent to recreate.
-	const siteSettings = useSelect( ( select ) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
-		const store: any = select( coreStore );
-		return store.getEditedEntityRecord( 'root', 'site' ) as
-			| Record< string, unknown >
-			| undefined;
-	}, [] );
-	const [ localEdits, setLocalEdits ] = useState< Record< string, unknown > >(
-		{}
+function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
+	const fieldIds = useMemo(
+		() => feature.settingsFields.map( ( f ) => f.id ),
+		[ feature.settingsFields ]
 	);
 
-	// Clear pending edits when the feature changes (e.g. fields redefined by
-	// a filter) so stale keys from the previous definition don't persist.
-	useEffect( () => {
-		setLocalEdits( {} );
-	}, [ feature.id ] );
+	const { editedRecord, nonTransientEdits, isSaving } = useSelect(
+		( select ) => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
+			const store: any = select( coreStore );
+			return {
+				editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
+					| Record< string, unknown >
+					| undefined,
+				nonTransientEdits: ( store.getEntityRecordNonTransientEdits(
+					'root',
+					'site'
+				) ?? {} ) as Record< string, unknown >,
+				isSaving: store.isSavingEntityRecord(
+					'root',
+					'site'
+				) as boolean,
+			};
+		},
+		[]
+	);
 
-	const isDirty = Object.keys( localEdits ).length > 0;
-	const [ isSaving, setIsSaving ] = useState( false );
+	const isDirty = useMemo(
+		() => fieldIds.some( ( id ) => id in nonTransientEdits ),
+		[ fieldIds, nonTransientEdits ]
+	);
 
-	const { editEntityRecord, saveEditedEntityRecord } =
-		useDispatch( coreStore );
+	const { editEntityRecord } = useDispatch( coreStore );
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
+	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
+		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
 
 	const data = useMemo( () => {
 		const base: Record< string, unknown > = {};
 		for ( const field of feature.settingsFields ) {
-			base[ field.id ] = siteSettings?.[ field.id ] ?? field.default;
+			base[ field.id ] = editedRecord?.[ field.id ] ?? field.default;
 		}
-		return { ...base, ...localEdits };
-	}, [ feature.settingsFields, siteSettings, localEdits ] );
+		return base;
+	}, [ feature.settingsFields, editedRecord ] );
 
 	const fields = useMemo< Field< Record< string, unknown > >[] >(
 		() =>
@@ -336,28 +354,19 @@ function InlineFeatureSettings( {
 		[ feature.settingsFields ]
 	);
 
-	const handleChange = useCallback( ( edits: Record< string, unknown > ) => {
-		setLocalEdits( ( prev ) => ( { ...prev, ...edits } ) );
-	}, [] );
+	const handleChange = useCallback(
+		( edits: Record< string, unknown > ) => {
+			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
+			editEntityRecord( 'root', 'site', undefined, edits );
+		},
+		[ editEntityRecord ]
+	);
 
 	const handleSave = useCallback( async () => {
-		setIsSaving( true );
-
-		// Capture previous values for rollback on failure.
-		const previousValues: Record< string, unknown > = {};
-		for ( const key of Object.keys( localEdits ) ) {
-			previousValues[ key ] =
-				siteSettings?.[ key ] ??
-				feature.settingsFields.find( ( f ) => f.id === key )
-					?.default;
-		}
-
 		try {
-			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
-			editEntityRecord( 'root', 'site', undefined, localEdits );
-			// @ts-expect-error -- core-data types don't expose saveEditedEntityRecord for 'root'/'site' args.
-			await saveEditedEntityRecord( 'root', 'site' );
-			setLocalEdits( {} );
+			await saveSpecifiedEdits( 'root', 'site', undefined, fieldIds, {
+				throwOnError: true,
+			} );
 			createSuccessNotice(
 				sprintf(
 					// translators: %s: Feature label.
@@ -367,21 +376,14 @@ function InlineFeatureSettings( {
 				{ type: 'snackbar' }
 			);
 		} catch {
-			// Revert the optimistic edit on failure.
-			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
-			editEntityRecord( 'root', 'site', undefined, previousValues );
+			// Edits remain in the store — user can retry or adjust values.
 			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
 				type: 'snackbar',
 			} );
-		} finally {
-			setIsSaving( false );
 		}
 	}, [
-		localEdits,
-		siteSettings,
-		feature.settingsFields,
-		editEntityRecord,
-		saveEditedEntityRecord,
+		saveSpecifiedEdits,
+		fieldIds,
 		createSuccessNotice,
 		createErrorNotice,
 		feature.label,
@@ -395,13 +397,12 @@ function InlineFeatureSettings( {
 				form={ form }
 				onChange={ handleChange }
 			/>
-			{ ( isDirty || isSaving ) && (
+			{ isDirty && (
 				<div className="ai-feature-settings-form__actions">
 					<Button
 						variant="primary"
 						onClick={ handleSave }
 						isBusy={ isSaving }
-						disabled={ isSaving }
 						size="compact"
 					>
 						{ __( 'Save', 'ai' ) }
@@ -437,20 +438,32 @@ function createFeatureToggleWithSettings( feature: FeatureData ) {
 						onChange( { [ field.id ]: value } );
 					} }
 				/>
-				{ checked && (
-					<InlineFeatureSettings feature={ feature } />
-				) }
+				{ checked && <InlineFeatureSettings feature={ feature } /> }
 			</div>
 		);
 	};
 }
 
+const featureEditComponents = new Map<
+	string,
+	ReturnType< typeof createFeatureToggleWithSettings >
+>();
+
+function getFeatureEditComponent( feature: FeatureData ) {
+	let component = featureEditComponents.get( feature.id );
+	if ( ! component ) {
+		component = createFeatureToggleWithSettings( feature );
+		featureEditComponents.set( feature.id, component );
+	}
+	return component;
+}
+
 function AISettingsPage() {
-	const { siteSettings, isLoading } = useSelect( ( select ) => {
+	const { editedRecord, isLoading } = useSelect( ( select ) => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 		const store: any = select( coreStore );
 		return {
-			siteSettings: store.getEditedEntityRecord( 'root', 'site' ) as
+			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
 				| Record< string, unknown >
 				| undefined,
 			isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
@@ -460,16 +473,19 @@ function AISettingsPage() {
 		};
 	}, [] );
 
-	const { editEntityRecord, saveEditedEntityRecord } =
-		useDispatch( coreStore );
+	const { editEntityRecord } = useDispatch( coreStore );
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
+	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
+		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
+	const registry = useRegistry();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		const sourceFeatures =
 			PAGE_DATA.features.length > 0
 				? PAGE_DATA.features
-				: Object.keys( siteSettings ?? {} )
+				: Object.keys( editedRecord ?? {} )
 						.filter( ( key ) =>
 							FEATURE_SETTING_PATTERN.test( key )
 						)
@@ -499,7 +515,7 @@ function AISettingsPage() {
 		}
 
 		return uniqueFeatures;
-	}, [ siteSettings ] );
+	}, [ editedRecord ] );
 
 	const featureGroups = useMemo< FeatureGroupData[] >(
 		() =>
@@ -522,35 +538,12 @@ function AISettingsPage() {
 	const data: AISettings = useMemo( () => {
 		const aiSettings: AISettings = {};
 		for ( const key of aiSettingKeys ) {
-			aiSettings[ key ] = Boolean( siteSettings?.[ key ] ?? false );
+			aiSettings[ key ] = Boolean( editedRecord?.[ key ] ?? false );
 		}
 		return aiSettings;
-	}, [ aiSettingKeys, siteSettings ] );
+	}, [ aiSettingKeys, editedRecord ] );
 
 	const globalEnabled = data[ GLOBAL_FIELD.id ];
-
-	// Keep a ref to the latest data so handleChange can read previous values
-	// without adding `data` to its dependency array (which would recreate the
-	// callback on every settings change).
-	const dataRef = useRef( data );
-	dataRef.current = data;
-
-	// Guard against concurrent auto-save requests from rapid toggle clicks.
-	const savingRef = useRef( false );
-
-	// Stable references for feature edit components to prevent React remounts
-	// when siteSettings changes (which would reset InlineFeatureSettings state).
-	// Stores the feature reference alongside the component so the cache is
-	// invalidated when the feature definition changes.
-	const editComponentsRef = useRef(
-		new Map<
-			string,
-			{
-				component: ReturnType< typeof createFeatureToggleWithSettings >;
-				feature: FeatureData;
-			}
-		>()
-	);
 
 	const fields = useMemo< Field< AISettings >[] >(
 		() => [
@@ -566,17 +559,7 @@ function AISettingsPage() {
 				if ( ! globalEnabled ) {
 					baseField.Edit = DisabledToggle;
 				} else if ( feature.settingsFields.length > 0 ) {
-					let cached =
-						editComponentsRef.current.get( feature.id );
-					if ( ! cached || cached.feature !== feature ) {
-						cached = {
-							component:
-								createFeatureToggleWithSettings( feature ),
-							feature,
-						};
-						editComponentsRef.current.set( feature.id, cached );
-					}
-					baseField.Edit = cached.component;
+					baseField.Edit = getFeatureEditComponent( feature );
 				} else {
 					baseField.Edit = 'toggle' as const;
 				}
@@ -663,63 +646,45 @@ function AISettingsPage() {
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
-			if ( savingRef.current ) {
-				return;
-			}
-			savingRef.current = true;
+			const keys = Object.keys( edits );
 
-			// Capture previous values for rollback on failure.
-			const previousValues: Record< string, unknown > = {};
-			for ( const key of Object.keys( edits ) ) {
-				previousValues[ key ] = dataRef.current[ key ];
-			}
-
+			// Optimistic update — the UI reflects the new value immediately.
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
 			editEntityRecord( 'root', 'site', undefined, edits );
 
-			const entry = Object.entries( edits )[ 0 ];
-			let message: string;
-			if ( ! entry ) {
-				message = __( 'Settings saved.', 'ai' );
-			} else if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
-				message = entry[ 1 ]
-					? __( 'AI enabled.', 'ai' )
-					: __( 'AI disabled.', 'ai' );
-			} else {
-				const feature = featureDefinitions.find(
-					( f ) => f.settingName === entry[ 0 ]
-				);
-				const label = feature?.label ?? entry[ 0 ];
-				if ( entry[ 1 ] ) {
-					// translators: %s: Feature label.
-					message = sprintf( __( '%s enabled.', 'ai' ), label );
-				} else {
-					// translators: %s: Feature label.
-					message = sprintf( __( '%s disabled.', 'ai' ), label );
-				}
-			}
+			const message = buildToggleMessage( edits, featureDefinitions );
 
 			try {
-				// @ts-expect-error -- core-data types don't expose saveEditedEntityRecord for 'root'/'site' args.
-				await saveEditedEntityRecord( 'root', 'site' );
+				await saveSpecifiedEdits( 'root', 'site', undefined, keys, {
+					throwOnError: true,
+				} );
 				createSuccessNotice( message, { type: 'snackbar' } );
 			} catch {
-				// Revert the optimistic edit on failure.
+				// Revert only the toggled keys to their server-side values.
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DataRegistry typing doesn't expose .select(); core-data selectors aren't fully typed for 'root'/'site' entity args.
+				const serverRecord = ( registry as any )
+					.select( coreStore )
+					.getEntityRecord( 'root', 'site' ) as
+					| Record< string, unknown >
+					| undefined;
+				const revert: Record< string, unknown > = {};
+				for ( const key of keys ) {
+					revert[ key ] = serverRecord?.[ key ];
+				}
 				// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
-				editEntityRecord( 'root', 'site', undefined, previousValues );
+				editEntityRecord( 'root', 'site', undefined, revert );
 				createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
 					type: 'snackbar',
 				} );
-			} finally {
-				savingRef.current = false;
 			}
 		},
 		[
 			editEntityRecord,
-			saveEditedEntityRecord,
+			saveSpecifiedEdits,
 			createSuccessNotice,
 			createErrorNotice,
 			featureDefinitions,
+			registry,
 		]
 	);
 

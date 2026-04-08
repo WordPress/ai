@@ -141,7 +141,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 		return;
 	}
 	await globalToggle.uncheck();
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect( page.getByText( 'AI disabled.' ) ).toBeVisible();
 };
 
 /**
@@ -162,7 +162,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 		return;
 	}
 	await globalToggle.check();
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect( page.getByText( 'AI enabled.' ) ).toBeVisible();
 };
 
 /**
@@ -189,7 +189,9 @@ export const enableExperiment = async (
 	await toggle.check();
 
 	// Ensure the save was successful.
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect(
+		page.getByText( `${ experimentLabel } enabled.` )
+	).toBeVisible();
 };
 
 /**
@@ -216,5 +218,7 @@ export const disableExperiment = async (
 	await toggle.uncheck();
 
 	// Ensure the save was successful.
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect(
+		page.getByText( `${ experimentLabel } disabled.` )
+	).toBeVisible();
 };
