@@ -259,6 +259,7 @@ abstract class Abstract_Feature implements Feature {
 		foreach ( $fields as &$field ) {
 			$field['id'] = $this->get_field_option_name( $field['id'] );
 		}
+		unset( $field );
 		return $fields;
 	}
 
