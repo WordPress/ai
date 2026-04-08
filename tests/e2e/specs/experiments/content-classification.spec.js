@@ -76,6 +76,12 @@ async function setStrategy( admin, page, strategy ) {
 
 	const strategySelect = page.getByLabel( 'Taxonomy strategy' );
 	await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
+
+	// Nothing to do if the strategy is already set.
+	if ( ( await strategySelect.inputValue() ) === strategy ) {
+		return;
+	}
+
 	await strategySelect.selectOption( strategy );
 
 	const saveButton = page
