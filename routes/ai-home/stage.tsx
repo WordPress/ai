@@ -41,8 +41,15 @@ interface PageData {
 	features: FeatureData[];
 }
 
+interface SelectAllToggleProps extends DataFormControlProps< AISettings > {
+	featureSettingNames: string[];
+	groupLabel: string;
+	globalEnabled: boolean;
+}
+
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 const GLOBAL_FIELD_ID = 'wpai_features_enabled';
+const SELECT_ALL_FIELD_PREFIX = 'wpai_select_all_';
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;
@@ -113,6 +120,30 @@ function getDefaultLabel( key: string ): string {
 
 function getSectionId( groupId: string ): string {
 	return `feature-group-${ groupId.replace( /[^a-zA-Z0-9_-]/g, '-' ) }`;
+}
+
+function getSelectAllFieldId( groupId: string ): string {
+	return `${ SELECT_ALL_FIELD_PREFIX }${ groupId.replace(
+		/[^a-zA-Z0-9_-]/g,
+		'_'
+	) }`;
+}
+
+function createSelectAllEditComponent(
+	featureSettingNames: string[],
+	groupLabel: string,
+	globalEnabled: boolean
+): React.ComponentType< DataFormControlProps< AISettings > > {
+	return function SelectAllEdit( props ) {
+		return (
+			<SelectAllToggle
+				{ ...props }
+				featureSettingNames={ featureSettingNames }
+				groupLabel={ groupLabel }
+				globalEnabled={ globalEnabled }
+			/>
+		);
+	};
 }
 
 function buildFallbackFeatureGroups(
@@ -200,6 +231,58 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	);
 }
 
+function SelectAllToggle( {
+	data,
+	onChange,
+	featureSettingNames,
+	groupLabel,
+	globalEnabled,
+}: SelectAllToggleProps ) {
+	const enabledCount = featureSettingNames.filter(
+		( settingName ) => !! data[ settingName ]
+	).length;
+
+	const isAllEnabled = enabledCount === featureSettingNames.length;
+
+	// Dynamic label based on current state
+	const label = isAllEnabled
+		? sprintf(
+				// translators: %s: Group label (e.g., "Editor Experiments")
+				__( 'Disable all %s', 'ai' ),
+				groupLabel
+		  )
+		: sprintf(
+				// translators: %s: Group label (e.g., "Editor Experiments")
+				__( 'Enable all %s', 'ai' ),
+				groupLabel
+		  );
+
+	const handleToggle = useCallback(
+		( checked: boolean ) => {
+			const updates: Record< string, boolean > = {};
+
+			for ( const settingName of featureSettingNames ) {
+				updates[ settingName ] = checked;
+			}
+
+			onChange( updates );
+		},
+		[ featureSettingNames, onChange ]
+	);
+
+	return (
+		<div className="ai-select-all-toggle">
+			<ToggleControl
+				__nextHasNoMarginBottom
+				label={ label }
+				checked={ isAllEnabled }
+				onChange={ handleToggle }
+				disabled={ ! globalEnabled }
+			/>
+		</div>
+	);
+}
+
 function AISettingsPage() {
 	const { siteSettings, isLoading } = useSelect( ( select ) => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
@@ -270,8 +353,13 @@ function AISettingsPage() {
 			settingKeys.add( feature.settingName );
 		}
 
+		// Add select-all field IDs (they're virtual, not saved to DB)
+		for ( const group of featureGroups ) {
+			settingKeys.add( getSelectAllFieldId( group.id ) );
+		}
+
 		return Array.from( settingKeys );
-	}, [ featureDefinitions ] );
+	}, [ featureDefinitions, featureGroups ] );
 
 	const data: AISettings = useMemo( () => {
 		const aiSettings: AISettings = {};
@@ -281,21 +369,53 @@ function AISettingsPage() {
 		return aiSettings;
 	}, [ aiSettingKeys, siteSettings ] );
 
-	const globalEnabled = data[ GLOBAL_FIELD.id ];
+	const globalEnabled = Boolean( data[ GLOBAL_FIELD.id ] );
 
-	const fields = useMemo< Field< AISettings >[] >(
-		() => [
-			GLOBAL_FIELD,
-			...featureDefinitions.map( ( feature ) => ( {
-				id: feature.settingName,
-				label: feature.label,
-				description: feature.description,
-				type: 'boolean' as const,
-				Edit: globalEnabled ? ( 'toggle' as const ) : DisabledToggle,
-			} ) ),
-		],
-		[ featureDefinitions, globalEnabled ]
-	);
+	const fields = useMemo< Field< AISettings >[] >( () => {
+		// Group features by category to create select-all fields
+		const groupedFeatures = new Map< string, FeatureData[] >();
+		for ( const feature of featureDefinitions ) {
+			const category = feature.category || 'other';
+			const categoryFeatures = groupedFeatures.get( category ) ?? [];
+			categoryFeatures.push( feature );
+			groupedFeatures.set( category, categoryFeatures );
+		}
+
+		// Create select-all fields for each group
+		const selectAllFields: Field< AISettings >[] = [];
+		for ( const group of featureGroups ) {
+			const groupFeatures = groupedFeatures.get( group.id ) ?? [];
+			if ( groupFeatures.length === 0 ) {
+				continue;
+			}
+
+			const featureSettingNames = groupFeatures.map(
+				( f ) => f.settingName
+			);
+
+			selectAllFields.push( {
+				id: getSelectAllFieldId( group.id ),
+				label: '', // Dynamic label set by SelectAllToggle component
+				type: 'boolean',
+				Edit: createSelectAllEditComponent(
+					featureSettingNames,
+					group.label,
+					globalEnabled
+				),
+			} );
+		}
+
+		// Create individual feature fields
+		const featureFields = featureDefinitions.map( ( feature ) => ( {
+			id: feature.settingName,
+			label: feature.label,
+			description: feature.description,
+			type: 'boolean' as const,
+			Edit: globalEnabled ? ( 'toggle' as const ) : DisabledToggle,
+		} ) );
+
+		return [ GLOBAL_FIELD, ...selectAllFields, ...featureFields ];
+	}, [ featureDefinitions, featureGroups, globalEnabled ] );
 
 	const form = useMemo< Form >( () => {
 		const groupedFields = new Map< string, string[] >();
@@ -317,6 +437,11 @@ function AISettingsPage() {
 			}
 
 			seenCategories.add( group.id );
+
+			// Add select-all field as first child
+			const selectAllFieldId = getSelectAllFieldId( group.id );
+			const sectionChildren = [ selectAllFieldId, ...children ];
+
 			sectionFields.push( {
 				id: getSectionId( group.id ),
 				label: group.label,
@@ -327,7 +452,7 @@ function AISettingsPage() {
 					isOpened: true,
 					isCollapsible: true,
 				},
-				children,
+				children: sectionChildren,
 			} );
 		}
 
@@ -335,6 +460,10 @@ function AISettingsPage() {
 			if ( children.length === 0 || seenCategories.has( category ) ) {
 				continue;
 			}
+
+			// Add select-all field as first child
+			const selectAllFieldId = getSelectAllFieldId( category );
+			const sectionChildren = [ selectAllFieldId, ...children ];
 
 			sectionFields.push( {
 				id: getSectionId( category ),
@@ -346,7 +475,7 @@ function AISettingsPage() {
 					isOpened: true,
 					isCollapsible: true,
 				},
-				children,
+				children: sectionChildren,
 			} );
 		}
 
@@ -373,28 +502,70 @@ function AISettingsPage() {
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
-			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
-			editEntityRecord( 'root', 'site', undefined, edits );
+			// Filter out virtual select-all fields - they shouldn't be saved
+			const actualEdits: Record< string, unknown > = {};
+			for ( const [ key, value ] of Object.entries( edits ) ) {
+				if ( ! key.startsWith( SELECT_ALL_FIELD_PREFIX ) ) {
+					actualEdits[ key ] = value;
+				}
+			}
 
-			const entry = Object.entries( edits )[ 0 ];
+			// If no actual edits after filtering, skip
+			if ( Object.keys( actualEdits ).length === 0 ) {
+				return;
+			}
+
+			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
+			editEntityRecord( 'root', 'site', undefined, actualEdits );
+
+			// Determine success message
 			let message: string;
-			if ( ! entry ) {
-				message = __( 'Settings saved.', 'ai' );
-			} else if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
-				message = entry[ 1 ]
-					? __( 'AI enabled.', 'ai' )
-					: __( 'AI disabled.', 'ai' );
-			} else {
-				const feature = featureDefinitions.find(
-					( f ) => f.settingName === entry[ 0 ]
-				);
-				const label = feature?.label ?? entry[ 0 ];
-				if ( entry[ 1 ] ) {
-					// translators: %s: Feature label.
-					message = sprintf( __( '%s enabled.', 'ai' ), label );
+			const editCount = Object.keys( actualEdits ).length;
+
+			if ( editCount > 1 ) {
+				// Bulk edit message
+				const enabledCount =
+					Object.values( actualEdits ).filter( Boolean ).length;
+				if ( enabledCount === editCount ) {
+					message = sprintf(
+						// translators: %d: number of experiments.
+						__( '%d experiments enabled.', 'ai' ),
+						editCount
+					);
+				} else if ( enabledCount === 0 ) {
+					message = sprintf(
+						// translators: %d: number of experiments.
+						__( '%d experiments disabled.', 'ai' ),
+						editCount
+					);
 				} else {
-					// translators: %s: Feature label.
-					message = sprintf( __( '%s disabled.', 'ai' ), label );
+					message = sprintf(
+						// translators: %d: number of experiments.
+						__( '%d experiments updated.', 'ai' ),
+						editCount
+					);
+				}
+			} else {
+				// Single edit message
+				const entry = Object.entries( actualEdits )[ 0 ];
+				if ( ! entry ) {
+					message = __( 'Settings saved.', 'ai' );
+				} else if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
+					message = entry[ 1 ]
+						? __( 'AI enabled.', 'ai' )
+						: __( 'AI disabled.', 'ai' );
+				} else {
+					const feature = featureDefinitions.find(
+						( f ) => f.settingName === entry[ 0 ]
+					);
+					const label = feature?.label ?? entry[ 0 ];
+					if ( entry[ 1 ] ) {
+						// translators: %s: Feature label.
+						message = sprintf( __( '%s enabled.', 'ai' ), label );
+					} else {
+						// translators: %s: Feature label.
+						message = sprintf( __( '%s disabled.', 'ai' ), label );
+					}
 				}
 			}
 

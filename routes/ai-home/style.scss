@@ -13,3 +13,19 @@
 .ai-settings-page .components-notice {
 	margin: 0 0 24px;
 }
+
+.ai-select-all-toggle {
+	padding: 12px;
+	margin-bottom: 16px;
+	background-color: #f0f0f0;
+	border-radius: 4px;
+	border: 1px solid #dcdcde;
+
+	.components-base-control {
+		margin-bottom: 0;
+	}
+
+	.components-toggle-control__label {
+		font-weight: 600;
+	}
+}
