@@ -68,11 +68,7 @@ function isDefined< T >( value: T | null | undefined ): value is T {
 }
 
 function isSettingsField( value: unknown ): value is SettingsFieldData {
-	return (
-		isRecord( value ) &&
-		typeof value[ 'id' ] === 'string' &&
-		value[ 'id' ] !== ''
-	);
+	return isRecord( value ) && typeof value.id === 'string' && value.id !== '';
 }
 
 function parseFeatureGroup( value: unknown ): FeatureGroupData | null {
@@ -254,22 +250,19 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 		[ feature.settingsFields ]
 	);
 
-	const { editedRecord, nonTransientEdits } = useSelect(
-		( select ) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
-			const store: any = select( coreStore );
-			return {
-				editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
-					| Record< string, unknown >
-					| undefined,
-				nonTransientEdits: ( store.getEntityRecordNonTransientEdits(
-					'root',
-					'site'
-				) ?? {} ) as Record< string, unknown >,
-			};
-		},
-		[]
-	);
+	const { editedRecord, nonTransientEdits } = useSelect( ( select ) => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
+		const store: any = select( coreStore );
+		return {
+			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
+				| Record< string, unknown >
+				| undefined,
+			nonTransientEdits: ( store.getEntityRecordNonTransientEdits(
+				'root',
+				'site'
+			) ?? {} ) as Record< string, unknown >,
+		};
+	}, [] );
 
 	const [ isSaving, setIsSaving ] = useState( false );
 
