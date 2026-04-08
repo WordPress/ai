@@ -6,7 +6,7 @@ import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo } from '@wordpress/element';
+import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
@@ -25,12 +25,26 @@ interface FeatureGroupData {
 	description: string;
 }
 
+interface SettingsFieldElement {
+	value: string;
+	label: string;
+}
+
+interface SettingsFieldData {
+	id: string;
+	label: string;
+	type: string;
+	default: unknown;
+	elements: SettingsFieldElement[];
+}
+
 interface FeatureData {
 	id: string;
 	settingName: string;
 	label: string;
 	description: string;
 	category: string;
+	settingsFields: SettingsFieldData[];
 }
 
 interface PageData {
@@ -54,6 +68,39 @@ function toStringValue( value: unknown ): string {
 
 function isDefined< T >( value: T | null | undefined ): value is T {
 	return value !== null && value !== undefined;
+}
+
+function parseSettingsField( value: unknown ): SettingsFieldData | null {
+	if ( ! isRecord( value ) ) {
+		return null;
+	}
+
+	const field = value as Partial< SettingsFieldData >;
+	const id = toStringValue( field.id );
+	if ( ! id ) {
+		return null;
+	}
+
+	const rawElements = field.elements;
+
+	return {
+		id,
+		label: toStringValue( field.label ),
+		type: toStringValue( field.type ) || 'string',
+		default: field.default ?? '',
+		elements: Array.isArray( rawElements )
+			? ( rawElements as unknown[] )
+					.filter( isRecord )
+					.map( ( el ) => {
+						const element = el as Partial< SettingsFieldElement >;
+						return {
+							value: toStringValue( element.value ),
+							label: toStringValue( element.label ),
+						};
+					} )
+					.filter( ( el ) => el.value !== '' )
+			: [],
+	};
 }
 
 function parseFeatureGroup( value: unknown ): FeatureGroupData | null {
@@ -89,12 +136,17 @@ function parseFeature( value: unknown ): FeatureData | null {
 		toStringValue( feature.id ) ||
 		getFeatureIdFromSettingName( settingName );
 
+	const rawFields = Array.isArray( feature.settingsFields )
+		? feature.settingsFields
+		: [];
+
 	return {
 		id,
 		settingName,
 		label: toStringValue( feature.label ) || getDefaultLabel( id ),
 		description: toStringValue( feature.description ),
 		category: toStringValue( feature.category ) || 'other',
+		settingsFields: rawFields.map( parseSettingsField ).filter( isDefined ),
 	};
 }
 
@@ -200,6 +252,163 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	);
 }
 
+/**
+ * Inline sub-settings form for an experiment's custom fields.
+ * Rendered below the toggle inside the same card, with its own Save button.
+ */
+function InlineFeatureSettings( {
+	feature,
+	siteSettings,
+}: {
+	feature: FeatureData;
+	siteSettings: Record< string, unknown > | undefined;
+} ) {
+	const [ localEdits, setLocalEdits ] = useState< Record< string, unknown > >(
+		{}
+	);
+	const isDirty = Object.keys( localEdits ).length > 0;
+	const [ isSaving, setIsSaving ] = useState( false );
+
+	const { editEntityRecord, saveEditedEntityRecord } =
+		useDispatch( coreStore );
+	const { createSuccessNotice, createErrorNotice } =
+		useDispatch( noticesStore );
+
+	const data = useMemo( () => {
+		const base: Record< string, unknown > = {};
+		for ( const field of feature.settingsFields ) {
+			base[ field.id ] = siteSettings?.[ field.id ] ?? field.default;
+		}
+		return { ...base, ...localEdits };
+	}, [ feature.settingsFields, siteSettings, localEdits ] );
+
+	const fields = useMemo< Field< Record< string, unknown > >[] >(
+		() =>
+			feature.settingsFields.map( ( settingsField ) => {
+				const fieldDef: Field< Record< string, unknown > > = {
+					id: settingsField.id,
+					label: settingsField.label,
+				};
+
+				if ( settingsField.type === 'integer' ) {
+					fieldDef.type = 'integer';
+				} else if ( settingsField.elements.length > 0 ) {
+					fieldDef.type = 'text';
+					fieldDef.elements = settingsField.elements;
+				} else {
+					fieldDef.type = 'text';
+				}
+
+				return fieldDef;
+			} ),
+		[ feature.settingsFields ]
+	);
+
+	const form = useMemo< Form >(
+		() => ( {
+			fields: feature.settingsFields.map( ( f ) => f.id ),
+		} ),
+		[ feature.settingsFields ]
+	);
+
+	const handleChange = useCallback( ( edits: Record< string, unknown > ) => {
+		setLocalEdits( ( prev ) => ( { ...prev, ...edits } ) );
+	}, [] );
+
+	const handleSave = useCallback( async () => {
+		setIsSaving( true );
+		try {
+			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
+			editEntityRecord( 'root', 'site', undefined, localEdits );
+			// @ts-expect-error -- core-data types don't expose saveEditedEntityRecord for 'root'/'site' args.
+			await saveEditedEntityRecord( 'root', 'site' );
+			setLocalEdits( {} );
+			createSuccessNotice(
+				sprintf(
+					// translators: %s: Feature label.
+					__( '%s settings saved.', 'ai' ),
+					feature.label
+				),
+				{ type: 'snackbar' }
+			);
+		} catch {
+			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		} finally {
+			setIsSaving( false );
+		}
+	}, [
+		localEdits,
+		editEntityRecord,
+		saveEditedEntityRecord,
+		createSuccessNotice,
+		createErrorNotice,
+		feature.label,
+	] );
+
+	return (
+		<div className="ai-feature-settings-form">
+			<DataForm< Record< string, unknown > >
+				data={ data }
+				fields={ fields }
+				form={ form }
+				onChange={ handleChange }
+			/>
+			{ ( isDirty || isSaving ) && (
+				<div className="ai-feature-settings-form__actions">
+					<Button
+						variant="primary"
+						onClick={ handleSave }
+						isBusy={ isSaving }
+						disabled={ isSaving }
+						size="compact"
+					>
+						{ __( 'Save', 'ai' ) }
+					</Button>
+				</div>
+			) }
+		</div>
+	);
+}
+
+/**
+ * Creates a custom Edit component for a feature toggle that also renders
+ * inline sub-settings when the feature is enabled.
+ */
+function createFeatureToggleWithSettings(
+	feature: FeatureData,
+	siteSettings: Record< string, unknown > | undefined
+) {
+	return function FeatureToggleWithSettings( {
+		field,
+		data,
+		onChange,
+	}: DataFormControlProps< AISettings > ) {
+		const checked = !! field.getValue( { item: data } );
+
+		return (
+			<div className="ai-feature-toggle-with-settings">
+				<ToggleControl
+					__nextHasNoMarginBottom
+					label={ field.label }
+					help={ field.description }
+					checked={ checked }
+					onChange={ ( value ) => {
+						onChange( { [ field.id ]: value } );
+					} }
+				/>
+				{ checked && (
+					<InlineFeatureSettings
+						feature={ feature }
+						siteSettings={ siteSettings }
+					/>
+				) }
+			</div>
+		);
+	};
+}
+
 function AISettingsPage() {
 	const { siteSettings, isLoading } = useSelect( ( select ) => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
@@ -238,6 +447,7 @@ function AISettingsPage() {
 								label: getDefaultLabel( id ),
 								description: '',
 								category: 'other',
+								settingsFields: [],
 							};
 						} );
 
@@ -286,15 +496,29 @@ function AISettingsPage() {
 	const fields = useMemo< Field< AISettings >[] >(
 		() => [
 			GLOBAL_FIELD,
-			...featureDefinitions.map( ( feature ) => ( {
-				id: feature.settingName,
-				label: feature.label,
-				description: feature.description,
-				type: 'boolean' as const,
-				Edit: globalEnabled ? ( 'toggle' as const ) : DisabledToggle,
-			} ) ),
+			...featureDefinitions.map( ( feature ) => {
+				const baseField: Field< AISettings > = {
+					id: feature.settingName,
+					label: feature.label,
+					description: feature.description,
+					type: 'boolean' as const,
+				};
+
+				if ( ! globalEnabled ) {
+					baseField.Edit = DisabledToggle;
+				} else if ( feature.settingsFields.length > 0 ) {
+					baseField.Edit = createFeatureToggleWithSettings(
+						feature,
+						siteSettings
+					);
+				} else {
+					baseField.Edit = 'toggle' as const;
+				}
+
+				return baseField;
+			} ),
 		],
-		[ featureDefinitions, globalEnabled ]
+		[ featureDefinitions, globalEnabled, siteSettings ]
 	);
 
 	const form = useMemo< Form >( () => {
