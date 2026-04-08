@@ -224,8 +224,6 @@ function get_settings_feature_metadata( Registry $registry ): array {
 			);
 		}
 
-		$settings_fields = $feature->get_settings_fields_metadata();
-
 		$categories_in_use[ $category ] = true;
 		$features[]                     = array(
 			'id'             => $feature_id,
@@ -233,7 +231,7 @@ function get_settings_feature_metadata( Registry $registry ): array {
 			'label'          => $feature->get_label(),
 			'description'    => wp_strip_all_tags( $feature->get_description() ),
 			'category'       => $category,
-			'settingsFields' => $settings_fields,
+			'settingsFields' => $feature->get_settings_fields_metadata(),
 		);
 	}
 
