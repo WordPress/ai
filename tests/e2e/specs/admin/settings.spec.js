@@ -90,7 +90,9 @@ test.describe( 'Plugin settings', () => {
 		// Ensure feature toggles are disabled when AI is disabled.
 		await expect(
 			page
-				.locator( '#ai-wp-admin-app [role="checkbox"][aria-disabled="true"]' )
+				.locator(
+					'#ai-wp-admin-app [role="checkbox"][aria-disabled="true"]'
+				)
 				.first()
 		).toBeVisible();
 
@@ -125,9 +127,7 @@ test.describe( 'Plugin settings', () => {
 		// Change the strategy to create a pending local edit.
 		const originalValue = await strategySelect.inputValue();
 		const newValue =
-			originalValue === 'existing_only'
-				? 'allow_new'
-				: 'existing_only';
+			originalValue === 'existing_only' ? 'allow_new' : 'existing_only';
 		await strategySelect.selectOption( newValue );
 
 		// Verify the Save button appears (confirms pending edits exist).
