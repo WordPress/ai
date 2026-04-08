@@ -255,6 +255,10 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 /**
  * Inline sub-settings form for an experiment's custom fields.
  * Rendered below the toggle inside the same card, with its own Save button.
+ *
+ * @param {Object}                              root0              Component props.
+ * @param {FeatureData}                         root0.feature      The feature with custom settings fields.
+ * @param {Record< string, unknown >|undefined} root0.siteSettings Current site settings from core-data.
  */
 function InlineFeatureSettings( {
 	feature,
@@ -375,6 +379,9 @@ function InlineFeatureSettings( {
 /**
  * Creates a custom Edit component for a feature toggle that also renders
  * inline sub-settings when the feature is enabled.
+ *
+ * @param {FeatureData}                         feature      The feature with custom settings fields.
+ * @param {Record< string, unknown >|undefined} siteSettings Current site settings from core-data.
  */
 function createFeatureToggleWithSettings(
 	feature: FeatureData,
