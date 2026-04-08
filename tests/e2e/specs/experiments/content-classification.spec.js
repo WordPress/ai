@@ -84,7 +84,9 @@ async function setStrategy( admin, page, strategy ) {
 	await saveButton.click();
 
 	await expect(
-		page.getByText( 'Content Classification settings saved.' )
+		page.locator( '.components-snackbar__content', {
+			hasText: 'Content Classification settings saved.',
+		} )
 	).toBeVisible();
 }
 

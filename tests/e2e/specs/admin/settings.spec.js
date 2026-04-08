@@ -91,7 +91,7 @@ test.describe( 'Plugin settings', () => {
 		await expect(
 			page
 				.locator(
-					'#ai-wp-admin-app [role="checkbox"][aria-disabled="true"]'
+					'#ai-wp-admin-app .components-form-toggle.is-disabled'
 				)
 				.first()
 		).toBeVisible();
@@ -142,7 +142,9 @@ test.describe( 'Plugin settings', () => {
 
 		// Wait for the auto-save snackbar to confirm siteSettings changed.
 		await expect(
-			page.getByText( 'Title Generation enabled.' )
+			page.locator( '.components-snackbar__content', {
+				hasText: 'Title Generation enabled.',
+			} )
 		).toBeVisible();
 
 		// Assert: inline settings must still show the pending edit (not reset).

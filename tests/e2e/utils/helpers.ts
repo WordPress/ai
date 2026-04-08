@@ -141,7 +141,9 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 		return;
 	}
 	await globalToggle.uncheck();
-	await expect( page.getByText( 'AI disabled.' ) ).toBeVisible();
+	await expect(
+		page.locator( '.components-snackbar__content', { hasText: 'AI disabled.' } )
+	).toBeVisible();
 };
 
 /**
@@ -162,7 +164,9 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 		return;
 	}
 	await globalToggle.check();
-	await expect( page.getByText( 'AI enabled.' ) ).toBeVisible();
+	await expect(
+		page.locator( '.components-snackbar__content', { hasText: 'AI enabled.' } )
+	).toBeVisible();
 };
 
 /**
@@ -190,7 +194,9 @@ export const enableExperiment = async (
 
 	// Ensure the save was successful.
 	await expect(
-		page.getByText( `${ experimentLabel } enabled.` )
+		page.locator( '.components-snackbar__content', {
+			hasText: `${ experimentLabel } enabled.`,
+		} )
 	).toBeVisible();
 };
 
@@ -219,6 +225,8 @@ export const disableExperiment = async (
 
 	// Ensure the save was successful.
 	await expect(
-		page.getByText( `${ experimentLabel } disabled.` )
+		page.locator( '.components-snackbar__content', {
+			hasText: `${ experimentLabel } disabled.`,
+		} )
 	).toBeVisible();
 };
