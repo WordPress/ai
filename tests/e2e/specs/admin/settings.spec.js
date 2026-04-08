@@ -84,9 +84,7 @@ test.describe( 'Plugin settings', () => {
 		await disableExperiments( admin, page );
 
 		// Ensure global AI setting is disabled.
-		await expect(
-			page.getByLabel( 'Enable AI' )
-		).not.toBeChecked();
+		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
 
 		// Ensure feature checkboxes are disabled when AI is disabled.
 		await expect(
@@ -99,9 +97,7 @@ test.describe( 'Plugin settings', () => {
 		await enableExperiments( admin, page );
 
 		// Ensure global AI setting is enabled.
-		await expect(
-			page.getByLabel( 'Enable AI' )
-		).toBeChecked();
+		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked();
 
 		// Ensure we see the editor experiments section.
 		await expect( page.getByText( 'Editor Experiments' ) ).toBeVisible();
