@@ -547,18 +547,17 @@ function AISettingsPage() {
 				if ( ! globalEnabled ) {
 					baseField.Edit = DisabledToggle;
 				} else if ( feature.settingsFields.length > 0 ) {
-					const cached =
+					let cached =
 						editComponentsRef.current.get( feature.id );
 					if ( ! cached || cached.feature !== feature ) {
-						editComponentsRef.current.set( feature.id, {
+						cached = {
 							component:
 								createFeatureToggleWithSettings( feature ),
 							feature,
-						} );
+						};
+						editComponentsRef.current.set( feature.id, cached );
 					}
-					baseField.Edit =
-						editComponentsRef.current.get( feature.id )!
-							.component;
+					baseField.Edit = cached.component;
 				} else {
 					baseField.Edit = 'toggle' as const;
 				}
