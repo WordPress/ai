@@ -68,7 +68,11 @@ function isDefined< T >( value: T | null | undefined ): value is T {
 }
 
 function isSettingsField( value: unknown ): value is SettingsFieldData {
-	return isRecord( value ) && typeof value.id === 'string' && value.id !== '';
+	if ( ! isRecord( value ) ) {
+		return false;
+	}
+	const id = value.id;
+	return typeof id === 'string' && id !== '';
 }
 
 function parseFeatureGroup( value: unknown ): FeatureGroupData | null {
