@@ -329,6 +329,16 @@ function InlineFeatureSettings( {
 
 	const handleSave = useCallback( async () => {
 		setIsSaving( true );
+
+		// Capture previous values for rollback on failure.
+		const previousValues: Record< string, unknown > = {};
+		for ( const key of Object.keys( localEdits ) ) {
+			previousValues[ key ] =
+				siteSettings?.[ key ] ??
+				feature.settingsFields.find( ( f ) => f.id === key )
+					?.default;
+		}
+
 		try {
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
 			editEntityRecord( 'root', 'site', undefined, localEdits );
@@ -344,6 +354,9 @@ function InlineFeatureSettings( {
 				{ type: 'snackbar' }
 			);
 		} catch {
+			// Revert the optimistic edit on failure.
+			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
+			editEntityRecord( 'root', 'site', undefined, previousValues );
 			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
 				type: 'snackbar',
 			} );
@@ -352,6 +365,8 @@ function InlineFeatureSettings( {
 		}
 	}, [
 		localEdits,
+		siteSettings,
+		feature.settingsFields,
 		editEntityRecord,
 		saveEditedEntityRecord,
 		createSuccessNotice,
