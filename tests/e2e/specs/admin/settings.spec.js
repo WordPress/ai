@@ -9,6 +9,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnectors,
 	disableExperiments,
+	enableExperiment,
 	enableExperiments,
 	visitConnectorsPage,
 	visitSettingsPage,
@@ -104,5 +105,46 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure we see the admin experiments section.
 		await expect( page.getByText( 'Admin Experiments' ) ).toBeVisible();
+	} );
+
+	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
+		admin,
+		page,
+	} ) => {
+		// Setup: Enable AI and Content Classification.
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Visit settings page fresh to ensure no stale snackbars.
+		await visitSettingsPage( admin );
+
+		// Wait for Content Classification inline settings to render.
+		const strategySelect = page.getByLabel( 'Taxonomy strategy' );
+		await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
+
+		// Change the strategy to create a pending local edit.
+		const originalValue = await strategySelect.inputValue();
+		const newValue =
+			originalValue === 'existing_only'
+				? 'allow_new'
+				: 'existing_only';
+		await strategySelect.selectOption( newValue );
+
+		// Verify the Save button appears (confirms pending edits exist).
+		const saveButton = page
+			.locator( '.ai-feature-settings-form' )
+			.getByRole( 'button', { name: 'Save' } );
+		await expect( saveButton ).toBeVisible();
+
+		// Toggle another experiment to trigger auto-save (changes siteSettings).
+		const otherToggle = page.getByLabel( 'Title Generation' );
+		await otherToggle.click();
+
+		// Wait for the auto-save snackbar to confirm siteSettings changed.
+		await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+
+		// Assert: inline settings must still show the pending edit (not reset).
+		await expect( strategySelect ).toHaveValue( newValue );
+		await expect( saveButton ).toBeVisible();
 	} );
 } );
