@@ -23,7 +23,7 @@ const TEST_IMAGE_PATH = path.join( __dirname, '../../../data/sample.png' );
 test.describe( 'Bulk Alt Text Generation', () => {
 	test.beforeEach( async ( { admin, page } ) => {
 		await enableExperiments( admin, page );
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 	} );
 
 	test( 'Bulk action appears in the Media Library list view', async ( {
@@ -126,7 +126,7 @@ test.describe( 'Bulk Alt Text Generation', () => {
 		page,
 	} ) => {
 		// Disable the alt text generation experiment.
-		await disableExperiment( admin, page, 'alt-text-generation' );
+		await disableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );

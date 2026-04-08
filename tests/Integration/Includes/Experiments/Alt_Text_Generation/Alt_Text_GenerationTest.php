@@ -209,7 +209,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		// Asset_Loader::enqueue_script() bails early if the compiled JS file does not exist
 		// (build and test jobs run in parallel in CI). Create a stub so the enqueue proceeds.
-		$script_path  = WPAI_PLUGIN_DIR . 'build/experiments/alt-text-generation-bulk.js';
+		$script_path  = WPAI_PLUGIN_DIR . 'build-scripts/experiments/alt-text-generation-bulk.js';
 		$stub_created = ! file_exists( $script_path );
 		if ( $stub_created ) {
 			wp_mkdir_p( dirname( $script_path ) );
