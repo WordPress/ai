@@ -6,7 +6,7 @@ import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
@@ -258,17 +258,23 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
  * Inline sub-settings form for an experiment's custom fields.
  * Rendered below the toggle inside the same card, with its own Save button.
  *
- * @param {Object}                              root0              Component props.
- * @param {FeatureData}                         root0.feature      The feature with custom settings fields.
- * @param {Record< string, unknown >|undefined} root0.siteSettings Current site settings from core-data.
+ * @param {Object}      root0         Component props.
+ * @param {FeatureData} root0.feature The feature with custom settings fields.
  */
 function InlineFeatureSettings( {
 	feature,
-	siteSettings,
 }: {
 	feature: FeatureData;
-	siteSettings: Record< string, unknown > | undefined;
 } ) {
+	// Read siteSettings directly from the store so this component can
+	// re-render independently without forcing its parent to recreate.
+	const siteSettings = useSelect( ( select ) => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
+		const store: any = select( coreStore );
+		return store.getEditedEntityRecord( 'root', 'site' ) as
+			| Record< string, unknown >
+			| undefined;
+	}, [] );
 	const [ localEdits, setLocalEdits ] = useState< Record< string, unknown > >(
 		{}
 	);
@@ -382,13 +388,9 @@ function InlineFeatureSettings( {
  * Creates a custom Edit component for a feature toggle that also renders
  * inline sub-settings when the feature is enabled.
  *
- * @param {FeatureData}                         feature      The feature with custom settings fields.
- * @param {Record< string, unknown >|undefined} siteSettings Current site settings from core-data.
+ * @param {FeatureData} feature The feature with custom settings fields.
  */
-function createFeatureToggleWithSettings(
-	feature: FeatureData,
-	siteSettings: Record< string, unknown > | undefined
-) {
+function createFeatureToggleWithSettings( feature: FeatureData ) {
 	return function FeatureToggleWithSettings( {
 		field,
 		data,
@@ -408,10 +410,7 @@ function createFeatureToggleWithSettings(
 					} }
 				/>
 				{ checked && (
-					<InlineFeatureSettings
-						feature={ feature }
-						siteSettings={ siteSettings }
-					/>
+					<InlineFeatureSettings feature={ feature } />
 				) }
 			</div>
 		);
@@ -502,6 +501,15 @@ function AISettingsPage() {
 
 	const globalEnabled = data[ GLOBAL_FIELD.id ];
 
+	// Stable references for feature edit components to prevent React remounts
+	// when siteSettings changes (which would reset InlineFeatureSettings state).
+	const editComponentsRef = useRef(
+		new Map<
+			string,
+			ReturnType< typeof createFeatureToggleWithSettings >
+		>()
+	);
+
 	const fields = useMemo< Field< AISettings >[] >(
 		() => [
 			GLOBAL_FIELD,
@@ -516,10 +524,16 @@ function AISettingsPage() {
 				if ( ! globalEnabled ) {
 					baseField.Edit = DisabledToggle;
 				} else if ( feature.settingsFields.length > 0 ) {
-					baseField.Edit = createFeatureToggleWithSettings(
-						feature,
-						siteSettings
-					);
+					if (
+						! editComponentsRef.current.has( feature.id )
+					) {
+						editComponentsRef.current.set(
+							feature.id,
+							createFeatureToggleWithSettings( feature )
+						);
+					}
+					baseField.Edit =
+						editComponentsRef.current.get( feature.id )!;
 				} else {
 					baseField.Edit = 'toggle' as const;
 				}
@@ -527,7 +541,7 @@ function AISettingsPage() {
 				return baseField;
 			} ),
 		],
-		[ featureDefinitions, globalEnabled, siteSettings ]
+		[ featureDefinitions, globalEnabled ]
 	);
 
 	const form = useMemo< Form >( () => {
