@@ -142,7 +142,9 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	}
 	await globalToggle.uncheck();
 	await expect(
-		page.locator( '.components-snackbar__content', { hasText: 'AI disabled.' } )
+		page.locator( '.components-snackbar__content', {
+			hasText: 'AI disabled.',
+		} )
 	).toBeVisible();
 };
 
@@ -165,7 +167,9 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	}
 	await globalToggle.check();
 	await expect(
-		page.locator( '.components-snackbar__content', { hasText: 'AI enabled.' } )
+		page.locator( '.components-snackbar__content', {
+			hasText: 'AI enabled.',
+		} )
 	).toBeVisible();
 };
 
