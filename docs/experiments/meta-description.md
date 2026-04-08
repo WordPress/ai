@@ -305,6 +305,20 @@ add_filter( 'wpai_meta_description_meta_key', function( $key, $plugin_slug ) {
 }, 10, 2 );
 ```
 
+### Customizing the Meta Description Output
+
+If no SEO plugin is detected the Meta Description experiment will output the generated meta description into the `<head>` of single posts. This output can be filtered using the `wpai_meta_description` filter. You can prevent the output by returning `false` or an empty string.
+
+```php
+// Output a custom meta description
+add_filter( 'wpai_meta_description', function( $description ) {
+    return 'My custom meta description.';
+} );
+
+// Prevent meta description output
+add_filter( 'wpai_meta_description', '__return_false' );
+```
+
 ### Filtering Preferred Models
 
 You can filter which AI models are used for meta description generation using the `wpai_experiments_preferred_models_for_text_generation` filter:
@@ -370,6 +384,11 @@ add_filter( 'wpai_experiments_normalize_content', function( $content ) {
    - Verify authentication works
    - Test with different input combinations
    - Verify error handling for invalid inputs
+
+6. **Test meta description output:**
+   - Apply an AI generated meta description to a post
+   - Navigate to that post on the frontend
+   - Confirm the AI generated meta description is output into the `<head>` component.
 
 ### Automated Testing
 
