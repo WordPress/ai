@@ -516,6 +516,12 @@ function AISettingsPage() {
 
 	const globalEnabled = data[ GLOBAL_FIELD.id ];
 
+	// Keep a ref to the latest data so handleChange can read previous values
+	// without adding `data` to its dependency array (which would recreate the
+	// callback on every settings change).
+	const dataRef = useRef( data );
+	dataRef.current = data;
+
 	// Guard against concurrent auto-save requests from rapid toggle clicks.
 	const savingRef = useRef( false );
 
@@ -652,7 +658,7 @@ function AISettingsPage() {
 			// Capture previous values for rollback on failure.
 			const previousValues: Record< string, unknown > = {};
 			for ( const key of Object.keys( edits ) ) {
-				previousValues[ key ] = data[ key ];
+				previousValues[ key ] = dataRef.current[ key ];
 			}
 
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
@@ -701,7 +707,6 @@ function AISettingsPage() {
 			createSuccessNotice,
 			createErrorNotice,
 			featureDefinitions,
-			data,
 		]
 	);
 
