@@ -518,10 +518,15 @@ function AISettingsPage() {
 
 	// Stable references for feature edit components to prevent React remounts
 	// when siteSettings changes (which would reset InlineFeatureSettings state).
+	// Stores the feature reference alongside the component so the cache is
+	// invalidated when the feature definition changes.
 	const editComponentsRef = useRef(
 		new Map<
 			string,
-			ReturnType< typeof createFeatureToggleWithSettings >
+			{
+				component: ReturnType< typeof createFeatureToggleWithSettings >;
+				feature: FeatureData;
+			}
 		>()
 	);
 
@@ -539,16 +544,18 @@ function AISettingsPage() {
 				if ( ! globalEnabled ) {
 					baseField.Edit = DisabledToggle;
 				} else if ( feature.settingsFields.length > 0 ) {
-					if (
-						! editComponentsRef.current.has( feature.id )
-					) {
-						editComponentsRef.current.set(
-							feature.id,
-							createFeatureToggleWithSettings( feature )
-						);
+					const cached =
+						editComponentsRef.current.get( feature.id );
+					if ( ! cached || cached.feature !== feature ) {
+						editComponentsRef.current.set( feature.id, {
+							component:
+								createFeatureToggleWithSettings( feature ),
+							feature,
+						} );
 					}
 					baseField.Edit =
-						editComponentsRef.current.get( feature.id )!;
+						editComponentsRef.current.get( feature.id )!
+							.component;
 				} else {
 					baseField.Edit = 'toggle' as const;
 				}
