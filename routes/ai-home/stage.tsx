@@ -71,7 +71,8 @@ function isSettingsField( value: unknown ): value is SettingsFieldData {
 	if ( ! isRecord( value ) ) {
 		return false;
 	}
-	const id = value.id;
+	// eslint-disable-next-line dot-notation
+	const id = value[ 'id' ];
 	return typeof id === 'string' && id !== '';
 }
 
