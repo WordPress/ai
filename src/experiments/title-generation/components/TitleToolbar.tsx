@@ -64,7 +64,6 @@ async function generateTitle(
  */
 export default function TitleToolbar(): JSX.Element | null {
 	const postId = select( editorStore ).getCurrentPostId();
-	const content = select( editorStore ).getEditedPostContent();
 	const title = select( editorStore ).getEditedPostAttribute( 'title' );
 
 	const { editPost } = useDispatch( editorStore );
@@ -80,6 +79,7 @@ export default function TitleToolbar(): JSX.Element | null {
 	 * Handles the generate/re-generate button click.
 	 */
 	const handleGenerate = async () => {
+		const content = select( editorStore ).getEditedPostContent();
 		setIsGenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_title_generation_error'

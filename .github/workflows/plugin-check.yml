@@ -69,5 +69,6 @@ jobs:
                       plugin_header_unsupported_plugin_name
                   exclude-directories: |
                       .github
+                      build
                       docs
                       tests
