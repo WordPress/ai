@@ -13,7 +13,7 @@ import {
 	enableExperiments,
 } from '../../utils/helpers';
 
-const EXPERIMENT_ID = 'meta-description';
+const EXPERIMENT_LABEL = 'Meta Description Generation';
 
 // The default mock response text from responses.json / completions.json.
 const MOCK_DESCRIPTION_PATTERN =
@@ -57,7 +57,7 @@ test.describe( 'Meta Description Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Meta Description Experiment.
-		await enableExperiment( admin, page, EXPERIMENT_ID );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
 
 	test( 'Shows the Generate Meta Description button in the sidebar panel', async ( {
@@ -367,7 +367,7 @@ test.describe( 'Meta Description Experiment', () => {
 		page,
 	} ) => {
 		// Disable the Meta Description Experiment.
-		await disableExperiment( admin, page, EXPERIMENT_ID );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await admin.createNewPost( {
 			title: 'Meta Description Disabled Test',
