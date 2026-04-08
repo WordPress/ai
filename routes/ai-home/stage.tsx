@@ -6,7 +6,13 @@ import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
@@ -278,6 +284,13 @@ function InlineFeatureSettings( {
 	const [ localEdits, setLocalEdits ] = useState< Record< string, unknown > >(
 		{}
 	);
+
+	// Clear pending edits when the feature changes (e.g. fields redefined by
+	// a filter) so stale keys from the previous definition don't persist.
+	useEffect( () => {
+		setLocalEdits( {} );
+	}, [ feature.id ] );
+
 	const isDirty = Object.keys( localEdits ).length > 0;
 	const [ isSaving, setIsSaving ] = useState( false );
 
