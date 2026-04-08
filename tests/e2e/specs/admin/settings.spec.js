@@ -85,7 +85,7 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure global AI setting is disabled.
 		await expect(
-			page.getByRole( 'checkbox', { name: 'Enable AI' } )
+			page.getByLabel( 'Enable AI' )
 		).not.toBeChecked();
 
 		// Ensure feature checkboxes are disabled when AI is disabled.
@@ -100,7 +100,7 @@ test.describe( 'Plugin settings', () => {
 
 		// Ensure global AI setting is enabled.
 		await expect(
-			page.getByRole( 'checkbox', { name: 'Enable AI' } )
+			page.getByLabel( 'Enable AI' )
 		).toBeChecked();
 
 		// Ensure we see the editor experiments section.
