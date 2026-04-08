@@ -12,7 +12,16 @@ const {
 	enableExperiments,
 	visitConnectorsPage,
 	visitSettingsPage,
+	getSelectAllToggle,
+	enableAllExperimentsInGroup,
+	disableAllExperimentsInGroup,
+	getExperimentTogglesInGroup,
 } = require( '../../utils/helpers' );
+
+const EXPERIMENT_GROUPS = {
+	editor: 'Editor Experiments',
+	admin: 'Admin Experiments',
+};
 
 test.describe( 'Plugin settings', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
@@ -104,9 +113,221 @@ test.describe( 'Plugin settings', () => {
 		).toBeChecked();
 
 		// Ensure we see the editor experiments section.
-		await expect( page.getByText( 'Editor Experiments', { exact: true } ) ).toBeVisible();
+		await expect(
+			page.getByText( 'Editor Experiments', { exact: true } )
+		).toBeVisible();
 
 		// Ensure we see the admin experiments section.
-		await expect( page.getByText( 'Admin Experiments', { exact: true } ) ).toBeVisible();
+		await expect(
+			page.getByText( 'Admin Experiments', { exact: true } )
+		).toBeVisible();
+	} );
+
+	test( 'Can turn on all experiments in a group', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled first.
+		await enableExperiments( admin, page );
+
+		// Ensure all experiments are disabled to start.
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Find the "Enable all Editor Experiments" toggle.
+		const selectAllToggle = getSelectAllToggle(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await expect( selectAllToggle ).toBeVisible( { timeout: 10000 } );
+
+		// Ensure setting is disabled.
+		await expect( selectAllToggle ).not.toBeChecked();
+
+		// Click the select-all toggle to enable all experiments.
+		await selectAllToggle.check();
+
+		// Verify the success message appears.
+		await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+
+		// Verify the toggle label changed to "Disable all".
+		await expect(
+			page.getByRole( 'checkbox', {
+				name: new RegExp(
+					`Disable all ${ EXPERIMENT_GROUPS.editor }`,
+					'i'
+				),
+			} )
+		).toBeVisible();
+
+		// Verify all experiments in the group are now enabled.
+		const experimentToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		for ( const toggle of experimentToggles ) {
+			await expect( toggle ).toBeChecked();
+		}
+	} );
+
+	test( 'Can turn off all experiments in a group', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled first.
+		await enableExperiments( admin, page );
+
+		// First enable all experiments.
+		await enableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Find the "Disable all" toggle.
+		const selectAllToggle = getSelectAllToggle(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await expect( selectAllToggle ).toBeVisible();
+
+		// Ensure setting is disabled.
+		await expect( selectAllToggle ).toBeChecked();
+
+		// Click the select-all toggle to disable all experiments.
+		await selectAllToggle.uncheck();
+
+		// Verify the success message appears.
+		await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+
+		// Verify the toggle label changed to "Enable all".
+		await expect(
+			page.getByRole( 'checkbox', {
+				name: new RegExp(
+					`Enable all ${ EXPERIMENT_GROUPS.editor }`,
+					'i'
+				),
+			} )
+		).toBeVisible();
+
+		// Verify all experiments in the group are now disabled.
+		const experimentToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		for ( const toggle of experimentToggles ) {
+			await expect( toggle ).not.toBeChecked();
+		}
+	} );
+
+	test( 'Can turn on all experiments in a group when experiments are in mixed state', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled.
+		await enableExperiments( admin, page );
+
+		// First disable all experiments in the group.
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Get all experiment toggles in the group.
+		const experimentToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Enable just the first experiment to create a mixed state.
+		if ( experimentToggles.length > 0 ) {
+			await experimentToggles[ 0 ].check();
+			await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+		}
+
+		// Verify the select-all toggle shows "Enable all" (because not all are enabled).
+		await expect(
+			page.getByRole( 'checkbox', {
+				name: new RegExp(
+					`Enable all ${ EXPERIMENT_GROUPS.editor }`,
+					'i'
+				),
+			} )
+		).toBeVisible();
+
+		// Clicking it should enable all experiments.
+		const selectAllToggle = getSelectAllToggle(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await selectAllToggle.check();
+		await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+
+		// Verify all are now enabled.
+		for ( const toggle of experimentToggles ) {
+			await expect( toggle ).toBeChecked();
+		}
+	} );
+
+	test( 'Cannot bulk manage experiments when global AI is disabled', async ( {
+		admin,
+		page,
+	} ) => {
+		// Disable global AI.
+		await disableExperiments( admin, page );
+
+		// Verify the select-all toggle is disabled.
+		const selectAllToggle = getSelectAllToggle(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await expect( selectAllToggle ).toBeDisabled();
+
+		// Enable AI again.
+		await enableExperiments( admin, page );
+
+		// Verify the select-all toggle is now enabled.
+		await expect( selectAllToggle ).toBeEnabled();
+	} );
+
+	test( 'Each experiment group has its own select all toggle', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled.
+		await enableExperiments( admin, page );
+
+		// Verify all groups have select-all toggles.
+		const editorSelectAll = getSelectAllToggle(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		const adminSelectAll = getSelectAllToggle(
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
+
+		await expect( editorSelectAll ).toBeVisible();
+		await expect( adminSelectAll ).toBeVisible();
+
+		// Enable all Editor Experiments.
+		await editorSelectAll.click();
+		await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+
+		// Verify Editor Experiments are enabled but Admin Experiments are not affected.
+		const editorToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		for ( const toggle of editorToggles ) {
+			await expect( toggle ).toBeChecked();
+		}
+
+		// Admin Experiments should remain unchanged.
+		await expect( adminSelectAll ).not.toBeChecked();
 	} );
 } );

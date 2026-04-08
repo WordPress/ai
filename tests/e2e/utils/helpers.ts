@@ -226,3 +226,101 @@ export const disableExperiment = async (
 	// Ensure the save was successful.
 	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };
+
+/**
+ * Gets the "Enable all" / "Disable all" toggle for a specific experiment group.
+ *
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ * @return The select-all toggle locator.
+ */
+export const getSelectAllToggle = ( page: Page, groupName: string ) => {
+	return page.getByRole( 'checkbox', {
+		name: new RegExp( `(Enable|Disable) all ${ groupName }`, 'i' ),
+	} );
+};
+
+/**
+ * Enables all experiments in a specific group using the select-all toggle.
+ *
+ * @param admin     The admin fixture from the test context.
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ */
+export const enableAllExperimentsInGroup = async (
+	admin: Admin,
+	page: Page,
+	groupName: string
+) => {
+	await visitSettingsPage( admin );
+
+	const selectAllToggle = getSelectAllToggle( page, groupName );
+	await expect( selectAllToggle ).toBeVisible( { timeout: 10000 } );
+
+	// Nothing to do if this is already enabled.
+	if ( await selectAllToggle.isChecked() ) {
+		return;
+	}
+
+	await selectAllToggle.check();
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+};
+
+/**
+ * Disables all experiments in a specific group using the select-all toggle.
+ *
+ * @param admin     The admin fixture from the test context.
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ */
+export const disableAllExperimentsInGroup = async (
+	admin: Admin,
+	page: Page,
+	groupName: string
+) => {
+	await visitSettingsPage( admin );
+
+	const selectAllToggle = getSelectAllToggle( page, groupName );
+	await expect( selectAllToggle ).toBeVisible( { timeout: 10000 } );
+
+	// Nothing to do if this is already disabled.
+	if ( ! ( await selectAllToggle.isChecked() ) ) {
+		return;
+	}
+
+	await selectAllToggle.uncheck();
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+};
+
+/**
+ * Gets all experiment toggles within a specific group section.
+ *
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ * @return Array of toggle locators.
+ */
+export const getExperimentTogglesInGroup = async (
+	page: Page,
+	groupName: string
+) => {
+	// Find the section by its heading.
+	const section = page
+		.locator( '[class*="dataviews-card"]' )
+		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+
+	// Get all checkboxes in that section, excluding the select-all toggle.
+	const allToggles = section.getByRole( 'checkbox' );
+	const count = await allToggles.count();
+	const experimentToggles = [];
+
+	for ( let i = 0; i < count; i++ ) {
+		const toggle = allToggles.nth( i );
+		const label = await toggle.textContent();
+		// Exclude the select-all toggle.
+		if ( ! label?.match( /^(Enable|Disable) all/ ) ) {
+			experimentToggles.push( toggle );
+		}
+	}
+
+	return experimentToggles;
+};
