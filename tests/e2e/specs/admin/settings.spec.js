@@ -104,9 +104,9 @@ test.describe( 'Plugin settings', () => {
 		).toBeChecked();
 
 		// Ensure we see the editor experiments section.
-		await expect( page.getByText( 'Editor Experiments' ) ).toBeVisible();
+		await expect( page.getByText( 'Editor Experiments', { exact: true } ) ).toBeVisible();
 
 		// Ensure we see the admin experiments section.
-		await expect( page.getByText( 'Admin Experiments' ) ).toBeVisible();
+		await expect( page.getByText( 'Admin Experiments', { exact: true } ) ).toBeVisible();
 	} );
 } );

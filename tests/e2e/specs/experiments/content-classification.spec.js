@@ -13,7 +13,7 @@ import {
 	enableExperiment,
 } from '../../utils/helpers';
 
-const EXPERIMENT_ID = 'content-classification';
+const EXPERIMENT_LABEL = 'Content Classification';
 
 // Content Classification has a 150 word minimum requirement.
 const LONG_CONTENT =
@@ -90,7 +90,7 @@ test.describe( 'Content Classification Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Content Classification Experiment.
-		await enableExperiment( admin, page, EXPERIMENT_ID );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
 
 	test( 'Shows the "Suggest Tags" button in the Tags panel', async ( {
@@ -328,7 +328,7 @@ test.describe( 'Content Classification Experiment', () => {
 		page,
 	} ) => {
 		// Disable the Content Classification Experiment.
-		await disableExperiment( admin, page, EXPERIMENT_ID );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		// Create a new post with content.
 		await admin.createNewPost( {
