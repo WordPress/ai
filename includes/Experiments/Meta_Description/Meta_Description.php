@@ -56,6 +56,7 @@ class Meta_Description extends Abstract_Feature {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );
+		add_action( 'wp_head', array( $this, 'maybe_output_meta_description' ) );
 
 		$this->register_post_meta();
 	}
@@ -159,5 +160,43 @@ class Meta_Description extends Abstract_Feature {
 	 */
 	public function clear_active_plugin_cache(): void {
 		delete_transient( 'wpai_active_seo_plugin' );
+	}
+
+	/**
+	 * Injects the meta description into the head if it exists.
+	 * This is a fallback for when no SEO plugin is active.
+	 *
+	 * @since x.x.x
+	 */
+	public function maybe_output_meta_description(): void {
+		if ( ! $this->is_enabled() || ! is_singular() ) {
+			return;
+		}
+
+		$seo_plugin = SEO_Integration::detect_active_plugin();
+
+		// Let the SEO plugin handle the output if found.
+		if ( ! empty( $seo_plugin ) ) {
+			return;
+		}
+
+		$meta_description = get_post_meta( (int) get_the_ID(), SEO_Integration::get_meta_key(), true );
+
+		/**
+		 * Filter the meta description output.
+		 * An empty string will prevent output.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $meta_description The meta description.
+		 * @return string The filtered meta description.
+		 */
+		$meta_description = apply_filters( 'wpai_meta_description', $meta_description );
+
+		if ( empty( $meta_description ) ) {
+			return;
+		}
+
+		echo '<meta name="description" content="' . esc_attr( $meta_description ) . '" />';
 	}
 }

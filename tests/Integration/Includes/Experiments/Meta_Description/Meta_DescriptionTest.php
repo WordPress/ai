@@ -179,6 +179,85 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that maybe_output_meta_description() does not output when the experiment is disabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_output_meta_description_does_not_output_when_experiment_disabled(): void {
+		$experiment = new Meta_Description();
+		$experiment->is_enabled( false );
+
+		ob_start();
+		$experiment->maybe_output_meta_description();
+
+		$output = ob_get_clean();
+		$this->assertEmpty( $output, 'Meta description should not be output when experiment is disabled' );
+	}
+
+	/**
+	 * Tests that maybe_output_meta_description() does not output when not on a singular post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_output_meta_description_does_not_output_when_not_singular(): void {
+		$experiment = new Meta_Description();
+		$experiment->is_enabled( true );
+
+		set_current_screen( 'front' );
+
+		ob_start();
+		$experiment->maybe_output_meta_description();
+
+		$output = ob_get_clean();
+		$this->assertEmpty( $output, 'Meta description should not be output when not on a singular post' );
+	}
+
+	/**
+	 * Tests that maybe_output_meta_description() does not output when no SEO plugin is active.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_output_meta_description_does_not_output_when_seo_plugin_active(): void {
+		// Simulate an active SEO plugin via the active_plugins option.
+		$active = get_option( 'active_plugins', array() );
+		update_option( 'active_plugins', array_merge( $active, array( 'wordpress-seo/wp-seo.php' ) ) );
+
+		$experiment = new Meta_Description();
+		$experiment->is_enabled( true );
+
+		ob_start();
+		$experiment->maybe_output_meta_description();
+
+		$output = ob_get_clean();
+		$this->assertEmpty( $output, 'Meta description should not be output when SEO plugin is active' );
+
+		// Restore.
+		update_option( 'active_plugins', $active );
+	}
+
+	/**
+	 * Tests that maybe_output_meta_description() outputs when no SEO plugin is active.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_output_meta_description_outputs_when_no_seo_plugin_active(): void {
+		$experiment = new Meta_Description();
+		$experiment->is_enabled( true );
+
+		$post_id = self::factory()->post->create( array( 'post_title' => 'Test Post' ) );
+		update_post_meta( $post_id, 'wpai_meta_description', 'Test Meta Description' );
+
+		$this->go_to( get_permalink( $post_id ) );
+
+		ob_start();
+		$experiment->maybe_output_meta_description();
+		$output = ob_get_clean();
+
+		$this->assertNotEmpty( $output, 'Meta description should be output when all conditions are met' );
+		$this->assertStringContainsString( '<meta name="description" content="Test Meta Description" />', $output, 'Meta description should be output in the head' );
+	}
+
+	/**
 	 * Tests that enqueue_assets() does not load on irrelevant screens.
 	 *
 	 * @since x.x.x
