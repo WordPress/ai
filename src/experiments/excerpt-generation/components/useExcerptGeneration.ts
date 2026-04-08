@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { dispatch, select, useDispatch } from '@wordpress/data';
+import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
@@ -54,9 +54,13 @@ export function useExcerptGeneration(): {
 	hasExcerpt: boolean;
 	handleGenerate: () => Promise< void >;
 } {
-	const postId = select( editorStore ).getCurrentPostId();
-	const content = select( editorStore ).getEditedPostContent();
-	const excerpt = select( editorStore ).getEditedPostAttribute( 'excerpt' );
+	const { postId, content, excerpt } = useSelect( ( select ) => {
+		return {
+			postId: select( editorStore ).getCurrentPostId(),
+			content: select( editorStore ).getEditedPostContent(),
+			excerpt: select( editorStore ).getEditedPostAttribute( 'excerpt' ),
+		};
+	} );
 	const { editPost } = useDispatch( editorStore );
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 

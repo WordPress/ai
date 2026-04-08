@@ -18,9 +18,9 @@ add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 /**
  * Mock the HTTP requests and provide known responses.
  *
- * @param mixed $preempt Whether to preempt an HTTP request's return value.
- * @param array $parsed_args HTTP request arguments.
- * @param string $url The request URL.
+ * @param mixed  $preempt     Whether to preempt an HTTP request's return value.
+ * @param array  $parsed_args HTTP request arguments.
+ * @param string $url         The request URL.
  * @return array|bool The response.
  */
 function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
@@ -69,6 +69,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		// Route review-notes requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
+			// Route content-classification requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-responses.json' );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );
 		}
@@ -81,6 +84,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		// Route review-notes requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-completions.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
+			// Route content-classification requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-completions.json' );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}

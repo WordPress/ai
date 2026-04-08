@@ -23,7 +23,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 
 	test( 'Can generate a Featured Image', async ( {
@@ -35,7 +35,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -102,7 +102,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -262,7 +262,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -423,7 +423,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Visit the Media Library.
 		await visitAdminPage( admin, 'upload.php' );
@@ -552,7 +552,7 @@ test.describe( 'Image Generation Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -603,7 +603,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Image Generation Experiment.
-		await disableExperiment( admin, page, 'image-generation' );
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
