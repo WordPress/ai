@@ -15,9 +15,15 @@
 }
 
 .ai-feature-settings-form {
-	margin-top: 12px;
-	padding-top: 12px;
-	border-top: 1px solid var(--wp-components-color-gray-300, rgba(0, 0, 0, 0.1));
+	margin-top: 4px;
+	padding-left: 52px;
+	max-width: 480px;
+
+	.components-base-control__label,
+	.components-input-control__label,
+	.dataforms-layouts-regular__field-label {
+		text-transform: none !important;
+	}
 }
 
 .ai-feature-settings-form__actions {
