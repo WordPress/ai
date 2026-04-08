@@ -217,26 +217,10 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * Renders feature-specific settings fields.
-	 *
-	 * Override this method in child classes to render custom settings UI
-	 * that will appear within the feature's card on the settings page.
-	 * This is called after the feature's main toggle control.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @return void
-	 */
-	public function render_settings_fields(): void {
-		// Default implementation does nothing.
-		// Child classes can override to render custom settings UI.
-	}
-
-	/**
 	 * Gets the option name for a custom feature setting field.
 	 *
 	 * Generates a properly namespaced option name for feature-specific settings.
-	 * Use this when registering and rendering custom settings fields to ensure
+	 * Use this when registering and storing custom settings fields to ensure
 	 * consistent naming across the plugin.
 	 *
 	 * @since 0.6.0
