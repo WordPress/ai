@@ -224,9 +224,7 @@ function get_settings_feature_metadata( Registry $registry ): array {
 			);
 		}
 
-		$settings_fields = method_exists( $feature, 'get_settings_fields_metadata' )
-			? $feature->get_settings_fields_metadata()
-			: array();
+		$settings_fields = $feature->get_settings_fields_metadata();
 
 		$categories_in_use[ $category ] = true;
 		$features[]                     = array(
