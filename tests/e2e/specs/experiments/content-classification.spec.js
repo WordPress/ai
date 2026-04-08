@@ -72,16 +72,18 @@ async function openTaxonomyPanel( editor, page, panelLabel ) {
  * @param {string} strategy The strategy value ('existing_only' or 'allow_new').
  */
 async function setStrategy( admin, page, strategy ) {
-	await admin.visitAdminPage( 'options-general.php?page=ai' );
-	await page
-		.locator( '#wpai_feature_content-classification_field_strategy' )
-		.selectOption( strategy );
-	await page.locator( '#submit' ).click();
-	await expect(
-		page.locator( '.wrap .notice-success', {
-			hasText: 'Settings saved',
-		} )
-	).toHaveCount( 1 );
+	await admin.visitAdminPage( 'options-general.php?page=ai-wp-admin' );
+
+	const strategySelect = page.getByLabel( 'Taxonomy strategy' );
+	await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
+	await strategySelect.selectOption( strategy );
+
+	const saveButton = page
+		.locator( '.ai-feature-settings-form' )
+		.getByRole( 'button', { name: 'Save' } );
+	await saveButton.click();
+
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 }
 
 test.describe( 'Content Classification Experiment', () => {
