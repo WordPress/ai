@@ -141,7 +141,9 @@ test.describe( 'Plugin settings', () => {
 		await otherToggle.click();
 
 		// Wait for the auto-save snackbar to confirm siteSettings changed.
-		await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+		await expect(
+			page.getByText( 'Title Generation enabled.' )
+		).toBeVisible();
 
 		// Assert: inline settings must still show the pending edit (not reset).
 		await expect( strategySelect ).toHaveValue( newValue );
