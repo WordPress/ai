@@ -90,7 +90,7 @@ test.describe( 'Plugin settings', () => {
 		// Ensure feature toggles are disabled when AI is disabled.
 		await expect(
 			page
-				.locator( '#ai-wp-admin-app input[type="checkbox"]:disabled' )
+				.locator( '#ai-wp-admin-app [role="checkbox"][aria-disabled="true"]' )
 				.first()
 		).toBeVisible();
 
