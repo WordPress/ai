@@ -86,7 +86,7 @@ test.describe( 'Plugin settings', () => {
 		// Ensure global AI setting is disabled.
 		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
 
-		// Ensure feature checkboxes are disabled when AI is disabled.
+		// Ensure feature toggles are disabled when AI is disabled.
 		await expect(
 			page
 				.locator( '#ai-wp-admin-app input[type="checkbox"]:disabled' )
