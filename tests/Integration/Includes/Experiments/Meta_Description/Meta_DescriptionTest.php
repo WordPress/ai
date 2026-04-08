@@ -184,14 +184,12 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_maybe_output_meta_description_does_not_output_when_experiment_disabled(): void {
+		add_filter( 'wpai_feature_meta-description_enabled', '__return_false' );
+
 		$experiment = new Meta_Description();
-		$experiment->is_enabled( false );
+		$experiment->register();
 
-		ob_start();
-		$experiment->maybe_output_meta_description();
-
-		$output = ob_get_clean();
-		$this->assertEmpty( $output, 'Meta description should not be output when experiment is disabled' );
+		$this->assertFalse( has_action( 'wp_head', array( $experiment, 'output_meta_description' ) ), 'Meta description should not be output when experiment is disabled' );
 	}
 
 	/**
@@ -201,14 +199,12 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 */
 	public function test_maybe_output_meta_description_does_not_output_when_not_singular(): void {
 		$experiment = new Meta_Description();
-		$experiment->is_enabled( true );
-
-		set_current_screen( 'front' );
+		$experiment->register();
 
 		ob_start();
-		$experiment->maybe_output_meta_description();
-
+		$experiment->output_meta_description();
 		$output = ob_get_clean();
+
 		$this->assertEmpty( $output, 'Meta description should not be output when not on a singular post' );
 	}
 
@@ -223,16 +219,9 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		update_option( 'active_plugins', array_merge( $active, array( 'wordpress-seo/wp-seo.php' ) ) );
 
 		$experiment = new Meta_Description();
-		$experiment->is_enabled( true );
+		$experiment->register();
 
-		ob_start();
-		$experiment->maybe_output_meta_description();
-
-		$output = ob_get_clean();
-		$this->assertEmpty( $output, 'Meta description should not be output when SEO plugin is active' );
-
-		// Restore.
-		update_option( 'active_plugins', $active );
+		$this->assertFalse( has_action( 'wp_head', array( $experiment, 'output_meta_description' ) ), 'Meta description should not be output when SEO plugin is active' );
 	}
 
 	/**
@@ -242,15 +231,17 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	 */
 	public function test_maybe_output_meta_description_outputs_when_no_seo_plugin_active(): void {
 		$experiment = new Meta_Description();
-		$experiment->is_enabled( true );
 
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Test Post' ) );
 		update_post_meta( $post_id, 'wpai_meta_description', 'Test Meta Description' );
 
 		$this->go_to( get_permalink( $post_id ) );
 
+		// Register the experiment after we navigate to the post.
+		$experiment->register();
+
 		ob_start();
-		$experiment->maybe_output_meta_description();
+		wp_head();
 		$output = ob_get_clean();
 
 		$this->assertNotEmpty( $output, 'Meta description should be output when all conditions are met' );
