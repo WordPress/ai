@@ -6,7 +6,7 @@ import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo } from '@wordpress/element';
+import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
@@ -284,7 +284,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 		[ feature.settingsFields ]
 	);
 
-	const { editedRecord, nonTransientEdits, isSaving } = useSelect(
+	const { editedRecord, nonTransientEdits } = useSelect(
 		( select ) => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 			const store: any = select( coreStore );
@@ -296,14 +296,12 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 					'root',
 					'site'
 				) ?? {} ) as Record< string, unknown >,
-				isSaving: store.isSavingEntityRecord(
-					'root',
-					'site'
-				) as boolean,
 			};
 		},
 		[]
 	);
+
+	const [ isSaving, setIsSaving ] = useState( false );
 
 	const isDirty = useMemo(
 		() => fieldIds.some( ( id ) => id in nonTransientEdits ),
@@ -363,6 +361,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	);
 
 	const handleSave = useCallback( async () => {
+		setIsSaving( true );
 		try {
 			await saveSpecifiedEdits( 'root', 'site', undefined, fieldIds, {
 				throwOnError: true,
@@ -380,6 +379,8 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
 				type: 'snackbar',
 			} );
+		} finally {
+			setIsSaving( false );
 		}
 	}, [
 		saveSpecifiedEdits,
@@ -403,6 +404,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 						variant="primary"
 						onClick={ handleSave }
 						isBusy={ isSaving }
+						disabled={ isSaving }
 						size="compact"
 					>
 						{ __( 'Save', 'ai' ) }
