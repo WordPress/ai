@@ -105,6 +105,7 @@ class Ability_Handler {
 			'name'          => $ability->get_label(),
 			'description'   => $ability->get_description(),
 			'provider'      => self::detect_provider( $name, $meta ),
+			'category'      => self::get_ability_category( $ability ),
 			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
 			'raw_data'      => array(
@@ -119,9 +120,51 @@ class Ability_Handler {
 	}
 
 	/**
-	 * Get translatable provider labels keyed by provider slug.
+	 * Get the category for an ability.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param \WP_Ability $ability Ability object.
+	 * @return string Category for the ability.
+	 */
+	public static function get_ability_category( \WP_Ability $ability ): string {
+		$slug          = $ability->get_name();
+		$category_slug = $ability->get_category();
+
+		$category_label = esc_html__( 'Other', 'ai' );
+		if ( ! empty( $category_slug ) && function_exists( 'wp_get_ability_category' ) ) {
+			$category_obj = wp_get_ability_category( $category_slug );
+			if ( $category_obj ) {
+				$category_label = $category_obj->get_label();
+			}
+		}
+
+		/**
+		 * Filters the final resolved category for a specific ability.
+		 *
+		 * Use this hook to explicitly override the category for a
+		 * specific ability slug.
+		 *
+		 * Example:
+		 *   add_filter( 'wpai_ability_category', function( $category, $slug ) {
+		 *       if ( 'my-plugin/generate-meta-description' === $slug ) {
+		 *           return 'SEO';
+		 *       }
+		 *       return $category;
+		 *   }, 10, 2 );
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $category Resolved category for this ability.
+		 * @param string $slug     The full ability slug, e.g. 'my-plugin/do-thing'.
+		 */
+		return (string) apply_filters( 'wpai_ability_category', $category_label, $slug );
+	}
+
+	/**
+	 * Get translatable provider labels keyed by provider slug.
+	 *
+	 * @since 0.4.0
 	 *
 	 * @return array<string,string> Map of provider slug to translated label.
 	 */
@@ -136,7 +179,7 @@ class Ability_Handler {
 	/**
 	 * Get the label for a provider.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @param string $provider Provider slug.
 	 * @return string Provider label.

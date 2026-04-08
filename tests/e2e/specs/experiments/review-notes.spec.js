@@ -13,7 +13,7 @@ import {
 	enableExperiment,
 } from '../../utils/helpers';
 
-const EXPERIMENT_ID = 'review-notes';
+const EXPERIMENT_LABEL = 'Review Notes';
 
 test.describe( 'AI Review Notes Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
@@ -21,7 +21,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Review Notes Experiment.
-		await enableExperiment( admin, page, EXPERIMENT_ID );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
 
 	test( 'Shows the "Generate Review Notes" button in the post editor sidebar', async ( {
@@ -37,6 +37,33 @@ test.describe( 'AI Review Notes Experiment', () => {
 		// The button should be visible in the post status info panel.
 		await expect(
 			page.getByRole( 'button', { name: 'Generate Review Notes' } )
+		).toBeVisible();
+	} );
+
+	test( 'Shows the "Review with AI" button in the block toolbar', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Review Notes Test' } );
+
+		// Add reviewable blocks.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+
+		// Click into the more menu for the block.
+		await editor.clickBlockToolbarButton( 'Options' );
+
+		// The button should be visible in the block toolbar.
+		await expect(
+			page.locator( 'button', {
+				hasText: 'Generate Review Note',
+			} )
 		).toBeVisible();
 	} );
 
@@ -72,6 +99,35 @@ test.describe( 'AI Review Notes Experiment', () => {
 		// Wait for completion and check for suggestion count feedback.
 		await expect(
 			page.locator( '.description', {
+				hasText: '1 suggestion added',
+			} )
+		).toBeVisible();
+	} );
+
+	test( 'Shows suggestion count after a successful single block review', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Single Block Suggestion Count Test',
+		} );
+
+		// Add reviewable block.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+
+		// Run review on the single block.
+		await editor.clickBlockOptionsMenuItem( 'Generate Review Note' );
+
+		// Wait for completion and check for suggestion count feedback.
+		await expect(
+			page.locator( '.components-snackbar', {
 				hasText: '1 suggestion added',
 			} )
 		).toBeVisible();
@@ -121,6 +177,25 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await expect(
 			page.getByRole( 'button', { name: 'Generate Review Notes' } )
 		).toHaveCount( 0 );
+
+		// Add reviewable blocks.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+
+		// Click into the more menu for the block.
+		await editor.clickBlockToolbarButton( 'Options' );
+
+		// The button should not be visible in the block toolbar.
+		await expect(
+			page.locator( 'button', {
+				hasText: 'Generate Review Note',
+			} )
+		).not.toBeVisible();
 	} );
 
 	test( 'Button is hidden when experiment is disabled', async ( {
@@ -129,7 +204,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		page,
 	} ) => {
 		// Disable the Review Notes Experiment.
-		await disableExperiment( admin, page, EXPERIMENT_ID );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		// Create a new post and verify button is absent.
 		await admin.createNewPost( { title: 'Disabled Experiment Test' } );
@@ -140,5 +215,24 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await expect(
 			page.getByRole( 'button', { name: 'Generate Review Notes' } )
 		).toHaveCount( 0 );
+
+		// Add reviewable blocks.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+
+		// Click into the more menu for the block.
+		await editor.clickBlockToolbarButton( 'Options' );
+
+		// The button should be visible in the block toolbar.
+		await expect(
+			page.locator( 'button', {
+				hasText: 'Generate Review Note',
+			} )
+		).not.toBeVisible();
 	} );
 } );

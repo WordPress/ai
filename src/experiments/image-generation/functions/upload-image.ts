@@ -28,10 +28,11 @@ const { aiImageGenerationData } = window as any;
  * @return {Promise<UploadedImage>} A promise that resolves to the uploaded image data.
  */
 export async function uploadImage(
-	{ image, prompt }: GeneratedImageData,
+	{ image, prompt, prompts }: GeneratedImageData,
 	options?: { onProgress?: ImageProgressCallback; altTextEnabled?: boolean }
 ): Promise< UploadedImage > {
 	const onProgress = options?.onProgress;
+	const promptHistory = prompts?.length ? prompts : [ prompt ];
 
 	const params: ImageImportAbilityInput = {
 		data: image.data,
@@ -42,7 +43,7 @@ export async function uploadImage(
 			image.provider_metadata.name,
 			image.model_metadata.name,
 			new Date().toLocaleDateString(),
-			prompt
+			promptHistory.join( ' | ' )
 		),
 		meta: [
 			{

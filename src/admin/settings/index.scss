@@ -1,5 +1,5 @@
 /**
- * AI Experiments Settings Page Styles
+ * AI Settings Page Styles
  *
  * Uses BEM (Block Element Modifier) naming convention.
  * Uses modern CSS with flexbox and gap for spacing.
@@ -126,6 +126,24 @@
 		ol {
 			list-style: decimal;
 			margin-left: 1.5rem;
+		}
+	}
+
+	/* Element: settings table (two-column label/field layout) */
+	&__settings-table {
+		border-spacing: 0 0.5rem;
+
+		td:first-child {
+			padding-right: 1rem;
+			white-space: nowrap;
+		}
+
+		label {
+			font-weight: 600;
+		}
+
+		input[type="number"] {
+			padding-right: 0;
 		}
 	}
 }

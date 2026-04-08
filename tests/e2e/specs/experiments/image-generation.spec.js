@@ -23,7 +23,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 
 	test( 'Can generate a Featured Image', async ( {
@@ -35,7 +35,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -102,7 +102,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -153,7 +153,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		let useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -162,6 +162,14 @@ test.describe( 'Image Generation Experiment', () => {
 			}
 		);
 		await expect( useImageButton ).toBeVisible();
+
+		const refineButton = page.locator(
+			'.ai-generate-image-inline-modal__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -213,7 +221,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -254,7 +262,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -273,9 +281,11 @@ test.describe( 'Image Generation Experiment', () => {
 		} );
 
 		// Find the toolbar Add image button (aria-label is the accessible name).
-		const addImageButton = page.getByRole( 'button', {
-			name: 'Add image',
-		} );
+		const addImageButton = page
+			.locator( '.block-editor-block-toolbar' )
+			.getByRole( 'button', {
+				name: 'Add image',
+			} );
 		await expect( addImageButton ).toBeVisible();
 
 		// Click the Add image toolbar button.
@@ -314,7 +324,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		let useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -323,6 +333,14 @@ test.describe( 'Image Generation Experiment', () => {
 			}
 		);
 		await expect( useImageButton ).toBeVisible();
+
+		const refineButton = page.locator(
+			'.ai-generate-image-inline-modal__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -365,7 +383,7 @@ test.describe( 'Image Generation Experiment', () => {
 		// Ensure the buttons we want are there.
 		await expect(
 			page.locator( '.ai-generate-image-inline-modal__actions button' )
-		).toHaveCount( 3 );
+		).toHaveCount( 4 );
 
 		useImageButton = page.locator(
 			'.ai-generate-image-inline-modal__actions button',
@@ -397,13 +415,144 @@ test.describe( 'Image Generation Experiment', () => {
 		await expect( imageContainer.locator( 'img' ) ).toBeVisible();
 	} );
 
+	test( 'Can generate an image directly in the Media Library', async ( {
+		admin,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Image Generation Experiment.
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
+
+		// Visit the Media Library.
+		await visitAdminPage( admin, 'upload.php' );
+
+		// Ensure there's a Generate Image link in the sidebar.
+		await expect(
+			page.locator( '.wp-menu-open .wp-submenu a', {
+				hasText: 'Generate Image',
+			} )
+		).toBeVisible();
+
+		// Ensure the Generate Image button is visible.
+		await expect(
+			page.locator( '.ai-generate-image-btn', {
+				hasText: 'Generate Image',
+			} )
+		).toBeVisible();
+
+		// Click the Generate Image button.
+		await page.locator( '.ai-generate-image-btn' ).click();
+
+		// Ensure the page loads.
+		await expect( page.locator( '.wrap h1' ) ).toHaveText(
+			'Generate Image'
+		);
+
+		// Add a prompt and generate the image.
+		await page
+			.locator( '.ai-generate-image-standalone__idle textarea' )
+			.fill( 'A smiley face' );
+		await page
+			.locator( '.ai-generate-image-standalone__actions button' )
+			.click();
+
+		// Ensure the image is visible.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__preview-image' )
+		).toBeVisible();
+
+		// Ensure the buttons we want are there.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__actions button' )
+		).toHaveCount( 5 );
+
+		let saveImageButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Save to Media Library',
+			}
+		);
+		await expect( saveImageButton ).toBeVisible();
+
+		const refineButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Refine Image',
+			}
+		);
+		await expect( refineButton ).toBeVisible();
+
+		const generateAnotherButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Generate Another Image',
+			}
+		);
+		await expect( generateAnotherButton ).toBeVisible();
+
+		// Ensure there's a cancel button.
+		const cancelButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Cancel',
+			}
+		);
+		await expect( cancelButton ).toBeVisible();
+
+		// Click the cancel button.
+		await cancelButton.click();
+
+		// Add another prompt and generate the image.
+		await page
+			.locator( '.ai-generate-image-standalone__idle textarea' )
+			.fill( 'A smiley face' );
+		await page
+			.locator( '.ai-generate-image-standalone__idle button' )
+			.click();
+
+		// Ensure the image is visible.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__preview-image' )
+		).toBeVisible();
+
+		// Ensure the buttons we want are there.
+		await expect(
+			page.locator( '.ai-generate-image-standalone__actions button' )
+		).toHaveCount( 5 );
+
+		saveImageButton = page.locator(
+			'.ai-generate-image-standalone__actions button',
+			{
+				hasText: 'Save to Media Library',
+			}
+		);
+		await expect( saveImageButton ).toBeVisible();
+
+		saveImageButton.click();
+
+		// Ensure a success message is visible.
+		await expect(
+			page.locator( '.components-notice.is-success' )
+		).toBeVisible();
+
+		// View the image in the Media Library.
+		page.locator( '.components-notice.is-success a' ).click();
+
+		// Ensure alt text is set.
+		await expect(
+			page.locator( '#attachment-details-two-column-alt-text' )
+		).toHaveValue( 'A smiley face' );
+	} );
+
 	test( 'Ensure the Image Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -428,6 +577,21 @@ test.describe( 'Image Generation Experiment', () => {
 				'.ai-featured-image .ai-featured-image__container button'
 			)
 		).not.toBeVisible();
+
+		// Visit the Media Library.
+		await visitAdminPage( admin, 'upload.php' );
+
+		// Ensure there's not a Generate Image link in the sidebar.
+		await expect(
+			page.locator( '.wp-menu-open .wp-submenu a', {
+				hasText: 'Generate Image',
+			} )
+		).not.toBeVisible();
+
+		// Ensure the Generate Image button is not visible.
+		await expect(
+			page.locator( '.ai-generate-image-btn' )
+		).not.toBeVisible();
 	} );
 
 	test( 'Ensure the Image Generation Experiment UI is not visible when the experiment is disabled', async ( {
@@ -439,7 +603,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Image Generation Experiment.
-		await disableExperiment( admin, page, 'image-generation' );
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -460,6 +624,21 @@ test.describe( 'Image Generation Experiment', () => {
 			page.locator(
 				'.ai-featured-image .ai-featured-image__container button'
 			)
+		).not.toBeVisible();
+
+		// Visit the Media Library.
+		await visitAdminPage( admin, 'upload.php' );
+
+		// Ensure there's not a Generate Image link in the sidebar.
+		await expect(
+			page.locator( '.wp-menu-open .wp-submenu a', {
+				hasText: 'Generate Image',
+			} )
+		).not.toBeVisible();
+
+		// Ensure the Generate Image button is not visible.
+		await expect(
+			page.locator( '.ai-generate-image-btn' )
 		).not.toBeVisible();
 	} );
 } );

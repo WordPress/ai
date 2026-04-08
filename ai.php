@@ -8,11 +8,11 @@
  * @license     GPL-2.0-or-later
  *
  * @wordpress-plugin
- * Plugin Name:       AI Experiments
+ * Plugin Name:       AI
  * Plugin URI:        https://github.com/WordPress/ai
- * Description:       AI experiments and capabilities for WordPress.
- * Version:           0.3.1
- * Requires at least: 6.9
+ * Description:       AI features, experiments and capabilities for WordPress.
+ * Version:           0.6.0
+ * Requires at least: 7.0
  * Requires PHP:      7.4
  * Author:            WordPress.org Contributors
  * Author URI:        https://make.wordpress.org/ai/
@@ -29,6 +29,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Shortcut constant to the path of this file.
  */
-define( 'AI_EXPERIMENTS_DIR', plugin_dir_path( __FILE__ ) );
+if ( ! defined( 'WPAI_DIR' ) ) {
+	define( 'WPAI_DIR', plugin_dir_path( __FILE__ ) );
+}
 
-require_once AI_EXPERIMENTS_DIR . 'includes/bootstrap.php';
+require_once WPAI_DIR . 'includes/bootstrap.php';

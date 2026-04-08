@@ -10,24 +10,26 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Review_Notes\Review_Notes;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Review_Notes_Ability tests.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
-class Test_Review_Notes_Experiment extends Abstract_Experiment {
+class Test_Review_Notes_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'review-notes';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'review-notes',
 			'label'       => 'Review Notes',
 			'description' => 'Reviews post content block-by-block and adds Notes with suggestions.',
 		);
@@ -35,8 +37,6 @@ class Test_Review_Notes_Experiment extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since x.x.x
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -46,14 +46,14 @@ class Test_Review_Notes_Experiment extends Abstract_Experiment {
 /**
  * Review_Notes_Ability test case.
  *
- * @since x.x.x
+ * @since 0.4.0
  */
 class Review_NotesTest extends WP_UnitTestCase {
 
 	/**
 	 * Review_Notes_Ability instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @var \WordPress\AI\Abilities\Review_Notes\Review_Notes
 	 */
@@ -62,7 +62,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Test experiment instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Review_Notes_Experiment
 	 */
@@ -71,7 +71,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Sets up the test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -89,7 +89,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tears down the test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -99,7 +99,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that input_schema() returns the expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -124,7 +124,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that output_schema() returns the expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -143,7 +143,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that execute_callback() returns an error when block_content is empty.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_execute_callback_returns_error_when_block_content_empty() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -166,7 +166,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	 * The AI call may fail in test environments without credentials, so the
 	 * test accepts both a valid result and an AI-related WP_Error.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_execute_callback_with_valid_input() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -202,7 +202,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	 *
 	 * Uses reflection to test the generate_review method with a mocked response.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_execute_callback_returns_empty_suggestions_when_no_issues() {
 		// Create a partial mock that overrides generate_review to return empty.
@@ -239,7 +239,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that execute_callback() returns properly structured suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_execute_callback_returns_suggestions_array() {
 		$mock_suggestions = array(
@@ -288,7 +288,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that create_prompt() sanitizes the block_content input.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_create_prompt_sanitizes_block_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -312,7 +312,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns true for users with edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -330,7 +330,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns WP_Error for users without edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -349,7 +349,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns WP_Error for logged-out users.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -367,7 +367,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that meta() includes show_in_rest.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -384,7 +384,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_system_instruction() returns a non-empty string.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_get_system_instruction_returns_string() {
 		$instruction = $this->ability->get_system_instruction();
@@ -398,28 +398,27 @@ class Review_NotesTest extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Tests that suggestions_schema() returns the OpenAI-required wrapper structure.
+	 * Tests that suggestions_schema() returns a top-level JSON Schema object.
 	 *
-	 * The schema must include 'name', 'strict', and 'schema' keys; the inner
-	 * 'schema' must be type 'object' (OpenAI rejects top-level array schemas).
+	 * The Responses API expects the schema itself at the top level with
+	 * type object.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
-	public function test_suggestions_schema_has_openai_wrapper_structure() {
+	public function test_suggestions_schema_has_top_level_object_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'suggestions_schema' );
 		$method->setAccessible( true );
 
 		$schema = $method->invoke( $this->ability );
 
-		$this->assertArrayHasKey( 'name', $schema, 'Schema should have a name key' );
-		$this->assertEquals( 'suggestions', $schema['name'], 'Schema name should be suggestions' );
-		$this->assertArrayHasKey( 'strict', $schema, 'Schema should have a strict key' );
-		$this->assertTrue( $schema['strict'], 'Schema strict should be true' );
-		$this->assertArrayHasKey( 'schema', $schema, 'Schema should have a schema key' );
-		$this->assertEquals( 'object', $schema['schema']['type'], 'Inner schema type must be object (not array)' );
-		$this->assertArrayHasKey( 'suggestions', $schema['schema']['properties'], 'Inner schema should have suggestions property' );
-		$this->assertEquals( 'array', $schema['schema']['properties']['suggestions']['type'], 'suggestions property should be array type' );
+		$this->assertArrayHasKey( 'type', $schema, 'Schema should have a top-level type key' );
+		$this->assertEquals( 'object', $schema['type'], 'Top-level schema type must be object' );
+		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties key' );
+		$this->assertArrayHasKey( 'suggestions', $schema['properties'], 'Schema should have suggestions property' );
+		$this->assertEquals( 'array', $schema['properties']['suggestions']['type'], 'suggestions property should be array type' );
+		$this->assertArrayHasKey( 'required', $schema, 'Schema should define required keys' );
+		$this->assertContains( 'suggestions', $schema['required'], 'suggestions should be required' );
 	}
 
 	// -------------------------------------------------------------------------
@@ -429,7 +428,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns true for an editor with a valid post.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_permission_callback_returns_true_for_editor_with_valid_post() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -449,7 +448,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns WP_Error when the context post does not exist.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_permission_callback_returns_error_when_context_post_not_found() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -468,7 +467,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns WP_Error when the user cannot edit the specific post.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_permission_callback_returns_error_when_user_cannot_edit_post() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -489,7 +488,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that permission_callback() returns false for a post type not shown in REST.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_permission_callback_returns_false_for_non_rest_post_type() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -523,7 +522,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Returns the get_existing_review_types_from_notes() method via reflection.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 *
 	 * @return \ReflectionMethod
 	 */
@@ -537,7 +536,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_existing_review_types_from_notes() extracts bracketed types from note text.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_get_existing_review_types_extracts_types_from_notes() {
 		$method = $this->get_existing_types_method();
@@ -556,7 +555,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_existing_review_types_from_notes() normalises types to lowercase.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_get_existing_review_types_is_case_insensitive() {
 		$method = $this->get_existing_types_method();
@@ -571,7 +570,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_existing_review_types_from_notes() ignores notes without bracketed types.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_get_existing_review_types_ignores_notes_without_brackets() {
 		$method = $this->get_existing_types_method();
@@ -585,7 +584,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_existing_review_types_from_notes() handles multiple types in one note.
 	 *
-	 * @since x.x.x
+	 * @since 0.4.0
 	 */
 	public function test_get_existing_review_types_handles_multiple_types_in_one_note() {
 		$method = $this->get_existing_types_method();
