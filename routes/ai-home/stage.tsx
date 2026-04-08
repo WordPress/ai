@@ -83,11 +83,13 @@ function parseSettingsField( value: unknown ): SettingsFieldData | null {
 
 	const rawElements = field.elements;
 
+	const type = toStringValue( field.type ) || 'string';
+
 	return {
 		id,
 		label: toStringValue( field.label ),
-		type: toStringValue( field.type ) || 'string',
-		default: field.default ?? '',
+		type,
+		default: field.default ?? ( type === 'integer' ? 0 : '' ),
 		elements: Array.isArray( rawElements )
 			? ( rawElements as unknown[] )
 					.filter( isRecord )
