@@ -57,6 +57,24 @@ class Content_Classification extends Abstract_Feature {
 	public const DEFAULT_MAX_SUGGESTIONS = 5;
 
 	/**
+	 * The minimum allowed number of suggestions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const MIN_SUGGESTIONS = 1;
+
+	/**
+	 * The maximum allowed number of suggestions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const MAX_SUGGESTIONS = 10;
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -172,8 +190,8 @@ class Content_Classification extends Abstract_Feature {
 				'show_in_rest'      => array(
 					'schema' => array(
 						'type'    => 'integer',
-						'minimum' => 1,
-						'maximum' => 10,
+						'minimum' => self::MIN_SUGGESTIONS,
+						'maximum' => self::MAX_SUGGESTIONS,
 					),
 				),
 			)
@@ -207,8 +225,8 @@ class Content_Classification extends Abstract_Feature {
 				'type'    => 'integer',
 				'default' => self::DEFAULT_MAX_SUGGESTIONS,
 				'isValid' => array(
-					'min' => 1,
-					'max' => 10,
+					'min' => self::MIN_SUGGESTIONS,
+					'max' => self::MAX_SUGGESTIONS,
 				),
 			),
 		);
@@ -239,7 +257,7 @@ class Content_Classification extends Abstract_Feature {
 	public function sanitize_max_suggestions( $value ): int {
 		$value = absint( $value );
 
-		return max( 1, min( 10, $value ) );
+		return max( self::MIN_SUGGESTIONS, min( self::MAX_SUGGESTIONS, $value ) );
 	}
 
 	/**

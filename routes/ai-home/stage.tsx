@@ -53,6 +53,7 @@ interface PageData {
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 const GLOBAL_FIELD_ID = 'wpai_features_enabled';
+const noop = () => {};
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;
@@ -241,7 +242,7 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 			help={ field.description }
 			checked={ !! field.getValue( { item: data } ) }
 			// No-op handler required to satisfy React's controlled-component warning; the toggle is disabled.
-			onChange={ () => {} }
+			onChange={ noop }
 			disabled
 		/>
 	);
