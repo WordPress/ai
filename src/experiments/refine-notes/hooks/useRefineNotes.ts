@@ -316,13 +316,10 @@ export function useRefineNotes(): {
 			}
 
 			if ( refinedBlocksCount > 0 ) {
-				// We trigger autosave to ensure the DB state has the refinements
-				// as a distinct revision boundary.
-				await ( dispatch( editorStore ) as any ).autosave();
-
-				// Fetch the latest revision ID directly from the REST API.
-				// The autosave endpoint only updates the autosave record (not the main
-				// post entity), so the editor store's revision data is stale after autosave.
+				// Save the post so refinements are persisted and a revision is
+				// created. This keeps the editor state clean — no "unsaved
+				// changes" prompt when navigating to the revisions link.
+				await ( dispatch( editorStore ) as any ).savePost();
 				const { aiRefineNotesData } = window as any;
 				const restBase = aiRefineNotesData?.rest_base as
 					| string
