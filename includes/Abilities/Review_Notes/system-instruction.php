@@ -62,7 +62,7 @@ Be direct and factual.
 The review types to perform for each block are provided in <review-types> tags.
 
 **core/image**
-- accessibility: The content in <block-content> is the alt text for the image. Ensure it isn't empty and is descriptive. Flag missing or generic alt text (e.g. "image", "photo", file name)
+- accessibility: The content in <block-content> is the alt text for the image. Empty alt can be correct for decorative images; flag missing or poor alt when the image appears informative, functional (e.g. linked), or redundant with adjacent text. Flag generic alt text (e.g. "image", "photo", file name) when it fails to convey purpose or content
 - Skip readability, grammar, and seo for image blocks
 
 **core/heading**
