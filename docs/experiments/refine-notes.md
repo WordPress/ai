@@ -13,7 +13,7 @@ When enabled, a "Refine from Notes" button appears in the post status info panel
 1. The button label updates to show progression across blocks (`Refining block (2 of 4)…`)
 2. Each block that has a pending Note attached is sent to the AI alongside the Note's content.
 3. The AI precisely updates the block content resolving the note feedback.
-4. An autosave checkpoint is established.
+4. The post is saved, creating a revision checkpoint.
 5. After completion, a success snackbar with a "Review in Revisions" action lets the user review the diff safely and rollback if necessary.
 
 **Key Features:**
@@ -57,7 +57,7 @@ The experiment consists of:
      - Skips any blocks that do not have active pending notes attached.
      - Processes qualifying blocks in parallel batches of 4.
      - Dispatches an `updateBlockAttributes` directly to the `core/block-editor` store with the returned refactored content.
-     - Triggers `wp.data.dispatch( 'core/editor' ).autosave()` to freeze the revision.
+     - Triggers `wp.data.dispatch( 'core/editor' ).savePost()` to persist changes and create a revision.
 
 3. **Ability Execution:**
    - Receives target block type, current content, note texts, and optionally surrounding text context.
