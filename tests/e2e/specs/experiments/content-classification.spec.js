@@ -83,7 +83,9 @@ async function setStrategy( admin, page, strategy ) {
 		.getByRole( 'button', { name: 'Save' } );
 	await saveButton.click();
 
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect(
+		page.getByText( 'Content Classification settings saved.' )
+	).toBeVisible();
 }
 
 test.describe( 'Content Classification Experiment', () => {
