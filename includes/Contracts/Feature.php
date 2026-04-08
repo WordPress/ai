@@ -102,6 +102,7 @@ interface Feature {
 	 *   type: string,
 	 *   default?: mixed,
 	 *   elements?: list<array{value: string, label: string}>,
+	 *   isValid?: array{min?: int, max?: int},
 	 * }> Array of field definitions with full option names.
 	 */
 	public function get_settings_fields_metadata(): array;

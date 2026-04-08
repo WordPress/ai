@@ -272,7 +272,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		// Verify strategy field.
 		$this->assertSame( 'strategy', $fields[0]['id'] );
-		$this->assertSame( 'string', $fields[0]['type'] );
+		$this->assertSame( 'text', $fields[0]['type'] );
 		$this->assertSame( 'existing_only', $fields[0]['default'] );
 		$this->assertCount( 2, $fields[0]['elements'], 'Strategy field should have two element options' );
 		$this->assertSame( 'existing_only', $fields[0]['elements'][0]['value'] );

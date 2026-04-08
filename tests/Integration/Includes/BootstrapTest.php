@@ -159,7 +159,7 @@ class Stub_Feature_With_Settings extends Abstract_Feature {
 			array(
 				'id'       => 'mode',
 				'label'    => 'Mode',
-				'type'     => 'string',
+				'type'     => 'text',
 				'default'  => 'auto',
 				'elements' => array(
 					array(
@@ -464,7 +464,7 @@ class BootstrapTest extends WP_UnitTestCase {
 
 		// Other properties should be preserved.
 		$this->assertSame( 'Mode', $feature['settingsFields'][0]['label'] );
-		$this->assertSame( 'string', $feature['settingsFields'][0]['type'] );
+		$this->assertSame( 'text', $feature['settingsFields'][0]['type'] );
 		$this->assertCount( 2, $feature['settingsFields'][0]['elements'] );
 		$this->assertSame( 'integer', $feature['settingsFields'][1]['type'] );
 	}

@@ -25,17 +25,13 @@ interface FeatureGroupData {
 	description: string;
 }
 
-interface SettingsFieldElement {
-	value: string;
-	label: string;
-}
-
 interface SettingsFieldData {
 	id: string;
 	label: string;
 	type: string;
-	default: unknown;
-	elements: SettingsFieldElement[];
+	default?: unknown;
+	elements?: Array< { value: string; label: string } >;
+	isValid?: Record< string, number >;
 }
 
 interface FeatureData {
@@ -70,39 +66,12 @@ function isDefined< T >( value: T | null | undefined ): value is T {
 	return value !== null && value !== undefined;
 }
 
-function parseSettingsField( value: unknown ): SettingsFieldData | null {
-	if ( ! isRecord( value ) ) {
-		return null;
-	}
-
-	const field = value as Partial< SettingsFieldData >;
-	const id = toStringValue( field.id );
-	if ( ! id ) {
-		return null;
-	}
-
-	const rawElements = field.elements;
-
-	const type = toStringValue( field.type ) || 'string';
-
-	return {
-		id,
-		label: toStringValue( field.label ),
-		type,
-		default: field.default ?? ( type === 'integer' ? 0 : '' ),
-		elements: Array.isArray( rawElements )
-			? ( rawElements as unknown[] )
-					.filter( isRecord )
-					.map( ( el ) => {
-						const element = el as Partial< SettingsFieldElement >;
-						return {
-							value: toStringValue( element.value ),
-							label: toStringValue( element.label ),
-						};
-					} )
-					.filter( ( el ) => el.value !== '' )
-			: [],
-	};
+function isSettingsField( value: unknown ): value is SettingsFieldData {
+	return (
+		isRecord( value ) &&
+		typeof value[ 'id' ] === 'string' &&
+		value[ 'id' ] !== ''
+	);
 }
 
 function parseFeatureGroup( value: unknown ): FeatureGroupData | null {
@@ -148,7 +117,7 @@ function parseFeature( value: unknown ): FeatureData | null {
 		label: toStringValue( feature.label ) || getDefaultLabel( id ),
 		description: toStringValue( feature.description ),
 		category: toStringValue( feature.category ) || 'other',
-		settingsFields: rawFields.map( parseSettingsField ).filter( isDefined ),
+		settingsFields: ( rawFields as unknown[] ).filter( isSettingsField ),
 	};
 }
 
@@ -325,23 +294,10 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 
 	const fields = useMemo< Field< Record< string, unknown > >[] >(
 		() =>
-			feature.settingsFields.map( ( settingsField ) => {
-				const fieldDef: Field< Record< string, unknown > > = {
-					id: settingsField.id,
-					label: settingsField.label,
-				};
-
-				if ( settingsField.type === 'integer' ) {
-					fieldDef.type = 'integer';
-				} else if ( settingsField.elements.length > 0 ) {
-					fieldDef.type = 'text';
-					fieldDef.elements = settingsField.elements;
-				} else {
-					fieldDef.type = 'text';
-				}
-
-				return fieldDef;
-			} ),
+			feature.settingsFields.map(
+				( { default: _, ...fieldProps } ) =>
+					fieldProps as Field< Record< string, unknown > >
+			),
 		[ feature.settingsFields ]
 	);
 
@@ -406,6 +362,11 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 						isBusy={ isSaving }
 						disabled={ isSaving }
 						size="compact"
+						aria-label={ sprintf(
+							// translators: %s: Feature label.
+							__( 'Save %s settings', 'ai' ),
+							feature.label
+						) }
 					>
 						{ __( 'Save', 'ai' ) }
 					</Button>
@@ -415,49 +376,36 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	);
 }
 
-/**
- * Creates a custom Edit component for a feature toggle that also renders
- * inline sub-settings when the feature is enabled.
- *
- * @param {FeatureData} feature The feature with custom settings fields.
- */
-function createFeatureToggleWithSettings( feature: FeatureData ) {
-	return function FeatureToggleWithSettings( {
-		field,
-		data,
-		onChange,
-	}: DataFormControlProps< AISettings > ) {
-		const checked = !! field.getValue( { item: data } );
+const FEATURES_BY_SETTING = new Map(
+	PAGE_DATA.features
+		.filter( ( f ) => f.settingsFields.length > 0 )
+		.map( ( f ) => [ f.settingName, f ] as const )
+);
 
-		return (
-			<div className="ai-feature-toggle-with-settings">
-				<ToggleControl
-					__nextHasNoMarginBottom
-					label={ field.label }
-					help={ field.description }
-					checked={ checked }
-					onChange={ ( value ) => {
-						onChange( { [ field.id ]: value } );
-					} }
-				/>
-				{ checked && <InlineFeatureSettings feature={ feature } /> }
-			</div>
-		);
-	};
-}
+function FeatureToggleWithSettings( {
+	field,
+	data,
+	onChange,
+}: DataFormControlProps< AISettings > ) {
+	const feature = FEATURES_BY_SETTING.get( field.id );
+	const checked = !! field.getValue( { item: data } );
 
-const featureEditComponents = new Map<
-	string,
-	ReturnType< typeof createFeatureToggleWithSettings >
->();
-
-function getFeatureEditComponent( feature: FeatureData ) {
-	let component = featureEditComponents.get( feature.id );
-	if ( ! component ) {
-		component = createFeatureToggleWithSettings( feature );
-		featureEditComponents.set( feature.id, component );
-	}
-	return component;
+	return (
+		<div className="ai-feature-toggle-with-settings">
+			<ToggleControl
+				__nextHasNoMarginBottom
+				label={ field.label }
+				help={ field.description }
+				checked={ checked }
+				onChange={ ( value ) => {
+					onChange( { [ field.id ]: value } );
+				} }
+			/>
+			{ checked && feature && (
+				<InlineFeatureSettings feature={ feature } />
+			) }
+		</div>
+	);
 }
 
 function AISettingsPage() {
@@ -561,7 +509,7 @@ function AISettingsPage() {
 				if ( ! globalEnabled ) {
 					baseField.Edit = DisabledToggle;
 				} else if ( feature.settingsFields.length > 0 ) {
-					baseField.Edit = getFeatureEditComponent( feature );
+					baseField.Edit = FeatureToggleWithSettings;
 				} else {
 					baseField.Edit = 'toggle' as const;
 				}

@@ -188,7 +188,7 @@ class Content_Classification extends Abstract_Feature {
 			array(
 				'id'       => 'strategy',
 				'label'    => __( 'Taxonomy strategy', 'ai' ),
-				'type'     => 'string',
+				'type'     => 'text',
 				'default'  => self::STRATEGY_EXISTING_ONLY,
 				'elements' => array(
 					array(
@@ -206,6 +206,10 @@ class Content_Classification extends Abstract_Feature {
 				'label'   => __( 'Maximum suggestions', 'ai' ),
 				'type'    => 'integer',
 				'default' => self::DEFAULT_MAX_SUGGESTIONS,
+				'isValid' => array(
+					'min' => 1,
+					'max' => 10,
+				),
 			),
 		);
 	}

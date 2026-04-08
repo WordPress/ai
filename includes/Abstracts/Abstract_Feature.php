@@ -232,7 +232,8 @@ abstract class Abstract_Feature implements Feature {
 	 *   type: string,
 	 *   default?: mixed,
 	 *   elements?: list<array{value: string, label: string}>,
-	 * }> Array of field definitions.
+	 *   isValid?: array{min?: int, max?: int},
+	 * }> Array of field definitions matching the DataForm Field shape.
 	 */
 	public function get_settings_fields(): array {
 		return array();
@@ -252,6 +253,7 @@ abstract class Abstract_Feature implements Feature {
 	 *   type: string,
 	 *   default?: mixed,
 	 *   elements?: list<array{value: string, label: string}>,
+	 *   isValid?: array{min?: int, max?: int},
 	 * }> Array of field definitions with full option names.
 	 */
 	public function get_settings_fields_metadata(): array {

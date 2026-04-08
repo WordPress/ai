@@ -175,7 +175,7 @@ class Test_Feature_With_Settings extends Abstract_Feature {
 			array(
 				'id'       => 'color',
 				'label'    => 'Color',
-				'type'     => 'string',
+				'type'     => 'text',
 				'default'  => 'blue',
 				'elements' => array(
 					array(
@@ -362,7 +362,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 		$this->assertCount( 2, $fields, 'Should return two settings fields' );
 		$this->assertSame( 'color', $fields[0]['id'], 'First field should have short id "color"' );
 		$this->assertSame( 'count', $fields[1]['id'], 'Second field should have short id "count"' );
-		$this->assertSame( 'string', $fields[0]['type'] );
+		$this->assertSame( 'text', $fields[0]['type'] );
 		$this->assertSame( 'integer', $fields[1]['type'] );
 	}
 
@@ -398,7 +398,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 		$fields  = $feature->get_settings_fields_metadata();
 
 		$this->assertSame( 'Color', $fields[0]['label'] );
-		$this->assertSame( 'string', $fields[0]['type'] );
+		$this->assertSame( 'text', $fields[0]['type'] );
 		$this->assertSame( 'blue', $fields[0]['default'] );
 		$this->assertCount( 2, $fields[0]['elements'] );
 		$this->assertSame( 'blue', $fields[0]['elements'][0]['value'] );
