@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 - New Experiment: SEO Descriptions that provides AI-generated meta description support ([#318](https://github.com/WordPress/ai/pull/318)).
 - Added a bulk "Generate Alt Text" action to Media Library to generate alt text for multiple images at once ([#330](https://github.com/WordPress/ai/pull/330)).
 - Added Category filtering to the Abilities table to improve organization and discoverability ([#355](https://github.com/WordPress/ai/pull/355)).
-- Added extensibility hooks for customizing system instructions, ability results, and post context during AI operations ([#304](https://github.com/WordPress/ai/pull/304)).
+- Added extensibility hooks for customizing system instructions, and post context during AI operations ([#304](https://github.com/WordPress/ai/pull/304)).
 
 ### Changed
 - Updated AI settings page leveraging modern `wp-build` DataForm route ([#340](https://github.com/WordPress/ai/pull/340), [#376](https://github.com/WordPress/ai/pull/376)).
