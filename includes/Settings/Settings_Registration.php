@@ -85,6 +85,7 @@ class Settings_Registration {
 				'type'              => 'boolean',
 				'default'           => false,
 				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => true,
 			)
 		);
 
@@ -100,6 +101,7 @@ class Settings_Registration {
 					'type'              => 'boolean',
 					'default'           => false,
 					'sanitize_callback' => 'rest_sanitize_boolean',
+					'show_in_rest'      => true,
 				)
 			);
 

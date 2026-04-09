@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Alt text generation experiment.
  *
- * Generates descriptive alt text for images using AI vision models.
+ * Generates accessible alternative text for images using AI vision models.
  *
  * @since 0.3.0
  */
@@ -48,7 +48,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Alt Text Generation', 'ai' ),
-			'description' => __( 'Generates descriptive alt text for images using AI vision models.', 'ai' ),
+			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}

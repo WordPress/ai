@@ -242,7 +242,7 @@ The plugin also includes the following action hooks:
 
 ### Asset Loading
 
-The plugin provides a utility class for loading assets. This uses `wp-scripts` to build assets which are expected to live within the `src/` directory. They will then be built into the `build/` directory, where the asset loader will look for the files, pulling in the proper dependencies and versioning.
+The plugin provides a utility class for loading assets. This uses `wp-scripts` to build assets which are expected to live within the `src/` directory. They will then be built into the `build-scripts/` directory, where the asset loader will look for the files, pulling in the proper dependencies and versioning.
 
 ```php
 use WordPress\AI\Asset_Loader;
@@ -252,7 +252,7 @@ use WordPress\AI\Asset_Loader;
  *
  * First argument is the script handle.
  * The second argument is the script file name.
- * This script file name should be in the build/ directory.
+ * This script file name should be in the build-scripts/ directory.
  * The source script files should be in the src/ directory. If needed,
  * you can add the entry point to the webpack.config.js file.
  */
@@ -263,7 +263,7 @@ Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
  *
  * First argument is the style handle.
  * The second argument is the style file name.
- * This style file name should be in the build/ directory.
+ * This style file name should be in the build-scripts/ directory.
  * The source style files should be in the src/ directory. If needed,
  * you can add the entry point to the webpack.config.js file.
  */
