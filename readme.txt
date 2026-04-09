@@ -20,10 +20,12 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
+* **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
+* **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
@@ -32,10 +34,13 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 We're actively developing new features to enhance your WordPress workflow:
 
-* **Contextual Tagging** - AI-suggested tags and categories to organize your content.
 * **Comment Moderation** – AI-assisted moderation tools to help classify or manage user comments.
 * **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 * **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
+* **AI Playground** – Experiment with different AI models and providers.
+* **Content Assistant** – AI-powered writing and editing in Gutenberg.
+* **Site Agent** – Natural language WordPress administration.
+* **Workflow Automation** – AI-driven task automation.
 
 This is an experimental plugin; functionality may change as we gather feedback from the community.
 
