@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 - Updated preferred models to more recent ones for the three default providers ([#361](https://github.com/WordPress/ai/pull/361)).
 - Updated provider compatibility checks to use the AI Client's built-in `is_supported_*` methods for improved validation and error reporting ([#362](https://github.com/WordPress/ai/pull/362)).
 - Updated the PR preview workflow to use a preferred WordPress version for improved consistency during testing ([#366](https://github.com/WordPress/ai/pull/366)).
-- Adjust Alt Text Beneration to better align with the W3C Alt Text decision tree guidance ([#374](https://github.com/WordPress/ai/pull/374)).
+- Adjust Alt Text Generation to better align with the W3C Alt Text decision tree guidance ([#374](https://github.com/WordPress/ai/pull/374)).
 - Switch to using a `Button` component instead of a `ToolbarButton` component when in normal editing mode (non-template mode) ([#375](https://github.com/WordPress/ai/pull/375)).
 
 ### Removed
