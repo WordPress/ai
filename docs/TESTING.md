@@ -21,8 +21,6 @@ This document outlines the testing philosophy and strategy for the AI plugin, ad
 
 **Purpose**: Test pure functions and business logic in isolation, without loading the WordPress environment.
 
-**Status**: The current repository does not include a `tests/Unit/` suite yet. When introducing isolated logic that can be tested without WordPress, add unit tests in a dedicated `tests/Unit/` directory and update the PHPUnit configuration accordingly.
-
 ### 2. Integration Tests (WordPress + Plugin Interactions)
 
 **Purpose**: Test interactions between different parts of the plugin, and between the plugin and WordPress core, database, or other plugin components. These tests run within a WordPress test environment.
