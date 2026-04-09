@@ -243,6 +243,7 @@ class Settings_PageTest extends WP_UnitTestCase {
 
 	private function get_settings_feature_metadata( Registry $registry ): array {
 		$method = new \ReflectionMethod( Settings_Page::class, 'get_settings_feature_metadata' );
+		$method->setAccessible( true );
 		return $method->invoke( null, $registry );
 	}
 
