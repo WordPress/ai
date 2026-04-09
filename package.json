@@ -66,7 +66,7 @@
     "@wordpress/api-fetch": "^7.43.0",
     "@wordpress/block-editor": "^15.7.0",
     "@wordpress/blocks": "^15.16.0",
-    "@wordpress/components": "^30.9.0",
+    "@wordpress/components": "^32.3.0",
     "@wordpress/compose": "^7.43.0",
     "@wordpress/core-data": "^7.37.0",
     "@wordpress/data": "^10.34.0",
