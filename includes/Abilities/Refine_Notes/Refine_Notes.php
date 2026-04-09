@@ -215,12 +215,14 @@ class Refine_Notes extends Abstract_Ability {
 		array $notes,
 		string $context
 	) {
-		$prompt = $this->create_prompt( $block_type, $block_content, $notes, $context );
+		$prompt         = $this->create_prompt( $block_type, $block_content, $notes, $context );
+		$prompt_builder = $this->get_prompt_builder( $prompt );
 
-		$raw = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->generate_text();
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
+		$raw = $prompt_builder->generate_text();
 
 		if ( is_wp_error( $raw ) ) {
 			return $raw;
@@ -231,6 +233,25 @@ class Refine_Notes extends Abstract_Ability {
 		}
 
 		return (string) $raw;
+	}
+
+	/**
+	 * Gets a prompt builder for generating refinement.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to generate refinement from.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Refinement generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 
 	/**
