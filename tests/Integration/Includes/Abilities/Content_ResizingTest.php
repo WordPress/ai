@@ -428,4 +428,21 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		$this->assertNotEquals( $shorten_prompt, $rephrase_prompt, 'Shorten and rephrase prompts should differ' );
 		$this->assertNotEquals( $expand_prompt, $rephrase_prompt, 'Expand and rephrase prompts should differ' );
 	}
+
+	/**
+	 * Test that generate_resized_content() returns a WP_Error when the model is not supported.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_resized_content_returns_wp_error_when_model_is_not_supported() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_resized_content' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'Test content here.' );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
+		$this->assertEquals( 'Content resizing failed. Please ensure you have a connected provider that supports text generation.', $result->get_error_message(), 'Error message should be passed through' );
+	}
 }

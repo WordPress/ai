@@ -241,14 +241,9 @@ class Content_Resizing extends Abstract_Ability {
 			->using_temperature( 0.7 )
 			->using_model_preference( ...get_preferred_models_for_text_generation() );
 
-		// Return a more specific error if there isn't a model that supports text generation.
-		if ( ! $builder->is_supported_for_text_generation() ) {
-			return new WP_Error(
-				'unsupported_model',
-				esc_html__( 'Content resizing failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
-			);
-		}
-
-		return $builder;
+		return $this->ensure_text_generation_supported(
+			$builder,
+			esc_html__( 'Content resizing failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }
