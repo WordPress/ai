@@ -9,7 +9,6 @@ import { ToolbarGroup, ToolbarButton } from '@wordpress/components';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
-import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -114,7 +113,6 @@ export default function TitleToolbar(): JSX.Element | null {
 		<PostTypeSupportCheck supportKeys="title">
 			<ToolbarGroup>
 				<ToolbarButton
-					icon={ update }
 					label={ buttonLabel }
 					onClick={ handleGenerate }
 					disabled={ isGenerating }
