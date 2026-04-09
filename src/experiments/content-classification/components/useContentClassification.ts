@@ -27,13 +27,35 @@ import type {
 
 const MINIMUM_WORD_COUNT = 150;
 const NOTICE_ID = 'ai_content_classification_error';
+const DEFAULT_MAX_SUGGESTIONS = 5;
+const MIN_SUGGESTIONS = 1;
+const MAX_SUGGESTIONS = 10;
 
-const getSettings = (): ContentClassificationData =>
-	( window as any ).aiContentClassificationData ?? {
-		enabled: false,
-		strategy: 'existing_only',
-		maxSuggestions: 5,
+const normalizeMaxSuggestions = ( value: unknown ): number => {
+	const parsedValue = Number.parseInt(
+		String( value ?? DEFAULT_MAX_SUGGESTIONS ),
+		10
+	);
+
+	if ( Number.isNaN( parsedValue ) ) {
+		return DEFAULT_MAX_SUGGESTIONS;
+	}
+
+	return Math.min(
+		MAX_SUGGESTIONS,
+		Math.max( MIN_SUGGESTIONS, parsedValue )
+	);
+};
+
+const getSettings = (): ContentClassificationData => {
+	const settings = ( window as any ).aiContentClassificationData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		strategy: settings.strategy ?? 'existing_only',
+		maxSuggestions: normalizeMaxSuggestions( settings.maxSuggestions ),
 	};
+};
 
 /**
  * Generates taxonomy suggestions for the given post.
