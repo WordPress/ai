@@ -94,7 +94,7 @@ export function replaceBlockWithPlaceholder(
 		return content;
 	}
 
-	const serializedBlock = serialize( block );
+	const serializedBlock = serialize( [ block ] );
 	if ( ! serializedBlock || ! content.includes( serializedBlock ) ) {
 		return content;
 	}

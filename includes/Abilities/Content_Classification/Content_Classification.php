@@ -341,14 +341,14 @@ class Content_Classification extends Abstract_Ability {
 		 */
 		$prompt = (string) apply_filters( 'wpai_content_classification_prompt', $prompt, $context, $taxonomy, $assigned_terms, $available_terms );
 
-		$builder = $this->get_prompt_builder( $prompt );
+		$prompt_builder = $this->get_prompt_builder( $prompt );
 
-		if ( is_wp_error( $builder ) ) {
-			return $builder;
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
 		}
 
 		// Generate the suggestions using the AI client with structured output.
-		$result = $builder->as_json_response( $this->suggestions_schema() )->generate_text();
+		$result = $prompt_builder->generate_text();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -391,20 +391,16 @@ class Content_Classification extends Abstract_Ability {
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
 	private function get_prompt_builder( string $prompt ) {
-		$builder = wp_ai_client_prompt( $prompt )
+		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.5 )
-			->using_model_preference( ...get_preferred_models_for_text_generation() );
+			->using_model_preference( ...get_preferred_models_for_text_generation() )
+			->as_json_response( $this->suggestions_schema() );
 
-		// Return a more specific error if there isn't a model that supports text generation.
-		if ( ! $builder->is_supported_for_text_generation() ) {
-			return new WP_Error(
-				'unsupported_model',
-				esc_html__( 'Term generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
-			);
-		}
-
-		return $builder;
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Term generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 
 	/**
