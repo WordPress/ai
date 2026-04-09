@@ -229,17 +229,17 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 */
 	public function test_format_for_prompt_truncates_long_guidelines(): void {
 		$this->register_guidelines_cpt();
-		$long_text = str_repeat( 'a', 3000 );
+		$long_text = str_repeat( 'a', 6000 );
 		$this->create_guidelines_post( array( 'site' => $long_text ) );
 
 		$result = $this->service->format_for_prompt( array( 'site' ) );
 
-		// Default max is 2000 chars per category.
+		// Default max is 5000 chars per category.
 		$this->assertStringContainsString( '<site-context>', $result );
 		// The content between the tags should be truncated.
 		preg_match( '/<site-context>(.*?)<\/site-context>/s', $result, $matches );
 		$this->assertNotEmpty( $matches );
-		$this->assertEquals( 2000, mb_strlen( $matches[1], 'UTF-8' ) );
+		$this->assertEquals( 5000, mb_strlen( $matches[1], 'UTF-8' ) );
 	}
 
 	/**
