@@ -144,7 +144,7 @@ async function reviewSingleBlock(
 		context,
 		post_id: postId,
 		existing_notes: existingNoteTexts,
-	} ).catch( () => null );
+	} );
 
 	if ( result?.suggestions && result.suggestions.length > 0 ) {
 		await createNote( block, postId, result.suggestions, existingNoteId );

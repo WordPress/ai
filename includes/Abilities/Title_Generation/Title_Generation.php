@@ -231,17 +231,33 @@ class Title_Generation extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
-		// Generate the title using the AI client.
-		$result = wp_ai_client_prompt( $content )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.7 )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->generate_text();
+		$prompt_builder = $this->get_prompt_builder( $content );
 
-		if ( is_wp_error( $result ) ) {
-			return $result;
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
 		}
 
-		return $result;
+		// Generate the title using the AI client.
+		return $prompt_builder->generate_text();
+	}
+
+	/**
+	 * Gets a prompt builder for generating titles.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to generate titles from.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_temperature( 0.7 )
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Title generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }
