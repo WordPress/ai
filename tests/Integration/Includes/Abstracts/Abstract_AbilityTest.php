@@ -479,19 +479,17 @@ PHP
 			)
 		);
 
-		$captured_name = null;
-		$filter_callback = function ( $instruction, $name ) use ( &$captured_name ) {
-			$captured_name = $name;
-			return $instruction;
+		$filter_callback = static function ( $instruction, $name ) {
+			return sprintf( 'ability:%s', $name );
 		};
 
 		add_filter( 'wpai_system_instruction', $filter_callback, 10, 2 );
 
-		$ability->get_system_instruction();
+		$result = $ability->get_system_instruction();
 
 		remove_filter( 'wpai_system_instruction', $filter_callback, 10 );
 
-		$this->assertSame( 'test-ability', $captured_name, 'Filter should receive the ability name' );
+		$this->assertSame( 'ability:test-ability', $result, 'Filter output should encode the ability name' );
 	}
 
 	/**

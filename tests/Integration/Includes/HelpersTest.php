@@ -284,18 +284,15 @@ class HelpersTest extends WP_UnitTestCase {
 			)
 		);
 
-		$captured_post_id = null;
-		$captured_fields  = null;
-		$filter_callback  = static function ( $details, $filter_post_id, $filter_fields ) use ( &$captured_post_id, &$captured_fields ) {
-			$captured_post_id = $filter_post_id;
-			$captured_fields  = $filter_fields;
+		$filter_callback = static function ( $details, $filter_post_id, $filter_fields ) {
+			$details['title'] = sprintf( 'post:%d|fields:%s', $filter_post_id, implode( ',', $filter_fields ) );
 			return $details;
 		};
 
 		add_filter( 'wpai_get_post_details', $filter_callback, 10, 3 );
 
 		$ability = wp_get_ability( 'ai/get-post-details' );
-		$ability->execute(
+		$result  = $ability->execute(
 			array(
 				'post_id' => $post_id,
 				'fields'  => array( 'title', 'slug' ),
@@ -304,8 +301,13 @@ class HelpersTest extends WP_UnitTestCase {
 
 		remove_filter( 'wpai_get_post_details', $filter_callback, 10 );
 
-		$this->assertSame( $post_id, $captured_post_id, 'Filter should receive the post ID' );
-		$this->assertSame( array( 'title', 'slug' ), $captured_fields, 'Filter should receive the requested fields' );
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'title', $result, 'Result should include title' );
+		$this->assertSame(
+			sprintf( 'post:%d|fields:title,slug', $post_id ),
+			$result['title'],
+			'Filter output should encode the received post ID and requested fields'
+		);
 	}
 
 	/**
@@ -346,24 +348,25 @@ class HelpersTest extends WP_UnitTestCase {
 		$post_id     = $this->factory->post->create();
 		wp_set_post_categories( $post_id, array( $category_id ) );
 
-		$captured_post_id    = null;
-		$captured_taxonomies = null;
-		$filter_callback     = static function ( $terms, $filter_post_id, $filter_taxonomies ) use ( &$captured_post_id, &$captured_taxonomies ) {
-			$captured_post_id    = $filter_post_id;
-			$captured_taxonomies = $filter_taxonomies;
+		$filter_callback = static function ( $terms, $filter_post_id, $filter_taxonomies ) {
+			$terms['category'] = sprintf( 'post:%d|taxonomies:%s', $filter_post_id, implode( ',', $filter_taxonomies ) );
 			return $terms;
 		};
 
 		add_filter( 'wpai_get_post_terms', $filter_callback, 10, 3 );
 
 		$ability = wp_get_ability( 'ai/get-post-terms' );
-		$ability->execute( array( 'post_id' => $post_id ) );
+		$result  = $ability->execute( array( 'post_id' => $post_id ) );
 
 		remove_filter( 'wpai_get_post_terms', $filter_callback, 10 );
 
-		$this->assertSame( $post_id, $captured_post_id, 'Filter should receive the post ID' );
-		$this->assertIsArray( $captured_taxonomies, 'Filter should receive an array of taxonomies' );
-		$this->assertContains( 'category', $captured_taxonomies, 'Allowed taxonomies should include category' );
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'category', $result, 'Result should include category key' );
+		$this->assertSame(
+			sprintf( 'post:%d|taxonomies:category,post_tag', $post_id ),
+			$result['category'],
+			'Filter output should encode the received post ID and taxonomies'
+		);
 	}
 
 	/**
