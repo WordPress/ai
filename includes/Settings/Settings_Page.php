@@ -143,11 +143,29 @@ class Settings_Page {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
-	 * @return array{
-	 *   groups:list<array{id:string, label:string, description:string}>,
-	 *   features:list<array{id:string, settingName:string, label:string, description:string, category:string}>
-	 * }
+	* @param \WordPress\AI\Features\Registry $registry Feature registry instance.
+	* @return array{
+	*   groups: list<array{
+	*     id: non-empty-string,
+	*     label: non-empty-string,
+	*     description: string
+	*   }>,
+	*   features: list<array{
+	*     id: non-empty-string,
+	*     settingName: non-falsy-string,
+	*     label: non-empty-string,
+	*     description: string,
+	*     category: non-empty-string,
+	*     settingsFields: array<int, array{
+	*       id: string,
+	*       label: string,
+	*       type: string,
+	*       default?: mixed,
+	*       elements?: list<array{value: string, label: string}>,
+	*       isValid?: array{min?: int, max?: int}
+	*     }>
+	*   }>
+	* }
 	 */
 	private static function get_settings_feature_metadata( Registry $registry ): array {
 		$group_definitions = self::get_settings_feature_groups();
@@ -228,11 +246,29 @@ class Settings_Page {
 		 *
 		 * @since x.x.x
 		 *
-		 * @param array{
-	 *   groups:list<array{id:string, label:string, description:string}>,
-	 *   features:list<array{id:string, settingName:string, label:string, description:string, category:string}>
-	 * } $metadata Settings UI metadata.
-		 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
+		    * @param array{
+		    *   groups: list<array{
+		    *     id: non-empty-string,
+		    *     label: non-empty-string,
+		    *     description: string
+		    *   }>,
+		    *   features: list<array{
+		    *     id: non-empty-string,
+		    *     settingName: non-falsy-string,
+		    *     label: non-empty-string,
+		    *     description: string,
+		    *     category: non-empty-string,
+		    *     settingsFields: array<int, array{
+		    *       id: string,
+		    *       label: string,
+		    *       type: string,
+		    *       default?: mixed,
+		    *       elements?: list<array{value: string, label: string}>,
+		    *       isValid?: array{min?: int, max?: int}
+		    *     }>
+		    *   }>
+		    * } $metadata Settings UI metadata.
+		    * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
 		 */
 		$filtered_metadata = apply_filters( 'wpai_settings_feature_metadata', $metadata, $registry );
 
