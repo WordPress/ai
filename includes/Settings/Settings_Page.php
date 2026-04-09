@@ -30,7 +30,7 @@ class Settings_Page {
 	/**
 	 * The settings page slug.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var string
 	 */
@@ -39,7 +39,7 @@ class Settings_Page {
 	/**
 	 * Initializes the settings page hooks.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 * @return void
@@ -85,7 +85,7 @@ class Settings_Page {
 					_doing_it_wrong(
 						'initialize_features',
 						esc_html__( 'AI settings page render function not found. Run npm run build:routes to generate build assets.', 'ai' ),
-						'x.x.x'
+						'0.7.0'
 					);
 				}
 			);

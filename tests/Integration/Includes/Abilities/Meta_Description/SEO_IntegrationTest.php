@@ -13,14 +13,14 @@ use WordPress\AI\Abilities\Meta_Description\SEO_Integration;
 /**
  * SEO_Integration test case.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class SEO_IntegrationTest extends WP_UnitTestCase {
 
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_meta_description_seo_plugins' );
@@ -31,7 +31,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_supported_plugins() returns the expected default plugins.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_supported_plugins_returns_defaults() {
 		$plugins = SEO_Integration::get_supported_plugins();
@@ -52,7 +52,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_supported_plugins() can be filtered.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_supported_plugins_is_filterable() {
 		add_filter(
@@ -75,7 +75,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that detect_active_plugin() returns null when no SEO plugin is active.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_detect_active_plugin_returns_null_when_none_active() {
 		$result = SEO_Integration::detect_active_plugin();
@@ -86,7 +86,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_meta_key() returns fallback when no SEO plugin is active.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_meta_key_returns_fallback_when_no_plugin_active() {
 		$meta_key = SEO_Integration::get_meta_key();
@@ -97,7 +97,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_meta_key() returns correct key for known plugin slug.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_meta_key_returns_correct_key_for_known_plugin() {
 		$this->assertEquals( '_yoast_wpseo_metadesc', SEO_Integration::get_meta_key( 'yoast-seo' ), 'Should return Yoast meta key' );
@@ -109,7 +109,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_meta_key() returns fallback for unknown plugin slug.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_meta_key_returns_fallback_for_unknown_plugin() {
 		$meta_key = SEO_Integration::get_meta_key( 'unknown-plugin' );
@@ -120,7 +120,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_meta_key() can be filtered.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_meta_key_is_filterable() {
 		add_filter(
@@ -138,7 +138,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that detect_active_plugin() returns the slug when a supported plugin is active.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_detect_active_plugin_returns_slug_when_plugin_active() {
 		// Force a known plugin into the active plugins list.
@@ -156,7 +156,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_meta_key() auto-detects active plugin when no slug provided.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_meta_key_auto_detects_active_plugin() {
 		$active = get_option( 'active_plugins', array() );
