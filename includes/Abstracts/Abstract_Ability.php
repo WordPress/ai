@@ -11,6 +11,8 @@ namespace WordPress\AI\Abstracts;
 
 use ReflectionClass;
 use WP_Ability;
+use WP_Error;
+
 use function WordPress\AI\format_guidelines_for_prompt;
 
 /**
@@ -177,7 +179,16 @@ abstract class Abstract_Ability extends WP_Ability {
 			}
 		}
 
-		return $instruction;
+		/**
+		 * Filters the system instruction for an ability.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $instruction The system instruction text.
+		 * @param string $name        The name of the ability.
+		 * @param array  $data        The data passed to the system instruction file.
+		 */
+		return apply_filters( 'wpai_system_instruction', $instruction, $this->get_name(), $data );
 	}
 
 	/**
@@ -242,5 +253,39 @@ abstract class Abstract_Ability extends WP_Ability {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Ensures the prompt builder can run text generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+	 * @param string                       $message        User-visible error message.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	protected function ensure_text_generation_supported( $prompt_builder, string $message ) {
+		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
+			return new WP_Error( 'unsupported_model', $message );
+		}
+
+		return $prompt_builder;
+	}
+
+	/**
+	 * Ensures the prompt builder can run image generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+	 * @param string                       $message        User-visible error message.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	protected function ensure_image_generation_supported( $prompt_builder, string $message ) {
+		if ( ! $prompt_builder->is_supported_for_image_generation() ) {
+			return new WP_Error( 'unsupported_model', $message );
+		}
+
+		return $prompt_builder;
 	}
 }

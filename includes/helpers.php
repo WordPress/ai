@@ -332,12 +332,7 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
  * @return bool True if we have AI credentials, false otherwise.
  */
 function has_ai_credentials(): bool {
-	if ( ! function_exists( 'wp_get_connectors' ) ) {
-		return false;
-	}
-
-	$connectors = wp_get_connectors();
-
+	$connectors      = wp_get_connectors();
 	$has_credentials = false;
 
 	foreach ( $connectors as $connector_data ) {

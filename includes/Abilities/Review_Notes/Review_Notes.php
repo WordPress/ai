@@ -301,11 +301,13 @@ class Review_Notes extends Abstract_Ability {
 	) {
 		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
-		$raw = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => $block_type ) ) )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->as_json_response( $this->suggestions_schema() )
-			->generate_text();
+		$prompt_builder = $this->get_prompt_builder( $prompt, $block_type );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
+		$raw = $prompt_builder->generate_text();
 
 		if ( is_wp_error( $raw ) ) {
 			return $raw;
@@ -356,6 +358,27 @@ class Review_Notes extends Abstract_Ability {
 		}
 
 		return $suggestions;
+	}
+
+	/**
+	 * Gets a prompt builder for generating review notes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to generate review notes from.
+	 * @param string $block_type The block type identifier.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt, string $block_type ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => $block_type ) ) )
+			->using_model_preference( ...get_preferred_models_for_text_generation() )
+			->as_json_response( $this->suggestions_schema() );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Review notes generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 
 	/**
