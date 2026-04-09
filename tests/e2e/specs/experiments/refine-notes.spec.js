@@ -13,7 +13,7 @@ import {
 	enableExperiment,
 } from '../../utils/helpers';
 
-const EXPERIMENT_ID = 'refine-notes';
+const EXPERIMENT_LABEL = 'Refine from Notes';
 
 test.describe( 'AI Refine from Notes Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
@@ -21,7 +21,7 @@ test.describe( 'AI Refine from Notes Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Refine Notes Experiment.
-		await enableExperiment( admin, page, EXPERIMENT_ID );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
 
 	test( 'Button is hidden when there are no notes', async ( {
@@ -247,7 +247,7 @@ test.describe( 'AI Refine from Notes Experiment', () => {
 		page,
 	} ) => {
 		// Disable the Refine Notes Experiment.
-		await disableExperiment( admin, page, EXPERIMENT_ID );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		// Create a new post and verify button is absent.
 		await admin.createNewPost( { title: 'Disabled Experiment Test' } );
