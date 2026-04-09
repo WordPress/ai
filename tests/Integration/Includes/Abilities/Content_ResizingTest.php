@@ -445,4 +445,70 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
 		$this->assertEquals( 'Content resizing failed. Please ensure you have a connected provider that supports text generation.', $result->get_error_message(), 'Error message should be passed through' );
 	}
+
+	/**
+	 * Test that the wpai_content_resizing_action_description filter modifies the prompt.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_content_resizing_action_description_filter() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'structure_prompt' );
+		$method->setAccessible( true );
+
+		$custom_description = 'Custom action description for testing.';
+
+		add_filter(
+			'wpai_content_resizing_action_description',
+			static function () use ( $custom_description ) {
+				return $custom_description;
+			}
+		);
+
+		$prompt = $method->invoke( $this->ability, 'Test content.', 'shorten' );
+
+		$this->assertStringContainsString( $custom_description, $prompt, 'Prompt should contain the filtered action description' );
+		$this->assertStringNotContainsString( 'Condense', $prompt, 'Original shorten description should be replaced by the filter' );
+
+		remove_all_filters( 'wpai_content_resizing_action_description' );
+	}
+
+	/**
+	 * Test that structure_prompt() falls back to the rephrase description for unknown actions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_structure_prompt_unknown_action_falls_back_to_rephrase() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'structure_prompt' );
+		$method->setAccessible( true );
+
+		$unknown_prompt  = $method->invoke( $this->ability, 'Test.', 'invalid_action' );
+		$rephrase_prompt = $method->invoke( $this->ability, 'Test.', 'rephrase' );
+
+		$this->assertStringContainsString( 'Rephrase', $unknown_prompt, 'Unknown action should fall back to the rephrase description' );
+		$this->assertEquals( $rephrase_prompt, $unknown_prompt, 'Unknown action prompt should match the rephrase prompt' );
+	}
+
+	/**
+	 * Test that the shorten word count validation strips HTML tags before counting.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_shorten_word_count_ignores_html_tags() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$this->ability,
+			array(
+				'content' => '<strong>One</strong> <em>two</em> <a href="#">three</a>.',
+				'action'  => 'shorten',
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error when HTML-wrapped content has fewer than 5 words' );
+		$this->assertEquals( 'content_too_short', $result->get_error_code(), 'Error code should be content_too_short' );
+	}
 }

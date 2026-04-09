@@ -103,6 +103,25 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that register() hooks all required actions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_hooks_actions() {
+		$experiment = new Content_Resizing();
+		$experiment->register();
+
+		$this->assertNotFalse(
+			has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ),
+			'register_abilities should be hooked to wp_abilities_api_init'
+		);
+		$this->assertNotFalse(
+			has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ),
+			'enqueue_assets should be hooked to admin_enqueue_scripts'
+		);
+	}
+
+	/**
 	 * Test that enqueue_assets() does not enqueue the assets on the wrong admin page.
 	 *
 	 * @since x.x.x
@@ -110,8 +129,21 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	public function test_enqueue_assets_does_not_enqueue_on_wrong_admin_page() {
 		$experiment = new Content_Resizing();
 		$experiment->register();
-		$experiment->enqueue_assets( 'options-general.php' );
+		$experiment->enqueue_assets( 'edit.php' );
 
-		$this->assertFalse( wp_script_is( 'ai_content_resizing', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
+		$this->assertFalse( wp_script_is( 'ai_content_resizing', 'enqueued' ), 'Script should not be enqueued on edit.php' );
+	}
+
+	/**
+	 * Test that the experiment is disabled when the global toggle is off.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_experiment_disabled_when_global_toggle_off() {
+		update_option( 'wpai_features_enabled', false );
+
+		$experiment = new Content_Resizing();
+
+		$this->assertFalse( $experiment->is_enabled(), 'Experiment should be disabled when global toggle is off' );
 	}
 }
