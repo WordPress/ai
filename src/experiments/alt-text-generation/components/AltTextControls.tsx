@@ -5,11 +5,7 @@
 /**
  * WordPress dependencies
  */
-import {
-	Button,
-	TextareaControl,
-	Notice,
-} from '@wordpress/components';
+import { Button, TextareaControl, Notice } from '@wordpress/components';
 import { InspectorControls } from '@wordpress/block-editor';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -225,7 +221,7 @@ export function AltTextControls( {
 					>
 						{ isGenerating
 							? __( 'Generating…', 'ai' )
-							: getButtonLabel(!!hasExistingAlt)}
+							: getButtonLabel( !! hasExistingAlt ) }
 					</Button>
 				) }
 			</div>
