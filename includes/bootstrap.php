@@ -226,11 +226,12 @@ function get_settings_feature_metadata( Registry $registry ): array {
 
 		$categories_in_use[ $category ] = true;
 		$features[]                     = array(
-			'id'          => $feature_id,
-			'settingName' => "wpai_feature_{$feature_id}_enabled",
-			'label'       => $feature->get_label(),
-			'description' => wp_strip_all_tags( $feature->get_description() ),
-			'category'    => $category,
+			'id'             => $feature_id,
+			'settingName'    => "wpai_feature_{$feature_id}_enabled",
+			'label'          => $feature->get_label(),
+			'description'    => wp_strip_all_tags( $feature->get_description() ),
+			'category'       => $category,
+			'settingsFields' => $feature->get_settings_fields_metadata(),
 		);
 	}
 
