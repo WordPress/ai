@@ -180,7 +180,7 @@ test.describe( 'Image Editing Experiment', () => {
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		const imageContainer = page
 			.locator( '.attachments-wrapper li' )
@@ -205,7 +205,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Click the Generate Image button.
 		await page.locator( '.ai-generate-image-btn' ).click();
@@ -319,7 +319,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
@@ -451,7 +451,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
