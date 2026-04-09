@@ -5,11 +5,7 @@
 /**
  * WordPress dependencies
  */
-import {
-	Button,
-	TextareaControl,
-	Notice,
-} from '@wordpress/components';
+import { Button, TextareaControl, Notice } from '@wordpress/components';
 import { update } from '@wordpress/icons';
 import { InspectorControls } from '@wordpress/block-editor';
 import { useState } from '@wordpress/element';
@@ -34,11 +30,15 @@ interface AltTextControlsProps {
  * Returns the appropriate button label based on state.
  *
  * @param {boolean} hasExistingAlt Whether the image has existing alt text.
+ * @param {boolean} isGenerating   Whether alt text is currently being generated.
  * @return {string} The button label.
  */
-function getButtonLabel( hasExistingAlt: boolean, isGenerating: boolean ): string {
+function getButtonLabel(
+	hasExistingAlt: boolean,
+	isGenerating: boolean
+): string {
 	if ( isGenerating ) {
-		return __( 'Generating...', 'ai' );
+		return __( 'Generating…', 'ai' );
 	}
 	if ( hasExistingAlt ) {
 		return __( 'Re-generate Alt Text', 'ai' );
