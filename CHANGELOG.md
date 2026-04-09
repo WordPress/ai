@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 ### Changed
 - Updated AI settings page leveraging modern `wp-build` DataForm route ([#340](https://github.com/WordPress/ai/pull/340), [#376](https://github.com/WordPress/ai/pull/376)).
 - Revised Feature and Experiment Lifecycle and other documentation updates ([#326](https://github.com/WordPress/ai/pull/326), [#329](https://github.com/WordPress/ai/pull/329)).
-- Updated credential detection logic to allow non-API-key connectors to report configured status via the `wpai_has_ai_credentials` filter ([#337](https://github.com/WordPress/ai/pull/337)).
+- Added a new `wpai_has_ai_credentials` filter to allow 3rd parties to modify the credential detection logic, for instance to support non-API-key connectors to report their configured status ([#337](https://github.com/WordPress/ai/pull/337)).
 - Update some of our system instructions to prompt the LLM to return content in the same language as the original content they were given ([#357](https://github.com/WordPress/ai/pull/357)).
 - Updated end-to-end tests to resolve flaky failures and account for markup changes in the Connectors screen ([#360](https://github.com/WordPress/ai/pull/360)).
 - Updated preferred models to more recent ones for the three default providers ([#361](https://github.com/WordPress/ai/pull/361)).
