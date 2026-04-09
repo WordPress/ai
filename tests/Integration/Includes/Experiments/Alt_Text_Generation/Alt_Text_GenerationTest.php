@@ -94,7 +94,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk action is added to the actions list when the experiment is enabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_bulk_action_is_registered(): void {
 		$experiment = new Alt_Text_Generation();
@@ -107,7 +107,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk action is not added when the experiment is disabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_bulk_action_not_registered_when_disabled(): void {
 		add_filter( 'wpai_feature_alt-text-generation_enabled', '__return_false' );
@@ -125,7 +125,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk action handler adds query args for image attachments.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_handle_bulk_action_adds_query_args_for_images(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -146,7 +146,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk action handler ignores non-image attachments.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_handle_bulk_action_filters_out_non_images(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -169,7 +169,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk action handler ignores unrelated bulk actions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_handle_bulk_action_ignores_other_actions(): void {
 		$experiment = new Alt_Text_Generation();
@@ -182,7 +182,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk action handler requires upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_handle_bulk_action_requires_capability(): void {
 		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -198,7 +198,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk script is enqueued on upload.php when valid GET params and capability are present.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_maybe_enqueue_bulk_script_enqueues_with_valid_params(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -232,7 +232,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk script is not enqueued when the GET flag is absent.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_maybe_enqueue_bulk_script_skips_without_flag(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -248,7 +248,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk script is not enqueued when the user lacks the upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_maybe_enqueue_bulk_script_skips_without_capability(): void {
 		wp_set_current_user( 0 );
@@ -266,7 +266,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk script is not enqueued when the attachment IDs resolve to an empty list.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_maybe_enqueue_bulk_script_skips_empty_ids(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );

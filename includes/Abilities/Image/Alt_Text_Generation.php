@@ -36,7 +36,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Model output token that means the correct alternative text is empty (alt="").
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var string
 	 */
@@ -386,7 +386,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating alt text.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to generate alt text from.
 	 * @param string $reference The reference image.

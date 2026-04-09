@@ -32,7 +32,7 @@ const ABILITY_NAME = 'ai/alt-text-generation';
 /**
  * Creates and injects a dismissible admin notice into the page.
  *
- * @since x.x.x
+ * @since 0.7.0
  *
  * @param message The initial message to display in the notice.
  * @return The paragraph element used to update the notice message.
@@ -67,7 +67,7 @@ function createNotice( message: string ): HTMLParagraphElement {
 /**
  * Processes the bulk alt text generation for all selected attachments.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 async function processBulkAltText(): Promise< void > {
 	const data = window.aiAltTextGenerationBulkData;

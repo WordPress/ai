@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'WPAI_VERSION' ) ) {
-	define( 'WPAI_VERSION', '0.6.0' );
+	define( 'WPAI_VERSION', '0.7.0' );
 }
 if ( ! defined( 'WPAI_PLUGIN_FILE' ) ) {
 	define( 'WPAI_PLUGIN_FILE', defined( 'WPAI_DIR' ) ? WPAI_DIR . 'ai.php' : '' );
@@ -157,7 +157,7 @@ function plugin_action_links( array $links ): array {
 /**
  * Gets feature group metadata for the settings UI.
  *
- * @since x.x.x
+ * @since 0.7.0
  *
  * @return array<string, array{label:string, description:string, order:int}>
  */
@@ -183,7 +183,7 @@ function get_settings_feature_groups(): array {
 	/**
 	 * Filters feature group metadata used by the settings UI.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param array<string, array{label:string, description:string, order:int}> $default_groups Feature group metadata keyed by category.
 	 */
@@ -195,7 +195,7 @@ function get_settings_feature_groups(): array {
 /**
  * Builds feature metadata used by the settings route UI.
  *
- * @since x.x.x
+ * @since 0.7.0
  *
  * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
  * @return array{
@@ -280,7 +280,7 @@ function get_settings_feature_metadata( Registry $registry ): array {
 	/**
 	 * Filters settings metadata passed to the settings route client.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param array{
 	 *   groups:list<array{id:string, label:string, description:string}>,
@@ -400,7 +400,7 @@ add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
 /**
  * Triggers when the plugin is activated.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 register_activation_hook(
 	WPAI_PLUGIN_FILE,
