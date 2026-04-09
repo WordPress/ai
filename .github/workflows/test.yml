@@ -128,6 +128,18 @@ jobs:
             - name: Make Composer packages available globally
               run: echo "${PWD}/vendor/bin" >> "$GITHUB_PATH"
 
+            - name: Setup Node.js
+              uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+              with:
+                  cache: 'npm'
+                  node-version-file: '.nvmrc'
+
+            - name: Install NPM dependencies
+              run: npm ci
+
+            - name: Build assets
+              run: npm run build
+
             - name: Run PHP static analysis tests
               id: phpstan
               run: phpstan analyse -vvv --error-format=checkstyle | cs2pr
