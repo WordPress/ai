@@ -241,6 +241,135 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the wpai_get_post_details filter modifies the ability output.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_get_post_details_filter_modifies_output() {
+		$post_id = $this->factory->post->create(
+			array(
+				'post_title'   => 'Original Title',
+				'post_content' => 'Original content',
+			)
+		);
+
+		$filter_callback = static function ( $details ) {
+			$details['title'] = 'Filtered Title';
+			return $details;
+		};
+
+		add_filter( 'wpai_get_post_details', $filter_callback );
+
+		$ability = wp_get_ability( 'ai/get-post-details' );
+		$this->assertNotNull( $ability, 'get-post-details ability should be registered' );
+
+		$result = $ability->execute( array( 'post_id' => $post_id ) );
+
+		remove_filter( 'wpai_get_post_details', $filter_callback );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'title', $result, 'Result should have title key' );
+		$this->assertEquals( 'Filtered Title', $result['title'], 'Filter should have modified the title' );
+	}
+
+	/**
+	 * Test that the wpai_get_post_details filter receives the correct arguments.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_get_post_details_filter_receives_arguments() {
+		$post_id = $this->factory->post->create(
+			array(
+				'post_title' => 'Test Post',
+			)
+		);
+
+		$filter_callback = static function ( $details, $filter_post_id, $filter_fields ) {
+			$details['title'] = sprintf( 'post:%d|fields:%s', $filter_post_id, implode( ',', $filter_fields ) );
+			return $details;
+		};
+
+		add_filter( 'wpai_get_post_details', $filter_callback, 10, 3 );
+
+		$ability = wp_get_ability( 'ai/get-post-details' );
+		$result  = $ability->execute(
+			array(
+				'post_id' => $post_id,
+				'fields'  => array( 'title', 'slug' ),
+			)
+		);
+
+		remove_filter( 'wpai_get_post_details', $filter_callback, 10 );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'title', $result, 'Result should include title' );
+		$this->assertSame(
+			sprintf( 'post:%d|fields:title,slug', $post_id ),
+			$result['title'],
+			'Filter output should encode the received post ID and requested fields'
+		);
+	}
+
+	/**
+	 * Test that the wpai_get_post_terms filter modifies the ability output.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_get_post_terms_filter_modifies_output() {
+		$category_id = $this->factory->category->create( array( 'name' => 'Original Category' ) );
+		$post_id     = $this->factory->post->create();
+		wp_set_post_categories( $post_id, array( $category_id ) );
+
+		$filter_callback = static function () {
+			// Replace terms with an empty array.
+			return array();
+		};
+
+		add_filter( 'wpai_get_post_terms', $filter_callback );
+
+		$ability = wp_get_ability( 'ai/get-post-terms' );
+		$this->assertNotNull( $ability, 'get-post-terms ability should be registered' );
+
+		$result = $ability->execute( array( 'post_id' => $post_id ) );
+
+		remove_filter( 'wpai_get_post_terms', $filter_callback );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertEmpty( $result, 'Filter should have replaced the terms with an empty array' );
+	}
+
+	/**
+	 * Test that the wpai_get_post_terms filter receives the correct arguments.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_wpai_get_post_terms_filter_receives_arguments() {
+		$category_id = $this->factory->category->create( array( 'name' => 'Test Category' ) );
+		$post_id     = $this->factory->post->create();
+		wp_set_post_categories( $post_id, array( $category_id ) );
+
+		$filter_callback = static function ( $terms, $filter_post_id, $filter_taxonomies ) {
+			$terms['category'] = sprintf( 'post:%d|taxonomies:%s', $filter_post_id, implode( ',', $filter_taxonomies ) );
+			return $terms;
+		};
+
+		add_filter( 'wpai_get_post_terms', $filter_callback, 10, 3 );
+
+		$ability = wp_get_ability( 'ai/get-post-terms' );
+		$result  = $ability->execute( array( 'post_id' => $post_id ) );
+
+		remove_filter( 'wpai_get_post_terms', $filter_callback, 10 );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'category', $result, 'Result should include category key' );
+		$this->assertSame(
+			sprintf( 'post:%d|taxonomies:category,post_tag', $post_id ),
+			$result['category'],
+			'Filter output should encode the received post ID and taxonomies'
+		);
+	}
+
+	/**
 	 * Test that get_preferred_models_for_text_generation() returns an array.
 	 *
 	 * @since 0.1.0

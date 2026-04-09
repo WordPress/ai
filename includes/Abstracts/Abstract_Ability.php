@@ -114,7 +114,18 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return string The system instruction for the feature.
 	 */
 	public function get_system_instruction( ?string $filename = null, array $data = array() ): string {
-		return $this->load_system_instruction_from_file( $filename, $data );
+		$instruction = $this->load_system_instruction_from_file( $filename, $data );
+
+		/**
+		 * Filters the system instruction for an ability.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $instruction The system instruction text.
+		 * @param string $name        The name of the ability.
+		 * @param array  $data        The data passed to the system instruction file.
+		 */
+		return apply_filters( 'wpai_system_instruction', $instruction, $this->get_name(), $data );
 	}
 
 	/**
