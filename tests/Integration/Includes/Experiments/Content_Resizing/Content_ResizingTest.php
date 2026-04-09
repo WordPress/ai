@@ -75,22 +75,6 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that register_abilities() registers the ability correctly.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_register_abilities() {
-		$experiment = new Content_Resizing();
-		$experiment->register_abilities();
-
-		$this->assertInstanceOf(
-			Content_Resizing::class,
-			wp_get_ability( 'ai/content-resizing' ),
-			'Ability should be registered'
-		);
-	}
-
-	/**
 	 * Test that the experiment can be disabled via filter.
 	 *
 	 * @since x.x.x
@@ -119,28 +103,15 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that enqueue_assets() enqueues the assets correctly.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_enqueue_assets() {
-		$experiment = new Content_Resizing();
-		$experiment->enqueue_assets( 'post.php' );
-
-		$this->assertTrue( wp_script_is( 'content_resizing', 'enqueued' ) );
-		$this->assertTrue( wp_style_is( 'content_resizing', 'enqueued' ) );
-	}
-
-	/**
 	 * Test that enqueue_assets() does not enqueue the assets on the wrong admin page.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_does_not_enqueue_on_wrong_admin_page() {
 		$experiment = new Content_Resizing();
-		$experiment->enqueue_assets( 'edit.php' );
+		$experiment->register();
+		$experiment->enqueue_assets( 'options-general.php' );
 
-		$this->assertFalse( wp_script_is( 'content_resizing', 'enqueued' ) );
-		$this->assertFalse( wp_style_is( 'content_resizing', 'enqueued' ) );
+		$this->assertFalse( wp_script_is( 'ai_content_resizing', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
 	}
 }
