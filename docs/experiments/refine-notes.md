@@ -73,29 +73,24 @@ Can safely run against any block. Output targets formatting of standard block ma
 ```php
 array(
     'block_type'     => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'The block type, e.g. core/paragraph, core/heading.',
+        'type'        => 'string',
+        'description' => 'The block type, e.g. core/paragraph, core/heading.',
     ),
     'block_content'  => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'wp_kses_post',
-        'description'       => 'The content of the block to refine.',
+        'type'        => 'string',
+        'description' => 'The content of the block to refine.',
     ),
     'notes' => array(
-        'type'              => 'array',
-        'items'             => array( 'type' => 'string' ),
-        'sanitize_callback' => 'sanitize_text_field (per item)',
-        'description'       => 'The feedback Notes to apply to the block.',
+        'type'        => 'array',
+        'items'       => array( 'type' => 'string' ),
+        'description' => 'The feedback Notes to apply to the block.',
     ),
     'context'        => array(
-        'type'              => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-        'description'       => 'Optional surrounding content for context.',
+        'type'        => 'string',
+        'description' => 'Optional surrounding content for context.',
     ),
     'post_id'        => array(
-        'type'              => 'integer',
-        'sanitize_callback' => 'absint',
+        'type'        => 'integer',
         'description' => 'ID of the post being modified.',
     ),
 )

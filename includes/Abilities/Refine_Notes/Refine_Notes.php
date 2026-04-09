@@ -41,34 +41,27 @@ class Refine_Notes extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'block_type'    => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The block type, e.g. core/paragraph, core/heading.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The block type, e.g. core/paragraph, core/heading.', 'ai' ),
 				),
 				'block_content' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'wp_kses_post',
-					'description'       => esc_html__( 'The content of the block to refine.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The content of the block to refine.', 'ai' ),
 				),
 				'notes'         => array(
-					'type'              => 'array',
-					'items'             => array(
+					'type'        => 'array',
+					'items'       => array(
 						'type' => 'string',
 					),
-					'sanitize_callback' => static function ( $notes ) {
-						return array_map( 'sanitize_text_field', is_array( $notes ) ? $notes : array() );
-					},
-					'description'       => esc_html__( 'The feedback Notes to apply to the block.', 'ai' ),
+					'description' => esc_html__( 'The feedback Notes to apply to the block.', 'ai' ),
 				),
 				'context'       => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Optional surrounding content for context.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'Optional surrounding content for context.', 'ai' ),
 				),
 				'post_id'       => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'ID of the post being modified.', 'ai' ),
+					'type'        => 'integer',
+					'description' => esc_html__( 'ID of the post being modified.', 'ai' ),
 				),
 			),
 			'required'   => array( 'block_type', 'block_content', 'notes' ),
