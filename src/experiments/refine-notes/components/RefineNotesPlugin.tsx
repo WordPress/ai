@@ -8,6 +8,7 @@
 import { Button, Flex, FlexItem } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { __, sprintf } from '@wordpress/i18n';
+import { commentContent } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -54,6 +55,7 @@ export default function RefineNotesPlugin() {
 				<FlexItem>
 					<Button
 						variant="secondary"
+						icon={ commentContent }
 						isBusy={ isRefining }
 						disabled={ isRefining }
 						onClick={ () => void runRefinement() }
