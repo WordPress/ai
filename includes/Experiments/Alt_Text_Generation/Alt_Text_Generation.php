@@ -192,8 +192,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 	public function render_attachment_meta_box( \WP_Post $post ): void {
 		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
-		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 150px;">';
-		echo '<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
+		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 180px;">';
+		echo '<button id="ai-alt-text-generate-button" class="components-button is-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '" style="justify-content: center; width: 100%;">' . esc_html( $button_text ) . '</button><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
 		echo '</div>';
 	}
 
@@ -221,7 +221,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'label'        => __( 'Alt Text', 'ai' ),
 			'input'        => 'html',
 			'show_in_edit' => false,
-			'html'         => '<div class="ai-alt-text-media-actions"><button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p></div>',
+			'html'         => '<div class="ai-alt-text-media-actions"><button id="ai-alt-text-generate-button" class="components-button is-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '" style="justify-content: center; width: 100%;">' . esc_html( $button_text ) . '</button><p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p></div>',
 		);
 
 		return $fields;

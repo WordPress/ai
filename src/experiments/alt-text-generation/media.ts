@@ -56,9 +56,9 @@ class AltTextMediaControls {
 	private context: FieldContext;
 	private textarea: HTMLTextAreaElement | null = null;
 	private button: HTMLButtonElement | null = null;
-	private spinner: HTMLSpanElement | null = null;
 	private status: HTMLParagraphElement | null = null;
 	private isGenerating = false;
+	private static stylesInjected = false;
 
 	/**
 	 * Constructs a new AltTextMediaControls instance.
@@ -66,6 +66,8 @@ class AltTextMediaControls {
 	 * @since 0.3.0
 	 */
 	public constructor() {
+		AltTextMediaControls.injectStyles();
+
 		this.context = {
 			getAttachmentId: () => null,
 			getImageUrl: () => null,
@@ -91,7 +93,6 @@ class AltTextMediaControls {
 
 		this.textarea = textarea;
 		this.button = button;
-		this.spinner = container.querySelector< HTMLSpanElement >( '.spinner' );
 		this.status =
 			container.querySelector< HTMLParagraphElement >( '.description' );
 
@@ -113,6 +114,8 @@ class AltTextMediaControls {
 		textarea.addEventListener( 'input', () => {
 			this.updateButtonLabel();
 		} );
+
+		this.syncInitialButtonLabel();
 	}
 
 	/**
@@ -132,6 +135,109 @@ class AltTextMediaControls {
 	}
 
 	/**
+	 * Syncs the button label after the media UI finishes populating the field.
+	 *
+	 * The attachment alt-text field can be hydrated asynchronously in the media
+	 * modal, so we re-check it on the next paint and shortly after mount.
+	 *
+	 * @since 0.6.0
+	 */
+	private syncInitialButtonLabel(): void {
+		this.updateButtonLabel();
+
+		window.requestAnimationFrame( () => {
+			this.updateButtonLabel();
+		} );
+
+		window.setTimeout( () => {
+			this.updateButtonLabel();
+		}, 50 );
+	}
+
+	/**
+	 * Updates the visual busy state to match Gutenberg buttons.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param isBusy Whether the button is busy.
+	 */
+	private setBusyState( isBusy: boolean ): void {
+		if ( ! this.button ) {
+			return;
+		}
+
+		this.button.disabled = isBusy;
+		this.button.classList.toggle( 'is-busy', isBusy );
+		this.button.classList.toggle( 'ai-alt-text-generate-button--busy', isBusy );
+		this.button.setAttribute( 'aria-disabled', isBusy ? 'true' : 'false' );
+
+		if ( isBusy ) {
+			this.button.innerHTML = `
+				<span class="ai-alt-text-generate-button__content">
+					<span class="dashicons dashicons-update ai-alt-text-generate-button__spinner" aria-hidden="true"></span>
+					<span class="ai-alt-text-generate-button__label">${ __(
+						'Generating…',
+						'ai'
+					) }</span>
+				</span>
+			`;
+		}
+	}
+
+	/**
+	 * Injects the admin-side styles for the custom busy button state.
+	 *
+	 * @since 0.6.0
+	 */
+	private static injectStyles(): void {
+		if ( AltTextMediaControls.stylesInjected ) {
+			return;
+		}
+
+		const style = document.createElement( 'style' );
+		style.textContent = `
+			.ai-alt-text-media-actions .ai-alt-text-generate-button--busy {
+				background: repeating-linear-gradient(
+					-45deg,
+					#f6f7f7,
+					#f6f7f7 16px,
+					#eef0f1 16px,
+					#eef0f1 32px
+				);
+				border-color: #dcdcde;
+				color: #50575e;
+			}
+
+			.ai-alt-text-media-actions .ai-alt-text-generate-button__content {
+				align-items: center;
+				display: inline-flex;
+				gap: 8px;
+			}
+
+			.ai-alt-text-media-actions .ai-alt-text-generate-button__spinner {
+				animation: ai-alt-text-generate-spin 0.8s linear infinite;
+				display: inline-flex;
+				flex: 0 0 auto;
+				font-size: 16px;
+				height: 16px;
+				width: 16px;
+			}
+
+			@keyframes ai-alt-text-generate-spin {
+				from {
+					transform: rotate( 0deg );
+				}
+
+				to {
+					transform: rotate( 360deg );
+				}
+			}
+		`;
+		document.head.appendChild( style );
+		AltTextMediaControls.stylesInjected = true;
+	}
+
+	/**
 	 * Handles the generate button click.
 	 *
 	 * @since 0.3.0
@@ -139,18 +245,12 @@ class AltTextMediaControls {
 	 * @return The generated alt text.
 	 */
 	private async handleGenerate(): Promise< void > {
-		if (
-			this.isGenerating ||
-			! this.textarea ||
-			! this.button ||
-			! this.spinner
-		) {
+		if ( this.isGenerating || ! this.textarea || ! this.button ) {
 			return;
 		}
 
 		this.isGenerating = true;
-		this.button.disabled = true;
-		this.spinner.classList.add( 'is-active' );
+		this.setBusyState( true );
 		this.setStatus( __( 'Generating alt text…', 'ai' ) );
 
 		try {
@@ -168,8 +268,7 @@ class AltTextMediaControls {
 			this.setStatus( message, true );
 		} finally {
 			this.isGenerating = false;
-			this.button.disabled = false;
-			this.spinner.classList.remove( 'is-active' );
+			this.setBusyState( false );
 			this.updateButtonLabel();
 		}
 	}
