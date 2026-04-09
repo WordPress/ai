@@ -157,11 +157,6 @@ class HelpersTest extends WP_UnitTestCase {
 		// Expect the incorrect usage notice when abilities are called with non-existent posts.
 		$this->setExpectedIncorrectUsage( 'WP_Ability::execute' );
 
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
-
 		$context = \WordPress\AI\get_post_context( 99999 );
 
 		$this->assertIsArray( $context, 'Should return an array' );
@@ -180,11 +175,6 @@ class HelpersTest extends WP_UnitTestCase {
 				'post_title'   => 'Test Post',
 			)
 		);
-
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
 
 		$context = \WordPress\AI\get_post_context( $post_id );
 
@@ -209,11 +199,6 @@ class HelpersTest extends WP_UnitTestCase {
 				'post_excerpt' => 'Test excerpt',
 			)
 		);
-
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
 
 		$context = \WordPress\AI\get_post_context( $post_id );
 
@@ -242,11 +227,6 @@ class HelpersTest extends WP_UnitTestCase {
 				'post_content' => 'Test content',
 			)
 		);
-
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
 
 		wp_set_post_categories( $post_id, array( $category_id ) );
 		wp_set_post_tags( $post_id, array( 'Test Tag' ) );
