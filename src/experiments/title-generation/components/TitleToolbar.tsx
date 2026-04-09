@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { ToolbarGroup, ToolbarButton } from '@wordpress/components';
+import { Button, ToolbarGroup, ToolbarButton } from '@wordpress/components';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -62,7 +62,13 @@ async function generateTitle(
  *
  * @return {JSX.Element} The toolbar component.
  */
-export default function TitleToolbar(): JSX.Element | null {
+interface TitleToolbarProps {
+	isStandalone?: boolean;
+}
+
+export default function TitleToolbar( {
+	isStandalone = false,
+}: TitleToolbarProps ): JSX.Element | null {
 	const postId = select( editorStore ).getCurrentPostId();
 	const title = select( editorStore ).getEditedPostAttribute( 'title' );
 
@@ -79,6 +85,10 @@ export default function TitleToolbar(): JSX.Element | null {
 	 * Handles the generate/re-generate button click.
 	 */
 	const handleGenerate = async () => {
+		if ( isGenerating ) {
+			return;
+		}
+
 		const content = select( editorStore ).getEditedPostContent();
 		setIsGenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice(
@@ -112,17 +122,30 @@ export default function TitleToolbar(): JSX.Element | null {
 
 	return (
 		<PostTypeSupportCheck supportKeys="title">
-			<ToolbarGroup>
-				<ToolbarButton
+			{ isStandalone ? (
+				<Button
 					icon={ update }
+					variant="secondary"
 					label={ buttonLabel }
 					onClick={ handleGenerate }
-					disabled={ isGenerating }
 					isBusy={ isGenerating }
+					__next40pxDefaultSize
 				>
 					{ buttonLabel }
-				</ToolbarButton>
-			</ToolbarGroup>
+				</Button>
+			) : (
+				<ToolbarGroup>
+					<ToolbarButton
+						icon={ update }
+						label={ buttonLabel }
+						onClick={ handleGenerate }
+						disabled={ isGenerating }
+						isBusy={ isGenerating }
+					>
+						{ buttonLabel }
+					</ToolbarButton>
+				</ToolbarGroup>
+			) }
 		</PostTypeSupportCheck>
 	);
 }
