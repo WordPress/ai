@@ -633,7 +633,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 			)
 		);
 
-		$instruction = $this->ability->get_system_instruction( null, array(), 'core/paragraph' );
+		$instruction = $this->ability->get_system_instruction( null, array( 'block_name' => 'core/paragraph' ) );
 
 		$this->assertStringContainsString( '<guidelines>', $instruction );
 		$this->assertStringContainsString( '<site-context>Use a professional tone.</site-context>', $instruction );

@@ -149,16 +149,23 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * When guideline_categories() returns a non-empty array and guidelines are
 	 * available, automatically appends them to the system instruction.
 	 *
+	 * Supports a reserved `block_name` key in `$data` for block-specific guidelines.
+	 *
 	 * @since 0.1.0
 	 *
 	 * @param string|null            $filename   Optional. Explicit filename to load. If not provided,
 	 *                                           attempts to load `system-instruction.php` or `prompt.php`.
 	 * @param array<string, mixed>   $data       Optional. Data to expose to the system instruction file.
 	 *                                           This data will be extracted as variables available in the file scope.
-	 * @param string|null            $block_name Optional. Block name for block-specific guidelines.
 	 * @return string The system instruction for the feature.
 	 */
-	public function get_system_instruction( ?string $filename = null, array $data = array(), ?string $block_name = null ): string {
+	public function get_system_instruction( ?string $filename = null, array $data = array() ): string {
+		$block_name = null;
+		if ( isset( $data['block_name'] ) && is_string( $data['block_name'] ) ) {
+			$block_name = $data['block_name'];
+			unset( $data['block_name'] );
+		}
+
 		$instruction = $this->load_system_instruction_from_file( $filename, $data );
 
 		if ( '' !== $instruction && ! empty( $this->guideline_categories() ) ) {

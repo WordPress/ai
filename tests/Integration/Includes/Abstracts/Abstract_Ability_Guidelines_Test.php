@@ -317,7 +317,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 		file_put_contents( $test_file, "<?php\nreturn 'You are a test assistant.';" );
 
 		try {
-			$instruction = $ability->get_system_instruction( null, array(), 'core/paragraph' );
+			$instruction = $ability->get_system_instruction( null, array( 'block_name' => 'core/paragraph' ) );
 
 			$this->assertStringContainsString( '<block-guidelines>Keep paragraphs concise.</block-guidelines>', $instruction );
 		} finally {

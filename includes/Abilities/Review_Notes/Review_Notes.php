@@ -302,7 +302,7 @@ class Review_Notes extends Abstract_Ability {
 		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
 		$raw = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction( null, array(), $block_type ) )
+			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => $block_type ) ) )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->suggestions_schema() )
 			->generate_text();
