@@ -437,6 +437,62 @@ PHP
 	}
 
 	/**
+	 * Test that wpai_system_instruction filter modifies system instructions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_system_instruction_filter() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$filter_callback = function ( $instruction, $name, $data ) {
+			return $instruction . ' Appended by filter.';
+		};
+
+		add_filter( 'wpai_system_instruction', $filter_callback, 10, 3 );
+
+		$result = $ability->get_system_instruction();
+
+		remove_filter( 'wpai_system_instruction', $filter_callback, 10 );
+
+		$this->assertStringContainsString( 'Appended by filter.', $result, 'System instruction filter should modify the instruction' );
+	}
+
+	/**
+	 * Test that wpai_system_instruction filter receives the correct ability name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_system_instruction_filter_receives_ability_name() {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability(
+			'test-ability',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$filter_callback = static function ( $instruction, $name ) {
+			return sprintf( 'ability:%s', $name );
+		};
+
+		add_filter( 'wpai_system_instruction', $filter_callback, 10, 2 );
+
+		$result = $ability->get_system_instruction();
+
+		remove_filter( 'wpai_system_instruction', $filter_callback, 10 );
+
+		$this->assertSame( 'ability:test-ability', $result, 'Filter output should encode the ability name' );
+	}
+
+	/**
 	 * Test that ensure_text_generation_supported() returns WP_Error when text generation is not supported.
 	 *
 	 * @since x.x.x
