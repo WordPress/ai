@@ -246,11 +246,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_wpai_get_post_details_filter_modifies_output() {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
-
 		$post_id = $this->factory->post->create(
 			array(
 				'post_title'   => 'Original Title',
@@ -283,11 +278,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_wpai_get_post_details_filter_receives_arguments() {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
-
 		$post_id = $this->factory->post->create(
 			array(
 				'post_title' => 'Test Post',
@@ -324,11 +314,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_wpai_get_post_terms_filter_modifies_output() {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
-
 		$category_id = $this->factory->category->create( array( 'name' => 'Original Category' ) );
 		$post_id     = $this->factory->post->create();
 		wp_set_post_categories( $post_id, array( $category_id ) );
@@ -357,11 +342,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_wpai_get_post_terms_filter_receives_arguments() {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
-
 		$category_id = $this->factory->category->create( array( 'name' => 'Test Category' ) );
 		$post_id     = $this->factory->post->create();
 		wp_set_post_categories( $post_id, array( $category_id ) );
