@@ -34,7 +34,7 @@ export default function ExcerptGeneration(): JSX.Element | null {
 	let buttonLabel: string = __( 'Generate excerpt', 'ai' );
 
 	if ( isGenerating ) {
-		buttonLabel = __( 'Generating...', 'ai' );
+		buttonLabel = __( 'Generating…', 'ai' );
 	} else if ( hasExcerpt ) {
 		buttonLabel = __( 'Re-generate excerpt', 'ai' );
 	}
