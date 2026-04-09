@@ -14,7 +14,9 @@ namespace WordPress\AI;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Upgrades;
+use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Experiments;
+use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Page;
@@ -27,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'WPAI_VERSION' ) ) {
-	define( 'WPAI_VERSION', '0.6.0' );
+	define( 'WPAI_VERSION', '0.7.0' );
 }
 if ( ! defined( 'WPAI_PLUGIN_FILE' ) ) {
 	define( 'WPAI_PLUGIN_FILE', defined( 'WPAI_DIR' ) ? WPAI_DIR . 'ai.php' : '' );
@@ -137,7 +139,7 @@ function check_wp_version(): bool {
 function plugin_action_links( array $links ): array {
 	$settings_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
-		admin_url( 'options-general.php?page=ai' ),
+		admin_url( 'options-general.php?page=ai-wp-admin' ),
 		esc_html__( 'Settings', 'ai' )
 	);
 
@@ -150,6 +152,145 @@ function plugin_action_links( array $links ): array {
 	array_unshift( $links, $connectors_link, $settings_link );
 
 	return $links;
+}
+
+/**
+ * Gets feature group metadata for the settings UI.
+ *
+ * @since 0.7.0
+ *
+ * @return array<string, array{label:string, description:string, order:int}>
+ */
+function get_settings_feature_groups(): array {
+	$default_groups = array(
+		Experiment_Category::EDITOR => array(
+			'label'       => __( 'Editor Experiments', 'ai' ),
+			'description' => __( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
+			'order'       => 10,
+		),
+		Experiment_Category::ADMIN  => array(
+			'label'       => __( 'Admin Experiments', 'ai' ),
+			'description' => __( 'AI-powered experiments for the WordPress admin area, including exploration and testing tools.', 'ai' ),
+			'order'       => 20,
+		),
+		Feature_Category::OTHER     => array(
+			'label'       => __( 'Other Features', 'ai' ),
+			'description' => __( 'Additional AI-powered features.', 'ai' ),
+			'order'       => 90,
+		),
+	);
+
+	/**
+	 * Filters feature group metadata used by the settings UI.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param array<string, array{label:string, description:string, order:int}> $default_groups Feature group metadata keyed by category.
+	 */
+	$filtered_groups = apply_filters( 'wpai_settings_feature_groups', $default_groups );
+
+	return is_array( $filtered_groups ) ? $filtered_groups : $default_groups;
+}
+
+/**
+ * Builds feature metadata used by the settings route UI.
+ *
+ * @since 0.7.0
+ *
+ * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
+ * @return array{
+ *   groups:list<array{id:string, label:string, description:string}>,
+ *   features:list<array{id:string, settingName:string, label:string, description:string, category:string}>
+ * }
+ */
+function get_settings_feature_metadata( Registry $registry ): array {
+	$group_definitions = get_settings_feature_groups();
+	$categories_in_use = array();
+	$features          = array();
+
+	foreach ( $registry->get_all_features() as $feature ) {
+		$feature_id = $feature::get_id();
+		$category   = $feature->get_category();
+
+		if ( ! is_string( $category ) || '' === $category ) {
+			$category = Feature_Category::OTHER;
+		}
+
+		if ( ! isset( $group_definitions[ $category ] ) ) {
+			$group_definitions[ $category ] = array(
+				'label'       => ucwords( str_replace( array( '-', '_' ), ' ', $category ) ),
+				'description' => '',
+				'order'       => 100,
+			);
+		}
+
+		$categories_in_use[ $category ] = true;
+		$features[]                     = array(
+			'id'             => $feature_id,
+			'settingName'    => "wpai_feature_{$feature_id}_enabled",
+			'label'          => $feature->get_label(),
+			'description'    => wp_strip_all_tags( $feature->get_description() ),
+			'category'       => $category,
+			'settingsFields' => $feature->get_settings_fields_metadata(),
+		);
+	}
+
+	$groups = array();
+	foreach ( array_keys( $categories_in_use ) as $category ) {
+		$group = $group_definitions[ $category ] ?? array();
+
+		$groups[] = array(
+			'id'          => $category,
+			'label'       => isset( $group['label'] ) && is_string( $group['label'] ) && '' !== $group['label']
+				? $group['label']
+				: ucwords( str_replace( array( '-', '_' ), ' ', $category ) ),
+			'description' => isset( $group['description'] ) && is_string( $group['description'] )
+				? $group['description']
+				: '',
+			'order'       => isset( $group['order'] ) ? (int) $group['order'] : 100,
+		);
+	}
+
+	usort(
+		$groups,
+		static function ( array $first, array $second ): int {
+			if ( $first['order'] === $second['order'] ) {
+				return strcasecmp( (string) $first['label'], (string) $second['label'] );
+			}
+
+			return $first['order'] <=> $second['order'];
+		}
+	);
+
+	$groups = array_values(
+		array_map(
+			static function ( array $group ): array {
+				unset( $group['order'] );
+				return $group;
+			},
+			$groups
+		)
+	);
+
+	$metadata = array(
+		'groups'   => $groups,
+		'features' => $features,
+	);
+
+	/**
+	 * Filters settings metadata passed to the settings route client.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param array{
+	 *   groups:list<array{id:string, label:string, description:string}>,
+	 *   features:list<array{id:string, settingName:string, label:string, description:string, category:string}>
+	 * } $metadata Settings UI metadata.
+	 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
+	 */
+	$filtered_metadata = apply_filters( 'wpai_settings_feature_metadata', $metadata, $registry );
+
+	return is_array( $filtered_metadata ) ? $filtered_metadata : $metadata;
 }
 
 /**
@@ -173,6 +314,11 @@ function load(): void {
 	// Load required files.
 	require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
 	require_once WPAI_PLUGIN_DIR . 'includes/helpers.php';
+
+	// Load auto-generated wp-build registration if present.
+	if ( file_exists( WPAI_PLUGIN_DIR . 'build/build.php' ) ) {
+		require_once WPAI_PLUGIN_DIR . 'build/build.php';
+	}
 
 	// Handle any pending upgrades.
 	( new Upgrades() )->init();
@@ -209,10 +355,9 @@ function initialize_features(): void {
 		$settings_registration = new Settings_Registration( $registry );
 		$settings_registration->init();
 
-		// Initialize admin settings page.
+		// Register admin settings page menu item.
 		if ( is_admin() ) {
-			$settings_page = new Settings_Page( $registry );
-			$settings_page->init();
+			Settings_Page::init( $registry );
 		}
 
 		// Register our post-related WordPress Abilities.
@@ -255,7 +400,7 @@ add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
 /**
  * Triggers when the plugin is activated.
  *
- * @since 0.6.0
+ * @since 0.7.0
  */
 register_activation_hook(
 	WPAI_PLUGIN_FILE,

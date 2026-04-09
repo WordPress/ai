@@ -1,0 +1,33 @@
+.ai-settings-page {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 680px;
+	margin: 0 auto;
+	padding: 24px;
+
+	@media (max-width: 480px) {
+		padding: 8px;
+	}
+}
+
+.ai-settings-page .components-notice {
+	margin: 0 0 24px;
+}
+
+.ai-feature-settings-form {
+	margin-top: 4px;
+	padding-left: 40px;
+	max-width: 480px;
+
+	.components-base-control__label,
+	.components-input-control__label,
+	.dataforms-layouts-regular__field-label {
+		text-transform: none !important;
+	}
+}
+
+.ai-feature-settings-form__actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 12px;
+}

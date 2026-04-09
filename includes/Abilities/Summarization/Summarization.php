@@ -52,7 +52,7 @@ class Summarization extends Abstract_Ability {
 					'description'       => esc_html__( 'Additional context to use when summarizing the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
 				),
 				'length'  => array(
-					'type'        => 'enum',
+					'type'        => 'string',
 					'enum'        => array( 'short', 'medium', 'long' ),
 					'default'     => self::LENGTH_DEFAULT,
 					'description' => esc_html__( 'The length of the summary.', 'ai' ),
@@ -241,11 +241,34 @@ class Summarization extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
+		$prompt_builder = $this->get_prompt_builder( $content, $length );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
 		// Generate the summary using the AI client.
-		return wp_ai_client_prompt( $content )
+		return $prompt_builder->generate_text();
+	}
+
+	/**
+	 * Gets a prompt builder for generating a summary.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $prompt The prompt to generate a summary from.
+	 * @param string $length The desired length of the summary.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt, string $length ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
 			->using_temperature( 0.9 )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
-			->generate_text();
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Summarization failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }

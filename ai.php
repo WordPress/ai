@@ -11,7 +11,7 @@
  * Plugin Name:       AI
  * Plugin URI:        https://github.com/WordPress/ai
  * Description:       AI features, experiments and capabilities for WordPress.
- * Version:           0.6.0
+ * Version:           0.7.0
  * Requires at least: 7.0
  * Requires PHP:      7.4
  * Author:            WordPress.org Contributors
@@ -29,6 +29,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Shortcut constant to the path of this file.
  */
-define( 'WPAI_DIR', plugin_dir_path( __FILE__ ) );
+if ( ! defined( 'WPAI_DIR' ) ) {
+	define( 'WPAI_DIR', plugin_dir_path( __FILE__ ) );
+}
 
 require_once WPAI_DIR . 'includes/bootstrap.php';

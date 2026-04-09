@@ -256,6 +256,12 @@ class Generate_Image extends Abstract_Ability {
 			}
 		}
 
-		return $prompt_builder;
+		$error_message = esc_html__( 'Image generation failed. Please ensure you have a connected provider that supports image generation.', 'ai' );
+
+		if ( null !== $reference_image ) {
+			$error_message = esc_html__( 'Image refinement failed. Please ensure you have a connected provider that supports image refinement, not just image generation.', 'ai' );
+		}
+
+		return $this->ensure_image_generation_supported( $prompt_builder, $error_message );
 	}
 }

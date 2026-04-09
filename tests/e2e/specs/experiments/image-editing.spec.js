@@ -31,25 +31,26 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment (which contains editing).
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		await visitConnectorsPage( admin );
 
+		const googleConnector = page.locator( '[role="listitem"]', {
+			has: page.getByRole( 'heading', { name: 'Google', exact: true } ),
+		} );
+
 		// Add dummy credentials for Google.
-		await page
-			.locator( '.connector-item--ai-provider-for-google button' )
+		await googleConnector
+			.getByRole( 'button', { name: /Set up|Edit/i } )
 			.click();
-		await page
-			.locator(
-				'.connector-item--ai-provider-for-google input[type="text"]'
-			)
+		await googleConnector
+			.getByRole( 'textbox' )
+			.first()
 			.fill( 'valid-api-key' );
 
 		// Save the credentials.
-		await page
-			.locator(
-				'.connector-item--ai-provider-for-google .connector-settings button'
-			)
+		await googleConnector
+			.getByRole( 'button', { name: /Save|Update/i } )
 			.click();
 	} );
 
@@ -62,7 +63,7 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -179,7 +180,7 @@ test.describe( 'Image Editing Experiment', () => {
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		const imageContainer = page
 			.locator( '.attachments-wrapper li' )
@@ -201,10 +202,10 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Click the Generate Image button.
 		await page.locator( '.ai-generate-image-btn' ).click();
@@ -312,13 +313,13 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Upload a test image so we have a URL the editor can load.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
@@ -391,7 +392,7 @@ test.describe( 'Image Editing Experiment', () => {
 		);
 		await expect( startOverBtn ).toBeVisible();
 
-		startOverBtn.click();
+		await startOverBtn.click();
 
 		// Add a prompt and generate the image.
 		await page
@@ -444,13 +445,13 @@ test.describe( 'Image Editing Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Image Generation Experiment.
-		await enableExperiment( admin, page, 'image-generation' );
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Upload a test image so we have a URL the editor can load.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
@@ -495,7 +496,7 @@ test.describe( 'Image Editing Experiment', () => {
 		);
 		await expect( startOverBtn ).toBeVisible();
 
-		startOverBtn.click();
+		await startOverBtn.click();
 
 		// Find the Remove Item button and click on it.
 		const removeItemBtn = page
@@ -573,12 +574,17 @@ test.describe( 'Image Editing Experiment', () => {
 		);
 		await expect( generateAnotherBtn ).toBeVisible();
 
-		generateAnotherBtn.click();
+		await generateAnotherBtn.click();
 
 		// Ensure the images are visible in the modal.
 		await expect(
 			page.locator( '.ai-media-library-editor__preview-image' )
 		).toHaveCount( 2 );
+
+		// Ensure generation has completed and history is updated.
+		await expect(
+			page.locator( '.ai-image-history-nav__counter' )
+		).toHaveText( '2 / 2' );
 
 		// Click the previous image navigation arrow.
 		let previousImgBtn = page
