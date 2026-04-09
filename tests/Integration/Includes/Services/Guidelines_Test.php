@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for the Content_Guidelines service class.
+ * Tests for the Guidelines service class.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Services
  */
@@ -8,21 +8,21 @@
 namespace WordPress\AI\Tests\Integration\Includes\Services;
 
 use WP_UnitTestCase;
-use WordPress\AI\Services\Content_Guidelines;
+use WordPress\AI\Services\Guidelines;
 
 /**
- * Content_Guidelines test case.
+ * Guidelines test case.
  *
  * @since x.x.x
  */
-class Content_Guidelines_Test extends WP_UnitTestCase {
+class Guidelines_Test extends WP_UnitTestCase {
 
 	/**
 	 * Service instance.
 	 *
-	 * @var \WordPress\AI\Services\Content_Guidelines
+	 * @var \WordPress\AI\Services\Guidelines
 	 */
-	private Content_Guidelines $service;
+	private Guidelines $service;
 
 	/**
 	 * Set up test case.
@@ -31,8 +31,8 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 	 */
 	public function setUp(): void {
 		parent::setUp();
-		Content_Guidelines::reset_cache();
-		$this->service = Content_Guidelines::get_instance();
+		Guidelines::reset_cache();
+		$this->service = Guidelines::get_instance();
 	}
 
 	/**
@@ -41,8 +41,8 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		Content_Guidelines::reset_cache();
-		remove_all_filters( 'wpai_use_content_guidelines' );
+		Guidelines::reset_cache();
+		remove_all_filters( 'wpai_use_guidelines' );
 		remove_all_filters( 'wpai_max_guideline_length' );
 		parent::tearDown();
 	}
@@ -216,8 +216,8 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 
 		$result = $this->service->format_for_prompt( array( 'site', 'copy' ) );
 
-		$this->assertStringContainsString( '<content-guidelines>', $result );
-		$this->assertStringContainsString( '</content-guidelines>', $result );
+		$this->assertStringContainsString( '<guidelines>', $result );
+		$this->assertStringContainsString( '</guidelines>', $result );
 		$this->assertStringContainsString( '<site-context>Professional tone.</site-context>', $result );
 		$this->assertStringContainsString( '<copy-guidelines>Keep it short.</copy-guidelines>', $result );
 	}
@@ -273,15 +273,15 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the wpai_use_content_guidelines filter can disable guidelines.
+	 * Tests that the wpai_use_guidelines filter can disable guidelines.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_wpai_use_content_guidelines_filter_disables(): void {
+	public function test_wpai_use_guidelines_filter_disables(): void {
 		$this->register_guidelines_cpt();
 		$this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
 
-		add_filter( 'wpai_use_content_guidelines', '__return_false' );
+		add_filter( 'wpai_use_guidelines', '__return_false' );
 
 		$this->assertNull(
 			$this->service->get_guidelines(),
@@ -350,7 +350,7 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
 		update_post_meta( $post_id, '_content_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
 
-		add_filter( 'wpai_use_content_guidelines', '__return_false' );
+		add_filter( 'wpai_use_guidelines', '__return_false' );
 
 		$this->assertNull(
 			$this->service->get_block_guidelines( 'core/paragraph' ),
@@ -424,7 +424,7 @@ class Content_Guidelines_Test extends WP_UnitTestCase {
 		}
 
 		// Reset cache so the service picks up the new post.
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 
 		return $post_id;
 	}

@@ -87,7 +87,7 @@ The review types to perform for each block are provided in <review-types> tags.
 
 For all other block types, apply readability, and grammar checks if text content is present.
 
-## Content Guidelines Review
+## Guidelines Review
 
-If content guidelines are provided in <content-guidelines> tags, evaluate the block content against these guidelines. Flag material violations of the editorial standards as suggestions with review_type "guidelines". Only flag clear, objective violations — not minor style preferences. If block-specific guidelines are provided, prioritize those over general guidelines for the block being reviewed.
+If guidelines are provided in <guidelines> tags, evaluate the block content against these guidelines. Flag material violations of the editorial standards as suggestions with review_type "guidelines". Only flag clear, objective violations — not minor style preferences. If block-specific guidelines are provided, prioritize those over general guidelines for the block being reviewed.
 INSTRUCTION;

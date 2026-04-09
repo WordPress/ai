@@ -1,8 +1,8 @@
 <?php
 /**
- * Content Guidelines service.
+ * Guidelines service.
  *
- * Fetches and caches Content Guidelines from Gutenberg's wp_content_guideline CPT.
+ * Fetches and caches Guidelines from Gutenberg's wp_content_guideline CPT.
  *
  * @package WordPress\AI\Services
  */
@@ -14,14 +14,14 @@ namespace WordPress\AI\Services;
 use WP_Query;
 
 /**
- * Content Guidelines service class.
+ * Guidelines service class.
  *
- * Provides a centralized interface for fetching and formatting Content Guidelines
+ * Provides a centralized interface for fetching and formatting Guidelines
  * from the wp_content_guideline custom post type introduced in Gutenberg 22.7+.
  *
  * @since x.x.x
  */
-class Content_Guidelines {
+class Guidelines {
 
 	/**
 	 * Singleton instance.
@@ -111,7 +111,7 @@ class Content_Guidelines {
 	private function __construct() {}
 
 	/**
-	 * Checks if the Content Guidelines feature is available.
+	 * Checks if the Guidelines feature is available.
 	 *
 	 * @since x.x.x
 	 *
@@ -122,7 +122,7 @@ class Content_Guidelines {
 	}
 
 	/**
-	 * Retrieves content guidelines, optionally filtered by category.
+	 * Retrieves guidelines, optionally filtered by category.
 	 *
 	 * @since x.x.x
 	 *
@@ -243,7 +243,7 @@ class Content_Guidelines {
 			return '';
 		}
 
-		return '<content-guidelines>' . "\n" . implode( "\n", $parts ) . "\n" . '</content-guidelines>';
+		return '<guidelines>' . "\n" . implode( "\n", $parts ) . "\n" . '</guidelines>';
 	}
 
 	/**
@@ -259,7 +259,7 @@ class Content_Guidelines {
 	}
 
 	/**
-	 * Checks whether content guidelines should be used.
+	 * Checks whether guidelines should be used.
 	 *
 	 * @since x.x.x
 	 *
@@ -271,14 +271,14 @@ class Content_Guidelines {
 		}
 
 		/**
-		 * Filters whether content guidelines integration is enabled.
+		 * Filters whether guidelines integration is enabled.
 		 *
 		 * @since x.x.x
 		 *
-		 * @param bool $use_guidelines Whether to use content guidelines. Default true.
-		 * @return bool Whether to use content guidelines.
+		 * @param bool $use_guidelines Whether to use guidelines. Default true.
+		 * @return bool Whether to use guidelines.
 		 */
-		return (bool) apply_filters( 'wpai_use_content_guidelines', true );
+		return (bool) apply_filters( 'wpai_use_guidelines', true );
 	}
 
 	/**

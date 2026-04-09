@@ -8,7 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
-use WordPress\AI\Services\Content_Guidelines;
+use WordPress\AI\Services\Guidelines;
 
 /**
  * Helper functions test case.
@@ -27,7 +27,7 @@ class HelpersTest extends WP_UnitTestCase {
 		// Create a user with proper permissions for reading posts.
 		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $user_id );
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 	}
 
 	/**
@@ -36,7 +36,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		parent::tearDown();
 	}
@@ -587,11 +587,11 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_content_guidelines() returns guidelines filtered by category.
+	 * Test that get_guidelines() returns guidelines filtered by category.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_get_content_guidelines_returns_guidelines(): void {
+	public function test_get_guidelines_returns_guidelines(): void {
 		$this->register_guidelines_cpt();
 		$this->create_guidelines_post(
 			array(
@@ -600,7 +600,7 @@ class HelpersTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = \WordPress\AI\get_content_guidelines( 'site' );
+		$result = \WordPress\AI\get_guidelines( 'site' );
 
 		$this->assertIsArray( $result, 'Should return an array' );
 		$this->assertArrayHasKey( 'site', $result, 'Should have site key' );
@@ -655,7 +655,7 @@ class HelpersTest extends WP_UnitTestCase {
 			update_post_meta( $post_id, $meta_key_map[ $category ], $value );
 		}
 
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 
 		return $post_id;
 	}

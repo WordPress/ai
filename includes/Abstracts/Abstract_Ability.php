@@ -11,7 +11,7 @@ namespace WordPress\AI\Abstracts;
 
 use ReflectionClass;
 use WP_Ability;
-use function WordPress\AI\format_content_guidelines_for_prompt;
+use function WordPress\AI\format_guidelines_for_prompt;
 
 /**
  * Base implementation for a WordPress Ability.
@@ -105,7 +105,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Returns the guideline categories this ability uses.
 	 *
-	 * Override in subclasses to opt into content guidelines.
+	 * Override in subclasses to opt into guidelines.
 	 * Return an empty array to skip guidelines (default).
 	 *
 	 * Valid categories: 'site', 'copy', 'images', 'additional'.
@@ -119,7 +119,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	}
 
 	/**
-	 * Returns formatted content guidelines for prompt injection.
+	 * Returns formatted guidelines for prompt injection.
 	 *
 	 * Uses guideline_categories() to determine which categories to include.
 	 * Unsupported categories are silently dropped.
@@ -130,7 +130,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @param string|null $block_name Optional block name for block-specific guidelines.
 	 * @return string Formatted guidelines XML string, or empty string.
 	 */
-	protected function get_content_guidelines_for_prompt( ?string $block_name = null ): string {
+	protected function get_guidelines_for_prompt( ?string $block_name = null ): string {
 		$categories = array_values(
 			array_intersect(
 				$this->guideline_categories(),
@@ -140,7 +140,7 @@ abstract class Abstract_Ability extends WP_Ability {
 		if ( empty( $categories ) ) {
 			return '';
 		}
-		return format_content_guidelines_for_prompt( $categories, $block_name );
+		return format_guidelines_for_prompt( $categories, $block_name );
 	}
 
 	/**
@@ -162,10 +162,10 @@ abstract class Abstract_Ability extends WP_Ability {
 		$instruction = $this->load_system_instruction_from_file( $filename, $data );
 
 		if ( '' !== $instruction && ! empty( $this->guideline_categories() ) ) {
-			$guidelines = $this->get_content_guidelines_for_prompt( $block_name );
+			$guidelines = $this->get_guidelines_for_prompt( $block_name );
 
 			if ( $guidelines ) {
-				$instruction .= "\n\n" . 'The following content guidelines represent the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
+				$instruction .= "\n\n" . 'The following guidelines represent the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
 				$instruction .= "\n\n" . $guidelines;
 			}
 		}

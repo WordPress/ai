@@ -246,7 +246,7 @@ class Generate_Image extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
 		// Inject content guidelines if available.
-		$guidelines = $this->get_content_guidelines_for_prompt();
+		$guidelines = $this->get_guidelines_for_prompt();
 		if ( $guidelines ) {
 			$prompt .= "\n\n" . $guidelines;
 		}

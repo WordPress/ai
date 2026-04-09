@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for Content Guidelines support in Abstract_Ability.
+ * Integration tests for Guidelines support in Abstract_Ability.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abstracts
  */
@@ -9,7 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI\Services\Content_Guidelines;
+use WordPress\AI\Services\Guidelines;
 
 /**
  * Test ability that does NOT opt into guidelines (default behavior).
@@ -75,13 +75,13 @@ class Test_Ability_With_Guidelines extends Test_Ability_No_Guidelines {
 	}
 
 	/**
-	 * Exposes get_content_guidelines_for_prompt() for testing.
+	 * Exposes get_guidelines_for_prompt() for testing.
 	 *
 	 * @param string|null $block_name Optional block name.
 	 * @return string Formatted guidelines.
 	 */
-	public function public_get_content_guidelines_for_prompt( ?string $block_name = null ): string {
-		return $this->get_content_guidelines_for_prompt( $block_name );
+	public function public_get_guidelines_for_prompt( ?string $block_name = null ): string {
+		return $this->get_guidelines_for_prompt( $block_name );
 	}
 }
 
@@ -102,7 +102,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 	}
 
 	/**
@@ -111,10 +111,10 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
-		remove_all_filters( 'wpai_use_content_guidelines' );
+		remove_all_filters( 'wpai_use_guidelines' );
 		parent::tearDown();
 	}
 
@@ -140,11 +140,11 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_content_guidelines_for_prompt() returns empty when no categories are declared.
+	 * Tests that get_guidelines_for_prompt() returns empty when no categories are declared.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_get_content_guidelines_for_prompt_returns_empty_when_no_categories(): void {
+	public function test_get_guidelines_for_prompt_returns_empty_when_no_categories(): void {
 		$ability = new Test_Ability_No_Guidelines(
 			'ai/test-no-guidelines',
 			array(
@@ -154,7 +154,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 		);
 
 		$reflection = new \ReflectionClass( $ability );
-		$method     = $reflection->getMethod( 'get_content_guidelines_for_prompt' );
+		$method     = $reflection->getMethod( 'get_guidelines_for_prompt' );
 		$method->setAccessible( true );
 
 		$this->assertSame( '', $method->invoke( $ability ) );
@@ -178,7 +178,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 		$instruction = $ability->get_system_instruction();
 
 		$this->assertStringNotContainsString(
-			'content-guidelines',
+			'guidelines',
 			$instruction,
 			'Should not contain guidelines paragraph when no categories declared'
 		);
@@ -220,7 +220,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			$instruction = $ability->get_system_instruction();
 
 			$this->assertStringContainsString( 'You are a test assistant.', $instruction );
-			$this->assertStringContainsString( '<content-guidelines>', $instruction );
+			$this->assertStringContainsString( '<guidelines>', $instruction );
 			$this->assertStringContainsString( '<site-context>Professional tone.</site-context>', $instruction );
 			$this->assertStringContainsString( '<copy-guidelines>Keep it short.</copy-guidelines>', $instruction );
 			$this->assertStringContainsString( 'Do not fabricate content to satisfy guidelines.', $instruction );
@@ -259,7 +259,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			$instruction = $ability->get_system_instruction();
 
 			$this->assertStringContainsString( 'You are a test assistant.', $instruction );
-			$this->assertStringNotContainsString( 'content-guidelines', $instruction );
+			$this->assertStringNotContainsString( 'guidelines', $instruction );
 		} finally {
 			if ( file_exists( $test_file ) ) {
 				wp_delete_file( $test_file );
@@ -328,12 +328,12 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_content_guidelines_for_prompt() returns formatted guidelines
+	 * Tests that get_guidelines_for_prompt() returns formatted guidelines
 	 * when categories are declared and guidelines exist.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_get_content_guidelines_for_prompt_delegates_to_helper(): void {
+	public function test_get_guidelines_for_prompt_delegates_to_helper(): void {
 		$this->register_guidelines_cpt();
 		$this->create_guidelines_post(
 			array(
@@ -350,9 +350,9 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			)
 		);
 
-		$result = $ability->public_get_content_guidelines_for_prompt();
+		$result = $ability->public_get_guidelines_for_prompt();
 
-		$this->assertStringContainsString( '<content-guidelines>', $result );
+		$this->assertStringContainsString( '<guidelines>', $result );
 		$this->assertStringContainsString( '<site-context>Professional tone.</site-context>', $result );
 		$this->assertStringContainsString( '<copy-guidelines>Keep it short.</copy-guidelines>', $result );
 	}
@@ -375,7 +375,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			)
 		);
 
-		$result = $ability->public_get_content_guidelines_for_prompt( 'core/paragraph' );
+		$result = $ability->public_get_guidelines_for_prompt( 'core/paragraph' );
 
 		$this->assertStringContainsString(
 			'<block-guidelines>Keep paragraphs concise.</block-guidelines>',
@@ -431,7 +431,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			update_post_meta( $post_id, $meta_key_map[ $category ], $value );
 		}
 
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 
 		return $post_id;
 	}

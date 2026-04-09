@@ -11,7 +11,7 @@ use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Review_Notes\Review_Notes;
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Services\Content_Guidelines;
+use WordPress\AI\Services\Guidelines;
 
 /**
  * Test experiment for Review_Notes_Ability tests.
@@ -93,7 +93,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		parent::tearDown();
 	}
@@ -620,11 +620,11 @@ class Review_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_system_instruction() includes content guidelines when available.
+	 * Tests that get_system_instruction() includes guidelines when available.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_get_system_instruction_includes_content_guidelines(): void {
+	public function test_get_system_instruction_includes_guidelines(): void {
 		$this->register_guidelines_cpt();
 		$this->create_guidelines_post(
 			array(
@@ -635,7 +635,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 
 		$instruction = $this->ability->get_system_instruction( null, array(), 'core/paragraph' );
 
-		$this->assertStringContainsString( '<content-guidelines>', $instruction );
+		$this->assertStringContainsString( '<guidelines>', $instruction );
 		$this->assertStringContainsString( '<site-context>Use a professional tone.</site-context>', $instruction );
 		$this->assertStringContainsString( '<copy-guidelines>Keep sentences under 25 words.</copy-guidelines>', $instruction );
 	}
@@ -688,7 +688,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 			update_post_meta( $post_id, $meta_key_map[ $category ], $value );
 		}
 
-		Content_Guidelines::reset_cache();
+		Guidelines::reset_cache();
 
 		return $post_id;
 	}
