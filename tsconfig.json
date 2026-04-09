@@ -54,11 +54,11 @@
 
 		// File config
 		"baseUrl": "./src",
-		"outDir": "./build",
+		"outDir": "./build-scripts",
 		"paths": {
 			"@/*": ["./*"]
 		}
 	},
 	"include": ["**/*.cjs", "**/*.mjs", "**/*.ts", "**/*.tsx"],
-	"exclude": ["**/build/*", "**/tests/**", "vendor/*", "node_modules/*"]
+	"exclude": ["**/build/*", "**/build-scripts/*", "**/tests/**", "vendor/*", "node_modules/*"]
 }

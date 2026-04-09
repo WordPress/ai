@@ -13,7 +13,7 @@ import {
 	enableExperiment,
 } from '../../utils/helpers';
 
-const EXPERIMENT_ID = 'review-notes';
+const EXPERIMENT_LABEL = 'Review Notes';
 
 test.describe( 'AI Review Notes Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
@@ -21,7 +21,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Review Notes Experiment.
-		await enableExperiment( admin, page, EXPERIMENT_ID );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
 
 	test( 'Shows the "Generate Review Notes" button in the post editor sidebar', async ( {
@@ -204,7 +204,7 @@ test.describe( 'AI Review Notes Experiment', () => {
 		page,
 	} ) => {
 		// Disable the Review Notes Experiment.
-		await disableExperiment( admin, page, EXPERIMENT_ID );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		// Create a new post and verify button is absent.
 		await admin.createNewPost( { title: 'Disabled Experiment Test' } );

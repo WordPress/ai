@@ -22,7 +22,7 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Excerpt Generation Experiment.
-		await enableExperiment( admin, page, 'excerpt-generation' );
+		await enableExperiment( admin, page, 'Excerpt Generation' );
 	} );
 
 	test( 'Can use the Excerpt Generation Experiment', async ( {
@@ -34,7 +34,7 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Excerpt Generation Experiment.
-		await enableExperiment( admin, page, 'excerpt-generation' );
+		await enableExperiment( admin, page, 'Excerpt Generation' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -132,7 +132,7 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Excerpt Generation Experiment.
-		await enableExperiment( admin, page, 'excerpt-generation' );
+		await enableExperiment( admin, page, 'Excerpt Generation' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -179,7 +179,7 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Excerpt Generation Experiment.
-		await disableExperiment( admin, page, 'excerpt-generation' );
+		await disableExperiment( admin, page, 'Excerpt Generation' );
 
 		// Create a new post.
 		await admin.createNewPost( {
