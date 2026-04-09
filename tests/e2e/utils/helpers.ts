@@ -47,7 +47,11 @@ const clearConnectorFromItem = async ( connectorItem: Locator ) => {
  * @param path        The path to the admin page.
  * @param queryParams The query parameters to add to the URL.
  */
-export const visitAdminPage = async ( admin: Admin, path: string, queryParams?: string ) => {
+export const visitAdminPage = async (
+	admin: Admin,
+	path: string,
+	queryParams?: string
+) => {
 	await admin.visitAdminPage( path, queryParams );
 };
 
