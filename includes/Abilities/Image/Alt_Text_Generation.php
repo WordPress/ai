@@ -211,12 +211,13 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @return string|\WP_Error The generated alt text or WP_Error on failure.
 	 */
 	protected function generate_alt_text( array $image_reference, string $context = '', string $image_meta = '' ) {
-		$result = wp_ai_client_prompt( $this->build_prompt( $context, $image_meta ) )
-			->with_file( $image_reference['reference'] )
-			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
-			->using_temperature( 0.3 )
-			->using_model_preference( ...get_preferred_vision_models() )
-			->generate_text();
+		$prompt_builder = $this->get_prompt_builder( $this->build_prompt( $context, $image_meta ), $image_reference['reference'] );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
+		$result = $prompt_builder->generate_text();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -225,11 +226,6 @@ class Alt_Text_Generation extends Abstract_Ability {
 		// Clean up the result.
 		$alt_text = trim( $result );
 		$alt_text = trim( $alt_text, '"\'.' );
-
-		// Truncate if too long.
-		if ( mb_strlen( $alt_text, 'UTF-8' ) > self::MAX_ALT_TEXT_LENGTH ) {
-			$alt_text = mb_substr( $alt_text, 0, self::MAX_ALT_TEXT_LENGTH - 3, 'UTF-8' ) . '...';
-		}
 
 		return $alt_text;
 	}
@@ -384,6 +380,28 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$without_scheme = preg_replace( '#^https?://#i', '', $url );
 
 		return rtrim( $without_scheme ?? $url, '/' );
+	}
+
+	/**
+	 * Gets a prompt builder for generating alt text.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to generate alt text from.
+	 * @param string $reference The reference image.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt, string $reference ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->with_file( $reference )
+			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
+			->using_temperature( 0.3 )
+			->using_model_preference( ...get_preferred_vision_models() );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Alt text generation failed. Please ensure you have a connected provider that supports both text generation and vision capabilities.', 'ai' )
+		);
 	}
 
 	/**
