@@ -28,7 +28,7 @@ final class Requirements {
 	/**
 	 * The minimum WordPress version.
 	 */
-	private const MIN_WP_VERSION = '6.9';
+	private const MIN_WP_VERSION = '7.0';
 
 	/**
 	 * The resolved requirement checks, keyed by requirement slug.
