@@ -47,7 +47,7 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/react": "^18.3.28",
-    "@types/react-dom": "^18.3.7",
+    "@types/react-dom": "^19.2.3",
     "@types/wordpress__block-editor": "^15.0.5",
     "@types/wordpress__blocks": "^15.10.2",
     "@types/wordpress__edit-post": "^8.4.2",
