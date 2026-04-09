@@ -101,6 +101,11 @@ final class Requirements {
 			),
 			'assets' => array(
 				'check'         => static function () {
+					// PHPUnit tests may not have the asset built.
+					if ( defined( 'WPAI_IS_TEST' ) && WPAI_IS_TEST ) {
+						return true;
+					}
+
 					$asset_file = WPAI_PLUGIN_DIR . 'build/build.php';
 					if ( file_exists( $asset_file ) ) {
 						require_once $asset_file; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
@@ -126,13 +131,20 @@ final class Requirements {
 		);
 
 		foreach ( $hooks as $hook ) {
-			$error_message = $this->prepare_admin_notice_message();
+			$error_message = $this->get_admin_notice_message_html();
 
 			add_action(
 				$hook,
 				static function () use ( $error_message ) {
 					wp_admin_notice(
-						esc_html( $error_message ),
+						wp_kses(
+							$error_message,
+							array(
+								'br' => array(),
+								'ul' => array(),
+								'li' => array(),
+							)
+						),
 						array(
 							'type' => 'error',
 						)
@@ -159,13 +171,15 @@ final class Requirements {
 	}
 
 	/**
-	 * Prepares the admin notice message based on the failed requirements.
+	 * Gets the admin notice message based on the failed requirements.
+	 *
+	 * Needs to be sanitized.
 	 *
 	 * @since x.y.z
 	 *
 	 * @return string The admin notice message.
 	 */
-	private function prepare_admin_notice_message(): string {
+	private function get_admin_notice_message_html(): string {
 		$error_messages = array_map(
 			static function ( $result ) {
 				if ( is_callable( $result ) ) {
@@ -178,21 +192,12 @@ final class Requirements {
 		$error_messages = array_filter( $error_messages );
 
 		if ( count( $error_messages ) === 1 ) {
-			return wp_kses( (string) reset( $error_messages ), array() );
+			return reset( $error_messages );
 		}
 
-		$message = __( 'AI plugin cannot run due to the following issues:', 'ai' )
+		return __( 'AI plugin cannot run due to the following issues:', 'ai' )
 			. '<br><ul><li>'
 			. implode( '</li><li>', $error_messages )
 			. '</li></ul>';
-
-		return wp_kses(
-			$message,
-			array(
-				'br' => array(),
-				'ul' => array(),
-				'li' => array(),
-			)
-		);
 	}
 }

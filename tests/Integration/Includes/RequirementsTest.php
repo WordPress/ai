@@ -115,7 +115,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	/**
 	 * @since x.y.z
 	 */
-	public function test_prepare_admin_notice_message_with_single_failure() {
+	public function test_get_admin_notice_message_html_with_single_failure() {
 		$requirements = new Requirements();
 		$reflection   = new \ReflectionClass( Requirements::class );
 
@@ -128,7 +128,7 @@ class RequirementsTest extends WP_UnitTestCase {
 			)
 		);
 
-		$method = $reflection->getMethod( 'prepare_admin_notice_message' );
+		$method = $reflection->getMethod( 'get_admin_notice_message_html' );
 		$method->setAccessible( true );
 		$message = $method->invoke( $requirements );
 
@@ -139,7 +139,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	/**
 	 * @since x.y.z
 	 */
-	public function test_prepare_admin_notice_message_with_multiple_failures() {
+	public function test_get_admin_notice_message_html_with_multiple_failures() {
 		$requirements = new Requirements();
 		$reflection   = new \ReflectionClass( Requirements::class );
 
@@ -153,7 +153,7 @@ class RequirementsTest extends WP_UnitTestCase {
 			)
 		);
 
-		$method = $reflection->getMethod( 'prepare_admin_notice_message' );
+		$method = $reflection->getMethod( 'get_admin_notice_message_html' );
 		$method->setAccessible( true );
 		$message = $method->invoke( $requirements );
 
