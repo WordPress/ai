@@ -695,7 +695,6 @@ You can filter which AI image models are used for image generation using the `wp
 add_filter( 'wpai_preferred_image_models', function( $models ) {
     // Prefer specific image models
     return array(
-        array( 'openai', 'dall-e-3' ),
         array( 'openai', 'gpt-image-1' ),
         array( 'google', 'imagen-4.0-generate-001' ),
     );
@@ -853,7 +852,7 @@ npm run test:php
 
 - The ability uses `get_preferred_image_models()` to determine which AI image models to use
 - Models are tried in order until one succeeds
-- Default models include Google's Gemini (e.g. gemini-3-pro-image-preview, gemini-2.5-flash-image), Imagen, and OpenAI's DALL-E 3 and GPT-image models
+- Default models include Google's Gemini (e.g. gemini-3.1-flash-image-preview, gemini-2.5-flash-image), Imagen, and OpenAI's GPT-image models
 - All default models support image generation; the Google models also support image editing (when a reference image is provided)
 - Request timeout is set to 90 seconds to accommodate longer image generation times
 
