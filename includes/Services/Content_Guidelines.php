@@ -87,7 +87,7 @@ class Content_Guidelines {
 	 *
 	 * @var int
 	 */
-	private const DEFAULT_MAX_GUIDELINE_LENGTH = 2000;
+	private const DEFAULT_MAX_GUIDELINE_LENGTH = 5000;
 
 	/**
 	 * Gets the singleton instance.
