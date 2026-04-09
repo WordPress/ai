@@ -17,6 +17,7 @@ import { __ } from '@wordpress/i18n';
 import { dispatch, select } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
+import { update } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -215,21 +216,16 @@ export function AltTextControls( {
 				{ /* Generate button */ }
 				{ ! hasGeneratedAlt && ! isDecorative && (
 					<Button
+					    className="ai-summarization-plugin-button"
 						variant="secondary"
+						icon={ update }
 						onClick={ handleGenerate }
 						disabled={ isGenerating }
+						isBusy={ isGenerating }
 						style={ { width: '100%', justifyContent: 'center' } }
 					>
-						{ isGenerating ? (
-							<>
-								<Spinner />
-								<span style={ { marginLeft: '8px' } }>
-									{ __( 'Generating…', 'ai' ) }
-								</span>
-							</>
-						) : (
-							getButtonLabel( !! hasExistingAlt )
-						) }
+						{ isGenerating ? __( 'Generating...', 'ai' ) : getButtonLabel( !! hasExistingAlt ) }
+						
 					</Button>
 				) }
 			</div>
