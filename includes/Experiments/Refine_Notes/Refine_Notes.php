@@ -1,6 +1,6 @@
 <?php
 /**
- * AI Refine from Notes experiment implementation.
+ * Refine from Notes experiment implementation.
  *
  * @package WordPress\AI
  */
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * AI Refine from Notes experiment.
+ * Refine from Notes experiment.
  *
  * Adds functionality to apply AI-generated refinements based on editorial
  * feedback (Notes) left on individual blocks.

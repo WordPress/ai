@@ -1,5 +1,5 @@
 /**
- * Custom hook for AI Refine from Notes functionality.
+ * Custom hook for Refine from Notes functionality.
  */
 
 /**
@@ -120,7 +120,7 @@ export function useRefineNotes(): {
 		setTotal( 0 );
 
 		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_refine_notes_error'
+			'wpai_refine_notes_error'
 		);
 
 		try {
@@ -278,7 +278,7 @@ export function useRefineNotes(): {
 						} catch ( e ) {
 							// eslint-disable-next-line no-console
 							console.warn(
-								`[AI Refine Notes] Failed to refine block ${ block.clientId }`,
+								`[Refine Notes] Failed to refine block ${ block.clientId }`,
 								e
 							);
 							failedBlocksCount++;
@@ -306,9 +306,9 @@ export function useRefineNotes(): {
 			// If every block failed, surface an error notice.
 			if ( failedBlocksCount > 0 && refinedBlocksCount === 0 ) {
 				( dispatch( noticesStore ) as any ).createErrorNotice(
-					__( 'AI refinement failed for all blocks.', 'ai' ),
+					__( 'Refinement failed for all blocks.', 'ai' ),
 					{
-						id: 'ai_refine_notes_error',
+						id: 'wpai_refine_notes_error',
 						isDismissible: true,
 					}
 				);
@@ -384,7 +384,7 @@ export function useRefineNotes(): {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
-					id: 'ai_refine_notes_error',
+					id: 'wpai_refine_notes_error',
 					isDismissible: true,
 				}
 			);

@@ -1,5 +1,5 @@
 /**
- * AI Refine Notes plugin component.
+ * Refine Notes plugin component.
  */
 
 /**

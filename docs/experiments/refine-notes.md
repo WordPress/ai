@@ -1,8 +1,8 @@
-# AI Refine from Notes
+# Refine from Notes
 
 ## Summary
 
-The AI Refine from Notes experiment enables users to automatically apply pending editorial feedback/notes to their WordPress post content using AI. Clicking "Refine from Notes" in the post sidebar triggers the AI to contextually examine all blocks with pending Notes and modify the text according to the provided suggestions.
+The Refine from Notes experiment enables users to automatically apply pending editorial feedback/notes to their WordPress post content using AI. Clicking "Refine from Notes" in the post sidebar triggers the AI to contextually examine all blocks with pending Notes and modify the text according to the provided suggestions.
 
 ## Overview
 

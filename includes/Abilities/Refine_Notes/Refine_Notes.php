@@ -1,6 +1,6 @@
 <?php
 /**
- * AI Refine from Notes WordPress Ability implementation.
+ * Refine from Notes WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * AI Refine from Notes WordPress Ability.
+ * Refine from Notes WordPress Ability.
  *
  * Receives block content and active notes, then returns the revised block content.
  *

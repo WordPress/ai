@@ -1,5 +1,5 @@
 /**
- * AI Refine Notes Experiment.
+ * Refine Notes Experiment.
  */
 
 /**

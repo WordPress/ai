@@ -15,7 +15,7 @@ import {
 
 const EXPERIMENT_LABEL = 'Refine from Notes';
 
-test.describe( 'AI Refine from Notes Experiment', () => {
+test.describe( 'Refine from Notes Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
@@ -450,7 +450,7 @@ test.describe( 'AI Refine from Notes Experiment', () => {
 			const notices = window.wp.data
 				.select( 'core/notices' )
 				.getNotices();
-			return notices.find( ( n ) => n.id === 'ai_refine_notes_error' );
+			return notices.find( ( n ) => n.id === 'wpai_refine_notes_error' );
 		} );
 		expect( errorNotice ).toBeDefined();
 		expect( errorNotice.status ).toBe( 'error' );
