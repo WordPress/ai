@@ -2,17 +2,12 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import {
-	Button,
-	CheckboxControl,
-	Notice,
-	Spinner,
-} from '@wordpress/components';
+import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
-import { useSelect, useDispatch } from '@wordpress/data';
+import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { useCallback, useMemo, useState } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 
@@ -30,12 +25,22 @@ interface FeatureGroupData {
 	description: string;
 }
 
+interface SettingsFieldData {
+	id: string;
+	label: string;
+	type: string;
+	default?: unknown;
+	elements?: Array< { value: string; label: string } >;
+	isValid?: Record< string, number >;
+}
+
 interface FeatureData {
 	id: string;
 	settingName: string;
 	label: string;
 	description: string;
 	category: string;
+	settingsFields: SettingsFieldData[];
 }
 
 interface PageData {
@@ -48,6 +53,7 @@ interface PageData {
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 const GLOBAL_FIELD_ID = 'wpai_features_enabled';
+const noop = () => {};
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;
@@ -59,6 +65,15 @@ function toStringValue( value: unknown ): string {
 
 function isDefined< T >( value: T | null | undefined ): value is T {
 	return value !== null && value !== undefined;
+}
+
+function isSettingsField( value: unknown ): value is SettingsFieldData {
+	if ( ! isRecord( value ) ) {
+		return false;
+	}
+	// eslint-disable-next-line dot-notation
+	const id = value[ 'id' ];
+	return typeof id === 'string' && id !== '';
 }
 
 function parseFeatureGroup( value: unknown ): FeatureGroupData | null {
@@ -94,12 +109,17 @@ function parseFeature( value: unknown ): FeatureData | null {
 		toStringValue( feature.id ) ||
 		getFeatureIdFromSettingName( settingName );
 
+	const rawFields = Array.isArray( feature.settingsFields )
+		? feature.settingsFields
+		: [];
+
 	return {
 		id,
 		settingName,
 		label: toStringValue( feature.label ) || getDefaultLabel( id ),
 		description: toStringValue( feature.description ),
 		category: toStringValue( feature.category ) || 'other',
+		settingsFields: ( rawFields as unknown[] ).filter( isSettingsField ),
 	};
 }
 
@@ -188,61 +208,233 @@ const GLOBAL_FIELD: Field< AISettings > = {
 	id: GLOBAL_FIELD_ID,
 	label: __( 'Enable AI', 'ai' ),
 	type: 'boolean',
+	Edit: 'toggle',
 };
 
-function DisabledCheckbox( {
-	field,
-	data,
-}: DataFormControlProps< AISettings > ) {
+function buildToggleMessage(
+	edits: Record< string, unknown >,
+	featureDefinitions: FeatureData[]
+): string {
+	const entry = Object.entries( edits )[ 0 ];
+	if ( ! entry ) {
+		return __( 'Settings saved.', 'ai' );
+	}
+	if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
+		return entry[ 1 ]
+			? __( 'AI enabled.', 'ai' )
+			: __( 'AI disabled.', 'ai' );
+	}
+	const feature = featureDefinitions.find(
+		( f ) => f.settingName === entry[ 0 ]
+	);
+	const label = feature?.label ?? entry[ 0 ];
+	return entry[ 1 ]
+		? // translators: %s: Feature label.
+		  sprintf( __( '%s enabled.', 'ai' ), label )
+		: // translators: %s: Feature label.
+		  sprintf( __( '%s disabled.', 'ai' ), label );
+}
+
+function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	return (
-		<CheckboxControl
+		<ToggleControl
 			__nextHasNoMarginBottom
 			label={ field.label }
 			help={ field.description }
 			checked={ !! field.getValue( { item: data } ) }
-			// No-op handler required to satisfy React's controlled-component warning; the checkbox is disabled.
-			onChange={ () => {} }
+			// No-op handler required to satisfy React's controlled-component warning; the toggle is disabled.
+			onChange={ noop }
 			disabled
 		/>
 	);
 }
 
-function AISettingsPage() {
-	const { siteSettings, hasEdits, isSaving, isLoading } = useSelect(
-		( select ) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
-			const store: any = select( coreStore );
-			return {
-				siteSettings: store.getEditedEntityRecord( 'root', 'site' ) as
-					| Record< string, unknown >
-					| undefined,
-				hasEdits: store.hasEditsForEntityRecord(
-					'root',
-					'site'
-				) as boolean,
-				isSaving: store.isSavingEntityRecord(
-					'root',
-					'site'
-				) as boolean,
-				isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
-					'root',
-					'site',
-				] ) as boolean,
-			};
-		},
-		[]
+function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
+	const fieldIds = useMemo(
+		() => feature.settingsFields.map( ( f ) => f.id ),
+		[ feature.settingsFields ]
 	);
 
-	const { editEntityRecord, saveEditedEntityRecord } =
-		useDispatch( coreStore );
+	const { editedRecord, nonTransientEdits } = useSelect( ( select ) => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
+		const store: any = select( coreStore );
+		return {
+			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
+				| Record< string, unknown >
+				| undefined,
+			nonTransientEdits: ( store.getEntityRecordNonTransientEdits(
+				'root',
+				'site'
+			) ?? {} ) as Record< string, unknown >,
+		};
+	}, [] );
+
+	const [ isSaving, setIsSaving ] = useState( false );
+
+	const isDirty = useMemo(
+		() => fieldIds.some( ( id ) => id in nonTransientEdits ),
+		[ fieldIds, nonTransientEdits ]
+	);
+
+	const { editEntityRecord } = useDispatch( coreStore );
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
+	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
+		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
+
+	const data = useMemo( () => {
+		const base: Record< string, unknown > = {};
+		for ( const field of feature.settingsFields ) {
+			base[ field.id ] = editedRecord?.[ field.id ] ?? field.default;
+		}
+		return base;
+	}, [ feature.settingsFields, editedRecord ] );
+
+	const fields = useMemo< Field< Record< string, unknown > >[] >(
+		() =>
+			feature.settingsFields.map(
+				( { default: _, ...fieldProps } ) =>
+					fieldProps as Field< Record< string, unknown > >
+			),
+		[ feature.settingsFields ]
+	);
+
+	const form = useMemo< Form >(
+		() => ( {
+			fields: feature.settingsFields.map( ( f ) => f.id ),
+		} ),
+		[ feature.settingsFields ]
+	);
+
+	const handleChange = useCallback(
+		( edits: Record< string, unknown > ) => {
+			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
+			editEntityRecord( 'root', 'site', undefined, edits );
+		},
+		[ editEntityRecord ]
+	);
+
+	const handleSave = useCallback( async () => {
+		setIsSaving( true );
+		try {
+			await saveSpecifiedEdits( 'root', 'site', undefined, fieldIds, {
+				throwOnError: true,
+			} );
+			createSuccessNotice(
+				sprintf(
+					// translators: %s: Feature label.
+					__( '%s settings saved.', 'ai' ),
+					feature.label
+				),
+				{ type: 'snackbar' }
+			);
+		} catch {
+			// Edits remain in the store — user can retry or adjust values.
+			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		} finally {
+			setIsSaving( false );
+		}
+	}, [
+		saveSpecifiedEdits,
+		fieldIds,
+		createSuccessNotice,
+		createErrorNotice,
+		feature.label,
+	] );
+
+	return (
+		<div className="ai-feature-settings-form">
+			<DataForm< Record< string, unknown > >
+				data={ data }
+				fields={ fields }
+				form={ form }
+				onChange={ handleChange }
+			/>
+			{ isDirty && (
+				<div className="ai-feature-settings-form__actions">
+					<Button
+						variant="primary"
+						onClick={ handleSave }
+						isBusy={ isSaving }
+						disabled={ isSaving }
+						size="compact"
+						aria-label={ sprintf(
+							// translators: %s: Feature label.
+							__( 'Save %s settings', 'ai' ),
+							feature.label
+						) }
+					>
+						{ __( 'Save', 'ai' ) }
+					</Button>
+				</div>
+			) }
+		</div>
+	);
+}
+
+const FEATURES_BY_SETTING = new Map(
+	PAGE_DATA.features
+		.filter( ( f ) => f.settingsFields.length > 0 )
+		.map( ( f ) => [ f.settingName, f ] as const )
+);
+
+function FeatureToggleWithSettings( {
+	field,
+	data,
+	onChange,
+}: DataFormControlProps< AISettings > ) {
+	const feature = FEATURES_BY_SETTING.get( field.id );
+	const checked = !! field.getValue( { item: data } );
+
+	return (
+		<div className="ai-feature-toggle-with-settings">
+			<ToggleControl
+				__nextHasNoMarginBottom
+				label={ field.label }
+				help={ field.description }
+				checked={ checked }
+				onChange={ ( value ) => {
+					onChange( { [ field.id ]: value } );
+				} }
+			/>
+			{ checked && feature && (
+				<InlineFeatureSettings feature={ feature } />
+			) }
+		</div>
+	);
+}
+
+function AISettingsPage() {
+	const { editedRecord, isLoading } = useSelect( ( select ) => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
+		const store: any = select( coreStore );
+		return {
+			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
+				| Record< string, unknown >
+				| undefined,
+			isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
+				'root',
+				'site',
+			] ) as boolean,
+		};
+	}, [] );
+
+	const { editEntityRecord } = useDispatch( coreStore );
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
+	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
+		useDispatch( coreStore ) as any;
+	const { createSuccessNotice, createErrorNotice } =
+		useDispatch( noticesStore );
+	const registry = useRegistry();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		const sourceFeatures =
 			PAGE_DATA.features.length > 0
 				? PAGE_DATA.features
-				: Object.keys( siteSettings ?? {} )
+				: Object.keys( editedRecord ?? {} )
 						.filter( ( key ) =>
 							FEATURE_SETTING_PATTERN.test( key )
 						)
@@ -256,6 +448,7 @@ function AISettingsPage() {
 								label: getDefaultLabel( id ),
 								description: '',
 								category: 'other',
+								settingsFields: [],
 							};
 						} );
 
@@ -271,7 +464,7 @@ function AISettingsPage() {
 		}
 
 		return uniqueFeatures;
-	}, [ siteSettings ] );
+	}, [ editedRecord ] );
 
 	const featureGroups = useMemo< FeatureGroupData[] >(
 		() =>
@@ -294,25 +487,34 @@ function AISettingsPage() {
 	const data: AISettings = useMemo( () => {
 		const aiSettings: AISettings = {};
 		for ( const key of aiSettingKeys ) {
-			aiSettings[ key ] = Boolean( siteSettings?.[ key ] ?? false );
+			aiSettings[ key ] = Boolean( editedRecord?.[ key ] ?? false );
 		}
 		return aiSettings;
-	}, [ aiSettingKeys, siteSettings ] );
+	}, [ aiSettingKeys, editedRecord ] );
 
 	const globalEnabled = data[ GLOBAL_FIELD.id ];
 
 	const fields = useMemo< Field< AISettings >[] >(
 		() => [
 			GLOBAL_FIELD,
-			...featureDefinitions.map( ( feature ) => ( {
-				id: feature.settingName,
-				label: feature.label,
-				description: feature.description,
-				type: 'boolean' as const,
-				Edit: globalEnabled
-					? ( 'checkbox' as const )
-					: DisabledCheckbox,
-			} ) ),
+			...featureDefinitions.map( ( feature ) => {
+				const baseField: Field< AISettings > = {
+					id: feature.settingName,
+					label: feature.label,
+					description: feature.description,
+					type: 'boolean' as const,
+				};
+
+				if ( ! globalEnabled ) {
+					baseField.Edit = DisabledToggle;
+				} else if ( feature.settingsFields.length > 0 ) {
+					baseField.Edit = FeatureToggleWithSettings;
+				} else {
+					baseField.Edit = 'toggle' as const;
+				}
+
+				return baseField;
+			} ),
 		],
 		[ featureDefinitions, globalEnabled ]
 	);
@@ -392,26 +594,48 @@ function AISettingsPage() {
 	}, [ featureDefinitions, featureGroups ] );
 
 	const handleChange = useCallback(
-		( edits: Record< string, unknown > ) => {
+		async ( edits: Record< string, unknown > ) => {
+			const keys = Object.keys( edits );
+
+			// Optimistic update — the UI reflects the new value immediately.
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
 			editEntityRecord( 'root', 'site', undefined, edits );
-		},
-		[ editEntityRecord ]
-	);
 
-	const handleSave = useCallback( async () => {
-		try {
-			// @ts-expect-error -- core-data types don't expose saveEditedEntityRecord for 'root'/'site' args.
-			await saveEditedEntityRecord( 'root', 'site' );
-			createSuccessNotice( __( 'Settings saved.', 'ai' ), {
-				type: 'snackbar',
-			} );
-		} catch {
-			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
-				type: 'snackbar',
-			} );
-		}
-	}, [ saveEditedEntityRecord, createSuccessNotice, createErrorNotice ] );
+			const message = buildToggleMessage( edits, featureDefinitions );
+
+			try {
+				await saveSpecifiedEdits( 'root', 'site', undefined, keys, {
+					throwOnError: true,
+				} );
+				createSuccessNotice( message, { type: 'snackbar' } );
+			} catch {
+				// Revert only the toggled keys to their server-side values.
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DataRegistry typing doesn't expose .select(); core-data selectors aren't fully typed for 'root'/'site' entity args.
+				const serverRecord = ( registry as any )
+					.select( coreStore )
+					.getEntityRecord( 'root', 'site' ) as
+					| Record< string, unknown >
+					| undefined;
+				const revert: Record< string, unknown > = {};
+				for ( const key of keys ) {
+					revert[ key ] = serverRecord?.[ key ];
+				}
+				// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
+				editEntityRecord( 'root', 'site', undefined, revert );
+				createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
+					type: 'snackbar',
+				} );
+			}
+		},
+		[
+			editEntityRecord,
+			saveSpecifiedEdits,
+			createSuccessNotice,
+			createErrorNotice,
+			featureDefinitions,
+			registry,
+		]
+	);
 
 	return (
 		<Page
@@ -471,25 +695,12 @@ function AISettingsPage() {
 				{ isLoading ? (
 					<Spinner />
 				) : (
-					<>
-						<DataForm< AISettings >
-							data={ data }
-							fields={ fields }
-							form={ form }
-							onChange={ handleChange }
-						/>
-						<div className="ai-settings-page__save">
-							<Button
-								variant="primary"
-								onClick={ handleSave }
-								isBusy={ isSaving }
-								disabled={ ! hasEdits || isSaving }
-								aria-busy={ isSaving }
-							>
-								{ __( 'Save Changes', 'ai' ) }
-							</Button>
-						</div>
-					</>
+					<DataForm< AISettings >
+						data={ data }
+						fields={ fields }
+						form={ form }
+						onChange={ handleChange }
+					/>
 				) }
 			</div>
 		</Page>

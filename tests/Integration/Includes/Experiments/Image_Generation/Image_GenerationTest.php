@@ -80,11 +80,6 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.3.0
 	 */
 	public function test_experiment_registers_abilities() {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
-
 		// Expect warnings about already registered abilities from other tests.
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
 
