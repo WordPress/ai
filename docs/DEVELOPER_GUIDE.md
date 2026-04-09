@@ -302,16 +302,16 @@ Follow the steps in [Creating a New Experiment](#creating-a-new-experiment) abov
 
 ### 3. Write Tests
 
-Create unit tests in `tests/Unit/` for your experiment:
+Add or update tests for your experiment in the existing integration suite under `tests/Integration/`:
 
 ```php
 <?php
-namespace WordPress\AI\Tests\Unit\Experiments\My_Experiment;
+namespace WordPress\AI\Tests\Integration\Includes\Experiments\My_Experiment;
 
 use WordPress\AI\Experiments\My_Experiment\My_Experiment;
-use PHPUnit\Framework\TestCase;
+use WP_UnitTestCase;
 
-class My_Experiment_Test extends TestCase {
+class My_Experiment_Test extends WP_UnitTestCase {
   public function test_experiment_metadata() {
     $this->assertEquals( 'my-experiment', My_Experiment::get_id() );
 
@@ -326,7 +326,7 @@ class My_Experiment_Test extends TestCase {
 Before submitting, ensure all quality checks pass. See [CONTRIBUTING.md](../CONTRIBUTING.md) for the complete list of required checks including:
 - Coding standards validation
 - Static analysis
-- Unit tests
+- Integration tests
 
 ### 5. Submit Pull Request
 

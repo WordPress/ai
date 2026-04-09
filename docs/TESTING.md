@@ -21,27 +21,7 @@ This document outlines the testing philosophy and strategy for the AI plugin, ad
 
 **Purpose**: Test pure functions and business logic in isolation, without loading the WordPress environment.
 
-**Location**: `tests/Unit/`
-
-**Example Test Suite**: `tests/Unit/Includes/FeatureCollectionTest.php`
-
-```php
-class FeatureCollectionTest extends TestCase {
-
-    /**
-     * Test that a feature can be registered.
-     */
-    public function test_register_feature() {
-        $collection = new Feature_Collection();
-        $feature    = new Mock_Feature( 'test-feature' );
-
-        $this->assertTrue( $collection->register_feature( $feature ) );
-        $this->assertTrue( $collection->has_feature( 'test-feature' ) );
-    }
-
-    // ... other unit tests for Feature_Collection ...
-}
-```
+**Status**: The current repository does not include a `tests/Unit/` suite yet. When introducing isolated logic that can be tested without WordPress, add unit tests in a dedicated `tests/Unit/` directory and update the PHPUnit configuration accordingly.
 
 ### 2. Integration Tests (WordPress + Plugin Interactions)
 
@@ -49,22 +29,17 @@ class FeatureCollectionTest extends TestCase {
 
 **Location**: `tests/Integration/`
 
-**Example Test Suite**: `tests/Integration/Includes/Feature_RegistryTest.php`
+**Example Test Suite**: `tests/Integration/Includes/BootstrapTest.php`
 
 ```php
-class Feature_Registry_Test extends WP_UnitTestCase {
+class BootstrapTest extends WP_UnitTestCase {
 
     /**
-     * Test that registry returns singleton.
+     * Test that the plugin bootstrap file exists.
      */
-    public function test_instance_returns_singleton() {
-        $instance1 = Feature_Registry::instance();
-        $instance2 = Feature_Registry::instance();
-
-        $this->assertSame( $instance1, $instance2, 'Feature_Registry should return the same singleton instance' );
+    public function test_bootstrap_file_exists() {
+        $this->assertFileExists( dirname( __DIR__, 3 ) . '/includes/bootstrap.php' );
     }
-
-    // ... other integration tests for Feature_Registry ...
 }
 ```
 
@@ -89,18 +64,18 @@ While specific examples are provided in the "Post Duplication Feature" strategy,
 composer test
 
 # Run static analysis (fast, focuses on type safety)
-composer stan
+composer phpstan
 
-# Run only unit tests (fast - run frequently)
-vendor/bin/phpunit --testsuite "AI Plugin Unit Tests"
+# Run the current PHPUnit suite defined in phpunit.xml.dist
+vendor/bin/phpunit -c phpunit.xml.dist
 
-# Run only integration tests (slower - run before commit)
-vendor/bin/phpunit --testsuite "AI Plugin Integration Tests"
+# Run the current integration suite directly
+vendor/bin/phpunit -c phpunit.xml.dist --testsuite integration
 ```
 
 ### CI/CD Pipeline
 
-Automated testing in a CI/CD pipeline would involve running both unit and integration tests on every push and pull request, potentially across a matrix of PHP and WordPress versions.
+Automated testing in CI should run the currently configured integration and end-to-end suites on every push and pull request. If a dedicated unit test suite is introduced later, it should be added to the pipeline as well.
 
 ---
 
