@@ -52,13 +52,22 @@ final class Loader {
 	}
 
 	/**
+	 * Initializes the Loader by registering and initializing features.
+	 * @since x.y.z
+	 */
+	public function init(): void {
+		$this->register_features();
+		$this->initialize_features();
+	}
+
+	/**
 	 * Registers features.
 	 *
 	 * Registers the default built-in features and fires the 'wpai_register_features' action hook for third-party usage.
 	 *
 	 * @since 0.6.0
 	 */
-	public function register_features(): void {
+	private function register_features(): void {
 		$features = $this->get_default_features();
 
 		foreach ( $features as $feature ) {
@@ -159,7 +168,7 @@ final class Loader {
 	 *
 	 * @since 0.6.0
 	 */
-	public function initialize_features(): void {
+	private function initialize_features(): void {
 		if ( $this->initialized ) {
 			return;
 		}
@@ -196,16 +205,5 @@ final class Loader {
 		do_action( 'wpai_features_initialized' );
 
 		$this->initialized = true;
-	}
-
-	/**
-	 * Checks if features have been initialized.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @return bool True if initialized, false otherwise.
-	 */
-	public function is_initialized(): bool {
-		return $this->initialized;
 	}
 }

@@ -39,7 +39,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'title-generation' );
 		$this->assertInstanceOf( Title_Generation::class, $experiment, 'Title generation experiment should be registered in the registry.' );

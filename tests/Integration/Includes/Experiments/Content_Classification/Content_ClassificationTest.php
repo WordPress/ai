@@ -39,7 +39,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'content-classification' );
 		$this->assertInstanceOf( Content_Classification::class, $experiment, 'Content classification experiment should be registered in the registry.' );
