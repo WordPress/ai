@@ -48,7 +48,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Go to the Media Library.
-		await admin.visitAdminPage( 'upload.php' );
+		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
@@ -244,7 +244,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Go to the Media Library.
-		await admin.visitAdminPage( 'upload.php' );
+		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
@@ -318,7 +318,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Go to the Media Library.
-		await admin.visitAdminPage( 'upload.php' );
+		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
