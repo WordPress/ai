@@ -228,11 +228,6 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$alt_text = trim( $result );
 		$alt_text = trim( $alt_text, '"\'.' );
 
-		// Truncate if too long.
-		if ( mb_strlen( $alt_text, 'UTF-8' ) > self::MAX_ALT_TEXT_LENGTH ) {
-			$alt_text = mb_substr( $alt_text, 0, self::MAX_ALT_TEXT_LENGTH - 3, 'UTF-8' ) . '...';
-		}
-
 		return $alt_text;
 	}
 
