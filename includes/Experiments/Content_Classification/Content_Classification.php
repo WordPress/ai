@@ -57,6 +57,24 @@ class Content_Classification extends Abstract_Feature {
 	public const DEFAULT_MAX_SUGGESTIONS = 5;
 
 	/**
+	 * The minimum allowed number of suggestions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const MIN_SUGGESTIONS = 1;
+
+	/**
+	 * The maximum allowed number of suggestions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const MAX_SUGGESTIONS = 10;
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -153,6 +171,12 @@ class Content_Classification extends Abstract_Feature {
 				'type'              => 'string',
 				'default'           => self::STRATEGY_EXISTING_ONLY,
 				'sanitize_callback' => array( $this, 'sanitize_strategy' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'string',
+						'enum' => array( self::STRATEGY_EXISTING_ONLY, self::STRATEGY_ALLOW_NEW ),
+					),
+				),
 			)
 		);
 
@@ -163,65 +187,49 @@ class Content_Classification extends Abstract_Feature {
 				'type'              => 'integer',
 				'default'           => self::DEFAULT_MAX_SUGGESTIONS,
 				'sanitize_callback' => array( $this, 'sanitize_max_suggestions' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'    => 'integer',
+						'minimum' => self::MIN_SUGGESTIONS,
+						'maximum' => self::MAX_SUGGESTIONS,
+					),
+				),
 			)
 		);
 	}
 
 	/**
-	 * Renders experiment-specific settings fields.
-	 *
-	 * @since x.x.x
+	 * {@inheritDoc}
 	 */
-	public function render_settings_fields(): void {
-		$strategy_option        = $this->get_field_option_name( 'strategy' );
-		$max_suggestions_option = $this->get_field_option_name( 'max_suggestions' );
-		$current_strategy       = get_option( $this->get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY );
-		$current_max            = get_option( $this->get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
-		?>
-		<fieldset class="ai-experiments__item-fields">
-			<legend class="screen-reader-text"><?php esc_html_e( 'Content Classification Settings', 'ai' ); ?></legend>
-			<table class="ai-experiments__settings-table" role="presentation">
-				<tr>
-					<td>
-						<label for="<?php echo esc_attr( $strategy_option ); ?>">
-							<?php esc_html_e( 'Taxonomy strategy:', 'ai' ); ?>
-						</label>
-					</td>
-					<td>
-						<select
-							id="<?php echo esc_attr( $strategy_option ); ?>"
-							name="<?php echo esc_attr( $strategy_option ); ?>"
-						>
-							<option value="<?php echo esc_attr( self::STRATEGY_EXISTING_ONLY ); ?>" <?php selected( $current_strategy, self::STRATEGY_EXISTING_ONLY ); ?>>
-								<?php esc_html_e( 'Only suggest existing terms', 'ai' ); ?>
-							</option>
-							<option value="<?php echo esc_attr( self::STRATEGY_ALLOW_NEW ); ?>" <?php selected( $current_strategy, self::STRATEGY_ALLOW_NEW ); ?>>
-								<?php esc_html_e( 'Suggest new terms based on context', 'ai' ); ?>
-							</option>
-						</select>
-					</td>
-				</tr>
-				<tr>
-					<td>
-						<label for="<?php echo esc_attr( $max_suggestions_option ); ?>">
-							<?php esc_html_e( 'Maximum suggestions:', 'ai' ); ?>
-						</label>
-					</td>
-					<td>
-						<input
-							type="number"
-							id="<?php echo esc_attr( $max_suggestions_option ); ?>"
-							name="<?php echo esc_attr( $max_suggestions_option ); ?>"
-							value="<?php echo esc_attr( (string) $current_max ); ?>"
-							min="1"
-							max="10"
-							step="1"
-						/>
-					</td>
-				</tr>
-			</table>
-		</fieldset>
-		<?php
+	public function get_settings_fields(): array {
+		return array(
+			array(
+				'id'       => 'strategy',
+				'label'    => __( 'Taxonomy strategy', 'ai' ),
+				'type'     => 'text',
+				'default'  => self::STRATEGY_EXISTING_ONLY,
+				'elements' => array(
+					array(
+						'value' => self::STRATEGY_EXISTING_ONLY,
+						'label' => __( 'Only suggest existing terms', 'ai' ),
+					),
+					array(
+						'value' => self::STRATEGY_ALLOW_NEW,
+						'label' => __( 'Suggest new terms based on context', 'ai' ),
+					),
+				),
+			),
+			array(
+				'id'      => 'max_suggestions',
+				'label'   => __( 'Maximum suggestions', 'ai' ),
+				'type'    => 'integer',
+				'default' => self::DEFAULT_MAX_SUGGESTIONS,
+				'isValid' => array(
+					'min' => self::MIN_SUGGESTIONS,
+					'max' => self::MAX_SUGGESTIONS,
+				),
+			),
+		);
 	}
 
 	/**
@@ -249,7 +257,7 @@ class Content_Classification extends Abstract_Feature {
 	public function sanitize_max_suggestions( $value ): int {
 		$value = absint( $value );
 
-		return max( 1, min( 10, $value ) );
+		return max( self::MIN_SUGGESTIONS, min( self::MAX_SUGGESTIONS, $value ) );
 	}
 
 	/**

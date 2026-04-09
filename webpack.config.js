@@ -53,6 +53,11 @@ module.exports = {
 			'src/experiments/image-generation',
 			'index.ts'
 		),
+		'experiments/meta-description': path.resolve(
+			process.cwd(),
+			'src/experiments/meta-description',
+			'index.tsx'
+		),
 		'experiments/review-notes': path.resolve(
 			process.cwd(),
 			'src/experiments/review-notes',
@@ -77,6 +82,11 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/alt-text-generation',
 			'media.ts'
+		),
+		'experiments/alt-text-generation-bulk': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'bulk.ts'
 		),
 	},
 

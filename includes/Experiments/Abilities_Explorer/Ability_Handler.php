@@ -35,13 +35,7 @@ class Ability_Handler {
 	 * @return array<array<string,mixed>> Array of abilities.
 	 */
 	public static function get_all_abilities(): array {
-		if ( ! function_exists( 'wp_get_abilities' ) ) {
-			return array();
-		}
-
-		$all_abilities = wp_get_abilities();
-
-		return self::format_abilities( $all_abilities );
+		return self::format_abilities( wp_get_abilities() );
 	}
 
 	/**
@@ -53,10 +47,6 @@ class Ability_Handler {
 	 * @return array<string,mixed>|null Ability data or null if not found.
 	 */
 	public static function get_ability( string $slug ): ?array {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			return null;
-		}
-
 		$ability = wp_get_ability( $slug );
 
 		if ( ! $ability ) {
@@ -132,7 +122,7 @@ class Ability_Handler {
 		$category_slug = $ability->get_category();
 
 		$category_label = esc_html__( 'Other', 'ai' );
-		if ( ! empty( $category_slug ) && function_exists( 'wp_get_ability_category' ) ) {
+		if ( ! empty( $category_slug ) ) {
 			$category_obj = wp_get_ability_category( $category_slug );
 			if ( $category_obj ) {
 				$category_label = $category_obj->get_label();
@@ -240,13 +230,6 @@ class Ability_Handler {
 	 * }
 	 */
 	public static function invoke_ability( string $slug, array $input = array() ): array {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			return array(
-				'success' => false,
-				'error'   => 'Abilities API not available',
-			);
-		}
-
 		$ability = wp_get_ability( $slug );
 
 		if ( ! $ability ) {
