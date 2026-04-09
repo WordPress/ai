@@ -8,7 +8,6 @@
 import {
 	Button,
 	TextareaControl,
-	Spinner,
 	Notice,
 } from '@wordpress/components';
 import { InspectorControls } from '@wordpress/block-editor';
@@ -216,7 +215,7 @@ export function AltTextControls( {
 				{ /* Generate button */ }
 				{ ! hasGeneratedAlt && ! isDecorative && (
 					<Button
-					    className="ai-summarization-plugin-button"
+						className="ai-summarization-plugin-button"
 						variant="secondary"
 						icon={ update }
 						onClick={ handleGenerate }
@@ -224,8 +223,9 @@ export function AltTextControls( {
 						isBusy={ isGenerating }
 						style={ { width: '100%', justifyContent: 'center' } }
 					>
-						{ isGenerating ? __( 'Generating...', 'ai' ) : getButtonLabel( !! hasExistingAlt ) }
-						
+						{ isGenerating
+							? __( 'Generating…', 'ai' )
+							: getButtonLabel(!!hasExistingAlt)}
 					</Button>
 				) }
 			</div>
