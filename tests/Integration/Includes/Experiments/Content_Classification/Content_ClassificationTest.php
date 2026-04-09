@@ -258,4 +258,71 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 1, $experiment->get_max_suggestions(), 'Filtered value of 0 should be clamped to 1' );
 	}
+
+	/**
+	 * Test that get_settings_fields() returns strategy and max_suggestions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_settings_fields_returns_expected_fields() {
+		$experiment = new Content_Classification();
+		$fields     = $experiment->get_settings_fields();
+
+		$this->assertCount( 2, $fields, 'Should declare two custom settings fields' );
+
+		// Verify strategy field.
+		$this->assertSame( 'strategy', $fields[0]['id'] );
+		$this->assertSame( 'text', $fields[0]['type'] );
+		$this->assertSame( 'existing_only', $fields[0]['default'] );
+		$this->assertCount( 2, $fields[0]['elements'], 'Strategy field should have two element options' );
+		$this->assertSame( 'existing_only', $fields[0]['elements'][0]['value'] );
+		$this->assertSame( 'allow_new', $fields[0]['elements'][1]['value'] );
+
+		// Verify max_suggestions field.
+		$this->assertSame( 'max_suggestions', $fields[1]['id'] );
+		$this->assertSame( 'integer', $fields[1]['type'] );
+		$this->assertSame( 5, $fields[1]['default'] );
+	}
+
+	/**
+	 * Test that get_settings_fields_metadata() resolves IDs to full option names.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_settings_fields_metadata_resolves_ids() {
+		$experiment = new Content_Classification();
+		$fields     = $experiment->get_settings_fields_metadata();
+
+		$this->assertSame(
+			'wpai_feature_content-classification_field_strategy',
+			$fields[0]['id'],
+			'Strategy field id should be resolved to full option name'
+		);
+		$this->assertSame(
+			'wpai_feature_content-classification_field_max_suggestions',
+			$fields[1]['id'],
+			'Max suggestions field id should be resolved to full option name'
+		);
+	}
+
+	/**
+	 * Test that register_settings() registers options with show_in_rest.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_settings_has_show_in_rest() {
+		$experiment = new Content_Classification();
+		$experiment->register_settings();
+
+		$registered = get_registered_settings();
+
+		$strategy_key        = 'wpai_feature_content-classification_field_strategy';
+		$max_suggestions_key = 'wpai_feature_content-classification_field_max_suggestions';
+
+		$this->assertArrayHasKey( $strategy_key, $registered, 'Strategy setting should be registered' );
+		$this->assertArrayHasKey( $max_suggestions_key, $registered, 'Max suggestions setting should be registered' );
+
+		$this->assertNotEmpty( $registered[ $strategy_key ]['show_in_rest'], 'Strategy should have show_in_rest' );
+		$this->assertNotEmpty( $registered[ $max_suggestions_key ]['show_in_rest'], 'Max suggestions should have show_in_rest' );
+	}
 }
