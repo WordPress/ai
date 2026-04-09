@@ -76,7 +76,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that register() adds the expected hooks.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_register_adds_hooks() {
 		$experiment = new Title_Generation();
@@ -88,7 +88,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that enqueue_assets() returns early for non-post screens.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_enqueue_assets_returns_early_for_non_post_screens() {
 		$experiment = new Title_Generation();
@@ -102,7 +102,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is not enabled when globally disabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_experiment_not_enabled_when_globally_disabled() {
 		update_option( 'wpai_features_enabled', false );
@@ -115,7 +115,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is not enabled when individually disabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_experiment_not_enabled_when_individually_disabled() {
 		update_option( 'wpai_feature_title-generation_enabled', false );

@@ -125,6 +125,64 @@ class Stub_No_Category_Feature extends Abstract_Feature {
 }
 
 /**
+ * Stub feature with custom settings fields.
+ */
+class Stub_Feature_With_Settings extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'stub-with-settings';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Stub With Settings',
+			'description' => 'A feature with custom settings.',
+			'category'    => Experiment_Category::EDITOR,
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register(): void {}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_settings_fields(): array {
+		return array(
+			array(
+				'id'       => 'mode',
+				'label'    => 'Mode',
+				'type'     => 'text',
+				'default'  => 'auto',
+				'elements' => array(
+					array(
+						'value' => 'auto',
+						'label' => 'Auto',
+					),
+					array(
+						'value' => 'manual',
+						'label' => 'Manual',
+					),
+				),
+			),
+			array(
+				'id'      => 'limit',
+				'label'   => 'Limit',
+				'type'    => 'integer',
+				'default' => 10,
+			),
+		);
+	}
+}
+
+/**
  * Stub feature with HTML in its description.
  */
 class Stub_HTML_Description_Feature extends Abstract_Feature {
@@ -376,5 +434,51 @@ class BootstrapTest extends WP_UnitTestCase {
 		// Should still produce valid output using default groups.
 		$this->assertCount( 1, $result['groups'] );
 		$this->assertSame( 'Editor Experiments', $result['groups'][0]['label'] );
+	}
+
+	/**
+	 * Test that settingsFields are included in feature metadata.
+	 */
+	public function test_feature_with_settings_includes_settings_fields() {
+		$this->registry->register_feature( new Stub_Feature_With_Settings() );
+
+		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+
+		$this->assertCount( 1, $result['features'] );
+		$feature = $result['features'][0];
+
+		$this->assertArrayHasKey( 'settingsFields', $feature, 'Feature metadata should include settingsFields' );
+		$this->assertCount( 2, $feature['settingsFields'], 'Should include two settings fields' );
+
+		// IDs should be resolved to full option names.
+		$this->assertSame(
+			'wpai_feature_stub-with-settings_field_mode',
+			$feature['settingsFields'][0]['id'],
+			'Settings field id should be resolved to full option name'
+		);
+		$this->assertSame(
+			'wpai_feature_stub-with-settings_field_limit',
+			$feature['settingsFields'][1]['id'],
+			'Settings field id should be resolved to full option name'
+		);
+
+		// Other properties should be preserved.
+		$this->assertSame( 'Mode', $feature['settingsFields'][0]['label'] );
+		$this->assertSame( 'text', $feature['settingsFields'][0]['type'] );
+		$this->assertCount( 2, $feature['settingsFields'][0]['elements'] );
+		$this->assertSame( 'integer', $feature['settingsFields'][1]['type'] );
+	}
+
+	/**
+	 * Test that features without settings have empty settingsFields array.
+	 */
+	public function test_feature_without_settings_has_empty_settings_fields() {
+		$this->registry->register_feature( new Stub_Editor_Feature() );
+
+		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+
+		$feature = $result['features'][0];
+		$this->assertArrayHasKey( 'settingsFields', $feature );
+		$this->assertSame( array(), $feature['settingsFields'], 'Feature without custom settings should have empty settingsFields' );
 	}
 }

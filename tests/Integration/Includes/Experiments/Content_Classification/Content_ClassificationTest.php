@@ -16,13 +16,13 @@ use WordPress\AI\Features\Registry;
 /**
  * Content_Classification test case.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -48,7 +48,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -66,7 +66,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Content_Classification();
@@ -80,7 +80,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that experiment settings are registered.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_experiment_settings_registration() {
 		$experiment = new Content_Classification();
@@ -97,7 +97,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that strategy sanitization works correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_sanitize_strategy() {
 		$experiment = new Content_Classification();
@@ -111,7 +111,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that max suggestions sanitization works correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_sanitize_max_suggestions() {
 		$experiment = new Content_Classification();
@@ -126,7 +126,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_strategy() returns the default value.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_strategy_returns_default() {
 		$experiment = new Content_Classification();
@@ -137,7 +137,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_strategy() returns the saved option value.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_strategy_returns_saved_option() {
 		update_option( 'wpai_feature_content-classification_field_strategy', 'allow_new' );
@@ -149,7 +149,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_strategy() is filterable.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_strategy_is_filterable() {
 		$experiment = new Content_Classification();
@@ -167,7 +167,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_strategy() sanitizes filtered value.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_strategy_sanitizes_filtered_value() {
 		$experiment = new Content_Classification();
@@ -185,7 +185,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_max_suggestions() returns the default value.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_max_suggestions_returns_default() {
 		$experiment = new Content_Classification();
@@ -196,7 +196,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_max_suggestions() returns the saved option value.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_max_suggestions_returns_saved_option() {
 		update_option( 'wpai_feature_content-classification_field_max_suggestions', 8 );
@@ -208,7 +208,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_max_suggestions() is filterable.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_max_suggestions_is_filterable() {
 		$experiment = new Content_Classification();
@@ -226,7 +226,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_max_suggestions() sanitizes filtered value that exceeds maximum.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_max_suggestions_sanitizes_filtered_value_above_max() {
 		$experiment = new Content_Classification();
@@ -244,7 +244,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_max_suggestions() sanitizes filtered value below minimum.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_max_suggestions_sanitizes_filtered_value_below_min() {
 		$experiment = new Content_Classification();
@@ -257,5 +257,72 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		);
 
 		$this->assertEquals( 1, $experiment->get_max_suggestions(), 'Filtered value of 0 should be clamped to 1' );
+	}
+
+	/**
+	 * Test that get_settings_fields() returns strategy and max_suggestions.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_settings_fields_returns_expected_fields() {
+		$experiment = new Content_Classification();
+		$fields     = $experiment->get_settings_fields();
+
+		$this->assertCount( 2, $fields, 'Should declare two custom settings fields' );
+
+		// Verify strategy field.
+		$this->assertSame( 'strategy', $fields[0]['id'] );
+		$this->assertSame( 'text', $fields[0]['type'] );
+		$this->assertSame( 'existing_only', $fields[0]['default'] );
+		$this->assertCount( 2, $fields[0]['elements'], 'Strategy field should have two element options' );
+		$this->assertSame( 'existing_only', $fields[0]['elements'][0]['value'] );
+		$this->assertSame( 'allow_new', $fields[0]['elements'][1]['value'] );
+
+		// Verify max_suggestions field.
+		$this->assertSame( 'max_suggestions', $fields[1]['id'] );
+		$this->assertSame( 'integer', $fields[1]['type'] );
+		$this->assertSame( 5, $fields[1]['default'] );
+	}
+
+	/**
+	 * Test that get_settings_fields_metadata() resolves IDs to full option names.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_settings_fields_metadata_resolves_ids() {
+		$experiment = new Content_Classification();
+		$fields     = $experiment->get_settings_fields_metadata();
+
+		$this->assertSame(
+			'wpai_feature_content-classification_field_strategy',
+			$fields[0]['id'],
+			'Strategy field id should be resolved to full option name'
+		);
+		$this->assertSame(
+			'wpai_feature_content-classification_field_max_suggestions',
+			$fields[1]['id'],
+			'Max suggestions field id should be resolved to full option name'
+		);
+	}
+
+	/**
+	 * Test that register_settings() registers options with show_in_rest.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_register_settings_has_show_in_rest() {
+		$experiment = new Content_Classification();
+		$experiment->register_settings();
+
+		$registered = get_registered_settings();
+
+		$strategy_key        = 'wpai_feature_content-classification_field_strategy';
+		$max_suggestions_key = 'wpai_feature_content-classification_field_max_suggestions';
+
+		$this->assertArrayHasKey( $strategy_key, $registered, 'Strategy setting should be registered' );
+		$this->assertArrayHasKey( $max_suggestions_key, $registered, 'Max suggestions setting should be registered' );
+
+		$this->assertNotEmpty( $registered[ $strategy_key ]['show_in_rest'], 'Strategy should have show_in_rest' );
+		$this->assertNotEmpty( $registered[ $max_suggestions_key ]['show_in_rest'], 'Max suggestions should have show_in_rest' );
 	}
 }

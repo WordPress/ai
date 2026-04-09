@@ -256,17 +256,12 @@ class Generate_Image extends Abstract_Ability {
 			}
 		}
 
-		// Return a more specific error if there isn't a model that supports image generation.
-		if ( ! $prompt_builder->is_supported_for_image_generation() ) {
-			$error_message = esc_html__( 'Image generation failed. Please ensure you have a connected provider that supports image generation.', 'ai' );
+		$error_message = esc_html__( 'Image generation failed. Please ensure you have a connected provider that supports image generation.', 'ai' );
 
-			if ( null !== $reference_image ) {
-				$error_message = esc_html__( 'Image refinement failed. Please ensure you have a connected provider that supports image refinement, not just image generation.', 'ai' );
-			}
-
-			return new WP_Error( 'unsupported_model', $error_message );
+		if ( null !== $reference_image ) {
+			$error_message = esc_html__( 'Image refinement failed. Please ensure you have a connected provider that supports image refinement, not just image generation.', 'ai' );
 		}
 
-		return $prompt_builder;
+		return $this->ensure_image_generation_supported( $prompt_builder, $error_message );
 	}
 }
