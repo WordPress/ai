@@ -130,13 +130,16 @@ export default function ContentResizingToolbar( {
 
 	const { blockContent, originalContent } = useSelect(
 		( select ) => {
-			// eslint-disable-next-line dot-notation -- getBlock from store index signature
+			/* eslint-disable dot-notation */
 			const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
 			return {
-				blockContent: ( block?.attributes?.content as string ) ?? '',
+				blockContent:
+					( block?.attributes[ 'content' ] as string ) ?? '',
 				originalContent:
-					( block?.attributes?.aiOriginalContent as string ) ?? '',
+					( block?.attributes[ 'aiOriginalContent' ] as string ) ??
+					'',
 			};
+			/* eslint-enable dot-notation */
 		},
 		[ clientId ]
 	);
