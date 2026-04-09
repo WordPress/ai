@@ -245,12 +245,6 @@ class Generate_Image extends Abstract_Ability {
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
 	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
-		// Inject content guidelines if available.
-		$guidelines = $this->get_guidelines_for_prompt();
-		if ( $guidelines ) {
-			$prompt .= "\n\n" . $guidelines;
-		}
-
 		$request_options = new RequestOptions();
 		$request_options->setTimeout( 90 );
 
@@ -258,6 +252,14 @@ class Generate_Image extends Abstract_Ability {
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() )
 			->using_model_preference( ...get_preferred_image_models() );
+
+		// Inject guidelines as a system instruction to match other abilities.
+		$guidelines = $this->get_guidelines_for_prompt();
+		if ( $guidelines ) {
+			$instruction  = 'The following guidelines represent the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
+			$instruction .= "\n\n" . $guidelines;
+			$prompt_builder->using_system_instruction( $instruction );
+		}
 
 		if ( null !== $reference_image ) {
 			try {
