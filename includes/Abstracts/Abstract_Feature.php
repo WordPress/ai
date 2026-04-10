@@ -69,6 +69,22 @@ abstract class Abstract_Feature implements Feature {
 	private string $stability;
 
 	/**
+	 * The presentation style for the settings UI.
+	 *
+	 * @since x.x.x
+	 * @var string 'toggle' (default) or 'visual-card'.
+	 */
+	protected string $presentation;
+
+	/**
+	 * The image URL for visual-card presentation.
+	 *
+	 * @since x.x.x
+	 * @var string
+	 */
+	protected string $image;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -102,10 +118,12 @@ abstract class Abstract_Feature implements Feature {
 			$metadata['category'] = Feature_Category::OTHER;
 		}
 
-		$this->label       = $metadata['label'];
-		$this->description = $metadata['description'];
-		$this->category    = $metadata['category'];
-		$this->stability   = $metadata['stability'] ?? 'experimental';
+		$this->label        = $metadata['label'];
+		$this->description  = $metadata['description'];
+		$this->category     = $metadata['category'];
+		$this->stability    = $metadata['stability'] ?? 'experimental';
+		$this->presentation = $metadata['presentation'] ?? 'toggle';
+		$this->image        = $metadata['image'] ?? '';
 	}
 
 	/**
@@ -121,6 +139,8 @@ abstract class Abstract_Feature implements Feature {
 	 *  description: string,
 	 *  category?: string,
 	 *  stability?: 'deprecated'|'experimental'|'stable',
+	 *  presentation?: 'toggle'|'visual-card',
+	 *  image?: string,
 	 * } Feature metadata.
 	 */
 	abstract protected function load_metadata(): array;
@@ -199,6 +219,28 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	final public function get_stability(): string {
 		return $this->stability;
+	}
+
+	/**
+	 * Gets the presentation style for the settings UI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The presentation style ('toggle' or 'visual-card').
+	 */
+	public function get_presentation(): string {
+		return $this->presentation;
+	}
+
+	/**
+	 * Gets the image URL for visual-card presentation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The image URL, or empty string if not set.
+	 */
+	public function get_image(): string {
+		return $this->image;
 	}
 
 	/**
