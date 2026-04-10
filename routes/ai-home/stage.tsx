@@ -756,7 +756,9 @@ function AISettingsPage() {
 				type: 'boolean' as const,
 			};
 
-			if ( ! globalEnabled ) {
+			if ( VISUAL_CARD_SETTING_NAMES.has( feature.settingName ) ) {
+				baseField.Edit = VisualCardToggle;
+			} else if ( ! globalEnabled ) {
 				baseField.Edit = DisabledToggle;
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
@@ -771,15 +773,42 @@ function AISettingsPage() {
 	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
 
 	const form = useMemo< Form >( () => {
+		const showcaseChildren: string[] = [];
 		const groupedFields = new Map< string, string[] >();
 		for ( const feature of featureDefinitions ) {
-			const category = feature.category || 'other';
-			const categoryFields = groupedFields.get( category ) ?? [];
-			categoryFields.push( feature.settingName );
-			groupedFields.set( category, categoryFields );
+			if ( VISUAL_CARD_SETTING_NAMES.has( feature.settingName ) ) {
+				showcaseChildren.push( feature.settingName );
+			} else {
+				const category = feature.category || 'other';
+				const categoryFields = groupedFields.get( category ) ?? [];
+				categoryFields.push( feature.settingName );
+				groupedFields.set( category, categoryFields );
+			}
 		}
 
 		const sectionFields: NonNullable< Form[ 'fields' ] > = [];
+
+		// Add showcase section with row layout (2 per row).
+		if ( showcaseChildren.length > 0 ) {
+			const rows: NonNullable< Form[ 'fields' ] > = [];
+			for ( let i = 0; i < showcaseChildren.length; i += 2 ) {
+				rows.push( {
+					id: `showcase-row-${ i }`,
+					layout: { type: 'row' as const },
+					children: showcaseChildren.slice( i, i + 2 ),
+				} );
+			}
+
+			sectionFields.push( {
+				id: 'feature-group-showcase',
+				layout: {
+					type: 'regular',
+					labelPosition: 'none',
+				},
+				children: rows,
+			} );
+		}
+
 		const seenCategories = new Set< string >();
 
 		for ( const group of featureGroups ) {
