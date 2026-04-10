@@ -234,7 +234,7 @@ export default function TitleToolbar( {
 								isBusy={ isRegenerating }
 							>
 								{ isRegenerating
-									? __( 'Regenerating\u2026', 'ai' )
+									? __( 'Regenerating…', 'ai' )
 									: __( 'Re-generate', 'ai' ) }
 							</Button>
 						</FlexItem>
