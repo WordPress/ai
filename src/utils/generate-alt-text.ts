@@ -110,7 +110,7 @@ export async function generateAltText(
 				: content;
 
 		// Prepare the context.
-		params.context = `Full article content, where the image has been replaced with the placeholder ${ IMAGE_PLACEHOLDER }: \n\n${ contentWithPlaceholder }`;
+		params.context = contentWithPlaceholder;
 	}
 
 	if ( imageBlockMetaData ) {

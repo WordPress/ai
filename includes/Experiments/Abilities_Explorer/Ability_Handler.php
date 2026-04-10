@@ -112,7 +112,7 @@ class Ability_Handler {
 	/**
 	 * Get the category for an ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param \WP_Ability $ability Ability object.
 	 * @return string Category for the ability.
@@ -143,7 +143,7 @@ class Ability_Handler {
 		 *       return $category;
 		 *   }, 10, 2 );
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param string $category Resolved category for this ability.
 		 * @param string $slug     The full ability slug, e.g. 'my-plugin/do-thing'.

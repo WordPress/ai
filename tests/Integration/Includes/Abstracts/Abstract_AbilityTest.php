@@ -439,7 +439,7 @@ PHP
 	/**
 	 * Test that wpai_system_instruction filter modifies system instructions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_system_instruction_filter() {
 		$experiment = new Test_Ability_Experiment();
@@ -467,7 +467,7 @@ PHP
 	/**
 	 * Test that wpai_system_instruction filter receives the correct ability name.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_system_instruction_filter_receives_ability_name() {
 		$experiment = new Test_Ability_Experiment();
@@ -495,7 +495,7 @@ PHP
 	/**
 	 * Test that ensure_text_generation_supported() returns WP_Error when text generation is not supported.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_ensure_text_generation_supported_returns_wp_error_when_unsupported(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -521,7 +521,7 @@ PHP
 	/**
 	 * Test that ensure_text_generation_supported() returns the builder when text generation is supported.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_ensure_text_generation_supported_returns_builder_when_supported(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -545,7 +545,7 @@ PHP
 	/**
 	 * Test that ensure_image_generation_supported() returns WP_Error when image generation is not supported.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_ensure_image_generation_supported_returns_wp_error_when_unsupported(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -571,7 +571,7 @@ PHP
 	/**
 	 * Test that ensure_image_generation_supported() returns the builder when image generation is supported.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_ensure_image_generation_supported_returns_builder_when_supported(): void {
 		$reflection = new \ReflectionClass( $this->ability );

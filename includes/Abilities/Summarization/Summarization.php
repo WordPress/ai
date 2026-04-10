@@ -263,7 +263,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating a summary.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to generate a summary from.
 	 * @param string $length The desired length of the summary.

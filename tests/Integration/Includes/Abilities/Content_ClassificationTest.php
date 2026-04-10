@@ -15,7 +15,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 /**
  * Test experiment for Content_Classification Ability tests.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Test_Content_Classification_Experiment extends Abstract_Feature {
 	/**
@@ -38,7 +38,7 @@ class Test_Content_Classification_Experiment extends Abstract_Feature {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -48,7 +48,7 @@ class Test_Content_Classification_Experiment extends Abstract_Feature {
 /**
  * Content_Classification Ability test case.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Content_ClassificationTest extends WP_UnitTestCase {
 
@@ -69,7 +69,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -87,7 +87,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -99,7 +99,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -114,7 +114,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -149,7 +149,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -176,7 +176,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_execute_callback_without_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -193,7 +193,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when post_id points to non-existent post.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_execute_callback_with_invalid_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -212,7 +212,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error for invalid taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_execute_callback_with_invalid_taxonomy() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -232,7 +232,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() handles valid JSON correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_with_valid_json() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -253,7 +253,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() returns error for invalid JSON.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_with_invalid_json() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -271,7 +271,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() limits results to max_suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_limits_results() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -296,7 +296,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() sorts by confidence descending.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_sorts_by_confidence() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -319,7 +319,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() clamps confidence values to 0-1 range.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_clamps_confidence() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -340,7 +340,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() preserves parent field for hierarchical terms.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_preserves_parent_field() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -363,7 +363,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() strips parent for non-hierarchical taxonomies.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_strips_parent_for_non_hierarchical_taxonomy() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -382,7 +382,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() strips parent when it matches the taxonomy slug.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_strips_taxonomy_slug_as_parent() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -401,7 +401,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() skips items with empty or missing term.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_skips_invalid_items() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -426,7 +426,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() defaults confidence to 0.5 when missing.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_defaults_missing_confidence() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -443,7 +443,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() determines is_new based on existing terms, not AI response.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_overrides_is_new_from_existing_terms() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -465,7 +465,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() filters out assigned terms.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_filters_assigned_terms() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -488,7 +488,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() filters new terms for existing_only strategy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_parse_suggestions_existing_only_filters_new_terms() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -517,7 +517,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that suggestions_schema() returns the expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_suggestions_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -546,7 +546,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_existing_terms() returns term names for a valid taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_existing_terms_returns_term_names() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -567,7 +567,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_existing_terms() returns empty array for invalid taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_existing_terms_returns_empty_for_invalid_taxonomy() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -583,7 +583,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_top_terms() returns terms ordered by count.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_top_terms_returns_terms() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -603,7 +603,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_top_terms() respects the limit parameter.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_top_terms_respects_limit() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -623,7 +623,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_top_terms() returns empty array for invalid taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_top_terms_returns_empty_for_invalid_taxonomy() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -639,7 +639,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_post capability on a specific post.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_permission_callback_with_post_id_and_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -664,7 +664,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_post capability on a specific post.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_permission_callback_with_post_id_without_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -690,7 +690,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for non-existent post.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_permission_callback_with_nonexistent_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -709,7 +709,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -727,7 +727,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -746,7 +746,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -764,7 +764,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns false for post type without show_in_rest.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_permission_callback_with_post_type_without_show_in_rest() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -800,7 +800,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -817,7 +817,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_prompt_builder() returns a WP_Error when no text generation model is available.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_prompt_builder_returns_error_without_valid_model() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -838,7 +838,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_suggestions() returns a WP_Error when no AI model is available.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_generate_suggestions_returns_error_without_ai() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -863,7 +863,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 *
 	 * Verifies the prompt filter receives the expected assigned terms.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_generate_suggestions_passes_assigned_terms_to_prompt_filter() {
 		$captured_prompt = '';
@@ -898,7 +898,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_suggestions() includes available terms for existing_only strategy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_generate_suggestions_includes_available_terms_for_existing_only() {
 		// Create terms so they appear in the prompt.
@@ -934,7 +934,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_suggestions() omits available terms for allow_new strategy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_generate_suggestions_omits_available_terms_for_allow_new() {
 		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'SomeTerm' ) );

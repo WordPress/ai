@@ -363,7 +363,7 @@ class Review_Notes extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating review notes.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to generate review notes from.
 	 * @param string $block_type The block type identifier.
