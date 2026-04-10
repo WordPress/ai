@@ -32,22 +32,22 @@ jobs:
         timeout-minutes: 20
         steps:
             - name: Checkout repository
-              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
                   persist-credentials: false
 
             - name: Set up PHP
-              uses: shivammathur/setup-php@ec406be512d7077f68eed36e63f4d91bc006edc4 # v2.35.4
+              uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
               with:
                   php-version: '8.3'
                   coverage: none
 
             - name: Install Composer dependencies
-              uses: ramsey/composer-install@3cf229dc2919194e9e36783941438d17239e8520 # v3.1.1
+              uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # v4.0.0
 
             - name: Setup Node
-              uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
               with:
                   cache: 'npm'
                   node-version-file: '.nvmrc'
@@ -65,7 +65,10 @@ jobs:
                   # Exclude file_type because of the dev files present in the repository.
                   exclude-checks: |
                       file_type
+                  ignore-codes: |
+                      plugin_header_unsupported_plugin_name
                   exclude-directories: |
                       .github
+                      build
                       docs
                       tests

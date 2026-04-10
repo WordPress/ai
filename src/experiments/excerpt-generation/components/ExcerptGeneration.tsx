@@ -26,7 +26,7 @@ const { aiExcerptGenerationData } = window as any;
 export default function ExcerptGeneration(): JSX.Element | null {
 	const { isGenerating, hasExcerpt, handleGenerate } = useExcerptGeneration();
 
-	// Ensure the experiment is enabled.
+	// Don't render if disabled.
 	if ( ! aiExcerptGenerationData?.enabled ) {
 		return null;
 	}

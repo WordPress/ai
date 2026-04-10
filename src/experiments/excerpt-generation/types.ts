@@ -1,5 +1,5 @@
 /**
- * Type definitions for excerpt generation experiment.
+ * Type definitions for excerpt generation.
  */
 
 /**

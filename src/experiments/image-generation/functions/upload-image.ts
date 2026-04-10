@@ -28,10 +28,11 @@ const { aiImageGenerationData } = window as any;
  * @return {Promise<UploadedImage>} A promise that resolves to the uploaded image data.
  */
 export async function uploadImage(
-	{ image, prompt }: GeneratedImageData,
+	{ image, prompt, prompts }: GeneratedImageData,
 	options?: { onProgress?: ImageProgressCallback; altTextEnabled?: boolean }
 ): Promise< UploadedImage > {
 	const onProgress = options?.onProgress;
+	const promptHistory = prompts?.length ? prompts : [ prompt ];
 
 	const params: ImageImportAbilityInput = {
 		data: image.data,
@@ -42,7 +43,7 @@ export async function uploadImage(
 			image.provider_metadata.name,
 			image.model_metadata.name,
 			new Date().toLocaleDateString(),
-			prompt
+			promptHistory.join( ' | ' )
 		),
 		meta: [
 			{
@@ -61,17 +62,18 @@ export async function uploadImage(
 	if ( isAltTextEnabled ) {
 		try {
 			onProgress?.( __( 'Generating alt text…', 'ai' ) );
-			params.alt_text = await generateAltText(
+			const altResult = await generateAltText(
 				undefined,
 				`data:image/png;base64,${ image.data }`
 			);
+			params.alt_text = altResult.alt_text;
 		} catch ( error ) {
 			params.alt_text = prompt;
 		}
 	}
 
 	// Set our image title to be a trimmed version of the alt text.
-	params.title = trimText( params.alt_text );
+	params.title = trimText( params.alt_text ?? '' );
 
 	onProgress?.( __( 'Importing image…', 'ai' ) );
 

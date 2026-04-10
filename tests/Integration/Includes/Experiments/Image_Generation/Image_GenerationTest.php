@@ -8,10 +8,10 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Image_Generation;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiment_Category;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Image_Generation\Image_Generation;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Image_Generation test case.
@@ -31,18 +31,18 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable experiments globally and individually.
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_image-generation_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_image-generation_enabled', true );
 
-		$registry = new Experiment_Registry();
-		$loader   = new Experiment_Loader( $registry );
-		$loader->register_default_experiments();
-		$loader->initialize_experiments();
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->register_features();
+		$loader->initialize_features();
 
-		$experiment = $registry->get_experiment( 'image-generation' );
+		$experiment = $registry->get_feature( 'image-generation' );
 		$this->assertInstanceOf( Image_Generation::class, $experiment, 'Image generation experiment should be registered in the registry.' );
 	}
 
@@ -53,10 +53,10 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_image-generation_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_image-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
@@ -69,7 +69,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$experiment = new Image_Generation();
 
 		$this->assertEquals( 'image-generation', $experiment->get_id() );
-		$this->assertEquals( 'Image Generation', $experiment->get_label() );
+		$this->assertEquals( 'Image Generation and Editing', $experiment->get_label() );
 		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
@@ -80,11 +80,6 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.3.0
 	 */
 	public function test_experiment_registers_abilities() {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
-
 		// Expect warnings about already registered abilities from other tests.
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
 

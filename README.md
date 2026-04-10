@@ -1,6 +1,6 @@
-# WordPress AI Experiments
+# WordPress AI
 
-![AI Experiments](https://github.com/WordPress/ai/blob/trunk/.wordpress-org/banner-1544x500.png)
+![AI](https://github.com/WordPress/ai/blob/trunk/.wordpress-org/banner-1544x500.png)
 
 ![Required PHP Version](https://img.shields.io/wordpress/plugin/required-php/ai?label=Requires%20PHP) ![Required WordPress Version](https://img.shields.io/wordpress/plugin/wp-version/ai?label=Requires%20WordPress) ![WordPress Tested Up To](https://img.shields.io/wordpress/plugin/tested/ai?label=WordPress) [![GPL-2.0-or-later License](https://img.shields.io/github/license/WordPress/ai.svg)](https://github.com/WordPress/ai/blob/trunk/LICENSE.md?label=License)
 
@@ -8,11 +8,11 @@
 
 [![Test](https://github.com/WordPress/ai/actions/workflows/test.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/test.yml) [![Dependency Review](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml)
 
-> AI experiments for WordPress. Modular framework for testing AI capabilities.
+> AI features and experiments for WordPress. Modular framework for testing AI capabilities.
 
 ## Description
 
-The WordPress AI Experiments plugin provides a set of opt-in, experimental AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
+The AI plugin provides a set of opt-in AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
 
 ## Overview
 
@@ -35,12 +35,14 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
+* **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
-* **[Image Generation](docs/experiments/image-generation.md)** - Create images from post content in the editor, also via the Media Library.
+* **[Image Generation and Editing](docs/experiments/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
+* **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
-* **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
+* **[Review Notes](docs/experiments/review-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** -  Generates title suggestions from content.
 
 ## Roadmap
@@ -49,15 +51,17 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 Overview of planned features:
 
+* **Comment Moderation** – AI-assisted moderation tools to help classify or manage user comments.
+* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
+* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
 * **Workflow Automation** – AI-driven task automation.
-* **Contextual Tagging** – Suggests relevant tags and categories to organize content.
 
 ## Developer Experience
 
-The AI Experiments plugin is meant to be studied, forked, and extended.  If you’re a host or agency, you can configure AI providers on behalf of your users so they don’t need to bring their own API keys.
+The AI plugin is meant to be studied, forked, and extended.  If you’re a host or agency, you can configure AI providers on behalf of your users so they don’t need to bring their own API keys.
 
 If you’re a plugin developer, you’ll be able to:
 
@@ -70,11 +74,11 @@ If you’re a plugin developer, you’ll be able to:
 
 We want everyone's input! Whether you're an author, editor, educator, researcher, accessibility expert, user, or someone with strong feelings about AI, all are welcome.
 
-Anyone contributing to the AI Experiments plugin is expected to conduct themselves in accordance with the WordPress project's [Code of Conduct](https://github.com/WordPress/.github/blob/trunk/CODE_OF_CONDUCT.md).
+Anyone contributing to the AI plugin is expected to conduct themselves in accordance with the WordPress project's [Code of Conduct](https://github.com/WordPress/.github/blob/trunk/CODE_OF_CONDUCT.md).
 
 * **Discuss:** [`#core-ai` channel](https://wordpress.slack.com/archives/C08TJ8BPULS) on WordPress Slack.
 * **Ideate:** Propose and comment on [GitHub discussions](https://github.com/WordPress/ai/discussions).
 * **Design:** [Share feedback](https://github.com/WordPress/ai/issues) on UX flows and accessibility.
 * **Test:** Try features as they're [released](https://github.com/WordPress/ai/releases) and [report feedback](https://github.com/WordPress/ai/issues).
 
-View the [Credits](CREDITS.md) file for maintainers, contributors, and libraries for the AI Experiments plugin.
+View the [Credits](CREDITS.md) file for maintainers, contributors, and libraries for the AI plugin.

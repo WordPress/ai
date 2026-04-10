@@ -30,7 +30,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 	} );
 
 	test( 'Can use the Alt Text Generation Experiment in the Media Library', async ( {
@@ -42,13 +42,13 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Go to the Media Library.
-		await admin.visitAdminPage( 'upload.php' );
+		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
@@ -94,7 +94,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image so we have a URL the editor can load.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
@@ -166,14 +166,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.first()
 			.fill( '' );
 
-		// Click into the block settings sidebar.
-		const blockSettingsBtn = page
-			.locator( '.block-editor-block-inspector__tabs' )
-			.getByRole( 'tab', {
-				name: 'Settings',
-			} );
-		await blockSettingsBtn.click();
-
 		// Ensure the Generate button is visible in the sidebar.
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
@@ -194,21 +186,12 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.locator( '.ai-alt-text-controls button', { hasText: 'Apply' } )
 			.click();
 
-		// Click back to the block content sidebar.
-		const blockContentBtn = page
-			.locator( '.block-editor-block-inspector__tabs' )
-			.getByRole( 'tab', {
-				name: 'Content',
-			} );
-		await blockContentBtn.click();
-
 		// Ensure the generated alt text shows in the textarea.
 		await expect(
 			page.locator( '.components-tools-panel textarea' ).first()
 		).toHaveValue( /Edit or Delete Your First WordPress Post/ );
 
 		// Ensure the generate button text is updated.
-		await blockSettingsBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
 				hasText: 'Regenerate Alt Text',
@@ -216,14 +199,12 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		).toBeVisible();
 
 		// Remove alt text.
-		await blockContentBtn.click();
 		await page
 			.locator( '.components-tools-panel textarea' )
 			.first()
 			.fill( '' );
 
 		// Ensure the generate button text is updated.
-		await blockSettingsBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls button', {
 				hasText: 'Generate Alt Text',
@@ -239,7 +220,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.click();
 
 		// Ensure the generated alt text is not visible.
-		await blockContentBtn.click();
 		await expect(
 			page.locator( '.ai-alt-text-controls textarea' )
 		).not.toBeVisible();
@@ -255,7 +235,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Alt Text Generation Experiment.
-		await enableExperiment( admin, page, 'alt-text-generation' );
+		await enableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -264,7 +244,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Go to the Media Library.
-		await admin.visitAdminPage( 'upload.php' );
+		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
@@ -304,7 +284,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.locator( '.media-frame-content ul.attachments li:first-child' )
 			.click();
 
-		// Ensure the alt text generation button is visible and says Generate
+		// Ensure the alt text generation button is not visible.
 		await expect(
 			page.locator( '#ai-alt-text-generate-button' )
 		).not.toBeVisible();
@@ -332,13 +312,13 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Alt Text Generation Experiment.
-		await disableExperiment( admin, page, 'alt-text-generation' );
+		await disableExperiment( admin, page, 'Alt Text Generation' );
 
 		// Upload a test image.
 		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
 
 		// Go to the Media Library.
-		await admin.visitAdminPage( 'upload.php' );
+		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
 		await page
@@ -378,7 +358,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			.locator( '.media-frame-content ul.attachments li:first-child' )
 			.click();
 
-		// Ensure the alt text generation button is visible and says Generate
+		// Ensure the alt text generation button is not visible.
 		await expect(
 			page.locator( '#ai-alt-text-generate-button' )
 		).not.toBeVisible();
@@ -394,5 +374,142 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		).not.toBeVisible();
 
 		await editor.saveDraft();
+	} );
+
+	test( 'Bulk action appears in the Media Library list view', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Alt Text Generation Experiment.
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+
+		// Upload a test image.
+		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+		// Navigate to Media Library in list mode.
+		await admin.visitAdminPage( 'upload.php', 'mode=list' );
+
+		// Verify the bulk actions dropdown contains the Generate Alt Text option.
+		const bulkSelect = page.locator( '#bulk-action-selector-top' );
+		await expect( bulkSelect ).toBeVisible();
+		await expect(
+			bulkSelect.locator( 'option[value="wpai_generate_alt_text"]' )
+		).toHaveCount( 1 );
+	} );
+
+	test( 'Bulk action generates alt text for selected images', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Alt Text Generation Experiment.
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+
+		// Upload two test images.
+		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+		// Navigate to Media Library in list mode.
+		await admin.visitAdminPage( 'upload.php', 'mode=list' );
+
+		// Select all items via the header checkbox.
+		await page.locator( '#cb-select-all-1' ).check();
+
+		// Choose the bulk action.
+		await page
+			.locator( '#bulk-action-selector-top' )
+			.selectOption( 'wpai_generate_alt_text' );
+
+		// Click Apply.
+		await page.locator( '#doaction' ).click();
+
+		// After redirect, the progress notice should appear.
+		await expect(
+			page.locator( '.notice p', {
+				hasText: /Generating alt text|Alt text generated/,
+			} )
+		).toBeVisible( { timeout: 30000 } );
+
+		// Wait for the completion message.
+		await expect(
+			page.locator( '.notice p', {
+				hasText: /Alt text generated/,
+			} )
+		).toBeVisible( { timeout: 60000 } );
+
+		// Verify query args have been stripped from the URL.
+		expect( page.url() ).not.toContain( 'wpai_bulk_alt_text' );
+		expect( page.url() ).not.toContain( 'wpai_attachment_ids' );
+	} );
+
+	test( 'Query args are stripped from URL after generation completes', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Alt Text Generation Experiment.
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+
+		// Upload a test image.
+		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+		// Navigate to Media Library in list mode.
+		await admin.visitAdminPage( 'upload.php', 'mode=list' );
+
+		// Select all items.
+		await page.locator( '#cb-select-all-1' ).check();
+
+		// Choose the bulk action and apply.
+		await page
+			.locator( '#bulk-action-selector-top' )
+			.selectOption( 'wpai_generate_alt_text' );
+		await page.locator( '#doaction' ).click();
+
+		// Wait for completion.
+		await expect(
+			page.locator( '.notice p', {
+				hasText: /Alt text generated/,
+			} )
+		).toBeVisible( { timeout: 60000 } );
+
+		// Confirm query args are removed — refreshing should not re-trigger generation.
+		const currentUrl = page.url();
+		expect( currentUrl ).not.toContain( 'wpai_bulk_alt_text' );
+		expect( currentUrl ).not.toContain( 'wpai_attachment_ids' );
+	} );
+
+	test( 'Bulk action is not visible when experiment is disabled', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Disable the alt text generation experiment.
+		await disableExperiment( admin, page, 'Alt Text Generation' );
+
+		// Upload a test image.
+		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+		// Navigate to Media Library in list mode.
+		await admin.visitAdminPage( 'upload.php', 'mode=list' );
+
+		// Verify the bulk actions dropdown does NOT contain the Generate Alt Text option.
+		const bulkSelect = page.locator( '#bulk-action-selector-top' );
+		await expect( bulkSelect ).toBeVisible();
+		await expect(
+			bulkSelect.locator( 'option[value="wpai_generate_alt_text"]' )
+		).toHaveCount( 0 );
 	} );
 } );

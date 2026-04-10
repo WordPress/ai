@@ -10,26 +10,32 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Image\Alt_Text_Generation;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Alt_Text_Generation Ability tests.
  *
  * @since 0.3.0
  */
-class Test_Alt_Text_Generation_Experiment extends Abstract_Experiment {
+class Test_Alt_Text_Generation_Experiment extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'alt-text-generation';
+	}
+
 	/**
 	 * Loads experiment metadata.
 	 *
 	 * @since 0.3.0
 	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @return array{label: string, description: string} Experiment metadata.
 	 */
-	protected function load_experiment_metadata(): array {
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'alt-text-generation',
 			'label'       => 'Alt Text Generation',
-			'description' => 'Generates descriptive alt text for images using AI vision models.',
+			'description' => 'Generates accessible alternative text for images using AI vision models.',
 		);
 	}
 
@@ -53,14 +59,14 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Alt_Text_Generation ability instance.
 	 *
-	 * @var Alt_Text_Generation
+	 * @var \WordPress\AI\Abilities\Image\Alt_Text_Generation
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Alt_Text_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Alt_Text_Generation_Experiment
 	 */
 	private $experiment;
 
@@ -125,6 +131,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'attachment_id', $schema['properties'], 'Schema should have attachment_id property' );
 		$this->assertArrayHasKey( 'image_url', $schema['properties'], 'Schema should have image_url property' );
 		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
+		$this->assertArrayHasKey( 'image_meta', $schema['properties'], 'Schema should have image_meta property' );
 
 		$this->assertEquals( 'integer', $schema['properties']['attachment_id']['type'], 'attachment_id should be integer type' );
 		$this->assertEquals( 'absint', $schema['properties']['attachment_id']['sanitize_callback'], 'attachment_id should use absint' );
@@ -134,6 +141,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'context should be string type' );
 		$this->assertEquals( 'sanitize_textarea_field', $schema['properties']['context']['sanitize_callback'], 'context should use sanitize_textarea_field' );
+
+		$this->assertEquals( 'string', $schema['properties']['image_meta']['type'], 'image_meta should be string type' );
 	}
 
 	/**
@@ -153,6 +162,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'alt_text', $schema['properties'], 'Schema should have alt_text property' );
 		$this->assertEquals( 'string', $schema['properties']['alt_text']['type'], 'alt_text should be string type' );
+		$this->assertArrayHasKey( 'is_decorative', $schema['properties'], 'Schema should have is_decorative property' );
+		$this->assertEquals( 'boolean', $schema['properties']['is_decorative']['type'], 'is_decorative should be boolean type' );
 	}
 
 	/**
@@ -370,7 +381,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.3.0
 	 */
 	public function test_execute_callback_with_attachment_id() {
-		$data_dir = dirname( __FILE__ ) . '/../../../data';
+		$data_dir = __DIR__ . '/../../../data';
 		$png_path = $data_dir . '/sample.png';
 
 		if ( ! is_readable( $png_path ) ) {

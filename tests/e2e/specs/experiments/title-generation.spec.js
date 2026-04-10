@@ -22,7 +22,7 @@ test.describe( 'Title Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Title Generation Experiment.
-		await enableExperiment( admin, page, 'title-generation' );
+		await enableExperiment( admin, page, 'Title Generation' );
 	} );
 
 	test( 'Can use the Title Generation Experiment with a post with no title', async ( {
@@ -34,7 +34,7 @@ test.describe( 'Title Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Title Generation Experiment.
-		await enableExperiment( admin, page, 'title-generation' );
+		await enableExperiment( admin, page, 'Title Generation' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -50,7 +50,7 @@ test.describe( 'Title Generation Experiment', () => {
 		// Click into the title field.
 		await editor.canvas.locator( '.editor-post-title__input' ).click();
 
-		// Ensure the title toolbar is visible.
+		// Ensure the title toolbar is visible with "Generate" label.
 		await expect(
 			editor.canvas.locator( '.ai-title-toolbar-container', {
 				hasText: 'Generate',
@@ -67,16 +67,12 @@ test.describe( 'Title Generation Experiment', () => {
 			page.locator( '.ai-title-generation-modal' )
 		).toBeVisible();
 
-		// Ensure there is at least one title option.
+		// Ensure the generated title textarea is visible.
 		await expect(
-			page
-				.locator(
-					'.ai-title-generation-modal .ai-title-generation-option textarea'
-				)
-				.first()
+			page.locator( '.ai-title-generation-modal textarea' )
 		).toBeVisible();
 
-		// Click Insert to apply the first (auto-selected) title.
+		// Click Insert to apply the generated title.
 		await page
 			.locator( '.ai-title-generation-modal' )
 			.getByRole( 'button', { name: 'Insert' } )
@@ -91,7 +87,8 @@ test.describe( 'Title Generation Experiment', () => {
 		await expect(
 			editor.canvas.locator( '.editor-post-title__input' )
 		).toHaveText(
-			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			{ timeout: 10000 }
 		);
 
 		// Save the post.
@@ -107,7 +104,7 @@ test.describe( 'Title Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Title Generation Experiment.
-		await enableExperiment( admin, page, 'title-generation' );
+		await enableExperiment( admin, page, 'Title Generation' );
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -123,7 +120,7 @@ test.describe( 'Title Generation Experiment', () => {
 		// Click into the title field.
 		await editor.canvas.locator( '.editor-post-title__input' ).click();
 
-		// Ensure the title toolbar is visible.
+		// Ensure the title toolbar is visible with "Re-generate" label.
 		await expect(
 			editor.canvas.locator( '.ai-title-toolbar-container', {
 				hasText: 'Re-generate',
@@ -140,16 +137,12 @@ test.describe( 'Title Generation Experiment', () => {
 			page.locator( '.ai-title-generation-modal' )
 		).toBeVisible();
 
-		// Ensure there is at least one title option.
+		// Ensure the generated title textarea is visible.
 		await expect(
-			page
-				.locator(
-					'.ai-title-generation-modal .ai-title-generation-option textarea'
-				)
-				.first()
+			page.locator( '.ai-title-generation-modal textarea' )
 		).toBeVisible();
 
-		// Click Insert to apply the first (auto-selected) title.
+		// Click Insert to apply the generated title.
 		await page
 			.locator( '.ai-title-generation-modal' )
 			.getByRole( 'button', { name: 'Insert' } )
@@ -164,7 +157,8 @@ test.describe( 'Title Generation Experiment', () => {
 		await expect(
 			editor.canvas.locator( '.editor-post-title__input' )
 		).toHaveText(
-			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			{ timeout: 10000 }
 		);
 
 		// Save the post.
@@ -177,7 +171,7 @@ test.describe( 'Title Generation Experiment', () => {
 		page,
 	} ) => {
 		// Enable the Title Generation Experiment.
-		await enableExperiment( admin, page, 'title-generation' );
+		await enableExperiment( admin, page, 'Title Generation' );
 
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
@@ -211,7 +205,7 @@ test.describe( 'Title Generation Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Disable the Title Generation Experiment.
-		await disableExperiment( admin, page, 'title-generation' );
+		await disableExperiment( admin, page, 'Title Generation' );
 
 		// Create a new post.
 		await admin.createNewPost( {

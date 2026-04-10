@@ -1,5 +1,5 @@
 /**
- * Type definitions for alt text generation experiment.
+ * Type definitions for alt text generation.
  */
 
 /**
@@ -9,6 +9,7 @@ export interface AltTextGenerationAbilityInput {
 	attachment_id?: number;
 	image_url?: string;
 	context?: string;
+	image_meta?: string;
 	[ key: string ]: string | number | undefined;
 }
 
