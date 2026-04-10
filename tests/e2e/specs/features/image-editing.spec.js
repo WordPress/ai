@@ -69,8 +69,7 @@ test.describe( 'Image Editing Feature', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Inline Image Editing Feature',
-			content:
-				'This is some test content for the Image Editing Feature.',
+			content: 'This is some test content for the Image Editing Feature.',
 		} );
 
 		// Save the post.
