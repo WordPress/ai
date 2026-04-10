@@ -37,9 +37,11 @@ class Title_Generation extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Title Generation', 'ai' ),
-			'description' => __( 'Generates title suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
+			'label'        => __( 'Title Generation', 'ai' ),
+			'description'  => __( 'Generates title suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'     => Experiment_Category::EDITOR,
+			'presentation' => 'visual-card',
+			'image'        => WPAI_PLUGIN_URL . 'assets/images/showcase-title-generation.svg',
 		);
 	}
 
