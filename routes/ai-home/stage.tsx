@@ -2,14 +2,7 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import {
-	Button,
-	Icon,
-	Notice,
-	Spinner,
-	ToggleControl,
-} from '@wordpress/components';
-import { check } from '@wordpress/icons';
+import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
@@ -577,7 +570,15 @@ function VisualCardToggle( {
 					</Button>
 					{ checked && (
 						<span className="ai-showcase-card__enabled-badge">
-							<Icon icon={ check } size={ 16 } />
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								width={ 16 }
+								height={ 16 }
+								fill="currentColor"
+							>
+								<path d="M16.5 7.5 10 13.9l-2.5-2.4-1 1 3.5 3.6 7.5-7.6z" />
+							</svg>
 							{ __( 'Enabled', 'ai' ) }
 						</span>
 					) }
