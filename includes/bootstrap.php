@@ -175,7 +175,7 @@ function get_settings_feature_groups(): array {
 		),
 		Feature_Category::OTHER     => array(
 			'label'       => __( 'Other Features', 'ai' ),
-			'description' => __( 'Additional AI-powered experiments.', 'ai' ),
+			'description' => __( 'Additional AI-powered features.', 'ai' ),
 			'order'       => 90,
 		),
 	);
