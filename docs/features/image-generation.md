@@ -2,13 +2,13 @@
 
 ## Summary
 
-The Image Generation experiment adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" buttons on Image, Cover, Media & Text, and Gallery blocks. The experiment registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
+The Image Generation feature adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" buttons on Image, Cover, Media & Text, and Gallery blocks. The feature registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
 ## Overview
 
 ### For End Users
 
-When enabled, the Image Generation experiment adds:
+When enabled, the Image Generation feature adds:
 
 - **Featured image panel:** A "Generate featured image" button that creates AI images from post content. The image is imported into the media library and set as the featured image. Images are marked with an "AI Generated Featured Image" label.
 - **Block buttons:** A "Generate Image" inline and toolbar button on Image, Cover, Media & Text, and Gallery blocks. Clicking it opens a modal where you describe the image, generate it, preview it, optionally refine it (edit with follow-up prompts using the current image as reference), and insert it into the block.
@@ -29,9 +29,9 @@ When enabled, the Image Generation experiment adds:
 
 ### For Developers
 
-The experiment consists of four main components:
+The feature consists of four main components:
 
-1. **Experiment Class** (`WordPress\AI\Experiments\Image_Generation\Image_Generation`): Handles registration, asset enqueuing, featured image and inline block editor UI integration, and post meta registration
+1. **Feature Class** (`WordPress\AI\Features\Image_Generation\Image_Generation`): Handles registration, asset enqueuing, featured image and inline block editor UI integration, and post meta registration
 2. **Generate Image Prompt Ability** (`WordPress\AI\Abilities\Image\Generate_Image_Prompt`): Generates optimized image generation prompts from post content and context
 3. **Generate Image Ability** (`WordPress\AI\Abilities\Image\Generate_Image`): Generates base64-encoded images from prompts (and optionally from a reference image for refining) using AI models
 4. **Import Image Ability** (`WordPress\AI\Abilities\Image\Import_Base64_Image`): Imports base64-encoded images into the WordPress media library
@@ -42,7 +42,7 @@ All three abilities can be called directly via REST API, making them useful for 
 
 ### Key Hooks & Entry Points
 
-- `WordPress\AI\Experiments\Image_Generation\Image_Generation::register()` wires everything once the experiment is enabled:
+- `WordPress\AI\Features\Image_Generation\Image_Generation::register()` wires everything once the feature is enabled:
   - `register_post_meta()` → registers `ai_generated` post meta for attachment post type
   - `wp_abilities_api_init` → registers the `ai/image-generation`, `ai/image-import`, and `ai/image-prompt-generation` abilities
   - `admin_enqueue_scripts` → `enqueue_assets()` loads assets on `post.php` and `post-new.php` screens for post types that support featured images
@@ -51,8 +51,8 @@ All three abilities can be called directly via REST API, making them useful for 
 ### Assets & Data Flow
 
 1. **PHP Side:**
-   - `enqueue_shared_assets()` (called from `enqueue_assets()` and `enqueue_inline_assets()`) loads `experiments/image-generation` (`src/experiments/image-generation/index.ts`) and localizes `window.aiImageGenerationData` with:
-     - `enabled`: Whether the experiment is enabled
+   - `enqueue_shared_assets()` (called from `enqueue_assets()` and `enqueue_inline_assets()`) loads `features/image-generation` (`src/features/image-generation/index.ts`) and localizes `window.aiImageGenerationData` with:
+     - `enabled`: Whether the feature is enabled
      - `altTextEnabled`: Whether the alt text generation experiment is enabled
 
 2. **React Side (Featured Image):**
@@ -675,7 +675,7 @@ Example error response:
 }
 ```
 
-## Extending the Experiment
+## Extending the Feature
 
 ### Customizing the Image Prompt Generation System Instruction
 
@@ -706,7 +706,7 @@ add_filter( 'wpai_preferred_image_models', function( $models ) {
 You can customize what metadata is saved when importing images by modifying the `uploadImage` function in:
 
 ```typescript
-src/experiments/image-generation/functions/upload-image.ts
+src/features/image-generation/functions/upload-image.ts
 ```
 
 `uploadImage( imageData, options? )` accepts generated image data and an optional `options` object with `onProgress?: ( message: string ) => void` for progress callbacks. When the Alt Text Generation experiment is enabled, it generates alt text via `generateAltText()` before importing; otherwise it uses the image prompt as alt text.
@@ -715,16 +715,16 @@ You can also filter the input before calling the import ability via REST API.
 
 ### Customizing Post Context
 
-The experiment uses `getContext()` to fetch post details (title, type). You can extend this to include additional context by modifying:
+The feature uses `getContext()` to fetch post details (title, type). You can extend this to include additional context by modifying:
 
 ```typescript
-src/experiments/image-generation/functions/get-context.ts
+src/features/image-generation/functions/get-context.ts
 ```
 
 The context is formatted using `formatContext()` which converts key-value pairs into a string format. You can customize this formatting by modifying:
 
 ```typescript
-src/experiments/image-generation/functions/format-context.ts
+src/features/image-generation/functions/format-context.ts
 ```
 
 ### Adding Custom UI Elements
@@ -732,28 +732,28 @@ src/experiments/image-generation/functions/format-context.ts
 You can extend the React components to add custom UI elements:
 
 1. **Modify the featured image button and progress UI:**
-   - Edit `src/experiments/image-generation/components/GenerateFeaturedImage.tsx`
+   - Edit `src/features/image-generation/components/GenerateFeaturedImage.tsx`
    - The component renders a button and, while generating, a progress container (`.ai-featured-image__progress`) that displays the current step and a spinner; progress is driven by the `onProgress` callbacks passed to `generateImage()` and `uploadImage()`
 
 2. **Modify the inline generation modal:**
-   - Edit `src/experiments/image-generation/components/GenerateImageInlineModal.tsx`
+   - Edit `src/features/image-generation/components/GenerateImageInlineModal.tsx`
    - The modal supports idle (prompt input), generating, preview (keep/refine/start over) states
    - Customize the flow, UI copy, or add new actions
 
 3. **Add or change supported blocks for inline generation:**
    - Edit `inline.tsx` and modify the `TARGET_BLOCKS` array (`core/image`, `core/cover`, `core/media-text`, `core/gallery`)
-   - To support a new block type, update `insertIntoBlock()` in `src/experiments/image-generation/functions/insert-into-block.ts` with the correct attribute mapping
+   - To support a new block type, update `insertIntoBlock()` in `src/features/image-generation/functions/insert-into-block.ts` with the correct attribute mapping
 
 4. **Customize the AI label:**
-   - Edit `src/experiments/image-generation/components/AILabel.tsx`
+   - Edit `src/features/image-generation/components/AILabel.tsx`
 
 5. **Add custom functions:**
-   - Create new functions in `src/experiments/image-generation/functions/`
+   - Create new functions in `src/features/image-generation/functions/`
    - Import and use them in the components
 
 6. **Customize the featured image panel:**
-   - The experiment uses the `editor.PostFeaturedImage` filter to inject into the featured image panel
-   - You can modify `src/experiments/image-generation/featured-image.tsx` to add additional UI
+   - The feature uses the `editor.PostFeaturedImage` filter to inject into the featured image panel
+   - You can modify `src/features/image-generation/featured-image.tsx` to add additional UI
 
 ### Customizing Image Processing
 
@@ -777,7 +777,7 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
 
 ### Manual Testing
 
-1. **Enable the experiment:**
+1. **Enable the feature:**
    - Go to `Settings → AI`
    - Toggle **Image Generation** to enabled
    - Ensure you have valid AI credentials configured
@@ -801,7 +801,7 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
    - Test with each supported block type to ensure correct attribute mapping
 
 4. **Test with different post types:**
-   - The experiment only loads for post types that support featured images (`post_type_supports( $post_type, 'thumbnail' )`)
+   - The feature only loads for post types that support featured images (`post_type_supports( $post_type, 'thumbnail' )`)
    - Test with posts, pages, and custom post types that have featured image support
 
 5. **Test REST API:**
@@ -829,10 +829,10 @@ npm run test:php
 
 ### Requirements
 
-- The experiment requires valid AI credentials to be configured
-- The experiment only works for post types that support featured images (`post_type_supports( $post_type, 'thumbnail' )`)
+- The feature requires valid AI credentials to be configured
+- The feature only works for post types that support featured images (`post_type_supports( $post_type, 'thumbnail' )`)
 - Users must have `upload_files` capability
-- The experiment requires image generation models to be available (configured via `get_preferred_image_models()`)
+- The feature requires image generation models to be available (configured via `get_preferred_image_models()`)
 
 ### Performance
 
@@ -858,7 +858,7 @@ npm run test:php
 
 ### Prompt Generation
 
-- The experiment uses a three-step process:
+- The feature uses a three-step process:
   1. First, it gets post context (title, type) using the `ai/get-post-details` ability
   2. Then, it generates an optimized image generation prompt from post content and context using the `ai/image-prompt-generation` ability
   3. Finally, it uses that prompt to generate the actual image
@@ -883,7 +883,7 @@ npm run test:php
 - Images are generated in real-time and not cached
 - The ability does not support batch processing (one image per request)
 - Generated images are suggestions and should be reviewed before publishing
-- The experiment requires JavaScript to be enabled in the admin
+- The feature requires JavaScript to be enabled in the admin
 - Image generation may fail if AI models are unavailable or rate-limited
 - Base64 image data can be very large; ensure adequate server resources
 
