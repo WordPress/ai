@@ -817,7 +817,7 @@ add_filter( 'wp_generate_attachment_metadata', function( $metadata, $attachment_
 Unit tests are located in:
 
 - `tests/Integration/Includes/Abilities/Image_GenerationTest.php`
-- `tests/Integration/Includes/Experiments/Image_Generation/Image_GenerationTest.php`
+- `tests/Integration/Includes/Features/Image_Generation/Image_GenerationTest.php`
 
 Run tests with:
 

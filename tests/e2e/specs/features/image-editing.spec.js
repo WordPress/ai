@@ -22,15 +22,15 @@ const {
 // Path to a test image (1x1 PNG) used for media upload in E2E tests.
 const TEST_IMAGE_PATH = path.join( __dirname, '../../../data/sample.png' );
 
-test.describe( 'Image Editing Experiment', () => {
-	test( 'Can enable the image generation/editing experiment', async ( {
+test.describe( 'Image Editing Feature', () => {
+	test( 'Can enable the image generation/editing Feature', async ( {
 		admin,
 		page,
 	} ) => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment (which contains editing).
+		// Enable the Image Generation Feature (which contains editing).
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		await visitConnectorsPage( admin );
@@ -62,15 +62,15 @@ test.describe( 'Image Editing Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Inline Image Editing Experiment',
+			title: 'Test Inline Image Editing Feature',
 			content:
-				'This is some test content for the Image Editing Experiment.',
+				'This is some test content for the Image Editing Feature.',
 		} );
 
 		// Save the post.
@@ -201,7 +201,7 @@ test.describe( 'Image Editing Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Visit the Media Library.
@@ -312,7 +312,7 @@ test.describe( 'Image Editing Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Upload a test image so we have a URL the editor can load.
@@ -444,7 +444,7 @@ test.describe( 'Image Editing Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Upload a test image so we have a URL the editor can load.
