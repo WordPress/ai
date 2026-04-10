@@ -41,6 +41,8 @@ interface FeatureData {
 	description: string;
 	category: string;
 	settingsFields: SettingsFieldData[];
+	presentation: string;
+	image: string;
 }
 
 interface PageData {
@@ -120,6 +122,8 @@ function parseFeature( value: unknown ): FeatureData | null {
 		description: toStringValue( feature.description ),
 		category: toStringValue( feature.category ) || 'other',
 		settingsFields: ( rawFields as unknown[] ).filter( isSettingsField ),
+		presentation: toStringValue( feature.presentation ) || 'toggle',
+		image: toStringValue( feature.image ),
 	};
 }
 
@@ -562,6 +566,8 @@ function AISettingsPage() {
 								description: '',
 								category: 'other',
 								settingsFields: [],
+								presentation: 'toggle',
+								image: '',
 							};
 						} );
 
