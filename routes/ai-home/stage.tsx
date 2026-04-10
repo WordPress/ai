@@ -2,7 +2,8 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
+import { Button, Icon, Notice, Spinner, ToggleControl } from '@wordpress/components';
+import { check } from '@wordpress/icons';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
@@ -520,6 +521,60 @@ function FeatureToggleWithSettings( {
 			{ checked && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
+		</div>
+	);
+}
+
+const VISUAL_CARD_FEATURES = new Map(
+	PAGE_DATA.features
+		.filter( ( f ) => f.presentation === 'visual-card' )
+		.map( ( f ) => [ f.settingName, f ] as const )
+);
+
+const VISUAL_CARD_SETTING_NAMES = new Set( VISUAL_CARD_FEATURES.keys() );
+
+function VisualCardToggle( {
+	field,
+	data,
+	onChange,
+}: DataFormControlProps< AISettings > ) {
+	const feature = VISUAL_CARD_FEATURES.get( field.id );
+	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
+	const checked = !! field.getValue( { item: data } );
+
+	return (
+		<div className={ `ai-showcase-card${ ! globalEnabled ? ' ai-showcase-card--disabled' : '' }` }>
+			{ feature?.image && (
+				<div className="ai-showcase-card__image">
+					<img src={ feature.image } alt="" loading="lazy" />
+				</div>
+			) }
+			<div className="ai-showcase-card__content">
+				<h3 className="ai-showcase-card__title">
+					{ field.label }
+				</h3>
+				<p className="ai-showcase-card__description">
+					{ field.description }
+				</p>
+				<div className="ai-showcase-card__actions">
+					<Button
+						variant={ checked ? 'secondary' : 'primary' }
+						onClick={ () => onChange( { [ field.id ]: ! checked } ) }
+						disabled={ ! globalEnabled }
+						size="compact"
+					>
+						{ checked
+							? __( 'Disable', 'ai' )
+							: __( 'Enable', 'ai' ) }
+					</Button>
+					{ checked && (
+						<span className="ai-showcase-card__enabled-badge">
+							<Icon icon={ check } size={ 16 } />
+							{ __( 'Enabled', 'ai' ) }
+						</span>
+					) }
+				</div>
+			</div>
 		</div>
 	);
 }
