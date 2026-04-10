@@ -537,8 +537,6 @@ const VISUAL_CARD_FEATURES = new Map(
 		.map( ( f ) => [ f.settingName, f ] as const )
 );
 
-const VISUAL_CARD_SETTING_NAMES = new Set( VISUAL_CARD_FEATURES.keys() );
-
 function VisualCardToggle( {
 	field,
 	data,
@@ -766,7 +764,7 @@ function AISettingsPage() {
 				type: 'boolean' as const,
 			};
 
-			if ( VISUAL_CARD_SETTING_NAMES.has( feature.settingName ) ) {
+			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
 				baseField.Edit = VisualCardToggle;
 			} else if ( ! globalEnabled ) {
 				baseField.Edit = DisabledToggle;
@@ -786,7 +784,7 @@ function AISettingsPage() {
 		const showcaseChildren: string[] = [];
 		const groupedFields = new Map< string, string[] >();
 		for ( const feature of featureDefinitions ) {
-			if ( VISUAL_CARD_SETTING_NAMES.has( feature.settingName ) ) {
+			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
 				showcaseChildren.push( feature.settingName );
 			} else {
 				const category = feature.category || 'other';

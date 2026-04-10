@@ -122,7 +122,10 @@ abstract class Abstract_Feature implements Feature {
 		$this->description  = $metadata['description'];
 		$this->category     = $metadata['category'];
 		$this->stability    = $metadata['stability'] ?? 'experimental';
-		$this->presentation = $metadata['presentation'] ?? 'toggle';
+		$presentation       = $metadata['presentation'] ?? 'toggle';
+		$this->presentation = in_array( $presentation, array( 'toggle', 'visual-card' ), true )
+			? $presentation
+			: 'toggle';
 		$this->image        = $metadata['image'] ?? '';
 	}
 

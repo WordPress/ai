@@ -239,7 +239,7 @@ class Settings_Page {
 				'category'       => $category,
 				'settingsFields' => $feature->get_settings_fields_metadata(),
 				'presentation'   => $feature->get_presentation(),
-				'image'          => $feature->get_image(),
+				'image'          => esc_url( $feature->get_image() ),
 			);
 		}
 
