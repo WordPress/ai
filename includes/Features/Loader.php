@@ -93,7 +93,7 @@ final class Loader {
 	 */
 	private function get_default_features(): array {
 		$feature_classes = array(
-			// Features start off as experiments until they pass the requirements to graduate to full features.
+			\WordPress\AI\Features\Image_Generation\Image_Generation::class,
 		);
 
 		/**
