@@ -1,0 +1,52 @@
+name: Build and Release Plugin
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: # Allows you to run this manually from the Actions tab
+
+jobs:
+  build:
+    name: Build Plugin Zip
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4' # The minimum PHP version in your composer.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install Composer Dependencies
+        uses: ramsey/composer-install@v3
+        with:
+          composer-options: '--no-dev --optimize-autoloader'
+
+      - name: Install NPM Dependencies
+        run: npm ci
+
+      - name: Build Plugin Assets
+        run: npm run build
+
+      - name: Generate Plugin Zip
+        # This uses your existing 'plugin-zip' script in package.json 
+        # which respects the rules inside your .distignore file
+        run: npm run plugin-zip
+
+      - name: Upload Zip to Release
+        uses: softprops/action-gh-release@v2
+        # Only run this step if the workflow was triggered by a published release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Your package.json name is "ai", so wp-scripts generates "ai.zip"
+          files: ai.zip
