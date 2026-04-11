@@ -28,7 +28,7 @@ class Comment_Moderation extends Abstract_Ability {
 	 * @since 0.7.0
 	 *
 	 * @param mixed $input Arguments for the ability (comment_text, author_name, author_url).
-	 * @return array<string, mixed>|WP_Error The moderation result as an array, or WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error The moderation result as an array, or WP_Error on failure.
 	 */
 	public function execute_callback( $input ) {
 		if ( empty( $input['comment_text'] ) ) {

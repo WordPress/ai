@@ -28,7 +28,7 @@ class Site_Agent extends Abstract_Ability {
 	 * @since 0.7.0
 	 *
 	 * @param mixed $input Arguments for the ability (command).
-	 * @return array<string, mixed>|WP_Error The agent's response or WP_Error.
+	 * @return array<string, mixed>|\WP_Error The agent's response or WP_Error.
 	 */
 	public function execute_callback( $input ) {
 		if ( empty( $input['command'] ) ) {
