@@ -326,6 +326,9 @@ function load(): void {
 	// Handle deprecated code.
 	( new Deprecated() )->init();
 
+	\WordPress\AI\Admin\Observability_Logger::init();
+	\WordPress\AI\Admin\Site_Agent_Page::init();
+
 	$loaded = true;
 
 	// Add plugin action links.
