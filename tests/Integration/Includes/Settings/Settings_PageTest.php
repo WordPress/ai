@@ -1,17 +1,18 @@
 <?php
 /**
- * Tests for bootstrap functions.
+ * Integration tests for the Settings_Page class.
  *
- * @package WordPress\AI\Tests\Integration\Includes
+ * @package WordPress\AI\Tests\Integration\Includes\Settings
  */
 
-namespace WordPress\AI\Tests\Integration\Includes;
+namespace WordPress\AI\Tests\Integration\Includes\Settings;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Settings\Settings_Page;
 
 /**
  * Stub feature for testing with a known category.
@@ -215,16 +216,16 @@ class Stub_HTML_Description_Feature extends Abstract_Feature {
  *
  * @since 0.6.0
  */
-class BootstrapTest extends WP_UnitTestCase {
+class Settings_PageTest extends WP_UnitTestCase {
 	/**
 	 * Registry instance.
 	 *
-	 * @var Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
 	private Registry $registry;
 
 	/**
-	 * Set up test case.
+	 * {@inheritDoc}
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -232,7 +233,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tear down test case.
+	 * {@inheritDoc}
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_settings_feature_groups' );
@@ -240,16 +241,20 @@ class BootstrapTest extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function get_settings_feature_metadata( Registry $registry ): array {
+		$method = new \ReflectionMethod( Settings_Page::class, 'get_settings_feature_metadata' );
+		$method->setAccessible( true );
+		return $method->invoke( null, $registry );
+	}
+
 	/**
 	 * Test that an empty registry returns empty groups and features.
 	 */
 	public function test_empty_registry_returns_empty_metadata() {
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
-		$this->assertArrayHasKey( 'groups', $result );
-		$this->assertArrayHasKey( 'features', $result );
-		$this->assertEmpty( $result['groups'] );
-		$this->assertEmpty( $result['features'] );
+		$this->assertSame( array(), $result['groups'] );
+		$this->assertSame( array(), $result['features'] );
 	}
 
 	/**
@@ -258,7 +263,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	public function test_single_feature_produces_correct_metadata() {
 		$this->registry->register_feature( new Stub_Editor_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertCount( 1, $result['features'] );
 		$this->assertCount( 1, $result['groups'] );
@@ -283,7 +288,7 @@ class BootstrapTest extends WP_UnitTestCase {
 		$this->registry->register_feature( new Stub_Admin_Feature() );
 		$this->registry->register_feature( new Stub_Editor_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertCount( 2, $result['groups'] );
 		// Editor (order 10) should come before Admin (order 20).
@@ -297,7 +302,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	public function test_only_used_categories_appear_as_groups() {
 		$this->registry->register_feature( new Stub_Editor_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$group_ids = array_column( $result['groups'], 'id' );
 		$this->assertContains( Experiment_Category::EDITOR, $group_ids );
@@ -311,7 +316,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	public function test_unknown_category_creates_dynamic_group() {
 		$this->registry->register_feature( new Stub_Custom_Category_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertCount( 1, $result['groups'] );
 		$group = $result['groups'][0];
@@ -326,7 +331,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	public function test_feature_without_category_falls_back_to_other() {
 		$this->registry->register_feature( new Stub_No_Category_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertSame( Feature_Category::OTHER, $result['features'][0]['category'] );
 		$this->assertSame( Feature_Category::OTHER, $result['groups'][0]['id'] );
@@ -339,7 +344,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	public function test_html_is_stripped_from_descriptions() {
 		$this->registry->register_feature( new Stub_HTML_Description_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertSame(
 			'A bold feature with emphasis.',
@@ -354,7 +359,7 @@ class BootstrapTest extends WP_UnitTestCase {
 		$this->registry->register_feature( new Stub_Editor_Feature() );
 		$this->registry->register_feature( new Stub_HTML_Description_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertCount( 2, $result['features'] );
 		$this->assertCount( 1, $result['groups'] );
@@ -379,7 +384,7 @@ class BootstrapTest extends WP_UnitTestCase {
 
 		$this->registry->register_feature( new Stub_Custom_Category_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$group = $result['groups'][0];
 		$this->assertSame( 'custom-category', $group['id'] );
@@ -401,7 +406,7 @@ class BootstrapTest extends WP_UnitTestCase {
 			}
 		);
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertSame( 'Overridden Label', $result['features'][0]['label'] );
 	}
@@ -414,7 +419,7 @@ class BootstrapTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_settings_feature_metadata', '__return_false' );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		// Should fall back to the unfiltered metadata.
 		$this->assertCount( 1, $result['features'] );
@@ -429,7 +434,7 @@ class BootstrapTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_settings_feature_groups', '__return_false' );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		// Should still produce valid output using default groups.
 		$this->assertCount( 1, $result['groups'] );
@@ -442,7 +447,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	public function test_feature_with_settings_includes_settings_fields() {
 		$this->registry->register_feature( new Stub_Feature_With_Settings() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$this->assertCount( 1, $result['features'] );
 		$feature = $result['features'][0];
@@ -475,7 +480,7 @@ class BootstrapTest extends WP_UnitTestCase {
 	public function test_feature_without_settings_has_empty_settings_fields() {
 		$this->registry->register_feature( new Stub_Editor_Feature() );
 
-		$result = \WordPress\AI\get_settings_feature_metadata( $this->registry );
+		$result = $this->get_settings_feature_metadata( $this->registry );
 
 		$feature = $result['features'][0];
 		$this->assertArrayHasKey( 'settingsFields', $feature );
