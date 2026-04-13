@@ -27,6 +27,7 @@ parameters:
 			- '#Function wp_ai_client_prompt not found\.#'
 			- '#WP_AI_Client_[A-Za-z0-9_]+#'
 			- '#WordPress\\AiClient\\#'
+			- '#Function wp_get_connectors not found\.#'
 		excludePaths:
 			analyse:
 				- tests/

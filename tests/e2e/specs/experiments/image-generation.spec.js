@@ -79,7 +79,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await editor.saveDraft();
 
 		// Ensure the image is in the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		const imageContainer = page
 			.locator( '.attachments-wrapper li' )
@@ -239,7 +239,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		const imageContainer = page
 			.locator( '.attachments-wrapper li' )
@@ -401,7 +401,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		const imageContainer = page
 			.locator( '.attachments-wrapper li' )
@@ -426,7 +426,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Ensure there's a Generate Image link in the sidebar.
 		await expect(
@@ -579,7 +579,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).not.toBeVisible();
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Ensure there's not a Generate Image link in the sidebar.
 		await expect(
@@ -627,7 +627,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).not.toBeVisible();
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Ensure there's not a Generate Image link in the sidebar.
 		await expect(

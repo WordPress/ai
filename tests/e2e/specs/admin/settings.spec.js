@@ -9,6 +9,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnectors,
 	disableExperiments,
+	enableExperiment,
 	enableExperiments,
 	visitConnectorsPage,
 	visitSettingsPage,
@@ -93,14 +94,14 @@ test.describe( 'Plugin settings', () => {
 		await disableExperiments( admin, page );
 
 		// Ensure global AI setting is disabled.
-		await expect(
-			page.getByRole( 'checkbox', { name: 'Enable AI' } )
-		).not.toBeChecked();
+		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
 
-		// Ensure feature checkboxes are disabled when AI is disabled.
+		// Ensure feature toggles are disabled when AI is disabled.
 		await expect(
 			page
-				.locator( '#ai-wp-admin-app input[type="checkbox"]:disabled' )
+				.locator(
+					'#ai-wp-admin-app .components-form-toggle.is-disabled'
+				)
 				.first()
 		).toBeVisible();
 
@@ -108,9 +109,7 @@ test.describe( 'Plugin settings', () => {
 		await enableExperiments( admin, page );
 
 		// Ensure global AI setting is enabled.
-		await expect(
-			page.getByRole( 'checkbox', { name: 'Enable AI' } )
-		).toBeChecked();
+		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked();
 
 		// Ensure we see the editor experiments section.
 		await expect(
@@ -329,5 +328,48 @@ test.describe( 'Plugin settings', () => {
 
 		// Admin Experiments should remain unchanged.
 		await expect( adminSelectAll ).not.toBeChecked();
+	} );
+
+	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
+		admin,
+		page,
+	} ) => {
+		// Setup: Enable AI and Content Classification.
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Visit settings page fresh to ensure no stale snackbars.
+		await visitSettingsPage( admin );
+
+		// Wait for Content Classification inline settings to render.
+		const strategySelect = page.getByLabel( 'Taxonomy strategy' );
+		await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
+
+		// Change the strategy to create a pending local edit.
+		const originalValue = await strategySelect.inputValue();
+		const newValue =
+			originalValue === 'existing_only' ? 'allow_new' : 'existing_only';
+		await strategySelect.selectOption( newValue );
+
+		// Verify the Save button appears (confirms pending edits exist).
+		const saveButton = page
+			.locator( '.ai-feature-settings-form' )
+			.getByRole( 'button', { name: 'Save' } );
+		await expect( saveButton ).toBeVisible();
+
+		// Toggle another experiment to trigger auto-save (changes siteSettings).
+		const otherToggle = page.getByLabel( 'Title Generation' );
+		await otherToggle.click();
+
+		// Wait for the auto-save snackbar to confirm siteSettings changed.
+		await expect(
+			page.locator( '.components-snackbar__content', {
+				hasText: 'Title Generation enabled.',
+			} )
+		).toBeVisible();
+
+		// Assert: inline settings must still show the pending edit (not reset).
+		await expect( strategySelect ).toHaveValue( newValue );
+		await expect( saveButton ).toBeVisible();
 	} );
 } );

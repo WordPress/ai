@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'WPAI_VERSION' ) ) {
-	define( 'WPAI_VERSION', '0.6.0' );
+	define( 'WPAI_VERSION', '0.7.0' );
 }
 if ( ! defined( 'WPAI_PLUGIN_FILE' ) ) {
 	define( 'WPAI_PLUGIN_FILE', defined( 'WPAI_DIR' ) ? WPAI_DIR . 'ai.php' : '' );
@@ -157,7 +157,7 @@ function plugin_action_links( array $links ): array {
 /**
  * Gets feature group metadata for the settings UI.
  *
- * @since x.x.x
+ * @since 0.7.0
  *
  * @return array<string, array{label:string, description:string, order:int}>
  */
@@ -183,7 +183,7 @@ function get_settings_feature_groups(): array {
 	/**
 	 * Filters feature group metadata used by the settings UI.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param array<string, array{label:string, description:string, order:int}> $default_groups Feature group metadata keyed by category.
 	 */
@@ -195,7 +195,7 @@ function get_settings_feature_groups(): array {
 /**
  * Builds feature metadata used by the settings route UI.
  *
- * @since x.x.x
+ * @since 0.7.0
  *
  * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
  * @return array{
@@ -226,11 +226,12 @@ function get_settings_feature_metadata( Registry $registry ): array {
 
 		$categories_in_use[ $category ] = true;
 		$features[]                     = array(
-			'id'          => $feature_id,
-			'settingName' => "wpai_feature_{$feature_id}_enabled",
-			'label'       => $feature->get_label(),
-			'description' => wp_strip_all_tags( $feature->get_description() ),
-			'category'    => $category,
+			'id'             => $feature_id,
+			'settingName'    => "wpai_feature_{$feature_id}_enabled",
+			'label'          => $feature->get_label(),
+			'description'    => wp_strip_all_tags( $feature->get_description() ),
+			'category'       => $category,
+			'settingsFields' => $feature->get_settings_fields_metadata(),
 		);
 	}
 
@@ -279,7 +280,7 @@ function get_settings_feature_metadata( Registry $registry ): array {
 	/**
 	 * Filters settings metadata passed to the settings route client.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param array{
 	 *   groups:list<array{id:string, label:string, description:string}>,
@@ -316,7 +317,7 @@ function load(): void {
 
 	// Load auto-generated wp-build registration if present.
 	if ( file_exists( WPAI_PLUGIN_DIR . 'build/build.php' ) ) {
-		require_once WPAI_PLUGIN_DIR . 'build/build.php'; // @phpstan-ignore requireOnce.fileNotFound
+		require_once WPAI_PLUGIN_DIR . 'build/build.php';
 	}
 
 	// Handle any pending upgrades.
@@ -399,7 +400,7 @@ add_action( 'plugins_loaded', __NAMESPACE__ . '\load' );
 /**
  * Triggers when the plugin is activated.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 register_activation_hook(
 	WPAI_PLUGIN_FILE,

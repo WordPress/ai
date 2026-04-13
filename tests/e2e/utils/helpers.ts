@@ -43,11 +43,16 @@ const clearConnectorFromItem = async ( connectorItem: Locator ) => {
 /**
  * Visits a specific admin page.
  *
- * @param admin The admin fixture from the test context.
- * @param path  The path to the admin page.
+ * @param admin       The admin fixture from the test context.
+ * @param path        The path to the admin page.
+ * @param queryParams The query parameters to add to the URL.
  */
-export const visitAdminPage = async ( admin: Admin, path: string ) => {
-	await admin.visitAdminPage( path );
+export const visitAdminPage = async (
+	admin: Admin,
+	path: string,
+	queryParams?: string
+) => {
+	await admin.visitAdminPage( path, queryParams );
 };
 
 /**
@@ -133,9 +138,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
 	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByRole( 'checkbox', {
-		name: 'Enable AI',
-	} );
+	const globalToggle = page.getByLabel( 'Enable AI' );
 	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
 
 	// Nothing to do if experiments are already disabled.
@@ -143,7 +146,11 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 		return;
 	}
 	await globalToggle.uncheck();
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect(
+		page.locator( '.components-snackbar__content', {
+			hasText: 'AI disabled.',
+		} )
+	).toBeVisible();
 };
 
 /**
@@ -156,9 +163,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
 	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByRole( 'checkbox', {
-		name: 'Enable AI',
-	} );
+	const globalToggle = page.getByLabel( 'Enable AI' );
 	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
 
 	// Nothing to do if experiments are already enabled.
@@ -166,7 +171,11 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 		return;
 	}
 	await globalToggle.check();
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect(
+		page.locator( '.components-snackbar__content', {
+			hasText: 'AI enabled.',
+		} )
+	).toBeVisible();
 };
 
 /**
@@ -182,20 +191,22 @@ export const enableExperiment = async (
 	experimentLabel: string
 ) => {
 	await visitSettingsPage( admin );
-	const checkbox = page.getByRole( 'checkbox', {
-		name: experimentLabel,
-	} );
-	await expect( checkbox ).toBeVisible( { timeout: 10000 } );
+	const toggle = page.getByLabel( experimentLabel );
+	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 
 	// Nothing to do if this experiment is already enabled.
-	if ( await checkbox.isChecked() ) {
+	if ( await toggle.isChecked() ) {
 		return;
 	}
 
-	await checkbox.check();
+	await toggle.check();
 
 	// Ensure the save was successful.
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect(
+		page.locator( '.components-snackbar__content', {
+			hasText: `${ experimentLabel } enabled.`,
+		} )
+	).toBeVisible();
 };
 
 /**
@@ -211,20 +222,22 @@ export const disableExperiment = async (
 	experimentLabel: string
 ) => {
 	await visitSettingsPage( admin );
-	const checkbox = page.getByRole( 'checkbox', {
-		name: experimentLabel,
-	} );
-	await expect( checkbox ).toBeVisible( { timeout: 10000 } );
+	const toggle = page.getByLabel( experimentLabel );
+	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 
 	// Nothing to do if this experiment is already disabled.
-	if ( ! ( await checkbox.isChecked() ) ) {
+	if ( ! ( await toggle.isChecked() ) ) {
 		return;
 	}
 
-	await checkbox.uncheck();
+	await toggle.uncheck();
 
 	// Ensure the save was successful.
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect(
+		page.locator( '.components-snackbar__content', {
+			hasText: `${ experimentLabel } disabled.`,
+		} )
+	).toBeVisible();
 };
 
 /**

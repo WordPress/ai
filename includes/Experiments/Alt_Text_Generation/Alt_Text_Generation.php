@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Alt text generation experiment.
  *
- * Generates descriptive alt text for images using AI vision models.
+ * Generates accessible alternative text for images using AI vision models.
  *
  * @since 0.3.0
  */
@@ -48,7 +48,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Alt Text Generation', 'ai' ),
-			'description' => __( 'Generates descriptive alt text for images using AI vision models.', 'ai' ),
+			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -63,6 +63,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
 		add_action( 'add_meta_boxes_attachment', array( $this, 'setup_attachment_meta_box' ) );
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
+		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
+		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
 	}
 
 	/**
@@ -122,6 +124,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 
 		if ( in_array( $hook_suffix, array( 'upload.php', 'media-new.php' ), true ) ) {
 			$this->maybe_enqueue_media_script();
+			$this->maybe_enqueue_bulk_script();
 			return;
 		}
 
@@ -195,6 +198,83 @@ class Alt_Text_Generation extends Abstract_Feature {
 		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 150px;">';
 		echo '<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
 		echo '</div>';
+	}
+
+	/**
+	 * Adds the "Generate Alt Text" option to the Media Library bulk actions menu.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param array<string, string> $actions The existing bulk actions.
+	 * @return array<string, string> The bulk actions with the generate alt text option added.
+	 */
+	public function register_bulk_action( array $actions ): array {
+		if ( ! $this->is_enabled() ) {
+			return $actions;
+		}
+
+		$actions['wpai_generate_alt_text'] = __( 'Generate Alt Text', 'ai' );
+
+		return $actions;
+	}
+
+	/**
+	 * Handles the "Generate Alt Text" bulk action by redirecting with selected image IDs.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string        $redirect_url The current redirect URL.
+	 * @param string        $doaction     The bulk action being performed.
+	 * @param list<int>     $post_ids     The list of post IDs to process.
+	 * @return string The redirect URL, possibly with bulk alt text query args appended.
+	 */
+	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
+		if ( 'wpai_generate_alt_text' !== $doaction || ! current_user_can( 'upload_files' ) ) {
+			return $redirect_url;
+		}
+
+		$image_ids = array_values( array_filter( $post_ids, 'wp_attachment_is_image' ) );
+
+		if ( empty( $image_ids ) ) {
+			return $redirect_url;
+		}
+
+		return add_query_arg(
+			array(
+				'wpai_bulk_alt_text'  => 1,
+				'wpai_attachment_ids' => implode( ',', array_map( 'absint', $image_ids ) ),
+			),
+			$redirect_url
+		);
+	}
+
+	/**
+	 * Enqueues the bulk alt text script when a bulk action redirect is detected.
+	 *
+	 * @since 0.7.0
+	 */
+	private function maybe_enqueue_bulk_script(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for script enqueue only; no privileged action taken.
+		if ( ! isset( $_GET['wpai_bulk_alt_text'] ) || ! current_user_can( 'upload_files' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for script enqueue only; no privileged action taken.
+		$raw_ids = isset( $_GET['wpai_attachment_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_attachment_ids'] ) ) : '';
+		$ids     = array_values( array_filter( array_map( 'absint', explode( ',', $raw_ids ) ) ) );
+
+		if ( empty( $ids ) ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script( 'alt_text_generation_bulk', 'experiments/alt-text-generation-bulk' );
+		Asset_Loader::localize_script(
+			'alt_text_generation_bulk',
+			'AltTextGenerationBulkData',
+			array(
+				'attachmentIds' => $ids,
+			)
+		);
 	}
 
 	/**

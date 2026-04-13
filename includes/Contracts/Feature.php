@@ -88,4 +88,22 @@ interface Feature {
 	 * @return bool True if enabled, false otherwise.
 	 */
 	public function is_enabled(): bool;
+
+	/**
+	 * Gets field definitions with fully resolved option names.
+	 *
+	 * Returns an empty array when the feature has no custom settings.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return array<int, array{
+	 *   id: string,
+	 *   label: string,
+	 *   type: string,
+	 *   default?: mixed,
+	 *   elements?: list<array{value: string, label: string}>,
+	 *   isValid?: array{min?: int, max?: int},
+	 * }> Array of field definitions with full option names.
+	 */
+	public function get_settings_fields_metadata(): array;
 }

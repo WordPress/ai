@@ -14,18 +14,20 @@
 	margin: 0 0 24px;
 }
 
-.ai-select-all-toggle {
-	padding: 12px;
-	margin-bottom: 16px;
-	background-color: #f0f0f0;
-	border-radius: 4px;
-	border: 1px solid #dcdcde;
+.ai-feature-settings-form {
+	margin-top: 4px;
+	padding-left: 40px;
+	max-width: 480px;
 
-	.components-base-control {
-		margin-bottom: 0;
+	.components-base-control__label,
+	.components-input-control__label,
+	.dataforms-layouts-regular__field-label {
+		text-transform: none !important;
 	}
+}
 
-	.components-toggle-control__label {
-		font-weight: 600;
-	}
+.ai-feature-settings-form__actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 12px;
 }
