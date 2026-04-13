@@ -238,6 +238,8 @@ class Settings_PageTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_settings_feature_groups' );
 		remove_all_filters( 'wpai_settings_feature_metadata' );
+		remove_all_filters( 'wp_redirect' );
+		$_GET = array();
 		parent::tearDown();
 	}
 
@@ -485,5 +487,44 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$feature = $result['features'][0];
 		$this->assertArrayHasKey( 'settingsFields', $feature );
 		$this->assertSame( array(), $feature['settingsFields'], 'Feature without custom settings should have empty settingsFields' );
+	}
+
+	/**
+	 * Test that init registers an admin redirect hook for the legacy settings slug.
+	 */
+	public function test_init_registers_legacy_settings_redirect_hook() {
+		Settings_Page::init( $this->registry );
+
+		$this->assertTrue(
+			has_action( 'admin_init', array( Settings_Page::class, 'maybe_redirect_legacy_page' ) ) !== false
+		);
+		$this->assertTrue(
+			has_action( 'admin_page_access_denied', array( Settings_Page::class, 'maybe_redirect_legacy_page' ) ) !== false
+		);
+	}
+
+	/**
+	 * Test that the legacy settings slug redirects to the new slug.
+	 */
+	public function test_legacy_settings_slug_redirects_to_new_slug() {
+		$captured_location = null;
+		$captured_status   = null;
+
+		add_filter(
+			'wp_redirect',
+			static function ( $location, $status ) use ( &$captured_location, &$captured_status ) {
+				$captured_location = $location;
+				$captured_status   = $status;
+				return false;
+			},
+			10,
+			2
+		);
+
+		$_GET['page'] = 'ai';
+		Settings_Page::maybe_redirect_legacy_page();
+
+		$this->assertSame( admin_url( 'options-general.php?page=ai-wp-admin' ), $captured_location );
+		$this->assertSame( 301, $captured_status );
 	}
 }
