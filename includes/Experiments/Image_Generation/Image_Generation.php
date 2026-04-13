@@ -41,7 +41,7 @@ class Image_Generation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Image Generation and Editing', 'ai' ),
-			'description' => __( 'Generate and edit images using AI. Requires an AI provider that supports image generation.', 'ai' ),
+			'description' => __( 'Generate and edit images using AI. Requires an AI connector that includes support for image generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}

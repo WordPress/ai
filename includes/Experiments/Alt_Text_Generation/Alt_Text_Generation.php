@@ -48,7 +48,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Alt Text Generation', 'ai' ),
-			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance.', 'ai' ),
+			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
