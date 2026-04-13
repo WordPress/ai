@@ -244,7 +244,7 @@ class Settings_Page {
 		/**
 		 * Filters settings metadata passed to the settings route client.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param array{
 		 *   groups: list<array{
