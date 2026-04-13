@@ -125,7 +125,7 @@ class Settings_Page {
 		/**
 		 * Filters feature group metadata used by the settings UI.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param array<string, array{
 		 *   label:string,
