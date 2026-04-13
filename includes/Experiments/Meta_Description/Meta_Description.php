@@ -42,7 +42,7 @@ class Meta_Description extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Meta Description Generation', 'ai' ),
-			'description' => __( 'Generates meta description suggestions and integrates those with various SEO plugins', 'ai' ),
+			'description' => __( 'Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}

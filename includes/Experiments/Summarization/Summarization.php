@@ -39,7 +39,7 @@ class Summarization extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Content Summarization', 'ai' ),
-			'description' => __( 'Summarizes long-form content into digestible overviews', 'ai' ),
+			'description' => __( 'Summarizes long-form content into digestible overviews. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
