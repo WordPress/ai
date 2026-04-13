@@ -30,6 +30,7 @@ class Settings_Page {
 
 	/**
 	 * Legacy settings page slug.
+	 * TODO: either once [0.6.0 is less than 10% of installs](https://wordpress.org/plugins/ai/advanced/) or we're in October 2026 let's remove this section in case other plugin(s) are attempting to use the `ai` page.
 	 *
 	 * @since x.x.x
 	 *
