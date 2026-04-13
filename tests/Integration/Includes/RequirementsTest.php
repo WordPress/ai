@@ -18,14 +18,14 @@ use WordPress\AI\Requirements;
 class RequirementsTest extends WP_UnitTestCase {
 
 	/**
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function test_are_requirements_met_returns_true_in_test_environment() {
 		$this->assertTrue( ( new Requirements() )->are_requirements_met() );
 	}
 
 	/**
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function test_are_requirements_met_returns_false_when_check_fails() {
 		$requirements = new Requirements();
@@ -53,7 +53,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function test_are_requirements_met_registers_admin_notice_hooks_on_failure() {
 		$requirements = new Requirements();
@@ -75,7 +75,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function test_individual_requirement_checks_pass_in_test_environment() {
 		$requirements = new Requirements();
@@ -95,7 +95,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function test_error_messages_return_non_empty_strings() {
 		$requirements = new Requirements();
@@ -113,7 +113,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function test_get_admin_notice_message_html_with_single_failure() {
 		$requirements = new Requirements();
@@ -137,7 +137,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function test_get_admin_notice_message_html_with_multiple_failures() {
 		$requirements = new Requirements();

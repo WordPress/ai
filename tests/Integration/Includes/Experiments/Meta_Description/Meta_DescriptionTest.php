@@ -15,14 +15,14 @@ use WordPress\AI\Features\Registry;
 /**
  * Meta_Description experiment test case.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Meta_DescriptionTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -49,7 +49,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -64,7 +64,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment reports correct metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_experiment_registration(): void {
 		$experiment = new Meta_Description();
@@ -78,7 +78,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment can be disabled via the filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_experiment_can_be_disabled_via_filter(): void {
 		add_filter( 'wpai_feature_meta-description_enabled', '__return_false' );
@@ -92,7 +92,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register() hooks all required actions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_register_hooks_actions(): void {
 		$experiment = new Meta_Description();
@@ -114,7 +114,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_abilities() hooks into the abilities API.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_register_abilities(): void {
 		$experiment = new Meta_Description();
@@ -129,7 +129,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_post_meta() registers fallback meta when no SEO plugin is active.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_register_post_meta_registers_fallback(): void {
 		$experiment = new Meta_Description();
@@ -144,7 +144,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_post_meta() skips attachment post type.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_register_post_meta_skips_attachment(): void {
 		$experiment = new Meta_Description();
@@ -157,7 +157,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_post_meta() does not register when SEO plugin is active.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_register_post_meta_skips_when_seo_plugin_active(): void {
 		// Clear the cache from setUp so detect_active_plugin() re-checks.
@@ -181,7 +181,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_output_meta_description() does not output when the experiment is disabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_maybe_output_meta_description_does_not_output_when_experiment_disabled(): void {
 		add_filter( 'wpai_feature_meta-description_enabled', '__return_false' );
@@ -195,7 +195,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_output_meta_description() does not output when not on a singular post.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_maybe_output_meta_description_does_not_output_when_not_singular(): void {
 		$experiment = new Meta_Description();
@@ -211,7 +211,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_output_meta_description() does not output when no SEO plugin is active.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_maybe_output_meta_description_does_not_output_when_seo_plugin_active(): void {
 		// Simulate an active SEO plugin via the active_plugins option.
@@ -227,7 +227,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_output_meta_description() outputs when no SEO plugin is active.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_maybe_output_meta_description_outputs_when_no_seo_plugin_active(): void {
 		$experiment = new Meta_Description();
@@ -251,7 +251,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() does not load on irrelevant screens.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_enqueue_assets_skips_irrelevant_screens(): void {
 		$experiment = new Meta_Description();

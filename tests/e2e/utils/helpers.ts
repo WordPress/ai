@@ -239,3 +239,122 @@ export const disableExperiment = async (
 		} )
 	).toBeVisible();
 };
+
+/**
+ * Gets the "Enable all" button for a specific experiment group.
+ *
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ * @return The "Enable all" button locator.
+ */
+export const getEnableAllButton = ( page: Page, groupName: string ) => {
+	// Find the section by its heading.
+	const section = page
+		.locator(
+			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
+		)
+		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+
+	return section.getByRole( 'button', { name: 'Enable all' } );
+};
+
+/**
+ * Gets the "Disable all" button for a specific experiment group.
+ *
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ * @return The "Disable all" button locator.
+ */
+export const getDisableAllButton = ( page: Page, groupName: string ) => {
+	// Find the section by its heading.
+	const section = page
+		.locator(
+			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
+		)
+		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+
+	return section.getByRole( 'button', { name: 'Disable all' } );
+};
+
+/**
+ * Enables all experiments in a specific group using the "Enable all" button.
+ *
+ * @param admin     The admin fixture from the test context.
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ */
+export const enableAllExperimentsInGroup = async (
+	admin: Admin,
+	page: Page,
+	groupName: string
+) => {
+	await visitSettingsPage( admin );
+
+	const enableAllButton = getEnableAllButton( page, groupName );
+	await expect( enableAllButton ).toBeVisible( { timeout: 10000 } );
+
+	// Bail if the button is disabled, which indicates all experiments are already enabled.
+	if ( await enableAllButton.isDisabled() ) {
+		return;
+	}
+
+	await enableAllButton.click();
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+};
+
+/**
+ * Disables all experiments in a specific group using the "Disable all" button.
+ *
+ * @param admin     The admin fixture from the test context.
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ */
+export const disableAllExperimentsInGroup = async (
+	admin: Admin,
+	page: Page,
+	groupName: string
+) => {
+	await visitSettingsPage( admin );
+
+	const disableAllButton = getDisableAllButton( page, groupName );
+	await expect( disableAllButton ).toBeVisible( { timeout: 10000 } );
+
+	// Bail if the button is disabled, which indicates all experiments are already disabled.
+	if ( await disableAllButton.isDisabled() ) {
+		return;
+	}
+
+	await disableAllButton.click();
+	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+};
+
+/**
+ * Gets all experiment toggles within a specific group section.
+ *
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ * @return Array of toggle locators.
+ */
+export const getExperimentTogglesInGroup = async (
+	page: Page,
+	groupName: string
+) => {
+	// Find the section by its heading.
+	const section = page
+		.locator(
+			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
+		)
+		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+
+	// Get all checkboxes in that section (experiment toggles are checkboxes, buttons are for bulk actions).
+	const allToggles = section.getByRole( 'checkbox' );
+	const count = await allToggles.count();
+	const experimentToggles = [];
+
+	for ( let i = 0; i < count; i++ ) {
+		const toggle = allToggles.nth( i );
+		experimentToggles.push( toggle );
+	}
+
+	return experimentToggles;
+};

@@ -156,7 +156,7 @@ class Posts {
 					/**
 					 * Filters the post details returned by the get-post-details ability.
 					 *
-					 * @since x.x.x
+					 * @since 0.7.0
 					 *
 					 * @param array<string, string> $details The post details.
 					 * @param int                   $post_id The post ID.
@@ -311,7 +311,7 @@ class Posts {
 					/**
 					 * Filters the terms returned by the get-post-terms ability.
 					 *
-					 * @since x.x.x
+					 * @since 0.7.0
 					 *
 					 * @param array<\WP_Term> $terms              The terms assigned to the post.
 					 * @param int             $post_id             The post ID.

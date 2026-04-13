@@ -36,7 +36,7 @@ final class Requirements {
 	 * The value is true if the requirement is met, or the error message if not.
 	 * Messages are stored as a callable so they can be translated after the checks are run.
 	 *
-	 * @since x.y.z
+	 * @since x.x.x
 	 *
 	 * @var array<string,(true|callable():string)> $requirements An array of requirement slugs and their check results.
 	 */
@@ -122,7 +122,7 @@ final class Requirements {
 	/**
 	 * Checks the dependencies and display an admin notice if any are not met.
 	 *
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	private function display_admin_notice(): void {
 		$hooks = array(
@@ -157,7 +157,7 @@ final class Requirements {
 	/**
 	 * Checks if all requirements are met.
 	 *
-	 * @since x.y.z
+	 * @since x.x.x
 	 *
 	 * @return bool True if all requirements are met, false otherwise.
 	 */
@@ -175,7 +175,7 @@ final class Requirements {
 	 *
 	 * Needs to be sanitized.
 	 *
-	 * @since x.y.z
+	 * @since x.x.x
 	 *
 	 * @return string The admin notice message.
 	 */

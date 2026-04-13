@@ -3,6 +3,8 @@
  * The main plugin file.
  *
  * @package WordPress\AI
+ *
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -25,17 +27,23 @@ defined( 'ABSPATH' ) || exit;
  * Class - Main
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
+ *
+ * @since x.x.x
  */
 final class Main {
 	/**
 	 * Instance of the class.
+	 * @since x.x.x
+	 *
 	 *
 	 * @var ?static
 	 */
 	private static $instance;
 
 	/**
-	 * {@inheritDoc}
+	 * Gets the (singleton) instance of the Main class.
+	 *
+	 * @since x.x.x
 	 */
 	public static function get_instance(): self {
 		if ( ! isset( self::$instance ) ) {
@@ -59,6 +67,8 @@ final class Main {
 
 	/**
 	 * Load the plugin classes.
+	 *
+	 * @since x.x.x
 	 *
 	 * @internal Used in the plugins_loaded action.
 	 */
@@ -90,7 +100,7 @@ final class Main {
 	/**
 	 * Initializes plugin features.
 	 *
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function initialize_features(): void {
 		try {
@@ -121,7 +131,7 @@ final class Main {
 					esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
 					esc_html( $e->getMessage() )
 				),
-				'x.y.z'
+				'x.x.x'
 			);
 		}
 	}
@@ -132,9 +142,7 @@ final class Main {
 	 * This adds "Settings" and "Connectors" links to
 	 * the plugin's action links on the Plugins page.
 	 *
-	 * @internal Used in the plugin_action_links filter.
-	 *
-	 * @since x.y.z
+	 * @since x.x.x
 	 *
 	 * @param array<string> $links Existing action links.
 	 * @return array<string> Modified action links.
@@ -164,7 +172,7 @@ final class Main {
 	 *
 	 * @internal Used in the wp_abilities_api_categories_init action.
 	 *
-	 * @since x.y.z
+	 * @since x.x.x
 	 */
 	public function register_ability_category(): void {
 		wp_register_ability_category(
@@ -178,6 +186,8 @@ final class Main {
 
 	/**
 	 * Prevent the class from being cloned.
+	 *
+	 * @since x.x.x
 	 */
 	public function __clone() {
 		_doing_it_wrong(
@@ -187,12 +197,14 @@ final class Main {
 				esc_html__( 'The %s class should not be cloned.', 'ai' ),
 				esc_html( self::class ),
 			),
-			'x.y.z'
+			'x.x.x'
 		);
 	}
 
 	/**
 	 * Prevent the class from being deserialized.
+	 *
+	 * @since x.x.x
 	 */
 	public function __wakeup() {
 		_doing_it_wrong(
@@ -202,7 +214,7 @@ final class Main {
 				esc_html__( 'De-serializing instances of %s is not allowed.', 'ai' ),
 				esc_html( self::class ),
 			),
-			'x.y.z'
+			'x.x.x'
 		);
 	}
 }

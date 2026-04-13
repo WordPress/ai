@@ -21,6 +21,8 @@ defined( 'ABSPATH' ) || exit;
  * This class is responsible for loading and initializing features from the registry.
  * It decouples the initialization logic from the registry itself.
  *
+ * @internal
+ *
  * @since 0.6.0
  */
 final class Loader {
@@ -53,7 +55,8 @@ final class Loader {
 
 	/**
 	 * Initializes the Loader by registering and initializing features.
-	 * @since x.y.z
+	 *
+	 * @since x.x.x
 	 */
 	public function init(): void {
 		$this->register_features();

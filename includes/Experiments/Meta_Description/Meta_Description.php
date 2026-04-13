@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Provides AI-generated meta description suggestions in the post editor with
  * automatic SEO plugin integration for storing descriptions in the correct meta field.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Meta_Description extends Abstract_Feature {
 
@@ -42,7 +42,7 @@ class Meta_Description extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Meta Description Generation', 'ai' ),
-			'description' => __( 'Generates meta description suggestions and integrates those with various SEO plugins', 'ai' ),
+			'description' => __( 'Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -50,7 +50,7 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -64,7 +64,7 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * Registers the meta description ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -83,7 +83,7 @@ class Meta_Description extends Abstract_Feature {
 	 * This ensures the meta key is accessible through the WordPress data layer
 	 * when no SEO plugin is active to manage it.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function register_post_meta(): void {
 		$meta_key   = SEO_Integration::get_meta_key();
@@ -119,7 +119,7 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
@@ -156,7 +156,7 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * Clears the active SEO plugin cache when a plugin is deactivated.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function clear_active_plugin_cache(): void {
 		delete_transient( 'wpai_active_seo_plugin' );
@@ -165,7 +165,7 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * Determines if the meta description should be rendered by the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	protected function maybe_output_meta_description(): void {
 		if ( ! $this->is_enabled() ) {
@@ -185,7 +185,7 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * Injects the meta description into the head if it exists.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function output_meta_description(): void {
 		if ( ! is_singular() ) {
@@ -198,7 +198,7 @@ class Meta_Description extends Abstract_Feature {
 		 * Filter the meta description output.
 		 * An empty string will prevent output.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param string $meta_description The meta description.
 		 * @return string The filtered meta description.
