@@ -184,9 +184,13 @@ class Registry_Test extends WP_UnitTestCase {
 		$this->registry->register_feature( $experiment );
 
 		$loader = new Loader( $this->registry );
-		$loader->initialize_features();
+		$loader->init();
 
-		$this->assertTrue( $loader->is_initialized(), 'Loader should be marked as initialized' );
+		$reflection = new \ReflectionClass( $loader );
+		$property   = $reflection->getProperty( 'initialized' );
+		$property->setAccessible( true );
+
+		$this->assertTrue( $property->getValue( $loader ), 'Loader should be marked initialized after init' );
 	}
 
 	/**
@@ -201,7 +205,7 @@ class Registry_Test extends WP_UnitTestCase {
 		$this->registry->register_feature( $experiment );
 
 		$loader = new Loader( $this->registry );
-		$loader->initialize_features();
+		$loader->init();
 
 		$this->assertFalse( $experiment->is_enabled(), 'Experiment should be disabled' );
 	}

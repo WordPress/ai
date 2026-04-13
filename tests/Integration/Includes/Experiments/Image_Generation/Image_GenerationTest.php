@@ -39,8 +39,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
-		$loader->initialize_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'image-generation' );
 		$this->assertInstanceOf( Image_Generation::class, $experiment, 'Image generation experiment should be registered in the registry.' );
