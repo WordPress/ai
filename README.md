@@ -35,12 +35,14 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
+* **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **[Image Generation and Editing](docs/experiments/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
+* **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
-* **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
+* **[Review Notes](docs/experiments/review-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** -  Generates title suggestions from content.
 
 ## Roadmap
@@ -49,11 +51,13 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 Overview of planned features:
 
+* **Comment Moderation** – AI-assisted moderation tools to help classify or manage user comments.
+* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
+* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
 * **Workflow Automation** – AI-driven task automation.
-* **Contextual Tagging** – Suggests relevant tags and categories to organize content.
 
 ## Developer Experience
 
