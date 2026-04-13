@@ -241,20 +241,43 @@ export const disableExperiment = async (
 };
 
 /**
- * Gets the "Enable all" / "Disable all" toggle for a specific experiment group.
+ * Gets the "Enable all" button for a specific experiment group.
  *
  * @param page      The page object.
  * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
- * @return The select-all toggle locator.
+ * @return The "Enable all" button locator.
  */
-export const getSelectAllToggle = ( page: Page, groupName: string ) => {
-	return page.getByRole( 'checkbox', {
-		name: new RegExp( `(Enable|Disable) all ${ groupName }`, 'i' ),
-	} );
+export const getEnableAllButton = ( page: Page, groupName: string ) => {
+	// Find the section by its heading.
+	const section = page
+		.locator(
+			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
+		)
+		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+
+	return section.getByRole( 'button', { name: 'Enable all' } );
 };
 
 /**
- * Enables all experiments in a specific group using the select-all toggle.
+ * Gets the "Disable all" button for a specific experiment group.
+ *
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ * @return The "Disable all" button locator.
+ */
+export const getDisableAllButton = ( page: Page, groupName: string ) => {
+	// Find the section by its heading.
+	const section = page
+		.locator(
+			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
+		)
+		.filter( { has: page.getByText( groupName, { exact: true } ) } );
+
+	return section.getByRole( 'button', { name: 'Disable all' } );
+};
+
+/**
+ * Enables all experiments in a specific group using the "Enable all" button.
  *
  * @param admin     The admin fixture from the test context.
  * @param page      The page object.
@@ -267,20 +290,20 @@ export const enableAllExperimentsInGroup = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	const selectAllToggle = getSelectAllToggle( page, groupName );
-	await expect( selectAllToggle ).toBeVisible( { timeout: 10000 } );
+	const enableAllButton = getEnableAllButton( page, groupName );
+	await expect( enableAllButton ).toBeVisible( { timeout: 10000 } );
 
-	// Nothing to do if this is already enabled.
-	if ( await selectAllToggle.isChecked() ) {
+	// Bail if the button is disabled, which indicates all experiments are already enabled.
+	if ( await enableAllButton.isDisabled() ) {
 		return;
 	}
 
-	await selectAllToggle.check();
+	await enableAllButton.click();
 	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };
 
 /**
- * Disables all experiments in a specific group using the select-all toggle.
+ * Disables all experiments in a specific group using the "Disable all" button.
  *
  * @param admin     The admin fixture from the test context.
  * @param page      The page object.
@@ -293,15 +316,15 @@ export const disableAllExperimentsInGroup = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	const selectAllToggle = getSelectAllToggle( page, groupName );
-	await expect( selectAllToggle ).toBeVisible( { timeout: 10000 } );
+	const disableAllButton = getDisableAllButton( page, groupName );
+	await expect( disableAllButton ).toBeVisible( { timeout: 10000 } );
 
-	// Nothing to do if this is already disabled.
-	if ( ! ( await selectAllToggle.isChecked() ) ) {
+	// Bail if the button is disabled, which indicates all experiments are already disabled.
+	if ( await disableAllButton.isDisabled() ) {
 		return;
 	}
 
-	await selectAllToggle.uncheck();
+	await disableAllButton.click();
 	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 };
 
@@ -318,21 +341,19 @@ export const getExperimentTogglesInGroup = async (
 ) => {
 	// Find the section by its heading.
 	const section = page
-		.locator( '[class*="dataviews-card"]' )
+		.locator(
+			'.ai-settings-page .dataforms-layouts__wrapper .dataforms-layouts-card__field'
+		)
 		.filter( { has: page.getByText( groupName, { exact: true } ) } );
 
-	// Get all checkboxes in that section, excluding the select-all toggle.
+	// Get all checkboxes in that section (experiment toggles are checkboxes, buttons are for bulk actions).
 	const allToggles = section.getByRole( 'checkbox' );
 	const count = await allToggles.count();
 	const experimentToggles = [];
 
 	for ( let i = 0; i < count; i++ ) {
 		const toggle = allToggles.nth( i );
-		const label = await toggle.textContent();
-		// Exclude the select-all toggle.
-		if ( ! label?.match( /^(Enable|Disable) all/ ) ) {
-			experimentToggles.push( toggle );
-		}
+		experimentToggles.push( toggle );
 	}
 
 	return experimentToggles;
