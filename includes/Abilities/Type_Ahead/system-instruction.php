@@ -17,10 +17,5 @@ Requirements:
 - Avoid proposing links, markdown, or HTML. Plain prose only.
 - Only return UTF-8 text that can be inserted immediately at the caret, without surrounding quotes.
 - If you are unsure or the context is insufficient, return an empty suggestion.
-
-Output strictly as JSON with the following shape:
-{
-  "suggestion": "text you propose",
-  "confidence": 0.0-1.0
-}
+- Make sure the suggestion returned matches the language of the content you are given. For example, if the content is in English, suggest English text. If the content is in Spanish, suggest Spanish text.
 INSTRUCTION;

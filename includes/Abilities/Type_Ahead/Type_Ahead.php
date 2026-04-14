@@ -11,15 +11,13 @@ namespace WordPress\AI\Abilities\Type_Ahead;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI_Client\AI_Client;
 
-use function WordPress\AI\get_post_context;
 use function WordPress\AI\normalize_content;
 
 /**
  * Generates inline completion suggestions for block content.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class Type_Ahead extends Abstract_Ability {
 	/**
@@ -40,42 +38,20 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * Allowed completion modes.
 	 */
-	private const MODES = array( 'word', 'sentence', 'paragraph', 'smart' );
-
-	/**
-	 * Logs structured debug details when WP_DEBUG is enabled.
-	 */
-	private function log_debug( string $message, array $context = array() ): void {
-		if ( ! defined( 'WP_DEBUG' ) || true !== WP_DEBUG ) {
-			return;
-		}
-
-		if ( ! empty( $context ) ) {
-			$encoded = wp_json_encode( $context );
-			if ( false !== $encoded ) {
-				$message .= ' ' . $encoded;
-			}
-		}
-
-		error_log( '[AI Type Ahead] ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-	}
+	private const MODES = array( 'word', 'sentence', 'paragraph', 'smart' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	protected function input_schema(): array {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
 				'post_id'             => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'Post ID used to gather additional context.', 'ai' ),
-				),
-				'block_id'            => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_key',
-					'description'       => esc_html__( 'Unique identifier of the block requesting the suggestion.', 'ai' ),
+					'type'        => 'integer',
+					'description' => esc_html__( 'Post ID used to gather additional context.', 'ai' ),
 				),
 				'block_content'       => array(
 					'type'        => 'string',
@@ -115,6 +91,8 @@ class Type_Ahead extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -138,6 +116,8 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 *
 	 * @return array{suggestion: string, confidence: float, cursor_position: int}|\WP_Error
 	 */
 	protected function execute_callback( $input ) {
@@ -145,7 +125,6 @@ class Type_Ahead extends Abstract_Ability {
 			$input,
 			array(
 				'post_id'             => null,
-				'block_id'            => '',
 				'block_content'       => '',
 				'preceding_text'      => '',
 				'following_text'      => '',
@@ -166,24 +145,7 @@ class Type_Ahead extends Abstract_Ability {
 		$surrounding     = $this->truncate_text( (string) $args['surrounding_context'] );
 		$cursor_position = absint( $args['cursor_position'] );
 
-		$this->log_debug(
-			'Received Type Ahead request',
-			array(
-				'post_id'         => $args['post_id'],
-				'block_id'        => $args['block_id'],
-				'mode'            => $mode,
-				'max_words'       => $max_words,
-				'cursor_position' => $cursor_position,
-				'manual_trigger'  => (bool) $args['manual_trigger'],
-				'block_length'    => mb_strlen( $block_content ),
-				'preceding_len'   => mb_strlen( $preceding_text ),
-				'following_len'   => mb_strlen( $following_text ),
-				'surrounding_len' => mb_strlen( $surrounding ),
-			)
-		);
-
 		if ( '' === $block_content ) {
-			$this->log_debug( 'Rejected request with empty block content', array( 'block_id' => $args['block_id'] ) );
 			return new WP_Error( 'ai_type_ahead_missing_block', esc_html__( 'Block content is required for type-ahead suggestions.', 'ai' ) );
 		}
 
@@ -195,65 +157,28 @@ class Type_Ahead extends Abstract_Ability {
 		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
 
 		if ( ! empty( $cached ) ) {
-			$this->log_debug(
-				'Cache hit for Type Ahead request',
-				array(
-					'block_id'        => $args['block_id'],
-					'cursor_position' => $cursor_position,
-					'mode'            => $mode,
-					'max_words'       => $max_words,
-				)
-			);
 			return $cached;
 		}
 
 		$context = $this->prepare_prompt_context( $args['post_id'], $block_content, $preceding_text, $following_text, $surrounding, $cursor_position, $mode, $max_words, (bool) $args['manual_trigger'] );
 
-		$this->log_debug(
-			'Dispatching Type Ahead prompt',
-			array(
-				'block_id'        => $args['block_id'],
-				'cursor_position' => $cursor_position,
-				'manual_trigger'  => (bool) $args['manual_trigger'],
-			)
-		);
-
-		$start_time = microtime( true );
-		$result     = $this->generate_suggestion( $context );
-		$duration   = ( microtime( true ) - $start_time ) * 1000;
+		$result = $this->generate_suggestion( $context );
 
 		if ( is_wp_error( $result ) ) {
-			$this->log_debug(
-				'Type Ahead provider returned WP_Error',
-				array(
-					'code'        => $result->get_error_code(),
-					'message'     => $result->get_error_message(),
-					'duration_ms' => (int) round( $duration ),
-				)
-			);
 			return $result;
 		}
 
 		$result['cursor_position'] = $cursor_position;
 
-		$this->log_debug(
-			'Type Ahead suggestion ready',
-			array(
-				'block_id'        => $args['block_id'],
-				'cursor_position' => $cursor_position,
-				'confidence'      => $result['confidence'],
-				'preview'         => mb_substr( $result['suggestion'], 0, 80 ),
-				'duration_ms'     => (int) round( $duration ),
-			)
-		);
-
-		wp_cache_set( $cache_key, $result, self::CACHE_GROUP, self::CACHE_TTL );
+		wp_cache_set( $cache_key, $result, self::CACHE_GROUP, self::CACHE_TTL ); // phpcs:ignore WordPressVIPMinimum.Performance.LowExpiryCacheTime.CacheTimeUndetermined
 
 		return $result;
 	}
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
@@ -262,7 +187,6 @@ class Type_Ahead extends Abstract_Ability {
 			$post = get_post( $post_id );
 
 			if ( ! $post ) {
-				$this->log_debug( 'Permission denied: post not found', array( 'post_id' => $post_id ) );
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
@@ -271,14 +195,25 @@ class Type_Ahead extends Abstract_Ability {
 			}
 
 			if ( ! current_user_can( 'edit_post', $post_id ) ) {
-				$this->log_debug( 'Permission denied: cannot edit post', array( 'post_id' => $post_id ) );
 				return new WP_Error(
 					'insufficient_capabilities',
 					esc_html__( 'You do not have permission to request type-ahead suggestions for this post.', 'ai' )
 				);
 			}
+
+			// Ensure the post type is allowed in REST endpoints.
+			$post_type = get_post_type( $post_id );
+
+			if ( ! $post_type ) {
+				return false;
+			}
+
+			$post_type_obj = get_post_type_object( $post_type );
+
+			if ( ! $post_type_obj || empty( $post_type_obj->show_in_rest ) ) {
+				return false;
+			}
 		} elseif ( ! current_user_can( 'edit_posts' ) ) {
-			$this->log_debug( 'Permission denied: cannot edit posts capability missing', array( 'user_id' => get_current_user_id() ) );
 			return new WP_Error(
 				'insufficient_capabilities',
 				esc_html__( 'You do not have permission to request type-ahead suggestions.', 'ai' )
@@ -290,15 +225,35 @@ class Type_Ahead extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	protected function meta(): array {
 		return array(
 			'show_in_rest' => true,
-			'mcp'          => array(
-				'public'   => true,
-				'type'     => 'tool',
-				'category' => 'editor',
+		);
+	}
+
+	/**
+	 * Returns the JSON schema used for structured output generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> JSON schema for a type-ahead suggestion.
+	 */
+	protected function suggestion_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'suggestion' => array(
+					'type' => 'string',
+				),
+				'confidence' => array(
+					'type' => 'number',
+				),
 			),
+			'required'             => array( 'suggestion', 'confidence' ),
+			'additionalProperties' => false,
 		);
 	}
 
@@ -316,61 +271,41 @@ class Type_Ahead extends Abstract_Ability {
 	 * @return array{suggestion: string, confidence: float}|\WP_Error
 	 */
 	private function generate_suggestion( array $context ) {
-		$this->log_debug(
-			'Calling AI client for Type Ahead',
-			array(
-				'mode'         => $context['mode'],
-				'max_words'    => $context['max_words'],
-				'cursor'       => $context['cursor_position'],
-				'manual'       => (bool) $context['manual_trigger'],
-				'block_length' => mb_strlen( (string) $context['block_content'] ),
-			)
-		);
+		$prompt = wp_json_encode( $context );
 
-		$response = AI_Client::prompt_with_wp_error( wp_json_encode( $context ) )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_candidate_count( 1 )
-			->using_model_preference(
-				array( 'openai', 'gpt-5.1-nano' ),
-				array( 'anthropic', 'claude-haiku-4-5' ),
-				array( 'google', 'gemini-2.5-flash' ),
-				array( 'openai', 'gpt-4o-mini' )
-			)
-			->generate_texts();
-
-		if ( is_wp_error( $response ) ) {
-			$this->log_debug(
-				'AI client returned WP_Error',
-				array(
-					'code'    => $response->get_error_code(),
-					'message' => $response->get_error_message(),
-				)
-			);
-			return $response;
+		if ( ! is_string( $prompt ) ) {
+			return new WP_Error( 'ai_type_ahead_invalid_prompt', esc_html__( 'Unable to encode the type-ahead prompt.', 'ai' ) );
 		}
 
-		$text = $response[0] ?? '';
+		$prompt_builder = $this->get_prompt_builder( $prompt );
 
-		if ( ! is_string( $text ) || '' === trim( $text ) ) {
-			$this->log_debug( 'AI client returned empty response text' );
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
+		$raw = $prompt_builder->generate_text();
+
+		if ( is_wp_error( $raw ) ) {
+			return $raw;
+		}
+
+		if ( empty( $raw ) ) {
 			return new WP_Error( 'ai_type_ahead_empty', esc_html__( 'The AI provider returned an empty suggestion.', 'ai' ) );
 		}
 
-		$data = $this->decode_suggestion_payload( $text );
+		$decoded = json_decode( (string) $raw, true );
 
-		if ( ! is_array( $data ) || empty( $data['suggestion'] ) ) {
-			$this->log_debug( 'AI response failed JSON decode', array( 'raw' => mb_substr( $text, 0, 160 ) ) );
+		if ( ! is_array( $decoded ) || ! isset( $decoded['suggestion'] ) || ! is_string( $decoded['suggestion'] ) ) {
 			return new WP_Error( 'ai_type_ahead_invalid', esc_html__( 'Unable to parse the type-ahead suggestion response.', 'ai' ) );
 		}
 
-		$suggestion = sanitize_textarea_field( $data['suggestion'] );
+		$suggestion = sanitize_textarea_field( $decoded['suggestion'] );
 
 		if ( '' === $suggestion ) {
-			$this->log_debug( 'Suggestion blank after sanitization' );
 			return new WP_Error( 'ai_type_ahead_blank', esc_html__( 'The suggestion returned was blank after sanitization.', 'ai' ) );
 		}
 
-		$confidence = isset( $data['confidence'] ) ? min( 1, max( 0, (float) $data['confidence'] ) ) : 0.0;
+		$confidence = isset( $decoded['confidence'] ) ? min( 1, max( 0, (float) $decoded['confidence'] ) ) : 0.0;
 
 		return array(
 			'suggestion' => $suggestion,
@@ -379,32 +314,28 @@ class Type_Ahead extends Abstract_Ability {
 	}
 
 	/**
-	 * Attempts to decode a JSON payload that may be wrapped in markdown fences or extra prose.
+	 * Gets a prompt builder for generating type-ahead suggestions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to generate type-ahead suggestions from.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
-	private function decode_suggestion_payload( string $raw ): ?array {
-		$clean = trim( $raw );
+	private function get_prompt_builder( string $prompt ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_model_preference(
+				array( 'openai', 'gpt-5-nano' ),
+				array( 'anthropic', 'claude-haiku-4-5' ),
+				array( 'google', 'gemini-2.5-flash' ),
+				array( 'openai', 'gpt-4.1-nano' )
+			)
+			->as_json_response( $this->suggestion_schema() );
 
-		if ( str_starts_with( $clean, '```' ) ) {
-			$clean = preg_replace( '/^```[a-zA-Z0-9_-]*\s*/', '', $clean ) ?? $clean;
-			if ( str_contains( $clean, '```' ) ) {
-				$clean = substr( $clean, 0, strpos( $clean, '```' ) );
-			}
-			$clean = trim( $clean );
-		}
-
-		$decoded = json_decode( $clean, true );
-		if ( is_array( $decoded ) ) {
-			return $decoded;
-		}
-
-		if ( preg_match( '/\{.*\}/s', $clean, $matches ) === 1 ) {
-			$decoded = json_decode( $matches[0], true );
-			if ( is_array( $decoded ) ) {
-				return $decoded;
-			}
-		}
-
-		return null;
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Type-ahead suggestion generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 
 	/**
@@ -423,12 +354,6 @@ class Type_Ahead extends Abstract_Ability {
 	 * @return array<string, mixed>
 	 */
 	private function prepare_prompt_context( ?int $post_id, string $block_content, string $preceding_text, string $following_text, string $surrounding_context, int $cursor_position, string $mode, int $max_words, bool $manual_trigger ): array {
-		$post_context = array();
-
-		if ( $post_id ) {
-			$post_context = get_post_context( $post_id );
-		}
-
 		return array(
 			'mode'                => $mode,
 			'max_words'           => $max_words,
@@ -437,7 +362,6 @@ class Type_Ahead extends Abstract_Ability {
 			'preceding_text'      => $preceding_text,
 			'following_text'      => $following_text,
 			'surrounding_context' => $surrounding_context,
-			'post_context'        => $post_context,
 			'manual_trigger'      => $manual_trigger,
 		);
 	}

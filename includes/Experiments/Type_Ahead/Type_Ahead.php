@@ -12,8 +12,8 @@ namespace WordPress\AI\Experiments\Type_Ahead;
 use WordPress\AI\Abilities\Type_Ahead\Type_Ahead as Type_Ahead_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Settings\Settings_Registration;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -33,7 +33,7 @@ class Type_Ahead extends Abstract_Feature {
 	 *
 	 * @var array<string, mixed>
 	 */
-	private const DEFAULTS = array(
+	private const DEFAULTS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		'mode'       => 'smart',
 		'delay'      => 500,
 		'confidence' => 70,
@@ -294,8 +294,11 @@ class Type_Ahead extends Abstract_Feature {
 	 * Sanitizes the completion mode.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param string $mode The completion mode to sanitize.
+	 * @return string The sanitized completion mode.
 	 */
-	public function sanitize_mode( $mode ): string {
+	public function sanitize_mode( ?string $mode ): string {
 		$mode = is_string( $mode ) ? strtolower( $mode ) : '';
 
 		return in_array( $mode, array( 'word', 'sentence', 'paragraph', 'smart' ), true ) ? $mode : self::DEFAULTS['mode'];
@@ -305,8 +308,11 @@ class Type_Ahead extends Abstract_Feature {
 	 * Sanitizes the delay field.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param int $value The value to sanitize.
+	 * @return int The sanitized delay value.
 	 */
-	public function sanitize_delay( $value ): int {
+	public function sanitize_delay( ?int $value ): int {
 		$value = (int) $value;
 
 		return max( 200, min( 2000, $value ) );
@@ -316,8 +322,11 @@ class Type_Ahead extends Abstract_Feature {
 	 * Sanitizes the confidence field.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param int $value The value to sanitize.
+	 * @return int The sanitized confidence value.
 	 */
-	public function sanitize_confidence( $value ): int {
+	public function sanitize_confidence( ?int $value ): int {
 		$value = (int) $value;
 
 		return max( 0, min( 100, $value ) );
@@ -327,8 +336,11 @@ class Type_Ahead extends Abstract_Feature {
 	 * Sanitizes the max words field.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param int $value The value to sanitize.
+	 * @return int The sanitized max words value.
 	 */
-	public function sanitize_max_words( $value ): int {
+	public function sanitize_max_words( ?int $value ): int {
 		$value = (int) $value;
 
 		return max( 1, min( 50, $value ) );
