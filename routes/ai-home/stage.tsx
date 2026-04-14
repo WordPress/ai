@@ -215,10 +215,45 @@ function buildToggleMessage(
 	edits: Record< string, unknown >,
 	featureDefinitions: FeatureData[]
 ): string {
-	const entry = Object.entries( edits )[ 0 ];
+	const entries = Object.entries( edits );
+	if ( entries.length === 0 ) {
+		return __( 'Settings saved.', 'ai' );
+	}
+
+	// Bulk toggle (multiple experiments).
+	if ( entries.length > 1 ) {
+		const allEnabled = entries.every( ( [ , value ] ) => value === true );
+		const allDisabled = entries.every( ( [ , value ] ) => value === false );
+		const count = entries.length;
+
+		if ( allEnabled ) {
+			return sprintf(
+				// translators: %d: Number of experiments.
+				__( '%d experiments enabled', 'ai' ),
+				count
+			);
+		}
+		if ( allDisabled ) {
+			return sprintf(
+				// translators: %d: Number of experiments.
+				__( '%d experiments disabled', 'ai' ),
+				count
+			);
+		}
+		// Just a fallback for mixed state (shouldn't happen with our buttons, but handle it).
+		return sprintf(
+			// translators: %d: Number of experiments.
+			__( '%d experiments updated', 'ai' ),
+			count
+		);
+	}
+
+	// Single toggle
+	const entry = entries[ 0 ];
 	if ( ! entry ) {
 		return __( 'Settings saved.', 'ai' );
 	}
+
 	if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
 		return entry[ 1 ]
 			? __( 'AI enabled.', 'ai' )
@@ -246,6 +281,84 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 			onChange={ noop }
 			disabled
 		/>
+	);
+}
+
+interface SectionActionsProps extends DataFormControlProps< AISettings > {
+	experimentSettings: string[];
+	globalEnabled: boolean;
+	onBulkChange: ( edits: Record< string, boolean > ) => void;
+}
+
+function SectionActions( {
+	experimentSettings,
+	data,
+	globalEnabled,
+	onBulkChange,
+}: SectionActionsProps ) {
+	const allEnabled = useMemo( () => {
+		return experimentSettings.every(
+			( settingName ) => data[ settingName ]
+		);
+	}, [ experimentSettings, data ] );
+
+	const allDisabled = useMemo( () => {
+		return experimentSettings.every(
+			( settingName ) => ! data[ settingName ]
+		);
+	}, [ experimentSettings, data ] );
+
+	const handleEnableAll = useCallback( () => {
+		const edits: Record< string, boolean > = {};
+		let enabledCount = 0;
+
+		for ( const settingName of experimentSettings ) {
+			if ( ! data[ settingName ] ) {
+				edits[ settingName ] = true;
+				enabledCount++;
+			}
+		}
+
+		if ( enabledCount > 0 ) {
+			onBulkChange( edits );
+		}
+	}, [ experimentSettings, data, onBulkChange ] );
+
+	const handleDisableAll = useCallback( () => {
+		const edits: Record< string, boolean > = {};
+		let disabledCount = 0;
+
+		for ( const settingName of experimentSettings ) {
+			if ( data[ settingName ] ) {
+				edits[ settingName ] = false;
+				disabledCount++;
+			}
+		}
+
+		if ( disabledCount > 0 ) {
+			onBulkChange( edits );
+		}
+	}, [ experimentSettings, data, onBulkChange ] );
+
+	return (
+		<div className="ai-section-actions">
+			<Button
+				variant="secondary"
+				size="compact"
+				onClick={ handleEnableAll }
+				disabled={ ! globalEnabled || allEnabled }
+			>
+				{ __( 'Enable all', 'ai' ) }
+			</Button>
+			<Button
+				variant="secondary"
+				size="compact"
+				onClick={ handleDisableAll }
+				disabled={ ! globalEnabled || allDisabled }
+			>
+				{ __( 'Disable all', 'ai' ) }
+			</Button>
+		</div>
 	);
 }
 
@@ -492,106 +605,7 @@ function AISettingsPage() {
 		return aiSettings;
 	}, [ aiSettingKeys, editedRecord ] );
 
-	const globalEnabled = data[ GLOBAL_FIELD.id ];
-
-	const fields = useMemo< Field< AISettings >[] >(
-		() => [
-			GLOBAL_FIELD,
-			...featureDefinitions.map( ( feature ) => {
-				const baseField: Field< AISettings > = {
-					id: feature.settingName,
-					label: feature.label,
-					description: feature.description,
-					type: 'boolean' as const,
-				};
-
-				if ( ! globalEnabled ) {
-					baseField.Edit = DisabledToggle;
-				} else if ( feature.settingsFields.length > 0 ) {
-					baseField.Edit = FeatureToggleWithSettings;
-				} else {
-					baseField.Edit = 'toggle' as const;
-				}
-
-				return baseField;
-			} ),
-		],
-		[ featureDefinitions, globalEnabled ]
-	);
-
-	const form = useMemo< Form >( () => {
-		const groupedFields = new Map< string, string[] >();
-		for ( const feature of featureDefinitions ) {
-			const category = feature.category || 'other';
-			const categoryFields = groupedFields.get( category ) ?? [];
-			categoryFields.push( feature.settingName );
-			groupedFields.set( category, categoryFields );
-		}
-
-		const sectionFields: NonNullable< Form[ 'fields' ] > = [];
-		const seenCategories = new Set< string >();
-
-		for ( const group of featureGroups ) {
-			const children = groupedFields.get( group.id ) ?? [];
-
-			if ( children.length === 0 ) {
-				continue;
-			}
-
-			seenCategories.add( group.id );
-			sectionFields.push( {
-				id: getSectionId( group.id ),
-				label: group.label,
-				description: group.description,
-				layout: {
-					type: 'card',
-					withHeader: true,
-					isOpened: true,
-					isCollapsible: true,
-				},
-				children,
-			} );
-		}
-
-		for ( const [ category, children ] of groupedFields.entries() ) {
-			if ( children.length === 0 || seenCategories.has( category ) ) {
-				continue;
-			}
-
-			sectionFields.push( {
-				id: getSectionId( category ),
-				label: getDefaultLabel( category ),
-				description: '',
-				layout: {
-					type: 'card',
-					withHeader: true,
-					isOpened: true,
-					isCollapsible: true,
-				},
-				children,
-			} );
-		}
-
-		return {
-			fields: [
-				{
-					id: 'generalSettings',
-					label: __( 'General Settings', 'ai' ),
-					description: __(
-						'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-						'ai'
-					),
-					layout: {
-						type: 'card',
-						withHeader: true,
-						isCollapsible: false,
-					},
-					children: [ GLOBAL_FIELD_ID ],
-				},
-				...sectionFields,
-			],
-		};
-	}, [ featureDefinitions, featureGroups ] );
+	const globalEnabled = Boolean( data[ GLOBAL_FIELD.id ] );
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
@@ -636,6 +650,140 @@ function AISettingsPage() {
 			registry,
 		]
 	);
+
+	const fields = useMemo< Field< AISettings >[] >( () => {
+		const sectionActionsFields: Field< AISettings >[] = [];
+		const groupedFields = new Map< string, string[] >();
+
+		// Group features by category
+		for ( const feature of featureDefinitions ) {
+			const category = feature.category || 'other';
+			const categoryFields = groupedFields.get( category ) ?? [];
+			categoryFields.push( feature.settingName );
+			groupedFields.set( category, categoryFields );
+		}
+
+		// Create section action fields for each group
+		for ( const group of featureGroups ) {
+			const experimentSettings = groupedFields.get( group.id ) ?? [];
+			if ( experimentSettings.length === 0 ) {
+				continue;
+			}
+
+			const actionFieldId = `section-actions-${ group.id }`;
+			sectionActionsFields.push( {
+				id: actionFieldId,
+				label: '',
+				type: 'text',
+				Edit: ( props ) => (
+					<SectionActions
+						{ ...props }
+						experimentSettings={ experimentSettings }
+						globalEnabled={ globalEnabled }
+						onBulkChange={ handleChange }
+					/>
+				),
+			} );
+		}
+
+		// Create feature toggle fields
+		const featureFields = featureDefinitions.map( ( feature ) => {
+			const baseField: Field< AISettings > = {
+				id: feature.settingName,
+				label: feature.label,
+				description: feature.description,
+				type: 'boolean' as const,
+			};
+
+			if ( ! globalEnabled ) {
+				baseField.Edit = DisabledToggle;
+			} else if ( feature.settingsFields.length > 0 ) {
+				baseField.Edit = FeatureToggleWithSettings;
+			} else {
+				baseField.Edit = 'toggle' as const;
+			}
+
+			return baseField;
+		} );
+
+		return [ GLOBAL_FIELD, ...sectionActionsFields, ...featureFields ];
+	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
+
+	const form = useMemo< Form >( () => {
+		const groupedFields = new Map< string, string[] >();
+		for ( const feature of featureDefinitions ) {
+			const category = feature.category || 'other';
+			const categoryFields = groupedFields.get( category ) ?? [];
+			categoryFields.push( feature.settingName );
+			groupedFields.set( category, categoryFields );
+		}
+
+		const sectionFields: NonNullable< Form[ 'fields' ] > = [];
+		const seenCategories = new Set< string >();
+
+		for ( const group of featureGroups ) {
+			const children = groupedFields.get( group.id ) ?? [];
+
+			if ( children.length === 0 ) {
+				continue;
+			}
+
+			seenCategories.add( group.id );
+			const actionFieldId = `section-actions-${ group.id }`;
+			sectionFields.push( {
+				id: getSectionId( group.id ),
+				label: group.label,
+				description: group.description,
+				layout: {
+					type: 'card',
+					withHeader: true,
+					isOpened: true,
+					isCollapsible: true,
+				},
+				children: [ ...children, actionFieldId ],
+			} );
+		}
+
+		for ( const [ category, children ] of groupedFields.entries() ) {
+			if ( children.length === 0 || seenCategories.has( category ) ) {
+				continue;
+			}
+
+			const actionFieldId = `section-actions-${ category }`;
+			sectionFields.push( {
+				id: getSectionId( category ),
+				label: getDefaultLabel( category ),
+				description: '',
+				layout: {
+					type: 'card',
+					withHeader: true,
+					isOpened: true,
+					isCollapsible: true,
+				},
+				children: [ ...children, actionFieldId ],
+			} );
+		}
+
+		return {
+			fields: [
+				{
+					id: 'generalSettings',
+					label: __( 'General Settings', 'ai' ),
+					description: __(
+						'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
+						'ai'
+					),
+					layout: {
+						type: 'card',
+						withHeader: true,
+						isCollapsible: false,
+					},
+					children: [ GLOBAL_FIELD_ID ],
+				},
+				...sectionFields,
+			],
+		};
+	}, [ featureDefinitions, featureGroups ] );
 
 	return (
 		<Page

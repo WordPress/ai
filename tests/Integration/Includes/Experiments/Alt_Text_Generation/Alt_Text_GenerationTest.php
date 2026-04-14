@@ -35,7 +35,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'alt-text-generation' );
 		$this->assertInstanceOf(
