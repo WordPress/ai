@@ -26,10 +26,21 @@ type RunAbilityOptions = {
 	method?: Method;
 };
 
+interface WindowWithAbilities extends Window {
+	wp?: Window[ 'wp' ] & {
+		abilities?: {
+			executeAbility?: (
+				ability: string,
+				input?: AbilityInput
+			) => Promise< unknown >;
+		};
+	};
+}
+
 let hasShownFallbackNotice = false;
 
 const getAbilityClient = () =>
-	( window as Record< string, any > )?.wp?.abilities ?? null;
+	( window as WindowWithAbilities )?.wp?.abilities ?? null;
 
 const logFallbackWarning = () => {
 	if ( hasShownFallbackNotice ) {
@@ -38,7 +49,7 @@ const logFallbackWarning = () => {
 
 	// eslint-disable-next-line no-console
 	console.warn(
-		'[AI Experiments] wp.abilities.executeAbility is unavailable. Falling back to REST.'
+		'[AI] wp.abilities.executeAbility is unavailable. Falling back to REST.'
 	);
 	hasShownFallbackNotice = true;
 };
@@ -102,7 +113,10 @@ export async function runAbility< T = unknown >(
 
 	if ( typeof client?.executeAbility === 'function' ) {
 		try {
-			return await client.executeAbility( ability, input ?? null );
+			return ( await client.executeAbility(
+				ability,
+				input ?? null
+			) ) as T;
 		} catch ( error ) {
 			if ( ! isAbilityNotFoundError( error ) ) {
 				throw error;

@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to the AI plugin! Please follow the AI Experiments Plugin Contributing Guidelines:
+<!-- Thanks for contributing to the AI plugin! Please follow the AI Plugin Contributing Guidelines:
 https://github.com/WordPress/ai/blob/trunk/CONTRIBUTING.md -->
 
 ## What?
@@ -12,6 +12,13 @@ Closes <!-- #ISSUE-NUMBER or URL -->
 
 ## How?
 <!-- How is your PR addressing the issue at hand? What are the implementation details? -->
+
+<!-- If you are using AI tools, you must adhere to the AI Guidelines: https://make.wordpress.org/ai/handbook/ai-guidelines/ -->
+
+### Use of AI Tools
+<!--
+You are free to use artificial intelligence (AI) tooling to contribute, but you must disclose what tooling you are using and to what extent a pull request has been authored by AI. It is your responsibility to review and take responsibility for what AI generates. See the WordPress AI Guidelines: <https://make.wordpress.org/ai/handbook/ai-guidelines/>.
+-->
 
 ## Testing Instructions
 <!-- Please include step by step instructions on how to test this PR. -->

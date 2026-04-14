@@ -1,270 +1,319 @@
 <?php
 /**
- * Settings page for AI Experiments.
+ * Settings page for the AI plugin.
  *
  * @package WordPress\AI
  *
  * @since 0.1.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace WordPress\AI\Settings;
 
-use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Features\Feature_Category;
+use WordPress\AI\Features\Registry;
 
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 /**
- * Manages the admin settings page for AI experiments.
+ * Manages the admin settings page for the AI plugin.
  *
  * @since 0.1.0
  */
 class Settings_Page {
 
 	/**
-	 * The experiment registry instance.
+	 * Legacy settings page slug.
+	 * TODO: either once [0.6.0 is less than 10% of installs](https://wordpress.org/plugins/ai/advanced/) or we're in October 2026 let's remove this section in case other plugin(s) are attempting to use the `ai` page.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
-	 * @var \WordPress\AI\Experiment_Registry
+	 * @var string
 	 */
-	private Experiment_Registry $registry;
+	private const LEGACY_PAGE_SLUG = 'ai';
 
 	/**
 	 * The settings page slug.
 	 *
-	 * @since 0.1.0
+	 * @since 0.7.0
 	 *
 	 * @var string
 	 */
-	private const PAGE_SLUG = 'ai-experiments';
-
-	/**
-	 * Constructor.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param \WordPress\AI\Experiment_Registry $registry The experiment registry.
-	 */
-	public function __construct( Experiment_Registry $registry ) {
-		$this->registry = $registry;
-	}
+	private const PAGE_SLUG = 'ai-wp-admin';
 
 	/**
 	 * Initializes the settings page hooks.
 	 *
-	 * @since 0.1.0
+	 * @since 0.7.0
 	 *
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 * @return void
 	 */
-	public function init(): void {
-		add_action( 'admin_menu', array( $this, 'register_menu' ) );
-	}
+	public static function init( Registry $registry ): void {
+		add_action( 'admin_init', array( self::class, 'maybe_redirect_legacy_page' ), 1 );
+		add_action( 'admin_page_access_denied', array( self::class, 'maybe_redirect_legacy_page' ) );
 
-	/**
-	 * Registers the admin menu item.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function register_menu(): void {
-		$page_hook = add_options_page(
-			__( 'AI Experiments', 'ai' ),
-			__( 'AI Experiments', 'ai' ),
-			'manage_options',
-			self::PAGE_SLUG,
-			array( $this, 'render_page' )
-		);
-
-		// Hook into the specific page load to enqueue styles.
-		if ( ! $page_hook ) {
-			return;
-		}
-
-		add_action( "load-{$page_hook}", array( $this, 'init_page' ) );
-	}
-
-	/**
-	 * Handles the page load event for the settings page.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function init_page(): void {
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
-	}
-
-	/**
-	 * Enqueues styles for the settings page.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function enqueue_styles(): void {
-		// Enqueue settings page styles.
-		Asset_Loader::enqueue_style( 'experiments-settings', 'admin/settings' );
-	}
-
-	/**
-	 * Renders the settings page.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function render_page(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
-		$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
-		?>
-		<div class="wrap">
-			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-
-			<?php
-			// If we don't have proper credentials, show an error message and return early.
-			if ( ! has_valid_ai_credentials() ) {
-				if ( ! has_ai_credentials() ) {
-					$error_message = sprintf(
-						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Before you can enable experiments, you need to ensure you have one or more AI credentials set <a href="%s">here</a>.', 'ai' ),
-						admin_url( 'options-general.php?page=wp-ai-client' )
-					);
-				} else {
-					$error_message = sprintf(
-						/* translators: 1: Link to the AI credentials settings page. */
-						__( 'Before you can enable experiments, you need to ensure you have set valid AI credentials <a href="%s">here</a>.', 'ai' ),
-						admin_url( 'options-general.php?page=wp-ai-client' )
+		if ( function_exists( 'ai_ai_wp_admin_render_page' ) ) {
+			add_action(
+				'admin_menu',
+				static function () {
+					add_options_page(
+						__( 'AI', 'ai' ),
+						__( 'AI', 'ai' ),
+						'manage_options',
+						self::PAGE_SLUG,
+						'ai_ai_wp_admin_render_page', // @phpstan-ignore argument.type
+						2
 					);
 				}
+			);
 
-				wp_admin_notice( $error_message, array( 'type' => 'error' ) );
-				return;
+			// Expose credential status to the settings page script module.
+			add_filter(
+				'script_module_data_' . self::PAGE_SLUG,
+				static function ( array $data ) use ( $registry ): array {
+					$feature_metadata            = self::get_settings_feature_metadata( $registry );
+					$data['hasCredentials']      = has_ai_credentials();
+					$data['hasValidCredentials'] = has_valid_ai_credentials();
+					$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
+					$data['featureGroups']       = $feature_metadata['groups'] ?? array();
+					$data['features']            = $feature_metadata['features'] ?? array();
+					return $data;
+				}
+			);
+		} else {
+			add_action(
+				'admin_menu',
+				static function () {
+					// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
+					if ( ! isset( $_GET['page'] ) || self::PAGE_SLUG !== $_GET['page'] ) {
+						return;
+					}
+
+					_doing_it_wrong(
+						'initialize_features',
+						esc_html__( 'AI settings page render function not found. Run npm run build:routes to generate build assets.', 'ai' ),
+						'0.7.0'
+					);
+				}
+			);
+		}
+	}
+
+	/**
+	 * Redirects legacy settings page slug to the current settings route.
+	 *
+	 * @since x.x.x
+	 */
+	public static function maybe_redirect_legacy_page(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
+		if ( ! isset( $_GET['page'] ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
+		$page = sanitize_key( wp_unslash( (string) $_GET['page'] ) );
+		if ( self::LEGACY_PAGE_SLUG !== $page ) {
+			return;
+		}
+
+		$redirect_url = add_query_arg(
+			'page',
+			self::PAGE_SLUG,
+			admin_url( 'options-general.php' )
+		);
+
+		if ( wp_safe_redirect( $redirect_url, 301, 'WordPress AI plugin' ) ) {
+			exit;
+		}
+	}
+
+	/**
+	 * Gets feature group metadata for the settings UI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{
+	 *   label:string,
+	 *   description:string,
+	 *   order:int
+	 * }>
+	 */
+	private static function get_settings_feature_groups(): array {
+		$default_groups = array(
+			Experiment_Category::EDITOR => array(
+				'label'       => __( 'Editor Experiments', 'ai' ),
+				'description' => __( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
+				'order'       => 10,
+			),
+			Experiment_Category::ADMIN  => array(
+				'label'       => __( 'Admin Experiments', 'ai' ),
+				'description' => __( 'AI-powered experiments for the WordPress admin area, including exploration and testing tools.', 'ai' ),
+				'order'       => 20,
+			),
+			Feature_Category::OTHER     => array(
+				'label'       => __( 'Other Features', 'ai' ),
+				'description' => __( 'Additional AI-powered features.', 'ai' ),
+				'order'       => 90,
+			),
+		);
+
+		/**
+		 * Filters feature group metadata used by the settings UI.
+		 *
+		 * @since 0.7.0
+		 *
+		 * @param array<string, array{
+		 *   label:string,
+		 *   description:string,
+		 *   order:int
+		 * }> $default_groups Feature group metadata keyed by category.
+		 */
+		$filtered_groups = apply_filters( 'wpai_settings_feature_groups', $default_groups );
+
+		return is_array( $filtered_groups ) ? $filtered_groups : $default_groups;
+	}
+
+	/**
+	 * Builds feature metadata used by the settings route UI.
+	 *
+	 * @since x.x.x
+	 *
+	* @param \WordPress\AI\Features\Registry $registry Feature registry instance.
+	* @return array{
+	*   groups: list<array{
+	*     id: non-empty-string,
+	*     label: non-empty-string,
+	*     description: string
+	*   }>,
+	*   features: list<array{
+	*     id: non-empty-string,
+	*     settingName: non-falsy-string,
+	*     label: non-empty-string,
+	*     description: string,
+	*     category: non-empty-string,
+	*     settingsFields: array<int, array{
+	*       id: string,
+	*       label: string,
+	*       type: string,
+	*       default?: mixed,
+	*       elements?: list<array{value: string, label: string}>,
+	*       isValid?: array{min?: int, max?: int}
+	*     }>
+	*   }>
+	* }
+	 */
+	private static function get_settings_feature_metadata( Registry $registry ): array {
+		$group_definitions = self::get_settings_feature_groups();
+		$categories_in_use = array();
+		$features          = array();
+
+		foreach ( $registry->get_all_features() as $feature ) {
+			$feature_id = $feature::get_id();
+			$category   = $feature->get_category();
+
+			if ( ! is_string( $category ) || '' === $category ) {
+				$category = Feature_Category::OTHER;
 			}
-			?>
 
-			<?php settings_errors( 'ai_experiments' ); ?>
+			if ( ! isset( $group_definitions[ $category ] ) ) {
+				$group_definitions[ $category ] = array(
+					'label'       => ucwords( str_replace( array( '-', '_' ), ' ', $category ) ),
+					'description' => '',
+					'order'       => 100,
+				);
+			}
 
-			<form method="post" action="options.php">
-				<?php
-				settings_fields( Settings_Registration::OPTION_GROUP );
-				?>
+			$categories_in_use[ $category ] = true;
+			$features[]                     = array(
+				'id'             => $feature_id,
+				'settingName'    => "wpai_feature_{$feature_id}_enabled",
+				'label'          => $feature->get_label(),
+				'description'    => wp_strip_all_tags( $feature->get_description() ),
+				'category'       => $category,
+				'settingsFields' => $feature->get_settings_fields_metadata(),
+			);
+		}
 
-				<div class="ai-experiments">
-					<!-- Global Toggle Section -->
-					<div class="ai-experiments__card ai-experiments__card--global">
-						<div class="ai-experiments__card-heading">
-							<h2><?php esc_html_e( 'General Settings', 'ai' ); ?></h2>
-							<p class="description" id="ai-experiments-global-desc">
-								<?php esc_html_e( 'Control whether AI experiments are enabled for your site. When disabled, all experiments will be inactive regardless of their individual settings.', 'ai' ); ?>
-							</p>
-						</div>
+		$groups = array();
+		foreach ( array_keys( $categories_in_use ) as $category ) {
+			$group = $group_definitions[ $category ] ?? array();
 
-						<div class="ai-experiments__toggle">
-							<label class="components-toggle-control" for="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>">
-								<input
-									type="checkbox"
-									name="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
-									id="<?php echo esc_attr( Settings_Registration::GLOBAL_OPTION ); ?>"
-									value="1"
-									<?php checked( $global_enabled ); ?>
-									aria-describedby="ai-experiments-global-desc"
-								/>
-								<span class="ai-experiments__toggle-label">
-									<?php esc_html_e( 'Enable Experiments', 'ai' ); ?>
-								</span>
-							</label>
-						</div>
-					</div>
+			$groups[] = array(
+				'id'          => $category,
+				'label'       => isset( $group['label'] ) && is_string( $group['label'] ) && '' !== $group['label']
+					? $group['label']
+					: ucwords( str_replace( array( '-', '_' ), ' ', $category ) ),
+				'description' => isset( $group['description'] ) && is_string( $group['description'] )
+					? $group['description']
+					: '',
+				'order'       => isset( $group['order'] ) ? (int) $group['order'] : 100,
+			);
+		}
 
-					<!-- Individual Experiments Section -->
-					<?php if ( ! empty( $this->registry->get_all_experiments() ) ) : ?>
-						<div class="ai-experiments__card" role="region" aria-labelledby="ai-experiments-list-heading">
-							<div class="ai-experiments__card-heading">
-								<h2 id="ai-experiments-list-heading"><?php esc_html_e( 'Available Experiments', 'ai' ); ?></h2>
-								<p class="description" id="ai-experiments-list-desc">
-									<?php esc_html_e( 'Try out the following experiments to see how AI can help your site.', 'ai' ); ?>
-								</p>
+		usort(
+			$groups,
+			static function ( array $first, array $second ): int {
+				if ( $first['order'] === $second['order'] ) {
+					return strcasecmp( (string) $first['label'], (string) $second['label'] );
+				}
 
-								<?php if ( ! $global_enabled ) : ?>
-									<div class="notice notice-info inline ai-experiments__notice" role="status" aria-live="polite">
-										<p id="ai-experiments-disabled-notice"><?php esc_html_e( 'Enable experiments above to configure individual experiment settings.', 'ai' ); ?></p>
-									</div>
-								<?php endif; ?>
-							</div>
+				return $first['order'] <=> $second['order'];
+			}
+		);
 
-							<ul class="ai-experiments__list">
-								<?php foreach ( $this->registry->get_all_experiments() as $experiment ) : ?>
-									<?php
-									$experiment_id      = $experiment->get_id();
-									$experiment_option  = "ai_experiment_{$experiment_id}_enabled";
-									$experiment_enabled = (bool) get_option( $experiment_option, false );
-									$disabled_class     = ! $global_enabled ? 'ai-experiments__item--disabled' : '';
-									$desc_id            = "ai-experiment-{$experiment_id}-desc";
-									?>
-									<li class="ai-experiments__item <?php echo esc_attr( $disabled_class ); ?>">
-										<div class="ai-experiments__item-header">
-											<label class="components-toggle-control" for="<?php echo esc_attr( $experiment_option ); ?>">
-												<input
-													type="checkbox"
-													name="<?php echo esc_attr( $experiment_option ); ?>"
-													id="<?php echo esc_attr( $experiment_option ); ?>"
-													value="1"
-													<?php checked( $experiment_enabled ); ?>
-													<?php disabled( ! $global_enabled ); ?>
-													<?php if ( $experiment->get_description() ) : ?>
-														aria-describedby="<?php echo esc_attr( $desc_id ); ?>"
-													<?php endif; ?>
-												/>
-												<span>
-													<strong><?php echo esc_html( $experiment->get_label() ); ?></strong>
-												</span>
-											</label>
-										</div>
-										<?php if ( $experiment->get_description() ) : ?>
-											<p class="description" id="<?php echo esc_attr( $desc_id ); ?>">
-												<?php
-												echo wp_kses(
-													$experiment->get_description(),
-													array(
-														'a'      => array(
-															'href'   => array(),
-															'title'  => array(),
-															'target' => array(),
-															'rel'    => array(),
-														),
-														'b'      => array(),
-														'strong' => array(),
-														'em'     => array(),
-														'i'      => array(),
-													)
-												);
-												?>
-											</p>
-										<?php endif; ?>
-										<?php
-										// Allow experiments to render their own custom settings fields.
-										if ( method_exists( $experiment, 'render_settings_fields' ) ) {
-											$experiment->render_settings_fields();
-										}
-										?>
-									</li>
-								<?php endforeach; ?>
-							</ul>
-						</div>
-					<?php endif; ?>
-				</div>
+		$groups = array_values(
+			array_map(
+				static function ( array $group ): array {
+					unset( $group['order'] );
+					return $group;
+				},
+				$groups
+			)
+		);
 
-				<?php submit_button(); ?>
-			</form>
-		</div>
-		<?php
+		$metadata = array(
+			'groups'   => $groups,
+			'features' => $features,
+		);
+
+		/**
+		 * Filters settings metadata passed to the settings route client.
+		 *
+		 * @since 0.7.0
+		 *
+		 * @param array{
+		 *   groups: list<array{
+		 *     id: non-empty-string,
+		 *     label: non-empty-string,
+		 *     description: string
+		 *   }>,
+		 *   features: list<array{
+		 *     id: non-empty-string,
+		 *     settingName: non-falsy-string,
+		 *     label: non-empty-string,
+		 *     description: string,
+		 *     category: non-empty-string,
+		 *     settingsFields: array<int, array{
+		 *       id: string,
+		 *       label: string,
+		 *       type: string,
+		 *       default?: mixed,
+		 *       elements?: list<array{value: string, label: string}>,
+		 *       isValid?: array{min?: int, max?: int}
+		 *     }>
+		 *   }>
+		 * } $metadata Settings UI metadata.
+		 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
+		 */
+		$filtered_metadata = apply_filters( 'wpai_settings_feature_metadata', $metadata, $registry );
+
+		return is_array( $filtered_metadata ) ? $filtered_metadata : $metadata;
 	}
 }

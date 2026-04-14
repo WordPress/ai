@@ -11,23 +11,22 @@ namespace WordPress\AI\Abilities\Excerpt_Generation;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_preferred_models;
+use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
 
 /**
  * Excerpt generation WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Excerpt_Generation extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -36,12 +35,12 @@ class Excerpt_Generation extends Abstract_Ability {
 				'content' => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Content to generate excerpt suggestions for.', 'ai' ),
+					'description'       => esc_html__( 'Content to generate an excerpt suggestion for.', 'ai' ),
 				),
-				'post_id' => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'Content from this post will be used to generate excerpt suggestions. This overrides the content parameter if both are provided.', 'ai' ),
+				'context' => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => esc_html__( 'Additional context to use when generating an excerpt suggestion for the content. This can either be a string of additional context or can be a post ID that will then be used to get context from that post (if it exists). If no content is provided but a valid post ID is used here, the content from that post will be used.', 'ai' ),
 				),
 			),
 		);
@@ -50,7 +49,7 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -62,7 +61,7 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -70,45 +69,46 @@ class Excerpt_Generation extends Abstract_Ability {
 			$input,
 			array(
 				'content' => null,
-				'post_id' => null,
+				'context' => null,
 			),
 		);
 
 		// If a post ID is provided, ensure the post exists before using its' content.
-		if ( $args['post_id'] ) {
-			$post = get_post( $args['post_id'] );
+		if ( is_numeric( $args['context'] ) ) {
+			$post = get_post( (int) $args['context'] );
 
 			if ( ! $post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['context'] ) )
 				);
 			}
 
 			// Get the post context.
-			$context = get_post_context( $args['post_id'] );
+			$context = get_post_context( $post->ID );
+			$content = $context['content'] ?? '';
+			unset( $context['content'] );
 
 			// Default to the passed in content if it exists.
 			if ( $args['content'] ) {
-				$context['content'] = normalize_content( $args['content'] );
+				$content = normalize_content( $args['content'] );
 			}
 		} else {
-			$context = array(
-				'content' => normalize_content( $args['content'] ?? '' ),
-			);
+			$content = normalize_content( $args['content'] ?? '' );
+			$context = $args['context'] ?? '';
 		}
 
 		// If we have no content, return an error.
-		if ( empty( $context['content'] ) ) {
+		if ( empty( $content ) ) {
 			return new WP_Error(
 				'content_not_provided',
-				esc_html__( 'Content is required to generate excerpt suggestions.', 'ai' )
+				esc_html__( 'Content is required to generate an excerpt suggestion.', 'ai' )
 			);
 		}
 
-		// Generate the excerpts.
-		$result = $this->generate_excerpt( $context );
+		// Generate the excerpt.
+		$result = $this->generate_excerpt( $content, $context );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -119,7 +119,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		if ( empty( $result ) ) {
 			return new WP_Error(
 				'no_results',
-				esc_html__( 'No excerpt suggestions were generated.', 'ai' )
+				esc_html__( 'No excerpt suggestion was generated.', 'ai' )
 			);
 		}
 
@@ -130,25 +130,25 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function permission_callback( $args ) {
-		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
+		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
 
 		if ( $post_id ) {
-			$post = get_post( $args['post_id'] );
+			$post = get_post( $post_id );
 
 			// Ensure the post exists.
 			if ( ! $post ) {
 				return new WP_Error(
 					'post_not_found',
 					/* translators: %d: Post ID. */
-					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $args['post_id'] ) )
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), absint( $post_id ) )
 				);
 			}
 
-			// Ensure the user has permission to read this particular post.
-			if ( ! current_user_can( 'read_post', $post_id ) ) {
+			// Ensure the user has permission to edit this particular post.
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
 					esc_html__( 'You do not have permission to generate excerpts for this post.', 'ai' )
@@ -181,7 +181,7 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -192,12 +192,13 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * Generate an excerpt suggestion from the given content.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 *
-	 * @param string|array<string, string> $context The context to generate an excerpt from.
+	 * @param string $content The content to generate an excerpt from.
+	 * @param string|array<string, string> $context Additional context to use.
 	 * @return string|\WP_Error The generated excerpt, or a WP_Error if there was an error.
 	 */
-	protected function generate_excerpt( $context ) {
+	protected function generate_excerpt( string $content, $context ) {
 		// Convert the context to a string if it's an array.
 		if ( is_array( $context ) ) {
 			$context = implode(
@@ -216,11 +217,40 @@ class Excerpt_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Generate the excerpts using the AI client.
-		return AI_Client::prompt_with_wp_error( '"""' . $context . '"""' )
+		$content = '<content>' . $content . '</content>';
+
+		// If we have additional context, add it to the content.
+		if ( $context ) {
+			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
+		}
+
+		$prompt_builder = $this->get_prompt_builder( $content );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
+		// Generate an excerpt using the AI client.
+		return $prompt_builder->generate_text();
+	}
+
+	/**
+	 * Gets a prompt builder for generating an excerpt.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $prompt The prompt to generate an excerpt from.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( 0.7 )
-			->using_model_preference( ...get_preferred_models() )
-			->generate_text();
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Excerpt generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }

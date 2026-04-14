@@ -10,24 +10,30 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Excerpt_Generation Ability tests.
  *
  * @since 0.1.0
  */
-class Test_Excerpt_Generation_Experiment extends Abstract_Experiment {
+class Test_Excerpt_Generation_Experiment extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'excerpt-generation';
+	}
+
 	/**
 	 * Loads experiment metadata.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * @return array{label: string, description: string} Experiment metadata.
 	 */
-	protected function load_experiment_metadata(): array {
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'excerpt-generation',
 			'label'       => 'Excerpt Generation',
 			'description' => 'Generates excerpt suggestions from content',
 		);
@@ -123,16 +129,16 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
-		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
+		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
 		$this->assertArrayNotHasKey( 'candidates', $schema['properties'], 'Schema should not have candidates property' );
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['content']['sanitize_callback'], 'Content should use sanitize_text_field' );
 
-		// Verify post_id property.
-		$this->assertEquals( 'integer', $schema['properties']['post_id']['type'], 'Post ID should be integer type' );
-		$this->assertEquals( 'absint', $schema['properties']['post_id']['sanitize_callback'], 'Post ID should use absint' );
+		// Verify context property.
+		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'Context should be string type' );
+		$this->assertEquals( 'sanitize_text_field', $schema['properties']['context']['sanitize_callback'], 'Context should use sanitize_text_field' );
 	}
 
 	/**
@@ -186,21 +192,18 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be array (success) or WP_Error (if AI client unavailable).
+		// Result may be string (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
 			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
 			return;
 		}
 
-		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
-		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string' );
-		$this->assertNotEmpty( $result['excerpt'], 'Excerpt should not be empty' );
-		$this->assertArrayNotHasKey( 'excerpts', $result, 'Result should not have excerpts key' );
+		$this->assertIsString( $result, 'Result should be a string' );
+		$this->assertNotEmpty( $result, 'Excerpt should not be empty' );
 	}
 
 	/**
-	 * Test that execute_callback() handles post_id parameter correctly.
+	 * Test that execute_callback() handles context parameter with post ID correctly.
 	 *
 	 * @since 0.1.0
 	 */
@@ -218,7 +221,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		);
 
 		$input = array(
-			'post_id' => $post_id,
+			'context' => (string) $post_id,
 		);
 
 		try {
@@ -228,20 +231,18 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be array (success) or WP_Error (if AI client unavailable).
+		// Result may be string (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
 			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
 			return;
 		}
 
-		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
-		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string' );
-		$this->assertNotEmpty( $result['excerpt'], 'Excerpt should not be empty' );
+		$this->assertIsString( $result, 'Result should be a string' );
+		$this->assertNotEmpty( $result, 'Excerpt should not be empty' );
 	}
 
 	/**
-	 * Test that execute_callback() returns error when post_id points to non-existent post.
+	 * Test that execute_callback() returns error when context points to non-existent post.
 	 *
 	 * @since 0.1.0
 	 */
@@ -251,7 +252,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$input  = array(
-			'post_id' => 99999, // Non-existent post ID.
+			'context' => '99999', // Non-existent post ID as string.
 		);
 		$result = $method->invoke( $this->ability, $input );
 
@@ -277,7 +278,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() prioritizes post_id over content.
+	 * Test that execute_callback() prioritizes context (post ID) over content.
 	 *
 	 * @since 0.1.0
 	 */
@@ -296,7 +297,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 
 		$input = array(
 			'content' => 'This content should be ignored.',
-			'post_id' => $post_id,
+			'context' => (string) $post_id,
 		);
 
 		try {
@@ -306,17 +307,15 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be array (success) or WP_Error (if AI client unavailable).
+		// Result may be string (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
 			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
 			return;
 		}
 
-		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'excerpt', $result, 'Result should have excerpt key' );
-		$this->assertIsString( $result['excerpt'], 'Excerpt should be a string' );
+		$this->assertIsString( $result, 'Result should be a string' );
 		// The feature's generate_excerpt uses the post content, verified by excerpt being generated.
-		$this->assertNotEmpty( $result['excerpt'], 'Should generate excerpt from post content' );
+		$this->assertNotEmpty( $result, 'Should generate excerpt from post content' );
 	}
 
 	/**
@@ -450,11 +449,11 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns true for user with read_post capability.
+	 * Test that permission_callback() returns true for user with edit_post capability.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_permission_callback_with_post_id_and_read_capability() {
+	public function test_permission_callback_with_post_id_and_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -467,38 +466,38 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		// Create a user with read capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		// Create a user with edit capability (editor role has edit_post for all posts).
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
 
-		$this->assertTrue( $result, 'Permission should be granted for user with read_post capability' );
+		$this->assertTrue( $result, 'Permission should be granted for user with edit_post capability' );
 	}
 
 	/**
-	 * Test that permission_callback() returns error for user without read_post capability.
+	 * Test that permission_callback() returns error for user without edit_post capability.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_permission_callback_with_post_id_without_read_capability() {
+	public function test_permission_callback_with_post_id_without_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
 
-		// Create a private test post.
+		// Create a test post.
 		$post_id = $this->factory->post->create(
 			array(
 				'post_content' => 'Test content',
-				'post_status'  => 'private',
+				'post_status'  => 'publish',
 			)
 		);
 
-		// Create a user without read capability for this post.
+		// Create a user with only read capability (subscriber role has read_post but not edit_post).
 		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
@@ -517,7 +516,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => 99999 ) );
+		$result = $method->invoke( $this->ability, array( 'context' => '99999' ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'post_not_found', $result->get_error_code(), 'Error code should be post_not_found' );
@@ -554,7 +553,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
 
 		$this->assertFalse( $result, 'Permission should be denied for post type without show_in_rest' );
 

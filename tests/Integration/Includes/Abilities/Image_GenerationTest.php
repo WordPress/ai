@@ -7,74 +7,73 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Image\Generate_Image;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Image\Generate_Image;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Image_Generation Ability tests.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
-class Test_Image_Generation_Experiment extends Abstract_Experiment {
+class Test_Image_Generation_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'image-generation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'image-generation',
-			'label'       => 'Image Generation',
-			'description' => 'Generates an image from a passed in prompt',
+			'label'       => 'Image Generation and Editing',
+			'description' => 'Generate and edit images using AI',
 		);
 	}
 
 	/**
-	 * Registers the experiment.
-	 *
-	 * @since x.x.x
+	 * {@inheritDoc}
 	 */
 	public function register(): void {
 		// No-op for testing.
 	}
-
 }
 
 /**
  * Image_Generation Ability test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Image_GenerationTest extends WP_UnitTestCase {
 
 	/**
 	 * Image_Generation ability instance.
 	 *
-	 * @var Image_Generation
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Image_Generation
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Image_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Image_Generation_Experiment
 	 */
 	private $experiment;
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
 
 		$this->experiment = new Test_Image_Generation_Experiment();
-		$this->ability = new Generate_Image(
+		$this->ability    = new Generate_Image(
 			'ai/image-generation',
 			array(
 				'label'       => $this->experiment->get_label(),
@@ -86,7 +85,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -96,7 +95,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -111,7 +110,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -130,12 +129,34 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		// Verify prompt property.
 		$this->assertEquals( 'string', $schema['properties']['prompt']['type'], 'Prompt should be string type' );
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['prompt']['sanitize_callback'], 'Prompt should use sanitize_text_field' );
+
+		// Verify reference_image property.
+		$this->assertArrayHasKey( 'reference', $schema['properties'], 'Schema should have reference property' );
+		$this->assertEquals( 'string', $schema['properties']['reference']['type'], 'reference should be string type' );
+		$this->assertEquals( 'sanitize_text_field', $schema['properties']['reference']['sanitize_callback'], 'reference should use sanitize_text_field' );
+		$this->assertNotContains( 'reference', $schema['required'], 'reference should not be required' );
+	}
+
+	/**
+	 * Test that generate_image_edit() returns WP_Error for invalid base64.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_generate_image_edit_with_invalid_base64(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_image' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'a prompt', 'not-valid-base64!!!!' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'invalid_reference', $result->get_error_code() );
 	}
 
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -145,14 +166,22 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$schema = $method->invoke( $this->ability );
 
 		$this->assertIsArray( $schema, 'Output schema should be an array' );
-		$this->assertEquals( 'string', $schema['type'], 'Schema type should be string' );
-		$this->assertArrayHasKey( 'description', $schema, 'Schema should have description' );
+		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
+		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
+		$this->assertArrayHasKey( 'image', $schema['properties'], 'Schema should have image property' );
+
+		$image_schema = $schema['properties']['image'];
+		$this->assertEquals( 'object', $image_schema['type'], 'Image property should be object type' );
+		$this->assertArrayHasKey( 'properties', $image_schema, 'Image should have properties' );
+		$this->assertArrayHasKey( 'data', $image_schema['properties'], 'Image should have data property' );
+		$this->assertArrayHasKey( 'provider_metadata', $image_schema['properties'], 'Image should have provider_metadata property' );
+		$this->assertArrayHasKey( 'model_metadata', $image_schema['properties'], 'Image should have model_metadata property' );
 	}
 
 	/**
 	 * Test that execute_callback() handles prompt parameter correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_prompt() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -170,20 +199,23 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be string (success) or WP_Error (if AI client unavailable).
+		// Result may be array with image (success) or WP_Error (if AI client unavailable).
 		if ( is_wp_error( $result ) ) {
 			$this->markTestSkipped( 'AI client not available in test environment: ' . $result->get_error_message() );
 			return;
 		}
 
-		$this->assertIsString( $result, 'Result should be a string' );
-		$this->assertNotEmpty( $result, 'Result should not be empty' );
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
+		$this->assertIsArray( $result['image'], 'Result image should be an array' );
+		$this->assertArrayHasKey( 'data', $result['image'], 'Result image should have data' );
+		$this->assertNotEmpty( $result['image']['data'], 'Result image data should not be empty' );
 	}
 
 	/**
 	 * Test that execute_callback() handles empty prompt.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_empty_prompt() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -201,7 +233,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be string (success) or WP_Error (if AI client unavailable or no results).
+		// Result may be array with image (success) or WP_Error (if AI client unavailable or no results).
 		if ( is_wp_error( $result ) ) {
 			// If it's an error about no results, verify the error code.
 			if ( 'no_results' === $result->get_error_code() ) {
@@ -213,15 +245,16 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// If we get a result, it should be a non-empty string.
-		$this->assertIsString( $result, 'Result should be a string' );
-		$this->assertNotEmpty( $result, 'Result should not be empty' );
+		// If we get a result, it should be an array with image data.
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
+		$this->assertNotEmpty( $result['image']['data'] ?? '', 'Result image data should not be empty' );
 	}
 
 	/**
 	 * Test that execute_callback() returns error when no image is generated.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_handles_empty_result() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -239,7 +272,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// Result may be string (success) or WP_Error (if AI client unavailable or no results).
+		// Result may be array with image (success) or WP_Error (if AI client unavailable or no results).
 		if ( is_wp_error( $result ) ) {
 			// If it's an error about no results, verify the error code.
 			if ( 'no_results' === $result->get_error_code() ) {
@@ -251,15 +284,16 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return;
 		}
 
-		// If we get a result, it should be a non-empty string.
-		$this->assertIsString( $result, 'Result should be a string' );
-		$this->assertNotEmpty( $result, 'Result should not be empty' );
+		// If we get a result, it should be an array with image data.
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
+		$this->assertNotEmpty( $result['image']['data'] ?? '', 'Result image data should not be empty' );
 	}
 
 	/**
 	 * Test that permission_callback() returns true for user with upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_upload_files_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -278,7 +312,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_without_upload_files_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -298,7 +332,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -317,7 +351,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -331,4 +365,3 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
 }
-

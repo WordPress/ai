@@ -6,11 +6,6 @@
  */
 
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
 import { createRoot, useEffect } from '@wordpress/element';
@@ -298,7 +293,7 @@ function TitleToolbarWrapper(): JSX.Element {
 
 			// Render the toolbar into the container
 			root = createRoot( toolbarContainer );
-			root.render( <TitleToolbar /> );
+			root.render( <TitleToolbar isStandalone /> );
 
 			// Create and attach focus/blur handlers for title input
 			const titleHandlers = createFocusBlurHandlers(
@@ -339,7 +334,7 @@ function TitleToolbarWrapper(): JSX.Element {
 		const setupObserver = () => {
 			const editorDoc = getEditorDocument();
 			if ( editorDoc && ! observer ) {
-				observer = new MutationObserver( ( mutations, obs ) => {
+				observer = new MutationObserver( ( _mutations, obs ) => {
 					if (
 						! isAttached &&
 						! editorDoc.querySelector( '.ai-title-toolbar-wrapper' )

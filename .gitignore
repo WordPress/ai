@@ -1,28 +1,59 @@
-# Composer
-/vendor/
+### WordPress ###
 
-# Node
-node_modules/
-
-
-# IDE
+# macOS/IDE
+.DS_Store
+Thumbs.db
 .idea/
 .vscode/
 *.sublime-project
 *.sublime-workspace
-.DS_Store
 
-# Build
-/build/
-/dist/
+# Log files
+*.log
+/tests/logs
 
-# Testing
-/tests/wordpress/
+# Dependencies
+/vendor/
+/node_modules/
+
+# Build output
+build/
+build-module/
+build-scripts/
+build-types/
+
+# Environment
+.env
+
+# AI files
+.gemini/
+.claude/
+AGENTS.md
+GEMINI.md
+CLAUDE.md
+
+# Cache
+.phpunit.result.cache
+
+# Test output
 /tests/_output/*
 !/tests/_output/.gitkeep
-/tests/.phpunit.result.cache
-/tmp/
-AGENTS.md
+/tests/e2e/artifacts
+/artifacts
 
-# Logs
-*.log
+# Configs
+/phpcs.xml
+/phpunit.xml
+/phpstan.neon
+
+# WP ENV
+/.wp-env.override.json
+
+# Tests & Coverage
+/coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Build
+ai.zip

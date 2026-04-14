@@ -11,6 +11,10 @@ namespace WordPress\AI\Abilities\Utilities;
 
 use WP_Error;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Post utility WordPress Abilities.
  *
@@ -56,7 +60,7 @@ class Posts {
 			array(
 				'label'               => esc_html__( 'Get post details', 'ai' ),
 				'description'         => esc_html__( 'Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
-				'category'            => AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY,
+				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
@@ -149,12 +153,24 @@ class Posts {
 						$details['excerpt'] = $post->post_excerpt;
 					}
 
+					/**
+					 * Filters the post details returned by the get-post-details ability.
+					 *
+					 * @since 0.7.0
+					 *
+					 * @param array<string, string> $details The post details.
+					 * @param int                   $post_id The post ID.
+					 * @param array<string>         $fields  The requested fields.
+					 */
+					$details = apply_filters( 'wpai_get_post_details', $details, $post_id, $fields );
+
 					// Return the post details.
 					return $details;
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(
-					'mcp' => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
 						'public' => true,
 						'type'   => 'tool',
 					),
@@ -174,7 +190,7 @@ class Posts {
 			array(
 				'label'               => esc_html__( 'Get the post terms', 'ai' ),
 				'description'         => esc_html__( 'Get the terms of a post based on the post ID and optionally filter by taxonomy.', 'ai' ),
-				'category'            => AI_EXPERIMENTS_DEFAULT_ABILITY_CATEGORY,
+				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
@@ -292,6 +308,17 @@ class Posts {
 						);
 					}
 
+					/**
+					 * Filters the terms returned by the get-post-terms ability.
+					 *
+					 * @since 0.7.0
+					 *
+					 * @param array<\WP_Term> $terms              The terms assigned to the post.
+					 * @param int             $post_id             The post ID.
+					 * @param array<string>   $allowed_taxonomies  The allowed taxonomy names.
+					 */
+					$terms = apply_filters( 'wpai_get_post_terms', $terms, $post_id, $allowed_taxonomies );
+
 					return $terms;
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
@@ -322,8 +349,8 @@ class Posts {
 			return $post;
 		}
 
-		// Return true if the user has permission to read the post.
-		return current_user_can( 'read_post', $post_id );
+		// Return true if the user has permission to edit the post.
+		return current_user_can( 'edit_post', $post_id );
 	}
 
 	/**

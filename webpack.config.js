@@ -12,6 +12,10 @@ const path = require( 'path' );
 // Extend the default webpack config.
 module.exports = {
 	...defaultConfig,
+	output: {
+		...defaultConfig.output,
+		path: path.resolve( process.cwd(), 'build-scripts' ),
+	},
 	entry: {
 		...defaultConfig.entry(),
 		'admin/settings': path.resolve(
@@ -19,9 +23,44 @@ module.exports = {
 			'src/admin/settings',
 			'index.scss'
 		),
+		'experiments/content-classification': path.resolve(
+			process.cwd(),
+			'src/experiments/content-classification',
+			'index.tsx'
+		),
+		'experiments/abilities-explorer': path.resolve(
+			process.cwd(),
+			'src/experiments/abilities-explorer',
+			'index.js'
+		),
 		'experiments/example-experiment': path.resolve(
 			process.cwd(),
 			'src/experiments/example-experiment',
+			'index.tsx'
+		),
+		'experiments/excerpt-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/excerpt-generation',
+			'index.tsx'
+		),
+		'experiments/image-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/image-generation',
+			'index.ts'
+		),
+		'experiments/meta-description': path.resolve(
+			process.cwd(),
+			'src/experiments/meta-description',
+			'index.tsx'
+		),
+		'experiments/review-notes': path.resolve(
+			process.cwd(),
+			'src/experiments/review-notes',
+			'index.tsx'
+		),
+		'experiments/summarization': path.resolve(
+			process.cwd(),
+			'src/experiments/summarization',
 			'index.tsx'
 		),
 		'experiments/title-generation': path.resolve(
@@ -33,6 +72,21 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/type-ahead',
 			'index.tsx'
+		),
+		'experiments/alt-text-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'index.tsx'
+		),
+		'experiments/alt-text-generation-media': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'media.ts'
+		),
+		'experiments/alt-text-generation-bulk': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'bulk.ts'
 		),
 	},
 

@@ -1,11 +1,6 @@
 /**
- * Title generation experiment plugin registration.
+ * Title generation plugin registration.
  */
-
-/**
- * External dependencies
- */
-import React from 'react';
 
 /**
  * WordPress dependencies

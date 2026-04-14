@@ -7,27 +7,29 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Image\Import_Base64_Image as Import;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Image\Import_Base64_Image as Import;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Image_Import Ability tests.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
-class Test_Image_Import_Experiment extends Abstract_Experiment {
+class Test_Image_Import_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'image-import';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'image-import',
 			'label'       => 'Image Import',
 			'description' => 'Imports an image into the media library from a base64 encoded string',
 		);
@@ -36,32 +38,31 @@ class Test_Image_Import_Experiment extends Abstract_Experiment {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function register(): void {
 		// No-op for testing.
 	}
-
 }
 
 /**
  * Image_Import Ability test case.
  *
- * @since x.x.x
+ * @since 0.2.0
  */
 class Image_ImportTest extends WP_UnitTestCase {
 
 	/**
 	 * Image_Import ability instance.
 	 *
-	 * @var Import
+	 * @var \WordPress\AI\Abilities\Image\Import_Base64_Image
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Image_Import_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Image_Import_Experiment
 	 */
 	private $experiment;
 
@@ -75,13 +76,13 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
 
 		$this->experiment = new Test_Image_Import_Experiment();
-		$this->ability = new Import(
+		$this->ability    = new Import(
 			'ai/image-import',
 			array(
 				'label'       => $this->experiment->get_label(),
@@ -93,7 +94,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -103,7 +104,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -118,7 +119,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -136,6 +137,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'description', $schema['properties'], 'Schema should have description property' );
 		$this->assertArrayHasKey( 'alt_text', $schema['properties'], 'Schema should have alt_text property' );
 		$this->assertArrayHasKey( 'mime_type', $schema['properties'], 'Schema should have mime_type property' );
+		$this->assertArrayHasKey( 'meta', $schema['properties'], 'Schema should have meta property' );
 		$this->assertArrayHasKey( 'required', $schema, 'Schema should have required array' );
 		$this->assertContains( 'data', $schema['required'], 'Data should be required' );
 
@@ -149,12 +151,22 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertEquals( 'string', $schema['properties']['description']['type'], 'Description should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['alt_text']['type'], 'Alt text should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['mime_type']['type'], 'MIME type should be string type' );
+		$this->assertEquals( 'array', $schema['properties']['meta']['type'], 'Meta should be array type' );
+		$this->assertEquals( 'object', $schema['properties']['meta']['items']['type'], 'Meta items should be object type' );
+		$this->assertArrayHasKey( 'key', $schema['properties']['meta']['items']['properties'], 'Meta should have key property' );
+		$this->assertArrayHasKey( 'value', $schema['properties']['meta']['items']['properties'], 'Meta should have value property' );
+		$this->assertEquals( 'string', $schema['properties']['meta']['items']['properties']['key']['type'], 'Key should be string type' );
+		$this->assertEquals( 'string', $schema['properties']['meta']['items']['properties']['value']['type'], 'Value should be string type' );
+		$this->assertArrayHasKey( 'required', $schema['properties']['meta']['items'], 'Meta items should have required array' );
+		$this->assertContains( 'key', $schema['properties']['meta']['items']['required'], 'Key should be required' );
+		$this->assertContains( 'value', $schema['properties']['meta']['items']['required'], 'Value should be required' );
+		$this->assertArrayHasKey( 'additionalProperties', $schema['properties']['meta']['items'], 'Meta items should have additionalProperties' );
 	}
 
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -180,7 +192,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles valid base64 data correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_valid_data() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -216,7 +228,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles custom filename, title, and description.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_custom_metadata() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -234,6 +246,12 @@ class Image_ImportTest extends WP_UnitTestCase {
 			'description' => 'This is a custom test image description',
 			'alt_text'    => 'Custom Test Image Alt Text',
 			'mime_type'   => 'image/png',
+			'meta'        => array(
+				array(
+					'key'   => 'custom_meta_key',
+					'value' => 'custom_meta_value',
+				),
+			),
 		);
 
 		$result = $method->invoke( $this->ability, $input );
@@ -251,12 +269,15 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Custom Test Image', $attachment->post_title, 'Attachment title should match' );
 		$this->assertEquals( 'This is a custom test image description', $attachment->post_content, 'Attachment description should match' );
 		$this->assertEquals( 'Custom Test Image Alt Text', get_post_meta( $result['image']['id'], '_wp_attachment_image_alt', true ), 'Attachment alt text should match' );
+
+		// Verify the meta data was saved.
+		$this->assertEquals( 'custom_meta_value', get_post_meta( $result['image']['id'], 'custom_meta_key', true ), 'Meta data should be saved' );
 	}
 
 	/**
 	 * Test that execute_callback() uses default values when optional parameters are not provided.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_uses_defaults() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -284,7 +305,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when data is invalid base64.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_invalid_base64() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -308,7 +329,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when data is missing.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_without_data() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -330,7 +351,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() handles different MIME types.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_execute_callback_with_different_mime_types() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -361,7 +382,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_with_upload_files_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -380,7 +401,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without upload_files capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_without_upload_files_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -400,7 +421,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -419,7 +440,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.2.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );

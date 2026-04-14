@@ -4,7 +4,7 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/PHPCSStandards/PHP_CodeSniffer/master/phpcs.xsd"
 >
-	<description>Sniffs for AI Experiments plugin</description>
+	<description>Sniffs for the AI plugin</description>
 
 	<!-- What to scan: include any root-level PHP files, and the /inc folder -->
 	<file>./includes/</file>
@@ -12,7 +12,6 @@
 
 	<!-- These are excluded from the above paths.-->
 	<exclude-pattern>**/build/**</exclude-pattern>
-	<exclude-pattern>**/dist/**</exclude-pattern>
 	<exclude-pattern>**/node_modules/**</exclude-pattern>
 	<exclude-pattern>**/vendor/**</exclude-pattern>
 
@@ -48,7 +47,7 @@
 		Tests for WordPress version compatibility.
 	https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards/wiki/Customizable-sniff-properties
 	-->
-	<config name="minimum_wp_version" value="6.9" />
+	<config name="minimum_wp_version" value="7.0" />
 
 	<!--
 		Load WordPress VIP Go standards
@@ -187,7 +186,9 @@
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<properties>
 			<property name="prefixes" type="array">
-				<element value="AI" /><!-- Constant -->
+				<element value="WPAI" /><!-- Constant -->
+				<element value="WordPress\AI" /><!-- Namespace -->
+				<element value="wpai_" /><!-- Function and variable prefix -->
 			</property>
 		</properties>
 	</rule>

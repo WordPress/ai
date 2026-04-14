@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for the Experiment_Loader class.
+ * Tests for the Loader class.
  *
  * @package WordPress\AI\Tests\Integration\Includes
  */
@@ -8,16 +8,17 @@
 namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
-use WordPress\AI\Abstracts\Abstract_Experiment;
-use WordPress\AI\Experiment_Loader;
-use WordPress\AI\Experiment_Registry;
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Test experiment for loader tests.
  *
  * @since 0.1.0
  */
-class Mock_Experiment extends Abstract_Experiment {
+class Mock_Experiment extends Abstract_Feature {
 	/**
 	 * Tracks if register was called.
 	 *
@@ -26,24 +27,24 @@ class Mock_Experiment extends Abstract_Experiment {
 	public $register_called = false;
 
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'mock-experiment';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'mock-experiment',
 			'label'       => 'Mock Experiment',
 			'description' => 'A mock experiment for testing',
 		);
 	}
 
 	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.1.0
+	 * {@inheritDoc}
 	 */
 	public function register(): void {
 		$this->register_called = true;
@@ -51,22 +52,48 @@ class Mock_Experiment extends Abstract_Experiment {
 }
 
 /**
- * Experiment_Loader test case.
+ * Experiment that throws during instantiation.
  *
  * @since 0.1.0
  */
-class Experiment_LoaderTest extends WP_UnitTestCase {
+class Throwing_Experiment extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'throwing-experiment';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		throw new \RuntimeException( 'Test exception' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register(): void {}
+}
+
+/**
+ * Loader test case.
+ *
+ * @since 0.1.0
+ */
+class LoaderTest extends WP_UnitTestCase {
 	/**
 	 * Experiment registry instance.
 	 *
-	 * @var \WordPress\AI\Experiment_Registry
+	 * @var \WordPress\AI\Features\Registry
 	 */
 	private $registry;
 
 	/**
 	 * Experiment loader instance.
 	 *
-	 * @var \WordPress\AI\Experiment_Loader
+	 * @var \WordPress\AI\Features\Loader
 	 */
 	private $loader;
 
@@ -82,10 +109,10 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 
 		// Mock has_valid_ai_credentials to return true for tests.
-		add_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		$this->registry = new Experiment_Registry();
-		$this->loader   = new Experiment_Loader( $this->registry );
+		$this->registry = new Registry();
+		$this->loader   = new Loader( $this->registry );
 	}
 
 	/**
@@ -95,64 +122,106 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wp_ai_client_provider_credentials' );
-		remove_filter( 'ai_experiments_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
 	}
 
 	/**
-	 * Test register_default_experiments registers default experiments.
+	 * Test register_features registers default experiments.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_register_default_experiments() {
-		$this->loader->register_default_experiments();
+	public function test_register_features() {
+		// Access the protected method to register features.
+		$reflection = new \ReflectionClass( Loader::class );
+		$method     = $reflection->getMethod( 'register_features' );
+		$method->setAccessible( true );
+		$method->invoke( $this->loader );
 
 		$this->assertTrue(
-			$this->registry->has_experiment( 'title-generation' ),
-			'Title generation experiment should be registered'
+			$this->registry->has_feature( 'abilities-explorer' ),
+			'Abilities explorer experiment should be registered'
 		);
 		$this->assertTrue(
-			$this->registry->has_experiment( 'image-generation' ),
+			$this->registry->has_feature( 'alt-text-generation' ),
+			'Alt text generation experiment should be registered'
+		);
+		$this->assertTrue(
+			$this->registry->has_feature( 'excerpt-generation' ),
+			'Excerpt generation experiment should be registered'
+		);
+		$this->assertTrue(
+			$this->registry->has_feature( 'image-generation' ),
 			'Image generation experiment should be registered'
 		);
 		$this->assertTrue(
-			$this->registry->has_experiment( 'excerpt-generation' ),
-			'Excerpt generation experiment should be registered'
+			$this->registry->has_feature( 'review-notes' ),
+			'Review Notes experiment should be registered'
+		);
+		$this->assertTrue(
+			$this->registry->has_feature( 'summarization' ),
+			'Summarization experiment should be registered'
+		);
+		$this->assertTrue(
+			$this->registry->has_feature( 'title-generation' ),
+			'Title generation experiment should be registered'
 		);
 
-		$title_experiment = $this->registry->get_experiment( 'title-generation' );
-		$this->assertNotNull( $title_experiment, 'Title generation experiment should exist' );
-		$this->assertEquals( 'title-generation', $title_experiment->get_id() );
+		$abilities_explorer_experiment = $this->registry->get_feature( 'abilities-explorer' );
+		$this->assertNotNull( $abilities_explorer_experiment, 'Abilities explorer experiment should exist' );
+		$this->assertEquals( 'abilities-explorer', $abilities_explorer_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::ADMIN, $abilities_explorer_experiment->get_category() );
 
-		$image_experiment = $this->registry->get_experiment( 'image-generation' );
+		$alt_text_generation_experiment = $this->registry->get_feature( 'alt-text-generation' );
+		$this->assertNotNull( $alt_text_generation_experiment, 'Alt text generation experiment should exist' );
+		$this->assertEquals( 'alt-text-generation', $alt_text_generation_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $alt_text_generation_experiment->get_category() );
+
+		$excerpt_experiment = $this->registry->get_feature( 'excerpt-generation' );
+		$this->assertNotNull( $excerpt_experiment, 'Excerpt generation experiment should exist' );
+		$this->assertEquals( 'excerpt-generation', $excerpt_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $excerpt_experiment->get_category() );
+
+		$image_experiment = $this->registry->get_feature( 'image-generation' );
 		$this->assertNotNull( $image_experiment, 'Image generation experiment should exist' );
 		$this->assertEquals( 'image-generation', $image_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $image_experiment->get_category() );
 
-		$experiment = $this->registry->get_experiment( 'excerpt-generation' );
-		$this->assertNotNull( $experiment, 'Excerpt generation experiment should exist' );
-		$this->assertEquals( 'excerpt-generation', $experiment->get_id() );
+		$review_notes_experiment = $this->registry->get_feature( 'review-notes' );
+		$this->assertNotNull( $review_notes_experiment, 'Review Notes experiment should exist' );
+		$this->assertEquals( 'review-notes', $review_notes_experiment->get_id() );
+
+		$summarization_experiment = $this->registry->get_feature( 'summarization' );
+		$this->assertNotNull( $summarization_experiment, 'Summarization experiment should exist' );
+		$this->assertEquals( 'summarization', $summarization_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $summarization_experiment->get_category() );
+
+		$title_experiment = $this->registry->get_feature( 'title-generation' );
+		$this->assertNotNull( $title_experiment, 'Title generation experiment should exist' );
+		$this->assertEquals( 'title-generation', $title_experiment->get_id() );
+		$this->assertEquals( Experiment_Category::EDITOR, $title_experiment->get_category() );
 	}
 
 	/**
-	 * Test ai_experiments_register_experiments action hook fires.
+	 * Test wpai_register_experiments action hook fires.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_ai_experiments_register_experiments_hook_fires() {
-		$hook_fired = false;
+	public function test_wpai_register_features_hook_fires() {
+		$hook_fired      = false;
 		$passed_registry = null;
 
 		add_action(
-			'ai_experiments_register_experiments',
-			function ( $registry ) use ( &$hook_fired, &$passed_registry ) {
-				$hook_fired = true;
+			'wpai_register_features',
+			static function ( $registry ) use ( &$hook_fired, &$passed_registry ) {
+				$hook_fired      = true;
 				$passed_registry = $registry;
 			}
 		);
 
-		$this->loader->register_default_experiments();
+		$this->loader->init();
 
-		$this->assertTrue( $hook_fired, 'ai_experiments_register_experiments hook should fire' );
+		$this->assertTrue( $hook_fired, 'wpai_register_features hook should fire' );
 		$this->assertSame(
 			$this->registry,
 			$passed_registry,
@@ -167,35 +236,35 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function test_third_party_experiment_registration() {
 		add_action(
-			'ai_experiments_register_experiments',
-			function ( $registry ) {
+			'wpai_register_features',
+			static function ( $registry ) {
 				$custom_experiment = new Mock_Experiment();
-				$registry->register_experiment( $custom_experiment );
+				$registry->register_feature( $custom_experiment );
 			}
 		);
 
-		$this->loader->register_default_experiments();
+		$this->loader->init();
 
 		$this->assertTrue(
-			$this->registry->has_experiment( 'mock-experiment' ),
+			$this->registry->has_feature( 'mock-experiment' ),
 			'Custom experiment should be registered via hook'
 		);
 	}
 
 	/**
-	 * Test initialize_experiments calls register on enabled experiments.
+	 * Test initialize_features calls register on enabled experiments.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_initialize_experiments_calls_register() {
+	public function test_initialize_features_calls_register() {
 		// Enable experiments globally and individually.
-		update_option( 'ai_experiments_enabled', true );
-		update_option( 'ai_experiment_mock-experiment_enabled', true );
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_mock-experiment_enabled', true );
 
 		$experiment = new Mock_Experiment();
-		$this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
 
-		$this->loader->initialize_experiments();
+		$this->invoke_initialize_features();
 
 		$this->assertTrue(
 			$experiment->register_called,
@@ -203,27 +272,26 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 		);
 
 		// Cleanup.
-		delete_option( 'ai_experiments_enabled' );
-		delete_option( 'ai_experiment_mock-experiment_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_mock-experiment_enabled' );
 	}
 
 	/**
-	 * Test initialize_experiments doesn't initialize twice.
+	 * Test initialize_features doesn't initialize twice.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_initialize_experiments_prevents_double_initialization() {
+	public function test_initialize_features_prevents_double_initialization() {
 		$experiment = new Mock_Experiment();
-		$this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
 
-		$this->loader->initialize_experiments();
-		$this->assertTrue( $this->loader->is_initialized(), 'Should be initialized' );
+		$this->invoke_initialize_features();
 
 		// Reset the flag to track second call.
 		$experiment->register_called = false;
 
 		// Try to initialize again.
-		$this->loader->initialize_experiments();
+		$this->invoke_initialize_features();
 
 		$this->assertFalse(
 			$experiment->register_called,
@@ -232,52 +300,56 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test ai_experiments_initialized action fires.
+	 * Test wpai_features_initialized action fires.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_ai_experiments_initialized_hook_fires() {
+	public function test_wpai_features_initialized_hook_fires() {
 		$hook_fired = false;
 
 		add_action(
-			'ai_experiments_initialized',
+			'wpai_features_initialized',
 			static function () use ( &$hook_fired ) {
 				$hook_fired = true;
 			}
 		);
 
 		$experiment = new Mock_Experiment();
-		$this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
 
-		$this->loader->initialize_experiments();
+		$this->invoke_initialize_features();
 
-		$this->assertTrue( $hook_fired, 'ai_experiments_initialized hook should fire' );
+		$this->assertTrue( $hook_fired, 'wpai_features_initialized hook should fire' );
 	}
 
 	/**
-	 * Test ai_experiments_initialized fires before is_initialized is true.
+	 * Test wpai_features_initialized fires before is_initialized is true.
 	 *
 	 * @since 0.1.0
 	 */
-	public function test_ai_experiments_initialized_fires_before_initialized_flag() {
+	public function test_wpai_features_initialized_fires_before_initialized_flag() {
 		$initialized_during_hook = null;
 
+		$reflection = new \ReflectionClass( $this->loader );
+		$property   = $reflection->getProperty( 'initialized' );
+		$property->setAccessible( true );
+
 		add_action(
-			'ai_experiments_initialized',
-			function () use ( &$initialized_during_hook ) {
-				$initialized_during_hook = $this->loader->is_initialized();
+			'wpai_features_initialized',
+			function () use ( &$initialized_during_hook, $property ) {
+				$initialized_during_hook = $property->getValue( $this->loader );
+				$this->assertFalse(
+					$initialized_during_hook,
+					'Loader should not be marked initialized during wpai_features_initialized hook'
+				);
 			}
 		);
 
-		$this->loader->initialize_experiments();
+		$this->invoke_initialize_features();
 
 		$this->assertFalse(
 			$initialized_during_hook,
 			'Loader should not be marked initialized during hook'
-		);
-		$this->assertTrue(
-			$this->loader->is_initialized(),
-			'Loader should be initialized after hook'
 		);
 	}
 
@@ -288,16 +360,76 @@ class Experiment_LoaderTest extends WP_UnitTestCase {
 	 */
 	public function test_disabled_experiments_are_skipped() {
 		$experiment = new Mock_Experiment();
-		$this->registry->register_experiment( $experiment );
+		$this->registry->register_feature( $experiment );
 
 		// Disable the experiment.
-		add_filter( 'ai_experiments_experiment_mock-experiment_enabled', '__return_false' );
+		add_filter( 'wpai_feature_mock-experiment_enabled', '__return_false' );
 
-		$this->loader->initialize_experiments();
+		$this->invoke_initialize_features();
 
 		$this->assertFalse(
 			$experiment->register_called,
 			'Disabled experiment register() should not be called'
 		);
+	}
+
+	/**
+	 * Test non-existent experiment class triggers _doing_it_wrong().
+	 */
+	public function test_nonexistent_class_triggers_doing_it_wrong() {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Features\Loader::get_default_features' );
+
+		add_filter(
+			'wpai_default_feature_classes',
+			static function () {
+				return array( 'NonExistent\Class' );
+			}
+		);
+
+		$this->loader->init();
+	}
+
+	/**
+	 * Test invalid interface triggers _doing_it_wrong().
+	 */
+	public function test_invalid_interface_triggers_doing_it_wrong() {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Features\Loader::get_default_features' );
+
+		add_filter(
+			'wpai_default_feature_classes',
+			static function () {
+				return array( \stdClass::class );
+			}
+		);
+
+		$this->loader->init();
+	}
+
+	/**
+	 * Test instantiation failure triggers _doing_it_wrong().
+	 *
+	 * @since 0.1.0
+	 */
+	public function test_instantiation_failure_triggers_doing_it_wrong() {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Features\Loader::get_default_features' );
+
+		add_filter(
+			'wpai_default_feature_classes',
+			static function () {
+				return array( Throwing_Experiment::class );
+			}
+		);
+
+		$this->loader->init();
+	}
+
+	/**
+	 * Calls the private Loader::initialize_features method via reflection.
+	 */
+	private function invoke_initialize_features(): void {
+		$reflection = new \ReflectionClass( Loader::class );
+		$method     = $reflection->getMethod( 'initialize_features' );
+		$method->setAccessible( true );
+		$method->invoke( $this->loader );
 	}
 }
