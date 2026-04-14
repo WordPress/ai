@@ -25,18 +25,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since x.x.x
  */
 class Type_Ahead extends Abstract_Feature {
-	private const OPTION_MODE       = 'ai_experiment_type_ahead_mode';
-	private const OPTION_DELAY      = 'ai_experiment_type_ahead_delay';
-	private const OPTION_CONFIDENCE = 'ai_experiment_type_ahead_confidence';
-	private const OPTION_HEADINGS   = 'ai_experiment_type_ahead_headings';
-	private const OPTION_MAX_WORDS  = 'ai_experiment_type_ahead_max_words';
 
+	/**
+	 * Default settings.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string, mixed>
+	 */
 	private const DEFAULTS = array(
 		'mode'       => 'smart',
 		'delay'      => 500,
 		'confidence' => 70,
-		'headings'   => false,
 		'max_words'  => 20,
+		'headings'   => false,
 	);
 
 	/**
@@ -106,8 +108,8 @@ class Type_Ahead extends Abstract_Feature {
 				'completionMode' => $settings['mode'],
 				'triggerDelay'   => (int) $settings['delay'],
 				'confidence'     => (float) $settings['confidence'] / 100,
-				'showHeadings'   => (bool) $settings['headings'],
 				'maxWords'       => (int) $settings['max_words'],
+				'showHeadings'   => (bool) $settings['headings'],
 			)
 		);
 	}
@@ -120,126 +122,155 @@ class Type_Ahead extends Abstract_Feature {
 	public function register_settings(): void {
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			self::OPTION_MODE,
+			$this->get_field_option_name( 'mode' ),
 			array(
 				'type'              => 'string',
 				'default'           => self::DEFAULTS['mode'],
 				'sanitize_callback' => array( $this, 'sanitize_mode' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'string',
+						'enum' => array( 'word', 'sentence', 'paragraph', 'smart' ),
+					),
+				),
 			)
 		);
 
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			self::OPTION_DELAY,
+			$this->get_field_option_name( 'delay' ),
 			array(
 				'type'              => 'integer',
 				'default'           => self::DEFAULTS['delay'],
 				'sanitize_callback' => array( $this, 'sanitize_delay' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'    => 'integer',
+						'minimum' => 200,
+						'maximum' => 2000,
+					),
+				),
 			)
 		);
 
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			self::OPTION_CONFIDENCE,
+			$this->get_field_option_name( 'confidence' ),
 			array(
 				'type'              => 'integer',
 				'default'           => self::DEFAULTS['confidence'],
 				'sanitize_callback' => array( $this, 'sanitize_confidence' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'    => 'integer',
+						'minimum' => 0,
+						'maximum' => 100,
+					),
+				),
 			)
 		);
 
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			self::OPTION_HEADINGS,
-			array(
-				'type'              => 'boolean',
-				'default'           => self::DEFAULTS['headings'],
-				'sanitize_callback' => 'rest_sanitize_boolean',
-			)
-		);
-
-		register_setting(
-			Settings_Registration::OPTION_GROUP,
-			self::OPTION_MAX_WORDS,
+			$this->get_field_option_name( 'max_words' ),
 			array(
 				'type'              => 'integer',
 				'default'           => self::DEFAULTS['max_words'],
 				'sanitize_callback' => array( $this, 'sanitize_max_words' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+						'maximum' => 50,
+					),
+				),
+			)
+		);
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			$this->get_field_option_name( 'headings' ),
+			array(
+				'type'              => 'boolean',
+				'default'           => self::DEFAULTS['headings'],
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'boolean',
+					),
+				),
 			)
 		);
 	}
 
 	/**
-	 * Renders settings controls on the settings screen.
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
 	 */
-	public function render_settings_fields(): void {
-		$settings = $this->get_settings();
-		?>
-		<div class="ai-experiment-settings">
-			<label for="<?php echo esc_attr( self::OPTION_MODE ); ?>" class="ai-experiment-settings__label">
-				<?php esc_html_e( 'Completion mode', 'ai' ); ?>
-			</label>
-			<select name="<?php echo esc_attr( self::OPTION_MODE ); ?>" id="<?php echo esc_attr( self::OPTION_MODE ); ?>">
-				<?php foreach ( array( 'word', 'sentence', 'paragraph', 'smart' ) as $mode ) : ?>
-					<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $settings['mode'], $mode ); ?>>
-						<?php echo esc_html( ucfirst( $mode ) ); ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
-
-			<label for="<?php echo esc_attr( self::OPTION_DELAY ); ?>" class="ai-experiment-settings__label">
-				<?php esc_html_e( 'Trigger delay (ms)', 'ai' ); ?>
-			</label>
-			<input
-				type="number"
-				min="200"
-				max="2000"
-				step="50"
-				id="<?php echo esc_attr( self::OPTION_DELAY ); ?>"
-				name="<?php echo esc_attr( self::OPTION_DELAY ); ?>"
-				value="<?php echo esc_attr( (string) $settings['delay'] ); ?>"
-			/>
-
-			<label for="<?php echo esc_attr( self::OPTION_CONFIDENCE ); ?>" class="ai-experiment-settings__label">
-				<?php esc_html_e( 'Minimum confidence (%)', 'ai' ); ?>
-			</label>
-			<input
-				type="number"
-				min="0"
-				max="100"
-				step="5"
-				id="<?php echo esc_attr( self::OPTION_CONFIDENCE ); ?>"
-				name="<?php echo esc_attr( self::OPTION_CONFIDENCE ); ?>"
-				value="<?php echo esc_attr( (string) $settings['confidence'] ); ?>"
-			/>
-
-			<label for="<?php echo esc_attr( self::OPTION_MAX_WORDS ); ?>" class="ai-experiment-settings__label">
-				<?php esc_html_e( 'Max words per suggestion', 'ai' ); ?>
-			</label>
-			<input
-				type="number"
-				min="1"
-				max="50"
-				step="1"
-				id="<?php echo esc_attr( self::OPTION_MAX_WORDS ); ?>"
-				name="<?php echo esc_attr( self::OPTION_MAX_WORDS ); ?>"
-				value="<?php echo esc_attr( (string) $settings['max_words'] ); ?>"
-			/>
-
-			<label class="components-toggle-control" for="<?php echo esc_attr( self::OPTION_HEADINGS ); ?>">
-				<input
-					type="checkbox"
-					id="<?php echo esc_attr( self::OPTION_HEADINGS ); ?>"
-					name="<?php echo esc_attr( self::OPTION_HEADINGS ); ?>"
-					value="1"
-					<?php checked( (bool) $settings['headings'] ); ?>
-				/>
-				<span><?php esc_html_e( 'Enable in headings', 'ai' ); ?></span>
-			</label>
-		</div>
-		<?php
+	public function get_settings_fields(): array {
+		return array(
+			array(
+				'id'       => 'mode',
+				'label'    => __( 'Completion mode', 'ai' ),
+				'type'     => 'text',
+				'default'  => self::DEFAULTS['mode'],
+				'elements' => array(
+					array(
+						'value' => 'word',
+						'label' => __( 'Word', 'ai' ),
+					),
+					array(
+						'value' => 'sentence',
+						'label' => __( 'Sentence', 'ai' ),
+					),
+					array(
+						'value' => 'paragraph',
+						'label' => __( 'Paragraph', 'ai' ),
+					),
+					array(
+						'value' => 'smart',
+						'label' => __( 'Smart', 'ai' ),
+					),
+				),
+			),
+			array(
+				'id'      => 'delay',
+				'label'   => __( 'Trigger delay (ms)', 'ai' ),
+				'type'    => 'integer',
+				'default' => self::DEFAULTS['delay'],
+				'isValid' => array(
+					'min' => 200,
+					'max' => 2000,
+				),
+			),
+			array(
+				'id'      => 'confidence',
+				'label'   => __( 'Minimum confidence (%)', 'ai' ),
+				'type'    => 'integer',
+				'default' => self::DEFAULTS['confidence'],
+				'isValid' => array(
+					'min' => 0,
+					'max' => 100,
+				),
+			),
+			array(
+				'id'      => 'max_words',
+				'label'   => __( 'Max words per suggestion', 'ai' ),
+				'type'    => 'integer',
+				'default' => self::DEFAULTS['max_words'],
+				'isValid' => array(
+					'min' => 1,
+					'max' => 50,
+				),
+			),
+			array(
+				'id'      => 'headings',
+				'label'   => __( 'Enable in headings', 'ai' ),
+				'type'    => 'boolean',
+				'default' => self::DEFAULTS['headings'],
+			),
+		);
 	}
 
 	/**
@@ -250,13 +281,13 @@ class Type_Ahead extends Abstract_Feature {
 	 * @return array<string, mixed>
 	 */
 	private function get_settings(): array {
-		return array(
-			'mode'       => get_option( self::OPTION_MODE, self::DEFAULTS['mode'] ),
-			'delay'      => (int) get_option( self::OPTION_DELAY, self::DEFAULTS['delay'] ),
-			'confidence' => (int) get_option( self::OPTION_CONFIDENCE, self::DEFAULTS['confidence'] ),
-			'headings'   => (bool) get_option( self::OPTION_HEADINGS, self::DEFAULTS['headings'] ),
-			'max_words'  => (int) get_option( self::OPTION_MAX_WORDS, self::DEFAULTS['max_words'] ),
-		);
+		$settings = array();
+
+		foreach ( self::DEFAULTS as $key => $value ) {
+			$settings[ $key ] = get_option( $this->get_field_option_name( $key ), $value );
+		}
+
+		return $settings;
 	}
 
 	/**
