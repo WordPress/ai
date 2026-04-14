@@ -165,6 +165,25 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
+	 * Returns the JSON schema used for the output of the comment analysis.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> JSON schema for the output of the comment analysis.
+	 */
+	private function response_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'toxicity_score' => array( 'type' => 'number' ),
+				'sentiment'      => array( 'type' => 'string' ),
+			),
+			'required'             => array( 'toxicity_score', 'sentiment' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	/**
 	 * Analyzes a comment for toxicity and sentiment.
 	 *
 	 * @since x.x.x
@@ -180,7 +199,7 @@ class Comment_Analysis extends Abstract_Ability {
 			$content
 		);
 
-		$prompt_builder = $this->get_prompt_builder( $content );
+		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
 			return $prompt_builder;
@@ -228,8 +247,9 @@ class Comment_Analysis extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference( ...get_preferred_models_for_text_generation() );
+			->using_system_instruction( $this->get_system_instruction( 'comment-analysis-system-instruction.php' ) )
+			->using_model_preference( ...get_preferred_models_for_text_generation() )
+			->as_json_response( $this->response_schema() );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

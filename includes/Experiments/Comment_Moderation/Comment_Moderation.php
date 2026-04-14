@@ -195,7 +195,7 @@ class Comment_Moderation extends Abstract_Feature {
 
 		if ( 'wpai_sentiment' === (string) $column_name ) {
 			$this->render_sentiment_column( (int) $comment_id, $status );
-		} elseif ( 'ai_toxicity' === (string) $column_name ) {
+		} elseif ( 'wpai_toxicity' === (string) $column_name ) {
 			$this->render_toxicity_column( (int) $comment_id, $status );
 		}
 	}
