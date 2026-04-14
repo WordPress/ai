@@ -14,31 +14,30 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI_Client\AI_Client;
 
+use function WordPress\AI\get_preferred_models_for_text_generation;
+
 /**
  * Comment Analysis WordPress Ability.
  *
- * Analyzes comments for toxicity and sentiment using AI.
+ * Analyzes comments for toxicity and sentiment.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class Comment_Analysis extends Abstract_Ability {
 
 	/**
-	 * Returns the input schema of the ability.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array<string, mixed> The input schema of the ability.
+	 * @since x.x.x
 	 */
 	protected function input_schema(): array {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
 				'comment_id' => array(
-					'type'              => 'integer',
-					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'The ID of the comment to analyze.', 'ai' ),
-					'required'          => true,
+					'type'        => 'integer',
+					'description' => esc_html__( 'The ID of the comment to analyze.', 'ai' ),
+					'required'    => true,
 				),
 			),
 			'required'   => array( 'comment_id' ),
@@ -46,11 +45,9 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the output schema of the ability.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array<string, mixed> The output schema of the ability.
+	 * @since x.x.x
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -76,11 +73,10 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
-	 * Executes the ability with the given input arguments.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
-	 * @param mixed $input The input arguments to the ability.
 	 * @return array{comment_id: int, toxicity_score: float, sentiment: string}|\WP_Error The result of the ability execution.
 	 */
 	protected function execute_callback( $input ) {
@@ -95,7 +91,7 @@ class Comment_Analysis extends Abstract_Ability {
 
 		$comment = get_comment( $comment_id );
 
-		if ( ! $comment ) {
+		if ( ! is_a( $comment, '\WP_Comment' ) ) {
 			return new WP_Error(
 				'comment_not_found',
 				sprintf(
@@ -142,12 +138,9 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the permission callback of the ability.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @param mixed $input The input arguments to the ability.
-	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
+	 * @since x.x.x
 	 */
 	protected function permission_callback( $input ) {
 		if ( ! current_user_can( 'moderate_comments' ) ) {
@@ -161,11 +154,9 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns the meta of the ability.
+	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
-	 *
-	 * @return array<string, mixed> The meta of the ability.
+	 * @since x.x.x
 	 */
 	protected function meta(): array {
 		return array(
@@ -176,7 +167,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Analyzes a comment for toxicity and sentiment.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $content The comment content.
 	 * @param string $author  The comment author name.
@@ -189,10 +180,13 @@ class Comment_Analysis extends Abstract_Ability {
 			$content
 		);
 
-		$result = AI_Client::prompt_with_wp_error( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference( ...$this->get_model_preferences() )
-			->generate_text();
+		$prompt_builder = $this->get_prompt_builder( $content );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
+		$result = $prompt_builder->generate_text();;
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -221,6 +215,25 @@ class Comment_Analysis extends Abstract_Ability {
 		return array(
 			'toxicity_score' => $toxicity_score,
 			'sentiment'      => $sentiment,
+		);
+	}
+
+	/**
+	 * Gets a prompt builder for analyzing a comment.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt The prompt to analyze a comment.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->using_system_instruction( $this->get_system_instruction() )
+			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Comment analysis failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
 		);
 	}
 }

@@ -13,8 +13,6 @@ use ReflectionClass;
 use WP_Ability;
 use WP_Error;
 
-use function WordPress\AI\get_preferred_models_for_text_generation;
-
 /**
  * Base implementation for a WordPress Ability.
  *
@@ -103,17 +101,6 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return array<string, mixed> The meta of the ability.
 	 */
 	abstract protected function meta(): array;
-
-	/**
-	 * Returns the preferred models for the ability.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array<int, array{0: string, 1: string}> The preferred models as [provider, model] pairs.
-	 */
-	protected function get_model_preferences(): array {
-		return get_preferred_models_for_text_generation();
-	}
 
 	/**
 	 * Gets the system instruction for the feature.
