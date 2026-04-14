@@ -24,6 +24,7 @@ type Method = 'GET' | 'POST' | 'DELETE';
 
 type RunAbilityOptions = {
 	method?: Method;
+	signal?: AbortSignal;
 };
 
 interface WindowWithAbilities extends Window {
@@ -128,10 +129,13 @@ export async function runAbility< T = unknown >(
 	}
 
 	const method: Method = options?.method ?? 'POST';
+	const fetchOptions = buildFetchOptions( ability, input, method );
 
-	const response = await apiFetch(
-		buildFetchOptions( ability, input, method )
-	);
+	if ( options?.signal ) {
+		( fetchOptions as any ).signal = options.signal;
+	}
+
+	const response = await apiFetch( fetchOptions );
 
 	return response as T;
 }
