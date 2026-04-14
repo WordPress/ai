@@ -228,7 +228,7 @@ export const useTypeAheadSuggestion = (
 				clearRequestTimeout();
 			}
 		},
-		[ clearRequestTimeout ]
+		[ clearRequestTimeout, setSuggestion ]
 	);
 
 	const scheduleFetch = useCallback(
@@ -291,6 +291,7 @@ export const useTypeAheadSuggestion = (
 		scheduleFetch,
 		caret,
 		editable,
+		setSuggestion,
 	] );
 
 	const triggerManualFetch = useCallback( () => {
