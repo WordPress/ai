@@ -39,9 +39,9 @@ export const useTypeAheadContext = (
 			const editor = select( editorStore );
 			const selected = blockEditor.getSelectedBlockClientId();
 			const rootClientId = blockEditor.getBlockRootClientId( clientId );
-			const order = rootClientId
-				? blockEditor.getBlockOrder( rootClientId )
-				: [];
+			const order = blockEditor.getBlockOrder(
+				rootClientId || undefined
+			);
 			const index = blockEditor.getBlockIndex( clientId );
 			const hasOrder = Array.isArray( order ) && order.length > 0;
 			const previousId =

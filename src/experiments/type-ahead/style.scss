@@ -12,3 +12,17 @@
 	white-space: pre-wrap;
 	word-break: break-word;
 }
+
+.ai-type-ahead-inline-ghost {
+	pointer-events: none;
+	user-select: none;
+	color: var(--ai-type-ahead-ghost-color, #8a8f98);
+	opacity: 1;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.ai-type-ahead-block [contenteditable='true'] .ai-type-ahead-inline-ghost {
+	color: var(--ai-type-ahead-ghost-color, #8a8f98) !important;
+	opacity: 0.72;
+}

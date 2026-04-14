@@ -104,6 +104,59 @@ const TypeAheadBlock = ( {
 		return () => block.classList.remove( 'ai-type-ahead-block' );
 	}, [ block ] );
 
+	useEffect( () => {
+		if ( ! editable ) {
+			return;
+		}
+
+		const removeInlineGhost = () => {
+			editable
+				.querySelectorAll( '.ai-type-ahead-inline-ghost' )
+				.forEach( ( node ) => node.remove() );
+		};
+
+		removeInlineGhost();
+
+		if ( ! suggestion?.text || caretAtEnd || ! caret ) {
+			return removeInlineGhost;
+		}
+
+		const doc = caret.ownerDocument;
+		const selection = doc.getSelection();
+		if ( ! selection || selection.rangeCount === 0 ) {
+			return removeInlineGhost;
+		}
+
+		const range = selection.getRangeAt( 0 );
+		if ( ! editable.contains( range.startContainer ) ) {
+			return removeInlineGhost;
+		}
+
+		const ghost = doc.createElement( 'span' );
+		ghost.className = 'ai-type-ahead-inline-ghost';
+		ghost.setAttribute( 'contenteditable', 'false' );
+		ghost.setAttribute( 'aria-hidden', 'true' );
+		ghost.textContent = suggestion.text;
+		ghost.style.color = 'var(--ai-type-ahead-ghost-color, #8a8f98)';
+		ghost.style.opacity = '0.72';
+		ghost.style.pointerEvents = 'none';
+		ghost.style.userSelect = 'none';
+		ghost.style.whiteSpace = 'pre-wrap';
+		ghost.style.wordBreak = 'break-word';
+		ghost.style.fontStyle = 'normal';
+
+		range.insertNode( ghost );
+
+		// Keep caret at original insertion point, before ghost content.
+		const caretRange = doc.createRange();
+		caretRange.setStartBefore( ghost );
+		caretRange.collapse( true );
+		selection.removeAllRanges();
+		selection.addRange( caretRange );
+
+		return removeInlineGhost;
+	}, [ editable, suggestion?.text, caretAtEnd, caret?.offset, caret ] );
+
 	const insertText = useCallback(
 		( text: string ) => {
 			if ( ! caret || ! editable ) {
@@ -238,7 +291,7 @@ const TypeAheadBlock = ( {
 				ownerDocument={ caret?.ownerDocument ?? document }
 				rect={ caret?.rect ?? null }
 				container={ editable ?? null }
-				text={ suggestion?.text ?? null }
+				text={ caretAtEnd ? suggestion?.text ?? null : null }
 			/>
 			<VisuallyHidden role="status" aria-live="polite">
 				{ suggestion?.text ?? '' }

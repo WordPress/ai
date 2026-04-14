@@ -63,12 +63,15 @@ export const useTypeAheadSuggestion = (
 		clientId,
 		settings,
 	} = args;
-	const [ suggestion, setSuggestion ] = useState< Suggestion | null >( null );
-	const [ requestNonce, setRequestNonce ] = useState( 0 );
+	const [ suggestion, setSuggestionState ] = useState< Suggestion | null >(
+		null
+	);
 	const requestRef = useRef( 0 );
 	const abortControllerRef = useRef< AbortController | null >( null );
 	const debounceTimerRef = useRef< number | null >( null );
 	const requestTimeoutRef = useRef< number | null >( null );
+	const requestSourceRef = useRef< 'auto' | 'manual' | null >( null );
+	const manualSuggestionActiveRef = useRef( false );
 
 	const stateRef = useRef( {
 		caret,
@@ -125,7 +128,15 @@ export const useTypeAheadSuggestion = (
 		}
 
 		clearRequestTimeout();
+		requestSourceRef.current = null;
 	}, [ clearRequestTimeout ] );
+
+	const setSuggestion = useCallback( ( next: Suggestion | null ) => {
+		if ( ! next ) {
+			manualSuggestionActiveRef.current = false;
+		}
+		setSuggestionState( next );
+	}, [] );
 
 	const fetchSuggestion = useCallback(
 		async ( manual: boolean ) => {
@@ -141,6 +152,7 @@ export const useTypeAheadSuggestion = (
 			clearRequestTimeout();
 
 			const controller = new AbortController();
+			requestSourceRef.current = manual ? 'manual' : 'auto';
 			abortControllerRef.current = controller;
 			const currentRequest = ++requestRef.current;
 			requestTimeoutRef.current = window.setTimeout( () => {
@@ -189,6 +201,7 @@ export const useTypeAheadSuggestion = (
 					String( response.suggestion ),
 					precedingText
 				);
+				manualSuggestionActiveRef.current = manual;
 
 				setSuggestion( {
 					text: normalizedText,
@@ -209,6 +222,9 @@ export const useTypeAheadSuggestion = (
 				if ( abortControllerRef.current === controller ) {
 					abortControllerRef.current = null;
 				}
+				if ( currentRequest === requestRef.current ) {
+					requestSourceRef.current = null;
+				}
 				clearRequestTimeout();
 			}
 		},
@@ -222,11 +238,13 @@ export const useTypeAheadSuggestion = (
 			}
 
 			if ( manual ) {
+				requestSourceRef.current = 'manual';
 				fetchSuggestion( true );
 				return;
 			}
 
 			const delay = Math.max( 200, settings.triggerDelay || 500 );
+			requestSourceRef.current = 'auto';
 			debounceTimerRef.current = window.setTimeout( () => {
 				debounceTimerRef.current = null;
 
@@ -246,19 +264,29 @@ export const useTypeAheadSuggestion = (
 	);
 
 	useEffect( () => {
+		const preserveManualSuggestion =
+			! shouldRequest && manualSuggestionActiveRef.current;
+
 		if ( ! shouldRequest || ! caret || ! editable ) {
-			cancelPendingRequest();
-			setSuggestion( null );
+			if ( requestSourceRef.current !== 'manual' ) {
+				cancelPendingRequest();
+			}
+			if ( ! preserveManualSuggestion ) {
+				setSuggestion( null );
+			}
 			return;
 		}
 
 		scheduleFetch( false );
-		return cancelPendingRequest;
+		return () => {
+			if ( requestSourceRef.current !== 'manual' ) {
+				cancelPendingRequest();
+			}
+		};
 	}, [
 		shouldRequest,
 		caret?.offset,
 		plainContent,
-		requestNonce,
 		cancelPendingRequest,
 		scheduleFetch,
 		caret,
@@ -266,7 +294,6 @@ export const useTypeAheadSuggestion = (
 	] );
 
 	const triggerManualFetch = useCallback( () => {
-		setRequestNonce( ( prev ) => prev + 1 );
 		scheduleFetch( true );
 	}, [ scheduleFetch ] );
 

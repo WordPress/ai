@@ -8,18 +8,18 @@
 import type { ComponentType } from 'react';
 
 /**
- * Internal dependencies
- */
-import './style.scss';
-import TypeAheadBlock from './components/TypeAheadBlock';
-import { ALLOWED_BLOCKS } from './constants';
-import type { TypeAheadSettings } from './types';
-
-/**
  * WordPress dependencies
  */
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { addFilter } from '@wordpress/hooks';
+
+/**
+ * Internal dependencies
+ */
+import TypeAheadBlock from './components/TypeAheadBlock';
+import { ALLOWED_BLOCKS } from './constants';
+import type { TypeAheadSettings } from './types';
+import './style.scss';
 
 /**
  * Registers the editor block wrapper for type-ahead support.
