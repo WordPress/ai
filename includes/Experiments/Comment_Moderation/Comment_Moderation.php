@@ -9,49 +9,49 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Comment_Moderation;
 
-use WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis;
-use WordPress\AI\Abilities\Comment_Moderation\Reply_Suggestion;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis as Comment_Analysis_Ability;
+use WordPress\AI\Abilities\Comment_Moderation\Reply_Suggestion as Reply_Suggestion_Ability;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use function admin_url;
+use WordPress\AI\Experiments\Experiment_Category;
 
 /**
- * AI-powered comment moderation experiment.
+ * Comment moderation experiment.
  *
- * Provides toxicity detection, sentiment analysis, and AI-generated reply suggestions
+ * Provides toxicity detection, sentiment analysis, and reply suggestions
  * for WordPress comments.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
-class Comment_Moderation extends Abstract_Experiment {
+class Comment_Moderation extends Abstract_Feature {
 
 	/**
 	 * Comment meta key for toxicity score.
 	 *
 	 * @var string
 	 */
-	public const META_TOXICITY_SCORE = '_ai_toxicity_score';
+	public const META_TOXICITY_SCORE = '_wpai_toxicity_score';
 
 	/**
 	 * Comment meta key for sentiment.
 	 *
 	 * @var string
 	 */
-	public const META_SENTIMENT = '_ai_sentiment';
+	public const META_SENTIMENT = '_wpai_sentiment';
 
 	/**
 	 * Comment meta key for analysis status.
 	 *
 	 * @var string
 	 */
-	public const META_ANALYSIS_STATUS = '_ai_analysis_status';
+	public const META_ANALYSIS_STATUS = '_wpai_analysis_status';
 
 	/**
 	 * Comment meta key for analysis timestamp.
 	 *
 	 * @var string
 	 */
-	public const META_ANALYZED_AT = '_ai_analyzed_at';
+	public const META_ANALYZED_AT = '_wpai_analyzed_at';
 
 	/**
 	 * Analysis status: pending.
@@ -84,20 +84,29 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'comment-moderation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'comment-moderation',
 			'label'       => __( 'Comment Moderation', 'ai' ),
-			'description' => __( 'AI-powered comment analysis with toxicity detection, sentiment analysis, and reply suggestions.', 'ai' ),
+			'description' => __( 'AI-powered comment analysis with toxicity detection, sentiment analysis, and reply suggestions. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		// Register abilities.
@@ -125,7 +134,7 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Registers the comment moderation abilities.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -133,7 +142,7 @@ class Comment_Moderation extends Abstract_Experiment {
 			array(
 				'label'         => __( 'Comment Analysis', 'ai' ),
 				'description'   => __( 'Analyzes a comment for toxicity and sentiment.', 'ai' ),
-				'ability_class' => Comment_Analysis::class,
+				'ability_class' => Comment_Analysis_Ability::class,
 			)
 		);
 
@@ -142,7 +151,7 @@ class Comment_Moderation extends Abstract_Experiment {
 			array(
 				'label'         => __( 'Reply Suggestion', 'ai' ),
 				'description'   => __( 'Generates reply suggestions for a comment.', 'ai' ),
-				'ability_class' => Reply_Suggestion::class,
+				'ability_class' => Reply_Suggestion_Ability::class,
 			)
 		);
 	}
@@ -150,15 +159,15 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Adds custom columns to the comments list table.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, string> $columns The existing columns.
 	 * @return array<string, string> The modified columns.
 	 */
-	public function add_columns( array $columns ): array {
+	public function add_columns( $columns ): array {
 		$new_columns = array();
 
-		foreach ( $columns as $key => $value ) {
+		foreach ( (array) $columns as $key => $value ) {
 			$new_columns[ $key ] = $value;
 
 			// Insert our columns after the 'author' column.
@@ -166,8 +175,8 @@ class Comment_Moderation extends Abstract_Experiment {
 				continue;
 			}
 
-			$new_columns['ai_sentiment'] = __( 'Sentiment', 'ai' );
-			$new_columns['ai_toxicity']  = __( 'Toxicity', 'ai' );
+			$new_columns['wpai_sentiment'] = __( 'Sentiment', 'ai' );
+			$new_columns['wpai_toxicity']  = __( 'Toxicity', 'ai' );
 		}
 
 		return $new_columns;
@@ -176,25 +185,25 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Renders the custom column content.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $column_name The column name.
 	 * @param int    $comment_id  The comment ID.
 	 */
-	public function render_column( string $column_name, int $comment_id ): void {
-		$status = get_comment_meta( $comment_id, self::META_ANALYSIS_STATUS, true );
+	public function render_column( $column_name, $comment_id ): void {
+		$status = get_comment_meta( (int) $comment_id, self::META_ANALYSIS_STATUS, true );
 
-		if ( 'ai_sentiment' === $column_name ) {
-			$this->render_sentiment_column( $comment_id, $status );
-		} elseif ( 'ai_toxicity' === $column_name ) {
-			$this->render_toxicity_column( $comment_id, $status );
+		if ( 'wpai_sentiment' === (string) $column_name ) {
+			$this->render_sentiment_column( (int) $comment_id, $status );
+		} elseif ( 'ai_toxicity' === (string) $column_name ) {
+			$this->render_toxicity_column( (int) $comment_id, $status );
 		}
 	}
 
 	/**
 	 * Renders the sentiment column content.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param int    $comment_id The comment ID.
 	 * @param string $status     The analysis status.
@@ -216,7 +225,7 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Renders the toxicity column content.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param int    $comment_id The comment ID.
 	 * @param string $status     The analysis status.
@@ -238,7 +247,7 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Renders a sentiment badge.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $sentiment The sentiment value.
 	 */
@@ -275,7 +284,7 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Renders a toxicity badge.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param float $score The toxicity score (0-1).
 	 */
@@ -307,7 +316,7 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Renders a pending badge for comments queued for analysis.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param int $comment_id The comment ID.
 	 */
@@ -322,7 +331,7 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Renders a processing badge.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param int $comment_id The comment ID.
 	 */
@@ -330,43 +339,47 @@ class Comment_Moderation extends Abstract_Experiment {
 		printf(
 			'<span class="ai-badge ai-badge--processing" data-comment-id="%d" data-ai-status="processing">%s</span>',
 			absint( $comment_id ),
-			esc_html__( 'Analyzing...', 'ai' )
+			esc_html__( 'Analyzing…', 'ai' )
 		);
 	}
 
 	/**
 	 * Adds bulk actions to the comments list.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, string> $actions The existing bulk actions.
 	 * @return array<string, string> The modified bulk actions.
 	 */
-	public function add_bulk_actions( array $actions ): array {
-		$actions['ai_analyze'] = __( 'Analyze with AI', 'ai' );
+	public function add_bulk_actions( $actions ): array {
+		if ( ! is_array( $actions ) ) {
+			return $actions;
+		}
+
+		$actions['wpai_analyze'] = __( 'Analyze with AI', 'ai' );
 		return $actions;
 	}
 
 	/**
 	 * Handles the bulk action for AI analysis.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $redirect_url The redirect URL.
 	 * @param string $action       The action being performed.
 	 * @param array  $comment_ids  The comment IDs.
 	 * @return string The modified redirect URL.
 	 */
-	public function handle_bulk_action( string $redirect_url, string $action, array $comment_ids ): string {
-		if ( 'ai_analyze' !== $action ) {
+	public function handle_bulk_action( $redirect_url, $action, $comment_ids ): string {
+		if ( 'wpai_analyze' !== (string) $action ) {
 			return $redirect_url;
 		}
 
 		// Mark selected comments as pending for analysis.
 		$queued = 0;
-		foreach ( $comment_ids as $comment_id ) {
+		foreach ( (array) $comment_ids as $comment_id ) {
 			$comment_id = absint( $comment_id );
-			if ( ! $comment_id ) {
+			if ( ! $comment_id || ! is_a( get_comment( $comment_id ), '\WP_Comment' ) ) {
 				continue;
 			}
 
@@ -375,20 +388,20 @@ class Comment_Moderation extends Abstract_Experiment {
 		}
 
 		// Add query arg to show notice.
-		return add_query_arg( 'ai_analysis_queued', $queued, $redirect_url );
+		return add_query_arg( 'wpai_analysis_queued', $queued, (string) $redirect_url );
 	}
 
 	/**
 	 * Shows admin notice after bulk action.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function show_bulk_action_notice(): void {
-		if ( ! isset( $_GET['ai_analysis_queued'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! isset( $_GET['wpai_analysis_queued'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return;
 		}
 
-		$count = absint( $_GET['ai_analysis_queued'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$count = absint( wp_unslash( $_GET['wpai_analysis_queued'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		if ( $count <= 0 ) {
 			return;
@@ -414,19 +427,23 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Adds row actions to the comments list.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, string> $actions The existing actions.
 	 * @param \WP_Comment           $comment The comment object.
 	 * @return array<string, string> The modified actions.
 	 */
-	public function add_row_actions( array $actions, \WP_Comment $comment ): array {
+	public function add_row_actions( $actions, $comment ): array {
+		if ( ! is_array( $actions ) || ! is_a( $comment, '\WP_Comment' ) ) {
+			return $actions;
+		}
+
 		// Only show for approved comments.
 		if ( '1' !== $comment->comment_approved ) {
 			return $actions;
 		}
 
-		$actions['ai_suggest_reply'] = sprintf(
+		$actions['wpai_suggest_reply'] = sprintf(
 			'<a href="#" class="ai-suggest-reply" data-comment-id="%d">%s</a>',
 			absint( $comment->comment_ID ),
 			esc_html__( 'AI Reply', 'ai' )
@@ -438,12 +455,12 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Enqueues admin assets for the comments screen.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
-	public function enqueue_assets( string $hook_suffix ): void {
-		if ( 'edit-comments.php' !== $hook_suffix ) {
+	public function enqueue_assets( $hook_suffix ): void {
+		if ( 'edit-comments.php' !== (string) $hook_suffix ) {
 			return;
 		}
 
@@ -453,7 +470,7 @@ class Comment_Moderation extends Abstract_Experiment {
 			'CommentModerationData',
 			array(
 				'enabled' => $this->is_enabled(),
-				'nonce'   => wp_create_nonce( 'ai_comment_moderation' ),
+				'nonce'   => wp_create_nonce( 'wpai_comment_moderation' ),
 			)
 		);
 
@@ -464,7 +481,7 @@ class Comment_Moderation extends Abstract_Experiment {
 	/**
 	 * Adds inline styles for the comment moderation badges.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function add_inline_styles(): void {
 		?>
@@ -545,18 +562,5 @@ class Comment_Moderation extends Abstract_Experiment {
 			}
 		</style>
 		<?php
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function get_entry_points(): array {
-		return array(
-			array(
-				'label' => __( 'Try', 'ai' ),
-				'url'   => admin_url( 'edit-comments.php' ),
-				'type'  => 'try',
-			),
-		);
 	}
 }
