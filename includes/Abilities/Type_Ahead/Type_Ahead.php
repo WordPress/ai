@@ -160,7 +160,7 @@ class Type_Ahead extends Abstract_Ability {
 			return $cached;
 		}
 
-		$context = $this->prepare_prompt_context( $args['post_id'], $block_content, $preceding_text, $following_text, $surrounding, $cursor_position, $mode, $max_words, (bool) $args['manual_trigger'] );
+		$context = $this->prepare_prompt_context( $block_content, $preceding_text, $following_text, $surrounding, $cursor_position, $mode, $max_words, (bool) $args['manual_trigger'] );
 
 		$result = $this->generate_suggestion( $context );
 
@@ -271,7 +271,10 @@ class Type_Ahead extends Abstract_Ability {
 	 * @return array{suggestion: string, confidence: float}|\WP_Error
 	 */
 	private function generate_suggestion( array $context ) {
-		$prompt = wp_json_encode( $context );
+		$prompt = wp_json_encode(
+			$context,
+			JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+		);
 
 		if ( ! is_string( $prompt ) ) {
 			return new WP_Error( 'ai_type_ahead_invalid_prompt', esc_html__( 'Unable to encode the type-ahead prompt.', 'ai' ) );
@@ -325,7 +328,6 @@ class Type_Ahead extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_model_preference(
-				array( 'openai', 'gpt-5-nano' ),
 				array( 'anthropic', 'claude-haiku-4-5' ),
 				array( 'google', 'gemini-2.5-flash' ),
 				array( 'openai', 'gpt-4.1-nano' )
@@ -341,19 +343,18 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * Prepares the structured context payload for the prompt.
 	 *
-	 * @param int|null $post_id Optional post ID.
-	 * @param string   $block_content Block content.
-	 * @param string   $preceding_text Text before caret.
-	 * @param string   $following_text Text after caret.
-	 * @param string   $surrounding_context Neighboring block text.
-	 * @param int      $cursor_position Caret offset.
-	 * @param string   $mode Completion mode.
-	 * @param int      $max_words Maximum words in suggestion.
-	 * @param bool     $manual_trigger Whether the user explicitly requested the suggestion.
+	 * @param string $block_content Block content.
+	 * @param string $preceding_text Text before caret.
+	 * @param string $following_text Text after caret.
+	 * @param string $surrounding_context Neighboring block text.
+	 * @param int    $cursor_position Caret offset.
+	 * @param string $mode Completion mode.
+	 * @param int    $max_words Maximum words in suggestion.
+	 * @param bool   $manual_trigger Whether the user explicitly requested the suggestion.
 	 *
 	 * @return array<string, mixed>
 	 */
-	private function prepare_prompt_context( ?int $post_id, string $block_content, string $preceding_text, string $following_text, string $surrounding_context, int $cursor_position, string $mode, int $max_words, bool $manual_trigger ): array {
+	private function prepare_prompt_context( string $block_content, string $preceding_text, string $following_text, string $surrounding_context, int $cursor_position, string $mode, int $max_words, bool $manual_trigger ): array {
 		return array(
 			'mode'                => $mode,
 			'max_words'           => $max_words,
