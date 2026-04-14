@@ -10,17 +10,21 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Type_Ahead;
 
 use WordPress\AI\Abilities\Type_Ahead\Type_Ahead as Type_Ahead_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Settings\Settings_Registration;
+use WordPress\AI\Experiments\Experiment_Category;
 
-use function admin_url;
-use function esc_html__;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
- * Registers the editor type-ahead experience.
+ * Type Ahead experiment.
+ *
+ * @since x.x.x
  */
-class Type_Ahead extends Abstract_Experiment {
+class Type_Ahead extends Abstract_Feature {
 	private const OPTION_MODE       = 'ai_experiment_type_ahead_mode';
 	private const OPTION_DELAY      = 'ai_experiment_type_ahead_delay';
 	private const OPTION_CONFIDENCE = 'ai_experiment_type_ahead_confidence';
@@ -37,17 +41,30 @@ class Type_Ahead extends Abstract_Experiment {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'type-ahead';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'type-ahead',
-			'label'       => esc_html__( 'Type-ahead Text', 'ai' ),
-			'description' => esc_html__( 'Ghost text suggestions while writing paragraphs in the block editor.', 'ai' ),
+			'label'       => __( 'Type-ahead Text', 'ai' ),
+			'description' => __( 'Ghost text suggestions while writing paragraphs in the block editor. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -56,6 +73,8 @@ class Type_Ahead extends Abstract_Experiment {
 
 	/**
 	 * Registers the type-ahead ability.
+	 *
+	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -69,11 +88,9 @@ class Type_Ahead extends Abstract_Experiment {
 	}
 
 	/**
-	 * Enqueues editor assets.
+	 * Enqueues and localizes the editor assets.
 	 *
-	 * Assets are always enqueued so the JavaScript can provide appropriate
-	 * feedback when the experiment is disabled. The enabled state is passed
-	 * to the script which handles the conditional activation.
+	 * @since x.x.x
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'type_ahead', 'experiments/type-ahead' );
@@ -91,13 +108,14 @@ class Type_Ahead extends Abstract_Experiment {
 				'confidence'     => (float) $settings['confidence'] / 100,
 				'showHeadings'   => (bool) $settings['headings'],
 				'maxWords'       => (int) $settings['max_words'],
-				'abilityName'    => 'ai/' . $this->get_id(),
 			)
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	public function register_settings(): void {
 		register_setting(
@@ -152,7 +170,9 @@ class Type_Ahead extends Abstract_Experiment {
 	}
 
 	/**
-	 * Renders settings controls on the Experiments screen.
+	 * Renders settings controls on the settings screen.
+	 *
+	 * @since x.x.x
 	 */
 	public function render_settings_fields(): void {
 		$settings = $this->get_settings();
@@ -225,6 +245,8 @@ class Type_Ahead extends Abstract_Experiment {
 	/**
 	 * Returns the saved settings merged with defaults.
 	 *
+	 * @since x.x.x
+	 *
 	 * @return array<string, mixed>
 	 */
 	private function get_settings(): array {
@@ -239,6 +261,8 @@ class Type_Ahead extends Abstract_Experiment {
 
 	/**
 	 * Sanitizes the completion mode.
+	 *
+	 * @since x.x.x
 	 */
 	public function sanitize_mode( $mode ): string {
 		$mode = is_string( $mode ) ? strtolower( $mode ) : '';
@@ -248,6 +272,8 @@ class Type_Ahead extends Abstract_Experiment {
 
 	/**
 	 * Sanitizes the delay field.
+	 *
+	 * @since x.x.x
 	 */
 	public function sanitize_delay( $value ): int {
 		$value = (int) $value;
@@ -257,6 +283,8 @@ class Type_Ahead extends Abstract_Experiment {
 
 	/**
 	 * Sanitizes the confidence field.
+	 *
+	 * @since x.x.x
 	 */
 	public function sanitize_confidence( $value ): int {
 		$value = (int) $value;
@@ -266,30 +294,12 @@ class Type_Ahead extends Abstract_Experiment {
 
 	/**
 	 * Sanitizes the max words field.
+	 *
+	 * @since x.x.x
 	 */
 	public function sanitize_max_words( $value ): int {
 		$value = (int) $value;
 
 		return max( 1, min( 50, $value ) );
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function has_settings(): bool {
-		return true;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function get_entry_points(): array {
-		return array(
-			array(
-				'label' => esc_html__( 'Try', 'ai' ),
-				'url'   => admin_url( 'post-new.php' ),
-				'type'  => 'try',
-			),
-		);
 	}
 }
