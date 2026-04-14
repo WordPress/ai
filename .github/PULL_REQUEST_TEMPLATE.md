@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to the AI plugin! Please follow the AI Experiments Plugin Contributing Guidelines:
+<!-- Thanks for contributing to the AI plugin! Please follow the AI Plugin Contributing Guidelines:
 https://github.com/WordPress/ai/blob/trunk/CONTRIBUTING.md -->
 
 ## What?
@@ -13,19 +13,36 @@ Closes <!-- #ISSUE-NUMBER or URL -->
 ## How?
 <!-- How is your PR addressing the issue at hand? What are the implementation details? -->
 
+### Use of AI Tools
+<!--
+You are free to use artificial intelligence (AI) tooling to contribute, but you must disclose what tooling you are using and to what extent a pull request has been authored by AI. It is your responsibility to review and take responsibility for what AI generates. See the WordPress AI Guidelines: <https://make.wordpress.org/ai/handbook/ai-guidelines/>.
+
+Example disclosure:
+
+AI assistance: Yes
+Tool(s): GitHub Copilot, ChatGPT
+Model(s): GPT-5.1
+Used for: Initial code skeleton and test suggestions; final implementation and tests were reviewed and edited by me.
+-->
+
 ## Testing Instructions
-<!-- Please include step by step instructions on how to test this PR. -->
-<!-- 1. Open a post or page. -->
-<!-- 2. Insert a heading block. -->
-<!-- 3. etc. -->
+<!-- Please provide steps on how to test or validate that the change in this PR works as described. -->
 
-### Testing Instructions for Keyboard
-<!-- How can you test the changes by using the keyboard only? Please note, this is required for PRs that change the user interface (UI). This ensures the PR can be tested for any possible accessibility regressions. -->
+## Screenshots or screencast
+<!-- If this PR includes UI changes, please provide screenshots or a screen recording for clarity. -->
+<!-- This section can be removed if not applicable. -->
 
-## Screenshots or screencast <!-- if applicable -->
+| Before | After |
+| ------ | ----- |
+|        |       |
 
-<!-- If you would like to upload screenshots, feel free to use the table below when it is useful to show the difference between before and after the change. -->
-
-|Before|After|
-|-|-|
-|<!-- Before screenshot here -->|<!-- After screenshot here -->|
+## Changelog Entry
+<!--
+Please include a summary for this PR, noting whether this is something being Added / Changed / Deprecated / Removed / Fixed / or Security related.  You can replace the sample entries after this comment block with the single changelog entry line for this PR. -->
+> Added - New feature.
+> Changed - Existing functionality.
+> Deprecated - Soon-to-be removed feature.
+> Removed - Feature.
+> Fixed - Bug fix.
+> Security - Vulnerability.
+> Development Update - Development related updates.

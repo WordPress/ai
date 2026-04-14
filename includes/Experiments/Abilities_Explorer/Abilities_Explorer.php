@@ -13,8 +13,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -28,15 +29,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.2.0
  */
-class Abilities_Explorer extends Abstract_Experiment {
+class Abilities_Explorer extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'abilities-explorer';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'abilities-explorer',
 			'label'       => __( 'Abilities Explorer', 'ai' ),
 			'description' => __( 'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.', 'ai' ),
+			'category'    => Experiment_Category::ADMIN,
 		);
 	}
 
@@ -79,7 +87,7 @@ class Abilities_Explorer extends Abstract_Experiment {
 					'error'         => esc_html__( 'Error', 'ai' ),
 					'invalidJson'   => esc_html__( 'Invalid JSON input', 'ai' ),
 					'confirmInvoke' => esc_html__( 'Are you sure you want to invoke this ability?', 'ai' ),
-					'copySuccess'   => esc_html__( 'Copied to clipboard!', 'ai' ),
+					'copySuccess'   => esc_html__( 'Copied!', 'ai' ),
 					'copyError'     => esc_html__( 'Failed to copy', 'ai' ),
 				),
 			)

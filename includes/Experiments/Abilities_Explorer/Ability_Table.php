@@ -30,6 +30,15 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 class Ability_Table extends \WP_List_Table {
 
 	/**
+	 * Full list of abilities before pagination, used to derive filter options.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @var array<array<string,mixed>>
+	 */
+	private array $all_abilities = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.2.0
@@ -51,7 +60,6 @@ class Ability_Table extends \WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
-			'cb'       => '<input type="checkbox" />',
 			'name'     => __( 'Name', 'ai' ),
 			'slug'     => __( 'Slug', 'ai' ),
 			'provider' => __( 'Provider', 'ai' ),
@@ -82,8 +90,9 @@ class Ability_Table extends \WP_List_Table {
 
 		$this->_column_headers = array( $columns, $hidden, $sortable );
 
-		// Get abilities.
-		$abilities = Ability_Handler::get_all_abilities();
+		// Get abilities once and store the full list for filter option derivation.
+		$abilities           = Ability_Handler::get_all_abilities();
+		$this->all_abilities = $abilities;
 
 		// Apply search filter.
 		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -105,6 +114,17 @@ class Ability_Table extends \WP_List_Table {
 				$abilities,
 				static function ( $ability ) use ( $provider_filter ) {
 					return $ability['provider'] === $provider_filter;
+				}
+			);
+		}
+
+		// Apply category filter.
+		$category_filter = isset( $_REQUEST['category'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['category'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! empty( $category_filter ) && 'all' !== $category_filter ) {
+			$abilities = array_filter(
+				$abilities,
+				static function ( $ability ) use ( $category_filter ) {
+					return ( $ability['category'] ?? '' ) === $category_filter;
 				}
 			);
 		}
@@ -143,12 +163,27 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Get sorted unique categories derived from the already-fetched ability list.
 	 *
-	 * @param array<string,mixed> $item Item data.
+	 * @since 0.7.0
+	 *
+	 * @return array<string>
 	 */
-	public function column_default( $item, $column_name ): string {
-		return isset( $item[ $column_name ] ) ? esc_html( $item[ $column_name ] ) : '—';
+	public function get_unique_categories(): array {
+		$categories = array();
+
+		foreach ( $this->all_abilities as $ability ) {
+			if ( empty( $ability['category'] ) ) {
+				continue;
+			}
+
+			$categories[] = $ability['category'];
+		}
+
+		$categories = array_unique( $categories );
+		sort( $categories );
+
+		return $categories;
 	}
 
 	/**
@@ -156,11 +191,8 @@ class Ability_Table extends \WP_List_Table {
 	 *
 	 * @param array<string,mixed> $item Item data.
 	 */
-	public function column_cb( $item ): string {
-		return sprintf(
-			'<input type="checkbox" name="abilities[]" value="%s" />',
-			esc_attr( $item['slug'] )
-		);
+	public function column_default( $item, $column_name ): string {
+		return isset( $item[ $column_name ] ) ? esc_html( $item[ $column_name ] ) : '—';
 	}
 
 	/**
@@ -179,10 +211,10 @@ class Ability_Table extends \WP_List_Table {
 		);
 
 		return sprintf(
-			'<strong><a href="%s">%s</a></strong><br /><small>%s</small>',
+			'<strong><a href="%s">%s</a></strong><small>%s</small>',
 			esc_url( $detail_url ),
 			esc_html( $item['name'] ),
-			esc_html( wp_trim_words( $item['description'], 15 ) )
+			esc_html( wp_trim_words( $item['description'], 20 ) )
 		);
 	}
 
@@ -210,7 +242,7 @@ class Ability_Table extends \WP_List_Table {
 		return sprintf(
 			'<span class="%s">%s</span>',
 			esc_attr( $class ),
-			esc_html( $provider )
+			esc_html( Ability_Handler::get_provider_label( $provider ) )
 		);
 	}
 
@@ -256,6 +288,7 @@ class Ability_Table extends \WP_List_Table {
 		}
 
 		$provider_filter = isset( $_REQUEST['provider'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['provider'] ) ) : 'all'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$category_filter = isset( $_REQUEST['category'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['category'] ) ) : 'all'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		?>
 		<div class="alignleft actions">
@@ -264,6 +297,13 @@ class Ability_Table extends \WP_List_Table {
 				<option value="Core" <?php selected( $provider_filter, 'Core' ); ?>><?php esc_html_e( 'Core', 'ai' ); ?></option>
 				<option value="Plugin" <?php selected( $provider_filter, 'Plugin' ); ?>><?php esc_html_e( 'Plugins', 'ai' ); ?></option>
 				<option value="Theme" <?php selected( $provider_filter, 'Theme' ); ?>><?php esc_html_e( 'Theme', 'ai' ); ?></option>
+			</select>
+
+			<select name="category" id="filter-by-category">
+				<option value="all" <?php selected( $category_filter, 'all' ); ?>><?php esc_html_e( 'All Categories', 'ai' ); ?></option>
+				<?php foreach ( $this->get_unique_categories() as $category ) : ?>
+					<option value="<?php echo esc_attr( $category ); ?>" <?php selected( $category_filter, $category ); ?>><?php echo esc_html( $category ); ?></option>
+				<?php endforeach; ?>
 			</select>
 
 			<?php submit_button( __( 'Filter', 'ai' ), '', 'filter_action', false ); ?>

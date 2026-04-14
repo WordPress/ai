@@ -40,7 +40,6 @@ The ability can be called directly via REST API, making it useful for automation
 1. **PHP Side:**
    - `enqueue_assets()` loads `experiments/excerpt-generation` (`src/experiments/excerpt-generation/index.tsx`) and localizes `window.aiExcerptGenerationData` with:
      - `enabled`: Whether the experiment is enabled
-     - `path`: The REST API path to the ability (`/wp-json/wp-abilities/v1/abilities/ai/excerpt-generation/run`)
 
 2. **React Side:**
    - The React entry point (`index.tsx`) registers a WordPress plugin that hooks into the excerpt panel using `__experimentalPluginPostExcerpt`
@@ -265,10 +264,10 @@ This file returns a string that instructs the AI on how to generate excerpts. Yo
 
 ### Filtering Preferred Models
 
-You can filter which AI models are used for excerpt generation using the `ai_experiments_preferred_models` filter:
+You can filter which AI models are used for excerpt generation using the `wpai_preferred_text_models` filter:
 
 ```php
-add_filter( 'ai_experiments_preferred_models', function( $models ) {
+add_filter( 'wpai_preferred_text_models', function( $models ) {
     // Prefer specific models
     return array(
         array( 'openai', 'gpt-4' ),
@@ -283,13 +282,13 @@ The `normalize_content()` helper function processes content before sending it to
 
 ```php
 // Filter content before normalization
-add_filter( 'ai_experiments_pre_normalize_content', function( $content ) {
+add_filter( 'wpai_pre_normalize_content', function( $content ) {
     // Custom preprocessing
     return $content;
 } );
 
 // Filter content after normalization
-add_filter( 'ai_experiments_normalize_content', function( $content ) {
+add_filter( 'wpai_normalize_content', function( $content ) {
     // Custom post-processing
     return $content;
 } );
@@ -319,7 +318,7 @@ You can extend the React components to add custom UI elements:
 ### Manual Testing
 
 1. **Enable the experiment:**
-   - Go to `Settings → AI Experiments`
+   - Go to `Settings → AI`
    - Toggle **Excerpt Generation** to enabled
    - Ensure you have valid AI credentials configured
 

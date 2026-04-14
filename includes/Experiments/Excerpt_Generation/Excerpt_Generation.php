@@ -10,8 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Excerpt_Generation;
 
 use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation as Excerpt_Generation_Ability;
-use WordPress\AI\Abstracts\Abstract_Experiment;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -22,25 +23,28 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.2.0
  */
-class Excerpt_Generation extends Abstract_Experiment {
+class Excerpt_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.2.0
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'excerpt-generation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'excerpt-generation',
 			'label'       => __( 'Excerpt Generation', 'ai' ),
-			'description' => __( 'Generates excerpt suggestions from content', 'ai' ),
+			'description' => __( 'Generates excerpt suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * @since 0.2.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -93,7 +97,6 @@ class Excerpt_Generation extends Abstract_Experiment {
 			'ExcerptGenerationData',
 			array(
 				'enabled' => $this->is_enabled(),
-				'path'    => Excerpt_Generation_Ability::path( $this->get_id() ),
 			)
 		);
 	}

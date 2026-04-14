@@ -11,7 +11,6 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Services\AI_Service;
-use WordPress\AI_Client\AI_Client;
 
 /**
  * Purposely using return instead of exit here.
@@ -43,13 +42,16 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered Post content.
 	 */
-	$content = (string) apply_filters( 'ai_experiments_pre_normalize_content', $content );
+	$content = (string) apply_filters( 'wpai_pre_normalize_content', $content );
 
 	// Strip HTML entities.
 	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content ) ?? $content;
 
 	// Replace HTML linebreaks with newlines.
 	$content = preg_replace( '#<br\s?/?>#', "\n\n", $content ) ?? $content;
+
+	// Remove linebreaks but replace with spaces to avoid sentences running together.
+	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
 
 	// Strip all HTML tags.
 	$content = wp_strip_all_tags( (string) $content );
@@ -66,7 +68,7 @@ function normalize_content( string $content ): string {
 	 *
 	 * @return string The filtered normalized content.
 	 */
-	$content = (string) apply_filters( 'ai_experiments_normalize_content', (string) $content );
+	$content = (string) apply_filters( 'wpai_normalize_content', (string) $content );
 
 	return trim( $content );
 }
@@ -141,7 +143,11 @@ function get_preferred_models_for_text_generation(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-haiku-4-5',
+			'claude-sonnet-4-6',
+		),
+		array(
+			'google',
+			'gemini-3-flash-preview',
 		),
 		array(
 			'google',
@@ -149,11 +155,11 @@ function get_preferred_models_for_text_generation(): array {
 		),
 		array(
 			'openai',
-			'gpt-4o-mini',
+			'gpt-5.4-mini',
 		),
 		array(
 			'openai',
-			'gpt-4.1',
+			'gpt-4.1-mini',
 		),
 	);
 
@@ -165,7 +171,7 @@ function get_preferred_models_for_text_generation(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text generation.
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_models_for_text_generation', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_text_models', $preferred_models );
 }
 
 /**
@@ -215,6 +221,10 @@ function get_preferred_image_models(): array {
 	$preferred_models = array(
 		array(
 			'google',
+			'gemini-3.1-flash-image-preview',
+		),
+		array(
+			'google',
 			'gemini-3-pro-image-preview',
 		),
 		array(
@@ -227,11 +237,11 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-1',
+			'gpt-image-1.5',
 		),
 		array(
 			'openai',
-			'dall-e-3',
+			'gpt-image-1-mini',
 		),
 	);
 
@@ -243,7 +253,49 @@ function get_preferred_image_models(): array {
 	 * @param array<int, array{string, string}> $preferred_models The preferred image models.
 	 * @return array<int, array{string, string}> The filtered preferred image models.
 	 */
-	return (array) apply_filters( 'ai_experiments_preferred_image_models', $preferred_models );
+	return (array) apply_filters( 'wpai_preferred_image_models', $preferred_models );
+}
+
+/**
+ * Returns the preferred vision models.
+ *
+ * @since 0.3.0
+ *
+ * @return array<int, array{string, string}> The preferred vision models.
+ */
+function get_preferred_vision_models(): array {
+	$preferred_models = array(
+		array(
+			'anthropic',
+			'claude-sonnet-4-6',
+		),
+		array(
+			'google',
+			'gemini-3-flash-preview',
+		),
+		array(
+			'google',
+			'gemini-2.5-flash',
+		),
+		array(
+			'openai',
+			'gpt-5.4-mini',
+		),
+		array(
+			'openai',
+			'gpt-4.1-mini',
+		),
+	);
+
+	/**
+	 * Filters the preferred vision models.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred vision models.
+	 * @return array<int, array{string, string}> The filtered preferred vision models.
+	 */
+	return (array) apply_filters( 'wpai_preferred_vision_models', $preferred_models );
 }
 
 /**
@@ -254,22 +306,39 @@ function get_preferred_image_models(): array {
  * @return bool True if we have AI credentials, false otherwise.
  */
 function has_ai_credentials(): bool {
-	$credentials = get_option( 'wp_ai_client_provider_credentials', array() );
+	$connectors      = wp_get_connectors();
+	$has_credentials = false;
 
-	// If there are no credentials, return false.
-	if ( ! is_array( $credentials ) || empty( $credentials ) ) {
-		return false;
+	foreach ( $connectors as $connector_data ) {
+		if ( 'ai_provider' !== $connector_data['type'] ) {
+			continue;
+		}
+
+		$auth = $connector_data['authentication'];
+		if ( 'api_key' !== $auth['method'] || empty( $auth['setting_name'] ) ) {
+			continue;
+		}
+
+		if ( '' === get_option( $auth['setting_name'], '' ) ) {
+			continue;
+		}
+
+		$has_credentials = true;
+		break;
 	}
 
-	// If all of the AI keys are empty, return false; otherwise, return true.
-	return ! empty(
-		array_filter(
-			$credentials,
-			static function ( $api_key ): bool {
-				return is_string( $api_key ) && '' !== $api_key;
-			}
-		)
-	);
+	/**
+	 * Filters whether AI credentials are available.
+	 *
+	 * Allows third-party plugins to declare credential availability for
+	 * connectors that do not rely on API key settings.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param bool  $has_credentials Whether AI credentials are available.
+	 * @param array $connectors      The registered connectors.
+	 */
+	return (bool) apply_filters( 'wpai_has_ai_credentials', $has_credentials, $connectors );
 }
 
 /**
@@ -295,14 +364,14 @@ function has_valid_ai_credentials(): bool {
 	 * @param bool|null $has_valid_credentials Whether valid credentials are available. Return null to use default check.
 	 * @return bool|null True if valid credentials are available, false otherwise, or null to use default check.
 	 */
-	$valid = apply_filters( 'ai_experiments_pre_has_valid_credentials_check', null );
+	$valid = apply_filters( 'wpai_pre_has_valid_credentials_check', null );
 	if ( null !== $valid ) {
 		return (bool) $valid;
 	}
 
 	// See if we have credentials that give us access to generate text.
 	try {
-		return AI_Client::prompt( 'Test' )->is_supported_for_text_generation();
+		return wp_ai_client_prompt( 'Test' )->is_supported_for_text_generation();
 	} catch ( Throwable $t ) {
 		return false;
 	}

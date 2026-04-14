@@ -7,27 +7,29 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
-use WordPress\AI\Abilities\Image\Import_Base64_Image as Import;
-use WordPress\AI\Abstracts\Abstract_Experiment;
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Image\Import_Base64_Image as Import;
+use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
  * Test experiment for Image_Import Ability tests.
  *
  * @since 0.2.0
  */
-class Test_Image_Import_Experiment extends Abstract_Experiment {
+class Test_Image_Import_Experiment extends Abstract_Feature {
 	/**
-	 * Loads experiment metadata.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @return array{id: string, label: string, description: string} Experiment metadata.
+	 * {@inheritDoc}
 	 */
-	protected function load_experiment_metadata(): array {
+	public static function get_id(): string {
+		return 'image-import';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
 		return array(
-			'id'          => 'image-import',
 			'label'       => 'Image Import',
 			'description' => 'Imports an image into the media library from a base64 encoded string',
 		);
@@ -41,7 +43,6 @@ class Test_Image_Import_Experiment extends Abstract_Experiment {
 	public function register(): void {
 		// No-op for testing.
 	}
-
 }
 
 /**
@@ -54,14 +55,14 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Image_Import ability instance.
 	 *
-	 * @var Import
+	 * @var \WordPress\AI\Abilities\Image\Import_Base64_Image
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Image_Import_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Image_Import_Experiment
 	 */
 	private $experiment;
 
@@ -81,7 +82,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->experiment = new Test_Image_Import_Experiment();
-		$this->ability = new Import(
+		$this->ability    = new Import(
 			'ai/image-import',
 			array(
 				'label'       => $this->experiment->get_label(),
@@ -136,6 +137,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'description', $schema['properties'], 'Schema should have description property' );
 		$this->assertArrayHasKey( 'alt_text', $schema['properties'], 'Schema should have alt_text property' );
 		$this->assertArrayHasKey( 'mime_type', $schema['properties'], 'Schema should have mime_type property' );
+		$this->assertArrayHasKey( 'meta', $schema['properties'], 'Schema should have meta property' );
 		$this->assertArrayHasKey( 'required', $schema, 'Schema should have required array' );
 		$this->assertContains( 'data', $schema['required'], 'Data should be required' );
 
@@ -149,6 +151,16 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertEquals( 'string', $schema['properties']['description']['type'], 'Description should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['alt_text']['type'], 'Alt text should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['mime_type']['type'], 'MIME type should be string type' );
+		$this->assertEquals( 'array', $schema['properties']['meta']['type'], 'Meta should be array type' );
+		$this->assertEquals( 'object', $schema['properties']['meta']['items']['type'], 'Meta items should be object type' );
+		$this->assertArrayHasKey( 'key', $schema['properties']['meta']['items']['properties'], 'Meta should have key property' );
+		$this->assertArrayHasKey( 'value', $schema['properties']['meta']['items']['properties'], 'Meta should have value property' );
+		$this->assertEquals( 'string', $schema['properties']['meta']['items']['properties']['key']['type'], 'Key should be string type' );
+		$this->assertEquals( 'string', $schema['properties']['meta']['items']['properties']['value']['type'], 'Value should be string type' );
+		$this->assertArrayHasKey( 'required', $schema['properties']['meta']['items'], 'Meta items should have required array' );
+		$this->assertContains( 'key', $schema['properties']['meta']['items']['required'], 'Key should be required' );
+		$this->assertContains( 'value', $schema['properties']['meta']['items']['required'], 'Value should be required' );
+		$this->assertArrayHasKey( 'additionalProperties', $schema['properties']['meta']['items'], 'Meta items should have additionalProperties' );
 	}
 
 	/**
@@ -234,6 +246,12 @@ class Image_ImportTest extends WP_UnitTestCase {
 			'description' => 'This is a custom test image description',
 			'alt_text'    => 'Custom Test Image Alt Text',
 			'mime_type'   => 'image/png',
+			'meta'        => array(
+				array(
+					'key'   => 'custom_meta_key',
+					'value' => 'custom_meta_value',
+				),
+			),
 		);
 
 		$result = $method->invoke( $this->ability, $input );
@@ -251,6 +269,9 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Custom Test Image', $attachment->post_title, 'Attachment title should match' );
 		$this->assertEquals( 'This is a custom test image description', $attachment->post_content, 'Attachment description should match' );
 		$this->assertEquals( 'Custom Test Image Alt Text', get_post_meta( $result['image']['id'], '_wp_attachment_image_alt', true ), 'Attachment alt text should match' );
+
+		// Verify the meta data was saved.
+		$this->assertEquals( 'custom_meta_value', get_post_meta( $result['image']['id'], 'custom_meta_key', true ), 'Meta data should be saved' );
 	}
 
 	/**

@@ -41,8 +41,7 @@ class Admin_Page {
 	 * @since 0.2.0
 	 */
 	public function add_admin_menu(): void {
-		// Add menu item under the Tools menu.
-		add_submenu_page(
+		$hook = add_submenu_page(
 			'tools.php',
 			__( 'Abilities Explorer', 'ai' ),
 			__( 'Abilities Explorer', 'ai' ),
@@ -50,6 +49,12 @@ class Admin_Page {
 			'ai-abilities-explorer',
 			array( $this, 'render_page' )
 		);
+
+		if ( ! $hook ) {
+			return;
+		}
+
+		add_action( "load-{$hook}", array( $this, 'add_help_tabs' ) );
 	}
 
 	/**
@@ -194,7 +199,7 @@ class Admin_Page {
 				<table class="ability-detail-table">
 					<tr>
 						<th><?php esc_html_e( 'Provider', 'ai' ); ?></th>
-						<td><span class="ability-provider ability-provider-<?php echo esc_attr( strtolower( $ability['provider'] ) ); ?>"><?php echo esc_html( $ability['provider'] ); ?></span></td>
+						<td><span class="ability-provider ability-provider-<?php echo esc_attr( strtolower( $ability['provider'] ) ); ?>"><?php echo esc_html( Ability_Handler::get_provider_label( $ability['provider'] ) ); ?></span></td>
 					</tr>
 				</table>
 			</div>
@@ -202,23 +207,29 @@ class Admin_Page {
 			<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
 				<div class="ability-detail-section">
 					<h3><?php esc_html_e( 'Input Schema', 'ai' ); ?></h3>
-					<button type="button" class="button button-small ability-copy-btn" data-copy="input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<div class="ability-schema-wrapper">
+						<button type="button" class="button button-small ability-copy-btn" data-copy="input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+						<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					</div>
 				</div>
 			<?php endif; ?>
 
 			<?php if ( ! empty( $ability['output_schema'] ) ) : ?>
 				<div class="ability-detail-section">
 					<h3><?php esc_html_e( 'Output Schema', 'ai' ); ?></h3>
-					<button type="button" class="button button-small ability-copy-btn" data-copy="output-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<div class="ability-schema-wrapper">
+						<button type="button" class="button button-small ability-copy-btn" data-copy="output-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+						<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					</div>
 				</div>
 			<?php endif; ?>
 
 			<div class="ability-detail-section">
 				<h3><?php esc_html_e( 'Raw Data', 'ai' ); ?></h3>
-				<button type="button" class="button button-small ability-copy-btn" data-copy="raw-data"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-				<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+				<div class="ability-schema-wrapper">
+					<button type="button" class="button button-small ability-copy-btn" data-copy="raw-data"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+					<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+				</div>
 			</div>
 		</div>
 		<?php
@@ -289,10 +300,12 @@ class Admin_Page {
 					<div class="notice notice-info inline" style="margin: 10px 0;">
 						<p>
 							<strong><?php esc_html_e( 'How to test:', 'ai' ); ?></strong><br>
-							1. <?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?><br>
-							2. <?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?><br>
-							3. <?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?><br>
-							4. <?php esc_html_e( 'View the results below', 'ai' ); ?>
+							<ol>
+								<li><?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'View the results below', 'ai' ); ?></li>
+							</ol>
 						</p>
 					</div>
 				<?php endif; ?>
@@ -322,7 +335,10 @@ class Admin_Page {
 			<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
 				<div class="ability-test-schema">
 					<h3><?php esc_html_e( 'Input Schema Reference', 'ai' ); ?></h3>
-					<pre><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<div class="ability-schema-wrapper">
+						<button type="button" class="button button-small ability-copy-btn" data-copy="test-input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
+						<pre class="ability-schema-display" id="test-input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					</div>
 				</div>
 			<?php endif; ?>
 		</div>
@@ -464,5 +480,62 @@ class Admin_Page {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Add contextual help tabs to the screen.
+	 *
+	 * @since 0.4.0
+	 */
+	public function add_help_tabs(): void {
+		$screen = get_current_screen();
+
+		if ( ! $screen ) {
+			return;
+		}
+
+		$screen->add_help_tab(
+			array(
+				'id'      => 'abilities-overview',
+				'title'   => __( 'Overview', 'ai' ),
+				'content' =>
+					'<p>' . esc_html__( 'Abilities are a standardized way for WordPress core, plugins, and themes to expose discrete units of functionality. Each ability has a name, optional input/output schemas, and can be invoked programmatically.', 'ai' ) . '</p>' .
+					'<p>' . esc_html__( 'The Abilities Explorer lets you browse every registered ability, inspect its schemas, and test it with custom input right from the admin.', 'ai' ) . '</p>',
+			)
+		);
+
+		$screen->add_help_tab(
+			array(
+				'id'      => 'abilities-providers',
+				'title'   => esc_html__( 'Providers', 'ai' ),
+				'content' =>
+					'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
+					'<ul>' .
+						'<li><strong>' . esc_html__( 'Core', 'ai' ) . '</strong>: ' . esc_html__( 'Built into WordPress itself.', 'ai' ) . '</li>' .
+						'<li><strong>' . esc_html__( 'Plugin', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by an active plugin.', 'ai' ) . '</li>' .
+						'<li><strong>' . esc_html__( 'Theme', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by the active theme.', 'ai' ) . '</li>' .
+					'</ul>',
+			)
+		);
+
+		$screen->add_help_tab(
+			array(
+				'id'      => 'abilities-testing',
+				'title'   => esc_html__( 'Testing', 'ai' ),
+				'content' =>
+					'<p>' . esc_html__( 'You can test any ability directly from this screen:', 'ai' ) . '</p>' .
+					'<ol>' .
+						'<li>' . __( 'Click "Test" next to an ability in the list.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Edit the pre-filled Input Data if the ability accepts JSON parameters.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Use "Validate Input" to check your JSON against the schema.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Click "Invoke Ability" to execute it and see the result.', 'ai' ) . '</li>' .
+					'</ol>',
+			)
+		);
+
+		$screen->set_help_sidebar(
+			'<p><strong>' . esc_html__( 'For more information:', 'ai' ) . '</strong></p>' .
+			'<p><a href="https://developer.wordpress.org/apis/abilities/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Abilities API Documentation', 'ai' ) . '</a></p>'
+		);
 	}
 }

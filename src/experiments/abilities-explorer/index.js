@@ -504,16 +504,20 @@ import './index.scss';
 		 * @param {boolean}     success - Whether copy was successful.
 		 */
 		showCopyFeedback( button, success ) {
-			const originalText = button.textContent;
+			const originalHTML = button.innerHTML;
 			const feedbackText = success
 				? aiAbilityExplorer.strings.copySuccess
 				: aiAbilityExplorer.strings.copyError;
+			const feedbackIcon = success
+				? '<span class="dashicons dashicons-yes"></span>'
+				: '<span class="dashicons dashicons-no-alt"></span>';
 
-			button.textContent = feedbackText;
+			button.innerHTML =
+				feedbackIcon + ' ' + this.escapeHtml( feedbackText );
 
 			setTimeout( function () {
-				button.textContent = originalText;
-			}, 2000 );
+				button.innerHTML = originalHTML;
+			}, 1500 );
 		},
 
 		/**
@@ -537,17 +541,17 @@ import './index.scss';
 		},
 	};
 
-	// Ensure the experiment is enabled.
-	if ( ! aiAbilityExplorer?.enabled ) {
-		return null;
+	function initWhenReady( fn ) {
+		if ( document.readyState === 'loading' ) {
+			document.addEventListener( 'DOMContentLoaded', fn );
+		} else {
+			fn();
+		}
 	}
 
-	// Initialize on document ready.
-	if ( document.readyState === 'loading' ) {
-		document.addEventListener( 'DOMContentLoaded', function () {
+	initWhenReady( function () {
+		if ( aiAbilityExplorer?.enabled ) {
 			AiAbilityExplorer.init();
-		} );
-	} else {
-		AiAbilityExplorer.init();
-	}
+		}
+	} );
 } )();
