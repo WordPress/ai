@@ -129,13 +129,11 @@ export async function runAbility< T = unknown >(
 	}
 
 	const method: Method = options?.method ?? 'POST';
-	const fetchOptions = buildFetchOptions( ability, input, method );
 
-	if ( options?.signal ) {
-		( fetchOptions as any ).signal = options.signal;
-	}
-
-	const response = await apiFetch( fetchOptions );
+	const response = await apiFetch( {
+		...buildFetchOptions( ability, input, method ),
+		...( options?.signal ? { signal: options.signal } : {} ),
+	} );
 
 	return response as T;
 }

@@ -26,6 +26,8 @@ export const useBlockDom = ( clientId: string ): BlockDomState => {
 
 	useEffect( () => {
 		let cancelled = false;
+		let rafId: number | null = null;
+		const observedDocs = new Set< Document >();
 
 		const queryDocuments = (): Document[] => {
 			const docs: Document[] = [ document ];
@@ -86,12 +88,43 @@ export const useBlockDom = ( clientId: string ): BlockDomState => {
 			}
 		};
 
+		const scheduleLookup = () => {
+			if ( cancelled || rafId !== null ) {
+				return;
+			}
+			rafId = requestAnimationFrame( () => {
+				rafId = null;
+				if ( ! cancelled ) {
+					ensureIframeObservation();
+					lookup();
+				}
+			} );
+		};
+
+		const observer = new MutationObserver( scheduleLookup );
+		const observerOptions: MutationObserverInit = {
+			childList: true,
+			subtree: true,
+		};
+
+		const ensureIframeObservation = () => {
+			for ( const doc of queryDocuments() ) {
+				if ( ! observedDocs.has( doc ) && doc.body ) {
+					observedDocs.add( doc );
+					observer.observe( doc.body, observerOptions );
+				}
+			}
+		};
+
 		lookup();
-		const interval = window.setInterval( lookup, 750 );
+		ensureIframeObservation();
 
 		return () => {
 			cancelled = true;
-			window.clearInterval( interval );
+			observer.disconnect();
+			if ( rafId !== null ) {
+				cancelAnimationFrame( rafId );
+			}
 		};
 	}, [ clientId ] );
 

@@ -31,7 +31,7 @@
     "start:legacy": "wp-scripts start",
     "start:routes": "node tools/ensure-boot-asset.cjs && wp-build --watch",
     "format:js": "wp-scripts format ./src",
-    "lint:js": "wp-scripts lint-js --ignore-pattern '/build-scripts/'",
+    "lint:js": "wp-scripts lint-js",
     "lint:js:fix": "wp-scripts lint-js --fix",
     "lint:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script lint",
     "lint:php:fix": "wp-env run tests-cli --env-cwd=wp-content/plugins/ai composer run-script format",

@@ -12,11 +12,6 @@ import type { CSSProperties } from 'react';
  */
 import { createPortal, useEffect, useState } from '@wordpress/element';
 
-/**
- * Internal dependencies
- */
-import { GHOST_COLOR } from '../constants';
-
 type TypeAheadOverlayProps = {
 	ownerDocument: Document | null;
 	rect: DOMRect | null;
@@ -60,7 +55,7 @@ const TypeAheadOverlay = ( {
 			position: 'absolute',
 			pointerEvents: 'none',
 			display: 'block',
-			color: GHOST_COLOR,
+			color: 'var(--ai-type-ahead-ghost-color, #8a8f98)',
 			opacity: 1,
 			fontStyle: 'normal',
 			fontSize: 'inherit',

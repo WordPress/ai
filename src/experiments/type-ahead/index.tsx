@@ -53,24 +53,7 @@ const bootstrap = ( settings: TypeAheadSettings ) => {
 	addFilter( 'editor.BlockEdit', 'ai/type-ahead', withTypeAhead );
 };
 
-/**
- * Waits for localized settings and initializes the experiment once available.
- *
- * @param {number} attempts Retry count.
- */
-const waitForSettings = ( attempts = 0 ) => {
-	const settings = window.aiTypeAheadData;
-
-	if ( settings ) {
-		bootstrap( settings );
-		return;
-	}
-
-	if ( attempts > 200 ) {
-		return;
-	}
-
-	window.setTimeout( () => waitForSettings( attempts + 1 ), 25 );
-};
-
-waitForSettings();
+const settings = window.aiTypeAheadData;
+if ( settings ) {
+	bootstrap( settings );
+}

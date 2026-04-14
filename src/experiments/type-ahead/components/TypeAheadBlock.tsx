@@ -138,12 +138,6 @@ const TypeAheadBlock = ( {
 		ghost.setAttribute( 'aria-hidden', 'true' );
 		ghost.textContent = suggestion.text;
 		ghost.style.color = 'var(--ai-type-ahead-ghost-color, #8a8f98)';
-		ghost.style.opacity = '0.72';
-		ghost.style.pointerEvents = 'none';
-		ghost.style.userSelect = 'none';
-		ghost.style.whiteSpace = 'pre-wrap';
-		ghost.style.wordBreak = 'break-word';
-		ghost.style.fontStyle = 'normal';
 
 		range.insertNode( ghost );
 
@@ -155,7 +149,7 @@ const TypeAheadBlock = ( {
 		selection.addRange( caretRange );
 
 		return removeInlineGhost;
-	}, [ editable, suggestion?.text, caretAtEnd, caret?.offset, caret ] );
+	}, [ editable, suggestion?.text, caretAtEnd, caret ] );
 
 	const insertText = useCallback(
 		( text: string ) => {

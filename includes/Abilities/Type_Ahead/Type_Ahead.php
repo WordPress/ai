@@ -241,7 +241,7 @@ class Type_Ahead extends Abstract_Ability {
 	 *
 	 * @return array<string, mixed> JSON schema for a type-ahead suggestion.
 	 */
-	protected function suggestion_schema(): array {
+	private function suggestion_schema(): array {
 		return array(
 			'type'                 => 'object',
 			'properties'           => array(
