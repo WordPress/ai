@@ -108,16 +108,7 @@ interface Feature {
 	public function get_settings_fields_metadata(): array;
 
 	/**
-	 * Gets the presentation style for the settings UI.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return string The presentation style ('toggle' or 'visual-card').
-	 */
-	public function get_presentation(): string;
-
-	/**
-	 * Gets the image URL for visual-card presentation.
+	 * Gets the image URL for feature showcase display.
 	 *
 	 * @since x.x.x
 	 *

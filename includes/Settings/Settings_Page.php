@@ -238,7 +238,7 @@ class Settings_Page {
 				'description'    => wp_strip_all_tags( $feature->get_description() ),
 				'category'       => $category,
 				'settingsFields' => $feature->get_settings_fields_metadata(),
-				'presentation'   => $feature->get_presentation(),
+				'stability'      => $feature->get_stability(),
 				'image'          => esc_url( $feature->get_image() ),
 			);
 		}

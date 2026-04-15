@@ -69,15 +69,7 @@ abstract class Abstract_Feature implements Feature {
 	private string $stability;
 
 	/**
-	 * The presentation style for the settings UI.
-	 *
-	 * @since x.x.x
-	 * @var string 'toggle' (default) or 'visual-card'.
-	 */
-	protected string $presentation;
-
-	/**
-	 * The image URL for visual-card presentation.
+	 * The image URL for feature showcase display.
 	 *
 	 * @since x.x.x
 	 * @var string
@@ -121,12 +113,8 @@ abstract class Abstract_Feature implements Feature {
 		$this->label        = $metadata['label'];
 		$this->description  = $metadata['description'];
 		$this->category     = $metadata['category'];
-		$this->stability    = $metadata['stability'] ?? 'experimental';
-		$presentation       = $metadata['presentation'] ?? 'toggle';
-		$this->presentation = in_array( $presentation, array( 'toggle', 'visual-card' ), true )
-			? $presentation
-			: 'toggle';
-		$this->image        = $metadata['image'] ?? '';
+		$this->stability = $metadata['stability'] ?? 'experimental';
+		$this->image     = $metadata['image'] ?? '';
 	}
 
 	/**
@@ -142,7 +130,6 @@ abstract class Abstract_Feature implements Feature {
 	 *  description: string,
 	 *  category?: string,
 	 *  stability?: 'deprecated'|'experimental'|'stable',
-	 *  presentation?: 'toggle'|'visual-card',
 	 *  image?: string,
 	 * } Feature metadata.
 	 */
@@ -225,18 +212,7 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * Gets the presentation style for the settings UI.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return string The presentation style ('toggle' or 'visual-card').
-	 */
-	public function get_presentation(): string {
-		return $this->presentation;
-	}
-
-	/**
-	 * Gets the image URL for visual-card presentation.
+	 * Gets the image URL for feature showcase display.
 	 *
 	 * @since x.x.x
 	 *

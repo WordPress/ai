@@ -41,7 +41,7 @@ interface FeatureData {
 	description: string;
 	category: string;
 	settingsFields: SettingsFieldData[];
-	presentation: string;
+	stability: string;
 	image: string;
 }
 
@@ -122,7 +122,7 @@ function parseFeature( value: unknown ): FeatureData | null {
 		description: toStringValue( feature.description ),
 		category: toStringValue( feature.category ) || 'other',
 		settingsFields: ( rawFields as unknown[] ).filter( isSettingsField ),
-		presentation: toStringValue( feature.presentation ) || 'toggle',
+		stability: toStringValue( feature.stability ) || 'experimental',
 		image: toStringValue( feature.image ),
 	};
 }
@@ -526,7 +526,7 @@ function FeatureToggleWithSettings( {
 
 const VISUAL_CARD_FEATURES = new Map(
 	PAGE_DATA.features
-		.filter( ( f ) => f.presentation === 'visual-card' )
+		.filter( ( f ) => f.stability === 'stable' && f.image !== '' )
 		.map( ( f ) => [ f.settingName, f ] as const )
 );
 
@@ -630,7 +630,7 @@ function AISettingsPage() {
 								description: '',
 								category: 'other',
 								settingsFields: [],
-								presentation: 'toggle',
+								stability: 'experimental',
 								image: '',
 							};
 						} );
