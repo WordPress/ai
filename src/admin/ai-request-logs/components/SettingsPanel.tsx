@@ -10,10 +10,7 @@ import {
 	ToggleControl,
 } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
-/**
- * External dependencies
- */
-import React, { useState } from 'react';
+import { useState } from '@wordpress/element';
 
 interface SettingsPanelProps {
 	enabled: boolean;

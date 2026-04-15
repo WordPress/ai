@@ -2,12 +2,12 @@
  * WordPress dependencies
  */
 import { SelectControl } from '@wordpress/components';
+import { createPortal } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+
 /**
- * External dependencies
+ * Internal dependencies
  */
-import React from 'react';
-import { createPortal } from 'react-dom';
 import type { SummaryPeriod } from '../types';
 
 interface HeaderPeriodSelectorProps {

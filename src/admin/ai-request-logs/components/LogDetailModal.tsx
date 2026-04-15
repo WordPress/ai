@@ -5,11 +5,6 @@ import { Button, Modal } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * Internal dependencies
  */
 import type { LogEntry } from '../types';

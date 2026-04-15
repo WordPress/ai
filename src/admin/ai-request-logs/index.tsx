@@ -11,17 +11,13 @@ import { Notice } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
-
-/**
- * External dependencies
- */
-import React, {
+import {
+	createRoot,
 	useCallback,
 	useDeferredValue,
 	useEffect,
 	useState,
-} from 'react';
-import { createRoot } from 'react-dom/client';
+} from '@wordpress/element';
 
 /**
  * Internal dependencies

@@ -1,5 +1,11 @@
+/**
+ * Internal dependencies
+ */
 import type { LogsQuery } from './types';
 
+/**
+ * Default values for the logs query.
+ */
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 25;
 

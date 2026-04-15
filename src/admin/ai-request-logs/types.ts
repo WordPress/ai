@@ -1,3 +1,6 @@
+/**
+ * Internal dependencies
+ */
 import type { ProviderMetadataMap } from '../types/providers';
 
 export type SummaryPeriod =

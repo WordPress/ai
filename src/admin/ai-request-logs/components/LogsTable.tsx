@@ -3,13 +3,10 @@
  */
 import { Popover } from '@wordpress/components';
 import { DataViews } from '@wordpress/dataviews';
-import type { View, Operator } from '@wordpress/dataviews';
+import type { View, Operator, Filter } from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
-
-/**
- * External dependencies
- */
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from '@wordpress/element';
+import type { ViewTable } from '@wordpress/dataviews';
 
 /**
  * Internal dependencies
@@ -18,7 +15,6 @@ import { getProviderIconComponent } from '../../components/provider-icons';
 import type { ProviderMetadata } from '../../types/providers';
 import { getDefaultOperationSelection } from '../query';
 import type { FilterOptions, LogEntry, LogsQuery } from '../types';
-import type { ViewTable } from '@wordpress/dataviews';
 
 interface LogsTableProps {
 	logs: LogEntry[];
@@ -37,6 +33,7 @@ interface LogsTableProps {
  * query. These are tracked separately to survive the query round-trip.
  */
 interface ViewConfig {
+	filters: Filter[];
 	fields: string[];
 	layout: NonNullable< ViewTable[ 'layout' ] >;
 }
@@ -150,25 +147,71 @@ const getSourceLabel = ( entry: LogEntry ): string | null => {
 };
 
 /**
+ * Builds the initial filters array from a persisted LogsQuery so the
+ * DataViews chip UI reflects saved filter state on first render.
+ */
+const buildFiltersFromQuery = ( query: LogsQuery ): Filter[] => {
+	const filters: Filter[] = [];
+
+	if ( query.type ) {
+		filters.push( {
+			field: 'type',
+			operator: 'is' as Operator,
+			value: query.type,
+		} );
+	}
+	if ( query.status ) {
+		filters.push( {
+			field: 'status',
+			operator: 'is' as Operator,
+			value: query.status,
+		} );
+	}
+	if ( query.provider ) {
+		filters.push( {
+			field: 'provider',
+			operator: 'is' as Operator,
+			value: query.provider,
+		} );
+	}
+	if ( query.operation.length > 0 ) {
+		filters.push( {
+			field: 'operation',
+			operator: 'isAny' as Operator,
+			value: query.operation,
+		} );
+	}
+	if ( query.tokensFilter ) {
+		filters.push( {
+			field: 'tokensFilter',
+			operator: 'is' as Operator,
+			value: query.tokensFilter,
+		} );
+	}
+
+	return filters;
+};
+
+/**
+ * Extracts a string filter value, returning an empty string when the
+ * filter is absent or has no concrete value (e.g. just opened, value
+ * is still `undefined`).
+ */
+const extractStringFilter = ( filters: Filter[], field: string ): string => {
+	const f = filters.find( ( item ) => item.field === field );
+	return typeof f?.value === 'string' ? f.value : '';
+};
+
+/**
  * Translates the DataViews view state into the LogsQuery shape
  * consumed by the parent's REST fetcher.
- * @param view
- * @param availableOperations
  */
 const viewToQuery = (
 	view: View,
 	availableOperations: string[]
 ): LogsQuery => {
 	const filters = view.filters ?? [];
-
-	const findFilter = ( field: string ) =>
-		filters.find( ( f ) => f.field === field );
-
-	const typeFilter = findFilter( 'type' );
-	const statusFilter = findFilter( 'status' );
-	const providerFilter = findFilter( 'provider' );
-	const operationFilter = findFilter( 'operation' );
-	const tokensFilter = findFilter( 'tokensFilter' );
+	const operationFilter = filters.find( ( f ) => f.field === 'operation' );
 
 	let operations: string[];
 	if ( operationFilter && Array.isArray( operationFilter.value ) ) {
@@ -183,70 +226,26 @@ const viewToQuery = (
 		page: ( view.page ?? 1 ) || 1,
 		perPage: view.perPage ?? 25,
 		search: ( view.search ?? '' ) || '',
-		type: typeof typeFilter?.value === 'string' ? typeFilter.value : '',
-		status:
-			typeof statusFilter?.value === 'string' ? statusFilter.value : '',
-		provider:
-			typeof providerFilter?.value === 'string'
-				? providerFilter.value
-				: '',
+		type: extractStringFilter( filters, 'type' ),
+		status: extractStringFilter( filters, 'status' ),
+		provider: extractStringFilter( filters, 'provider' ),
 		operation: operations,
-		tokensFilter:
-			typeof tokensFilter?.value === 'string' ? tokensFilter.value : '',
+		tokensFilter: extractStringFilter( filters, 'tokensFilter' ),
 	};
 };
 
 /**
- * Builds the query-derived portion of the DataViews view (filters, search,
- * pagination). The caller is responsible for merging in the UI-only
- * properties (fields, layout) that are tracked separately.
+ * Combines the LogsQuery (API-relevant state) with the ViewConfig
+ * (UI-only state) into a complete DataViews View object.
  */
 const queryToView = (
 	query: LogsQuery,
 	viewConfig: ViewConfig
 ): View => {
-	const filters: Array< {
-		field: string;
-		operator: Operator;
-		value: string | string[];
-	} > = [];
-
-	if ( query.type ) {
-		filters.push( { field: 'type', operator: 'is', value: query.type } );
-	}
-	if ( query.status ) {
-		filters.push( {
-			field: 'status',
-			operator: 'is',
-			value: query.status,
-		} );
-	}
-	if ( query.provider ) {
-		filters.push( {
-			field: 'provider',
-			operator: 'is',
-			value: query.provider,
-		} );
-	}
-	if ( query.operation.length > 0 ) {
-		filters.push( {
-			field: 'operation',
-			operator: 'isAny',
-			value: query.operation,
-		} );
-	}
-	if ( query.tokensFilter ) {
-		filters.push( {
-			field: 'tokensFilter',
-			operator: 'is',
-			value: query.tokensFilter,
-		} );
-	}
-
 	return {
 		type: 'table' as const,
 		search: query.search,
-		filters,
+		filters: viewConfig.filters,
 		page: query.page,
 		perPage: query.perPage,
 		sort: {
@@ -384,10 +383,11 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	setQuery,
 	providerMetadata,
 } ) => {
-	const [ viewConfig, setViewConfig ] = useState< ViewConfig >( {
+	const [ viewConfig, setViewConfig ] = useState< ViewConfig >( () => ( {
+		filters: buildFiltersFromQuery( query ),
 		fields: [ ...DEFAULT_VIEW_FIELDS ],
 		layout: {},
-	} );
+	} ) );
 
 	const view = useMemo(
 		() => queryToView( query, viewConfig ),
@@ -397,6 +397,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	const onChangeView = useCallback(
 		( nextView: View ) => {
 			setViewConfig( {
+				filters: nextView.filters ?? [],
 				fields: sortFieldsByCanonicalOrder(
 					nextView.fields ?? [ ...DEFAULT_VIEW_FIELDS ]
 				),

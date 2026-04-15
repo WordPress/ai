@@ -3,10 +3,6 @@
  */
 import { Card, CardBody } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-/**
- * External dependencies
- */
-import React from 'react';
 
 /**
  * Internal dependencies
