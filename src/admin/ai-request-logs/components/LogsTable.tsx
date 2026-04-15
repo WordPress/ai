@@ -2,11 +2,15 @@
  * WordPress dependencies
  */
 import { Popover } from '@wordpress/components';
-import { DataViews } from '@wordpress/dataviews';
-import type { View, Operator, Filter } from '@wordpress/dataviews';
+import {
+	DataViews,
+	type View,
+	type Operator,
+	type Filter,
+	type ViewTable,
+} from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
 import { useCallback, useMemo, useState } from '@wordpress/element';
-import type { ViewTable } from '@wordpress/dataviews';
 
 /**
  * Internal dependencies
@@ -149,6 +153,8 @@ const getSourceLabel = ( entry: LogEntry ): string | null => {
 /**
  * Builds the initial filters array from a persisted LogsQuery so the
  * DataViews chip UI reflects saved filter state on first render.
+ *
+ * @param query Persisted logs query.
  */
 const buildFiltersFromQuery = ( query: LogsQuery ): Filter[] => {
 	const filters: Filter[] = [];
@@ -196,6 +202,9 @@ const buildFiltersFromQuery = ( query: LogsQuery ): Filter[] => {
  * Extracts a string filter value, returning an empty string when the
  * filter is absent or has no concrete value (e.g. just opened, value
  * is still `undefined`).
+ *
+ * @param filters Active DataViews filters.
+ * @param field   Field id to look up.
  */
 const extractStringFilter = ( filters: Filter[], field: string ): string => {
 	const f = filters.find( ( item ) => item.field === field );
@@ -205,6 +214,9 @@ const extractStringFilter = ( filters: Filter[], field: string ): string => {
 /**
  * Translates the DataViews view state into the LogsQuery shape
  * consumed by the parent's REST fetcher.
+ *
+ * @param view                Current DataViews view object.
+ * @param availableOperations Known operation slugs from the server.
  */
 const viewToQuery = (
 	view: View,
@@ -237,11 +249,11 @@ const viewToQuery = (
 /**
  * Combines the LogsQuery (API-relevant state) with the ViewConfig
  * (UI-only state) into a complete DataViews View object.
+ *
+ * @param query      Current API query state.
+ * @param viewConfig UI-only view configuration.
  */
-const queryToView = (
-	query: LogsQuery,
-	viewConfig: ViewConfig
-): View => {
+const queryToView = ( query: LogsQuery, viewConfig: ViewConfig ): View => {
 	return {
 		type: 'table' as const,
 		search: query.search,
@@ -396,18 +408,18 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 
 	const onChangeView = useCallback(
 		( nextView: View ) => {
+			const nextLayout =
+				( 'layout' in nextView && nextView.layout ) || {};
+
 			setViewConfig( {
 				filters: nextView.filters ?? [],
 				fields: sortFieldsByCanonicalOrder(
 					nextView.fields ?? [ ...DEFAULT_VIEW_FIELDS ]
 				),
-				layout:
-					( 'layout' in nextView && nextView.layout ) || {},
+				layout: nextLayout,
 			} );
 
-			setQuery(
-				viewToQuery( nextView, filterOptions.operations ?? [] )
-			);
+			setQuery( viewToQuery( nextView, filterOptions.operations ?? [] ) );
 		},
 		[ filterOptions.operations, setQuery ]
 	);
