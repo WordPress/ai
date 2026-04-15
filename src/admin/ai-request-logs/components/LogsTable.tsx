@@ -17,7 +17,6 @@ import { useCallback, useMemo, useState } from '@wordpress/element';
  */
 import { getProviderIconComponent } from '../../components/provider-icons';
 import type { ProviderMetadata } from '../../types/providers';
-import { getDefaultOperationSelection } from '../query';
 import type { FilterOptions, LogEntry, LogsQuery } from '../types';
 
 interface LogsTableProps {
@@ -215,13 +214,9 @@ const extractStringFilter = ( filters: Filter[], field: string ): string => {
  * Translates the DataViews view state into the LogsQuery shape
  * consumed by the parent's REST fetcher.
  *
- * @param view                Current DataViews view object.
- * @param availableOperations Known operation slugs from the server.
+ * @param view Current DataViews view object.
  */
-const viewToQuery = (
-	view: View,
-	availableOperations: string[]
-): LogsQuery => {
+const viewToQuery = ( view: View ): LogsQuery => {
 	const filters = view.filters ?? [];
 	const operationFilter = filters.find( ( f ) => f.field === 'operation' );
 
@@ -231,7 +226,7 @@ const viewToQuery = (
 	} else if ( operationFilter && typeof operationFilter.value === 'string' ) {
 		operations = [ operationFilter.value ];
 	} else {
-		operations = getDefaultOperationSelection( availableOperations );
+		operations = [];
 	}
 
 	return {
@@ -419,9 +414,9 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				layout: nextLayout,
 			} );
 
-			setQuery( viewToQuery( nextView, filterOptions.operations ?? [] ) );
+			setQuery( viewToQuery( nextView ) );
 		},
-		[ filterOptions.operations, setQuery ]
+		[ setQuery ]
 	);
 
 	const fields = useMemo(

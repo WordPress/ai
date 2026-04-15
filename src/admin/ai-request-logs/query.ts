@@ -24,28 +24,12 @@ const sanitizeStringArray = ( value: unknown ): string[] => {
 	);
 };
 
-export const isModelDiscoveryOperation = ( operation: string ): boolean =>
-	operation.endsWith( ':models' ) || 'models' === operation;
-
-export const getDefaultOperationSelection = (
-	operations: string[]
-): string[] => {
-	const availableOperations = sanitizeStringArray( operations );
-	const nonModelOperations = availableOperations.filter(
-		( operation ) => ! isModelDiscoveryOperation( operation )
-	);
-
-	return nonModelOperations.length > 0
-		? nonModelOperations
-		: availableOperations;
-};
-
 const normalizeOperationSelection = (
 	raw: unknown,
 	availableOperations: string[]
 ): string[] => {
-	if ( undefined === raw ) {
-		return getDefaultOperationSelection( availableOperations );
+	if ( undefined === raw || ( Array.isArray( raw ) && 0 === raw.length ) ) {
+		return [];
 	}
 
 	const rawOperations =
@@ -62,23 +46,19 @@ const normalizeOperationSelection = (
 		return normalizedOperations;
 	}
 
-	const filteredOperations = normalizedOperations.filter( ( operation ) =>
+	return normalizedOperations.filter( ( operation ) =>
 		availableOperations.includes( operation )
 	);
-
-	return filteredOperations.length > 0
-		? filteredOperations
-		: getDefaultOperationSelection( availableOperations );
 };
 
-export const getDefaultLogsQuery = ( operations: string[] ): LogsQuery => ( {
+export const getDefaultLogsQuery = (): LogsQuery => ( {
 	page: DEFAULT_PAGE,
 	perPage: DEFAULT_PER_PAGE,
 	search: '',
 	type: '',
 	status: '',
 	provider: '',
-	operation: getDefaultOperationSelection( operations ),
+	operation: [],
 	tokensFilter: '',
 } );
 
@@ -88,7 +68,7 @@ export const normalizeLogsQuery = (
 ): LogsQuery => {
 	const parsed =
 		raw && typeof raw === 'object' ? ( raw as Partial< LogsQuery > ) : {};
-	const defaultQuery = getDefaultLogsQuery( availableOperations );
+	const defaultQuery = getDefaultLogsQuery();
 
 	return {
 		page:
@@ -121,22 +101,6 @@ export const normalizeLogsQuery = (
 				? parsed.tokensFilter
 				: defaultQuery.tokensFilter,
 	};
-};
-
-export const areOperationsEqual = (
-	left: string[],
-	right: string[]
-): boolean => {
-	const normalizedLeft = [ ...left ].sort();
-	const normalizedRight = [ ...right ].sort();
-
-	if ( normalizedLeft.length !== normalizedRight.length ) {
-		return false;
-	}
-
-	return normalizedLeft.every(
-		( operation, index ) => operation === normalizedRight[ index ]
-	);
 };
 
 export const serializeOperationSelection = ( operations: string[] ): string =>

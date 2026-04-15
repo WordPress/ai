@@ -84,7 +84,7 @@ const getInitialLogsQuery = (): LogsQuery => {
 		const persisted = window.localStorage.getItem( LOGS_QUERY_STORAGE_KEY );
 
 		if ( ! persisted ) {
-			return getDefaultLogsQuery( INITIAL_FILTERS.operations );
+			return getDefaultLogsQuery();
 		}
 
 		return normalizeLogsQuery(
@@ -92,7 +92,7 @@ const getInitialLogsQuery = (): LogsQuery => {
 			INITIAL_FILTERS.operations
 		);
 	} catch {
-		return getDefaultLogsQuery( INITIAL_FILTERS.operations );
+		return getDefaultLogsQuery();
 	}
 };
 
