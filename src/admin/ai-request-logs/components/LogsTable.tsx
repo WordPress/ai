@@ -3,6 +3,7 @@
  */
 import { Popover } from '@wordpress/components';
 import { DataViews } from '@wordpress/dataviews';
+import type { View, Operator } from '@wordpress/dataviews';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -127,14 +128,10 @@ const getSourceLabel = ( entry: LogEntry ): string | null => {
  * @param availableOperations
  */
 const viewToQuery = (
-	view: Record< string, unknown >,
+	view: View,
 	availableOperations: string[]
 ): LogsQuery => {
-	const filters = ( view.filters ?? [] ) as Array< {
-		field: string;
-		value: unknown;
-		operator: string;
-	} >;
+	const filters = view.filters ?? [];
 
 	const findFilter = ( field: string ) =>
 		filters.find( ( f ) => f.field === field );
@@ -155,8 +152,8 @@ const viewToQuery = (
 	}
 
 	return {
-		page: ( ( view.page as number ) ?? 1 ) || 1,
-		search: ( ( view.search as string ) ?? '' ) || '',
+		page: ( view.page ?? 1 ) || 1,
+		search: ( view.search ?? '' ) || '',
 		type: typeof typeFilter?.value === 'string' ? typeFilter.value : '',
 		status:
 			typeof statusFilter?.value === 'string' ? statusFilter.value : '',
@@ -174,10 +171,10 @@ const viewToQuery = (
  * Translates LogsQuery back into a DataViews-compatible view object.
  * @param query
  */
-const queryToView = ( query: LogsQuery ) => {
+const queryToView = ( query: LogsQuery ): View => {
 	const filters: Array< {
 		field: string;
-		operator: string;
+		operator: Operator;
 		value: string | string[];
 	} > = [];
 
@@ -364,7 +361,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	const view = useMemo( () => queryToView( query ), [ query ] );
 
 	const onChangeView = useCallback(
-		( nextView: Record< string, unknown > ) => {
+		( nextView: View ) => {
 			setQuery( viewToQuery( nextView, filterOptions.operations ?? [] ) );
 		},
 		[ filterOptions.operations, setQuery ]
