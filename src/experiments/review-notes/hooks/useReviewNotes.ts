@@ -40,7 +40,7 @@ const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 
 const BATCH_SIZE = 4;
 const NOTES_PAGE_SIZE = 100;
-const CONTEXT_WINDOW_SIZE = 2000;
+const CONTEXT_WINDOW_SIZE = 800;
 const TRUNCATED_BEFORE_MARKER = '[TRUNCATED BEFORE]';
 const TRUNCATED_AFTER_MARKER = '[TRUNCATED AFTER]';
 const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
@@ -150,11 +150,10 @@ async function reviewSingleBlock(
 			: content;
 
 	// Prepare a bounded context around the placeholder.
-	const contextWindow = buildContextWindow(
+	const context = buildContextWindow(
 		contentWithPlaceholder,
 		BLOCK_PLACEHOLDER
 	);
-	const context = `What follows is surrounding article content, where the block being reviewed has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the nearby text to better understand the context of the block within the article. CONTENT: \n\n${ contextWindow }`;
 
 	// Call the review Ability.
 	const result = await runAbility< ReviewResult >( 'ai/review-notes', {
