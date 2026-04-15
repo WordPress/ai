@@ -122,7 +122,7 @@ function markBadgeFailed( badge: HTMLElement ): void {
  */
 function markBadgeProcessing( badge: HTMLElement ): void {
 	badge.className = 'ai-badge ai-badge--processing';
-	badge.textContent = 'Analyzing...';
+	badge.textContent = 'Analyzing…';
 	badge.setAttribute( 'data-ai-status', 'processing' );
 }
 
@@ -158,9 +158,9 @@ export function LazyAnalysisController(): React.ReactElement | null {
 
 			// Determine which column this badge is in.
 			const cell = badge.closest( 'td' );
-			if ( cell?.classList.contains( 'column-ai_sentiment' ) ) {
+			if ( cell?.classList.contains( 'column-wpai_sentiment' ) ) {
 				entry.sentimentBadge = badge;
-			} else if ( cell?.classList.contains( 'column-ai_toxicity' ) ) {
+			} else if ( cell?.classList.contains( 'column-wpai_toxicity' ) ) {
 				entry.toxicityBadge = badge;
 			}
 		} );
@@ -196,6 +196,7 @@ export function LazyAnalysisController(): React.ReactElement | null {
 					`Failed to analyze comment ${ comment.id }:`,
 					error
 				);
+				// TODO: if things fail, we end up in an infinite retry loop.
 				markBadgeFailed( comment.sentimentBadge );
 				markBadgeFailed( comment.toxicityBadge );
 			}
