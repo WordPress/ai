@@ -40,8 +40,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
-		$loader->initialize_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'ai-request-logging' );
 		$this->assertInstanceOf( AI_Request_Logging::class, $experiment );
