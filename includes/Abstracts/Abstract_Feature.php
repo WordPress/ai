@@ -110,11 +110,11 @@ abstract class Abstract_Feature implements Feature {
 			$metadata['category'] = Feature_Category::OTHER;
 		}
 
-		$this->label        = $metadata['label'];
-		$this->description  = $metadata['description'];
-		$this->category     = $metadata['category'];
-		$this->stability = $metadata['stability'] ?? 'experimental';
-		$this->image     = $metadata['image'] ?? '';
+		$this->label       = $metadata['label'];
+		$this->description = $metadata['description'];
+		$this->category    = $metadata['category'];
+		$this->stability   = $metadata['stability'] ?? 'experimental';
+		$this->image       = $metadata['image'] ?? '';
 	}
 
 	/**
