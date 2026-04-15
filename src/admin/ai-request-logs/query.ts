@@ -1,6 +1,7 @@
 import type { LogsQuery } from './types';
 
 const DEFAULT_PAGE = 1;
+const DEFAULT_PER_PAGE = 25;
 
 const sanitizeStringArray = ( value: unknown ): string[] => {
 	if ( ! Array.isArray( value ) ) {
@@ -66,6 +67,7 @@ const normalizeOperationSelection = (
 
 export const getDefaultLogsQuery = ( operations: string[] ): LogsQuery => ( {
 	page: DEFAULT_PAGE,
+	perPage: DEFAULT_PER_PAGE,
 	search: '',
 	type: '',
 	status: '',
@@ -87,6 +89,10 @@ export const normalizeLogsQuery = (
 			typeof parsed.page === 'number' && parsed.page > 0
 				? Math.floor( parsed.page )
 				: defaultQuery.page,
+		perPage:
+			typeof parsed.perPage === 'number' && parsed.perPage > 0
+				? Math.floor( parsed.perPage )
+				: defaultQuery.perPage,
 		search:
 			typeof parsed.search === 'string'
 				? parsed.search

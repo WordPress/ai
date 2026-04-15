@@ -164,7 +164,7 @@ const App: React.FC = () => {
 		try {
 			const params = new URLSearchParams( {
 				page: String( logsQuery.page ),
-				per_page: '25',
+				per_page: String( logsQuery.perPage ),
 			} );
 
 			if ( logsQuery.type ) {
@@ -209,6 +209,7 @@ const App: React.FC = () => {
 	}, [
 		deferredSearch,
 		logsQuery.page,
+		logsQuery.perPage,
 		logsQuery.provider,
 		logsQuery.status,
 		logsQuery.tokensFilter,

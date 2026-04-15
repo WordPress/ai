@@ -63,6 +63,7 @@ export interface FilterOptions {
 
 export interface LogsQuery {
 	page: number;
+	perPage: number;
 	search: string;
 	type: string;
 	status: string;

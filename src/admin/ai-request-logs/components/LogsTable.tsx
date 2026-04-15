@@ -18,6 +18,7 @@ import { getProviderIconComponent } from '../../components/provider-icons';
 import type { ProviderMetadata } from '../../types/providers';
 import { getDefaultOperationSelection } from '../query';
 import type { FilterOptions, LogEntry, LogsQuery } from '../types';
+import type { ViewTable } from '@wordpress/dataviews';
 
 interface LogsTableProps {
 	logs: LogEntry[];
@@ -31,7 +32,34 @@ interface LogsTableProps {
 	providerMetadata: Record< string, ProviderMetadata >;
 }
 
-const PER_PAGE = 25;
+/**
+ * View-only properties that DataViews manages but are not part of the API
+ * query. These are tracked separately to survive the query round-trip.
+ */
+interface ViewConfig {
+	fields: string[];
+	layout: NonNullable< ViewTable[ 'layout' ] >;
+}
+
+const DEFAULT_VIEW_FIELDS = [
+	'timestamp',
+	'operation',
+	'provider',
+	'tokens_total',
+	'duration_ms',
+	'status',
+];
+
+const FIELD_ORDER = new Map(
+	DEFAULT_VIEW_FIELDS.map( ( id, index ) => [ id, index ] )
+);
+
+const sortFieldsByCanonicalOrder = ( ids: string[] ): string[] =>
+	[ ...ids ].sort( ( a, b ) => {
+		const ai = FIELD_ORDER.get( a ) ?? Infinity;
+		const bi = FIELD_ORDER.get( b ) ?? Infinity;
+		return ai - bi;
+	} );
 
 const formatTimestamp = ( timestamp: string ): string => {
 	const date = new Date( timestamp + 'Z' );
@@ -153,6 +181,7 @@ const viewToQuery = (
 
 	return {
 		page: ( view.page ?? 1 ) || 1,
+		perPage: view.perPage ?? 25,
 		search: ( view.search ?? '' ) || '',
 		type: typeof typeFilter?.value === 'string' ? typeFilter.value : '',
 		status:
@@ -168,10 +197,14 @@ const viewToQuery = (
 };
 
 /**
- * Translates LogsQuery back into a DataViews-compatible view object.
- * @param query
+ * Builds the query-derived portion of the DataViews view (filters, search,
+ * pagination). The caller is responsible for merging in the UI-only
+ * properties (fields, layout) that are tracked separately.
  */
-const queryToView = ( query: LogsQuery ): View => {
+const queryToView = (
+	query: LogsQuery,
+	viewConfig: ViewConfig
+): View => {
 	const filters: Array< {
 		field: string;
 		operator: Operator;
@@ -215,20 +248,13 @@ const queryToView = ( query: LogsQuery ): View => {
 		search: query.search,
 		filters,
 		page: query.page,
-		perPage: PER_PAGE,
+		perPage: query.perPage,
 		sort: {
 			field: 'timestamp',
 			direction: 'desc' as const,
 		},
-		fields: [
-			'timestamp',
-			'operation',
-			'provider',
-			'tokens_total',
-			'duration_ms',
-			'status',
-		],
-		layout: {},
+		fields: viewConfig.fields,
+		layout: viewConfig.layout,
 	};
 };
 
@@ -358,11 +384,29 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	setQuery,
 	providerMetadata,
 } ) => {
-	const view = useMemo( () => queryToView( query ), [ query ] );
+	const [ viewConfig, setViewConfig ] = useState< ViewConfig >( {
+		fields: [ ...DEFAULT_VIEW_FIELDS ],
+		layout: {},
+	} );
+
+	const view = useMemo(
+		() => queryToView( query, viewConfig ),
+		[ query, viewConfig ]
+	);
 
 	const onChangeView = useCallback(
 		( nextView: View ) => {
-			setQuery( viewToQuery( nextView, filterOptions.operations ?? [] ) );
+			setViewConfig( {
+				fields: sortFieldsByCanonicalOrder(
+					nextView.fields ?? [ ...DEFAULT_VIEW_FIELDS ]
+				),
+				layout:
+					( 'layout' in nextView && nextView.layout ) || {},
+			} );
+
+			setQuery(
+				viewToQuery( nextView, filterOptions.operations ?? [] )
+			);
 		},
 		[ filterOptions.operations, setQuery ]
 	);
