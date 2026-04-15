@@ -217,26 +217,59 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * Renders feature-specific settings fields.
+	 * Gets the field definitions for feature-specific settings.
 	 *
-	 * Override this method in child classes to render custom settings UI
-	 * that will appear within the feature's card on the settings page.
-	 * This is called after the feature's main toggle control.
+	 * Override this method in child classes to declare custom settings fields
+	 * that will be rendered as a DataForm on the settings page. Each field
+	 * should use the short option name (e.g. 'strategy'), not the full
+	 * namespaced option name.
 	 *
-	 * @since 0.6.0
+	 * @since 0.7.0
 	 *
-	 * @return void
+	 * @return array<int, array{
+	 *   id: string,
+	 *   label: string,
+	 *   type: string,
+	 *   default?: mixed,
+	 *   elements?: list<array{value: string, label: string}>,
+	 *   isValid?: array{min?: int, max?: int},
+	 * }> Array of field definitions matching the DataForm Field shape.
 	 */
-	public function render_settings_fields(): void {
-		// Default implementation does nothing.
-		// Child classes can override to render custom settings UI.
+	public function get_settings_fields(): array {
+		return array();
+	}
+
+	/**
+	 * Gets field definitions with fully resolved option names.
+	 *
+	 * Transforms the short field IDs from get_settings_fields() into
+	 * full WordPress option names suitable for the REST API and frontend.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return array<int, array{
+	 *   id: string,
+	 *   label: string,
+	 *   type: string,
+	 *   default?: mixed,
+	 *   elements?: list<array{value: string, label: string}>,
+	 *   isValid?: array{min?: int, max?: int},
+	 * }> Array of field definitions with full option names.
+	 */
+	public function get_settings_fields_metadata(): array {
+		$fields = $this->get_settings_fields();
+		foreach ( $fields as &$field ) {
+			$field['id'] = $this->get_field_option_name( $field['id'] );
+		}
+		unset( $field );
+		return $fields;
 	}
 
 	/**
 	 * Gets the option name for a custom feature setting field.
 	 *
 	 * Generates a properly namespaced option name for feature-specific settings.
-	 * Use this when registering and rendering custom settings fields to ensure
+	 * Use this when registering and storing custom settings fields to ensure
 	 * consistent naming across the plugin.
 	 *
 	 * @since 0.6.0

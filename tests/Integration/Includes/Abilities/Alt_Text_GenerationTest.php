@@ -35,7 +35,7 @@ class Test_Alt_Text_Generation_Experiment extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => 'Alt Text Generation',
-			'description' => 'Generates descriptive alt text for images using AI vision models.',
+			'description' => 'Generates accessible alternative text for images using AI vision models.',
 		);
 	}
 
@@ -131,6 +131,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'attachment_id', $schema['properties'], 'Schema should have attachment_id property' );
 		$this->assertArrayHasKey( 'image_url', $schema['properties'], 'Schema should have image_url property' );
 		$this->assertArrayHasKey( 'context', $schema['properties'], 'Schema should have context property' );
+		$this->assertArrayHasKey( 'image_meta', $schema['properties'], 'Schema should have image_meta property' );
 
 		$this->assertEquals( 'integer', $schema['properties']['attachment_id']['type'], 'attachment_id should be integer type' );
 		$this->assertEquals( 'absint', $schema['properties']['attachment_id']['sanitize_callback'], 'attachment_id should use absint' );
@@ -140,6 +141,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'context should be string type' );
 		$this->assertEquals( 'sanitize_textarea_field', $schema['properties']['context']['sanitize_callback'], 'context should use sanitize_textarea_field' );
+
+		$this->assertEquals( 'string', $schema['properties']['image_meta']['type'], 'image_meta should be string type' );
 	}
 
 	/**
@@ -159,6 +162,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'alt_text', $schema['properties'], 'Schema should have alt_text property' );
 		$this->assertEquals( 'string', $schema['properties']['alt_text']['type'], 'alt_text should be string type' );
+		$this->assertArrayHasKey( 'is_decorative', $schema['properties'], 'Schema should have is_decorative property' );
+		$this->assertEquals( 'boolean', $schema['properties']['is_decorative']['type'], 'is_decorative should be boolean type' );
 	}
 
 	/**

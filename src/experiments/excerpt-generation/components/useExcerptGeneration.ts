@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { dispatch, select } from '@wordpress/data';
+import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
@@ -14,7 +14,6 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import { useEditorDispatch } from '../../../utils/editor-dispatch';
 import type { ExcerptGenerationAbilityInput } from '../types';
 
 /**
@@ -55,10 +54,14 @@ export function useExcerptGeneration(): {
 	hasExcerpt: boolean;
 	handleGenerate: () => Promise< void >;
 } {
-	const postId = select( editorStore ).getCurrentPostId();
-	const content = select( editorStore ).getEditedPostContent();
-	const excerpt = select( editorStore ).getEditedPostAttribute( 'excerpt' );
-	const { editPost } = useEditorDispatch();
+	const { postId, content, excerpt } = useSelect( ( select ) => {
+		return {
+			postId: select( editorStore ).getCurrentPostId(),
+			content: select( editorStore ).getEditedPostContent(),
+			excerpt: select( editorStore ).getEditedPostAttribute( 'excerpt' ),
+		};
+	} );
+	const { editPost } = useDispatch( editorStore );
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 
 	const handleGenerate = async () => {

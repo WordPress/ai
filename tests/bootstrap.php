@@ -7,6 +7,11 @@
 
 define( 'TESTS_REPO_ROOT_DIR', dirname( __DIR__ ) );
 
+// Used to conditionally skip code that should not run during tests, such as the autoloader.
+if ( ! defined( 'WPAI_IS_TEST' ) ) {
+	define( 'WPAI_IS_TEST', true );
+}
+
 // Load Composer dependencies if applicable.
 if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/autoload.php' ) ) {
 	require_once TESTS_REPO_ROOT_DIR . '/vendor/autoload.php';

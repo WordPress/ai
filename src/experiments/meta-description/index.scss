@@ -1,0 +1,65 @@
+/**
+ * Styles for the Meta Description experiment.
+ */
+
+// Panel display.
+.ai-meta-description-panel {
+	&__text {
+		margin: 0 0 8px;
+		font-size: 13px;
+		line-height: 1.5;
+		color: var(--wp--preset--color--foreground, #1e1e1e);
+	}
+
+	&__actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		justify-content: space-between;
+		margin-top: 8px;
+	}
+}
+
+// Character count.
+.ai-meta-description__char-count {
+	display: inline-block;
+	font-size: 12px;
+	line-height: 1;
+
+	&--in-range {
+		color: var(--wp-components-color-success, #00a32a);
+	}
+
+	&--out-of-range {
+		color: var(--wp-components-color-warning, #dba617);
+	}
+}
+
+// Modal layout.
+.ai-meta-description-modal {
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	&__generate {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	&__editor {
+		.ai-meta-description__char-count {
+			margin-top: 4px;
+		}
+	}
+
+	&__actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding-top: 8px;
+		border-top: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	}
+}

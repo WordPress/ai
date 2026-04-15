@@ -22,4 +22,5 @@ The title suggestion should follow these requirements:
 - Should not contain any markdown, bullets, numbering, or formatting - plain text only
 - Should be distinct in tone and focus
 - Must reflect the actual content and context, not generic clickbait
+- Ensure the title you return matches the language of the content you are given. For example, if the content is in English, the title should be in English. If the content is in Spanish, the title should be in Spanish
 INSTRUCTION;

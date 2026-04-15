@@ -14,6 +14,6 @@ export interface TitleGenerationAbilityInput {
 /**
  * Response from the ai/title-generation ability.
  */
-export interface GeneratedTitlesData {
-	titles: string[];
+export interface GeneratedTitleData {
+	title: string;
 }

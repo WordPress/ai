@@ -41,9 +41,11 @@ export function useSummaryGeneration() {
 				block.name === 'core/paragraph' &&
 				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 		);
-		if ( summaryBlock && summaryBlock.attributes.content ) {
-			setSummary( summaryBlock.attributes.content );
+		/* eslint-disable dot-notation -- summaryBlock.attributes is a BlockInstance */
+		if ( summaryBlock && summaryBlock.attributes[ 'content' ] ) {
+			setSummary( summaryBlock.attributes[ 'content' ] );
 		}
+		/* eslint-enable dot-notation */
 	}, [ allBlocks ] );
 
 	/**

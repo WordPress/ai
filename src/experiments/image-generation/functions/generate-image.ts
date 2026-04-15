@@ -1,13 +1,14 @@
 /**
  * WordPress dependencies
  */
+import { select } from '@wordpress/data';
+import { store as editorStore } from '@wordpress/editor';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import { formatContext } from './format-context';
-import { getContext } from './get-context';
 import { generatePrompt } from './generate-prompt';
 import { runAbility } from '../../../utils/run-ability';
 import type {
@@ -20,28 +21,21 @@ import type {
 /**
  * Generates an image for the given post ID and content.
  *
- * @param {number}   postId             The ID of the post to generate a featured image for.
  * @param {string}   content            The content of the post to generate an image for.
  * @param {Object}   options            Optional settings.
  * @param {Function} options.onProgress Callback invoked with progress messages.
  * @return {Promise<GeneratedImageData>} A promise that resolves to the generated image data.
  */
 export async function generateImage(
-	postId: number,
 	content: string,
 	options?: { onProgress?: ImageProgressCallback }
 ): Promise< GeneratedImageData > {
 	const onProgress = options?.onProgress;
 
-	let context: PostContext;
-
-	try {
-		context = ( await getContext( postId ) ) as PostContext;
-	} catch ( error: any ) {
-		throw new Error(
-			`Failed to get post context: ${ error.message || error }`
-		);
-	}
+	const context: PostContext = {
+		title: select( editorStore ).getEditedPostAttribute( 'title' ),
+		type: select( editorStore ).getEditedPostAttribute( 'type' ),
+	};
 
 	let prompt: string;
 
