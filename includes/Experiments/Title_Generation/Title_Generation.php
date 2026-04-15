@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\Title_Generation;
 use WordPress\AI\Abilities\Title_Generation\Title_Generation as Title_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -38,6 +39,7 @@ class Title_Generation extends Abstract_Feature {
 		return array(
 			'label'       => __( 'Title Generation', 'ai' ),
 			'description' => __( 'Generates title suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
