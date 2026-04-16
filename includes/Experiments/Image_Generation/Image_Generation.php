@@ -15,7 +15,6 @@ use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
-use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -41,8 +40,9 @@ class Image_Generation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Image Generation and Editing', 'ai' ),
-			'description' => __( 'Generate and edit images using AI', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
+			'description' => __( 'Generate and edit images using AI. Requires an AI connector that includes support for image generation models.', 'ai' ),
+			'stability'   => 'stable',
+			'image'       => WPAI_PLUGIN_URL . 'assets/images/showcase-image-generation.webp',
 		);
 	}
 

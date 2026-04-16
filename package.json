@@ -14,6 +14,7 @@
     ]
   },
   "files": [
+    "assets",
     "build",
     "build-scripts",
     "includes",
