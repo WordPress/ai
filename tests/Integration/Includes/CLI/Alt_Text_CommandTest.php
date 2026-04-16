@@ -10,6 +10,8 @@ namespace WordPress\AI\Tests\Integration\Includes\CLI;
 use WP_UnitTestCase;
 use WordPress\AI\CLI\Alt_Text_Command;
 
+require_once __DIR__ . '/wp-cli-stubs.php';
+
 /**
  * Alt_Text_Command test case.
  *
@@ -33,6 +35,10 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->command = new Alt_Text_Command();
+
+		if ( class_exists( '\WP_CLI' ) && method_exists( '\WP_CLI', 'reset' ) ) {
+			\WP_CLI::reset();
+		}
 	}
 
 	/**
@@ -40,6 +46,8 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		remove_all_filters( 'wpai_pre_has_valid_credentials_check' );
+		remove_all_filters( 'wp_abilities_api_init' );
 		parent::tearDown();
 	}
 
@@ -59,6 +67,64 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		}
 
 		return $method->invoke( $this->command, ...$args );
+	}
+
+	/**
+	 * Gets captured WP_CLI messages at a given level.
+	 *
+	 * @param string|null $level The level to filter by, or null for all.
+	 * @return array<int, string> The captured messages.
+	 */
+	private function get_cli_messages( ?string $level = null ): array {
+		$messages = array();
+		foreach ( \WP_CLI::$messages as $entry ) {
+			if ( null === $level || $entry['level'] === $level ) {
+				$messages[] = $entry['message'];
+			}
+		}
+		return $messages;
+	}
+
+	/**
+	 * Registers a fake ability that returns a canned response.
+	 *
+	 * @param mixed $response Return value from execute() (array or WP_Error).
+	 */
+	private function register_fake_ability( $response ): void {
+		$fake = new class( $response ) {
+			/** @var mixed */
+			private $response;
+
+			/** @param mixed $response */
+			public function __construct( $response ) {
+				$this->response = $response;
+			}
+
+			/** @return mixed */
+			public function execute( $input ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
+				return $this->response;
+			}
+		};
+
+		add_filter(
+			'wp_get_ability_ai/alt-text-generation',
+			static function () use ( $fake ) {
+				return $fake;
+			}
+		);
+
+		// Also handle the generic wp_get_ability case.
+		add_filter(
+			'pre_wp_get_ability',
+			static function ( $default_value, $name ) use ( $fake ) {
+				if ( 'ai/alt-text-generation' === $name ) {
+					return $fake;
+				}
+				return $default_value;
+			},
+			10,
+			2
+		);
 	}
 
 	/**
@@ -86,6 +152,20 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		$this->invoke_private_method( 'ensure_admin_user' );
 
 		$this->assertEquals( $user_id, get_current_user_id() );
+	}
+
+	/**
+	 * Test ensure_admin_user errors when no admin exists.
+	 */
+	public function test_ensure_admin_user_errors_without_admin(): void {
+		wp_set_current_user( 0 );
+		// Delete all users.
+		foreach ( get_users( array( 'fields' => 'ID' ) ) as $uid ) {
+			wp_delete_user( (int) $uid );
+		}
+
+		$this->expectException( \WP_CLI_Test_Error_Exception::class );
+		$this->invoke_private_method( 'ensure_admin_user' );
 	}
 
 	/**
@@ -168,10 +248,6 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	 * Test print_summary outputs correct format.
 	 */
 	public function test_print_summary_runs_without_error(): void {
-		if ( ! class_exists( 'WP_CLI' ) ) {
-			$this->markTestSkipped( 'WP-CLI is not available.' );
-		}
-
 		$stats = array(
 			'generated'  => 5,
 			'decorative' => 1,
@@ -183,18 +259,34 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		$this->invoke_private_method( 'print_summary', array( $stats ) );
 		ob_end_clean();
 
-		// If we got here without error, the method works correctly.
-		$this->assertTrue( true );
+		$success_messages = $this->get_cli_messages( 'success' );
+		$this->assertNotEmpty( $success_messages );
+		$this->assertStringContainsString( '6', $success_messages[0] );
+	}
+
+	/**
+	 * Test print_summary with no results.
+	 */
+	public function test_print_summary_with_zero_results(): void {
+		$stats = array(
+			'generated'  => 0,
+			'decorative' => 0,
+			'skipped'    => 0,
+			'failed'     => 0,
+		);
+
+		ob_start();
+		$this->invoke_private_method( 'print_summary', array( $stats ) );
+		ob_end_clean();
+
+		$this->assertEmpty( $this->get_cli_messages( 'success' ) );
+		$this->assertContains( 'No alt text was generated.', $this->get_cli_messages( 'log' ) );
 	}
 
 	/**
 	 * Test display_dry_run outputs table without errors.
 	 */
 	public function test_display_dry_run_runs_without_error(): void {
-		if ( ! class_exists( 'WP_CLI' ) ) {
-			$this->markTestSkipped( 'WP-CLI is not available.' );
-		}
-
 		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
 
 		ob_start();
@@ -202,5 +294,132 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( (string) $image_id, $output );
+	}
+
+	/**
+	 * Test process_images generates and saves alt text.
+	 */
+	public function test_process_images_generates_and_saves_alt_text(): void {
+		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+
+		$fake_ability = new class() {
+			public function execute( $input ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
+				return array( 'alt_text' => 'A beautiful sunset' );
+			}
+		};
+
+		ob_start();
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, false ) );
+		ob_end_clean();
+
+		$this->assertEquals( 1, $stats['generated'] );
+		$this->assertEquals( 0, $stats['decorative'] );
+		$this->assertEquals( 0, $stats['skipped'] );
+		$this->assertEquals( 0, $stats['failed'] );
+		$this->assertEquals( 'A beautiful sunset', get_post_meta( $image_id, '_wp_attachment_image_alt', true ) );
+	}
+
+	/**
+	 * Test process_images marks decorative images separately.
+	 */
+	public function test_process_images_handles_decorative(): void {
+		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+
+		$fake_ability = new class() {
+			public function execute( $input ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
+				return array(
+					'alt_text'      => '',
+					'is_decorative' => true,
+				);
+			}
+		};
+
+		ob_start();
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, false ) );
+		ob_end_clean();
+
+		$this->assertEquals( 0, $stats['generated'] );
+		$this->assertEquals( 1, $stats['decorative'] );
+		$this->assertEquals( '', get_post_meta( $image_id, '_wp_attachment_image_alt', true ) );
+	}
+
+	/**
+	 * Test process_images skips images that already have alt text without --force.
+	 */
+	public function test_process_images_skips_existing_alt_text(): void {
+		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+		update_post_meta( $image_id, '_wp_attachment_image_alt', 'Existing alt text' );
+
+		$fake_ability = new class() {
+			public function execute( $input ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
+				return array( 'alt_text' => 'New alt text' );
+			}
+		};
+
+		ob_start();
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, false ) );
+		ob_end_clean();
+
+		$this->assertEquals( 0, $stats['generated'] );
+		$this->assertEquals( 1, $stats['skipped'] );
+		$this->assertEquals( 'Existing alt text', get_post_meta( $image_id, '_wp_attachment_image_alt', true ) );
+	}
+
+	/**
+	 * Test process_images with --force overwrites existing alt text.
+	 */
+	public function test_process_images_force_overwrites(): void {
+		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+		update_post_meta( $image_id, '_wp_attachment_image_alt', 'Old alt text' );
+
+		$fake_ability = new class() {
+			public function execute( $input ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
+				return array( 'alt_text' => 'New alt text' );
+			}
+		};
+
+		ob_start();
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, true ) );
+		ob_end_clean();
+
+		$this->assertEquals( 1, $stats['generated'] );
+		$this->assertEquals( 0, $stats['skipped'] );
+		$this->assertEquals( 'New alt text', get_post_meta( $image_id, '_wp_attachment_image_alt', true ) );
+	}
+
+	/**
+	 * Test process_images handles errors from the ability.
+	 */
+	public function test_process_images_handles_errors(): void {
+		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+
+		$fake_ability = new class() {
+			public function execute( $input ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
+				return new \WP_Error( 'test_error', 'Test error message' );
+			}
+		};
+
+		ob_start();
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, false ) );
+		ob_end_clean();
+
+		$this->assertEquals( 1, $stats['failed'] );
+		$this->assertEquals( 0, $stats['generated'] );
+		$this->assertStringContainsString( 'Test error message', $this->get_cli_messages( 'warning' )[0] );
+	}
+
+	/**
+	 * Test generate command errors when ability is not registered.
+	 */
+	public function test_generate_errors_when_ability_missing(): void {
+		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::get_registered' );
+
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( 0 );
+
+		$this->expectException( \WP_CLI_Test_Error_Exception::class );
+		$this->expectExceptionMessageMatches( '/ability is not registered/i' );
+
+		$this->command->generate( array(), array() );
 	}
 }
