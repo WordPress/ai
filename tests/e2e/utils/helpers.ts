@@ -191,15 +191,39 @@ export const enableExperiment = async (
 	experimentLabel: string
 ) => {
 	await visitSettingsPage( admin );
-	const toggle = page.getByLabel( experimentLabel );
-	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 
-	// Nothing to do if this experiment is already enabled.
-	if ( await toggle.isChecked() ) {
-		return;
+	// Visual-card features use a showcase card with an Enable/Disable button
+	// instead of a toggle input.
+	const showcaseCard = page.locator( '.ai-showcase-card', {
+		has: page.locator( '.ai-showcase-card__title', {
+			hasText: experimentLabel,
+		} ),
+	} );
+
+	if ( await showcaseCard.isVisible() ) {
+		// Already enabled if the "Enabled" badge is visible.
+		if (
+			await showcaseCard
+				.locator( '.ai-showcase-card__enabled-badge' )
+				.isVisible()
+		) {
+			return;
+		}
+
+		await showcaseCard
+			.locator( '.ai-showcase-card__actions button' )
+			.click();
+	} else {
+		const toggle = page.getByLabel( experimentLabel );
+		await expect( toggle ).toBeVisible( { timeout: 10000 } );
+
+		// Nothing to do if this experiment is already enabled.
+		if ( await toggle.isChecked() ) {
+			return;
+		}
+
+		await toggle.check();
 	}
-
-	await toggle.check();
 
 	// Ensure the save was successful.
 	await expect(
@@ -222,15 +246,41 @@ export const disableExperiment = async (
 	experimentLabel: string
 ) => {
 	await visitSettingsPage( admin );
-	const toggle = page.getByLabel( experimentLabel );
-	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 
-	// Nothing to do if this experiment is already disabled.
-	if ( ! ( await toggle.isChecked() ) ) {
-		return;
+	// Visual-card features use a showcase card with an Enable/Disable button
+	// instead of a toggle input.
+	const showcaseCard = page.locator( '.ai-showcase-card', {
+		has: page.locator( '.ai-showcase-card__title', {
+			hasText: experimentLabel,
+		} ),
+	} );
+
+	if ( await showcaseCard.isVisible() ) {
+		// Already disabled if there's no "Enabled" badge.
+		if (
+			! (
+				await showcaseCard
+					.locator( '.ai-showcase-card__enabled-badge' )
+					.isVisible()
+			)
+		) {
+			return;
+		}
+
+		await showcaseCard
+			.locator( '.ai-showcase-card__actions button' )
+			.click();
+	} else {
+		const toggle = page.getByLabel( experimentLabel );
+		await expect( toggle ).toBeVisible( { timeout: 10000 } );
+
+		// Nothing to do if this experiment is already disabled.
+		if ( ! ( await toggle.isChecked() ) ) {
+			return;
+		}
+
+		await toggle.uncheck();
 	}
-
-	await toggle.uncheck();
 
 	// Ensure the save was successful.
 	await expect(
