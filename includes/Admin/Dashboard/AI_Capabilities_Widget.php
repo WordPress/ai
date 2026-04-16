@@ -5,14 +5,14 @@
  * Displays Ability statistics mirroring the Abilities Explorer summary,
  * plus available capabilities per connected AI provider.
  *
- * @package WordPress\AI\Dashboard
+ * @package WordPress\AI\Admin\Dashboard
  *
  * @since x.x.x
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Dashboard;
+namespace WordPress\AI\Admin\Dashboard;
 
 use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
 use WordPress\AI\Features\Registry;

@@ -5,14 +5,14 @@
  * Displays a getting-started checklist or provider/feature status
  * depending on whether initial setup is complete.
  *
- * @package WordPress\AI\Dashboard
+ * @package WordPress\AI\Admin\Dashboard
  *
  * @since x.x.x
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Dashboard;
+namespace WordPress\AI\Admin\Dashboard;
 
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Registration;
@@ -90,12 +90,12 @@ class AI_Status_Widget {
 			array(
 				'done'  => $global_enabled,
 				'label' => __( 'Globally enable AI Features', 'ai' ),
-				'url'   => admin_url( 'options-general.php?page=ai' ),
+				'url'   => admin_url( 'options-general.php?page=ai-wp-admin' ),
 			),
 			array(
 				'done'  => $any_feature_on,
 				'label' => __( 'Enable an individual feature', 'ai' ),
-				'url'   => admin_url( 'options-general.php?page=ai' ),
+				'url'   => admin_url( 'options-general.php?page=ai-wp-admin' ),
 			),
 			array(
 				'done'  => false,
@@ -189,10 +189,6 @@ class AI_Status_Widget {
 	 */
 	private function get_ai_connectors(): array {
 		$connectors = array();
-
-		if ( ! function_exists( 'wp_get_connectors' ) ) {
-			return $connectors;
-		}
 
 		foreach ( wp_get_connectors() as $slug => $connector_data ) {
 			if ( 'ai_provider' !== $connector_data['type'] ) {

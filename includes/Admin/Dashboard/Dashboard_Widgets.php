@@ -2,16 +2,16 @@
 /**
  * Dashboard Widgets orchestrator.
  *
- * Registers AI dashboard widgets and enqueues their styles.
+ * Registers dashboard widgets and enqueues their styles.
  *
- * @package WordPress\AI\Dashboard
+ * @package WordPress\AI\Admin\Dashboard
  *
  * @since x.x.x
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Dashboard;
+namespace WordPress\AI\Admin\Dashboard;
 
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Features\Registry;
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Registers and renders AI dashboard widgets.
+ * Registers and renders dashboard widgets.
  *
  * @since x.x.x
  */
