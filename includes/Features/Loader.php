@@ -105,7 +105,7 @@ final class Loader {
 	 */
 	private function get_default_features(): array {
 		$feature_classes = array(
-			// Features start off as experiments until they pass the requirements to graduate to full features.
+			\WordPress\AI\Features\Image_Generation\Image_Generation::get_id() => \WordPress\AI\Features\Image_Generation\Image_Generation::class,
 		);
 
 		/**
@@ -115,7 +115,7 @@ final class Loader {
 		 *
 		 * @since 0.6.0
 		 *
-		 * @param array<string, \WordPress\AI\Contracts\Feature|class-string<\WordPress\AI\Contracts\Feature>> $feature_classes Array of feature class names, keyed by ID.
+		 * @param array<string, class-string<\WordPress\AI\Contracts\Feature>> $feature_classes Array of feature class names, keyed by ID.
 		 */
 		$items = apply_filters( 'wpai_default_feature_classes', $feature_classes );
 

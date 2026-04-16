@@ -1,13 +1,13 @@
 <?php
 /**
- * Image generation experiment implementation.
+ * Image generation feature implementation.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Experiments\Image_Generation;
+namespace WordPress\AI\Features\Image_Generation;
 
 use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
 use WordPress\AI\Abilities\Image\Generate_Image_Prompt as Generate_Image_Prompt_Ability;
@@ -15,14 +15,13 @@ use WordPress\AI\Abilities\Image\Import_Base64_Image as Image_Import_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
-use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Image generation experiment.
+ * Image generation feature.
  *
  * @since 0.2.0
  */
@@ -42,7 +41,8 @@ class Image_Generation extends Abstract_Feature {
 		return array(
 			'label'       => __( 'Image Generation and Editing', 'ai' ),
 			'description' => __( 'Generate and edit images using AI. Requires an AI connector that includes support for image generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
+			'stability'   => 'stable',
+			'image'       => WPAI_PLUGIN_URL . 'assets/images/showcase-image-generation.webp',
 		);
 	}
 
@@ -219,8 +219,8 @@ class Image_Generation extends Abstract_Feature {
 	 * @since 0.4.0
 	 */
 	private function enqueue_shared_assets(): void {
-		Asset_Loader::enqueue_script( 'image_generation', 'experiments/image-generation' );
-		Asset_Loader::enqueue_style( 'image_generation', 'experiments/image-generation' );
+		Asset_Loader::enqueue_script( 'image_generation', 'features/image-generation' );
+		Asset_Loader::enqueue_style( 'image_generation', 'features/image-generation' );
 		Asset_Loader::localize_script(
 			'image_generation',
 			'ImageGenerationData',
