@@ -20,14 +20,14 @@ use function WordPress\AI\normalize_content;
 /**
  * Meta description generation WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Meta_Description extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -52,7 +52,7 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -80,7 +80,7 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	protected function execute_callback( $input ) {
 		$args = wp_parse_args(
@@ -152,7 +152,7 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : 0;
@@ -192,7 +192,7 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -203,7 +203,7 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * Generate a meta description suggestion from the given content.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string                       $content The content to generate a description from.
 	 * @param string                       $title   The post title.
@@ -243,7 +243,7 @@ class Meta_Description extends Abstract_Ability {
 		 *
 		 * Allows developers to modify or augment the content before it is sent to the model.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param string $prompt  The assembled prompt including content, title, and context tags.
 		 * @param string $content The normalized post content.
@@ -281,7 +281,7 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * Returns a prompt builder for meta description generation.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to build.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
@@ -290,7 +290,7 @@ class Meta_Description extends Abstract_Ability {
 		/**
 		 * Filters the temperature for the result of the meta description generation.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param float $result_temperature The temperature for the result of the meta description generation.
 		 */

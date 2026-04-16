@@ -31,3 +31,11 @@
 	justify-content: flex-end;
 	margin-top: 12px;
 }
+
+.ai-section-actions {
+	border-top: 1px solid var(--wp-components-color-gray-200);
+	display: flex;
+	gap: 8px;
+	margin-top: 16px;
+	padding-top: 12px;
+}

@@ -119,7 +119,7 @@ abstract class Abstract_Ability extends WP_Ability {
 		/**
 		 * Filters the system instruction for an ability.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param string $instruction The system instruction text.
 		 * @param string $name        The name of the ability.
@@ -195,7 +195,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Ensures the prompt builder can run text generation.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
 	 * @param string                       $message        User-visible error message.
@@ -212,7 +212,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Ensures the prompt builder can run image generation.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
 	 * @param string                       $message        User-visible error message.

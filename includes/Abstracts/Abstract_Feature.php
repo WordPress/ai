@@ -224,7 +224,7 @@ abstract class Abstract_Feature implements Feature {
 	 * should use the short option name (e.g. 'strategy'), not the full
 	 * namespaced option name.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<int, array{
 	 *   id: string,
@@ -245,7 +245,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Transforms the short field IDs from get_settings_fields() into
 	 * full WordPress option names suitable for the REST API and frontend.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<int, array{
 	 *   id: string,

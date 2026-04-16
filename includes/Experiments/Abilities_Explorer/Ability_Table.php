@@ -32,7 +32,7 @@ class Ability_Table extends \WP_List_Table {
 	/**
 	 * Full list of abilities before pagination, used to derive filter options.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var array<array<string,mixed>>
 	 */
@@ -165,7 +165,7 @@ class Ability_Table extends \WP_List_Table {
 	/**
 	 * Get sorted unique categories derived from the already-fetched ability list.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<string>
 	 */

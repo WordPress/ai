@@ -94,7 +94,7 @@ interface Feature {
 	 *
 	 * Returns an empty array when the feature has no custom settings.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<int, array{
 	 *   id: string,

@@ -243,7 +243,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the wpai_get_post_details filter modifies the ability output.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_wpai_get_post_details_filter_modifies_output() {
 		$post_id = $this->factory->post->create(
@@ -275,7 +275,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the wpai_get_post_details filter receives the correct arguments.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_wpai_get_post_details_filter_receives_arguments() {
 		$post_id = $this->factory->post->create(
@@ -313,7 +313,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the wpai_get_post_terms filter modifies the ability output.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_wpai_get_post_terms_filter_modifies_output() {
 		$category_id = $this->factory->category->create( array( 'name' => 'Original Category' ) );
@@ -341,7 +341,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the wpai_get_post_terms filter receives the correct arguments.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_wpai_get_post_terms_filter_receives_arguments() {
 		$category_id = $this->factory->category->create( array( 'name' => 'Test Category' ) );
