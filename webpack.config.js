@@ -43,9 +43,9 @@ module.exports = {
 			'src/experiments/excerpt-generation',
 			'index.tsx'
 		),
-		'experiments/image-generation': path.resolve(
+		'features/image-generation': path.resolve(
 			process.cwd(),
-			'src/experiments/image-generation',
+			'src/features/image-generation',
 			'index.ts'
 		),
 		'experiments/meta-description': path.resolve(
@@ -56,6 +56,11 @@ module.exports = {
 		'experiments/review-notes': path.resolve(
 			process.cwd(),
 			'src/experiments/review-notes',
+			'index.tsx'
+		),
+		'experiments/refine-notes': path.resolve(
+			process.cwd(),
+			'src/experiments/refine-notes',
 			'index.tsx'
 		),
 		'experiments/summarization': path.resolve(

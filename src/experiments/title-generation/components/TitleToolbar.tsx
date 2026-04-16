@@ -58,7 +58,7 @@ async function generateTitle(
 /**
  * TitleToolbar component.
  *
- * Provides Generate/Re-generate button.
+ * Provides Generate/Regenerate button.
  *
  * @return {JSX.Element} The toolbar component.
  */
@@ -77,12 +77,17 @@ export default function TitleToolbar( {
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 
 	const hasTitle = title.trim().length > 0;
-	const buttonLabel = hasTitle
-		? __( 'Re-generate', 'ai' )
-		: __( 'Generate', 'ai' );
+
+	let buttonLabel: string = __( 'Generate', 'ai' );
+
+	if ( isGenerating ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasTitle ) {
+		buttonLabel = __( 'Regenerate', 'ai' );
+	}
 
 	/**
-	 * Handles the generate/re-generate button click.
+	 * Handles the generate/regenerate button click.
 	 */
 	const handleGenerate = async () => {
 		if ( isGenerating ) {
@@ -128,7 +133,9 @@ export default function TitleToolbar( {
 					variant="secondary"
 					label={ buttonLabel }
 					onClick={ handleGenerate }
+					disabled={ isGenerating }
 					isBusy={ isGenerating }
+					accessibleWhenDisabled
 					__next40pxDefaultSize
 				>
 					{ buttonLabel }
