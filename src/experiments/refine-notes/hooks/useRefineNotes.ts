@@ -183,6 +183,7 @@ export function useRefineNotes(): {
 			let refinedBlocksCount = 0;
 			let processedBlocksCount = 0;
 			let failedBlocksCount = 0;
+			let firstErrorMessage: string | null = null;
 			const notesToResolve: number[] = [];
 
 			// Process in batches of 4 (similar to Review Notes)
@@ -230,11 +231,10 @@ export function useRefineNotes(): {
 								BLOCK_PLACEHOLDER
 							);
 
-						const contextWindow = buildContextWindow(
+						const refinementContext = buildContextWindow(
 							contentWithPlaceholder,
 							BLOCK_PLACEHOLDER
 						);
-						const refinementContext = `What follows is surrounding article content, where the block being refined has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the nearby text to better understand the context of the block within the article. CONTENT: \n\n${ contextWindow }`;
 
 						// Execute refinement
 						try {
@@ -275,12 +275,15 @@ export function useRefineNotes(): {
 									}
 								}
 							}
-						} catch ( e ) {
+						} catch ( e: any ) {
 							// eslint-disable-next-line no-console
 							console.warn(
 								`[Refine Notes] Failed to refine block ${ block.clientId }`,
 								e
 							);
+							if ( ! firstErrorMessage ) {
+								firstErrorMessage = e?.message ?? String( e );
+							}
 							failedBlocksCount++;
 						} finally {
 							processedBlocksCount++;
@@ -306,7 +309,8 @@ export function useRefineNotes(): {
 			// If every block failed, surface an error notice.
 			if ( failedBlocksCount > 0 && refinedBlocksCount === 0 ) {
 				( dispatch( noticesStore ) as any ).createErrorNotice(
-					__( 'Refinement failed for all blocks.', 'ai' ),
+					firstErrorMessage ??
+						__( 'Refinement failed for all blocks.', 'ai' ),
 					{
 						id: 'wpai_refine_notes_error',
 						isDismissible: true,

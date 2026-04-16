@@ -49,8 +49,7 @@ class Refine_NotesTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
-		$loader->initialize_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'refine-notes' );
 		$this->assertInstanceOf( Refine_Notes::class, $experiment, 'Refine_Notes experiment should be registered in the registry.' );
