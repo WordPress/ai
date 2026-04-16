@@ -200,6 +200,12 @@ export const enableExperiment = async (
 		} ),
 	} );
 
+	// Wait for either the showcase card or the toggle to appear.
+	const toggle = page.getByLabel( experimentLabel );
+	await expect( showcaseCard.or( toggle ) ).toBeVisible( {
+		timeout: 10000,
+	} );
+
 	if ( await showcaseCard.isVisible() ) {
 		// Already enabled if the "Enabled" badge is visible.
 		if (
@@ -214,9 +220,6 @@ export const enableExperiment = async (
 			.locator( '.ai-showcase-card__actions button' )
 			.click();
 	} else {
-		const toggle = page.getByLabel( experimentLabel );
-		await expect( toggle ).toBeVisible( { timeout: 10000 } );
-
 		// Nothing to do if this experiment is already enabled.
 		if ( await toggle.isChecked() ) {
 			return;
@@ -255,6 +258,12 @@ export const disableExperiment = async (
 		} ),
 	} );
 
+	// Wait for either the showcase card or the toggle to appear.
+	const toggle = page.getByLabel( experimentLabel );
+	await expect( showcaseCard.or( toggle ) ).toBeVisible( {
+		timeout: 10000,
+	} );
+
 	if ( await showcaseCard.isVisible() ) {
 		// Already disabled if there's no "Enabled" badge.
 		if (
@@ -269,9 +278,6 @@ export const disableExperiment = async (
 			.locator( '.ai-showcase-card__actions button' )
 			.click();
 	} else {
-		const toggle = page.getByLabel( experimentLabel );
-		await expect( toggle ).toBeVisible( { timeout: 10000 } );
-
 		// Nothing to do if this experiment is already disabled.
 		if ( ! ( await toggle.isChecked() ) ) {
 			return;
