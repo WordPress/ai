@@ -93,6 +93,11 @@ final class Main {
 		// Defer feature initialization to the 'init' action.
 		add_action( 'init', array( $this, 'initialize_features' ), 15 );
 
+		// Register WP-CLI commands.
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			\WP_CLI::add_command( 'ai alt-text', CLI\Alt_Text_Command::class );
+		}
+
 		// Register the default ability category.
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_ability_category' ) );
 	}
