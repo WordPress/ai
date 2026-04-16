@@ -293,7 +293,7 @@ function TitleToolbarWrapper(): JSX.Element {
 
 			// Render the toolbar into the container
 			root = createRoot( toolbarContainer );
-			root.render( <TitleToolbar /> );
+			root.render( <TitleToolbar isStandalone /> );
 
 			// Create and attach focus/blur handlers for title input
 			const titleHandlers = createFocusBlurHandlers(

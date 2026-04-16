@@ -13,7 +13,7 @@ import {
 	enableExperiment,
 } from '../../utils/helpers';
 
-const EXPERIMENT_ID = 'content-classification';
+const EXPERIMENT_LABEL = 'Content Classification';
 
 // Content Classification has a 150 word minimum requirement.
 const LONG_CONTENT =
@@ -72,16 +72,28 @@ async function openTaxonomyPanel( editor, page, panelLabel ) {
  * @param {string} strategy The strategy value ('existing_only' or 'allow_new').
  */
 async function setStrategy( admin, page, strategy ) {
-	await admin.visitAdminPage( 'options-general.php?page=ai' );
-	await page
-		.locator( '#wpai_feature_content-classification_field_strategy' )
-		.selectOption( strategy );
-	await page.locator( '#submit' ).click();
+	await admin.visitAdminPage( 'options-general.php?page=ai-wp-admin' );
+
+	const strategySelect = page.getByLabel( 'Taxonomy strategy' );
+	await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
+
+	// Nothing to do if the strategy is already set.
+	if ( ( await strategySelect.inputValue() ) === strategy ) {
+		return;
+	}
+
+	await strategySelect.selectOption( strategy );
+
+	const saveButton = page
+		.locator( '.ai-feature-settings-form' )
+		.getByRole( 'button', { name: 'Save' } );
+	await saveButton.click();
+
 	await expect(
-		page.locator( '.wrap .notice-success', {
-			hasText: 'Settings saved',
+		page.locator( '.components-snackbar__content', {
+			hasText: 'Content Classification settings saved.',
 		} )
-	).toHaveCount( 1 );
+	).toBeVisible();
 }
 
 test.describe( 'Content Classification Experiment', () => {
@@ -90,7 +102,7 @@ test.describe( 'Content Classification Experiment', () => {
 		await enableExperiments( admin, page );
 
 		// Enable the Content Classification Experiment.
-		await enableExperiment( admin, page, EXPERIMENT_ID );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
 
 	test( 'Shows the "Suggest Tags" button in the Tags panel', async ( {
@@ -328,7 +340,7 @@ test.describe( 'Content Classification Experiment', () => {
 		page,
 	} ) => {
 		// Disable the Content Classification Experiment.
-		await disableExperiment( admin, page, EXPERIMENT_ID );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		// Create a new post with content.
 		await admin.createNewPost( {

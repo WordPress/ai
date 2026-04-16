@@ -14,15 +14,15 @@ const {
 	visitAdminPage,
 } = require( '../../utils/helpers' );
 
-test.describe( 'Image Generation Experiment', () => {
-	test( 'Can enable the image generation experiment', async ( {
+test.describe( 'Image Generation Feature', () => {
+	test( 'Can enable the image generation feature', async ( {
 		admin,
 		page,
 	} ) => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 
@@ -34,15 +34,15 @@ test.describe( 'Image Generation Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Featured Image Generation Experiment',
+			title: 'Test Featured Image Generation Feature',
 			content:
-				'This is some test content for the Image Generation Experiment.',
+				'This is some test content for the Image Generation Feature.',
 		} );
 
 		// Save the post.
@@ -79,7 +79,7 @@ test.describe( 'Image Generation Experiment', () => {
 		await editor.saveDraft();
 
 		// Ensure the image is in the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		const imageContainer = page
 			.locator( '.attachments-wrapper li' )
@@ -101,15 +101,15 @@ test.describe( 'Image Generation Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Inline Image Generation Experiment',
+			title: 'Test Inline Image Generation Feature',
 			content:
-				'This is some test content for the Image Generation Experiment.',
+				'This is some test content for the Image Generation Feature.',
 		} );
 
 		// Save the post.
@@ -239,7 +239,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		const imageContainer = page
 			.locator( '.attachments-wrapper li' )
@@ -261,15 +261,15 @@ test.describe( 'Image Generation Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Toolbar Image Generation Experiment',
+			title: 'Test Toolbar Image Generation Feature',
 			content:
-				'This is some test content for the Image Generation Experiment.',
+				'This is some test content for the Image Generation Feature.',
 		} );
 
 		// Save the post.
@@ -401,7 +401,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).toBeVisible();
 
 		// Ensure the image is in the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		const imageContainer = page
 			.locator( '.attachments-wrapper li' )
@@ -422,11 +422,11 @@ test.describe( 'Image Generation Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Ensure there's a Generate Image link in the sidebar.
 		await expect(
@@ -546,23 +546,23 @@ test.describe( 'Image Generation Experiment', () => {
 		).toHaveValue( 'A smiley face' );
 	} );
 
-	test( 'Ensure the Image Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
+	test( 'Ensure the Image Generation Feature UI is not visible when AI is globally disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Enable the Image Generation Experiment.
+		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
-		// Globally turn off Experiments.
+		// Globally turn off AI.
 		await disableExperiments( admin, page );
 
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Image Generation Experiment Globally Disabled',
+			title: 'Test Image Generation Feature Globally Disabled',
 			content:
-				'This is some test content for the Image Generation Experiment.',
+				'This is some test content for the Image Generation Feature.',
 		} );
 
 		// Save the post.
@@ -579,7 +579,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).not.toBeVisible();
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Ensure there's not a Generate Image link in the sidebar.
 		await expect(
@@ -594,7 +594,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).not.toBeVisible();
 	} );
 
-	test( 'Ensure the Image Generation Experiment UI is not visible when the experiment is disabled', async ( {
+	test( 'Ensure the Image Generation Feature UI is not visible when the Feature is disabled', async ( {
 		admin,
 		editor,
 		page,
@@ -602,15 +602,15 @@ test.describe( 'Image Generation Experiment', () => {
 		// Globally turn on Experiments.
 		await enableExperiments( admin, page );
 
-		// Disable the Image Generation Experiment.
+		// Disable the Image Generation Feature.
 		await disableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Image Generation Experiment Disabled',
+			title: 'Test Image Generation Feature Disabled',
 			content:
-				'This is some test content for the Image Generation Experiment.',
+				'This is some test content for the Image Generation Feature.',
 		} );
 
 		// Save the post.
@@ -627,7 +627,7 @@ test.describe( 'Image Generation Experiment', () => {
 		).not.toBeVisible();
 
 		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php' );
+		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
 
 		// Ensure there's not a Generate Image link in the sidebar.
 		await expect(

@@ -43,10 +43,15 @@ module.exports = {
 			'src/experiments/excerpt-generation',
 			'index.tsx'
 		),
-		'experiments/image-generation': path.resolve(
+		'features/image-generation': path.resolve(
 			process.cwd(),
-			'src/experiments/image-generation',
+			'src/features/image-generation',
 			'index.ts'
+		),
+		'experiments/meta-description': path.resolve(
+			process.cwd(),
+			'src/experiments/meta-description',
+			'index.tsx'
 		),
 		'experiments/review-notes': path.resolve(
 			process.cwd(),
@@ -72,6 +77,11 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/alt-text-generation',
 			'media.ts'
+		),
+		'experiments/alt-text-generation-bulk': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'bulk.ts'
 		),
 	},
 

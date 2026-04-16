@@ -74,18 +74,6 @@
             "owned_by": "system"
         },
         {
-            "id": "dall-e-3",
-            "object": "model",
-            "created": 1698785189,
-            "owned_by": "system"
-        },
-        {
-            "id": "dall-e-2",
-            "object": "model",
-            "created": 1698798177,
-            "owned_by": "system"
-        },
-        {
             "id": "gpt-4-1106-preview",
             "object": "model",
             "created": 1698957206,
