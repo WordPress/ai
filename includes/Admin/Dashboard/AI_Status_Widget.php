@@ -148,7 +148,7 @@ class AI_Status_Widget {
 						<?php endforeach; ?>
 					</ul>
 					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-connectors.php' ) ); ?>">
-						<?php esc_html_e( 'Manage', 'ai' ); ?>
+						<?php esc_html_e( 'Manage Connectors', 'ai' ); ?>
 					</a>
 				</div>
 
@@ -167,7 +167,7 @@ class AI_Status_Widget {
 						<?php endforeach; ?>
 					</ul>
 					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-wp-admin' ) ); ?>">
-						<?php esc_html_e( 'Manage', 'ai' ); ?>
+						<?php esc_html_e( 'Manage Features', 'ai' ); ?>
 					</a>
 				</div>
 
@@ -186,7 +186,7 @@ class AI_Status_Widget {
 						<?php endforeach; ?>
 					</ul>
 					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-wp-admin' ) ); ?>">
-						<?php esc_html_e( 'Manage', 'ai' ); ?>
+						<?php esc_html_e( 'Manage Experiments', 'ai' ); ?>
 					</a>
 				</div>
 			</div>

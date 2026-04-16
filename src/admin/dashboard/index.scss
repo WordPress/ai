@@ -21,10 +21,10 @@
 		}
 	}
 
-	/* Two-column layout for status mode */
+	/* Three-column layout for status mode */
 	&__columns {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 1rem;
 	}
 
@@ -45,7 +45,6 @@
 
 	&__list-item {
 		display: flex;
-		align-items: center;
 		gap: 0.375rem;
 		padding: 0.1875rem 0;
 
@@ -53,6 +52,7 @@
 			font-size: 1rem;
 			width: 1rem;
 			height: 1rem;
+			margin-top: 2px;
 		}
 	}
 
