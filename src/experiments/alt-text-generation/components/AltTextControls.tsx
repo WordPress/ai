@@ -41,7 +41,7 @@ function getButtonLabel(
 		return __( 'Generating…', 'ai' );
 	}
 	if ( hasExistingAlt ) {
-		return __( 'Re-generate Alt Text', 'ai' );
+		return __( 'Regenerate Alt Text', 'ai' );
 	}
 	return __( 'Generate Alt Text', 'ai' );
 }
