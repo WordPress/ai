@@ -126,8 +126,9 @@ class AI_Status_Widget {
 	 *
 	 */
 	private function render_status(): void {
-		$connectors = $this->get_ai_connectors();
-		$features   = $this->registry->get_all_features();
+		$connectors            = $this->get_ai_connectors();
+		$stable_features       = $this->registry->get_features_by_stability( 'stable' );
+		$experimental_features = $this->registry->get_features_by_stability( 'experimental' );
 		?>
 
 		<div class="ai-dashboard-status">
@@ -154,7 +155,7 @@ class AI_Status_Widget {
 				<div class="ai-dashboard-status__column">
 					<h4 class="ai-dashboard-status__section-title"><?php esc_html_e( 'Features', 'ai' ); ?></h4>
 					<ul class="ai-dashboard-status__list">
-						<?php foreach ( $features as $feature ) : ?>
+						<?php foreach ( $stable_features as $feature ) : ?>
 							<li class="ai-dashboard-status__list-item">
 								<?php if ( $feature->is_enabled() ) : ?>
 									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success"></span>
@@ -165,7 +166,26 @@ class AI_Status_Widget {
 							</li>
 						<?php endforeach; ?>
 					</ul>
-					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai' ) ); ?>">
+					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-wp-admin' ) ); ?>">
+						<?php esc_html_e( 'Manage', 'ai' ); ?>
+					</a>
+				</div>
+
+				<div class="ai-dashboard-status__column">
+					<h4 class="ai-dashboard-status__section-title"><?php esc_html_e( 'Experiments', 'ai' ); ?></h4>
+					<ul class="ai-dashboard-status__list">
+						<?php foreach ( $experimental_features as $feature ) : ?>
+							<li class="ai-dashboard-status__list-item">
+								<?php if ( $feature->is_enabled() ) : ?>
+									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success"></span>
+								<?php else : ?>
+									<span class="dashicons dashicons-no ai-dashboard-status__icon--error"></span>
+								<?php endif; ?>
+								<?php echo esc_html( $feature->get_label() ); ?>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-wp-admin' ) ); ?>">
 						<?php esc_html_e( 'Manage', 'ai' ); ?>
 					</a>
 				</div>
