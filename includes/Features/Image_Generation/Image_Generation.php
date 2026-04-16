@@ -1,13 +1,13 @@
 <?php
 /**
- * Image generation experiment implementation.
+ * Image generation feature implementation.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Experiments\Image_Generation;
+namespace WordPress\AI\Features\Image_Generation;
 
 use WordPress\AI\Abilities\Image\Generate_Image as Image_Generation_Ability;
 use WordPress\AI\Abilities\Image\Generate_Image_Prompt as Generate_Image_Prompt_Ability;
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Image generation experiment.
+ * Image generation feature.
  *
  * @since 0.2.0
  */
@@ -219,8 +219,8 @@ class Image_Generation extends Abstract_Feature {
 	 * @since 0.4.0
 	 */
 	private function enqueue_shared_assets(): void {
-		Asset_Loader::enqueue_script( 'image_generation', 'experiments/image-generation' );
-		Asset_Loader::enqueue_style( 'image_generation', 'experiments/image-generation' );
+		Asset_Loader::enqueue_script( 'image_generation', 'features/image-generation' );
+		Asset_Loader::enqueue_style( 'image_generation', 'features/image-generation' );
 		Asset_Loader::localize_script(
 			'image_generation',
 			'ImageGenerationData',

@@ -24,9 +24,13 @@ export default function SummarizationPlugin() {
 	const { isSummarizing, hasSummary, handleSummarize } =
 		useSummaryGeneration();
 
-	const buttonLabel = hasSummary
-		? __( 'Re-generate Summary', 'ai' )
-		: __( 'Generate Summary', 'ai' );
+	let buttonLabel: string = __( 'Generate Summary', 'ai' );
+
+	if ( isSummarizing ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasSummary ) {
+		buttonLabel = __( 'Re-generate Summary', 'ai' );
+	}
 	const buttonDescription = hasSummary
 		? __(
 				'This will update the AI generated summary block with a new summary of the content of this post.',
