@@ -2,7 +2,13 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
+import {
+	Button,
+	ExternalLink,
+	Notice,
+	Spinner,
+	ToggleControl,
+} from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
@@ -798,24 +804,14 @@ function AISettingsPage() {
 				'ai'
 			) }
 			actions={
-				<>
-					<Button
-						variant="secondary"
-						href="https://github.com/WordPress/ai/tree/develop/docs"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+				<div className="ai-settings-page__actions">
+					<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
 						{ __( 'Docs', 'ai' ) }
-					</Button>
-					<Button
-						variant="primary"
-						href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					</ExternalLink>
+					<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
 						{ __( 'Contribute', 'ai' ) }
-					</Button>
-				</>
+					</ExternalLink>
+				</div>
 			}
 		>
 			<div className="ai-settings-page">

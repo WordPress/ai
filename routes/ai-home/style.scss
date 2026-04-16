@@ -10,13 +10,33 @@
 	}
 
 	.dataforms-layouts-card__field-header-label {
-		font-size: 0.9rem;
+		font-size: 1rem;
 		font-weight: 600;
+	}
+
+	.dataforms-layouts-card__field-description {
+		margin-bottom: 36px;
 	}
 }
 
 .ai-settings-page .components-notice {
 	margin: 0 0 24px;
+}
+
+.ai-settings-page__actions {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.ai-settings-page__link {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+
+	svg {
+		fill: currentColor;
+	}
 }
 
 .ai-feature-settings-form {
