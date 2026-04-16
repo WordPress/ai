@@ -9,10 +9,22 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnectors,
 	disableExperiments,
+	disableExperiment,
+	enableExperiment,
 	enableExperiments,
 	visitConnectorsPage,
 	visitSettingsPage,
+	enableAllExperimentsInGroup,
+	disableAllExperimentsInGroup,
+	getExperimentTogglesInGroup,
+	getEnableAllButton,
+	getDisableAllButton,
 } = require( '../../utils/helpers' );
+
+const EXPERIMENT_GROUPS = {
+	editor: 'Editor Experiments',
+	admin: 'Admin Experiments',
+};
 
 test.describe( 'Plugin settings', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
@@ -84,14 +96,14 @@ test.describe( 'Plugin settings', () => {
 		await disableExperiments( admin, page );
 
 		// Ensure global AI setting is disabled.
-		await expect(
-			page.getByRole( 'checkbox', { name: 'Enable AI' } )
-		).not.toBeChecked();
+		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
 
-		// Ensure feature checkboxes are disabled when AI is disabled.
+		// Ensure feature toggles are disabled when AI is disabled.
 		await expect(
 			page
-				.locator( '#ai-wp-admin-app input[type="checkbox"]:disabled' )
+				.locator(
+					'#ai-wp-admin-app .components-form-toggle.is-disabled'
+				)
 				.first()
 		).toBeVisible();
 
@@ -99,14 +111,329 @@ test.describe( 'Plugin settings', () => {
 		await enableExperiments( admin, page );
 
 		// Ensure global AI setting is enabled.
-		await expect(
-			page.getByRole( 'checkbox', { name: 'Enable AI' } )
-		).toBeChecked();
+		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked();
 
 		// Ensure we see the editor experiments section.
-		await expect( page.getByText( 'Editor Experiments' ) ).toBeVisible();
+		await expect(
+			page.getByText( 'Editor Experiments', { exact: true } )
+		).toBeVisible();
 
 		// Ensure we see the admin experiments section.
-		await expect( page.getByText( 'Admin Experiments' ) ).toBeVisible();
+		await expect(
+			page.getByText( 'Admin Experiments', { exact: true } )
+		).toBeVisible();
+	} );
+
+	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
+		admin,
+		page,
+	} ) => {
+		// Setup: Enable AI.
+		await enableExperiments( admin, page );
+
+		// Ensure the other experiment is disabled to start.
+		await disableExperiment( admin, page, 'Title Generation' );
+
+		// Setup: Enable Content Classification.
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Visit settings page fresh to ensure no stale snackbars.
+		await visitSettingsPage( admin );
+
+		// Wait for Content Classification inline settings to render.
+		const strategySelect = page.getByLabel( 'Taxonomy strategy' );
+		await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
+
+		// Change the strategy to create a pending local edit.
+		const originalValue = await strategySelect.inputValue();
+		const newValue =
+			originalValue === 'existing_only' ? 'allow_new' : 'existing_only';
+		await strategySelect.selectOption( newValue );
+
+		// Verify the Save button appears (confirms pending edits exist).
+		const saveButton = page
+			.locator( '.ai-feature-settings-form' )
+			.getByRole( 'button', { name: 'Save' } );
+		await expect( saveButton ).toBeVisible();
+
+		// Toggle another experiment to trigger auto-save (changes siteSettings).
+		const otherToggle = page.getByLabel( 'Title Generation' );
+		await otherToggle.click();
+
+		// Wait for the auto-save snackbar to confirm siteSettings changed.
+		await expect(
+			page.locator( '.components-snackbar__content', {
+				hasText: 'Title Generation enabled.',
+			} )
+		).toBeVisible();
+
+		// Assert: inline settings must still show the pending edit (not reset).
+		await expect( strategySelect ).toHaveValue( newValue );
+		await expect( saveButton ).toBeVisible();
+	} );
+
+	test( 'Can turn on all experiments in a group', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled first.
+		await enableExperiments( admin, page );
+
+		// Ensure all experiments are disabled to start.
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Find the "Enable all" button.
+		const enableAllButton = getEnableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		await expect( enableAllButton ).toBeVisible( { timeout: 10000 } );
+
+		// Ensure button is enabled.
+		await expect( enableAllButton ).toBeEnabled();
+
+		// Click the button to enable all experiments.
+		await enableAllButton.click();
+
+		// Verify the success message appears with the count.
+		const experimentToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		const count = experimentToggles.length;
+
+		await expect(
+			page.locator( '.components-snackbar__content', {
+				hasText: `${ count } experiments enabled`,
+			} )
+		).toBeVisible();
+
+		// Verify all experiments in the group are now enabled.
+		for ( const toggle of experimentToggles ) {
+			await expect( toggle ).toBeChecked();
+		}
+	} );
+
+	test( 'Can turn off all experiments in a group', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled first.
+		await enableExperiments( admin, page );
+
+		// First enable all experiments.
+		await enableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Find the "Disable all" button.
+		const disableAllButton = getDisableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		await expect( disableAllButton ).toBeVisible();
+
+		// Ensure button is enabled.
+		await expect( disableAllButton ).toBeEnabled();
+
+		// Click the button to disable all experiments.
+		await disableAllButton.click();
+
+		// Verify the success message appears with the count.
+		const experimentToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		const count = experimentToggles.length;
+
+		await expect(
+			page.locator( '.components-snackbar__content', {
+				hasText: `${ count } experiments disabled`,
+			} )
+		).toBeVisible();
+
+		// Verify all experiments in the group are now disabled.
+		for ( const toggle of experimentToggles ) {
+			await expect( toggle ).not.toBeChecked();
+		}
+	} );
+
+	test( 'Cannot bulk manage experiments when global AI is disabled', async ( {
+		admin,
+		page,
+	} ) => {
+		// Disable global AI.
+		await disableExperiments( admin, page );
+
+		// Verify both buttons are disabled.
+		const enableAllButton = getEnableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		const disableAllButton = getDisableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		await expect( enableAllButton ).toBeDisabled();
+		await expect( disableAllButton ).toBeDisabled();
+	} );
+
+	test( 'Each experiment group has its own bulk action buttons', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled.
+		await enableExperiments( admin, page );
+
+		// Verify all groups have enable/disable all buttons.
+		const editorEnableAll = getEnableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		const adminEnableAll = getEnableAllButton(
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
+
+		await expect( editorEnableAll ).toBeVisible();
+		await expect( adminEnableAll ).toBeVisible();
+
+		// Enable all Editor Experiments.
+		await editorEnableAll.click();
+		await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+
+		// Verify Editor Experiments are enabled.
+		const editorToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		for ( const toggle of editorToggles ) {
+			await expect( toggle ).toBeChecked();
+		}
+
+		// Admin Experiments should remain unchanged (disabled).
+		const adminToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
+		for ( const toggle of adminToggles ) {
+			await expect( toggle ).not.toBeChecked();
+		}
+	} );
+
+	test( 'Enable all button is disabled when all experiments are already enabled', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled.
+		await enableExperiments( admin, page );
+
+		// Enable all experiments in the group.
+		await enableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Find the "Enable all" button.
+		const enableAllButton = getEnableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Verify the "Enable all" button is disabled since all are already enabled.
+		await expect( enableAllButton ).toBeDisabled();
+
+		// Verify the "Disable all" button is enabled.
+		const disableAllButton = getDisableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		await expect( disableAllButton ).toBeEnabled();
+	} );
+
+	test( 'Disable all button is disabled when all experiments are already disabled', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled.
+		await enableExperiments( admin, page );
+
+		// Disable all experiments in the group.
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Find the "Disable all" button.
+		const disableAllButton = getDisableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Verify the "Disable all" button is disabled since all are already disabled.
+		await expect( disableAllButton ).toBeDisabled();
+
+		// Verify the "Enable all" button is enabled.
+		const enableAllButton = getEnableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		await expect( enableAllButton ).toBeEnabled();
+	} );
+
+	test( 'Both buttons are enabled when experiments are in mixed state', async ( {
+		admin,
+		page,
+	} ) => {
+		// Ensure AI is enabled.
+		await enableExperiments( admin, page );
+
+		// Disable all experiments first.
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Get all experiment toggles in the group.
+		const experimentToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		// Enable just the first experiment to create a mixed state.
+		if ( experimentToggles.length > 0 ) {
+			await experimentToggles[ 0 ].check();
+			await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+		}
+
+		// Both buttons should be enabled in mixed state.
+		const enableAllButton = getEnableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		const disableAllButton = getDisableAllButton(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		await expect( enableAllButton ).toBeEnabled();
+		await expect( disableAllButton ).toBeEnabled();
 	} );
 } );
