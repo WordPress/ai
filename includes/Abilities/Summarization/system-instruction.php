@@ -35,4 +35,5 @@ The summary should follow these requirements:
 - Provide a high-level overview, not a list of details
 - Do not start with "This article is about..." or "This post explains..." or "This content describes..." or any other generic introduction
 - Must reflect the actual content, not generic filler text
+- Ensure the summary you return matches the language of the content you are given. For example, if the content is in English, the summary should be in English. If the content is in Spanish, the summary should be in Spanish
 INSTRUCTION;
