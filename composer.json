@@ -20,7 +20,8 @@
     "szepeviktor/phpstan-wordpress": "^2.0.2",
     "wp-coding-standards/wpcs": "^3.2.0",
     "wp-phpunit/wp-phpunit": "^6.9",
-    "yoast/phpunit-polyfills": "^4.0"
+    "yoast/phpunit-polyfills": "^4.0",
+    "php-stubs/wp-cli-stubs": "^2.12"
   },
   "autoload": {
     "psr-4": {

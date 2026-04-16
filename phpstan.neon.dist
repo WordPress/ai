@@ -17,6 +17,8 @@ parameters:
 		phpVersion:
 			min: 70400
 			max: 80400
+		scanFiles:
+				- vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
 		bootstrapFiles:
 				- ai.php
 		paths:
@@ -28,6 +30,7 @@ parameters:
 			- '#WP_AI_Client_[A-Za-z0-9_]+#'
 			- '#WordPress\\AiClient\\#'
 			- '#Function wp_get_connectors not found\.#'
+			- '#class cli\\progress\\Bar#'
 		excludePaths:
 			analyse:
 				- tests/

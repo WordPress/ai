@@ -71,8 +71,8 @@ class Alt_Text_Command {
 	 *
 	 * @when after_wp_load
 	 *
-	 * @param array $args       Positional arguments.
-	 * @param array $assoc_args Associative arguments.
+	 * @param array<int, string> $args       Positional arguments.
+	 * @param array<string, mixed> $assoc_args Associative arguments.
 	 */
 	public function generate( $args, $assoc_args ): void {
 		$this->ensure_admin_user();
@@ -80,10 +80,12 @@ class Alt_Text_Command {
 		$ability = wp_get_ability( 'ai/alt-text-generation' );
 		if ( ! $ability ) {
 			WP_CLI::error( 'The ai/alt-text-generation ability is not registered. Make sure the Alt Text Generation experiment is enabled in Settings > AI.' );
+			return; // WP_CLI::error() exits, but this satisfies static analysis.
 		}
 
 		if ( ! has_valid_ai_credentials() ) {
 			WP_CLI::error( 'No valid AI credentials found. Configure a provider in Settings > AI.' );
+			return; // WP_CLI::error() exits, but this satisfies static analysis.
 		}
 
 		$batch_size = (int) Utils\get_flag_value( $assoc_args, 'batch-size', 20 );
@@ -183,7 +185,10 @@ class Alt_Text_Command {
 
 		$query = new \WP_Query( $query_args );
 
-		return array_map( 'absint', $query->posts );
+		/** @var int[] $ids */
+		$ids = $query->posts;
+
+		return $ids;
 	}
 
 	/**
@@ -209,7 +214,7 @@ class Alt_Text_Command {
 	/**
 	 * Processes images through the alt text generation ability.
 	 *
-	 * @param object $ability        The alt text generation ability.
+	 * @param \WP_Ability $ability    The alt text generation ability.
 	 * @param int[]  $attachment_ids Array of attachment IDs.
 	 * @param int    $batch_size     Number of images per batch.
 	 * @param int    $delay_ms       Delay in milliseconds between API calls.
@@ -224,7 +229,7 @@ class Alt_Text_Command {
 			'failed'     => 0,
 		);
 		$progress = Utils\make_progress_bar( 'Generating alt text', count( $attachment_ids ) );
-		$batches  = array_chunk( $attachment_ids, $batch_size );
+		$batches  = array_chunk( $attachment_ids, max( 1, $batch_size ) );
 
 		foreach ( $batches as $batch ) {
 			foreach ( $batch as $id ) {
