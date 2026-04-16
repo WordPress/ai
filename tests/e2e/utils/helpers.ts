@@ -258,11 +258,9 @@ export const disableExperiment = async (
 	if ( await showcaseCard.isVisible() ) {
 		// Already disabled if there's no "Enabled" badge.
 		if (
-			! (
-				await showcaseCard
-					.locator( '.ai-showcase-card__enabled-badge' )
-					.isVisible()
-			)
+			! ( await showcaseCard
+				.locator( '.ai-showcase-card__enabled-badge' )
+				.isVisible() )
 		) {
 			return;
 		}
