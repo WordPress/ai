@@ -39,8 +39,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
-		$loader->initialize_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'image-generation' );
 		$this->assertInstanceOf( Image_Generation::class, $experiment, 'Image generation experiment should be registered in the registry.' );
@@ -70,7 +69,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'image-generation', $experiment->get_id() );
 		$this->assertEquals( 'Image Generation and Editing', $experiment->get_label() );
-		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
+		$this->assertEquals( Experiment_Category::OTHER, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 
@@ -80,11 +79,6 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.3.0
 	 */
 	public function test_experiment_registers_abilities() {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			$this->markTestSkipped( 'WP_Ability class not available' );
-			return;
-		}
-
 		// Expect warnings about already registered abilities from other tests.
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
 

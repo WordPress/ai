@@ -20,4 +20,5 @@ The excerpt suggestion should follow these requirements:
 - Should be a complete, coherent summary that captures the main points and key information from the content
 - Must reflect the actual content and context accurately, not generic summaries or clickbait
 - Should be self-contained and readable on its own, providing enough context for readers to understand the topic without reading the full article
+- Ensure the excerpt you return matches the language of the content you are given. For example, if the content is in English, the excerpt should be in English. If the content is in Spanish, the excerpt should be in Spanish
 INSTRUCTION;

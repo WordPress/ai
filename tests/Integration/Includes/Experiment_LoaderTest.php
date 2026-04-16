@@ -132,7 +132,11 @@ class LoaderTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_register_features() {
-		$this->loader->register_features();
+		// Access the protected method to register features.
+		$reflection = new \ReflectionClass( Loader::class );
+		$method     = $reflection->getMethod( 'register_features' );
+		$method->setAccessible( true );
+		$method->invoke( $this->loader );
 
 		$this->assertTrue(
 			$this->registry->has_feature( 'abilities-explorer' ),
@@ -181,7 +185,7 @@ class LoaderTest extends WP_UnitTestCase {
 		$image_experiment = $this->registry->get_feature( 'image-generation' );
 		$this->assertNotNull( $image_experiment, 'Image generation experiment should exist' );
 		$this->assertEquals( 'image-generation', $image_experiment->get_id() );
-		$this->assertEquals( Experiment_Category::EDITOR, $image_experiment->get_category() );
+		$this->assertEquals( Experiment_Category::OTHER, $image_experiment->get_category() );
 
 		$review_notes_experiment = $this->registry->get_feature( 'review-notes' );
 		$this->assertNotNull( $review_notes_experiment, 'Review Notes experiment should exist' );
@@ -215,7 +219,7 @@ class LoaderTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->loader->register_features();
+		$this->loader->init();
 
 		$this->assertTrue( $hook_fired, 'wpai_register_features hook should fire' );
 		$this->assertSame(
@@ -239,7 +243,7 @@ class LoaderTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->loader->register_features();
+		$this->loader->init();
 
 		$this->assertTrue(
 			$this->registry->has_feature( 'mock-experiment' ),
@@ -260,7 +264,7 @@ class LoaderTest extends WP_UnitTestCase {
 		$experiment = new Mock_Experiment();
 		$this->registry->register_feature( $experiment );
 
-		$this->loader->initialize_features();
+		$this->invoke_initialize_features();
 
 		$this->assertTrue(
 			$experiment->register_called,
@@ -281,14 +285,13 @@ class LoaderTest extends WP_UnitTestCase {
 		$experiment = new Mock_Experiment();
 		$this->registry->register_feature( $experiment );
 
-		$this->loader->initialize_features();
-		$this->assertTrue( $this->loader->is_initialized(), 'Should be initialized' );
+		$this->invoke_initialize_features();
 
 		// Reset the flag to track second call.
 		$experiment->register_called = false;
 
 		// Try to initialize again.
-		$this->loader->initialize_features();
+		$this->invoke_initialize_features();
 
 		$this->assertFalse(
 			$experiment->register_called,
@@ -314,7 +317,7 @@ class LoaderTest extends WP_UnitTestCase {
 		$experiment = new Mock_Experiment();
 		$this->registry->register_feature( $experiment );
 
-		$this->loader->initialize_features();
+		$this->invoke_initialize_features();
 
 		$this->assertTrue( $hook_fired, 'wpai_features_initialized hook should fire' );
 	}
@@ -327,22 +330,26 @@ class LoaderTest extends WP_UnitTestCase {
 	public function test_wpai_features_initialized_fires_before_initialized_flag() {
 		$initialized_during_hook = null;
 
+		$reflection = new \ReflectionClass( $this->loader );
+		$property   = $reflection->getProperty( 'initialized' );
+		$property->setAccessible( true );
+
 		add_action(
 			'wpai_features_initialized',
-			function () use ( &$initialized_during_hook ) {
-				$initialized_during_hook = $this->loader->is_initialized();
+			function () use ( &$initialized_during_hook, $property ) {
+				$initialized_during_hook = $property->getValue( $this->loader );
+				$this->assertFalse(
+					$initialized_during_hook,
+					'Loader should not be marked initialized during wpai_features_initialized hook'
+				);
 			}
 		);
 
-		$this->loader->initialize_features();
+		$this->invoke_initialize_features();
 
 		$this->assertFalse(
 			$initialized_during_hook,
 			'Loader should not be marked initialized during hook'
-		);
-		$this->assertTrue(
-			$this->loader->is_initialized(),
-			'Loader should be initialized after hook'
 		);
 	}
 
@@ -358,7 +365,7 @@ class LoaderTest extends WP_UnitTestCase {
 		// Disable the experiment.
 		add_filter( 'wpai_feature_mock-experiment_enabled', '__return_false' );
 
-		$this->loader->initialize_features();
+		$this->invoke_initialize_features();
 
 		$this->assertFalse(
 			$experiment->register_called,
@@ -379,7 +386,7 @@ class LoaderTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->loader->register_features();
+		$this->loader->init();
 	}
 
 	/**
@@ -395,7 +402,7 @@ class LoaderTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->loader->register_features();
+		$this->loader->init();
 	}
 
 	/**
@@ -413,6 +420,16 @@ class LoaderTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->loader->register_features();
+		$this->loader->init();
+	}
+
+	/**
+	 * Calls the private Loader::initialize_features method via reflection.
+	 */
+	private function invoke_initialize_features(): void {
+		$reflection = new \ReflectionClass( Loader::class );
+		$method     = $reflection->getMethod( 'initialize_features' );
+		$method->setAccessible( true );
+		$method->invoke( $this->loader );
 	}
 }

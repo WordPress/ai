@@ -1,9 +1,9 @@
 {
   "$schema": "https://playground.wordpress.net/blueprint-schema.json",
-  "landingPage": "/wp-admin/options-general.php?page=ai",
+  "landingPage": "/wp-admin/options-general.php?page=ai-wp-admin",
   "preferredVersions": {
     "php": "7.4",
-    "wp": "latest"
+    "wp": "beta"
   },
   "features": {
     "networking": true

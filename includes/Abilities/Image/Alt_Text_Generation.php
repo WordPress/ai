@@ -36,7 +36,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Model output token that means the correct alternative text is empty (alt="").
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var string
 	 */
@@ -212,12 +212,13 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @return string|\WP_Error The generated alt text or WP_Error on failure.
 	 */
 	protected function generate_alt_text( array $image_reference, string $context = '', string $image_meta = '' ) {
-		$result = wp_ai_client_prompt( $this->build_prompt( $context, $image_meta ) )
-			->with_file( $image_reference['reference'] )
-			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
-			->using_temperature( 0.3 )
-			->using_model_preference( ...get_preferred_vision_models() )
-			->generate_text();
+		$prompt_builder = $this->get_prompt_builder( $this->build_prompt( $context, $image_meta ), $image_reference['reference'] );
+
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
+		}
+
+		$result = $prompt_builder->generate_text();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -226,11 +227,6 @@ class Alt_Text_Generation extends Abstract_Ability {
 		// Clean up the result.
 		$alt_text = trim( $result );
 		$alt_text = trim( $alt_text, '"\'.' );
-
-		// Truncate if too long.
-		if ( mb_strlen( $alt_text, 'UTF-8' ) > self::MAX_ALT_TEXT_LENGTH ) {
-			$alt_text = mb_substr( $alt_text, 0, self::MAX_ALT_TEXT_LENGTH - 3, 'UTF-8' ) . '...';
-		}
 
 		return $alt_text;
 	}
@@ -388,6 +384,28 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
+	 * Gets a prompt builder for generating alt text.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $prompt The prompt to generate alt text from.
+	 * @param string $reference The reference image.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $prompt, string $reference ) {
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->with_file( $reference )
+			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
+			->using_temperature( 0.3 )
+			->using_model_preference( ...get_preferred_vision_models() );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Alt text generation failed. Please ensure you have a connected provider that supports both text generation and vision capabilities.', 'ai' )
+		);
+	}
+
+	/**
 	 * Builds the prompt for alt text generation.
 	 *
 	 * @since 0.3.0
@@ -399,14 +417,22 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function build_prompt( string $context = '', string $image_meta = '' ): string {
 		$prompt = __( 'Generate alt text for this image.', 'ai' );
 
+		// If we have additional context, add it to the prompt.
+		if ( ! empty( $context ) ) {
+			$prompt .= ' ' . __( 'Ensure the alt text you return matches the language of the content in the <additional-context> tag.', 'ai' );
+
+			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
+		} else {
+			$prompt .= ' ' . sprintf(
+				/* translators: %s: locale code, e.g. pl_PL */
+				__( 'Ensure the alt text you return matches the language of this locale: %s.', 'ai' ),
+				get_locale()
+			);
+		}
+
 		// If we have image block usage metadata, add it to the prompt.
 		if ( ! empty( $image_meta ) ) {
 			$prompt .= "\n\n<image-meta>" . $image_meta . '</image-meta>';
-		}
-
-		// If we have additional context, add it to the prompt.
-		if ( ! empty( $context ) ) {
-			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
 		return $prompt;

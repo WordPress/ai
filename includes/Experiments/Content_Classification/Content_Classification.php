@@ -25,14 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Provides AI-powered suggestions for post taxonomies
  * based on a comprehensive analysis of the post content.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Content_Classification extends Abstract_Feature {
 
 	/**
 	 * The default taxonomy strategy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var string
 	 */
@@ -41,7 +41,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * The strategy that allows new term suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var string
 	 */
@@ -50,7 +50,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * The default maximum number of suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var int
 	 */
@@ -59,7 +59,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * The minimum allowed number of suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var int
 	 */
@@ -68,7 +68,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * The maximum allowed number of suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var int
 	 */
@@ -87,7 +87,7 @@ class Content_Classification extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Content Classification', 'ai' ),
-			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis.', 'ai' ),
+			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -103,7 +103,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -119,7 +119,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
@@ -161,7 +161,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * Registers experiment-specific settings.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function register_settings(): void {
 		register_setting(
@@ -235,7 +235,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * Sanitizes the strategy setting.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param mixed $value The value to sanitize.
 	 * @return string The sanitized strategy value.
@@ -249,7 +249,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * Sanitizes the max suggestions setting.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param mixed $value The value to sanitize.
 	 * @return int The sanitized max suggestions value.
@@ -263,7 +263,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * Gets the strategy to use for content classification.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return string The strategy to use.
 	 */
@@ -273,7 +273,7 @@ class Content_Classification extends Abstract_Feature {
 		/**
 		 * Filters the strategy to use for content classification.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param string $strategy The strategy to use.
 		 * @return string The filtered strategy.
@@ -287,7 +287,7 @@ class Content_Classification extends Abstract_Feature {
 	/**
 	 * Gets the maximum number of suggestions to generate for content classification.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return int The maximum number of suggestions to generate.
 	 */
@@ -297,7 +297,7 @@ class Content_Classification extends Abstract_Feature {
 		/**
 		 * Filters the maximum number of suggestions to generate for content classification.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param int $max_suggestions The maximum number of suggestions to generate.
 		 * @return int The filtered max suggestions.
