@@ -90,9 +90,9 @@ module.exports = {
 			'src/experiments/excerpt-generation',
 			'index.tsx'
 		),
-		'experiments/image-generation': path.resolve(
+		'features/image-generation': path.resolve(
 			process.cwd(),
-			'src/experiments/image-generation',
+			'src/features/image-generation',
 			'index.ts'
 		),
 		'experiments/meta-description': path.resolve(
