@@ -139,6 +139,66 @@ class Test_Empty_Category_Experiment extends Abstract_Feature {
 }
 
 /**
+ * Test feature with custom settings fields.
+ *
+ * @since 0.7.0
+ */
+class Test_Feature_With_Settings extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-with-settings';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test With Settings',
+			'description' => 'Test feature with custom settings fields',
+			'category'    => Experiment_Category::EDITOR,
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register(): void {}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_settings_fields(): array {
+		return array(
+			array(
+				'id'       => 'color',
+				'label'    => 'Color',
+				'type'     => 'text',
+				'default'  => 'blue',
+				'elements' => array(
+					array(
+						'value' => 'blue',
+						'label' => 'Blue',
+					),
+					array(
+						'value' => 'red',
+						'label' => 'Red',
+					),
+				),
+			),
+			array(
+				'id'      => 'count',
+				'label'   => 'Count',
+				'type'    => 'integer',
+				'default' => 3,
+			),
+		);
+	}
+}
+
+/**
  * Abstract_Feature test case.
  *
  * @since 0.4.0
@@ -245,7 +305,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_get_stability_default() {
 		$experiment = new Test_Uncategorized_Experiment();
@@ -253,10 +313,99 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function test_get_stability_custom() {
 		$experiment = new Mock_Custom_Stability_Experiment();
 		$this->assertEquals( 'stable', $experiment->get_stability(), 'Custom stability should be returned from metadata' );
+	}
+
+	/**
+	 * Tests that get_settings_fields() returns an empty array by default.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_settings_fields_returns_empty_by_default(): void {
+		$experiment = new Test_Uncategorized_Experiment();
+
+		$this->assertSame(
+			array(),
+			$experiment->get_settings_fields(),
+			'get_settings_fields() should return an empty array by default'
+		);
+	}
+
+	/**
+	 * Tests that get_settings_fields_metadata() returns an empty array when no fields are defined.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_settings_fields_metadata_returns_empty_when_no_fields(): void {
+		$experiment = new Test_Uncategorized_Experiment();
+
+		$this->assertSame(
+			array(),
+			$experiment->get_settings_fields_metadata(),
+			'get_settings_fields_metadata() should return an empty array when no fields are defined'
+		);
+	}
+
+	/**
+	 * Tests that get_settings_fields() returns declared fields.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_settings_fields_returns_declared_fields(): void {
+		$feature = new Test_Feature_With_Settings();
+		$fields  = $feature->get_settings_fields();
+
+		$this->assertCount( 2, $fields, 'Should return two settings fields' );
+		$this->assertSame( 'color', $fields[0]['id'], 'First field should have short id "color"' );
+		$this->assertSame( 'count', $fields[1]['id'], 'Second field should have short id "count"' );
+		$this->assertSame( 'text', $fields[0]['type'] );
+		$this->assertSame( 'integer', $fields[1]['type'] );
+	}
+
+	/**
+	 * Tests that get_settings_fields_metadata() resolves short IDs to full option names.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_settings_fields_metadata_resolves_option_names(): void {
+		$feature = new Test_Feature_With_Settings();
+		$fields  = $feature->get_settings_fields_metadata();
+
+		$this->assertCount( 2, $fields, 'Should return two settings fields' );
+		$this->assertSame(
+			'wpai_feature_test-with-settings_field_color',
+			$fields[0]['id'],
+			'First field id should be resolved to full option name'
+		);
+		$this->assertSame(
+			'wpai_feature_test-with-settings_field_count',
+			$fields[1]['id'],
+			'Second field id should be resolved to full option name'
+		);
+	}
+
+	/**
+	 * Tests that get_settings_fields_metadata() preserves other field properties.
+	 *
+	 * @since 0.7.0
+	 */
+	public function test_get_settings_fields_metadata_preserves_field_properties(): void {
+		$feature = new Test_Feature_With_Settings();
+		$fields  = $feature->get_settings_fields_metadata();
+
+		$this->assertSame( 'Color', $fields[0]['label'] );
+		$this->assertSame( 'text', $fields[0]['type'] );
+		$this->assertSame( 'blue', $fields[0]['default'] );
+		$this->assertCount( 2, $fields[0]['elements'] );
+		$this->assertSame( 'blue', $fields[0]['elements'][0]['value'] );
+		$this->assertSame( 'red', $fields[0]['elements'][1]['value'] );
+
+		$this->assertSame( 'Count', $fields[1]['label'] );
+		$this->assertSame( 'integer', $fields[1]['type'] );
+		$this->assertSame( 3, $fields[1]['default'] );
 	}
 }

@@ -5,7 +5,12 @@
 /**
  * WordPress dependencies
  */
-import { Button, TextareaControl, Spinner } from '@wordpress/components';
+import {
+	Button,
+	TextareaControl,
+	Spinner,
+	Notice,
+} from '@wordpress/components';
 import { InspectorControls } from '@wordpress/block-editor';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -57,6 +62,7 @@ export function AltTextControls( {
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 	const [ generatedAlt, setGeneratedAlt ] = useState< string | null >( null );
+	const [ isDecorative, setIsDecorative ] = useState< boolean >( false );
 
 	// Don't show controls if there's no image.
 	if ( ! attachmentId && ! imageUrl ) {
@@ -72,6 +78,7 @@ export function AltTextControls( {
 	const handleGenerate = async () => {
 		setIsGenerating( true );
 		setGeneratedAlt( null );
+		setIsDecorative( false );
 
 		// Clear any previous notices.
 		( dispatch( noticesStore ) as any ).removeNotice(
@@ -84,9 +91,24 @@ export function AltTextControls( {
 				attachmentId,
 				imageUrl,
 				content,
-				clientId
+				clientId,
+				{
+					linkDestination: attributes?.linkDestination,
+					href: attributes?.href,
+					linkTarget: attributes?.linkTarget,
+					caption:
+						typeof attributes?.caption === 'string'
+							? attributes.caption
+							: ( attributes?.caption as any )?.text,
+				}
 			);
-			setGeneratedAlt( result );
+
+			if ( result.is_decorative ) {
+				setIsDecorative( true );
+				setGeneratedAlt( '' );
+			} else {
+				setGeneratedAlt( result.alt_text );
+			}
 		} catch ( err: any ) {
 			const errorMessage =
 				err?.message ||
@@ -107,10 +129,13 @@ export function AltTextControls( {
 	 * Applies the generated alt text to the image block.
 	 */
 	const handleApply = () => {
-		if ( generatedAlt ) {
+		if ( isDecorative ) {
+			setAttributes( { alt: '' } );
+		} else if ( generatedAlt ) {
 			setAttributes( { alt: generatedAlt } );
-			setGeneratedAlt( null );
 		}
+		setGeneratedAlt( null );
+		setIsDecorative( false );
 	};
 
 	/**
@@ -118,6 +143,7 @@ export function AltTextControls( {
 	 */
 	const handleDismiss = () => {
 		setGeneratedAlt( null );
+		setIsDecorative( false );
 	};
 
 	return (
@@ -126,12 +152,8 @@ export function AltTextControls( {
 				className="ai-alt-text-controls"
 				style={ { padding: '0 16px' } }
 			>
-				<h3 style={ { marginTop: 0, marginBottom: '8px' } }>
-					{ __( 'AI Alternative Text', 'ai' ) }
-				</h3>
-
 				{ /* Generated alt text preview */ }
-				{ hasGeneratedAlt && (
+				{ hasGeneratedAlt && ! isDecorative && (
 					<div style={ { marginBottom: '12px' } }>
 						<TextareaControl
 							label={ __( 'Generated Alt Text', 'ai' ) }
@@ -161,8 +183,37 @@ export function AltTextControls( {
 					</div>
 				) }
 
+				{ /* Decorative image notice */ }
+				{ isDecorative && (
+					<div style={ { marginBottom: '12px' } }>
+						<Notice status="info" isDismissible={ false }>
+							{ __(
+								'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
+								'ai'
+							) }
+						</Notice>
+						<div
+							style={ {
+								display: 'flex',
+								gap: '8px',
+								marginTop: '8px',
+							} }
+						>
+							<Button variant="primary" onClick={ handleApply }>
+								{ __( 'Apply', 'ai' ) }
+							</Button>
+							<Button
+								variant="secondary"
+								onClick={ handleDismiss }
+							>
+								{ __( 'Dismiss', 'ai' ) }
+							</Button>
+						</div>
+					</div>
+				) }
+
 				{ /* Generate button */ }
-				{ ! hasGeneratedAlt && (
+				{ ! hasGeneratedAlt && ! isDecorative && (
 					<Button
 						variant="secondary"
 						onClick={ handleGenerate }

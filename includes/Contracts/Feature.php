@@ -14,7 +14,7 @@ namespace WordPress\AI\Contracts;
  *
  * Every feature must implement this interface to be registered in the system.
  *
- * @since x.x.x
+ * @since 0.6.0
  */
 interface Feature {
 	/**
@@ -22,7 +22,7 @@ interface Feature {
 	 *
 	 * This should be a unique slug-style identifier (e.g., 'title-rewriter').
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return non-empty-string Feature ID.
 	 */
@@ -33,7 +33,7 @@ interface Feature {
 	 *
 	 * This should be a translated string suitable for display in the admin.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return non-empty-string Translated feature label.
 	 */
@@ -44,7 +44,7 @@ interface Feature {
 	 *
 	 * This should be a translated string explaining what the feature does.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return non-empty-string Translated feature description.
 	 */
@@ -55,7 +55,7 @@ interface Feature {
 	 *
 	 * Determines where the feature appears in the settings UI.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return non-empty-string The feature category.
 	 */
@@ -64,7 +64,7 @@ interface Feature {
 	/**
 	 * Gets the feature stability level.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return 'deprecated'|'experimental'|'stable'
 	 */
@@ -76,16 +76,43 @@ interface Feature {
 	 * This method is called when the feature is initialized.
 	 * Use this to add actions, filters, and set up the feature.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function register(): void;
 
 	/**
 	 * Checks if the feature is currently enabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @return bool True if enabled, false otherwise.
 	 */
 	public function is_enabled(): bool;
+
+	/**
+	 * Gets field definitions with fully resolved option names.
+	 *
+	 * Returns an empty array when the feature has no custom settings.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return array<int, array{
+	 *   id: string,
+	 *   label: string,
+	 *   type: string,
+	 *   default?: mixed,
+	 *   elements?: list<array{value: string, label: string}>,
+	 *   isValid?: array{min?: int, max?: int},
+	 * }> Array of field definitions with full option names.
+	 */
+	public function get_settings_fields_metadata(): array;
+
+	/**
+	 * Gets the image URL for feature showcase display.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The image URL, or empty string if not set.
+	 */
+	public function get_image(): string;
 }

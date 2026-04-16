@@ -4,8 +4,10 @@
 /.wordpress-org
 /docs
 /node_modules
+/routes
 /src
 /tests
+/tools
 
 # Files
 .*

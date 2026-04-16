@@ -39,8 +39,7 @@ class SummarizationTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
-		$loader->initialize_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'summarization' );
 		$this->assertInstanceOf( Summarization::class, $experiment, 'Summarization experiment should be registered in the registry.' );

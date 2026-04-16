@@ -137,7 +137,7 @@ class SummarizationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'sanitize_text_field', $schema['properties']['context']['sanitize_callback'], 'Context should use sanitize_text_field' );
 
 		// Verify length property.
-		$this->assertEquals( 'enum', $schema['properties']['length']['type'], 'Length should be enum type' );
+		$this->assertEquals( 'string', $schema['properties']['length']['type'], 'Length should be string type' );
 		$this->assertEquals( array( 'short', 'medium', 'long' ), $schema['properties']['length']['enum'], 'Length should be enum with values short, medium, long' );
 	}
 

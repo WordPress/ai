@@ -35,13 +35,7 @@ class Ability_Handler {
 	 * @return array<array<string,mixed>> Array of abilities.
 	 */
 	public static function get_all_abilities(): array {
-		if ( ! function_exists( 'wp_get_abilities' ) ) {
-			return array();
-		}
-
-		$all_abilities = wp_get_abilities();
-
-		return self::format_abilities( $all_abilities );
+		return self::format_abilities( wp_get_abilities() );
 	}
 
 	/**
@@ -53,10 +47,6 @@ class Ability_Handler {
 	 * @return array<string,mixed>|null Ability data or null if not found.
 	 */
 	public static function get_ability( string $slug ): ?array {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			return null;
-		}
-
 		$ability = wp_get_ability( $slug );
 
 		if ( ! $ability ) {
@@ -105,6 +95,7 @@ class Ability_Handler {
 			'name'          => $ability->get_label(),
 			'description'   => $ability->get_description(),
 			'provider'      => self::detect_provider( $name, $meta ),
+			'category'      => self::get_ability_category( $ability ),
 			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
 			'raw_data'      => array(
@@ -116,6 +107,48 @@ class Ability_Handler {
 				'meta'          => $meta,
 			),
 		);
+	}
+
+	/**
+	 * Get the category for an ability.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param \WP_Ability $ability Ability object.
+	 * @return string Category for the ability.
+	 */
+	public static function get_ability_category( \WP_Ability $ability ): string {
+		$slug          = $ability->get_name();
+		$category_slug = $ability->get_category();
+
+		$category_label = esc_html__( 'Other', 'ai' );
+		if ( ! empty( $category_slug ) ) {
+			$category_obj = wp_get_ability_category( $category_slug );
+			if ( $category_obj ) {
+				$category_label = $category_obj->get_label();
+			}
+		}
+
+		/**
+		 * Filters the final resolved category for a specific ability.
+		 *
+		 * Use this hook to explicitly override the category for a
+		 * specific ability slug.
+		 *
+		 * Example:
+		 *   add_filter( 'wpai_ability_category', function( $category, $slug ) {
+		 *       if ( 'my-plugin/generate-meta-description' === $slug ) {
+		 *           return 'SEO';
+		 *       }
+		 *       return $category;
+		 *   }, 10, 2 );
+		 *
+		 * @since 0.7.0
+		 *
+		 * @param string $category Resolved category for this ability.
+		 * @param string $slug     The full ability slug, e.g. 'my-plugin/do-thing'.
+		 */
+		return (string) apply_filters( 'wpai_ability_category', $category_label, $slug );
 	}
 
 	/**
@@ -197,13 +230,6 @@ class Ability_Handler {
 	 * }
 	 */
 	public static function invoke_ability( string $slug, array $input = array() ): array {
-		if ( ! function_exists( 'wp_get_ability' ) ) {
-			return array(
-				'success' => false,
-				'error'   => 'Abilities API not available',
-			);
-		}
-
 		$ability = wp_get_ability( $slug );
 
 		if ( ! $ability ) {

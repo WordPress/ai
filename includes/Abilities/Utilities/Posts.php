@@ -153,6 +153,17 @@ class Posts {
 						$details['excerpt'] = $post->post_excerpt;
 					}
 
+					/**
+					 * Filters the post details returned by the get-post-details ability.
+					 *
+					 * @since 0.7.0
+					 *
+					 * @param array<string, string> $details The post details.
+					 * @param int                   $post_id The post ID.
+					 * @param array<string>         $fields  The requested fields.
+					 */
+					$details = apply_filters( 'wpai_get_post_details', $details, $post_id, $fields );
+
 					// Return the post details.
 					return $details;
 				},
@@ -296,6 +307,17 @@ class Posts {
 							sprintf( esc_html__( 'Error getting terms: %1$s', 'ai' ), $terms->get_error_message() )
 						);
 					}
+
+					/**
+					 * Filters the terms returned by the get-post-terms ability.
+					 *
+					 * @since 0.7.0
+					 *
+					 * @param array<\WP_Term> $terms              The terms assigned to the post.
+					 * @param int             $post_id             The post ID.
+					 * @param array<string>   $allowed_taxonomies  The allowed taxonomy names.
+					 */
+					$terms = apply_filters( 'wpai_get_post_terms', $terms, $post_id, $allowed_taxonomies );
 
 					return $terms;
 				},

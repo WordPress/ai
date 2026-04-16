@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * Uses wpai_default_feature_classes filter to register experiments, which are then initialized by the Loader class.
  *
  * @internal
- * @since x.x.x
+ * @since 0.6.0
  */
 final class Experiments {
 	/**
@@ -28,9 +28,10 @@ final class Experiments {
 	 */
 	private const EXPERIMENT_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		\WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer::class,
+		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,
 		\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
-		\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
+		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,
 		\WordPress\AI\Experiments\Review_Notes\Review_Notes::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
@@ -39,7 +40,7 @@ final class Experiments {
 	/**
 	 * Initializes the experiments by hooking into the appropriate filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 */
 	public function init(): void {
 		// Priority 9 ensures it runs before any potential overrides at default priority.
@@ -49,7 +50,7 @@ final class Experiments {
 	/**
 	 * Registers default experiment classes.
 	 *
-	 * @since x.x.x
+	 * @since 0.6.0
 	 *
 	 * @param array<string, class-string<\WordPress\AI\Contracts\Feature>> $existing Array of existing experiment class names, with experiment IDs as keys.
 	 *
