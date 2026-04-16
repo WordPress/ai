@@ -306,7 +306,7 @@ Add or update tests for your code in the existing test suite under `tests/Integr
 
 ```php
 <?php
-namespace WordPress\AI\Tests\Integration\Includes\Experiments\My_Experiment;
+namespace WordPress\AI\Tests\Integration\Experiments\My_Experiment;
 
 use WordPress\AI\Experiments\My_Experiment\My_Experiment;
 use WP_UnitTestCase;
