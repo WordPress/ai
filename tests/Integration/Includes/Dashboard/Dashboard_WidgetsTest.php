@@ -8,7 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Dashboard;
 
 use WP_UnitTestCase;
-use WordPress\AI\Dashboard\Dashboard_Widgets;
+use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Features\Registry;
 
 /**

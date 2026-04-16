@@ -9,7 +9,7 @@ namespace WordPress\AI\Tests\Integration\Dashboard;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Dashboard\AI_Status_Widget;
+use WordPress\AI\Admin\Dashboard\AI_Status_Widget;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -130,8 +130,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'Configure an AI provider', $output );
 		$this->assertStringContainsString( 'Globally enable AI Features', $output );
-		$this->assertStringContainsString( 'Enable an individual feature', $output );
-		$this->assertStringContainsString( 'Try it out', $output );
+		$this->assertStringContainsString( 'Enable a feature or experiment', $output );
 	}
 
 	/**
@@ -220,8 +219,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'options-connectors.php', $output, 'Should link to connectors page' );
-		$this->assertStringContainsString( 'page=ai', $output, 'Should link to features settings' );
-		$this->assertStringContainsString( 'post-new.php', $output, 'Should link to new post page' );
+		$this->assertStringContainsString( 'page=ai-wp-admin', $output, 'Should link to features settings' );
 	}
 
 	/**

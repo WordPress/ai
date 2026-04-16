@@ -9,7 +9,7 @@ namespace WordPress\AI\Tests\Integration\Dashboard;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Dashboard\AI_Capabilities_Widget;
+use WordPress\AI\Admin\Dashboard\AI_Capabilities_Widget;
 use WordPress\AI\Features\Registry;
 
 /**
