@@ -87,7 +87,7 @@ class Content_Classification extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Content Classification', 'ai' ),
-			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis.', 'ai' ),
+			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
