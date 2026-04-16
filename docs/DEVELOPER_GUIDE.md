@@ -302,7 +302,7 @@ Follow the steps in [Creating a New Experiment](#creating-a-new-experiment) abov
 
 ### 3. Write Tests
 
-Add or update tests for your experiment in the existing integration suite under `tests/Integration/`:
+Add or update tests for your code in the existing test suite under `tests/Integration/`:
 
 ```php
 <?php
@@ -326,7 +326,8 @@ class My_Experiment_Test extends WP_UnitTestCase {
 Before submitting, ensure all quality checks pass. See [CONTRIBUTING.md](../CONTRIBUTING.md) for the complete list of required checks including:
 - Coding standards validation
 - Static analysis
-- Integration tests
+- Unit tests
+- E2E tests
 
 ### 5. Submit Pull Request
 

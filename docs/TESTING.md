@@ -17,31 +17,27 @@ This document outlines the testing philosophy and strategy for the AI plugin, ad
 
 ## Test Categories
 
-### 1. Unit Tests (Logic Layer)
-
-**Purpose**: Test pure functions and business logic in isolation, without loading the WordPress environment.
-
-### 2. Integration Tests (WordPress + Plugin Interactions)
+### 1. Unit Tests (WordPress + Plugin Interactions)
 
 **Purpose**: Test interactions between different parts of the plugin, and between the plugin and WordPress core, database, or other plugin components. These tests run within a WordPress test environment.
 
 **Location**: `tests/Integration/`
 
-**Example Test Suite**: `tests/Integration/Includes/BootstrapTest.php`
+**Example Test Suite**: `tests/Integration/Includes/MainTest.php`
 
 ```php
-class BootstrapTest extends WP_UnitTestCase {
+class MainTest extends WP_UnitTestCase {
 
     /**
-     * Test that the plugin bootstrap file exists.
+     * Test that the plugin main file exists.
      */
-    public function test_bootstrap_file_exists() {
-        $this->assertFileExists( dirname( __DIR__, 3 ) . '/includes/bootstrap.php' );
+    public function test_main_file_exists() {
+        $this->assertFileExists( dirname( __DIR__, 3 ) . '/includes/Main.php' );
     }
 }
 ```
 
-### 3. Edge Cases and Error Scenarios
+### 2. Edge Cases and Error Scenarios
 
 While specific examples are provided in the "Post Duplication Feature" strategy, for our plugin, we would focus on:
 
@@ -67,13 +63,11 @@ composer phpstan
 # Run the current PHPUnit suite defined in phpunit.xml.dist
 vendor/bin/phpunit -c phpunit.xml.dist
 
-# Run the current integration suite directly
-vendor/bin/phpunit -c phpunit.xml.dist --testsuite integration
 ```
 
 ### CI/CD Pipeline
 
-Automated testing in CI should run the currently configured integration and end-to-end suites on every push and pull request. If a dedicated unit test suite is introduced later, it should be added to the pipeline as well.
+Automated testing in CI should run the currently configured unit and end-to-end suites on every push and pull request.
 
 ---
 
