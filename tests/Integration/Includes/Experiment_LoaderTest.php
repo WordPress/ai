@@ -185,7 +185,7 @@ class LoaderTest extends WP_UnitTestCase {
 		$image_experiment = $this->registry->get_feature( 'image-generation' );
 		$this->assertNotNull( $image_experiment, 'Image generation experiment should exist' );
 		$this->assertEquals( 'image-generation', $image_experiment->get_id() );
-		$this->assertEquals( Experiment_Category::EDITOR, $image_experiment->get_category() );
+		$this->assertEquals( Experiment_Category::OTHER, $image_experiment->get_category() );
 
 		$review_notes_experiment = $this->registry->get_feature( 'review-notes' );
 		$this->assertNotNull( $review_notes_experiment, 'Review Notes experiment should exist' );
