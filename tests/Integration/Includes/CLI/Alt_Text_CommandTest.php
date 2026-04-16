@@ -46,8 +46,10 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		$this->unregister_fake_ability();
+		remove_all_filters( 'wpai_has_ai_credentials' );
 		remove_all_filters( 'wpai_pre_has_valid_credentials_check' );
-		remove_all_filters( 'wp_abilities_api_init' );
+		remove_all_actions( 'wp_abilities_api_init' );
 		parent::tearDown();
 	}
 
@@ -86,45 +88,70 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers a fake ability that returns a canned response.
+	 * Registers a real ai/alt-text-generation ability with a canned response.
 	 *
-	 * @param mixed $response Return value from execute() (array or WP_Error).
+	 * Uses the WP core test pattern of faking the current filter to satisfy
+	 * `doing_action( 'wp_abilities_api_init' )` without triggering registered
+	 * callbacks. This avoids re-entrant init calls from the registry singleton.
+	 *
+	 * @param array|\WP_Error $response The response from execute_callback.
 	 */
 	private function register_fake_ability( $response ): void {
-		$fake = new class( $response ) {
-			/** @var mixed */
-			private $response;
+		global $wp_current_filter;
 
-			/** @param mixed $response */
-			public function __construct( $response ) {
-				$this->response = $response;
-			}
+		// Ensure the registry singleton is initialized so its own init action
+		// fires before we fake the filter state.
+		$registry = \WP_Abilities_Registry::get_instance();
 
-			/** @return mixed */
-			public function execute( $input ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
-				return $this->response;
-			}
-		};
+		if ( null !== $registry && $registry->is_registered( 'ai/alt-text-generation' ) ) {
+			wp_unregister_ability( 'ai/alt-text-generation' );
+		}
 
-		add_filter(
-			'wp_get_ability_ai/alt-text-generation',
-			static function () use ( $fake ) {
-				return $fake;
-			}
-		);
+		$previous_filter     = $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init';
 
-		// Also handle the generic wp_get_ability case.
-		add_filter(
-			'pre_wp_get_ability',
-			static function ( $default_value, $name ) use ( $fake ) {
-				if ( 'ai/alt-text-generation' === $name ) {
-					return $fake;
-				}
-				return $default_value;
-			},
-			10,
-			2
-		);
+		try {
+			wp_register_ability(
+				'ai/alt-text-generation',
+				array(
+					'label'               => 'Fake Alt Text',
+					'description'         => 'Fake ability for testing.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'input_schema'        => array(
+						'type'       => 'object',
+						'properties' => array(
+							'attachment_id' => array( 'type' => 'integer' ),
+						),
+					),
+					'output_schema'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'alt_text' => array( 'type' => 'string' ),
+						),
+					),
+					'execute_callback'    => static function () use ( $response ) {
+						return $response;
+					},
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			$wp_current_filter = $previous_filter;
+		}
+	}
+
+	/**
+	 * Unregisters the test ability.
+	 */
+	private function unregister_fake_ability(): void {
+		if ( ! function_exists( 'wp_unregister_ability' ) ) {
+			return;
+		}
+
+		$registry = \WP_Abilities_Registry::get_instance();
+		if ( null !== $registry && $registry->is_registered( 'ai/alt-text-generation' ) ) {
+			wp_unregister_ability( 'ai/alt-text-generation' );
+		}
 	}
 
 	/**
@@ -421,5 +448,83 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		$this->expectExceptionMessageMatches( '/ability is not registered/i' );
 
 		$this->command->generate( array(), array() );
+	}
+
+	/**
+	 * Test generate errors when AI credentials are not configured.
+	 */
+	public function test_generate_errors_without_credentials(): void {
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->register_fake_ability( array( 'alt_text' => 'test' ) );
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_false' );
+
+		$this->expectException( \WP_CLI_Test_Error_Exception::class );
+		$this->expectExceptionMessageMatches( '/credentials/i' );
+
+		$this->command->generate( array(), array() );
+	}
+
+	/**
+	 * Test generate with no matching images completes successfully.
+	 */
+	public function test_generate_with_no_images(): void {
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->register_fake_ability( array( 'alt_text' => 'test' ) );
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+
+		$this->command->generate( array(), array() );
+
+		$success_messages = $this->get_cli_messages( 'success' );
+		$this->assertNotEmpty( $success_messages );
+		$this->assertStringContainsString( 'No images found', $success_messages[0] );
+	}
+
+	/**
+	 * Test generate processes attachments end-to-end.
+	 */
+	public function test_generate_processes_attachments(): void {
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->register_fake_ability( array( 'alt_text' => 'A generated description' ) );
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+
+		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+
+		ob_start();
+		$this->command->generate( array(), array( 'delay' => 0 ) );
+		ob_end_clean();
+
+		$this->assertEquals(
+			'A generated description',
+			get_post_meta( $image_id, '_wp_attachment_image_alt', true )
+		);
+
+		$log_messages = $this->get_cli_messages( 'log' );
+		$this->assertTrue(
+			(bool) array_filter(
+				$log_messages,
+				static fn( string $msg ): bool => false !== strpos( $msg, 'Found 1' )
+			)
+		);
+	}
+
+	/**
+	 * Test generate with --dry-run does not modify alt text.
+	 */
+	public function test_generate_dry_run_does_not_modify(): void {
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->register_fake_ability( array( 'alt_text' => 'Should not be saved' ) );
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+
+		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+
+		ob_start();
+		$this->command->generate( array(), array( 'dry-run' => true ) );
+		ob_end_clean();
+
+		$this->assertEmpty( get_post_meta( $image_id, '_wp_attachment_image_alt', true ) );
 	}
 }
