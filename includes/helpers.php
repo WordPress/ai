@@ -306,12 +306,7 @@ function get_preferred_vision_models(): array {
  * @return bool True if we have AI credentials, false otherwise.
  */
 function has_ai_credentials(): bool {
-	if ( ! function_exists( 'wp_get_connectors' ) ) {
-		return false;
-	}
-
-	$connectors = wp_get_connectors();
-
+	$connectors      = wp_get_connectors();
 	$has_credentials = false;
 
 	foreach ( $connectors as $connector_data ) {
@@ -338,7 +333,7 @@ function has_ai_credentials(): bool {
 	 * Allows third-party plugins to declare credential availability for
 	 * connectors that do not rely on API key settings.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param bool  $has_credentials Whether AI credentials are available.
 	 * @param array $connectors      The registered connectors.
