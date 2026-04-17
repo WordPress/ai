@@ -12,6 +12,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Abilities\Review_Notes\Review_Notes;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Services\Guidelines;
+use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 
 /**
  * Test experiment for Review_Notes_Ability tests.
@@ -50,6 +51,8 @@ class Test_Review_Notes_Experiment extends Abstract_Feature {
  * @since 0.4.0
  */
 class Review_NotesTest extends WP_UnitTestCase {
+
+	use Guidelines_CPT_Helpers;
 
 	/**
 	 * Review_Notes_Ability instance.
@@ -640,56 +643,4 @@ class Review_NotesTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '<copy-guidelines>Keep sentences under 25 words.</copy-guidelines>', $instruction );
 	}
 
-	/**
-	 * Registers the wp_content_guideline CPT for testing.
-	 *
-	 * @return void
-	 */
-	private function register_guidelines_cpt(): void {
-		if ( post_type_exists( 'wp_content_guideline' ) ) {
-			return;
-		}
-
-		// phpcs:disable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
-		register_post_type(
-			'wp_content_guideline',
-			array( 'public' => false )
-		);
-		// phpcs:enable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
-	}
-
-	/**
-	 * Creates a guidelines post with the given category meta values.
-	 *
-	 * @param array<string, string> $categories Keyed array of category => guideline text.
-	 * @return int The created post ID.
-	 */
-	private function create_guidelines_post( array $categories ): int {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_type'   => 'wp_content_guideline',
-				'post_status' => 'publish',
-				'post_title'  => 'Content Guidelines',
-			)
-		);
-
-		$meta_key_map = array(
-			'copy'       => '_content_guideline_copy',
-			'images'     => '_content_guideline_images',
-			'site'       => '_content_guideline_site',
-			'additional' => '_content_guideline_additional',
-		);
-
-		foreach ( $categories as $category => $value ) {
-			if ( ! isset( $meta_key_map[ $category ] ) ) {
-				continue;
-			}
-
-			update_post_meta( $post_id, $meta_key_map[ $category ], $value );
-		}
-
-		Guidelines::reset_cache();
-
-		return $post_id;
-	}
 }
