@@ -5,6 +5,7 @@
 /**
  * WordPress dependencies
  */
+import { speak } from '@wordpress/a11y';
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Modal, Button, TextareaControl } from '@wordpress/components';
@@ -36,6 +37,7 @@ function CopyButton( {
 	const [ showCopyConfirmation, setShowCopyConfirmation ] = useState( false );
 	const timeoutIdRef = useRef< ReturnType< typeof setTimeout > >();
 	const ref = useCopyToClipboard< HTMLButtonElement >( text, () => {
+		speak( __( 'Meta description copied to clipboard.', 'ai' ) );
 		setShowCopyConfirmation( true );
 		if ( timeoutIdRef.current ) {
 			clearTimeout( timeoutIdRef.current );
