@@ -104,6 +104,29 @@ class Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that get_guidelines() returns guidelines from a draft-status post.
+	 *
+	 * Gutenberg's REST controller saves new guideline posts as 'draft' by default,
+	 * so the service must accept both 'publish' and 'draft' statuses.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_guidelines_returns_array_for_draft_post(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array( 'site' => 'Use a professional tone.' ),
+			Guidelines::POST_TYPE,
+			'draft'
+		);
+
+		$result = $this->service->get_guidelines( 'site' );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'site', $result );
+		$this->assertEquals( 'Use a professional tone.', $result['site'] );
+	}
+
+	/**
 	 * Tests that get_guidelines() returns null when the CPT is unavailable.
 	 *
 	 * @since x.x.x

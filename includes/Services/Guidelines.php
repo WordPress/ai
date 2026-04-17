@@ -351,11 +351,14 @@ class Guidelines {
 		// Safe: callers gate on should_use_guidelines() which requires is_available().
 		$post_type = self::resolve_post_type();
 
+		// Gutenberg saves guidelines as 'draft' by default; both statuses are valid.
 		$query = new WP_Query(
 			array(
 				'post_type'      => $post_type,
 				'posts_per_page' => 1,
-				'post_status'    => 'publish',
+				'post_status'    => array( 'publish', 'draft' ),
+				'orderby'        => 'date',
+				'order'          => 'DESC',
 				'no_found_rows'  => true,
 			)
 		);

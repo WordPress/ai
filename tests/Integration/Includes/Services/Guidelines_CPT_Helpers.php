@@ -61,15 +61,16 @@ trait Guidelines_CPT_Helpers {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, string> $categories Keyed array of category => guideline text.
-	 * @param string                $post_type  Optional. The post type slug. Defaults to Guidelines::POST_TYPE.
+	 * @param array<string, string> $categories  Keyed array of category => guideline text.
+	 * @param string                $post_type   Optional. The post type slug. Defaults to Guidelines::POST_TYPE.
+	 * @param string                $post_status Optional. The post status. Defaults to 'publish'.
 	 * @return int The created post ID.
 	 */
-	private function create_guidelines_post( array $categories, string $post_type = Guidelines::POST_TYPE ): int {
+	private function create_guidelines_post( array $categories, string $post_type = Guidelines::POST_TYPE, string $post_status = 'publish' ): int {
 		$post_id = self::factory()->post->create(
 			array(
 				'post_type'   => $post_type,
-				'post_status' => 'publish',
+				'post_status' => $post_status,
 				'post_title'  => 'Content Guidelines',
 			)
 		);
