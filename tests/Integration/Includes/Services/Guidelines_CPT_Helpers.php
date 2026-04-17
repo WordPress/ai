@@ -1,0 +1,90 @@
+<?php
+/**
+ * Shared helpers for tests that exercise the Guidelines CPT.
+ *
+ * @package WordPress\AI\Tests\Integration\Includes\Services
+ */
+
+declare( strict_types=1 );
+
+namespace WordPress\AI\Tests\Integration\Includes\Services;
+
+use WordPress\AI\Services\Guidelines;
+
+/**
+ * Provides registration and factory helpers for the guidelines CPT.
+ *
+ * Consumed by test classes that need to populate guidelines posts and meta
+ * without duplicating boilerplate across each file.
+ *
+ * @since x.x.x
+ */
+trait Guidelines_CPT_Helpers {
+
+	/**
+	 * Meta key mapping for guideline categories.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string, string>
+	 */
+	private static array $guideline_category_meta_keys = array(
+		'copy'       => '_content_guideline_copy',
+		'images'     => '_content_guideline_images',
+		'site'       => '_content_guideline_site',
+		'additional' => '_content_guideline_additional',
+	);
+
+	/**
+	 * Registers the guidelines CPT for testing.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $post_type Optional. The post type slug to register. Defaults to Guidelines::POST_TYPE.
+	 * @return void
+	 */
+	private function register_guidelines_cpt( string $post_type = Guidelines::POST_TYPE ): void {
+		if ( post_type_exists( $post_type ) ) {
+			return;
+		}
+
+		// phpcs:disable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
+		register_post_type(
+			$post_type,
+			array( 'public' => false )
+		);
+		// phpcs:enable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
+	}
+
+	/**
+	 * Creates a guidelines post with the given category meta values.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $categories Keyed array of category => guideline text.
+	 * @param string                $post_type  Optional. The post type slug. Defaults to Guidelines::POST_TYPE.
+	 * @return int The created post ID.
+	 */
+	private function create_guidelines_post( array $categories, string $post_type = Guidelines::POST_TYPE ): int {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'   => $post_type,
+				'post_status' => 'publish',
+				'post_title'  => 'Content Guidelines',
+			)
+		);
+
+		foreach ( $categories as $category => $value ) {
+			if ( ! isset( self::$guideline_category_meta_keys[ $category ] ) ) {
+				continue;
+			}
+
+			update_post_meta( $post_id, self::$guideline_category_meta_keys[ $category ], $value );
+		}
+
+		// Reset cache so the service picks up the new post.
+		Guidelines::reset_cache();
+
+		return $post_id;
+	}
+}
