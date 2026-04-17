@@ -55,15 +55,52 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_is_available_returns_false_when_cpt_not_registered(): void {
-		// Ensure the CPT is not registered, as it may already exist in WP 7.0+.
+		// Ensure neither CPT slug is registered.
+		if ( post_type_exists( 'wp_guideline' ) ) {
+			unregister_post_type( 'wp_guideline' );
+		}
 		if ( post_type_exists( 'wp_content_guideline' ) ) {
 			unregister_post_type( 'wp_content_guideline' );
 		}
+		Guidelines::reset_cache();
 
 		$this->assertFalse(
 			$this->service->is_available(),
-			'Should return false when wp_content_guideline CPT is not registered'
+			'Should return false when no guidelines CPT is registered'
 		);
+	}
+
+	/**
+	 * Tests that is_available() returns true when only the legacy CPT slug is registered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_available_returns_true_with_legacy_cpt_slug(): void {
+		$this->register_guidelines_cpt( 'wp_content_guideline' );
+
+		$this->assertTrue(
+			$this->service->is_available(),
+			'Should return true when legacy wp_content_guideline CPT is registered'
+		);
+	}
+
+	/**
+	 * Tests that get_guidelines() works with the legacy CPT slug.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_guidelines_works_with_legacy_cpt_slug(): void {
+		$this->register_guidelines_cpt( 'wp_content_guideline' );
+		$this->create_guidelines_post(
+			array( 'site' => 'Use a professional tone.' ),
+			'wp_content_guideline'
+		);
+
+		$result = $this->service->get_guidelines( 'site' );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'site', $result );
+		$this->assertEquals( 'Use a professional tone.', $result['site'] );
 	}
 
 	/**
