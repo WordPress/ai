@@ -33,7 +33,7 @@ interface AltTextControlsProps {
  * @param {boolean} isGenerating   Whether alt text is currently being generated.
  * @return {string} The button label.
  */
-function getButtonLabel(
+export function getButtonLabel(
 	hasExistingAlt: boolean,
 	isGenerating: boolean
 ): string {
@@ -44,6 +44,26 @@ function getButtonLabel(
 		return __( 'Regenerate Alt Text', 'ai' );
 	}
 	return __( 'Generate Alt Text', 'ai' );
+}
+
+/**
+ * Decorative notice component.
+ *
+ * Displays a notice when an image is decorative.
+ *
+ * @return {JSX.Element} The component.
+ */
+export function DecorativeNotice(): JSX.Element {
+	return (
+		<div style={ { marginBottom: '12px' } }>
+			<Notice status="info" isDismissible={ false }>
+				{ __(
+					'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
+					'ai'
+				) }
+			</Notice>
+		</div>
+	);
 }
 
 /**
@@ -190,12 +210,7 @@ export function AltTextControls( {
 				{ /* Decorative image notice */ }
 				{ isDecorative && (
 					<div style={ { marginBottom: '12px' } }>
-						<Notice status="info" isDismissible={ false }>
-							{ __(
-								'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
-								'ai'
-							) }
-						</Notice>
+						<DecorativeNotice />
 						<div
 							style={ {
 								display: 'flex',

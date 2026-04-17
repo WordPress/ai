@@ -99,6 +99,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 		);
 
 		$this->maybe_enqueue_media_script();
+		$this->maybe_enqueue_media_editor_script();
 	}
 
 	/**
@@ -157,6 +158,29 @@ class Alt_Text_Generation extends Abstract_Feature {
 		);
 
 		$this->media_assets_enqueued = true;
+	}
+
+	/**
+	 * Conditionally enqueues assets for the experimental Gutenberg media editor.
+	 *
+	 * Requires the Gutenberg media editor experiment to be enabled.
+	 *
+	 * @since x.x.x
+	 */
+	private function maybe_enqueue_media_editor_script(): void {
+		if ( ! $this->is_enabled() || ! is_plugin_active( 'gutenberg/gutenberg.php' ) ) {
+			return;
+		}
+
+		$experiments = get_option( 'gutenberg-experiments' );
+		if ( ! isset( $experiments['gutenberg-media-editor'] ) ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script(
+			'alt_text_generation_media_editor',
+			'experiments/alt-text-generation-media-editor'
+		);
 	}
 
 	/**
@@ -223,9 +247,9 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param string        $redirect_url The current redirect URL.
-	 * @param string        $doaction     The bulk action being performed.
-	 * @param list<int>     $post_ids     The list of post IDs to process.
+	 * @param string    $redirect_url The current redirect URL.
+	 * @param string    $doaction     The bulk action being performed.
+	 * @param list<int> $post_ids     The list of post IDs to process.
 	 * @return string The redirect URL, possibly with bulk alt text query args appended.
 	 */
 	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
@@ -283,7 +307,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @since 0.3.0
 	 *
 	 * @param array<string, mixed> $fields The attachment fields.
-	 * @param \WP_Post|null $post The attachment post.
+	 * @param \WP_Post|null        $post The attachment post.
 	 * @return array<string, mixed> The attachment fields with the button added.
 	 */
 	public function add_button_to_media_modal( array $fields, ?\WP_Post $post ): array {
