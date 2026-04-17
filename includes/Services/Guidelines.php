@@ -2,7 +2,7 @@
 /**
  * Guidelines service.
  *
- * Fetches and caches Guidelines from Gutenberg's wp_content_guideline CPT.
+ * Fetches and caches Guidelines from Gutenberg's wp_guideline CPT.
  *
  * @package WordPress\AI\Services
  */
@@ -17,11 +17,29 @@ use WP_Query;
  * Guidelines service class.
  *
  * Provides a centralized interface for fetching and formatting Guidelines
- * from the wp_content_guideline custom post type introduced in Gutenberg 22.7+.
+ * from the wp_guideline custom post type (wp_content_guideline in Gutenberg < 23.0).
  *
  * @since x.x.x
  */
 class Guidelines {
+
+	/**
+	 * Canonical post type slug (Gutenberg 23.0+).
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const POST_TYPE = 'wp_guideline';
+
+	/**
+	 * Legacy post type slug (Gutenberg 22.7–22.x).
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const LEGACY_POST_TYPE = 'wp_content_guideline';
 
 	/**
 	 * Singleton instance.
@@ -31,6 +49,15 @@ class Guidelines {
 	 * @var self|null
 	 */
 	private static ?self $instance = null;
+
+	/**
+	 * Resolved post type slug for the current environment.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string|false|null Null means not yet resolved, false means unavailable.
+	 */
+	private static $resolved_post_type = null;
 
 	/**
 	 * Cached guidelines data.
@@ -111,14 +138,40 @@ class Guidelines {
 	private function __construct() {}
 
 	/**
+	 * Resolves the registered post type slug at runtime.
+	 *
+	 * Checks for the canonical slug first, falls back to the legacy slug
+	 * for backward compatibility with Gutenberg < 23.0.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string|false The resolved post type slug, or false if unavailable.
+	 */
+	private static function resolve_post_type() {
+		if ( null !== self::$resolved_post_type ) {
+			return self::$resolved_post_type;
+		}
+
+		if ( post_type_exists( self::POST_TYPE ) ) {
+			self::$resolved_post_type = self::POST_TYPE;
+		} elseif ( post_type_exists( self::LEGACY_POST_TYPE ) ) {
+			self::$resolved_post_type = self::LEGACY_POST_TYPE;
+		} else {
+			self::$resolved_post_type = false;
+		}
+
+		return self::$resolved_post_type;
+	}
+
+	/**
 	 * Checks if the Guidelines feature is available.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return bool True if the wp_content_guideline CPT is registered.
+	 * @return bool True if a guidelines CPT is registered.
 	 */
 	public function is_available(): bool {
-		return post_type_exists( 'wp_content_guideline' );
+		return false !== self::resolve_post_type();
 	}
 
 	/**
@@ -254,8 +307,9 @@ class Guidelines {
 	 * @return void
 	 */
 	public static function reset_cache(): void {
-		self::$cached_guidelines = false;
-		self::$cached_post_id    = null;
+		self::$cached_guidelines  = false;
+		self::$cached_post_id     = null;
+		self::$resolved_post_type = null;
 	}
 
 	/**
@@ -294,9 +348,12 @@ class Guidelines {
 			return self::$cached_guidelines;
 		}
 
+		// Safe: callers gate on should_use_guidelines() which requires is_available().
+		$post_type = self::resolve_post_type();
+
 		$query = new WP_Query(
 			array(
-				'post_type'      => 'wp_content_guideline',
+				'post_type'      => $post_type,
 				'posts_per_page' => 1,
 				'post_status'    => 'publish',
 				'no_found_rows'  => true,
