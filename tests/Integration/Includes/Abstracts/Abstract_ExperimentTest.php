@@ -141,7 +141,7 @@ class Test_Empty_Category_Experiment extends Abstract_Feature {
 /**
  * Test feature with custom settings fields.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Test_Feature_With_Settings extends Abstract_Feature {
 	/**
@@ -323,7 +323,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_settings_fields() returns an empty array by default.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_settings_fields_returns_empty_by_default(): void {
 		$experiment = new Test_Uncategorized_Experiment();
@@ -338,7 +338,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_settings_fields_metadata() returns an empty array when no fields are defined.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_settings_fields_metadata_returns_empty_when_no_fields(): void {
 		$experiment = new Test_Uncategorized_Experiment();
@@ -353,7 +353,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_settings_fields() returns declared fields.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_settings_fields_returns_declared_fields(): void {
 		$feature = new Test_Feature_With_Settings();
@@ -369,7 +369,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_settings_fields_metadata() resolves short IDs to full option names.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_settings_fields_metadata_resolves_option_names(): void {
 		$feature = new Test_Feature_With_Settings();
@@ -391,7 +391,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_settings_fields_metadata() preserves other field properties.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	public function test_get_settings_fields_metadata_preserves_field_properties(): void {
 		$feature = new Test_Feature_With_Settings();

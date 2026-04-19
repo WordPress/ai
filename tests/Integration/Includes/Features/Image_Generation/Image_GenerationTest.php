@@ -2,14 +2,14 @@
 /**
  * Integration tests for the Image_Generation class.
  *
- * @package WordPress\AI\Tests\Integration\Experiments
+ * @package WordPress\AI\Tests\Integration\Features
  */
 
-namespace WordPress\AI\Tests\Integration\Experiments\Image_Generation;
+namespace WordPress\AI\Tests\Integration\Features\Image_Generation;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\Experiment_Category;
-use WordPress\AI\Experiments\Image_Generation\Image_Generation;
+use WordPress\AI\Features\Feature_Category;
+use WordPress\AI\Features\Image_Generation\Image_Generation;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 
@@ -39,11 +39,10 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
-		$loader->initialize_features();
+		$loader->init();
 
-		$experiment = $registry->get_feature( 'image-generation' );
-		$this->assertInstanceOf( Image_Generation::class, $experiment, 'Image generation experiment should be registered in the registry.' );
+		$feature = $registry->get_feature( 'image-generation' );
+		$this->assertInstanceOf( Image_Generation::class, $feature, 'Image generation experiment should be registered in the registry.' );
 	}
 
 	/**
@@ -61,25 +60,25 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the experiment is registered correctly.
+	 * Test that the feature is registered correctly.
 	 *
 	 * @since 0.2.0
 	 */
-	public function test_experiment_registration() {
-		$experiment = new Image_Generation();
+	public function test_feature_registration() {
+		$feature = new Image_Generation();
 
-		$this->assertEquals( 'image-generation', $experiment->get_id() );
-		$this->assertEquals( 'Image Generation and Editing', $experiment->get_label() );
-		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
-		$this->assertTrue( $experiment->is_enabled() );
+		$this->assertEquals( 'image-generation', $feature->get_id() );
+		$this->assertEquals( 'Image Generation and Editing', $feature->get_label() );
+		$this->assertEquals( Feature_Category::OTHER, $feature->get_category() );
+		$this->assertTrue( $feature->is_enabled() );
 	}
 
 	/**
-	 * Test that the experiment registers all abilities.
+	 * Test that the feature registers all abilities.
 	 *
 	 * @since 0.3.0
 	 */
-	public function test_experiment_registers_abilities() {
+	public function test_feature_registers_abilities() {
 		// Expect warnings about already registered abilities from other tests.
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
 
@@ -108,23 +107,23 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function test_register_hooks_enqueue_block_editor_assets(): void {
-		$experiment = new Image_Generation();
-		$experiment->register();
+		$feature = new Image_Generation();
+		$feature->register();
 
 		$this->assertNotFalse(
-			has_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_inline_assets' ) ),
+			has_action( 'enqueue_block_editor_assets', array( $feature, 'enqueue_inline_assets' ) ),
 			'enqueue_inline_assets should be hooked to enqueue_block_editor_assets'
 		);
 	}
 
 	/**
-	 * Test that the experiment registers post meta.
+	 * Test that the feature registers post meta.
 	 *
 	 * @since 0.3.0
 	 */
-	public function test_experiment_registers_post_meta() {
-		$experiment = new Image_Generation();
-		$experiment->register();
+	public function test_feature_registers_post_meta() {
+		$feature = new Image_Generation();
+		$feature->register();
 
 		// Verify post meta is registered for attachment post type.
 		$meta = get_registered_meta_keys( 'post', 'attachment' );
@@ -139,11 +138,11 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function test_register_hooks_admin_menu() {
-		$experiment = new Image_Generation();
-		$experiment->register();
+		$feature = new Image_Generation();
+		$feature->register();
 
-		$this->assertNotFalse( has_action( 'admin_menu', array( $experiment, 'register_admin_menu' ) ), 'admin_menu hook should be registered' );
-		$this->assertNotFalse( has_action( 'admin_footer-upload.php', array( $experiment, 'inject_generate_image_button' ) ), 'admin_footer-upload.php hook should be registered' );
+		$this->assertNotFalse( has_action( 'admin_menu', array( $feature, 'register_admin_menu' ) ), 'admin_menu hook should be registered' );
+		$this->assertNotFalse( has_action( 'admin_footer-upload.php', array( $feature, 'inject_generate_image_button' ) ), 'admin_footer-upload.php hook should be registered' );
 	}
 
 	/**
@@ -152,10 +151,10 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function test_render_admin_page() {
-		$experiment = new Image_Generation();
+		$feature = new Image_Generation();
 
 		ob_start();
-		$experiment->render_admin_page();
+		$feature->render_admin_page();
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( '<div class="wrap">', $output, 'Output should contain wrap div' );
@@ -169,10 +168,10 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function test_inject_generate_image_button() {
-		$experiment = new Image_Generation();
+		$feature = new Image_Generation();
 
 		ob_start();
-		$experiment->inject_generate_image_button();
+		$feature->inject_generate_image_button();
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( '<script type="text/javascript">', $output, 'Output should contain script tag' );
@@ -187,11 +186,11 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function test_enqueue_assets_skips_irrelevant_screens() {
-		$experiment = new Image_Generation();
-		$experiment->register();
+		$feature = new Image_Generation();
+		$feature->register();
 
 		// Calling with an irrelevant hook suffix should not enqueue anything.
-		$experiment->enqueue_assets( 'options-general.php' );
+		$feature->enqueue_assets( 'options-general.php' );
 		$this->assertFalse( wp_script_is( 'ai_image_generation', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
 	}
 }

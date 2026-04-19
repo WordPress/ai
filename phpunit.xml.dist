@@ -21,7 +21,6 @@
 	<coverage processUncoveredFiles="false">
 		<include>
 			<directory suffix=".php">includes</directory>
-			<file>ai.php</file>
 		</include>
 		<report>
 			<clover outputFile="tests/_output/php-coverage.xml" />
