@@ -99,14 +99,14 @@ test.describe( 'Title Generation Experiment', () => {
 		// Click into the title field.
 		await editor.canvas.locator( '.editor-post-title__input' ).click();
 
-		// Ensure the title toolbar is visible with "Re-generate" label.
+		// Ensure the title toolbar is visible with "Regenerate" label.
 		await expect(
 			editor.canvas.locator( '.ai-title-toolbar-container', {
-				hasText: 'Re-generate',
+				hasText: 'Regenerate',
 			} )
 		).toBeVisible();
 
-		// Click the Re-generate button.
+		// Click the Regenerate button.
 		await editor.canvas
 			.locator( '.ai-title-toolbar-container button' )
 			.click();

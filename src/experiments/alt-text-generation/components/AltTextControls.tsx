@@ -5,12 +5,8 @@
 /**
  * WordPress dependencies
  */
-import {
-	Button,
-	TextareaControl,
-	Spinner,
-	Notice,
-} from '@wordpress/components';
+import { Button, TextareaControl, Notice } from '@wordpress/components';
+import { update } from '@wordpress/icons';
 import { InspectorControls } from '@wordpress/block-editor';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -34,12 +30,20 @@ interface AltTextControlsProps {
  * Returns the appropriate button label based on state.
  *
  * @param {boolean} hasExistingAlt Whether the image has existing alt text.
+ * @param {boolean} isGenerating   Whether alt text is currently being generated.
  * @return {string} The button label.
  */
-function getButtonLabel( hasExistingAlt: boolean ): string {
-	return hasExistingAlt
-		? __( 'Regenerate Alt Text', 'ai' )
-		: __( 'Generate Alt Text', 'ai' );
+function getButtonLabel(
+	hasExistingAlt: boolean,
+	isGenerating: boolean
+): string {
+	if ( isGenerating ) {
+		return __( 'Generating…', 'ai' );
+	}
+	if ( hasExistingAlt ) {
+		return __( 'Regenerate Alt Text', 'ai' );
+	}
+	return __( 'Generate Alt Text', 'ai' );
 }
 
 /**
@@ -219,17 +223,10 @@ export function AltTextControls( {
 						onClick={ handleGenerate }
 						disabled={ isGenerating }
 						style={ { width: '100%', justifyContent: 'center' } }
+						isBusy={ isGenerating }
+						icon={ update }
 					>
-						{ isGenerating ? (
-							<>
-								<Spinner />
-								<span style={ { marginLeft: '8px' } }>
-									{ __( 'Generating…', 'ai' ) }
-								</span>
-							</>
-						) : (
-							getButtonLabel( !! hasExistingAlt )
-						) }
+						{ getButtonLabel( !! hasExistingAlt, isGenerating ) }
 					</Button>
 				) }
 			</div>
