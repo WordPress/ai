@@ -48,7 +48,7 @@ export default function MetaDescriptionModal( {
 	onGenerate,
 	onApply,
 	onClose,
-}: MetaDescriptionModalProps ): JSX.Element {
+}: MetaDescriptionModalProps ): React.JSX.Element {
 	const { createSuccessNotice } = dispatch( noticesStore );
 
 	const copyButtonRef = useCopyToClipboard< HTMLButtonElement >(

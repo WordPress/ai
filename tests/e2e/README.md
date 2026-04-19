@@ -14,7 +14,7 @@ This directory contains end-to-end tests for the project, utilizing [Playwright]
 To prepare the test environment, follow these steps:
 
 1. Run `npm install` to install the required dependencies.
-2. Start the environment by running `npm run test:e2e:env:start`. *(Ensure Docker is running before executing this command.)*
+2. Start the environment by running `npm run wp-env:test start`. *(Ensure Docker is running before executing this command.)*
 
 ### Test Execution
 
@@ -26,4 +26,4 @@ To execute the tests, use the following commands:
 2. Run tests in UI mode:
 `npm run test:e2e:debug`
 
-3. Stop the environment by running `npm run test:e2e:env:stop`.
+3. Stop the environment by running `npm run wp-env:test stop`.

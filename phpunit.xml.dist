@@ -25,6 +25,7 @@
 		<report>
 			<clover outputFile="tests/_output/php-coverage.xml" />
 			<html outputDirectory="tests/_output/html" />
+			<text outputFile="php://stdout" showOnlySummary="true" />
 		</report>
 	</coverage>
 </phpunit>

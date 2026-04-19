@@ -24,7 +24,7 @@ const localized = ( window as any ).aiMetaDescriptionData as
 /**
  * Plugin component that renders the Meta Description panel in the editor sidebar.
  */
-const MetaDescriptionPlugin = (): JSX.Element | null => {
+const MetaDescriptionPlugin = (): React.JSX.Element | null => {
 	if ( ! localized?.enabled ) {
 		return null;
 	}
