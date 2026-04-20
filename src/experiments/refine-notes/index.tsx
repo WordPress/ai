@@ -5,6 +5,7 @@
 /**
  * WordPress dependencies
  */
+import { PostTypeSupportCheck } from '@wordpress/editor';
 import { registerPlugin } from '@wordpress/plugins';
 
 /**
@@ -14,6 +15,10 @@ import RefineNotesPlugin from './components/RefineNotesPlugin';
 
 if ( ( window as any ).aiRefineNotesData?.enabled ) {
 	registerPlugin( 'ai-refine-notes', {
-		render: RefineNotesPlugin,
+		render: () => (
+			<PostTypeSupportCheck supportKeys="editor.notes">
+				<RefineNotesPlugin />
+			</PostTypeSupportCheck>
+		),
 	} );
 }

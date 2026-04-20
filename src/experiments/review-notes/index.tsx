@@ -5,6 +5,7 @@
 /**
  * WordPress dependencies
  */
+import { PostTypeSupportCheck } from '@wordpress/editor';
 import { registerPlugin } from '@wordpress/plugins';
 
 /**
@@ -13,5 +14,9 @@ import { registerPlugin } from '@wordpress/plugins';
 import ReviewNotesPlugin from './components/ReviewNotesPlugin';
 
 registerPlugin( 'ai-review-notes', {
-	render: ReviewNotesPlugin,
+	render: () => (
+		<PostTypeSupportCheck supportKeys="editor.notes">
+			<ReviewNotesPlugin />
+		</PostTypeSupportCheck>
+	),
 } );
