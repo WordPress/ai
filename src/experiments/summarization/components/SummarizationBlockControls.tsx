@@ -30,7 +30,7 @@ const Controls = () => {
 	if ( isSummarizing ) {
 		buttonLabel = __( 'Generating…', 'ai' );
 	} else if ( hasSummary ) {
-		buttonLabel = __( 'Re-generate Summary', 'ai' );
+		buttonLabel = __( 'Regenerate Summary', 'ai' );
 	}
 
 	// Don't render if disabled.
