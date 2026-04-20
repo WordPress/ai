@@ -76,7 +76,7 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		// Ensure the Generate Summary button text is updated.
 		await expect( generateButton ).toBeVisible();
-		await expect( generateButton ).toHaveText( 'Re-generate Summary' );
+		await expect( generateButton ).toHaveText( 'Regenerate Summary' );
 
 		// Save the post.
 		await editor.saveDraft();
