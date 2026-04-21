@@ -117,10 +117,7 @@ final class Requirements {
 				'error_message' => static fn() => esc_html__( 'The plugin assets are not built. This is most likely because you downloaded the plugin from the GitHub repository without building the assets. Please run `nvm use && npm ci && npm run build` to build the assets.', 'ai' ),
 			),
 			'ai_support' => array(
-				'check'         => static function () {
-					// @todo Remove the function check once the minimum WordPress version is 7.0 or higher.
-					return ! function_exists( 'wp_supports_ai' ) || wp_supports_ai();
-				},
+				'check'         => static fn() => wp_supports_ai(),
 				'error_message' => static fn() => esc_html__( 'Your WordPress environment has AI functionality disabled. The AI plugin will not work until AI support is enabled.', 'ai' ),
 			),
 		);
