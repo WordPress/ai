@@ -109,18 +109,58 @@ final class Approvals_Store {
 				continue;
 			}
 
-			$normalized[ $caller ] = array();
+			$canonical = $this->canonicalize_basename( $caller );
+
+			if ( ! isset( $normalized[ $canonical ] ) ) {
+				$normalized[ $canonical ] = array();
+			}
 
 			foreach ( $connectors as $connector_id => $value ) {
 				if ( ! is_string( $connector_id ) ) {
 					continue;
 				}
 
-				$normalized[ $caller ][ $connector_id ] = (bool) $value;
+				// Merge with existing entries: true wins, so a prior approval isn't silently dropped.
+				$existing                                  = $normalized[ $canonical ][ $connector_id ] ?? false;
+				$normalized[ $canonical ][ $connector_id ] = $existing || (bool) $value;
 			}
 		}
 
 		return $normalized;
+	}
+
+	/**
+	 * Collapses a bare plugin slug (e.g. `ai`) to its canonical basename
+	 * (e.g. `ai/ai.php`) when `get_plugins()` knows the plugin. Leaves
+	 * already-canonical basenames, themes, and unknown values unchanged so
+	 * stale option data can't produce duplicate rows in the admin UI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $caller_basename Caller basename as stored in options.
+	 * @return string
+	 */
+	private function canonicalize_basename( string $caller_basename ): string {
+		if ( '' === $caller_basename || false !== strpos( $caller_basename, '/' ) ) {
+			return $caller_basename;
+		}
+
+		if ( '' !== pathinfo( $caller_basename, PATHINFO_EXTENSION ) ) {
+			return $caller_basename;
+		}
+
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$prefix = $caller_basename . '/';
+		foreach ( array_keys( get_plugins() ) as $basename ) {
+			if ( 0 === strpos( (string) $basename, $prefix ) ) {
+				return (string) $basename;
+			}
+		}
+
+		return $caller_basename;
 	}
 
 	/**
@@ -206,11 +246,15 @@ final class Approvals_Store {
 				continue;
 			}
 
-			$normalized[ $key ] = array(
+			$basename     = $this->canonicalize_basename( (string) ( $entry['caller_basename'] ?? '' ) );
+			$connector_id = (string) ( $entry['connector_id'] ?? '' );
+			$canonical    = $this->pending_key( $basename, $connector_id );
+
+			$normalized[ $canonical ] = array(
 				'caller_type'     => (string) ( $entry['caller_type'] ?? '' ),
-				'caller_basename' => (string) ( $entry['caller_basename'] ?? '' ),
+				'caller_basename' => $basename,
 				'caller_name'     => (string) ( $entry['caller_name'] ?? '' ),
-				'connector_id'    => (string) ( $entry['connector_id'] ?? '' ),
+				'connector_id'    => $connector_id,
 				'attempts'        => (int) ( $entry['attempts'] ?? 0 ),
 				'first_seen'      => (int) ( $entry['first_seen'] ?? 0 ),
 				'last_seen'       => (int) ( $entry['last_seen'] ?? 0 ),

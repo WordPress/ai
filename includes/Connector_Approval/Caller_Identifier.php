@@ -194,17 +194,18 @@ final class Caller_Identifier {
 	private function classify_file( string $file ): ?array {
 		$normalized = wp_normalize_path( $file );
 
-		$plugin = $this->match_directory( $normalized, wp_normalize_path( WP_PLUGIN_DIR ) );
-		if ( null !== $plugin ) {
+		$plugin_segment = $this->match_slug( $normalized, wp_normalize_path( WP_PLUGIN_DIR ) );
+		if ( null !== $plugin_segment ) {
+			$basename = $this->resolve_plugin_basename( $plugin_segment );
 			return array(
 				'type'     => self::TYPE_PLUGIN,
-				'basename' => $plugin,
-				'name'     => $this->plugin_name( $plugin ),
+				'basename' => $basename,
+				'name'     => $this->plugin_name( $basename ),
 			);
 		}
 
 		if ( defined( 'WPMU_PLUGIN_DIR' ) ) {
-			$mu = $this->match_directory( $normalized, wp_normalize_path( WPMU_PLUGIN_DIR ) );
+			$mu = $this->match_slug( $normalized, wp_normalize_path( WPMU_PLUGIN_DIR ) );
 			if ( null !== $mu ) {
 				return array(
 					'type'     => self::TYPE_MU_PLUGIN,
@@ -223,19 +224,20 @@ final class Caller_Identifier {
 	}
 
 	/**
-	 * Returns the basename of a file that lives under a given base directory, or null.
+	 * Returns the first path segment of a file that lives under a given base directory.
 	 *
-	 * For plugins this is `slug/file.php` when the file is inside a plugin
-	 * directory, or just `file.php` when the plugin is a single-file plugin
-	 * placed directly in the plugins directory.
+	 * For files inside a plugin or theme subdirectory this is the slug
+	 * (e.g. `ai` for `.../plugins/ai/includes/foo.php`). For a single file
+	 * placed directly in the base directory this is that filename.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $file     Normalized absolute file path.
 	 * @param string $base_dir Normalized base directory.
-	 * @return string|null
+	 * @return string|null Returns the first path segment, or null if the file
+	 *                     is outside the base directory.
 	 */
-	private function match_directory( string $file, string $base_dir ): ?string {
+	private function match_slug( string $file, string $base_dir ): ?string {
 		$base_dir = rtrim( $base_dir, '/' ) . '/';
 		if ( 0 !== strpos( $file, $base_dir ) ) {
 			return null;
@@ -247,11 +249,40 @@ final class Caller_Identifier {
 		}
 
 		$segments = explode( '/', $relative );
-		if ( count( $segments ) === 1 ) {
-			return $segments[0];
-		}
 
 		return $segments[0];
+	}
+
+	/**
+	 * Resolves a plugin path segment to a canonical plugin basename.
+	 *
+	 * `get_plugins()` keys are of the form `slug/main-file.php` for directory
+	 * plugins and `plugin.php` for single-file plugins. When the caller lives
+	 * inside a plugin directory we only know the slug from the backtrace, so
+	 * we look up the first registered plugin whose basename starts with that
+	 * slug. When the caller is a single-file plugin the segment already is
+	 * the basename.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $segment First path segment under `WP_PLUGIN_DIR`.
+	 * @return string The canonical plugin basename, or `$segment` when no match is found.
+	 */
+	private function resolve_plugin_basename( string $segment ): string {
+		// Single-file plugin at the root of WP_PLUGIN_DIR.
+		if ( '' !== pathinfo( $segment, PATHINFO_EXTENSION ) ) {
+			return $segment;
+		}
+
+		$prefix  = $segment . '/';
+		$plugins = $this->load_plugins();
+		foreach ( $plugins as $plugin_basename => $_plugin_data ) {
+			if ( 0 === strpos( (string) $plugin_basename, $prefix ) ) {
+				return (string) $plugin_basename;
+			}
+		}
+
+		return $segment;
 	}
 
 	/**
@@ -265,22 +296,27 @@ final class Caller_Identifier {
 	 * @return string
 	 */
 	private function plugin_name( string $basename ): string {
-		if ( ! function_exists( 'get_plugins' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-
-		$plugins = get_plugins();
+		$plugins = $this->load_plugins();
 		if ( isset( $plugins[ $basename ]['Name'] ) && '' !== $plugins[ $basename ]['Name'] ) {
 			return (string) $plugins[ $basename ]['Name'];
 		}
 
-		foreach ( $plugins as $plugin_basename => $plugin_data ) {
-			if ( 0 === strpos( (string) $plugin_basename, dirname( $basename ) . '/' ) ) {
-				return (string) ( $plugin_data['Name'] ?? $basename );
-			}
+		return $basename;
+	}
+
+	/**
+	 * Loads the plugin registry, requiring WP's plugin admin bootstrap if needed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function load_plugins(): array {
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		return $basename;
+		return get_plugins();
 	}
 
 	/**
@@ -298,7 +334,7 @@ final class Caller_Identifier {
 			}
 
 			$theme_root = wp_normalize_path( trailingslashit( WP_CONTENT_DIR . $root ) );
-			$slug       = $this->match_directory( $file, $theme_root );
+			$slug       = $this->match_slug( $file, $theme_root );
 			if ( null === $slug ) {
 				continue;
 			}
