@@ -82,6 +82,7 @@
 		"@wordpress/icons": "^12.2.0",
 		"@wordpress/notices": "^5.44.0",
 		"@wordpress/plugins": "^7.44.0",
+		"@wordpress/ui": "^0.11.0",
 		"@wordpress/url": "^4.44.0",
 		"@wordpress/wordcount": "^4.44.0",
 		"react": "^18.3.1"
