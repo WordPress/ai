@@ -59,8 +59,7 @@ const TypeAheadBlock = ( {
 		settings.enabled &&
 		allowedBlocks.has( name ) &&
 		selectedClientId === clientId &&
-		caretAtEnd &&
-		plainContent.trim().length > 0;
+		caretAtEnd;
 
 	const {
 		suggestion,
@@ -109,6 +108,27 @@ const TypeAheadBlock = ( {
 			return;
 		}
 
+		const isEmptyBlock =
+			editable.getAttribute( 'data-empty' ) === 'true' ||
+			plainContent.trim().length === 0;
+		const shouldHidePlaceholder =
+			Boolean( suggestion?.text ) && isEmptyBlock;
+
+		editable.classList.toggle(
+			'ai-type-ahead-hide-placeholder',
+			shouldHidePlaceholder
+		);
+
+		return () => {
+			editable.classList.remove( 'ai-type-ahead-hide-placeholder' );
+		};
+	}, [ editable, suggestion?.text, plainContent ] );
+
+	useEffect( () => {
+		if ( ! editable ) {
+			return;
+		}
+
 		const removeInlineGhost = () => {
 			editable
 				.querySelectorAll( '.ai-type-ahead-inline-ghost' )
@@ -137,7 +157,6 @@ const TypeAheadBlock = ( {
 		ghost.setAttribute( 'contenteditable', 'false' );
 		ghost.setAttribute( 'aria-hidden', 'true' );
 		ghost.textContent = suggestion.text;
-		ghost.style.color = 'var(--ai-type-ahead-ghost-color, #8a8f98)';
 
 		range.insertNode( ghost );
 

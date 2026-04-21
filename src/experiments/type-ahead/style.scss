@@ -29,3 +29,8 @@
 	color: var(--ai-type-ahead-ghost-color, #8a8f98) !important;
 	opacity: 0.72;
 }
+
+/* Hide Gutenberg placeholder only while an empty block has active ghost text. */
+.ai-type-ahead-hide-placeholder [data-rich-text-placeholder] {
+	display: none !important;
+}

@@ -145,10 +145,6 @@ class Type_Ahead extends Abstract_Ability {
 		$surrounding     = $this->truncate_text( (string) $args['surrounding_context'] );
 		$cursor_position = absint( $args['cursor_position'] );
 
-		if ( '' === $block_content ) {
-			return new WP_Error( 'ai_type_ahead_missing_block', esc_html__( 'Block content is required for type-ahead suggestions.', 'ai' ) );
-		}
-
 		if ( $cursor_position > mb_strlen( wp_strip_all_tags( $block_content ) ) ) {
 			$cursor_position = mb_strlen( wp_strip_all_tags( $block_content ) );
 		}

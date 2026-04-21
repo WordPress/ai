@@ -53,15 +53,6 @@ const TypeAheadOverlay = ( {
 
 		setStyle( {
 			position: 'absolute',
-			pointerEvents: 'none',
-			display: 'block',
-			color: 'var(--ai-type-ahead-ghost-color, #8a8f98)',
-			opacity: 1,
-			fontStyle: 'normal',
-			fontSize: 'inherit',
-			lineHeight: 'inherit',
-			whiteSpace: 'pre-wrap',
-			wordBreak: 'break-word',
 			zIndex: 1,
 			top: rect.top + scrollY,
 			left: containerLeft + scrollX,
