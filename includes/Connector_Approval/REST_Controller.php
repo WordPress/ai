@@ -21,9 +21,9 @@ defined( 'ABSPATH' ) || exit;
  * Exposes approval state to the admin UI and accepts approval updates.
  *
  * Endpoints (namespace `ai/v1`):
- * - GET /connector-approvals                          returns connectors, approvals, pending, known plugins
- * - POST /connector-approvals                         updates a single approval row
- * - DELETE /connector-approvals/pending/(?P<key>...)  dismisses a pending entry without approving
+ * - GET  /connector-approvals                        returns connectors, approvals, pending, and active plugins
+ * - POST /connector-approvals                        sets or revokes approval for a plugin/connector pair
+ * - DELETE /connector-approvals/pending/(?P<key>...) dismisses a pending entry without approving
  *
  * @since x.x.x
  */
@@ -61,6 +61,8 @@ final class REST_Controller {
 	 * Registers the REST routes. Call during `rest_api_init`.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return void
 	 */
 	public function register_routes(): void {
 		register_rest_route(
@@ -130,20 +132,19 @@ final class REST_Controller {
 	 * @return \WP_REST_Response
 	 */
 	public function get_state(): WP_REST_Response {
+		$pending = $this->store->get_pending();
+
+		$pending_list = array();
+		foreach ( $pending as $key => $entry ) {
+			$entry['key']   = $key;
+			$pending_list[] = $entry;
+		}
+
 		return new WP_REST_Response(
 			array(
 				'connectors' => $this->describe_connectors(),
 				'approvals'  => $this->store->get_approvals(),
-				'pending'    => array_values(
-					array_map(
-						static function ( array $entry, string $key ): array {
-							$entry['key'] = $key;
-							return $entry;
-						},
-						$this->store->get_pending(),
-						array_keys( $this->store->get_pending() )
-					)
-				),
+				'pending'    => $pending_list,
 				'plugins'    => $this->list_active_plugins(),
 			),
 			200
@@ -151,7 +152,7 @@ final class REST_Controller {
 	}
 
 	/**
-	 * Updates a single approval and clears any matching pending entry when approving.
+	 * Sets or revokes approval for a single plugin/connector pair.
 	 *
 	 * @since x.x.x
 	 *
@@ -198,53 +199,43 @@ final class REST_Controller {
 	}
 
 	/**
-	 * Builds the connector summary shown in the UI.
+	 * Returns the AI provider connectors the UI should render.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return list<array{
-	 *   id: string,
-	 *   name: string,
-	 *   type: string,
-	 *   setting_name: string,
-	 *   owner: string
-	 * }>
+	 * @return list<array{id: string, name: string}>
 	 */
 	private function describe_connectors(): array {
-		$connectors = wp_get_connectors();
-		if ( ! is_array( $connectors ) ) {
+		if ( ! function_exists( 'wp_get_connectors' ) ) {
 			return array();
 		}
 
 		$summary = array();
-		foreach ( $connectors as $id => $data ) {
+		foreach ( (array) wp_get_connectors() as $id => $data ) {
 			if ( ! is_string( $id ) || ! is_array( $data ) ) {
 				continue;
 			}
-
-			$auth         = isset( $data['authentication'] ) && is_array( $data['authentication'] ) ? $data['authentication'] : array();
-			$setting_name = isset( $auth['setting_name'] ) && is_string( $auth['setting_name'] ) ? $auth['setting_name'] : '';
-			if ( '' === $setting_name ) {
+			if ( ( $data['type'] ?? '' ) !== 'ai_provider' ) {
 				continue;
 			}
-
-			$plugin = isset( $data['plugin'] ) && is_array( $data['plugin'] ) ? $data['plugin'] : array();
-			$owner  = isset( $plugin['file'] ) && is_string( $plugin['file'] ) ? $plugin['file'] : '';
-
 			$summary[] = array(
-				'id'           => $id,
-				'name'         => isset( $data['name'] ) && is_string( $data['name'] ) ? $data['name'] : $id,
-				'type'         => isset( $data['type'] ) && is_string( $data['type'] ) ? $data['type'] : '',
-				'setting_name' => $setting_name,
-				'owner'        => $owner,
+				'id'   => $id,
+				'name' => isset( $data['name'] ) && is_string( $data['name'] ) && '' !== $data['name']
+					? $data['name']
+					: $id,
 			);
 		}
+
+		usort(
+			$summary,
+			static fn( array $a, array $b ): int => strcasecmp( $a['name'], $b['name'] )
+		);
 
 		return $summary;
 	}
 
 	/**
-	 * Returns the list of active plugins so the UI can render the approval matrix.
+	 * Returns the list of active plugins for the UI.
 	 *
 	 * @since x.x.x
 	 *

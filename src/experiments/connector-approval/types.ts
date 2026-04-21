@@ -5,9 +5,6 @@
 export interface Connector {
 	id: string;
 	name: string;
-	type: string;
-	setting_name: string;
-	owner: string;
 }
 
 export interface PluginSummary {

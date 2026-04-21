@@ -16,7 +16,7 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { buildMatrixPluginList, isOwnerPlugin } from '../functions/helpers';
+import { buildMatrixPluginList } from '../functions/helpers';
 import type { ApprovalMatrix, Connector, PluginSummary } from '../types';
 
 interface ApprovalMatrixCardProps {
@@ -49,7 +49,7 @@ const ApprovalMatrixCard = ( {
 				{ 0 === connectors.length ? (
 					<p>
 						{ __(
-							'No connectors are currently registered. Configure a connector first.',
+							'No AI connectors are currently registered. Configure a connector first.',
 							'ai'
 						) }
 					</p>
@@ -74,22 +74,6 @@ const ApprovalMatrixCard = ( {
 										<code>{ plugin.basename }</code>
 									</td>
 									{ connectors.map( ( connector ) => {
-										if (
-											isOwnerPlugin( connector, plugin )
-										) {
-											return (
-												<td
-													key={ connector.id }
-													title={ __(
-														'The connector plugin that owns this credential can always read it.',
-														'ai'
-													) }
-												>
-													{ __( 'Owner', 'ai' ) }
-												</td>
-											);
-										}
-
 										const approved = Boolean(
 											approvals[ plugin.basename ]?.[
 												connector.id

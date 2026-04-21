@@ -5,11 +5,10 @@
 /**
  * Internal dependencies
  */
-import type { Connector, PluginSummary, ApprovalMatrix } from '../types';
+import type { ApprovalMatrix, Connector, PluginSummary } from '../types';
 
 /**
  * Formats a timestamp as a human-readable string.
- *
  * @param {number} timestamp Timestamp in seconds.
  * @return string
  */
@@ -21,8 +20,7 @@ export function formatTimestamp( timestamp: number ): string {
 }
 
 /**
- * Returns the label for a connector.
- *
+ * Returns the display label for a connector given its ID.
  * @param {Connector[]} connectors Array of connectors.
  * @param {string}      id         Connector ID.
  * @return string
@@ -32,47 +30,11 @@ export function connectorLabel( connectors: Connector[], id: string ): string {
 }
 
 /**
- * Extracts the plugin slug (the directory segment) from a basename.
- *
- * @param {string} basename Plugin basename.
- * @return string
- */
-function pluginSlug( basename: string ): string {
-	return basename.split( '/' )[ 0 ] ?? basename;
-}
-
-/**
- * Whether a given plugin is the owner of a connector.
- *
- * Owner basenames come from `wp_get_connectors()[$id]['plugin']['file']` and
- * match the shape of regular plugin basenames, so a slug comparison is enough.
- *
- * @param {Connector}     connector Connector.
- * @param {PluginSummary} plugin    Plugin summary.
- * @return {boolean} Whether the plugin is the owner of the connector.
- */
-export function isOwnerPlugin(
-	connector: Connector,
-	plugin: PluginSummary
-): boolean {
-	if ( ! connector.owner ) {
-		return false;
-	}
-
-	if ( connector.owner === plugin.basename ) {
-		return true;
-	}
-
-	return pluginSlug( connector.owner ) === pluginSlug( plugin.basename );
-}
-
-/**
  * Returns the union of active plugins and plugins that appear in the approval
  * matrix (even if inactive), deduplicated and sorted for rendering.
- *
- * @param {PluginSummary[]} plugins   Array of plugin summaries.
- * @param {ApprovalMatrix}  approvals Approval matrix.
- * @return {PluginSummary[]} Array of plugin summaries.
+ * @param {PluginSummary[]} plugins   Active plugin summaries.
+ * @param {ApprovalMatrix}  approvals Plugin basename → connector ID → approved.
+ * @return {PluginSummary[]} Plugin summaries sorted by name.
  */
 export function buildMatrixPluginList(
 	plugins: PluginSummary[],

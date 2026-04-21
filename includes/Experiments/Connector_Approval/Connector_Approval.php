@@ -13,7 +13,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Connector_Approval\Admin_Notice;
 use WordPress\AI\Connector_Approval\Approvals_Store;
 use WordPress\AI\Connector_Approval\Caller_Identifier;
-use WordPress\AI\Connector_Approval\Option_Guard;
+use WordPress\AI\Connector_Approval\Prompt_Guard;
 use WordPress\AI\Connector_Approval\REST_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
 
@@ -21,12 +21,15 @@ use WordPress\AI\Experiments\Experiment_Category;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates reads of connector credentials behind per-plugin administrator approval.
+ * Gates use of the WordPress AI Client behind per-plugin administrator approval.
  *
  * Proof-of-concept permission layer for the WordPress 7.0 shared Connectors API.
- * While enabled, each connector's credential option is filtered so only the
- * owning connector plugin and explicitly approved callers receive the real
- * value; other callers receive an empty string and are recorded for review.
+ * While enabled, calls to `wp_ai_client_prompt()->generate_*()` from an unknown
+ * plugin are prevented and recorded for the administrator to review.
+ *
+ * Limitation: plugins that bypass the AI Client (for example, reading credential
+ * options directly and making their own HTTP calls) aren't blocked — this is a
+ * first version that leans on a core hook instead of intercepting options.
  *
  * @since x.x.x
  */
@@ -53,7 +56,7 @@ class Connector_Approval extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Connector Approval', 'ai' ),
-			'description' => __( 'Require explicit administrator approval before other plugins or themes can use AI connectors that you have configured.', 'ai' ),
+			'description' => __( 'Require explicit administrator approval before other plugins or themes can use the WordPress AI Client.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
@@ -64,14 +67,13 @@ class Connector_Approval extends Abstract_Feature {
 	public function register(): void {
 		$store      = new Approvals_Store();
 		$identifier = new Caller_Identifier();
-		$guard      = new Option_Guard( $identifier, $store );
+		$guard      = new Prompt_Guard( $identifier, $store );
 		$rest       = new REST_Controller( $store );
 		$notice     = new Admin_Notice( $store, array( Admin_Page::class, 'url' ) );
 
 		$this->admin_page = new Admin_Page();
 
-		// Option filters need to be registered before any AI request runs.
-		add_action( 'init', array( $guard, 'register' ), 20 );
+		$guard->register();
 
 		add_action( 'rest_api_init', array( $rest, 'register_routes' ) );
 

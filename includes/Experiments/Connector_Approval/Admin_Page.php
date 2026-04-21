@@ -123,7 +123,7 @@ final class Admin_Page {
 
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html__( 'AI Connector Approvals', 'ai' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Control which plugins and themes are allowed to use each configured AI connector. Requests from unapproved callers are denied and listed below for review.', 'ai' ) . '</p>';
+		echo '<p>' . esc_html__( 'Control which plugins and themes are allowed to use each AI connector on this site. Prompts from unapproved callers are prevented and listed below for review.', 'ai' ) . '</p>';
 		echo '<div id="ai-connector-approval-root"></div>';
 		echo '</div>';
 	}

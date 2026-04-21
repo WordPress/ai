@@ -13,10 +13,7 @@ namespace WordPress\AI\Connector_Approval;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Reads and writes the approval matrix and pending-requests queue.
- *
- * Values are stored in two options so the matrix can be managed independently
- * of the volatile pending queue.
+ * Reads and writes the per-plugin/per-connector approval matrix and pending-requests queue.
  *
  * @since x.x.x
  */
@@ -49,7 +46,7 @@ final class Approvals_Store {
 	public const PENDING_LIMIT = 50;
 
 	/**
-	 * Returns whether a caller is approved for a given connector.
+	 * Returns whether a caller is approved for a connector.
 	 *
 	 * @since x.x.x
 	 *
@@ -59,8 +56,7 @@ final class Approvals_Store {
 	 */
 	public function is_approved( string $caller_basename, string $connector_id ): bool {
 		$approvals = $this->get_approvals();
-		return isset( $approvals[ $caller_basename ][ $connector_id ] )
-			&& true === $approvals[ $caller_basename ][ $connector_id ];
+		return ! empty( $approvals[ $caller_basename ][ $connector_id ] );
 	}
 
 	/**
@@ -105,22 +101,23 @@ final class Approvals_Store {
 
 		$normalized = array();
 		foreach ( $approvals as $caller => $connectors ) {
-			if ( ! is_string( $caller ) || ! is_array( $connectors ) ) {
+			if ( ! is_string( $caller ) || '' === $caller ) {
 				continue;
 			}
 
 			$canonical = $this->canonicalize_basename( $caller );
-
 			if ( ! isset( $normalized[ $canonical ] ) ) {
 				$normalized[ $canonical ] = array();
+			}
+
+			if ( ! is_array( $connectors ) ) {
+				continue;
 			}
 
 			foreach ( $connectors as $connector_id => $value ) {
 				if ( ! is_string( $connector_id ) ) {
 					continue;
 				}
-
-				// Merge with existing entries: true wins, so a prior approval isn't silently dropped.
 				$existing                                  = $normalized[ $canonical ][ $connector_id ] ?? false;
 				$normalized[ $canonical ][ $connector_id ] = $existing || (bool) $value;
 			}

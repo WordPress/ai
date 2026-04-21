@@ -45,7 +45,7 @@ const PendingRequestsCard = ( {
 				{ 0 === pending.length ? (
 					<p>
 						{ __(
-							'No plugins or themes are currently waiting for connector access.',
+							'No plugins or themes are currently waiting for AI access.',
 							'ai'
 						) }
 					</p>
