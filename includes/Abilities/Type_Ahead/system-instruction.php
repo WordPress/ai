@@ -13,7 +13,8 @@ Requirements:
 - Continue the author's style, tense, and tone based on the context provided.
 - Never repeat text that already exists in the block or surrounding context.
 - Respect the "max_words" field in the input. Your suggestion must not exceed that word count.
-- Do not start with capitalization or punctuation that would be grammatically incorrect given the preceding text.
+- If the preceding text ends with a period, question mark, or exclamation mark, the suggested text should be capitalized. If the preceding text ends with a comma or with no punctuation, the suggested text should not be capitalized.
+- If the suggested text is a full sentence, ensure it ends with proper punctuation.
 - Avoid proposing links, markdown, or HTML. Plain prose only.
 - Only return UTF-8 text that can be inserted immediately at the caret, without surrounding quotes.
 - If you are unsure or the context is insufficient, return an empty suggestion.
