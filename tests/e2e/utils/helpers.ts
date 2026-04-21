@@ -401,7 +401,7 @@ export const getExperimentTogglesInGroup = async (
 		.filter( { has: page.getByText( groupName, { exact: true } ) } );
 
 	// Get all checkboxes in that section (experiment toggles are checkboxes, buttons are for bulk actions).
-	const allToggles = section.getByRole( 'checkbox' );
+	const allToggles = section.locator( '.components-form-toggle__input' );
 	const count = await allToggles.count();
 	const experimentToggles = [];
 
