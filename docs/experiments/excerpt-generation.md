@@ -327,7 +327,7 @@ You can extend the React components to add custom UI elements:
    - Scroll to the excerpt panel (or enable it in Screen Options)
    - Click the "Generate excerpt" button
    - Verify the excerpt is generated and populated in the field
-   - Click "Re-generate excerpt" to test regeneration
+   - Click "Regenerate excerpt" to test regeneration
 
 3. **Test with different post types:**
    - The experiment only loads for post types that support excerpts
