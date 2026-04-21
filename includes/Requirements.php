@@ -55,6 +55,7 @@ final class Requirements {
 
 			$success = $check_callback['check']();
 
+			// The callback is stored, but only triggered inside the admin notice callback so strings can be translated.
 			$this->requirements[ $slug ] = $success ? true : $check_callback['error_message'];
 		}
 
@@ -134,12 +135,16 @@ final class Requirements {
 			'network_admin_notices',
 		);
 
-		foreach ( $hooks as $hook ) {
-			$error_message = $this->get_admin_notice_message_html();
+		// Store a local copy to pass to the static callback.
+		$requirements = $this->requirements;
 
+		foreach ( $hooks as $hook ) {
 			add_action(
 				$hook,
-				static function () use ( $error_message ) {
+				static function () use ( $requirements ) {
+					// Messages are generated inside the hook to ensure the translation functions are available.
+					$error_message = self::get_admin_notice_message_html( $requirements );
+
 					wp_admin_notice(
 						wp_kses(
 							$error_message,
@@ -171,6 +176,7 @@ final class Requirements {
 				return false;
 			}
 		}
+
 		return true;
 	}
 
@@ -181,9 +187,11 @@ final class Requirements {
 	 *
 	 * @since x.x.x
 	 *
+	 * @param array<string,(true|callable():string)> $requirements The requirements check results, keyed by requirement slug.
+	 *
 	 * @return string The admin notice message.
 	 */
-	private function get_admin_notice_message_html(): string {
+	private static function get_admin_notice_message_html( array $requirements ): string {
 		$error_messages = array_map(
 			static function ( $result ) {
 				if ( is_callable( $result ) ) {
@@ -191,7 +199,7 @@ final class Requirements {
 				}
 				return null;
 			},
-			$this->requirements
+			$requirements
 		);
 		$error_messages = array_filter( $error_messages );
 
