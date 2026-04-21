@@ -13,7 +13,7 @@ import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { info as infoIcon } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
@@ -24,6 +24,7 @@ import { Icon, Popover, VisuallyHidden } from '@wordpress/ui';
  */
 import AIIcon from './ai-icon';
 import './style.scss';
+import { AIOnboardingGuide } from './ai-onboarding-guide';
 
 type AISettings = Record< string, boolean >;
 
@@ -621,18 +622,26 @@ function VisualCardToggle( {
 }
 
 function AISettingsPage() {
-	const { editedRecord, isLoading } = useSelect( ( select ) => {
-		const store: any = select( coreStore );
-		return {
-			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
-				| Record< string, unknown >
-				| undefined,
-			isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
-				'root',
-				'site',
-			] ) as boolean,
-		};
-	}, [] );
+	const { editedRecord, isLoading, currentUser, isResolvingUser } = useSelect(
+		( select ) => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
+			const store: any = select( coreStore );
+			return {
+				editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
+					| Record< string, unknown >
+					| undefined,
+				isLoading: ! store.hasFinishedResolution( 'getEntityRecord', [
+					'root',
+					'site',
+				] ) as boolean,
+				currentUser: store.getCurrentUser(),
+				isResolvingUser: store.isResolving(
+					'getCurrentUser'
+				) as boolean,
+			};
+		},
+		[]
+	);
 
 	const { editEntityRecord } = useDispatch( coreStore );
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
@@ -641,6 +650,19 @@ function AISettingsPage() {
 		useDispatch( noticesStore );
 	const registry = useRegistry();
 
+	const [ isGuideOpen, setIsGuideOpen ] = useState( false );
+
+	const userMeta = currentUser?.meta || {};
+	const guideDismissed =
+		userMeta.wpai_settings_guide_dismissed === true ||
+		userMeta.wpai_settings_guide_dismissed === '1' ||
+		userMeta.wpai_settings_guide_dismissed === 'true';
+
+	useEffect( () => {
+		if ( ! isResolvingUser && currentUser && ! guideDismissed ) {
+			setIsGuideOpen( true );
+		}
+	}, [ isResolvingUser, currentUser, guideDismissed ] );
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		const sourceFeatures =
 			PAGE_DATA.features.length > 0
@@ -915,6 +937,12 @@ function AISettingsPage() {
 			) }
 			actions={
 				<div className="ai-settings-page__actions">
+					<Button
+						variant="tertiary"
+						onClick={ () => setIsGuideOpen( true ) }
+					>
+						{ __( 'Getting started', 'ai' ) }
+					</Button>
 					<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
 						{ __( 'Docs', 'ai' ) }
 					</ExternalLink>
@@ -938,6 +966,13 @@ function AISettingsPage() {
 			}
 		>
 			<div className="ai-settings-page">
+				{ isGuideOpen && (
+					<AIOnboardingGuide
+						onFinish={ () => setIsGuideOpen( false ) }
+						guideDismissed={ guideDismissed }
+						currentUser={ currentUser }
+					/>
+				) }
 				{ ! PAGE_DATA.hasValidCredentials && (
 					<Notice status="error" isDismissible={ false }>
 						{ ! PAGE_DATA.hasCredentials

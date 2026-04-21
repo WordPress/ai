@@ -67,6 +67,17 @@ class Settings_Registration {
 	 */
 	public function init(): void {
 		$this->register_settings();
+
+		// Register user meta for onboarding guide dismissal.
+		register_meta(
+			'user',
+			'wpai_settings_guide_dismissed',
+			array(
+				'type'         => 'boolean',
+				'single'       => true,
+				'show_in_rest' => true,
+			)
+		);
 	}
 
 	/**

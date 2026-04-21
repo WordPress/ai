@@ -163,3 +163,67 @@
 .ai-showcase-card--disabled {
 	opacity: 0.6;
 }
+
+/* Onboarding Guide Graphic Styles */
+.ai-guide-graphic {
+	position: relative;
+	overflow: hidden;
+	background:
+		linear-gradient(90deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.6) 100%),
+		linear-gradient(90deg, #89dcdc 0%, #c7eb5c 46.15%, #a920c1 100%);
+	height: 100%;
+	min-height: 200px;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	[dir="rtl"] & {
+		background:
+			linear-gradient(270deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.6) 100%),
+			linear-gradient(270deg, #89dcdc 0%, #c7eb5c 46.15%, #a920c1 100%);
+	}
+
+	.ai-plugin-callout__decoration {
+		position: absolute;
+		right: 50%;
+		top: 50%;
+		transform: translate(50%, -50%);
+		width: 130px;
+		height: 130px;
+
+		[dir="rtl"] & {
+			right: auto;
+			left: 50%;
+			transform: translate(-50%, -50%);
+		}
+	}
+}
+
+/* Onboarding Guide Modal Consistency Styles */
+.ai-settings-guide {
+	width: 320px !important;
+	max-width: 100% !important;
+
+	.components-guide__page {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.components-guide__title {
+		margin-top: 20px !important;
+		margin-bottom: 0px !important;
+		padding-left: 24px;
+		padding-right: 24px;
+		font-size: 20px;
+		line-height: 1.4;
+	}
+
+	.components-guide__description {
+		margin-bottom: 20px !important;
+		padding-left: 24px;
+		padding-right: 24px;
+		font-size: 13px;
+		line-height: 1.5;
+	}
+}
