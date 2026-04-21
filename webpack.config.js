@@ -28,6 +28,11 @@ module.exports = {
 			'src/admin/dashboard',
 			'index.scss'
 		),
+		'experiments/connector-approval': path.resolve(
+			process.cwd(),
+			'src/experiments/connector-approval',
+			'index.tsx'
+		),
 		'experiments/content-classification': path.resolve(
 			process.cwd(),
 			'src/experiments/content-classification',
