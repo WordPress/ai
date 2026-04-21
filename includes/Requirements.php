@@ -55,7 +55,7 @@ final class Requirements {
 
 			$success = $check_callback['check']();
 
-			// The callback is stored, but only trigged inside the admin notice so strings can be translated.
+			// The callback is stored, but only triggered inside the admin notice callback so strings can be translated.
 			$this->requirements[ $slug ] = $success ? true : $check_callback['error_message'];
 		}
 
