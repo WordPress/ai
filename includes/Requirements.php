@@ -121,7 +121,7 @@ final class Requirements {
 					// @todo Remove the function check once the minimum WordPress version is 7.0 or higher.
 					return ! function_exists( 'wp_supports_ai' ) || wp_supports_ai();
 				},
-				'error_message' => static fn() => esc_html__( 'Your WordPress environment has AI functionality disabled. The AI Experiments plugin will not work until AI support is enabled.', 'ai' ),
+				'error_message' => static fn() => esc_html__( 'Your WordPress environment has AI functionality disabled. The AI plugin will not work until AI support is enabled.', 'ai' ),
 			),
 		);
 	}
