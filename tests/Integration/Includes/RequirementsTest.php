@@ -31,9 +31,6 @@ class RequirementsTest extends WP_UnitTestCase {
 		$requirements = new Requirements();
 		$reflection   = new \ReflectionClass( Requirements::class );
 
-		$checks = $reflection->getMethod( 'get_requirements' );
-		$checks->setAccessible( true );
-
 		// Test a failing requirement check.
 		$property = $reflection->getProperty( 'requirements' );
 		$property->setAccessible( true );
