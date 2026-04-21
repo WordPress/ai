@@ -81,6 +81,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 							onClick={ handleRegenerate }
 							disabled={ isGenerating }
 							size="compact"
+							accessibleWhenDisabled
 						/>
 					</div>
 				</div>
@@ -90,6 +91,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					onClick={ handleOpenModal }
 					disabled={ isGenerating }
 					isBusy={ isGenerating }
+					accessibleWhenDisabled
 				>
 					{ __( 'Generate Meta Description', 'ai' ) }
 				</Button>
