@@ -82,7 +82,7 @@ final class Requirements {
 	 */
 	private function get_requirements(): array {
 		return array(
-			'php'    => array(
+			'php'        => array(
 				'check'         => static fn() => version_compare( PHP_VERSION, self::MIN_PHP_VERSION, '>=' ),
 				'error_message' => static fn() => sprintf(
 					// translators: %s: Minimum PHP version, %s: Current PHP version.
@@ -91,7 +91,7 @@ final class Requirements {
 					esc_html( PHP_VERSION )
 				),
 			),
-			'wp'     => array(
+			'wp'         => array(
 				'check'         => static fn() => is_wp_version_compatible( self::MIN_WP_VERSION ),
 				'error_message' => static fn() => sprintf(
 					// translators: %s: Minimum WordPress version.
@@ -99,7 +99,7 @@ final class Requirements {
 					esc_html( self::MIN_WP_VERSION )
 				),
 			),
-			'assets' => array(
+			'assets'     => array(
 				'check'         => static function () {
 					// PHPUnit tests may not have the asset built.
 					if ( defined( 'WPAI_IS_TEST' ) && WPAI_IS_TEST ) {
@@ -115,6 +115,10 @@ final class Requirements {
 					return false;
 				},
 				'error_message' => static fn() => esc_html__( 'The plugin assets are not built. This is most likely because you downloaded the plugin from the GitHub repository without building the assets. Please run `nvm use && npm ci && npm run build` to build the assets.', 'ai' ),
+			),
+			'ai_support' => array(
+				'check'         => static fn() => wp_supports_ai(),
+				'error_message' => static fn() => esc_html__( 'Your WordPress environment has AI functionality disabled. The AI plugin will not work until AI support is enabled.', 'ai' ),
 			),
 		);
 	}
