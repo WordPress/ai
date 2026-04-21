@@ -120,7 +120,7 @@ class RequirementsTest extends WP_UnitTestCase {
 
 	/**
 	 * Used to mimic translation functions being called before the plugin's text domain is loaded.
-	 * This is needed since we're manually invoking admin_notices. and not actually loading the plugin.
+	 * This is needed since we're manually invoking admin_notices, rather than actually loading the plugin.
 	 *
 	 * @since x.x.x
 	 */
