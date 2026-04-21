@@ -235,11 +235,12 @@ class Type_Ahead extends Abstract_Feature {
 				),
 			),
 			array(
-				'id'      => 'delay',
-				'label'   => __( 'Trigger delay (ms)', 'ai' ),
-				'type'    => 'integer',
-				'default' => self::DEFAULTS['delay'],
-				'isValid' => array(
+				'id'          => 'delay',
+				'label'       => __( 'Trigger delay (ms)', 'ai' ),
+				'description' => __( 'The time you must pause at the end of a paragraph block before a suggestion is generated. If you start typing after the request has triggered but prior to the suggestion being returned, the suggestion won\'t be shown but because the API request has already been made, you will be charged for the request.', 'ai' ),
+				'type'        => 'integer',
+				'default'     => self::DEFAULTS['delay'],
+				'isValid'     => array(
 					'min' => 200,
 					'max' => 2000,
 				),
