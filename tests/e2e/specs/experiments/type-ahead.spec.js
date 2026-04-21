@@ -78,7 +78,7 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		await expect(
 			editor.canvas.locator( '.wp-block-paragraph' )
 		).toHaveText(
-			'This paragraph needs more text. This is a test suggestion.',
+			'This paragraph needs more text. This is a test suggestion.'
 		);
 
 		// Save the post.
