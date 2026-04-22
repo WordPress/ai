@@ -29,6 +29,15 @@ use function WordPress\AI\normalize_content;
 class Content_Classification extends Abstract_Ability {
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
 	 * Returns the input schema of the ability.
 	 *
 	 * @since 0.7.0
