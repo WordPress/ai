@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Comment_Moderation;
 
 use WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis as Comment_Analysis_Ability;
-use WordPress\AI\Abilities\Comment_Moderation\Reply_Suggestion as Reply_Suggestion_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
@@ -143,15 +142,6 @@ class Comment_Moderation extends Abstract_Feature {
 				'label'         => __( 'Comment Analysis', 'ai' ),
 				'description'   => __( 'Analyzes a comment for toxicity and sentiment.', 'ai' ),
 				'ability_class' => Comment_Analysis_Ability::class,
-			)
-		);
-
-		wp_register_ability(
-			'ai/reply-suggestion',
-			array(
-				'label'         => __( 'Reply Suggestion', 'ai' ),
-				'description'   => __( 'Generates reply suggestions for a comment.', 'ai' ),
-				'ability_class' => Reply_Suggestion_Ability::class,
 			)
 		);
 	}
