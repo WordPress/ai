@@ -126,6 +126,10 @@ class Comment_Moderation extends Abstract_Feature {
 		add_filter( 'handle_bulk_actions-edit-comments', array( $this, 'handle_bulk_action' ), 10, 3 );
 		add_action( 'admin_notices', array( $this, 'show_bulk_action_notice' ) );
 
+		// Add inline action.
+		add_filter( 'comment_row_actions', array( $this, 'add_inline_action' ), 10, 2 );
+		add_action( 'load-edit-comments.php', array( $this, 'handle_inline_action' ) );
+
 		// Enqueue assets.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
@@ -466,6 +470,75 @@ class Comment_Moderation extends Abstract_Feature {
 				)
 			)
 		);
+	}
+
+	/**
+	 * Adds an inline action to the comment row actions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $actions The existing actions.
+	 * @param \WP_Comment $comment The comment object.
+	 * @return array<string, string> The modified actions.
+	 */
+	public function add_inline_action( $actions, $comment ): array {
+		if (
+			! is_array( $actions ) ||
+			! $comment ||
+			! is_a( $comment, '\WP_Comment' )
+		) {
+			return $actions;
+		}
+
+		$url = add_query_arg(
+			array(
+				'wpai_analyze_comment' => (int) $comment->comment_ID,
+			),
+			admin_url( 'edit-comments.php' )
+		);
+		$url = wp_nonce_url( $url, 'wpai_analyze_comment_' . (int) $comment->comment_ID );
+
+		$actions['wpai_analyze'] = sprintf(
+			'<a href="%s" aria-label="%s">%s</a>',
+			esc_url( $url ),
+			esc_attr__( 'Analyze this comment with AI', 'ai' ),
+			esc_html__( 'Analyze with AI', 'ai' )
+		);
+
+		return $actions;
+	}
+
+	/**
+	 * Handles the inline Analyze with AI action from the comment row.
+	 *
+	 * @since x.x.x
+	 */
+	public function handle_inline_action(): void {
+		if ( ! current_user_can( 'moderate_comments' ) ) {
+			return;
+		}
+
+		if ( ! isset( $_GET['wpai_analyze_comment'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+
+		$comment_id = absint( wp_unslash( $_GET['wpai_analyze_comment'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! $comment_id ) {
+			return;
+		}
+
+		check_admin_referer( 'wpai_analyze_comment_' . $comment_id );
+
+		$redirect_url = remove_query_arg(
+			array(
+				'wpai_analyze_comment',
+				'_wpnonce',
+			)
+		);
+		$redirect_url = $this->handle_bulk_action( $redirect_url, 'wpai_analyze', array( $comment_id ) );
+
+		wp_safe_redirect( $redirect_url );
+		exit;
 	}
 
 	/**

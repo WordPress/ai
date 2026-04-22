@@ -12,7 +12,7 @@ import type React from 'react';
 /**
  * WordPress dependencies
  */
-import { useEffect, useState, useCallback } from '@wordpress/element';
+import { useEffect, useCallback, useRef } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -163,7 +163,7 @@ function clearQueuedAnalysisQueryArg(): void {
  * Handles lazy loading of comment analysis when comments are viewed.
  */
 export function LazyAnalysisController(): React.ReactElement | null {
-	const [ isAnalyzing, setIsAnalyzing ] = useState( false );
+	const isAnalyzingRef = useRef( false );
 
 	/**
 	 * Finds all pending comments in the DOM.
@@ -242,7 +242,7 @@ export function LazyAnalysisController(): React.ReactElement | null {
 	 * Processes all pending comments sequentially.
 	 */
 	const processPendingComments = useCallback( async (): Promise< void > => {
-		if ( isAnalyzing ) {
+		if ( isAnalyzingRef.current ) {
 			return;
 		}
 
@@ -253,7 +253,7 @@ export function LazyAnalysisController(): React.ReactElement | null {
 			return;
 		}
 
-		setIsAnalyzing( true );
+		isAnalyzingRef.current = true;
 
 		try {
 			// Process comments one at a time to avoid overwhelming the server.
@@ -261,10 +261,10 @@ export function LazyAnalysisController(): React.ReactElement | null {
 				await analyzeComment( comment );
 			}
 		} finally {
-			setIsAnalyzing( false );
+			isAnalyzingRef.current = false;
 			clearQueuedAnalysisQueryArg();
 		}
-	}, [ isAnalyzing, findPendingComments, analyzeComment ] );
+	}, [ findPendingComments, analyzeComment ] );
 
 	/**
 	 * Initialize analysis on mount.
@@ -276,7 +276,9 @@ export function LazyAnalysisController(): React.ReactElement | null {
 		}, 500 );
 
 		return () => clearTimeout( timeoutId );
-	}, [ processPendingComments ] );
+		// Intentionally run once on mount. processPendingComments is stable.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [] );
 
 	// This component doesn't render anything visible.
 	return null;

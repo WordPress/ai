@@ -132,6 +132,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$this->assertIsInt( has_filter( 'bulk_actions-edit-comments', array( $experiment, 'add_bulk_actions' ) ) );
 		$this->assertIsInt( has_filter( 'handle_bulk_actions-edit-comments', array( $experiment, 'handle_bulk_action' ) ) );
 		$this->assertIsInt( has_action( 'admin_notices', array( $experiment, 'show_bulk_action_notice' ) ) );
+		$this->assertIsInt( has_action( 'load-edit-comments.php', array( $experiment, 'handle_inline_action' ) ) );
 		$this->assertIsInt( has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ) );
 		$this->assertIsInt( has_action( 'admin_head-edit-comments.php', array( $experiment, 'add_inline_styles' ) ) );
 	}
@@ -184,6 +185,24 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 
 		$this->assertArrayHasKey( 'wpai_analyze', $actions );
 		$this->assertSame( 'Analyze with AI', $actions['wpai_analyze'] );
+	}
+
+	/**
+	 * Test add_inline_action() adds a nonce-protected link for a comment.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_inline_action_adds_nonce_protected_link() {
+		$comment_id = $this->create_comment_without_hooks();
+		$comment    = get_comment( $comment_id );
+		$experiment = new Comment_Moderation();
+
+		$actions = $experiment->add_inline_action( array(), $comment );
+
+		$this->assertArrayHasKey( 'wpai_analyze', $actions );
+		$this->assertStringContainsString( 'wpai_analyze_comment=' . $comment_id, $actions['wpai_analyze'] );
+		$this->assertStringContainsString( '_wpnonce=', $actions['wpai_analyze'] );
+		$this->assertStringContainsString( 'Analyze with AI', $actions['wpai_analyze'] );
 	}
 
 	/**
