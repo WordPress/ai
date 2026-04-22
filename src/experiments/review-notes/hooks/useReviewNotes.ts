@@ -131,11 +131,10 @@ async function reviewSingleBlock(
 			: content;
 
 	// Prepare a bounded context around the placeholder.
-	const contextWindow = buildContextWindow(
+	const context = buildContextWindow(
 		contentWithPlaceholder,
 		BLOCK_PLACEHOLDER
 	);
-	const context = `What follows is surrounding article content, where the block being reviewed has been replaced with the placeholder ${ BLOCK_PLACEHOLDER }. Use the nearby text to better understand the context of the block within the article. CONTENT: \n\n${ contextWindow }`;
 
 	// Call the review Ability.
 	const result = await runAbility< ReviewResult >( 'ai/review-notes', {

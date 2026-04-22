@@ -23,7 +23,7 @@ export const REVIEWABLE_BLOCK_TYPES = [
 
 /** Number of Notes to fetch per page when paginating. */
 export const NOTES_PAGE_SIZE = 100;
-const CONTEXT_WINDOW_SIZE = 2000;
+const CONTEXT_WINDOW_SIZE = 800;
 const TRUNCATED_BEFORE_MARKER = '[TRUNCATED BEFORE]';
 const TRUNCATED_AFTER_MARKER = '[TRUNCATED AFTER]';
 

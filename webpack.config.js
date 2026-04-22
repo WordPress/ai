@@ -23,6 +23,11 @@ module.exports = {
 			'src/admin/settings',
 			'index.scss'
 		),
+		'admin/dashboard': path.resolve(
+			process.cwd(),
+			'src/admin/dashboard',
+			'index.scss'
+		),
 		'experiments/content-classification': path.resolve(
 			process.cwd(),
 			'src/experiments/content-classification',
