@@ -170,7 +170,7 @@ export function LazyAnalysisController(): React.ReactElement | null {
 	 */
 	const findPendingComments = useCallback( (): PendingComment[] => {
 		const pendingBadges = document.querySelectorAll< HTMLElement >(
-			'[data-ai-status="pending"], [data-ai-status="failed"]'
+			'[data-ai-status="pending"]'
 		);
 
 		const commentMap = new Map< number, Partial< PendingComment > >();
@@ -230,7 +230,7 @@ export function LazyAnalysisController(): React.ReactElement | null {
 					`Failed to analyze comment ${ comment.id }:`,
 					error
 				);
-				// TODO: if things fail, we end up in an infinite retry loop.
+				// Keep failed state visible but do not auto-retry in this lazy pass.
 				markBadgeFailed( comment.sentimentBadge );
 				markBadgeFailed( comment.toxicityBadge );
 			}
