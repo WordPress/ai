@@ -26,19 +26,21 @@ defined( 'ABSPATH' ) || exit;
  * The builder clone exposes the caller's explicit provider / model preference
  * via protected properties of the underlying PromptBuilder SDK class. We read
  * those via reflection and resolve a list of candidate connector IDs for the
- * call. If the caller is approved for at least one candidate, the prompt is
- * allowed; otherwise it is prevented and a pending entry is recorded for each
- * denied candidate.
+ * call. The prompt is allowed only when the caller is approved for every
+ * candidate; otherwise it is prevented and a pending entry is recorded for
+ * each unapproved candidate.
  *
- * Known limitations:
- * - A plugin that bypasses `wp_ai_client_prompt()` entirely (e.g. reads credential
- *   options directly and makes its own HTTP calls) is not caught here.
- * - When the caller does not specify an explicit provider or provider-scoped
- *   model preference, every registered AI provider connector is treated as a
- *   candidate. Approving for any one connector therefore lets the call through,
- *   even if the AI Client ultimately routes to a different (also registered)
- *   provider. Per-provider enforcement is only strict for callers that use
- *   `using_provider()` or provider-scoped `using_model_preference()`.
+ * Why every candidate must be approved: the AI Client picks a provider at
+ * runtime from the candidate set (via the caller's preferences and the site's
+ * preferred-model filters), and this filter can only block or allow — we can't
+ * narrow the candidate set. "Allow if any approved" would let a call through
+ * for a connector the administrator never approved whenever the AI Client's
+ * resolution happened to pick a different candidate than the approved one.
+ * Strict "approve every candidate" keeps enforcement honest.
+ *
+ * Known limitation: a plugin that bypasses `wp_ai_client_prompt()` entirely
+ * (e.g. reads credential options directly and makes its own HTTP calls) is not
+ * caught here.
  *
  * @since x.x.x
  */
@@ -84,7 +86,7 @@ final class Prompt_Guard {
 	}
 
 	/**
-	 * Returns true when the originating caller is not approved for any candidate connector.
+	 * Returns true when the originating caller is not approved for every candidate connector.
 	 *
 	 * @since x.x.x
 	 *
@@ -111,13 +113,20 @@ final class Prompt_Guard {
 			return false;
 		}
 
+		$unapproved = array();
 		foreach ( $candidates as $connector_id ) {
 			if ( $this->store->is_approved( $caller['basename'], $connector_id ) ) {
-				return false;
+				continue;
 			}
+
+			$unapproved[] = $connector_id;
 		}
 
-		foreach ( $candidates as $connector_id ) {
+		if ( array() === $unapproved ) {
+			return false;
+		}
+
+		foreach ( $unapproved as $connector_id ) {
 			$this->store->record_pending( $caller, $connector_id );
 		}
 
@@ -125,7 +134,15 @@ final class Prompt_Guard {
 	}
 
 	/**
-	 * Resolves the list of connector IDs the builder could target.
+	 * Resolves the list of connector IDs the builder could target, intersected
+	 * with connectors that are actually registered on this site.
+	 *
+	 * Candidates the AI Client could never reach (because the corresponding
+	 * connector plugin isn't installed/active) are dropped so the admin isn't
+	 * asked to approve providers that don't exist. If a caller's preferences
+	 * narrow to zero registered providers the AI Client will fall back to its
+	 * own resolution, so we fall back to "all registered connectors" in that
+	 * case too.
 	 *
 	 * @since x.x.x
 	 *
@@ -133,16 +150,30 @@ final class Prompt_Guard {
 	 * @return list<string> Candidate connector IDs.
 	 */
 	private function resolve_candidate_connectors( WP_AI_Client_Prompt_Builder $builder ): array {
+		$registered = $this->all_ai_provider_connector_ids();
+		if ( array() === $registered ) {
+			return array();
+		}
+
+		$registered_lookup = array_flip( $registered );
+
 		$php_builder = $this->extract_php_builder( $builder );
 		if ( null !== $php_builder ) {
 			$explicit_provider = $this->read_protected_property( $php_builder, 'providerIdOrClassName' );
 			if ( is_string( $explicit_provider ) && '' !== $explicit_provider ) {
-				return array( $this->normalize_provider_identifier( $explicit_provider ) );
+				$normalized = $this->normalize_provider_identifier( $explicit_provider );
+				// Nothing to enforce when the caller explicitly targets a
+				// provider that isn't installed; the AI Client will surface
+				// its own error to the caller.
+				return isset( $registered_lookup[ $normalized ] )
+					? array( $normalized )
+					: array();
 			}
 
 			$preference_keys = $this->read_protected_property( $php_builder, 'modelPreferenceKeys' );
 			if ( is_array( $preference_keys ) && array() !== $preference_keys ) {
-				$providers = array();
+				$providers     = array();
+				$unconstrained = false;
 				foreach ( $preference_keys as $preference_key ) {
 					if ( ! is_string( $preference_key ) ) {
 						continue;
@@ -151,23 +182,27 @@ final class Prompt_Guard {
 						// `model::{id}` form doesn't pin a provider — treat the
 						// whole call as unconstrained so we fall through to the
 						// "all registered connectors" branch below.
-						$providers = array();
+						$unconstrained = true;
 						break;
 					}
 					$parts = explode( '::', $preference_key, 3 );
 					if ( 3 !== count( $parts ) || '' === $parts[1] ) {
 						continue;
 					}
+					if ( ! isset( $registered_lookup[ $parts[1] ] ) ) {
+						continue;
+					}
 
 					$providers[] = $parts[1];
 				}
-				if ( array() !== $providers ) {
+
+				if ( ! $unconstrained && array() !== $providers ) {
 					return array_values( array_unique( $providers ) );
 				}
 			}
 		}
 
-		return $this->all_ai_provider_connector_ids();
+		return $registered;
 	}
 
 	/**
