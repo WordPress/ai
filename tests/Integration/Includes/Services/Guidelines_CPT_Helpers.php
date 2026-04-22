@@ -29,10 +29,10 @@ trait Guidelines_CPT_Helpers {
 	 * @var array<string, string>
 	 */
 	private static array $guideline_category_meta_keys = array(
-		'copy'       => '_content_guideline_copy',
-		'images'     => '_content_guideline_images',
-		'site'       => '_content_guideline_site',
-		'additional' => '_content_guideline_additional',
+		'copy'       => '_guideline_copy',
+		'images'     => '_guideline_images',
+		'site'       => '_guideline_site',
+		'additional' => '_guideline_additional',
 	);
 
 	/**

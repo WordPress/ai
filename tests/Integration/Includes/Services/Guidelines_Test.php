@@ -187,7 +187,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 		$post_id = $this->create_guidelines_post(
 			array( 'site' => 'Professional tone.' )
 		);
-		update_post_meta( $post_id, '_content_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
 
 		$result = $this->service->get_block_guidelines( 'core/paragraph' );
 
@@ -274,7 +274,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	public function test_format_for_prompt_includes_block_guidelines(): void {
 		$this->register_guidelines_cpt();
 		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
-		update_post_meta( $post_id, '_content_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
 
 		$result = $this->service->format_for_prompt( array( 'site' ), 'core/paragraph' );
 
@@ -372,7 +372,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	public function test_get_block_guidelines_returns_null_when_disabled_by_filter(): void {
 		$this->register_guidelines_cpt();
 		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
-		update_post_meta( $post_id, '_content_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
 
 		add_filter( 'wpai_use_guidelines', '__return_false' );
 

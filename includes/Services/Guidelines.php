@@ -68,10 +68,10 @@ class Guidelines {
 	 */
 	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition
 	private const CATEGORY_META_KEYS = array(
-		'copy'       => '_content_guideline_copy',
-		'images'     => '_content_guideline_images',
-		'site'       => '_content_guideline_site',
-		'additional' => '_content_guideline_additional',
+		'copy'       => '_guideline_copy',
+		'images'     => '_guideline_images',
+		'site'       => '_guideline_site',
+		'additional' => '_guideline_additional',
 	);
 
 	/**
@@ -179,7 +179,7 @@ class Guidelines {
 		}
 
 		$sanitized_name = str_replace( '/', '_', $block_name );
-		$meta_key       = '_content_guideline_block_' . $sanitized_name;
+		$meta_key       = '_guideline_block_' . $sanitized_name;
 		$value          = get_post_meta( self::$cached_post_id, $meta_key, true );
 
 		if ( ! is_string( $value ) || '' === $value ) {
