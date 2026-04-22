@@ -23,6 +23,9 @@ namespace WordPress\AI;
  * A utility class for registering and enqueuing assets (scripts and styles)
  * with support for asset metadata files.
  *
+ * @internal This class is intended for internal plugin use only and should not be used directly by external code.
+ *           Breaking changes may be made without a major version bump or prior notice.
+ *
  * @since 0.1.0
  */
 final class Asset_Loader {
