@@ -16,6 +16,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Class Asset_Loader
  *
