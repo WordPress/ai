@@ -25,9 +25,13 @@ const { aiSummarizationData } = window as any;
 const Controls = () => {
 	const { isSummarizing, hasSummary, handleSummarize } =
 		useSummaryGeneration();
-	const buttonLabel = hasSummary
-		? __( 'Re-generate Summary', 'ai' )
-		: __( 'Generate Summary', 'ai' );
+	let buttonLabel: string = __( 'Generate Summary', 'ai' );
+
+	if ( isSummarizing ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasSummary ) {
+		buttonLabel = __( 'Regenerate Summary', 'ai' );
+	}
 
 	// Don't render if disabled.
 	if ( ! aiSummarizationData?.enabled ) {

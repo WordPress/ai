@@ -83,7 +83,7 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		// Ensure the excerpt button text is updated.
 		await expect(
 			page.locator( '.ai-excerpt-generation button' )
-		).toHaveText( 'Re-generate excerpt' );
+		).toHaveText( 'Regenerate excerpt' );
 
 		// Delete the excerpt.
 		await page

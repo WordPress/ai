@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { createBlock, type BlockInstance } from '@wordpress/blocks';
+import { createBlock } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
@@ -36,15 +36,14 @@ export function useSummaryGeneration() {
 	// Check if a summary block exists and update state accordingly.
 	useEffect( () => {
 		const summaryBlock = allBlocks.find(
-			( block: BlockInstance ) =>
+			( block ) =>
 				block.name === 'core/paragraph' &&
 				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 		);
 		/* eslint-disable dot-notation -- summaryBlock.attributes is a BlockInstance */
 		if ( summaryBlock && summaryBlock.attributes[ 'content' ] ) {
-			setSummary( summaryBlock.attributes[ 'content' ] );
+			setSummary( String( summaryBlock.attributes[ 'content' ] ) );
 		}
-		/* eslint-enable dot-notation */
 	}, [ allBlocks ] );
 
 	/**
@@ -73,9 +72,9 @@ export function useSummaryGeneration() {
 
 			// Check if an existing AI summary block exists.
 			const existingSummaryBlock = allBlocks.find(
-				( block: BlockInstance ) =>
+				( block ) =>
 					block.name === 'core/paragraph' &&
-					block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
+					block.attributes[ 'aiGeneratedSummary' ] === true
 			);
 
 			if ( existingSummaryBlock ) {

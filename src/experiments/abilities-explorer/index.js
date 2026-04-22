@@ -132,7 +132,7 @@ import './index.scss';
 						try {
 							JSON.parse( value );
 							this.classList.add( 'json-valid' );
-						} catch ( e ) {
+						} catch {
 							this.classList.add( 'json-invalid' );
 						}
 					}
@@ -152,7 +152,7 @@ import './index.scss';
 			// Validate JSON
 			try {
 				JSON.parse( inputString );
-			} catch ( e ) {
+			} catch {
 				self.showValidation( false, [
 					aiAbilityExplorer.strings.invalidJson,
 				] );
@@ -249,7 +249,7 @@ import './index.scss';
 			let schema;
 			try {
 				schema = JSON.parse( schemaElement.textContent );
-			} catch ( e ) {
+			} catch {
 				this.showValidation( false, [
 					'Failed to parse input schema',
 				] );
@@ -457,7 +457,7 @@ import './index.scss';
 				const parsed = JSON.parse( value );
 				const formatted = JSON.stringify( parsed, null, 2 );
 				textarea.value = formatted;
-			} catch ( e ) {
+			} catch {
 				// Invalid JSON, don't format
 			}
 		},
@@ -489,7 +489,7 @@ import './index.scss';
 				try {
 					const successful = document.execCommand( 'copy' );
 					this.showCopyFeedback( button, successful );
-				} catch ( err ) {
+				} catch {
 					this.showCopyFeedback( button, false );
 				}
 

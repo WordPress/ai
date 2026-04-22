@@ -23,11 +23,8 @@ import { commentContent } from '@wordpress/icons';
 /**
  * Internal dependencies
  */
-import {
-	REVIEWABLE_BLOCK_TYPES,
-	useReviewBlock,
-	useReviewNotes,
-} from '../hooks/useReviewNotes';
+import { REVIEWABLE_BLOCK_TYPES } from '../../../utils/notes';
+import { useReviewBlock, useReviewNotes } from '../hooks/useReviewNotes';
 
 /**
  * ReviewNotesPlugin component.

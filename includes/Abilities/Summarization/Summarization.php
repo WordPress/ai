@@ -35,6 +35,15 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {

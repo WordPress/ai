@@ -23,6 +23,11 @@ module.exports = {
 			'src/admin/settings',
 			'index.scss'
 		),
+		'admin/dashboard': path.resolve(
+			process.cwd(),
+			'src/admin/dashboard',
+			'index.scss'
+		),
 		'experiments/content-classification': path.resolve(
 			process.cwd(),
 			'src/experiments/content-classification',
@@ -43,9 +48,9 @@ module.exports = {
 			'src/experiments/excerpt-generation',
 			'index.tsx'
 		),
-		'experiments/image-generation': path.resolve(
+		'features/image-generation': path.resolve(
 			process.cwd(),
-			'src/experiments/image-generation',
+			'src/features/image-generation',
 			'index.ts'
 		),
 		'experiments/meta-description': path.resolve(
@@ -56,6 +61,11 @@ module.exports = {
 		'experiments/review-notes': path.resolve(
 			process.cwd(),
 			'src/experiments/review-notes',
+			'index.tsx'
+		),
+		'experiments/refine-notes': path.resolve(
+			process.cwd(),
+			'src/experiments/refine-notes',
 			'index.tsx'
 		),
 		'experiments/summarization': path.resolve(
