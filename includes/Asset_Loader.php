@@ -151,7 +151,7 @@ final class Asset_Loader {
 	 * } The asset file array, or null if the asset file does not exist or is invalid.
 	 */
 	private static function get_asset_file_data( string $filename ): ?array {
-		$asset_file = sprintf( '%s/%s.asset.php', self::ASSET_DIR, $filename );
+		$asset_file = self::ASSET_DIR . $filename . '.asset.php';
 
 		// Bail if the asset file does not exist.
 		if ( ! file_exists( $asset_file ) ) {
