@@ -11,6 +11,8 @@ use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Review_Notes\Review_Notes;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Services\Guidelines;
+use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 
 /**
  * Test experiment for Review_Notes_Ability tests.
@@ -49,6 +51,8 @@ class Test_Review_Notes_Experiment extends Abstract_Feature {
  * @since 0.4.0
  */
 class Review_NotesTest extends WP_UnitTestCase {
+
+	use Guidelines_CPT_Helpers;
 
 	/**
 	 * Review_Notes_Ability instance.
@@ -92,6 +96,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
+		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		parent::tearDown();
 	}
@@ -596,4 +601,46 @@ class Review_NotesTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'accessibility', $result );
 		$this->assertCount( 2, $result );
 	}
+
+	// -------------------------------------------------------------------------
+	// Content Guidelines integration
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Tests that guideline_categories() returns site, copy, and additional.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_guideline_categories_returns_site_copy_and_additional(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'guideline_categories' );
+		$method->setAccessible( true );
+
+		$this->assertSame(
+			array( 'site', 'copy', 'additional' ),
+			$method->invoke( $this->ability )
+		);
+	}
+
+	/**
+	 * Tests that get_system_instruction() includes guidelines when available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_system_instruction_includes_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site' => 'Use a professional tone.',
+				'copy' => 'Keep sentences under 25 words.',
+			)
+		);
+
+		$instruction = $this->ability->get_system_instruction( null, array( 'block_name' => 'core/paragraph' ) );
+
+		$this->assertStringContainsString( '<guidelines>', $instruction );
+		$this->assertStringContainsString( '<site-context>Use a professional tone.</site-context>', $instruction );
+		$this->assertStringContainsString( '<copy-guidelines>Keep sentences under 25 words.</copy-guidelines>', $instruction );
+	}
+
 }
