@@ -7,7 +7,6 @@
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { select } from '@wordpress/data';
-/* eslint-disable import/no-extraneous-dependencies -- @wordpress/blocks is in dependencies; types are in devDependencies */
 import { serialize } from '@wordpress/blocks';
 
 /**
@@ -111,7 +110,6 @@ export function replaceBlockWithPlaceholder(
 	let matchCount = 0;
 
 	for ( const flatBlock of flatBlocks ) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- block shape comes from editor store
 		const flatSerialized = serialize( flatBlock as any );
 		if ( flatSerialized !== serializedBlock ) {
 			continue;

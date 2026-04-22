@@ -55,7 +55,7 @@ const withGenerateImageInlineButton = createHigherOrderComponent(
 
 			try {
 				blockProps = useBlockProps();
-			} catch ( e ) {
+			} catch {
 				return <Component { ...props } />;
 			}
 

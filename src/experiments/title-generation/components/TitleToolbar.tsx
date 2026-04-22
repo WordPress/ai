@@ -60,7 +60,7 @@ async function generateTitle(
  *
  * Provides Generate/Regenerate button.
  *
- * @return {JSX.Element} The toolbar component.
+ * @return {React.JSX.Element} The toolbar component.
  */
 interface TitleToolbarProps {
 	isStandalone?: boolean;
@@ -68,7 +68,7 @@ interface TitleToolbarProps {
 
 export default function TitleToolbar( {
 	isStandalone = false,
-}: TitleToolbarProps ): JSX.Element | null {
+}: TitleToolbarProps ): React.JSX.Element | null {
 	const postId = select( editorStore ).getCurrentPostId();
 	const title = select( editorStore ).getEditedPostAttribute( 'title' );
 
