@@ -90,6 +90,14 @@ final class Caller_Identifier {
 			'/wp-includes/plugin.php',
 			'/wp-includes/connectors.php',
 			'/wp-includes/class-wp-connector-registry.php',
+			'/wp-includes/http.php',
+			'/wp-includes/class-wp-http.php',
+			'/wp-includes/class-http.php',
+			'/wp-includes/class-wp-http-requests-hooks.php',
+			'/wp-includes/Requests/',
+			'/wp-includes/class-requests.php',
+			'/wp-includes/ai-client/',
+			'/wp-includes/php-ai-client/',
 			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Connector_Approval' . DIRECTORY_SEPARATOR,
 		);
 	}

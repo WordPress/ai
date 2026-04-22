@@ -13,7 +13,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Connector_Approval\Admin_Notice;
 use WordPress\AI\Connector_Approval\Approvals_Store;
 use WordPress\AI\Connector_Approval\Caller_Identifier;
-use WordPress\AI\Connector_Approval\Prompt_Guard;
+use WordPress\AI\Connector_Approval\Connector_Key_Index;
+use WordPress\AI\Connector_Approval\Http_Guard;
 use WordPress\AI\Connector_Approval\REST_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
 
@@ -21,15 +22,21 @@ use WordPress\AI\Experiments\Experiment_Category;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates use of the WordPress AI Client behind per-plugin administrator approval.
+ * Gates use of configured AI connectors behind per-plugin administrator approval.
  *
  * Proof-of-concept permission layer for the WordPress 7.0 shared Connectors API.
- * While enabled, calls to `wp_ai_client_prompt()->generate_*()` from an unknown
- * plugin are prevented and recorded for the administrator to review.
+ * While enabled, outbound HTTP requests that carry a configured AI connector
+ * credential are matched to the originating plugin/theme via the call stack.
+ * If that caller hasn't been approved for the connector, the request is
+ * blocked and recorded for the administrator to review.
  *
- * Limitation: plugins that bypass the AI Client (for example, reading credential
- * options directly and making their own HTTP calls) aren't blocked — this is a
- * first version that leans on a core hook instead of intercepting options.
+ * Enforcement is done at the HTTP layer rather than the AI Client prompt
+ * layer so that:
+ *
+ * - The exact connector carrying the request is known (no candidate-set
+ *   guessing from builder internals).
+ * - Plugins that read a credential option directly and make their own HTTP
+ *   calls are also covered, not just plugins using `wp_ai_client_prompt()`.
  *
  * @since x.x.x
  */
@@ -56,7 +63,7 @@ class Connector_Approval extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Connector Approval', 'ai' ),
-			'description' => __( 'Require explicit administrator approval before other plugins or themes can use the WordPress AI Client.', 'ai' ),
+			'description' => __( 'Require explicit administrator approval before other plugins or themes can use AI connectors configured on this site.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
@@ -67,7 +74,8 @@ class Connector_Approval extends Abstract_Feature {
 	public function register(): void {
 		$store      = new Approvals_Store();
 		$identifier = new Caller_Identifier();
-		$guard      = new Prompt_Guard( $identifier, $store );
+		$key_index  = new Connector_Key_Index();
+		$guard      = new Http_Guard( $identifier, $store, $key_index );
 		$rest       = new REST_Controller( $store );
 		$notice     = new Admin_Notice( $store, array( Admin_Page::class, 'url' ) );
 
