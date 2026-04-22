@@ -39,7 +39,7 @@
 
 		// Language and Environment
 		"jsx": "react-jsx",
-		"lib": ["ES2022", "DOM.Iterable", "DOM"],
+		"lib": [ "ES2022", "DOM.Iterable", "DOM" ],
 		"moduleDetection": "force",
 		"target": "ES2022",
 
@@ -50,15 +50,21 @@
 
 		// Completeness
 		"skipLibCheck": true,
-		"typeRoots": ["./node_modules/@types"],
+		"typeRoots": [ "./node_modules/@types" ],
 
 		// File config
 		"baseUrl": "./src",
 		"outDir": "./build-scripts",
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": [ "./*" ]
 		}
 	},
-	"include": ["**/*.cjs", "**/*.mjs", "**/*.ts", "**/*.tsx"],
-	"exclude": ["**/build/*", "**/build-scripts/*", "**/tests/**", "vendor/*", "node_modules/*"]
+	"include": [ "**/*.cjs", "**/*.mjs", "**/*.ts", "**/*.tsx" ],
+	"exclude": [
+		"**/build/*",
+		"**/build-scripts/*",
+		"**/tests/**",
+		"vendor/*",
+		"node_modules/*"
+	]
 }
