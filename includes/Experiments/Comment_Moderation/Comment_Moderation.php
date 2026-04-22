@@ -98,7 +98,7 @@ class Comment_Moderation extends Abstract_Feature {
 		return array(
 			'label'       => __( 'Comment Moderation', 'ai' ),
 			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
+			'category'    => Experiment_Category::ADMIN,
 		);
 	}
 
