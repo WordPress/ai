@@ -8,6 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * WordPress dependencies
  */
+// eslint-disable-next-line no-restricted-syntax
 import baseConfig from '@wordpress/scripts/config/playwright.config.js';
 
 const config = defineConfig( {

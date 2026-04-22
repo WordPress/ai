@@ -229,15 +229,15 @@ jobs:
                   max_attempts: 3
                   command: |
                       if [ "${{ matrix.coverage }}" == "true" ]; then
-                      npm run wp-env start -- --xdebug=coverage
+                      npm run wp-env:test start -- --xdebug=coverage
                       else
-                      npm run wp-env start
+                      npm run wp-env:test start
                       fi
 
             - name: Log versions
               run: |
-                  npm run wp-env -- run cli php -- -v
-                  npm run wp-env -- run cli wp core version
+                  npm run wp-env:test -- run cli php -- -v
+                  npm run wp-env:test -- run cli wp core version
 
             - name: Run PHPUnit tests${{ matrix.coverage && ' with coverage report' || '' }}
               id: phpunit
@@ -352,7 +352,7 @@ jobs:
                   timeout_minutes: 10
                   max_attempts: 3
                   command: |
-                      npm run test:e2e:env:start
+                      npm run wp-env:test start
 
             - name: Run E2E tests
               run: npm run test:e2e
