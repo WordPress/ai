@@ -70,23 +70,24 @@ function getSentimentDisplay( sentiment: string ): {
 	className: string;
 	icon: string;
 } {
-	const displays: Record< AnalysisResult[ 'sentiment' ], SentimentDisplay > = {
-		positive: {
-			label: 'Positive',
-			className: 'ai-badge--positive',
-			icon: '😊',
-		},
-		negative: {
-			label: 'Negative',
-			className: 'ai-badge--negative',
-			icon: '😟',
-		},
-		neutral: {
-			label: 'Neutral',
-			className: 'ai-badge--neutral',
-			icon: '😐',
-		},
-	};
+	const displays: Record< AnalysisResult[ 'sentiment' ], SentimentDisplay > =
+		{
+			positive: {
+				label: 'Positive',
+				className: 'ai-badge--positive',
+				icon: '😊',
+			},
+			negative: {
+				label: 'Negative',
+				className: 'ai-badge--negative',
+				icon: '😟',
+			},
+			neutral: {
+				label: 'Neutral',
+				className: 'ai-badge--neutral',
+				icon: '😐',
+			},
+		};
 
 	if (
 		sentiment === 'positive' ||
@@ -139,6 +140,24 @@ function markBadgeProcessing( badge: HTMLElement ): void {
 }
 
 /**
+ * Removes the queued-analysis query arg from the URL.
+ */
+function clearQueuedAnalysisQueryArg(): void {
+	const url = new URL( window.location.href );
+
+	if ( ! url.searchParams.has( 'wpai_analysis_queued' ) ) {
+		return;
+	}
+
+	url.searchParams.delete( 'wpai_analysis_queued' );
+	window.history.replaceState(
+		null,
+		'',
+		`${ url.pathname }${ url.search }${ url.hash }`
+	);
+}
+
+/**
  * LazyAnalysisController component.
  *
  * Handles lazy loading of comment analysis when comments are viewed.
@@ -157,7 +176,10 @@ export function LazyAnalysisController(): React.ReactElement | null {
 		const commentMap = new Map< number, Partial< PendingComment > >();
 
 		pendingBadges.forEach( ( badge ) => {
-			const commentId = parseInt( badge.dataset[ 'commentId' ] || '0', 10 );
+			const commentId = parseInt(
+				badge.dataset[ 'commentId' ] || '0', // eslint-disable-line dot-notation
+				10
+			);
 			if ( ! commentId ) {
 				return;
 			}
@@ -227,17 +249,21 @@ export function LazyAnalysisController(): React.ReactElement | null {
 		const pendingComments = findPendingComments();
 
 		if ( pendingComments.length === 0 ) {
+			clearQueuedAnalysisQueryArg();
 			return;
 		}
 
 		setIsAnalyzing( true );
 
-		// Process comments one at a time to avoid overwhelming the server.
-		for ( const comment of pendingComments ) {
-			await analyzeComment( comment );
+		try {
+			// Process comments one at a time to avoid overwhelming the server.
+			for ( const comment of pendingComments ) {
+				await analyzeComment( comment );
+			}
+		} finally {
+			setIsAnalyzing( false );
+			clearQueuedAnalysisQueryArg();
 		}
-
-		setIsAnalyzing( false );
 	}, [ isAnalyzing, findPendingComments, analyzeComment ] );
 
 	/**
