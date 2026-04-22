@@ -25,6 +25,12 @@ type AnalysisResult = {
 	sentiment: 'positive' | 'negative' | 'neutral';
 };
 
+type SentimentDisplay = {
+	label: string;
+	className: string;
+	icon: string;
+};
+
 type PendingComment = {
 	id: number;
 	sentimentBadge: HTMLElement;
@@ -64,10 +70,7 @@ function getSentimentDisplay( sentiment: string ): {
 	className: string;
 	icon: string;
 } {
-	const displays: Record<
-		string,
-		{ label: string; className: string; icon: string }
-	> = {
+	const displays: Record< AnalysisResult[ 'sentiment' ], SentimentDisplay > = {
 		positive: {
 			label: 'Positive',
 			className: 'ai-badge--positive',
@@ -84,7 +87,16 @@ function getSentimentDisplay( sentiment: string ): {
 			icon: '😐',
 		},
 	};
-	return displays[ sentiment ] || displays.neutral;
+
+	if (
+		sentiment === 'positive' ||
+		sentiment === 'negative' ||
+		sentiment === 'neutral'
+	) {
+		return displays[ sentiment ];
+	}
+
+	return displays.neutral;
 }
 
 /**
@@ -145,7 +157,7 @@ export function LazyAnalysisController(): React.ReactElement | null {
 		const commentMap = new Map< number, Partial< PendingComment > >();
 
 		pendingBadges.forEach( ( badge ) => {
-			const commentId = parseInt( badge.dataset.commentId || '0', 10 );
+			const commentId = parseInt( badge.dataset[ 'commentId' ] || '0', 10 );
 			if ( ! commentId ) {
 				return;
 			}

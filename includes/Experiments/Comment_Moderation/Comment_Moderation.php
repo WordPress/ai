@@ -115,9 +115,6 @@ class Comment_Moderation extends Abstract_Feature {
 		add_filter( 'manage_edit-comments_columns', array( $this, 'add_columns' ) );
 		add_action( 'manage_comments_custom_column', array( $this, 'render_column' ), 10, 2 );
 
-		// Add row action for suggest reply.
-		add_filter( 'comment_row_actions', array( $this, 'add_row_actions' ), 10, 2 );
-
 		// Add bulk action.
 		add_filter( 'bulk_actions-edit-comments', array( $this, 'add_bulk_actions' ) );
 		add_filter( 'handle_bulk_actions-edit-comments', array( $this, 'handle_bulk_action' ), 10, 3 );
@@ -160,8 +157,8 @@ class Comment_Moderation extends Abstract_Feature {
 		foreach ( (array) $columns as $key => $value ) {
 			$new_columns[ $key ] = $value;
 
-			// Insert our columns after the 'author' column.
-			if ( 'author' !== $key ) {
+			// Insert our columns after the 'comment' column.
+			if ( 'comment' !== $key ) {
 				continue;
 			}
 
@@ -357,7 +354,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 *
 	 * @param string $redirect_url The redirect URL.
 	 * @param string $action       The action being performed.
-	 * @param array  $comment_ids  The comment IDs.
+	 * @param array<int> $comment_ids The comment IDs.
 	 * @return string The modified redirect URL.
 	 */
 	public function handle_bulk_action( $redirect_url, $action, $comment_ids ): string {
@@ -369,7 +366,8 @@ class Comment_Moderation extends Abstract_Feature {
 		$queued = 0;
 		foreach ( (array) $comment_ids as $comment_id ) {
 			$comment_id = absint( $comment_id );
-			if ( ! $comment_id || ! is_a( get_comment( $comment_id ), '\WP_Comment' ) ) {
+			$comment    = get_comment( $comment_id );
+			if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
 				continue;
 			}
 
@@ -412,34 +410,6 @@ class Comment_Moderation extends Abstract_Feature {
 				)
 			)
 		);
-	}
-
-	/**
-	 * Adds row actions to the comments list.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, string> $actions The existing actions.
-	 * @param \WP_Comment           $comment The comment object.
-	 * @return array<string, string> The modified actions.
-	 */
-	public function add_row_actions( $actions, $comment ): array {
-		if ( ! is_array( $actions ) || ! is_a( $comment, '\WP_Comment' ) ) {
-			return $actions;
-		}
-
-		// Only show for approved comments.
-		if ( '1' !== $comment->comment_approved ) {
-			return $actions;
-		}
-
-		$actions['wpai_suggest_reply'] = sprintf(
-			'<a href="#" class="ai-suggest-reply" data-comment-id="%d">%s</a>',
-			absint( $comment->comment_ID ),
-			esc_html__( 'AI Reply', 'ai' )
-		);
-
-		return $actions;
 	}
 
 	/**
@@ -540,14 +510,6 @@ class Comment_Moderation extends Abstract_Feature {
 			.ai-badge--failed {
 				background-color: #f8d7da;
 				color: #721c24;
-			}
-
-			.ai-suggest-reply {
-				color: #2271b1;
-			}
-
-			.ai-suggest-reply:hover {
-				color: #135e96;
 			}
 		</style>
 		<?php

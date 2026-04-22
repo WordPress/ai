@@ -90,7 +90,7 @@ class Comment_Analysis extends Abstract_Ability {
 
 		$comment = get_comment( $comment_id );
 
-		if ( ! is_a( $comment, '\WP_Comment' ) ) {
+		if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
 			return new WP_Error(
 				'comment_not_found',
 				sprintf(
@@ -204,7 +204,7 @@ class Comment_Analysis extends Abstract_Ability {
 			return $prompt_builder;
 		}
 
-		$result = $prompt_builder->generate_text();;
+		$result = $prompt_builder->generate_text();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
