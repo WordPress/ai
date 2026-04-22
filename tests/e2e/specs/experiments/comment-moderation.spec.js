@@ -37,12 +37,10 @@ test.describe( 'Comment Moderation Experiment', () => {
 		await disableExperiment( admin, page, 'Comment Moderation' );
 
 		// Create a new post and comment.
-		const post = await requestUtils.createPost(
-			{
-				title: 'Test Comment Moderation Experiment',
-				status: 'publish',
-			}
-		);
+		const post = await requestUtils.createPost( {
+			title: 'Test Comment Moderation Experiment',
+			status: 'publish',
+		} );
 
 		await requestUtils.createComment( {
 			content: 'This is a test comment.',
@@ -56,10 +54,14 @@ test.describe( 'Comment Moderation Experiment', () => {
 		await admin.visitAdminPage( 'edit-comments.php' );
 
 		// Select the first comment in the list.
-		await page.locator( '#the-comment-list tr:first-child .check-column' ).click();
+		await page
+			.locator( '#the-comment-list tr:first-child .check-column' )
+			.click();
 
 		// Trigger comment analysis.
-		await page.locator( '#bulk-action-selector-top' ).selectOption( 'wpai_analyze' );
+		await page
+			.locator( '#bulk-action-selector-top' )
+			.selectOption( 'wpai_analyze' );
 
 		// Click the apply button.
 		await page.locator( '#doaction' ).click();
@@ -89,7 +91,9 @@ test.describe( 'Comment Moderation Experiment', () => {
 		await page.goto( post.link );
 
 		// Leave a comment.
-		await page.locator( '#comment' ).fill( 'This is a mean and toxic comment.' );
+		await page
+			.locator( '#comment' )
+			.fill( 'This is a mean and toxic comment.' );
 		await page.locator( '#submit' ).click();
 
 		// Ensure we see the comment moderation message.
@@ -112,13 +116,9 @@ test.describe( 'Comment Moderation Experiment', () => {
 		await admin.visitAdminPage( 'edit-comments.php' );
 
 		// Ensure the comment sentiment and toxicity badges are not visible.
-		await expect(
-			page.locator( '.wpai_sentiment' )
-		).not.toBeVisible();
+		await expect( page.locator( '.wpai_sentiment' ) ).not.toBeVisible();
 
-		await expect(
-			page.locator( '.wpai_toxicity' )
-		).not.toBeVisible();
+		await expect( page.locator( '.wpai_toxicity' ) ).not.toBeVisible();
 
 		// Ensure our bulk option doesn't exist.
 		await expect(
@@ -140,13 +140,9 @@ test.describe( 'Comment Moderation Experiment', () => {
 		await admin.visitAdminPage( 'edit-comments.php' );
 
 		// Ensure the comment sentiment and toxicity badges are not visible.
-		await expect(
-			page.locator( '.wpai_sentiment' )
-		).not.toBeVisible();
+		await expect( page.locator( '.wpai_sentiment' ) ).not.toBeVisible();
 
-		await expect(
-			page.locator( '.wpai_toxicity' )
-		).not.toBeVisible();
+		await expect( page.locator( '.wpai_toxicity' ) ).not.toBeVisible();
 
 		// Ensure our bulk option doesn't exist.
 		await expect(

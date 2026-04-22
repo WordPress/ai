@@ -112,7 +112,7 @@ class Comment_Moderation extends Abstract_Feature {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 
 		// Moderate new comments.
-		add_action( 'wp_insert_comment', array( $this, 'moderate_comment' ), 10, 2 );
+		add_action( 'wp_insert_comment', array( $this, 'moderate_comment' ) );
 
 		// Add columns to comments list table.
 		add_filter( 'manage_edit-comments_columns', array( $this, 'add_columns' ) );
@@ -153,7 +153,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 *
 	 * @param int $comment_id Comment ID.
 	 */
-	public function moderate_comment( $comment_id ) {
+	public function moderate_comment( $comment_id ): void {
 		$comment = get_comment( (int) $comment_id );
 		if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
 			return;
@@ -182,11 +182,18 @@ class Comment_Moderation extends Abstract_Feature {
 		 * @param array $analysis The analysis results.
 		 * @param int $comment_id The comment ID.
 		 */
-		$should_moderate = apply_filters( 'wpai_comment_moderation_should_moderate', $should_moderate, $analysis, $comment_id );
+		$should_moderate = (bool) apply_filters( 'wpai_comment_moderation_should_moderate', $should_moderate, $analysis, $comment_id );
 
-		if ( $should_moderate ) {
-			wp_update_comment( array( 'comment_ID' => $comment_id, 'comment_approved' => '0' ) );
+		if ( ! $should_moderate ) {
+			return;
 		}
+
+		wp_update_comment(
+			array(
+				'comment_ID'       => $comment_id,
+				'comment_approved' => '0',
+			)
+		);
 	}
 
 	/**

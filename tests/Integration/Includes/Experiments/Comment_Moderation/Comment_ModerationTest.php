@@ -112,7 +112,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 
 		$this->assertSame( 'comment-moderation', $experiment->get_id() );
 		$this->assertSame( 'Comment Moderation', $experiment->get_label() );
-		$this->assertSame( Experiment_Category::EDITOR, $experiment->get_category() );
+		$this->assertSame( Experiment_Category::ADMIN, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
 
