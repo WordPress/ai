@@ -29,7 +29,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
-* **Comment Moderation** - Analysis of comment toxicity and sentiment, bulk moderation features, and contextual AI reply suggestions in the Comments admin screen.
+* **Comment Moderation** - Automatic moderation of comments based on toxicity and sentiment analysis and bulk moderation features in the Comments admin screen.
 
 **Coming Soon:**
 

@@ -1,8 +1,7 @@
 /**
  * Comment Moderation experiment entry point.
  *
- * Initializes lazy analysis for pending comments and handles
- * the AI Reply modal functionality.
+ * Initializes lazy analysis for pending comments.
  */
 
 /**
@@ -15,13 +14,11 @@ import { createRoot } from '@wordpress/element';
  * Internal dependencies
  */
 import { LazyAnalysisController } from './components/LazyAnalysisController';
-import { ReplyModalController } from './components/ReplyModalController';
 
 declare global {
 	interface Window {
 		aiCommentModerationData?: {
 			enabled: boolean;
-			nonce: string;
 		};
 	}
 }
@@ -46,7 +43,6 @@ function init(): void {
 	root.render(
 		<>
 			<LazyAnalysisController />
-			<ReplyModalController />
 		</>
 	);
 }

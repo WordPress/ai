@@ -17,7 +17,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 /**
  * Comment moderation experiment.
  *
- * Provides toxicity detection, sentiment analysis, and reply suggestions
+ * Provides toxicity detection, sentiment analysis, and moderation
  * for WordPress comments.
  *
  * @since x.x.x
@@ -97,7 +97,7 @@ class Comment_Moderation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Comment Moderation', 'ai' ),
-			'description' => __( 'AI-powered comment analysis with toxicity detection, sentiment analysis, and reply suggestions. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -460,7 +460,6 @@ class Comment_Moderation extends Abstract_Feature {
 			'CommentModerationData',
 			array(
 				'enabled' => $this->is_enabled(),
-				'nonce'   => wp_create_nonce( 'wpai_comment_moderation' ),
 			)
 		);
 

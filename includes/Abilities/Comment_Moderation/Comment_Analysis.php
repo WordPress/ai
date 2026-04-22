@@ -12,7 +12,6 @@ namespace WordPress\AI\Abilities\Comment_Moderation;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
-use WordPress\AI_Client\AI_Client;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
 
@@ -247,7 +246,7 @@ class Comment_Analysis extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction( 'comment-analysis-system-instruction.php' ) )
+			->using_system_instruction( $this->get_system_instruction() )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->response_schema() );
 
