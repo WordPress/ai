@@ -33,6 +33,7 @@ parameters:
 			- '#WP_AI_Client_[A-Za-z0-9_]+#'
 			- '#WordPress\\AiClient\\#'
 			- '#Function wp_get_connectors not found\.#'
+			- '#Function wp_supports_ai not found\.#'
 		excludePaths:
 			analyse:
 				- tests/

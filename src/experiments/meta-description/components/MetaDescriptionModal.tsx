@@ -5,12 +5,11 @@
 /**
  * WordPress dependencies
  */
-import { useEffect } from '@wordpress/element';
+import { speak } from '@wordpress/a11y';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Modal, Button, TextareaControl } from '@wordpress/components';
 import { useCopyToClipboard } from '@wordpress/compose';
-import { dispatch } from '@wordpress/data';
-import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
@@ -26,6 +25,48 @@ interface MetaDescriptionModalProps {
 	onGenerate: () => Promise< void >;
 	onApply: ( text: string ) => void;
 	onClose: () => void;
+}
+
+function CopyButton( {
+	text,
+	disabled,
+}: {
+	text: string;
+	disabled: boolean;
+} ): JSX.Element {
+	const [ showCopyConfirmation, setShowCopyConfirmation ] = useState( false );
+	const timeoutIdRef = useRef< ReturnType< typeof setTimeout > >();
+	const ref = useCopyToClipboard< HTMLButtonElement >( text, () => {
+		speak( __( 'Meta description copied to clipboard.', 'ai' ) );
+		setShowCopyConfirmation( true );
+		if ( timeoutIdRef.current ) {
+			clearTimeout( timeoutIdRef.current );
+		}
+		timeoutIdRef.current = setTimeout( () => {
+			setShowCopyConfirmation( false );
+		}, 4000 );
+	} );
+
+	useEffect( () => {
+		return () => {
+			if ( timeoutIdRef.current ) {
+				clearTimeout( timeoutIdRef.current );
+			}
+		};
+	}, [] );
+
+	return (
+		<Button
+			ref={ ref }
+			variant="tertiary"
+			disabled={ disabled }
+			accessibleWhenDisabled
+		>
+			{ showCopyConfirmation
+				? __( 'Copied!', 'ai' )
+				: __( 'Copy to clipboard', 'ai' ) }
+		</Button>
+	);
 }
 
 /**
@@ -49,21 +90,6 @@ export default function MetaDescriptionModal( {
 	onApply,
 	onClose,
 }: MetaDescriptionModalProps ): JSX.Element {
-	const { createSuccessNotice } = dispatch( noticesStore );
-
-	const copyButtonRef = useCopyToClipboard< HTMLButtonElement >(
-		() => editableText,
-		() => {
-			createSuccessNotice(
-				__( 'Meta description copied to clipboard.', 'ai' ),
-				{
-					type: 'snackbar',
-					isDismissible: true,
-				}
-			);
-		}
-	);
-
 	// Populate the textarea when a new suggestion arrives.
 	useEffect( () => {
 		if ( suggestion?.text ) {
@@ -111,6 +137,7 @@ export default function MetaDescriptionModal( {
 							onApply( editableText );
 							onClose();
 						} }
+						accessibleWhenDisabled
 						disabled={ editableText.trim().length === 0 }
 					>
 						{ __( 'Apply', 'ai' ) }
@@ -120,16 +147,14 @@ export default function MetaDescriptionModal( {
 						onClick={ onGenerate }
 						disabled={ isGenerating }
 						isBusy={ isGenerating }
+						accessibleWhenDisabled
 					>
 						{ generateButtonLabel }
 					</Button>
-					<Button
-						ref={ copyButtonRef }
-						variant="tertiary"
+					<CopyButton
+						text={ editableText }
 						disabled={ editableText.trim().length === 0 }
-					>
-						{ __( 'Copy to clipboard', 'ai' ) }
-					</Button>
+					/>
 					<Button variant="tertiary" onClick={ onClose }>
 						{ __( 'Cancel', 'ai' ) }
 					</Button>
