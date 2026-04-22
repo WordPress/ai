@@ -89,7 +89,7 @@ export default function MetaDescriptionModal( {
 	onGenerate,
 	onApply,
 	onClose,
-}: MetaDescriptionModalProps ): JSX.Element {
+}: MetaDescriptionModalProps ): React.JSX.Element {
 	// Populate the textarea when a new suggestion arrives.
 	useEffect( () => {
 		if ( suggestion?.text ) {

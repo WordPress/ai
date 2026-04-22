@@ -379,7 +379,6 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	);
 
 	const { editedRecord, nonTransientEdits } = useSelect( ( select ) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 		const store: any = select( coreStore );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
@@ -400,7 +399,6 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	);
 
 	const { editEntityRecord } = useDispatch( coreStore );
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
@@ -596,7 +594,6 @@ function VisualCardToggle( {
 
 function AISettingsPage() {
 	const { editedRecord, isLoading } = useSelect( ( select ) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 		const store: any = select( coreStore );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
@@ -610,7 +607,6 @@ function AISettingsPage() {
 	}, [] );
 
 	const { editEntityRecord } = useDispatch( coreStore );
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
@@ -700,7 +696,6 @@ function AISettingsPage() {
 				createSuccessNotice( message, { type: 'snackbar' } );
 			} catch {
 				// Revert only the toggled keys to their server-side values.
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DataRegistry typing doesn't expose .select(); core-data selectors aren't fully typed for 'root'/'site' entity args.
 				const serverRecord = ( registry as any )
 					.select( coreStore )
 					.getEntityRecord( 'root', 'site' ) as
