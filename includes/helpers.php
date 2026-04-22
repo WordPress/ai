@@ -237,11 +237,11 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-1.5',
+			'gpt-image-2',
 		),
 		array(
 			'openai',
-			'gpt-image-1-mini',
+			'gpt-image-1.5',
 		),
 	);
 
