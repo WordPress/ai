@@ -40,20 +40,19 @@ trait Guidelines_CPT_Helpers {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $post_type Optional. The post type slug to register. Defaults to Guidelines::POST_TYPE.
 	 * @return void
 	 */
-	private function register_guidelines_cpt( string $post_type = Guidelines::POST_TYPE ): void {
-		if ( post_type_exists( $post_type ) ) {
+	private function register_guidelines_cpt(): void {
+		if ( post_type_exists( Guidelines::POST_TYPE ) ) {
 			return;
 		}
 
-		// phpcs:disable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
+		// phpcs:disable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix, WordPress.NamingConventions.ValidPostTypeSlug.NotStringLiteral
 		register_post_type(
-			$post_type,
+			Guidelines::POST_TYPE,
 			array( 'public' => false )
 		);
-		// phpcs:enable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix
+		// phpcs:enable WordPress.NamingConventions.ValidPostTypeSlug.ReservedPrefix, WordPress.NamingConventions.ValidPostTypeSlug.NotStringLiteral
 	}
 
 	/**
@@ -62,14 +61,13 @@ trait Guidelines_CPT_Helpers {
 	 * @since x.x.x
 	 *
 	 * @param array<string, string> $categories  Keyed array of category => guideline text.
-	 * @param string                $post_type   Optional. The post type slug. Defaults to Guidelines::POST_TYPE.
 	 * @param string                $post_status Optional. The post status. Defaults to 'publish'.
 	 * @return int The created post ID.
 	 */
-	private function create_guidelines_post( array $categories, string $post_type = Guidelines::POST_TYPE, string $post_status = 'publish' ): int {
+	private function create_guidelines_post( array $categories, string $post_status = 'publish' ): int {
 		$post_id = self::factory()->post->create(
 			array(
-				'post_type'   => $post_type,
+				'post_type'   => Guidelines::POST_TYPE,
 				'post_status' => $post_status,
 				'post_title'  => 'Content Guidelines',
 			)
