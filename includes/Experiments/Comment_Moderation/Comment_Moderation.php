@@ -111,6 +111,9 @@ class Comment_Moderation extends Abstract_Feature {
 		// Register abilities.
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 
+		// Moderate new comments.
+		add_action( 'wp_insert_comment', array( $this, 'moderate_comment' ), 10, 2 );
+
 		// Add columns to comments list table.
 		add_filter( 'manage_edit-comments_columns', array( $this, 'add_columns' ) );
 		add_action( 'manage_comments_custom_column', array( $this, 'render_column' ), 10, 2 );
@@ -141,6 +144,49 @@ class Comment_Moderation extends Abstract_Feature {
 				'ability_class' => Comment_Analysis_Ability::class,
 			)
 		);
+	}
+
+	/**
+	 * Moderate newly added comments.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $comment_id Comment ID.
+	 */
+	public function moderate_comment( $comment_id ) {
+		$comment = get_comment( (int) $comment_id );
+		if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
+			return;
+		}
+
+		// Analyze the comment using the comment-analysis ability.
+		$ability = wp_get_ability( 'ai/comment-analysis' );
+		if ( ! $ability ) {
+			return;
+		}
+
+		$analysis = $ability->execute( array( 'comment_id' => $comment_id ) );
+		if ( is_wp_error( $analysis ) ) {
+			return;
+		}
+
+		// Moderate the comment if it is above the toxicity threshold and has a negative sentiment.
+		$should_moderate = $analysis['toxicity_score'] >= 0.7 && 'negative' === $analysis['sentiment'];
+
+		/**
+		 * Filters whether the comment should be moderated.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool $should_moderate Whether the comment should be moderated.
+		 * @param array $analysis The analysis results.
+		 * @param int $comment_id The comment ID.
+		 */
+		$should_moderate = apply_filters( 'wpai_comment_moderation_should_moderate', $should_moderate, $analysis, $comment_id );
+
+		if ( $should_moderate ) {
+			wp_update_comment( array( 'comment_ID' => $comment_id, 'comment_approved' => '0' ) );
+		}
 	}
 
 	/**
@@ -432,9 +478,6 @@ class Comment_Moderation extends Abstract_Feature {
 				'enabled' => $this->is_enabled(),
 			)
 		);
-
-		// Enqueue WordPress components styles.
-		wp_enqueue_style( 'wp-components' );
 	}
 
 	/**
