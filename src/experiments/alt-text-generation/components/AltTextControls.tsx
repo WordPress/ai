@@ -55,13 +55,13 @@ function getButtonLabel(
  * @param {string}               props.clientId      The block client ID.
  * @param {ImageBlockAttributes} props.attributes    The block attributes.
  * @param {Function}             props.setAttributes The function to set the block attributes.
- * @return {JSX.Element|null} The component.
+ * @return {React.JSX.Element|null} The component.
  */
 export function AltTextControls( {
 	clientId,
 	attributes,
 	setAttributes,
-}: AltTextControlsProps ): JSX.Element | null {
+}: AltTextControlsProps ): React.JSX.Element | null {
 	const { id: attachmentId, url: imageUrl, alt } = attributes;
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );

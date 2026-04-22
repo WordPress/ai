@@ -23,7 +23,7 @@ import CharacterCount from './CharacterCount';
  * Shows a generate button when no description exists, or the current
  * description with edit/regenerate actions when one does.
  */
-export default function MetaDescriptionPanel(): JSX.Element {
+export default function MetaDescriptionPanel(): React.JSX.Element {
 	const {
 		isGenerating,
 		suggestion,
@@ -81,6 +81,7 @@ export default function MetaDescriptionPanel(): JSX.Element {
 							onClick={ handleRegenerate }
 							disabled={ isGenerating }
 							size="compact"
+							accessibleWhenDisabled
 						/>
 					</div>
 				</div>
@@ -90,6 +91,7 @@ export default function MetaDescriptionPanel(): JSX.Element {
 					onClick={ handleOpenModal }
 					disabled={ isGenerating }
 					isBusy={ isGenerating }
+					accessibleWhenDisabled
 				>
 					{ __( 'Generate Meta Description', 'ai' ) }
 				</Button>

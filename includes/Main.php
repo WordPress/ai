@@ -13,6 +13,7 @@ namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Admin\Activation;
+use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
@@ -121,9 +122,11 @@ final class Main {
 			// Initialize settings registration.
 			( new Settings_Registration( $registry ) )->init();
 
-			// Register admin settings page menu item.
+			// Register admin settings page menu item and dashboard widgets.
 			if ( is_admin() ) {
 				Settings_Page::init( $registry );
+
+				( new Dashboard_Widgets( $registry ) )->init();
 			}
 
 			// Register our post-related WordPress Abilities.

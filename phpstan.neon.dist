@@ -24,6 +24,11 @@ parameters:
 		paths:
 				- ai.php
 				- includes/
+		scanFiles:
+			# These are needed due config.platform.php being 7.4 in composer.json and wordpress-stubs not including polyfills.
+			# See <https://github.com/php-stubs/wordpress-stubs/issues/100>.
+			- vendor/phpstan/php-8-stubs/stubs/ext/standard/str_contains.php
+			- vendor/phpstan/php-8-stubs/stubs/ext/standard/str_starts_with.php
 		# Temporary while WP 7.0 beta AI Client migration is in progress.
 		ignoreErrors:
 			- '#Function wp_ai_client_prompt not found\.#'
@@ -31,6 +36,7 @@ parameters:
 			- '#WordPress\\AiClient\\#'
 			- '#Function wp_get_connectors not found\.#'
 			- '#class cli\\progress\\Bar#'
+			- '#Function wp_supports_ai not found\.#'
 		excludePaths:
 			analyse:
 				- tests/

@@ -24,7 +24,7 @@ interface CharacterCountProps {
  */
 export default function CharacterCount( {
 	count,
-}: CharacterCountProps ): JSX.Element {
+}: CharacterCountProps ): React.JSX.Element {
 	const isInRange = count >= MIN_LENGTH && count <= MAX_LENGTH;
 
 	let rangeClass = 'ai-meta-description__char-count';

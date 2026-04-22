@@ -67,7 +67,7 @@ export async function uploadImage(
 				`data:image/png;base64,${ image.data }`
 			);
 			params.alt_text = altResult.alt_text;
-		} catch ( error ) {
+		} catch {
 			params.alt_text = prompt;
 		}
 	}

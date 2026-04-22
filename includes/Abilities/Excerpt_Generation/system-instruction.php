@@ -21,4 +21,5 @@ The excerpt suggestion should follow these requirements:
 - Must reflect the actual content and context accurately, not generic summaries or clickbait
 - Should be self-contained and readable on its own, providing enough context for readers to understand the topic without reading the full article
 - Ensure the excerpt you return matches the language of the content you are given. For example, if the content is in English, the excerpt should be in English. If the content is in Spanish, the excerpt should be in Spanish
+- Output only the excerpt text. Respond directly without preamble, without phrases like "Here is...", "Here's...", "Sure,", or "Of course,". Do not wrap the output in quotes, code fences, or tags. Do not add closing remarks, follow-up questions, or meta-commentary
 INSTRUCTION;
