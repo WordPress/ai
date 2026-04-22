@@ -168,7 +168,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	private function maybe_enqueue_media_editor_script(): void {
-		if ( ! $this->is_enabled() || ! is_plugin_active( 'gutenberg/gutenberg.php' ) ) {
+		if ( ! is_plugin_active( 'gutenberg/gutenberg.php' ) ) {
 			return;
 		}
 

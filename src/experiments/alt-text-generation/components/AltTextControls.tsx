@@ -55,14 +55,12 @@ export function getButtonLabel(
  */
 export function DecorativeNotice(): JSX.Element {
 	return (
-		<div style={ { marginBottom: '12px' } }>
-			<Notice status="info" isDismissible={ false }>
-				{ __(
-					'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
-					'ai'
-				) }
-			</Notice>
-		</div>
+		<Notice status="info" isDismissible={ false }>
+			{ __(
+				'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
+				'ai'
+			) }
+		</Notice>
 	);
 }
 

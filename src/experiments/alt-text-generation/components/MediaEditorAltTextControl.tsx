@@ -23,7 +23,7 @@ import type { MediaEditorAttachment } from '../types';
 /**
  * MediaEditorAltTextControl component.
  *
- * Replaces the core `alt_text` field to add an AI generate/regenerate button.
+ * Replaces the core `alt_text` field to add a generate/regenerate button.
  *
  * @param {DataFormControlProps<MediaEditorAttachment>} props                     The DataForm control props.
  * @param {MediaEditorAttachment}                       props.data                The attachment record.
