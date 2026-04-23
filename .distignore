@@ -18,6 +18,7 @@ composer.json
 composer.lock
 CONTRIBUTING.md
 CREDITS.md
+eslint.config.mjs
 LICENSE.md
 package-lock.json
 package.json
@@ -27,4 +28,5 @@ phpunit.xml.dist
 README.md
 ROADMAP.md
 SECURITY.md
+tsconfig.json
 webpack.config.js

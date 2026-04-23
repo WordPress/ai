@@ -7,7 +7,7 @@
  *
  * @package WordPress\AI\Admin\Dashboard
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 
 declare( strict_types=1 );
@@ -27,14 +27,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Renders the AI Status dashboard widget.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class AI_Status_Widget {
 
 	/**
 	 * The feature registry instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var \WordPress\AI\Features\Registry
 	 */
@@ -43,7 +43,7 @@ class AI_Status_Widget {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
@@ -57,7 +57,7 @@ class AI_Status_Widget {
 	 * Determines whether to show the getting-started checklist or
 	 * the full status view based on setup completion.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function render(): void {
 		$has_credentials = has_ai_credentials();
@@ -74,7 +74,7 @@ class AI_Status_Widget {
 	/**
 	 * Renders the getting-started checklist.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param bool $has_credentials   Whether any AI provider credentials are configured.
 	 * @param bool $global_enabled    Whether the global features toggle is on.
@@ -122,7 +122,7 @@ class AI_Status_Widget {
 	/**
 	 * Renders the full status view.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 */
 	private function render_status(): void {
@@ -198,7 +198,7 @@ class AI_Status_Widget {
 	/**
 	 * Returns AI provider connectors with their configuration status.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return list<array{name: string, configured: bool}> Connector info.
 	 */
@@ -230,7 +230,7 @@ class AI_Status_Widget {
 	 *
 	 * If plugin metadata is not provided for a connector, it is treated as active.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param array<string, mixed> $connector_data Connector metadata.
 	 * @return bool True if the connector plugin is active or unknown, false if known inactive.
@@ -268,7 +268,7 @@ class AI_Status_Widget {
 	/**
 	 * Checks whether any registered feature is individually enabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return bool True if at least one feature is enabled.
 	 */

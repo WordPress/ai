@@ -48,7 +48,7 @@ class Test_Experiment extends Abstract_Feature {
 /**
  * Test stable feature for registry tests.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Test_Stable_Feature extends Abstract_Feature {
 	/**
@@ -72,7 +72,7 @@ class Test_Stable_Feature extends Abstract_Feature {
 	/**
 	 * Registers the feature.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -82,7 +82,7 @@ class Test_Stable_Feature extends Abstract_Feature {
 /**
  * Test deprecated feature for registry tests.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Test_Deprecated_Feature extends Abstract_Feature {
 	/**
@@ -106,7 +106,7 @@ class Test_Deprecated_Feature extends Abstract_Feature {
 	/**
 	 * Registers the feature.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -224,7 +224,7 @@ class Registry_Test extends WP_UnitTestCase {
 	/**
 	 * Tests filtering registered features by stability.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_features_by_stability() {
 		$experimental_feature = new Test_Experiment();

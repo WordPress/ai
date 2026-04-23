@@ -112,7 +112,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 *
 	 * Valid categories: 'site', 'copy', 'images', 'additional'.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return list<string> Guideline category slugs.
 	 */
@@ -127,7 +127,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * Unsupported categories are silently dropped.
 	 * Returns empty string when guidelines are unavailable or no categories declared.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param string|null $block_name Optional block name for block-specific guidelines.
 	 * @return string Formatted guidelines XML string, or empty string.
