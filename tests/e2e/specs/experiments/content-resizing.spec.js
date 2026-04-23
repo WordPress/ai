@@ -37,6 +37,7 @@ test.describe( 'Content Resizing Experiment', () => {
 	test( 'Toolbar dropdown is visible on a selected paragraph block', async ( {
 		admin,
 		editor,
+		page,
 	} ) => {
 		await admin.createNewPost( { title: 'Content Resizing Toolbar Test' } );
 
@@ -47,10 +48,11 @@ test.describe( 'Content Resizing Experiment', () => {
 
 		await selectFirstParagraph( editor );
 
-		// The block toolbar renders inside the editor iframe; the dropdown
-		// trigger exposes its `label` prop as the button's accessible name.
+		// The Gutenberg block toolbar renders in the parent document (top
+		// chrome), not inside the canvas iframe, so all block-toolbar lookups
+		// use `page` rather than `editor.canvas`.
 		await expect(
-			editor.canvas.getByRole( 'button', { name: 'Resize Content' } )
+			page.getByRole( 'button', { name: 'Resize Content' } )
 		).toBeVisible();
 	} );
 
@@ -72,7 +74,7 @@ test.describe( 'Content Resizing Experiment', () => {
 		await selectFirstParagraph( editor );
 
 		await expect(
-			editor.canvas.getByRole( 'button', { name: 'Resize Content' } )
+			page.getByRole( 'button', { name: 'Resize Content' } )
 		).toHaveCount( 0 );
 	} );
 
@@ -94,7 +96,7 @@ test.describe( 'Content Resizing Experiment', () => {
 		await selectFirstParagraph( editor );
 
 		await expect(
-			editor.canvas.getByRole( 'button', { name: 'Resize Content' } )
+			page.getByRole( 'button', { name: 'Resize Content' } )
 		).toHaveCount( 0 );
 	} );
 
@@ -114,12 +116,11 @@ test.describe( 'Content Resizing Experiment', () => {
 
 		const paragraph = await selectFirstParagraph( editor );
 
-		await editor.canvas
-			.getByRole( 'button', { name: 'Resize Content' } )
-			.click();
+		// Block toolbar lives in the parent document, not the iframe canvas.
+		await page.getByRole( 'button', { name: 'Resize Content' } ).click();
 
-		// The DropdownMenu renders its items via a Popover portal attached to
-		// the parent document, so the menuitems are on `page`, not the canvas.
+		// DropdownMenu items render via a Popover portal attached to the parent
+		// document, so the menuitems are also on `page`.
 		await page.getByRole( 'menuitem', { name: 'Rephrase' } ).click();
 
 		// Wait for the modal to be visible.
@@ -167,7 +168,7 @@ test.describe( 'Content Resizing Experiment', () => {
 
 		// The toolbar group should carry the accent-color modifier.
 		await expect(
-			editor.canvas.locator( '.ai-content-resizing-toolbar--has-changes' )
+			page.locator( '.ai-content-resizing-toolbar--has-changes' )
 		).toBeVisible();
 	} );
 
@@ -188,9 +189,7 @@ test.describe( 'Content Resizing Experiment', () => {
 
 		await selectFirstParagraph( editor );
 
-		await editor.canvas
-			.getByRole( 'button', { name: 'Resize Content' } )
-			.click();
+		await page.getByRole( 'button', { name: 'Resize Content' } ).click();
 		await page.getByRole( 'menuitem', { name: 'Shorten' } ).click();
 
 		// The modal must not open on a client-side validation failure.

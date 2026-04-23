@@ -426,6 +426,9 @@ export const getExperimentTogglesInGroup = async (
 /**
  * Selects the first paragraph block in the editor canvas so its block toolbar renders.
  *
+ * Uses `editor.selectBlocks()` rather than a raw click so selection is reliable
+ * regardless of where the click lands within the block's text.
+ *
  * @param editor The editor fixture from the test context.
  * @return The paragraph block locator.
  */
@@ -433,6 +436,6 @@ export const selectFirstParagraph = async ( editor: Editor ) => {
 	const paragraph = editor.canvas
 		.locator( '[data-type="core/paragraph"]' )
 		.first();
-	await paragraph.click();
+	await editor.selectBlocks( paragraph );
 	return paragraph;
 };
