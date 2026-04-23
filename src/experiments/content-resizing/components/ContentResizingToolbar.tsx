@@ -15,8 +15,8 @@ import {
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { useState, useCallback } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { useState, useCallback, useMemo } from '@wordpress/element';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
 import { count } from '@wordpress/wordcount';
@@ -146,13 +146,62 @@ export default function ContentResizingToolbar( {
 		}
 	}, [ handleAction, lastAction ] );
 
+	// Calculate the word difference between the original and suggested content.
+	const wordDiff = useMemo( () => {
+		if ( suggestedContent === null ) {
+			return null;
+		}
+
+		const delta =
+			count( suggestedContent, 'words', {} ) -
+			count( blockContent, 'words', {} );
+
+		if ( delta === 0 ) {
+			return {
+				modifier: 'neutral' as const,
+				label: __( 'No change', 'ai' ),
+				ariaLabel: __( 'No change in word count', 'ai' ),
+			};
+		}
+
+		const magnitude = Math.abs( delta );
+
+		if ( delta > 0 ) {
+			return {
+				modifier: 'positive' as const,
+				label: sprintf(
+					/* translators: %d: Number of words added. */
+					_n( '+%d word', '+%d words', magnitude, 'ai' ),
+					magnitude
+				),
+				ariaLabel: sprintf(
+					/* translators: %d: Number of words added. */
+					_n( '%d word added', '%d words added', magnitude, 'ai' ),
+					magnitude
+				),
+			};
+		}
+
+		return {
+			modifier: 'negative' as const,
+			label: sprintf(
+				/* translators: %d: Number of words removed. */
+				_n( '−%d word', '−%d words', magnitude, 'ai' ),
+				magnitude
+			),
+			ariaLabel: sprintf(
+				/* translators: %d: Number of words removed. */
+				_n( '%d word removed', '%d words removed', magnitude, 'ai' ),
+				magnitude
+			),
+		};
+	}, [ blockContent, suggestedContent ] );
+
 	const controls: Array< {
 		title: string;
 		icon: JSX.Element;
 		onClick: () => void;
-	} > = [];
-
-	controls.push(
+	} > = [
 		{
 			title: __( 'Shorten', 'ai' ) as string,
 			icon: ICON_SHORTEN,
@@ -167,8 +216,8 @@ export default function ContentResizingToolbar( {
 			title: __( 'Rephrase', 'ai' ) as string,
 			icon: ICON_REPHRASE,
 			onClick: () => handleAction( 'rephrase' ),
-		}
-	);
+		},
+	];
 
 	return (
 		<>
@@ -200,12 +249,42 @@ export default function ContentResizingToolbar( {
 						</div>
 					) : (
 						<>
-							<div
-								className="ai-content-resizing-modal__text"
-								dangerouslySetInnerHTML={ {
-									__html: suggestedContent ?? '',
-								} }
-							/>
+							<section
+								className="ai-content-resizing-modal__panel"
+								aria-label={ __( 'Original content', 'ai' ) }
+							>
+								<div className="ai-content-resizing-modal__label">
+									<span>{ __( 'Original', 'ai' ) }</span>
+								</div>
+								<div
+									className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
+									dangerouslySetInnerHTML={ {
+										__html: blockContent,
+									} }
+								/>
+							</section>
+							<section
+								className="ai-content-resizing-modal__panel"
+								aria-label={ __( 'Suggested content', 'ai' ) }
+							>
+								<div className="ai-content-resizing-modal__label">
+									<span>{ __( 'Suggested', 'ai' ) }</span>
+									{ wordDiff && (
+										<span
+											className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
+											aria-label={ wordDiff.ariaLabel }
+										>
+											{ wordDiff.label }
+										</span>
+									) }
+								</div>
+								<div
+									className="ai-content-resizing-modal__text"
+									dangerouslySetInnerHTML={ {
+										__html: suggestedContent ?? '',
+									} }
+								/>
+							</section>
 							<Flex
 								justify="flex-start"
 								gap={ 2 }
