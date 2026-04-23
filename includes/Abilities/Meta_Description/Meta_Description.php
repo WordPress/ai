@@ -290,7 +290,7 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * Returns a prompt builder for meta description generation.
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 *
 	 * @param string $prompt The prompt to build.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
@@ -299,7 +299,7 @@ class Meta_Description extends Abstract_Ability {
 		/**
 		 * Filters the temperature for the result of the meta description generation.
 		 *
-		 * @since 0.7.0
+		 * @since x.x.x
 		 *
 		 * @param float $result_temperature The temperature for the result of the meta description generation.
 		 */
@@ -310,14 +310,9 @@ class Meta_Description extends Abstract_Ability {
 			->using_temperature( $result_temperature )
 			->using_model_preference( ...get_preferred_models_for_text_generation() );
 
-		// Return a more specific error if there isn't a model that supports text generation.
-		if ( ! $builder->is_supported_for_text_generation() ) {
-			return new WP_Error(
-				'unsupported_model',
-				esc_html__( 'Meta description generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
-			);
-		}
-
-		return $builder;
+		return $this->ensure_text_generation_supported(
+			$builder,
+			esc_html__( 'Meta description generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }
