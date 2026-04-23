@@ -302,7 +302,7 @@ function get_preferred_vision_models(): array {
 /**
  * Retrieves guidelines, optionally filtered by category.
  *
- * @since x.x.x
+ * @since 0.8.0
  *
  * @param string|null $category Optional. Guideline category to retrieve.
  * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
@@ -314,7 +314,7 @@ function get_guidelines( ?string $category = null ): ?array {
 /**
  * Formats guidelines as an XML-tagged string for prompt injection.
  *
- * @since x.x.x
+ * @since 0.8.0
  *
  * @param list<string> $categories Guideline category slugs to include.
  * @param string|null  $block_name Optional block name for block-specific guidelines.
