@@ -39,8 +39,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
-		$loader->initialize_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'content-resizing' );
 		$this->assertInstanceOf( Content_Resizing::class, $experiment, 'Content Resizing experiment should be registered in the registry.' );
