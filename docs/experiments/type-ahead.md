@@ -35,7 +35,7 @@ The experiment has three parts:
 `WordPress\AI\Experiments\Type_Ahead\Type_Ahead::register()` wires:
 
 - `wp_abilities_api_init` -> registers `ai/type-ahead`.
-- `enqueue_block_assets` -> enqueues `experiments/type-ahead` and `experiments/style-type-ahead`.
+- `enqueue_block_assets` -> enqueues `experiments/type-ahead` JS and `experiments/type-ahead` CSS.
 
 Editor bootstrap:
 
@@ -45,7 +45,7 @@ Editor bootstrap:
 
 1. **PHP side**
    - Enqueues script: `experiments/type-ahead`.
-   - Enqueues stylesheet: `experiments/style-type-ahead`.
+   - Enqueues stylesheet: `experiments/type-ahead`.
    - Localizes `window.aiTypeAheadData` with:
      - `enabled`
      - `completionMode`

@@ -96,7 +96,7 @@ class Type_Ahead extends Abstract_Feature {
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'type_ahead', 'experiments/type-ahead' );
-		Asset_Loader::enqueue_style( 'type_ahead', 'experiments/style-type-ahead' );
+		Asset_Loader::enqueue_style( 'type_ahead', 'experiments/type-ahead' );
 
 		$settings = $this->get_settings();
 

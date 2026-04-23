@@ -19,7 +19,7 @@ import { addFilter } from '@wordpress/hooks';
 import TypeAheadBlock from './components/TypeAheadBlock';
 import { ALLOWED_BLOCKS } from './constants';
 import type { TypeAheadSettings } from './types';
-import './style.scss';
+import './index.scss';
 
 /**
  * Registers the editor block wrapper for type-ahead support.
