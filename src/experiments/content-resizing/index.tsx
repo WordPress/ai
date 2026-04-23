@@ -17,7 +17,8 @@ import './index.scss';
 
 const { aiContentResizingData } = window as any;
 
-// Register the aiOriginalContent attribute on paragraph blocks.
+// Register the aiResized attribute on paragraph blocks so we can visually flag
+// blocks whose content was generated via the content-resizing ability.
 addFilter(
 	'blocks.registerBlockType',
 	'ai/content-resizing-attribute',
@@ -30,9 +31,9 @@ addFilter(
 			...settings,
 			attributes: {
 				...settings.attributes,
-				aiOriginalContent: {
-					type: 'string',
-					default: '',
+				aiResized: {
+					type: 'boolean',
+					default: false,
 				},
 			},
 		};

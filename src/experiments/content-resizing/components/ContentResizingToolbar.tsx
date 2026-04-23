@@ -52,24 +52,21 @@ export default function ContentResizingToolbar( {
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
 
-	const { blockContent, originalContent, postId } = useSelect(
+	const { blockContent, isResized, postId } = useSelect(
 		( select ) => {
 			/* eslint-disable dot-notation */
 			const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
 			return {
 				blockContent:
 					( block?.attributes[ 'content' ] as string ) ?? '',
-				originalContent:
-					( block?.attributes[ 'aiOriginalContent' ] as string ) ??
-					'',
+				isResized:
+					( block?.attributes[ 'aiResized' ] as boolean ) ?? false,
 				postId: select( editorStore )[ 'getCurrentPostId' ]() as number,
 			};
 			/* eslint-enable dot-notation */
 		},
 		[ clientId ]
 	);
-
-	const hasOriginalContent = originalContent.length > 0;
 
 	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
 	const noticesDispatch = useDispatch( noticesStore ) as any;
@@ -127,28 +124,15 @@ export default function ContentResizingToolbar( {
 
 	const handleAccept = useCallback( () => {
 		if ( suggestedContent !== null ) {
-			// Save the current content as original before replacing,
-			// but only if we don't already have an original saved.
-			const original = hasOriginalContent
-				? originalContent
-				: blockContent;
-
 			blockEditorDispatch.updateBlockAttributes( clientId, {
 				content: suggestedContent,
-				aiOriginalContent: original,
+				aiResized: true,
 			} );
 		}
 		setSuggestedContent( null );
 		setLastAction( null );
 		setIsModalOpen( false );
-	}, [
-		blockContent,
-		blockEditorDispatch,
-		clientId,
-		hasOriginalContent,
-		originalContent,
-		suggestedContent,
-	] );
+	}, [ blockEditorDispatch, clientId, suggestedContent ] );
 
 	const closeModal = useCallback( () => {
 		setSuggestedContent( null );
@@ -190,9 +174,7 @@ export default function ContentResizingToolbar( {
 		<>
 			<ToolbarGroup
 				className={
-					hasOriginalContent
-						? 'ai-content-resizing-toolbar--has-changes'
-						: ''
+					isResized ? 'ai-content-resizing-toolbar--has-changes' : ''
 				}
 			>
 				<ToolbarDropdownMenu
