@@ -26,6 +26,15 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
@@ -237,7 +246,7 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating an excerpt.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to generate an excerpt from.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.

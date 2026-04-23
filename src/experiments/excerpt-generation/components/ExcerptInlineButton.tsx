@@ -19,9 +19,9 @@ const { aiExcerptGenerationData } = window as any;
 /**
  * Inline button component for generating excerpts next to the excerpt link.
  *
- * @return {JSX.Element | null} The inline button component.
+ * @return {React.JSX.Element | null} The inline button component.
  */
-export default function ExcerptInlineButton(): JSX.Element | null {
+export default function ExcerptInlineButton(): React.JSX.Element | null {
 	const { isGenerating, hasExcerpt, handleGenerate } = useExcerptGeneration();
 
 	// Don't render if disabled.
@@ -29,9 +29,13 @@ export default function ExcerptInlineButton(): JSX.Element | null {
 		return null;
 	}
 
-	const buttonLabel = hasExcerpt
-		? __( 'Re-generate excerpt', 'ai' )
-		: __( 'Generate excerpt', 'ai' );
+	let buttonLabel: string = __( 'Generate excerpt', 'ai' );
+
+	if ( isGenerating ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasExcerpt ) {
+		buttonLabel = __( 'Regenerate excerpt', 'ai' );
+	}
 
 	return (
 		<Button

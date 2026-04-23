@@ -39,13 +39,15 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
-		$loader->register_features();
 
-		// Manually register the Example Experiment since it's no longer loaded by default.
-		$example_experiment = new Example_Experiment();
-		$registry->register_feature( $example_experiment );
+		add_action(
+			'wpai_register_features',
+			static function ( $reg ) {
+				$reg->register_feature( new Example_Experiment() );
+			}
+		);
 
-		$loader->initialize_features();
+		$loader->init();
 
 		$experiment = $registry->get_feature( 'example-experiment' );
 		$this->assertInstanceOf( Example_Experiment::class, $experiment, 'Example experiment should be registered in the registry.' );
@@ -58,6 +60,8 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+
+		remove_all_actions( 'wpai_register_features' );
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_example-experiment_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );

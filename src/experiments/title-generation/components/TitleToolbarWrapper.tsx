@@ -111,9 +111,9 @@ function setupEventListeners(
  *
  * Attaches the toolbar to the title field in normal editing mode.
  *
- * @return {JSX.Element} The wrapper component.
+ * @return {React.JSX.Element} The wrapper component.
  */
-function TitleToolbarWrapper(): JSX.Element {
+function TitleToolbarWrapper(): React.JSX.Element {
 	useEffect( () => {
 		let isAttached = false;
 		let root: ReturnType< typeof createRoot > | null = null;
@@ -293,7 +293,7 @@ function TitleToolbarWrapper(): JSX.Element {
 
 			// Render the toolbar into the container
 			root = createRoot( toolbarContainer );
-			root.render( <TitleToolbar /> );
+			root.render( <TitleToolbar isStandalone /> );
 
 			// Create and attach focus/blur handlers for title input
 			const titleHandlers = createFocusBlurHandlers(

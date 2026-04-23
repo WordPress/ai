@@ -35,6 +35,15 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
@@ -254,7 +263,7 @@ class Summarization extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating a summary.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to generate a summary from.
 	 * @param string $length The desired length of the summary.

@@ -69,6 +69,14 @@ abstract class Abstract_Feature implements Feature {
 	private string $stability;
 
 	/**
+	 * The image URL for feature showcase display.
+	 *
+	 * @since x.x.x
+	 * @var string
+	 */
+	protected string $image;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -106,6 +114,7 @@ abstract class Abstract_Feature implements Feature {
 		$this->description = $metadata['description'];
 		$this->category    = $metadata['category'];
 		$this->stability   = $metadata['stability'] ?? 'experimental';
+		$this->image       = $metadata['image'] ?? '';
 	}
 
 	/**
@@ -121,6 +130,7 @@ abstract class Abstract_Feature implements Feature {
 	 *  description: string,
 	 *  category?: string,
 	 *  stability?: 'deprecated'|'experimental'|'stable',
+	 *  image?: string,
 	 * } Feature metadata.
 	 */
 	abstract protected function load_metadata(): array;
@@ -202,6 +212,17 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Gets the image URL for feature showcase display.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The image URL, or empty string if not set.
+	 */
+	public function get_image(): string {
+		return $this->image;
+	}
+
+	/**
 	 * Registers feature-specific settings.
 	 *
 	 * Override this method in child classes to register custom settings options
@@ -224,7 +245,7 @@ abstract class Abstract_Feature implements Feature {
 	 * should use the short option name (e.g. 'strategy'), not the full
 	 * namespaced option name.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<int, array{
 	 *   id: string,
@@ -245,7 +266,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Transforms the short field IDs from get_settings_fields() into
 	 * full WordPress option names suitable for the REST API and frontend.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<int, array{
 	 *   id: string,

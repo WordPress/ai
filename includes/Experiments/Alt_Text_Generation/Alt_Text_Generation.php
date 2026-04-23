@@ -48,7 +48,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Alt Text Generation', 'ai' ),
-			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance.', 'ai' ),
+			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -203,7 +203,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * Adds the "Generate Alt Text" option to the Media Library bulk actions menu.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param array<string, string> $actions The existing bulk actions.
 	 * @return array<string, string> The bulk actions with the generate alt text option added.
@@ -221,7 +221,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * Handles the "Generate Alt Text" bulk action by redirecting with selected image IDs.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string        $redirect_url The current redirect URL.
 	 * @param string        $doaction     The bulk action being performed.
@@ -251,7 +251,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * Enqueues the bulk alt text script when a bulk action redirect is detected.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 */
 	private function maybe_enqueue_bulk_script(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for script enqueue only; no privileged action taken.

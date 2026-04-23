@@ -25,8 +25,9 @@ ai/
 │   ├── Services/                     # External services (AI_Service)
 │   ├── Settings/                     # Plugin settings and admin pages
 │   ├── Asset_Loader.php              # Asset loader utility class
-│   ├── bootstrap.php                 # Plugin initialization
 │   ├── Deprecated.php                # Backward-compatibility layer for deprecated hooks/filters
+│   ├── Main.php                      # Main plugin initialization.
+│   ├── Requirements.php              # Plugin requirements checks.
 │   └── helpers.php                   # Helper functions
 ├── src/                              # Source asset files (JS/SCSS)
 │   ├── admin/                        # Admin-specific assets

@@ -36,11 +36,20 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Model output token that means the correct alternative text is empty (alt="").
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @var string
 	 */
 	private const DECORATIVE_ALT_TOKEN = '[[DECORATIVE_ALT]]';
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'images' );
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -161,7 +170,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		// If an image URL is provided, get the image from the URL.
 		if ( ! empty( $args['image_url'] ) ) {
 			// Preserve data URIs as-is so the AI client can read the inline bytes.
-			if ( 0 === strpos( $args['image_url'], 'data:' ) ) {
+			if ( str_starts_with( $args['image_url'], 'data:' ) ) {
 				return $this->prepare_reference_result( $args['image_url'] );
 			}
 
@@ -323,7 +332,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$normalized_url     = $this->normalize_upload_url( $url );
 		$normalized_baseurl = $this->normalize_upload_url( $uploads['baseurl'] );
 
-		if ( false === strpos( $normalized_url, $normalized_baseurl ) ) {
+		if ( ! str_contains( $normalized_url, $normalized_baseurl ) ) {
 			return null;
 		}
 
@@ -339,8 +348,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 		// Reject path traversal attempts in the relative path.
 		if (
 			'..' === $relative_path ||
-			0 === strpos( $relative_path, '../' ) ||
-			false !== strpos( $relative_path, '/..' )
+			str_starts_with( $relative_path, '../' ) ||
+			str_contains( $relative_path, '/..' )
 		) {
 			return null;
 		}
@@ -358,7 +367,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$real_full_path = wp_normalize_path( $real_full_path );
 
 		// Ensure the resolved path is strictly within the uploads base directory.
-		if ( 0 !== strpos( $real_full_path, $base_dir ) ) {
+		if ( ! str_starts_with( $real_full_path, $base_dir ) ) {
 			return null;
 		}
 
@@ -386,7 +395,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating alt text.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to generate alt text from.
 	 * @param string $reference The reference image.
@@ -417,14 +426,22 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function build_prompt( string $context = '', string $image_meta = '' ): string {
 		$prompt = __( 'Generate alt text for this image.', 'ai' );
 
+		// If we have additional context, add it to the prompt.
+		if ( ! empty( $context ) ) {
+			$prompt .= ' ' . __( 'Ensure the alt text you return matches the language of the content in the <additional-context> tag.', 'ai' );
+
+			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
+		} else {
+			$prompt .= ' ' . sprintf(
+				/* translators: %s: locale code, e.g. pl_PL */
+				__( 'Ensure the alt text you return matches the language of this locale: %s.', 'ai' ),
+				get_locale()
+			);
+		}
+
 		// If we have image block usage metadata, add it to the prompt.
 		if ( ! empty( $image_meta ) ) {
 			$prompt .= "\n\n<image-meta>" . $image_meta . '</image-meta>';
-		}
-
-		// If we have additional context, add it to the prompt.
-		if ( ! empty( $context ) ) {
-			$prompt .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
 		return $prompt;
@@ -449,7 +466,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			return '';
 		}
 
-		if ( 0 === strpos( $value, 'data:' ) ) {
+		if ( str_starts_with( $value, 'data:' ) ) {
 			return $value;
 		}
 

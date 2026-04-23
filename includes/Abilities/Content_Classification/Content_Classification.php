@@ -24,14 +24,23 @@ use function WordPress\AI\normalize_content;
  *
  * Generates taxonomy term suggestions based on post content analysis.
  *
- * @since x.x.x
+ * @since 0.7.0
  */
 class Content_Classification extends Abstract_Ability {
 
 	/**
-	 * Returns the input schema of the ability.
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * Returns the input schema of the ability.
+	 *
+	 * @since 0.7.0
 	 *
 	 * @return array<string, mixed> The input schema of the ability.
 	 */
@@ -71,7 +80,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Returns the output schema of the ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<string, mixed> The output schema of the ability.
 	 */
@@ -111,7 +120,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Executes the ability with the given input arguments.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
 	 * @return array{suggestions: array<array{term: string, confidence: float, is_new: bool, parent?: string}>}|\WP_Error The result of the ability execution, or a WP_Error on failure.
@@ -209,7 +218,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Returns the permission callback of the ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param mixed $args The input arguments to the ability.
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
@@ -255,7 +264,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Returns the meta of the ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<string, mixed> The meta of the ability.
 	 */
@@ -272,7 +281,7 @@ class Content_Classification extends Abstract_Ability {
 	 * and the currently assigned terms. Post-processing then matches
 	 * suggestions against existing terms and applies the strategy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string|array<string, string> $context         The context to generate suggestions from.
 	 * @param string                       $taxonomy        The taxonomy to suggest terms for.
@@ -331,7 +340,7 @@ class Content_Classification extends Abstract_Ability {
 		 * Allows developers to modify, augment, or replace the prompt that the AI analyzes
 		 * when generating taxonomy term suggestions.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param string                       $prompt          The prompt string to be sent to the AI model.
 		 * @param string|array<string, string> $context         The context to generate suggestions from.
@@ -373,7 +382,7 @@ class Content_Classification extends Abstract_Ability {
 		 * - 'is_new'     (bool)   Whether the term is new or already exists on the site.
 		 * - 'parent'     (string) Optional. Parent term name for hierarchical taxonomies.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param array<array{term: string, confidence: float, is_new: bool, parent?: string}> $suggestions    The parsed suggestions.
 		 * @param string                                                                       $taxonomy       The taxonomy slug (e.g., 'post_tag', 'category').
@@ -385,7 +394,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Get the prompt builder for generating taxonomy term suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to use for generating taxonomy term suggestions.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
@@ -406,7 +415,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Returns the JSON schema for structured output from the AI model.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<string, mixed> The JSON schema for structured output.
 	 */
@@ -439,7 +448,7 @@ class Content_Classification extends Abstract_Ability {
 	 * filters out assigned terms, applies the strategy, sorts by confidence,
 	 * and limits to the requested number of suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string        $response        The raw AI response.
 	 * @param string        $strategy        The suggestion strategy ('existing_only' or 'allow_new').
@@ -532,7 +541,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Gets existing terms for a taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $taxonomy The taxonomy to get terms for.
 	 * @return array<string> List of existing term names.
@@ -559,7 +568,7 @@ class Content_Classification extends Abstract_Ability {
 	 * Used to provide the LLM with a set of existing terms to select from
 	 * when using the existing_only strategy, improving match quality.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $taxonomy The taxonomy to get terms for.
 	 * @param int    $limit    Maximum number of terms to return.

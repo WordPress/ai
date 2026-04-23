@@ -94,7 +94,7 @@ interface Feature {
 	 *
 	 * Returns an empty array when the feature has no custom settings.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @return array<int, array{
 	 *   id: string,
@@ -106,4 +106,13 @@ interface Feature {
 	 * }> Array of field definitions with full option names.
 	 */
 	public function get_settings_fields_metadata(): array;
+
+	/**
+	 * Gets the image URL for feature showcase display.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The image URL, or empty string if not set.
+	 */
+	public function get_image(): string;
 }
