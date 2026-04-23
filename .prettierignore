@@ -1,5 +1,10 @@
-vendor
+# Dirs
+build
+build-scripts
 node_modules
 tests/_output
-package-lock.json
+vendor
+
+# Files
 composer.lock
+package-lock.json
