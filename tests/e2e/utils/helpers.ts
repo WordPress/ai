@@ -6,7 +6,11 @@ import type { Locator, Page } from '@playwright/test';
 /**
  * WordPress dependencies
  */
-import { type Admin, expect } from '@wordpress/e2e-test-utils-playwright';
+import {
+	type Admin,
+	type Editor,
+	expect,
+} from '@wordpress/e2e-test-utils-playwright';
 
 const CONNECTOR_LABELS: Record< string, string > = {
 	'ai-provider-for-openai': 'OpenAI',
@@ -417,4 +421,18 @@ export const getExperimentTogglesInGroup = async (
 	}
 
 	return experimentToggles;
+};
+
+/**
+ * Selects the first paragraph block in the editor canvas so its block toolbar renders.
+ *
+ * @param editor The editor fixture from the test context.
+ * @return The paragraph block locator.
+ */
+export const selectFirstParagraph = async ( editor: Editor ) => {
+	const paragraph = editor.canvas
+		.locator( '[data-type="core/paragraph"]' )
+		.first();
+	await paragraph.click();
+	return paragraph;
 };
