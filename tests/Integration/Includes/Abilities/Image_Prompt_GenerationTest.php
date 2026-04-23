@@ -97,7 +97,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that guideline_categories() returns site and images.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_guideline_categories_returns_site_and_images(): void {
 		$reflection = new \ReflectionClass( $this->ability );

@@ -101,7 +101,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that guideline_categories() returns site and copy.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_guideline_categories_returns_site_and_copy(): void {
 		$reflection = new \ReflectionClass( $this->ability );

@@ -14,7 +14,7 @@ use WordPress\AI\Main;
  * Main test case.
  *
  * @covers \WordPress\AI\Main
- * @since x.x.x
+ * @since 0.8.0
  */
 class MainTest extends WP_UnitTestCase {
 
@@ -28,7 +28,7 @@ class MainTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_instance() {
 		$this->assertInstanceOf( Main::class, Main::get_instance() );
@@ -37,7 +37,7 @@ class MainTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_feature_registration_and_loading() {
 		$main = Main::get_instance();
@@ -48,7 +48,7 @@ class MainTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_bad_feature_does_not_cause_plugin_failure() {
 		add_filter(
@@ -78,7 +78,7 @@ class MainTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_plugin_action_links_prepends_connectors_and_settings() {
 		$main   = Main::get_instance();
@@ -92,7 +92,7 @@ class MainTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_clone_triggers_doing_it_wrong() {
 		$this->setExpectedIncorrectUsage( '__clone' );
@@ -101,7 +101,7 @@ class MainTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_wakeup_triggers_doing_it_wrong() {
 		$this->setExpectedIncorrectUsage( '__wakeup' );
