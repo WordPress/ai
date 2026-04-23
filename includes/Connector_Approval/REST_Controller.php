@@ -192,7 +192,7 @@ final class REST_Controller {
 	 * @return \WP_REST_Response
 	 */
 	public function delete_pending( WP_REST_Request $request ): WP_REST_Response {
-		$key = (string) $request->get_param( 'key' );
+		$key = rawurldecode( (string) $request->get_param( 'key' ) );
 		$this->store->remove_pending( $key );
 
 		return $this->get_state();
