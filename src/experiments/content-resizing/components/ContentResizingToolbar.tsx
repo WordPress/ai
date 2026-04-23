@@ -99,7 +99,7 @@ export default function ContentResizingToolbar( {
 			try {
 				const result = await runAbility< string >(
 					'ai/content-resizing',
-					{ content: blockContent, action, postId }
+					{ content: blockContent, action, post_id: postId }
 				);
 				setSuggestedContent( result );
 			} catch ( error: unknown ) {
