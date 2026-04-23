@@ -4,6 +4,9 @@
  * declarations.
  */
 
+/**
+ * External dependencies
+ */
 import type { ReactNode } from 'react';
 
 declare module '@wordpress/block-editor' {
