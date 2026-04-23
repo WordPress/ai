@@ -59,7 +59,7 @@ jobs:
               run: echo "date=$(/bin/date -u --date='last Mon' "+%F")" >> "$GITHUB_OUTPUT"
 
             - name: Cache PHPCS scan cache
-              uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
               with:
                   path: tests/_output/phpcs-cache.json
                   key: ${{ runner.os }}-date-${{ steps.get-date.outputs.date }}-phpcs-cache-${{ hashFiles('**/composer.json', 'phpcs.xml.dist') }}
@@ -115,7 +115,7 @@ jobs:
               run: echo "date=$(/bin/date -u --date='last Mon' "+%F")" >> "$GITHUB_OUTPUT"
 
             - name: Cache PHP Static Analysis scan cache
-              uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
               with:
                   path: tests/_output # This is defined in the base.neon file.
                   key: 'phpstan-result-cache-${{ runner.os }}-date-${{ steps.get-date.outputs.date }}'
@@ -145,7 +145,7 @@ jobs:
               run: phpstan analyse -vvv --error-format=checkstyle | cs2pr
 
             - name: Save result cache
-              uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
               if: ${{ !cancelled() }}
               with:
                   path: tests/_output
@@ -210,7 +210,7 @@ jobs:
             - name: Install Composer dependencies
               uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # v4.0.0
 
-            - name: Setup Node
+            - name: Setup Node.js
               uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
               with:
                   cache: 'npm'
@@ -219,6 +219,9 @@ jobs:
             - name: Install NPM dependencies
               run: npm ci
 
+            - name: Build assets
+              run: npm run build
+
             - name: Start the Docker testing environment
               uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
               with:
@@ -226,15 +229,15 @@ jobs:
                   max_attempts: 3
                   command: |
                       if [ "${{ matrix.coverage }}" == "true" ]; then
-                      npm run wp-env start -- --xdebug=coverage
+                      npm run wp-env:test start -- --xdebug=coverage
                       else
-                      npm run wp-env start
+                      npm run wp-env:test start
                       fi
 
             - name: Log versions
               run: |
-                  npm run wp-env -- run cli php -- -v
-                  npm run wp-env -- run cli wp core version
+                  npm run wp-env:test -- run cli php -- -v
+                  npm run wp-env:test -- run cli wp core version
 
             - name: Run PHPUnit tests${{ matrix.coverage && ' with coverage report' || '' }}
               id: phpunit
@@ -253,7 +256,7 @@ jobs:
 
             - name: Upload HTML coverage report as artifact
               if: ${{ matrix.coverage }}
-              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: wp-code-coverage-${{ matrix.php }}-${{ matrix.wp }}
                   path: tests/_output/html
@@ -349,13 +352,13 @@ jobs:
                   timeout_minutes: 10
                   max_attempts: 3
                   command: |
-                      npm run test:e2e:env:start
+                      npm run wp-env:test start
 
             - name: Run E2E tests
               run: npm run test:e2e
 
             - name: Upload E2E test results as artifact
-              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               if: always()
               with:
                   name: playwright-report

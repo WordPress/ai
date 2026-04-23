@@ -2,7 +2,13 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
+import {
+	Button,
+	ExternalLink,
+	Notice,
+	Spinner,
+	ToggleControl,
+} from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
@@ -41,6 +47,8 @@ interface FeatureData {
 	description: string;
 	category: string;
 	settingsFields: SettingsFieldData[];
+	stability: string;
+	image: string;
 }
 
 interface PageData {
@@ -120,6 +128,8 @@ function parseFeature( value: unknown ): FeatureData | null {
 		description: toStringValue( feature.description ),
 		category: toStringValue( feature.category ) || 'other',
 		settingsFields: ( rawFields as unknown[] ).filter( isSettingsField ),
+		stability: toStringValue( feature.stability ) || 'experimental',
+		image: toStringValue( feature.image ),
 	};
 }
 
@@ -369,7 +379,6 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	);
 
 	const { editedRecord, nonTransientEdits } = useSelect( ( select ) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 		const store: any = select( coreStore );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
@@ -390,7 +399,6 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	);
 
 	const { editEntityRecord } = useDispatch( coreStore );
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
@@ -520,9 +528,72 @@ function FeatureToggleWithSettings( {
 	);
 }
 
+const VISUAL_CARD_FEATURES = new Map(
+	PAGE_DATA.features
+		.filter( ( f ) => f.stability === 'stable' && f.image !== '' )
+		.map( ( f ) => [ f.settingName, f ] as const )
+);
+
+function VisualCardToggle( {
+	field,
+	data,
+	onChange,
+}: DataFormControlProps< AISettings > ) {
+	const feature = VISUAL_CARD_FEATURES.get( field.id );
+	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
+	const checked = !! field.getValue( { item: data } );
+
+	return (
+		<div
+			className={ `ai-showcase-card${
+				! globalEnabled ? ' ai-showcase-card--disabled' : ''
+			}` }
+		>
+			{ feature?.image && (
+				<div className="ai-showcase-card__image">
+					<img src={ feature.image } alt="" loading="lazy" />
+				</div>
+			) }
+			<div className="ai-showcase-card__content">
+				<h3 className="ai-showcase-card__title">{ field.label }</h3>
+				<p className="ai-showcase-card__description">
+					{ field.description }
+				</p>
+				<div className="ai-showcase-card__actions">
+					<Button
+						variant={ checked ? 'secondary' : 'primary' }
+						onClick={ () =>
+							onChange( { [ field.id ]: ! checked } )
+						}
+						disabled={ ! globalEnabled }
+						size="compact"
+					>
+						{ checked
+							? __( 'Disable', 'ai' )
+							: __( 'Enable', 'ai' ) }
+					</Button>
+					{ checked && (
+						<span className="ai-showcase-card__enabled-badge">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								width={ 16 }
+								height={ 16 }
+								fill="currentColor"
+							>
+								<path d="M16.5 7.5 10 13.9l-2.5-2.4-1 1 3.5 3.6 7.5-7.6z" />
+							</svg>
+							{ __( 'Enabled', 'ai' ) }
+						</span>
+					) }
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function AISettingsPage() {
 	const { editedRecord, isLoading } = useSelect( ( select ) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 		const store: any = select( coreStore );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
@@ -536,7 +607,6 @@ function AISettingsPage() {
 	}, [] );
 
 	const { editEntityRecord } = useDispatch( coreStore );
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
@@ -562,6 +632,8 @@ function AISettingsPage() {
 								description: '',
 								category: 'other',
 								settingsFields: [],
+								stability: 'experimental',
+								image: '',
 							};
 						} );
 
@@ -624,7 +696,6 @@ function AISettingsPage() {
 				createSuccessNotice( message, { type: 'snackbar' } );
 			} catch {
 				// Revert only the toggled keys to their server-side values.
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DataRegistry typing doesn't expose .select(); core-data selectors aren't fully typed for 'root'/'site' entity args.
 				const serverRecord = ( registry as any )
 					.select( coreStore )
 					.getEntityRecord( 'root', 'site' ) as
@@ -695,7 +766,9 @@ function AISettingsPage() {
 				type: 'boolean' as const,
 			};
 
-			if ( ! globalEnabled ) {
+			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
+				baseField.Edit = VisualCardToggle;
+			} else if ( ! globalEnabled ) {
 				baseField.Edit = DisabledToggle;
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
@@ -710,15 +783,42 @@ function AISettingsPage() {
 	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
 
 	const form = useMemo< Form >( () => {
+		const showcaseChildren: string[] = [];
 		const groupedFields = new Map< string, string[] >();
 		for ( const feature of featureDefinitions ) {
-			const category = feature.category || 'other';
-			const categoryFields = groupedFields.get( category ) ?? [];
-			categoryFields.push( feature.settingName );
-			groupedFields.set( category, categoryFields );
+			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
+				showcaseChildren.push( feature.settingName );
+			} else {
+				const category = feature.category || 'other';
+				const categoryFields = groupedFields.get( category ) ?? [];
+				categoryFields.push( feature.settingName );
+				groupedFields.set( category, categoryFields );
+			}
 		}
 
 		const sectionFields: NonNullable< Form[ 'fields' ] > = [];
+
+		// Add showcase section with row layout (2 per row).
+		if ( showcaseChildren.length > 0 ) {
+			const rows: NonNullable< Form[ 'fields' ] > = [];
+			for ( let i = 0; i < showcaseChildren.length; i += 2 ) {
+				rows.push( {
+					id: `showcase-row-${ i }`,
+					layout: { type: 'row' as const },
+					children: showcaseChildren.slice( i, i + 2 ),
+				} );
+			}
+
+			sectionFields.push( {
+				id: 'feature-group-showcase',
+				layout: {
+					type: 'regular',
+					labelPosition: 'none',
+				},
+				children: rows,
+			} );
+		}
+
 		const seenCategories = new Set< string >();
 
 		for ( const group of featureGroups ) {
@@ -798,24 +898,14 @@ function AISettingsPage() {
 				'ai'
 			) }
 			actions={
-				<>
-					<Button
-						variant="secondary"
-						href="https://github.com/WordPress/ai/tree/develop/docs"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+				<div className="ai-settings-page__actions">
+					<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
 						{ __( 'Docs', 'ai' ) }
-					</Button>
-					<Button
-						variant="primary"
-						href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					</ExternalLink>
+					<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
 						{ __( 'Contribute', 'ai' ) }
-					</Button>
-				</>
+					</ExternalLink>
+				</div>
 			}
 		>
 			<div className="ai-settings-page">

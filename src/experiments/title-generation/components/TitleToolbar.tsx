@@ -66,10 +66,10 @@ async function generateTitle(
 /**
  * TitleToolbar component.
  *
- * Provides Generate/Re-generate button and a modal for reviewing and
+ * Provides Generate/Regenerate button and a modal for reviewing and
  * inserting the AI-generated title suggestion.
  *
- * @return {JSX.Element} The toolbar component.
+ * @return {React.JSX.Element} The toolbar component.
  */
 interface TitleToolbarProps {
 	isStandalone?: boolean;
@@ -77,7 +77,7 @@ interface TitleToolbarProps {
 
 export default function TitleToolbar( {
 	isStandalone = false,
-}: TitleToolbarProps ): JSX.Element | null {
+}: TitleToolbarProps ): React.JSX.Element | null {
 	const postId = select( editorStore ).getCurrentPostId();
 	const title = select( editorStore ).getEditedPostAttribute( 'title' );
 
@@ -95,12 +95,17 @@ export default function TitleToolbar( {
 	};
 
 	const hasTitle = title.trim().length > 0;
-	const buttonLabel = hasTitle
-		? __( 'Re-generate', 'ai' )
-		: __( 'Generate', 'ai' );
+
+	let buttonLabel: string = __( 'Generate', 'ai' );
+
+	if ( isGenerating ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasTitle ) {
+		buttonLabel = __( 'Regenerate', 'ai' );
+	}
 
 	/**
-	 * Handles the toolbar Generate/Re-generate button click.
+	 * Handles the toolbar Generate/Regenerate button click.
 	 */
 	const handleGenerate = async () => {
 		if ( isGenerating ) {
@@ -132,7 +137,7 @@ export default function TitleToolbar( {
 	};
 
 	/**
-	 * Handles the Re-generate button inside the modal.
+	 * Handles the Regenerate button inside the modal.
 	 * Fetches a new suggestion without closing the modal.
 	 */
 	const handleRegenerate = async () => {
@@ -180,7 +185,9 @@ export default function TitleToolbar( {
 					variant="secondary"
 					label={ buttonLabel }
 					onClick={ handleGenerate }
+					disabled={ isGenerating }
 					isBusy={ isGenerating }
+					accessibleWhenDisabled
 					__next40pxDefaultSize
 				>
 					{ buttonLabel }
@@ -235,7 +242,7 @@ export default function TitleToolbar( {
 							>
 								{ isRegenerating
 									? __( 'Regenerating…', 'ai' )
-									: __( 'Re-generate', 'ai' ) }
+									: __( 'Regenerate', 'ai' ) }
 							</Button>
 						</FlexItem>
 						<FlexItem>

@@ -31,9 +31,9 @@ final class Experiments {
 		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,
 		\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
-		\WordPress\AI\Experiments\Image_Generation\Image_Generation::class,
 		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,
 		\WordPress\AI\Experiments\Review_Notes\Review_Notes::class,
+		\WordPress\AI\Experiments\Refine_Notes\Refine_Notes::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 	);

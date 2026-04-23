@@ -58,9 +58,9 @@ function createRetry(
  *
  * Injects a generate button next to the excerpt link in the sidebar.
  *
- * @return {JSX.Element} The wrapper component.
+ * @return {React.JSX.Element} The wrapper component.
  */
-export default function ExcerptInlineWrapper(): JSX.Element {
+export default function ExcerptInlineWrapper(): React.JSX.Element {
 	useEffect( () => {
 		let isAttached = false;
 		let root: ReturnType< typeof createRoot > | null = null;
