@@ -62,7 +62,28 @@ test.describe( 'Title Generation Experiment', () => {
 			.locator( '.ai-title-toolbar-container button' )
 			.click();
 
-		// Ensure the title is updated directly (no modal).
+		// Ensure the title modal is visible.
+		await expect(
+			page.locator( '.ai-title-generation-modal' )
+		).toBeVisible();
+
+		// Ensure the generated title textarea is visible.
+		await expect(
+			page.locator( '.ai-title-generation-modal textarea' )
+		).toBeVisible();
+
+		// Click Insert to apply the generated title.
+		await page
+			.locator( '.ai-title-generation-modal' )
+			.getByRole( 'button', { name: 'Insert' } )
+			.click();
+
+		// Ensure the title modal is closed.
+		await expect(
+			page.locator( '.ai-title-generation-modal' )
+		).not.toBeVisible();
+
+		// Ensure the title is updated.
 		await expect(
 			editor.canvas.locator( '.editor-post-title__input' )
 		).toHaveText(
@@ -111,7 +132,28 @@ test.describe( 'Title Generation Experiment', () => {
 			.locator( '.ai-title-toolbar-container button' )
 			.click();
 
-		// Ensure the title is updated directly (no modal).
+		// Ensure the title modal is visible.
+		await expect(
+			page.locator( '.ai-title-generation-modal' )
+		).toBeVisible();
+
+		// Ensure the generated title textarea is visible.
+		await expect(
+			page.locator( '.ai-title-generation-modal textarea' )
+		).toBeVisible();
+
+		// Click Insert to apply the generated title.
+		await page
+			.locator( '.ai-title-generation-modal' )
+			.getByRole( 'button', { name: 'Insert' } )
+			.click();
+
+		// Ensure the title modal is closed.
+		await expect(
+			page.locator( '.ai-title-generation-modal' )
+		).not.toBeVisible();
+
+		// Ensure the title is updated.
 		await expect(
 			editor.canvas.locator( '.editor-post-title__input' )
 		).toHaveText(
