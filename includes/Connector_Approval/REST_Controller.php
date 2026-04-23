@@ -206,10 +206,6 @@ final class REST_Controller {
 	 * @return list<array{id: string, name: string}>
 	 */
 	private function describe_connectors(): array {
-		if ( ! function_exists( 'wp_get_connectors' ) ) {
-			return array();
-		}
-
 		$summary = array();
 		foreach ( (array) wp_get_connectors() as $id => $data ) {
 			if ( ! is_string( $id ) || ! is_array( $data ) ) {

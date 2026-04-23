@@ -36,7 +36,7 @@ final class Connector_Key_Index {
 	 *
 	 * @var int
 	 */
-	private const MIN_KEY_LENGTH = 20;
+	private const MIN_KEY_LENGTH = 10;
 
 	/**
 	 * Mapping of connector credential → connector ID.
@@ -109,10 +109,6 @@ final class Connector_Key_Index {
 		}
 
 		$this->key_to_connector = array();
-
-		if ( ! function_exists( 'wp_get_connectors' ) ) {
-			return $this->key_to_connector;
-		}
 
 		foreach ( (array) wp_get_connectors() as $connector_id => $data ) {
 			if ( ! is_string( $connector_id ) || ! is_array( $data ) ) {
