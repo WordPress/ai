@@ -189,11 +189,18 @@ final class REST_Controller {
 	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Request $request REST request.
-	 * @return \WP_REST_Response
+	 * @return \WP_REST_Response|\WP_Error
 	 */
-	public function delete_pending( WP_REST_Request $request ): WP_REST_Response {
+	public function delete_pending( WP_REST_Request $request ) {
 		$key = rawurldecode( (string) $request->get_param( 'key' ) );
-		$this->store->remove_pending( $key );
+
+		if ( ! $this->store->remove_pending( $key ) ) {
+			return new WP_Error(
+				'wpai_pending_not_found',
+				__( 'No pending approval request matches the provided key.', 'ai' ),
+				array( 'status' => 404 )
+			);
+		}
 
 		return $this->get_state();
 	}

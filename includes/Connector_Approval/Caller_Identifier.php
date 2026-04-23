@@ -200,11 +200,13 @@ final class Caller_Identifier {
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
 	private function classify_file( string $file ): ?array {
-		$normalized = wp_normalize_path( $file );
+		$normalized      = wp_normalize_path( $file );
+		$plugin_base_dir = wp_normalize_path( WP_PLUGIN_DIR );
 
-		$plugin_segment = $this->match_slug( $normalized, wp_normalize_path( WP_PLUGIN_DIR ) );
+		$plugin_segment = $this->match_slug( $normalized, $plugin_base_dir );
 		if ( null !== $plugin_segment ) {
-			$basename = $this->resolve_plugin_basename( $plugin_segment );
+			$plugin_relative = ltrim( substr( $normalized, strlen( rtrim( $plugin_base_dir, '/' ) . '/' ) ), '/' );
+			$basename        = $this->resolve_plugin_basename( $plugin_segment, $plugin_relative );
 			return array(
 				'type'     => self::TYPE_PLUGIN,
 				'basename' => $basename,
@@ -267,23 +269,35 @@ final class Caller_Identifier {
 	 * `get_plugins()` keys are of the form `slug/main-file.php` for directory
 	 * plugins and `plugin.php` for single-file plugins. When the caller lives
 	 * inside a plugin directory we only know the slug from the backtrace, so
-	 * we look up the first registered plugin whose basename starts with that
-	 * slug. When the caller is a single-file plugin the segment already is
-	 * the basename.
+	 * we look up the registered plugins that match. If the frame's own
+	 * relative path happens to be a registered basename (a directory with
+	 * multiple plugin header files is legal), that exact basename is
+	 * preferred so attribution is deterministic. Otherwise the first
+	 * registered plugin whose basename starts with the slug is returned.
+	 * When the caller is a single-file plugin the segment already is the
+	 * basename.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $segment First path segment under `WP_PLUGIN_DIR`.
+	 * @param string $segment       First path segment under `WP_PLUGIN_DIR`.
+	 * @param string $relative_path Path of the caller relative to `WP_PLUGIN_DIR` (e.g. `slug/includes/foo.php`).
 	 * @return string The canonical plugin basename, or `$segment` when no match is found.
 	 */
-	private function resolve_plugin_basename( string $segment ): string {
+	private function resolve_plugin_basename( string $segment, string $relative_path = '' ): string {
 		// Single-file plugin at the root of WP_PLUGIN_DIR.
 		if ( '' !== pathinfo( $segment, PATHINFO_EXTENSION ) ) {
 			return $segment;
 		}
 
-		$prefix  = $segment . '/';
 		$plugins = $this->load_plugins();
+
+		// Prefer the plugin basename that matches the caller's own file, so a
+		// directory with multiple plugin header files attributes deterministically.
+		if ( '' !== $relative_path && isset( $plugins[ $relative_path ] ) ) {
+			return $relative_path;
+		}
+
+		$prefix = $segment . '/';
 		foreach ( $plugins as $plugin_basename => $_plugin_data ) {
 			if ( 0 === strpos( (string) $plugin_basename, $prefix ) ) {
 				return (string) $plugin_basename;

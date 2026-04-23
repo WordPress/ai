@@ -52,7 +52,9 @@ final class Connector_Key_Index {
 	/**
 	 * Finds the connector ID whose credential appears in the given outbound request.
 	 *
-	 * Scans the URL and every header value. The first matching connector ID is
+	 * Scans the URL and every header value. Both the raw credential and its
+	 * `rawurlencode()` form are checked so that credentials serialized into a
+	 * URL query string still match. The first matching connector ID is
 	 * returned. If no configured credential is present, `null` is returned and
 	 * the caller should treat the request as non-AI traffic.
 	 *
@@ -74,8 +76,13 @@ final class Connector_Key_Index {
 		}
 
 		foreach ( $keys as $key => $connector_id ) {
+			$encoded_key = rawurlencode( $key );
 			foreach ( $haystacks as $haystack ) {
 				if ( false !== strpos( $haystack, $key ) ) {
+					return $connector_id;
+				}
+
+				if ( $encoded_key !== $key && false !== strpos( $haystack, $encoded_key ) ) {
 					return $connector_id;
 				}
 			}
