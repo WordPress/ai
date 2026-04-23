@@ -27,14 +27,14 @@ type TypeAheadOverlayProps = {
  * @param {DOMRect}     props.rect          Rect.
  * @param {HTMLElement} props.container     Container.
  * @param {string}      props.text          Text.
- * @return {JSX.Element | null} Overlay element when suggestion and caret are available.
+ * @return {React.JSX.Element | null} Overlay element when suggestion and caret are available.
  */
 const TypeAheadOverlay = ( {
 	ownerDocument,
 	rect,
 	container,
 	text,
-}: TypeAheadOverlayProps ): JSX.Element | null => {
+}: TypeAheadOverlayProps ): React.JSX.Element | null => {
 	const [ style, setStyle ] = useState< CSSProperties | null >( null );
 	const body = ownerDocument?.body ?? document.body;
 	const win = ownerDocument?.defaultView ?? window;

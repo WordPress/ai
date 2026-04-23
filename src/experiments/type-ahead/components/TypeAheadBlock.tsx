@@ -39,14 +39,14 @@ type TypeAheadBlockProps = {
  * @param {any}                  props.blockProps    Block wrapper props.
  * @param {TypeAheadSettings}    props.settings      Type-ahead settings.
  * @param {Set< string >}        props.allowedBlocks Allowed blocks.
- * @return {JSX.Element} Wrapped block edit UI plus ghost text overlay.
+ * @return {React.JSX.Element} Wrapped block edit UI plus ghost text overlay.
  */
 const TypeAheadBlock = ( {
 	BlockEdit,
 	blockProps,
 	settings,
 	allowedBlocks,
-}: TypeAheadBlockProps ): JSX.Element => {
+}: TypeAheadBlockProps ): React.JSX.Element => {
 	const { clientId, attributes, name } = blockProps;
 	const { block, editable } = useBlockDom( clientId );
 	const caret = useCaretData( editable );
