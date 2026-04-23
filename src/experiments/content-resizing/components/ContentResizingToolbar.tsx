@@ -26,7 +26,7 @@ import { count } from '@wordpress/wordcount';
  */
 import { runAbility } from '../../../utils/run-ability';
 import type { ContentResizingAction } from '../types';
-import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE, ICON_UNDO } from '../icons';
+import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
 const SHORTEN_MIN_WORDS = 5;
@@ -150,15 +150,6 @@ export default function ContentResizingToolbar( {
 		suggestedContent,
 	] );
 
-	const handleUndo = useCallback( () => {
-		if ( hasOriginalContent ) {
-			blockEditorDispatch.updateBlockAttributes( clientId, {
-				content: originalContent,
-				aiOriginalContent: '',
-			} );
-		}
-	}, [ blockEditorDispatch, clientId, hasOriginalContent, originalContent ] );
-
 	const closeModal = useCallback( () => {
 		setSuggestedContent( null );
 		setLastAction( null );
@@ -176,16 +167,6 @@ export default function ContentResizingToolbar( {
 		icon: JSX.Element;
 		onClick: () => void;
 	} > = [];
-
-	// If we have original content,
-	// add the undo control at the beginning of the dropdown.
-	if ( hasOriginalContent ) {
-		controls.push( {
-			title: __( 'Undo AI changes', 'ai' ) as string,
-			icon: ICON_UNDO,
-			onClick: handleUndo,
-		} );
-	}
 
 	controls.push(
 		{

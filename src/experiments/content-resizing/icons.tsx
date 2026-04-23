@@ -47,18 +47,3 @@ export const ICON_REPHRASE = (
 		<path d="M17.65 6.35A7.96 7.96 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
 	</svg>
 );
-
-/**
- * Undo icon: arrow curving back to the left.
- */
-export const ICON_UNDO = (
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		viewBox="0 0 24 24"
-		width="24"
-		height="24"
-		fill="currentColor"
-	>
-		<path d="M12.5 8c-2.65 0-5.05 1.04-6.83 2.74L3 8v9h9l-2.83-2.83A7.004 7.004 0 0119 12h2A9.02 9.02 0 0012.5 8z" />
-	</svg>
-);
