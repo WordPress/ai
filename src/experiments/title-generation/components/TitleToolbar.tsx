@@ -98,7 +98,7 @@ export default function TitleToolbar( {
 
 	let buttonLabel: string = __( 'Generate', 'ai' );
 
-	if ( isGenerating ) {
+	if ( isGenerating || isRegenerating ) {
 		buttonLabel = __( 'Generating…', 'ai' );
 	} else if ( hasTitle ) {
 		buttonLabel = __( 'Regenerate', 'ai' );
@@ -215,7 +215,7 @@ export default function TitleToolbar( {
 				>
 					<p className="ai-title-generation-subtitle">
 						{ __(
-							'Review the suggested title or regenerate for a new one.',
+							'Review, edit and insert the suggested title or regenerate a new one.',
 							'ai'
 						) }
 					</p>
@@ -240,9 +240,7 @@ export default function TitleToolbar( {
 								disabled={ isRegenerating }
 								isBusy={ isRegenerating }
 							>
-								{ isRegenerating
-									? __( 'Regenerating…', 'ai' )
-									: __( 'Regenerate', 'ai' ) }
+								{ buttonLabel }
 							</Button>
 						</FlexItem>
 						<FlexItem>
