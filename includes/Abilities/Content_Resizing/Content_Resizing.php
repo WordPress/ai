@@ -13,7 +13,6 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
-use function WordPress\AI\normalize_content;
 
 /**
  * Content resizing WordPress Ability.

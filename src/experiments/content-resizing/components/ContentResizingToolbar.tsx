@@ -213,7 +213,9 @@ export default function ContentResizingToolbar( {
 				}
 			>
 				<ToolbarDropdownMenu
-					icon={ <AIIcon className="ai-content-resizing-toolbar__icon" /> }
+					icon={
+						<AIIcon className="ai-content-resizing-toolbar__icon" />
+					}
 					label={ __( 'Resize Content', 'ai' ) }
 					controls={ controls }
 				/>

@@ -1,4 +1,8 @@
-export default function AIIcon( { className = 'wpai-icon' }: { className?: string } ) {
+export default function AIIcon( {
+	className = 'wpai-icon',
+}: {
+	className?: string;
+} ) {
 	return (
 		<svg
 			width="1em"
