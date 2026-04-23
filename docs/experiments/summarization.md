@@ -406,7 +406,7 @@ GET /wp-json/wp/v2/posts/123?context=edit
    - Click the "Generate AI Summary" button
    - Verify a paragraph block is created at the top with the summary
    - Verify the summary is saved to post meta
-   - Click "Re-generate AI Summary" to test regeneration
+   - Click "Regenerate AI Summary" to test regeneration
    - Select the summary block and use the toolbar button to regenerate
 
 3. **Test with different post types:**

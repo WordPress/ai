@@ -106,4 +106,13 @@ interface Feature {
 	 * }> Array of field definitions with full option names.
 	 */
 	public function get_settings_fields_metadata(): array;
+
+	/**
+	 * Gets the image URL for feature showcase display.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @return string The image URL, or empty string if not set.
+	 */
+	public function get_image(): string;
 }

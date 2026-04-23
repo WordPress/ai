@@ -45,6 +45,15 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.8.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'images' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.3.0
 	 */
 	protected function input_schema(): array {
@@ -161,7 +170,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		// If an image URL is provided, get the image from the URL.
 		if ( ! empty( $args['image_url'] ) ) {
 			// Preserve data URIs as-is so the AI client can read the inline bytes.
-			if ( 0 === strpos( $args['image_url'], 'data:' ) ) {
+			if ( str_starts_with( $args['image_url'], 'data:' ) ) {
 				return $this->prepare_reference_result( $args['image_url'] );
 			}
 
@@ -323,7 +332,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$normalized_url     = $this->normalize_upload_url( $url );
 		$normalized_baseurl = $this->normalize_upload_url( $uploads['baseurl'] );
 
-		if ( false === strpos( $normalized_url, $normalized_baseurl ) ) {
+		if ( ! str_contains( $normalized_url, $normalized_baseurl ) ) {
 			return null;
 		}
 
@@ -339,8 +348,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 		// Reject path traversal attempts in the relative path.
 		if (
 			'..' === $relative_path ||
-			0 === strpos( $relative_path, '../' ) ||
-			false !== strpos( $relative_path, '/..' )
+			str_starts_with( $relative_path, '../' ) ||
+			str_contains( $relative_path, '/..' )
 		) {
 			return null;
 		}
@@ -358,7 +367,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$real_full_path = wp_normalize_path( $real_full_path );
 
 		// Ensure the resolved path is strictly within the uploads base directory.
-		if ( 0 !== strpos( $real_full_path, $base_dir ) ) {
+		if ( ! str_starts_with( $real_full_path, $base_dir ) ) {
 			return null;
 		}
 
@@ -457,7 +466,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			return '';
 		}
 
-		if ( 0 === strpos( $value, 'data:' ) ) {
+		if ( str_starts_with( $value, 'data:' ) ) {
 			return $value;
 		}
 

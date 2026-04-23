@@ -21,6 +21,8 @@ defined( 'ABSPATH' ) || exit;
  * This class is responsible for loading and initializing features from the registry.
  * It decouples the initialization logic from the registry itself.
  *
+ * @internal
+ *
  * @since 0.6.0
  */
 final class Loader {
@@ -52,13 +54,23 @@ final class Loader {
 	}
 
 	/**
+	 * Initializes the Loader by registering and initializing features.
+	 *
+	 * @since 0.8.0
+	 */
+	public function init(): void {
+		$this->register_features();
+		$this->initialize_features();
+	}
+
+	/**
 	 * Registers features.
 	 *
 	 * Registers the default built-in features and fires the 'wpai_register_features' action hook for third-party usage.
 	 *
 	 * @since 0.6.0
 	 */
-	public function register_features(): void {
+	private function register_features(): void {
 		$features = $this->get_default_features();
 
 		foreach ( $features as $feature ) {
@@ -93,7 +105,7 @@ final class Loader {
 	 */
 	private function get_default_features(): array {
 		$feature_classes = array(
-			// Features start off as experiments until they pass the requirements to graduate to full features.
+			\WordPress\AI\Features\Image_Generation\Image_Generation::get_id() => \WordPress\AI\Features\Image_Generation\Image_Generation::class,
 		);
 
 		/**
@@ -103,7 +115,7 @@ final class Loader {
 		 *
 		 * @since 0.6.0
 		 *
-		 * @param array<string, \WordPress\AI\Contracts\Feature|class-string<\WordPress\AI\Contracts\Feature>> $feature_classes Array of feature class names, keyed by ID.
+		 * @param array<string, class-string<\WordPress\AI\Contracts\Feature>> $feature_classes Array of feature class names, keyed by ID.
 		 */
 		$items = apply_filters( 'wpai_default_feature_classes', $feature_classes );
 
@@ -159,7 +171,7 @@ final class Loader {
 	 *
 	 * @since 0.6.0
 	 */
-	public function initialize_features(): void {
+	private function initialize_features(): void {
 		if ( $this->initialized ) {
 			return;
 		}
@@ -196,16 +208,5 @@ final class Loader {
 		do_action( 'wpai_features_initialized' );
 
 		$this->initialized = true;
-	}
-
-	/**
-	 * Checks if features have been initialized.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @return bool True if initialized, false otherwise.
-	 */
-	public function is_initialized(): bool {
-		return $this->initialized;
 	}
 }

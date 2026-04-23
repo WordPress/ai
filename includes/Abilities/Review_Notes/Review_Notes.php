@@ -38,7 +38,16 @@ class Review_Notes extends Abstract_Ability {
 	 * @var list<string>
 	 */
 	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition
-	protected const SUPPORTED_REVIEW_TYPES = array( 'accessibility', 'readability', 'grammar', 'seo' );
+	protected const SUPPORTED_REVIEW_TYPES = array( 'accessibility', 'readability', 'grammar', 'seo', 'guidelines' );
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since 0.8.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy', 'additional' );
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -292,7 +301,7 @@ class Review_Notes extends Abstract_Ability {
 	) {
 		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
-		$prompt_builder = $this->get_prompt_builder( $prompt );
+		$prompt_builder = $this->get_prompt_builder( $prompt, $block_type );
 
 		if ( is_wp_error( $prompt_builder ) ) {
 			return $prompt_builder;
@@ -357,11 +366,12 @@ class Review_Notes extends Abstract_Ability {
 	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to generate review notes from.
+	 * @param string $block_type The block type identifier.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
-	private function get_prompt_builder( string $prompt ) {
+	private function get_prompt_builder( string $prompt, string $block_type ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
+			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => $block_type ) ) )
 			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->suggestions_schema() );
 

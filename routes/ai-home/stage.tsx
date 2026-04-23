@@ -2,7 +2,13 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
+import {
+	Button,
+	ExternalLink,
+	Notice,
+	Spinner,
+	ToggleControl,
+} from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews';
@@ -41,6 +47,8 @@ interface FeatureData {
 	description: string;
 	category: string;
 	settingsFields: SettingsFieldData[];
+	stability: string;
+	image: string;
 }
 
 interface PageData {
@@ -120,6 +128,8 @@ function parseFeature( value: unknown ): FeatureData | null {
 		description: toStringValue( feature.description ),
 		category: toStringValue( feature.category ) || 'other',
 		settingsFields: ( rawFields as unknown[] ).filter( isSettingsField ),
+		stability: toStringValue( feature.stability ) || 'experimental',
+		image: toStringValue( feature.image ),
 	};
 }
 
@@ -215,10 +225,45 @@ function buildToggleMessage(
 	edits: Record< string, unknown >,
 	featureDefinitions: FeatureData[]
 ): string {
-	const entry = Object.entries( edits )[ 0 ];
+	const entries = Object.entries( edits );
+	if ( entries.length === 0 ) {
+		return __( 'Settings saved.', 'ai' );
+	}
+
+	// Bulk toggle (multiple experiments).
+	if ( entries.length > 1 ) {
+		const allEnabled = entries.every( ( [ , value ] ) => value === true );
+		const allDisabled = entries.every( ( [ , value ] ) => value === false );
+		const count = entries.length;
+
+		if ( allEnabled ) {
+			return sprintf(
+				// translators: %d: Number of experiments.
+				__( '%d experiments enabled', 'ai' ),
+				count
+			);
+		}
+		if ( allDisabled ) {
+			return sprintf(
+				// translators: %d: Number of experiments.
+				__( '%d experiments disabled', 'ai' ),
+				count
+			);
+		}
+		// Just a fallback for mixed state (shouldn't happen with our buttons, but handle it).
+		return sprintf(
+			// translators: %d: Number of experiments.
+			__( '%d experiments updated', 'ai' ),
+			count
+		);
+	}
+
+	// Single toggle
+	const entry = entries[ 0 ];
 	if ( ! entry ) {
 		return __( 'Settings saved.', 'ai' );
 	}
+
 	if ( entry[ 0 ] === GLOBAL_FIELD_ID ) {
 		return entry[ 1 ]
 			? __( 'AI enabled.', 'ai' )
@@ -249,6 +294,84 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	);
 }
 
+interface SectionActionsProps extends DataFormControlProps< AISettings > {
+	experimentSettings: string[];
+	globalEnabled: boolean;
+	onBulkChange: ( edits: Record< string, boolean > ) => void;
+}
+
+function SectionActions( {
+	experimentSettings,
+	data,
+	globalEnabled,
+	onBulkChange,
+}: SectionActionsProps ) {
+	const allEnabled = useMemo( () => {
+		return experimentSettings.every(
+			( settingName ) => data[ settingName ]
+		);
+	}, [ experimentSettings, data ] );
+
+	const allDisabled = useMemo( () => {
+		return experimentSettings.every(
+			( settingName ) => ! data[ settingName ]
+		);
+	}, [ experimentSettings, data ] );
+
+	const handleEnableAll = useCallback( () => {
+		const edits: Record< string, boolean > = {};
+		let enabledCount = 0;
+
+		for ( const settingName of experimentSettings ) {
+			if ( ! data[ settingName ] ) {
+				edits[ settingName ] = true;
+				enabledCount++;
+			}
+		}
+
+		if ( enabledCount > 0 ) {
+			onBulkChange( edits );
+		}
+	}, [ experimentSettings, data, onBulkChange ] );
+
+	const handleDisableAll = useCallback( () => {
+		const edits: Record< string, boolean > = {};
+		let disabledCount = 0;
+
+		for ( const settingName of experimentSettings ) {
+			if ( data[ settingName ] ) {
+				edits[ settingName ] = false;
+				disabledCount++;
+			}
+		}
+
+		if ( disabledCount > 0 ) {
+			onBulkChange( edits );
+		}
+	}, [ experimentSettings, data, onBulkChange ] );
+
+	return (
+		<div className="ai-section-actions">
+			<Button
+				variant="secondary"
+				size="compact"
+				onClick={ handleEnableAll }
+				disabled={ ! globalEnabled || allEnabled }
+			>
+				{ __( 'Enable all', 'ai' ) }
+			</Button>
+			<Button
+				variant="secondary"
+				size="compact"
+				onClick={ handleDisableAll }
+				disabled={ ! globalEnabled || allDisabled }
+			>
+				{ __( 'Disable all', 'ai' ) }
+			</Button>
+		</div>
+	);
+}
+
 function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	const fieldIds = useMemo(
 		() => feature.settingsFields.map( ( f ) => f.id ),
@@ -256,7 +379,6 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	);
 
 	const { editedRecord, nonTransientEdits } = useSelect( ( select ) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 		const store: any = select( coreStore );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
@@ -277,7 +399,6 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	);
 
 	const { editEntityRecord } = useDispatch( coreStore );
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
@@ -407,9 +528,72 @@ function FeatureToggleWithSettings( {
 	);
 }
 
+const VISUAL_CARD_FEATURES = new Map(
+	PAGE_DATA.features
+		.filter( ( f ) => f.stability === 'stable' && f.image !== '' )
+		.map( ( f ) => [ f.settingName, f ] as const )
+);
+
+function VisualCardToggle( {
+	field,
+	data,
+	onChange,
+}: DataFormControlProps< AISettings > ) {
+	const feature = VISUAL_CARD_FEATURES.get( field.id );
+	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
+	const checked = !! field.getValue( { item: data } );
+
+	return (
+		<div
+			className={ `ai-showcase-card${
+				! globalEnabled ? ' ai-showcase-card--disabled' : ''
+			}` }
+		>
+			{ feature?.image && (
+				<div className="ai-showcase-card__image">
+					<img src={ feature.image } alt="" loading="lazy" />
+				</div>
+			) }
+			<div className="ai-showcase-card__content">
+				<h3 className="ai-showcase-card__title">{ field.label }</h3>
+				<p className="ai-showcase-card__description">
+					{ field.description }
+				</p>
+				<div className="ai-showcase-card__actions">
+					<Button
+						variant={ checked ? 'secondary' : 'primary' }
+						onClick={ () =>
+							onChange( { [ field.id ]: ! checked } )
+						}
+						disabled={ ! globalEnabled }
+						size="compact"
+					>
+						{ checked
+							? __( 'Disable', 'ai' )
+							: __( 'Enable', 'ai' ) }
+					</Button>
+					{ checked && (
+						<span className="ai-showcase-card__enabled-badge">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								width={ 16 }
+								height={ 16 }
+								fill="currentColor"
+							>
+								<path d="M16.5 7.5 10 13.9l-2.5-2.4-1 1 3.5 3.6 7.5-7.6z" />
+							</svg>
+							{ __( 'Enabled', 'ai' ) }
+						</span>
+					) }
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function AISettingsPage() {
 	const { editedRecord, isLoading } = useSelect( ( select ) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 		const store: any = select( coreStore );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
@@ -423,7 +607,6 @@ function AISettingsPage() {
 	}, [] );
 
 	const { editEntityRecord } = useDispatch( coreStore );
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- __experimentalSaveSpecifiedEntityEdits is not in the public types.
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
@@ -449,6 +632,8 @@ function AISettingsPage() {
 								description: '',
 								category: 'other',
 								settingsFields: [],
+								stability: 'experimental',
+								image: '',
 							};
 						} );
 
@@ -492,106 +677,7 @@ function AISettingsPage() {
 		return aiSettings;
 	}, [ aiSettingKeys, editedRecord ] );
 
-	const globalEnabled = data[ GLOBAL_FIELD.id ];
-
-	const fields = useMemo< Field< AISettings >[] >(
-		() => [
-			GLOBAL_FIELD,
-			...featureDefinitions.map( ( feature ) => {
-				const baseField: Field< AISettings > = {
-					id: feature.settingName,
-					label: feature.label,
-					description: feature.description,
-					type: 'boolean' as const,
-				};
-
-				if ( ! globalEnabled ) {
-					baseField.Edit = DisabledToggle;
-				} else if ( feature.settingsFields.length > 0 ) {
-					baseField.Edit = FeatureToggleWithSettings;
-				} else {
-					baseField.Edit = 'toggle' as const;
-				}
-
-				return baseField;
-			} ),
-		],
-		[ featureDefinitions, globalEnabled ]
-	);
-
-	const form = useMemo< Form >( () => {
-		const groupedFields = new Map< string, string[] >();
-		for ( const feature of featureDefinitions ) {
-			const category = feature.category || 'other';
-			const categoryFields = groupedFields.get( category ) ?? [];
-			categoryFields.push( feature.settingName );
-			groupedFields.set( category, categoryFields );
-		}
-
-		const sectionFields: NonNullable< Form[ 'fields' ] > = [];
-		const seenCategories = new Set< string >();
-
-		for ( const group of featureGroups ) {
-			const children = groupedFields.get( group.id ) ?? [];
-
-			if ( children.length === 0 ) {
-				continue;
-			}
-
-			seenCategories.add( group.id );
-			sectionFields.push( {
-				id: getSectionId( group.id ),
-				label: group.label,
-				description: group.description,
-				layout: {
-					type: 'card',
-					withHeader: true,
-					isOpened: true,
-					isCollapsible: true,
-				},
-				children,
-			} );
-		}
-
-		for ( const [ category, children ] of groupedFields.entries() ) {
-			if ( children.length === 0 || seenCategories.has( category ) ) {
-				continue;
-			}
-
-			sectionFields.push( {
-				id: getSectionId( category ),
-				label: getDefaultLabel( category ),
-				description: '',
-				layout: {
-					type: 'card',
-					withHeader: true,
-					isOpened: true,
-					isCollapsible: true,
-				},
-				children,
-			} );
-		}
-
-		return {
-			fields: [
-				{
-					id: 'generalSettings',
-					label: __( 'General Settings', 'ai' ),
-					description: __(
-						'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-						'ai'
-					),
-					layout: {
-						type: 'card',
-						withHeader: true,
-						isCollapsible: false,
-					},
-					children: [ GLOBAL_FIELD_ID ],
-				},
-				...sectionFields,
-			],
-		};
-	}, [ featureDefinitions, featureGroups ] );
+	const globalEnabled = Boolean( data[ GLOBAL_FIELD.id ] );
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
@@ -610,7 +696,6 @@ function AISettingsPage() {
 				createSuccessNotice( message, { type: 'snackbar' } );
 			} catch {
 				// Revert only the toggled keys to their server-side values.
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- DataRegistry typing doesn't expose .select(); core-data selectors aren't fully typed for 'root'/'site' entity args.
 				const serverRecord = ( registry as any )
 					.select( coreStore )
 					.getEntityRecord( 'root', 'site' ) as
@@ -637,6 +722,169 @@ function AISettingsPage() {
 		]
 	);
 
+	const fields = useMemo< Field< AISettings >[] >( () => {
+		const sectionActionsFields: Field< AISettings >[] = [];
+		const groupedFields = new Map< string, string[] >();
+
+		// Group features by category
+		for ( const feature of featureDefinitions ) {
+			const category = feature.category || 'other';
+			const categoryFields = groupedFields.get( category ) ?? [];
+			categoryFields.push( feature.settingName );
+			groupedFields.set( category, categoryFields );
+		}
+
+		// Create section action fields for each group
+		for ( const group of featureGroups ) {
+			const experimentSettings = groupedFields.get( group.id ) ?? [];
+			if ( experimentSettings.length === 0 ) {
+				continue;
+			}
+
+			const actionFieldId = `section-actions-${ group.id }`;
+			sectionActionsFields.push( {
+				id: actionFieldId,
+				label: '',
+				type: 'text',
+				Edit: ( props ) => (
+					<SectionActions
+						{ ...props }
+						experimentSettings={ experimentSettings }
+						globalEnabled={ globalEnabled }
+						onBulkChange={ handleChange }
+					/>
+				),
+			} );
+		}
+
+		// Create feature toggle fields
+		const featureFields = featureDefinitions.map( ( feature ) => {
+			const baseField: Field< AISettings > = {
+				id: feature.settingName,
+				label: feature.label,
+				description: feature.description,
+				type: 'boolean' as const,
+			};
+
+			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
+				baseField.Edit = VisualCardToggle;
+			} else if ( ! globalEnabled ) {
+				baseField.Edit = DisabledToggle;
+			} else if ( feature.settingsFields.length > 0 ) {
+				baseField.Edit = FeatureToggleWithSettings;
+			} else {
+				baseField.Edit = 'toggle' as const;
+			}
+
+			return baseField;
+		} );
+
+		return [ GLOBAL_FIELD, ...sectionActionsFields, ...featureFields ];
+	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
+
+	const form = useMemo< Form >( () => {
+		const showcaseChildren: string[] = [];
+		const groupedFields = new Map< string, string[] >();
+		for ( const feature of featureDefinitions ) {
+			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
+				showcaseChildren.push( feature.settingName );
+			} else {
+				const category = feature.category || 'other';
+				const categoryFields = groupedFields.get( category ) ?? [];
+				categoryFields.push( feature.settingName );
+				groupedFields.set( category, categoryFields );
+			}
+		}
+
+		const sectionFields: NonNullable< Form[ 'fields' ] > = [];
+
+		// Add showcase section with row layout (2 per row).
+		if ( showcaseChildren.length > 0 ) {
+			const rows: NonNullable< Form[ 'fields' ] > = [];
+			for ( let i = 0; i < showcaseChildren.length; i += 2 ) {
+				rows.push( {
+					id: `showcase-row-${ i }`,
+					layout: { type: 'row' as const },
+					children: showcaseChildren.slice( i, i + 2 ),
+				} );
+			}
+
+			sectionFields.push( {
+				id: 'feature-group-showcase',
+				layout: {
+					type: 'regular',
+					labelPosition: 'none',
+				},
+				children: rows,
+			} );
+		}
+
+		const seenCategories = new Set< string >();
+
+		for ( const group of featureGroups ) {
+			const children = groupedFields.get( group.id ) ?? [];
+
+			if ( children.length === 0 ) {
+				continue;
+			}
+
+			seenCategories.add( group.id );
+			const actionFieldId = `section-actions-${ group.id }`;
+			sectionFields.push( {
+				id: getSectionId( group.id ),
+				label: group.label,
+				description: group.description,
+				layout: {
+					type: 'card',
+					withHeader: true,
+					isOpened: true,
+					isCollapsible: true,
+				},
+				children: [ ...children, actionFieldId ],
+			} );
+		}
+
+		for ( const [ category, children ] of groupedFields.entries() ) {
+			if ( children.length === 0 || seenCategories.has( category ) ) {
+				continue;
+			}
+
+			const actionFieldId = `section-actions-${ category }`;
+			sectionFields.push( {
+				id: getSectionId( category ),
+				label: getDefaultLabel( category ),
+				description: '',
+				layout: {
+					type: 'card',
+					withHeader: true,
+					isOpened: true,
+					isCollapsible: true,
+				},
+				children: [ ...children, actionFieldId ],
+			} );
+		}
+
+		return {
+			fields: [
+				{
+					id: 'generalSettings',
+					label: __( 'General Settings', 'ai' ),
+					description: __(
+						'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
+						'ai'
+					),
+					layout: {
+						type: 'card',
+						withHeader: true,
+						isCollapsible: false,
+					},
+					children: [ GLOBAL_FIELD_ID ],
+				},
+				...sectionFields,
+			],
+		};
+	}, [ featureDefinitions, featureGroups ] );
+
 	return (
 		<Page
 			title={
@@ -650,24 +898,14 @@ function AISettingsPage() {
 				'ai'
 			) }
 			actions={
-				<>
-					<Button
-						variant="secondary"
-						href="https://github.com/WordPress/ai/tree/develop/docs"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+				<div className="ai-settings-page__actions">
+					<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
 						{ __( 'Docs', 'ai' ) }
-					</Button>
-					<Button
-						variant="primary"
-						href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					</ExternalLink>
+					<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
 						{ __( 'Contribute', 'ai' ) }
-					</Button>
-				</>
+					</ExternalLink>
+				</div>
 			}
 		>
 			<div className="ai-settings-page">

@@ -21,11 +21,11 @@
 	<coverage processUncoveredFiles="false">
 		<include>
 			<directory suffix=".php">includes</directory>
-			<file>ai.php</file>
 		</include>
 		<report>
 			<clover outputFile="tests/_output/php-coverage.xml" />
 			<html outputDirectory="tests/_output/html" />
+			<text outputFile="php://stdout" showOnlySummary="true" />
 		</report>
 	</coverage>
 </phpunit>

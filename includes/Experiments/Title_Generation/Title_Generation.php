@@ -38,7 +38,7 @@ class Title_Generation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Title Generation', 'ai' ),
-			'description' => __( 'Generates title suggestions from content', 'ai' ),
+			'description' => __( 'Generates title suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -94,6 +94,7 @@ class Title_Generation extends Abstract_Feature {
 		}
 
 		Asset_Loader::enqueue_script( 'title_generation', 'experiments/title-generation' );
+		Asset_Loader::enqueue_style( 'title_generation', 'experiments/title-generation' );
 		Asset_Loader::localize_script(
 			'title_generation',
 			'TitleGenerationData',

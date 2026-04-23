@@ -1,23 +1,23 @@
 {
-  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
-  "landingPage": "/wp-admin/options-general.php?page=ai",
-  "preferredVersions": {
-    "php": "7.4",
-    "wp": "latest"
-  },
-  "features": {
-    "networking": true
-  },
-  "steps": [
-    {
-      "step": "installPlugin",
-      "pluginData": {
-        "resource": "wordpress.org/plugins",
-        "slug": "ai"
-      },
-      "options": {
-        "activate": true
-      }
-    }
-  ]
+	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
+	"landingPage": "/wp-admin/options-general.php?page=ai-wp-admin",
+	"preferredVersions": {
+		"php": "7.4",
+		"wp": "beta"
+	},
+	"features": {
+		"networking": true
+	},
+	"steps": [
+		{
+			"step": "installPlugin",
+			"pluginData": {
+				"resource": "wordpress.org/plugins",
+				"slug": "ai"
+			},
+			"options": {
+				"activate": true
+			}
+		}
+	]
 }

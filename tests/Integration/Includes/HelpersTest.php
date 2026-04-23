@@ -8,6 +8,8 @@
 namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
+use WordPress\AI\Services\Guidelines;
+use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 
 /**
  * Helper functions test case.
@@ -15,6 +17,8 @@ use WP_UnitTestCase;
  * @since 0.1.0
  */
 class HelpersTest extends WP_UnitTestCase {
+
+	use Guidelines_CPT_Helpers;
 	/**
 	 * Set up test case.
 	 *
@@ -26,6 +30,7 @@ class HelpersTest extends WP_UnitTestCase {
 		// Create a user with proper permissions for reading posts.
 		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $user_id );
+		Guidelines::reset_cache();
 	}
 
 	/**
@@ -34,6 +39,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
+		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		parent::tearDown();
 	}
@@ -527,13 +533,13 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-1.5', $result[4][1], 'Fifth model name should be gpt-image-1.5' );
+		$this->assertEquals( 'gpt-image-2', $result[4][1], 'Fifth model name should be gpt-image-2' );
 
 		// Check sixth model (openai).
 		$this->assertIsArray( $result[5], 'Sixth model should be an array' );
 		$this->assertCount( 2, $result[5], 'Sixth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[5][0], 'Sixth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-1-mini', $result[5][1], 'Sixth model name should be gpt-image-1' );
+		$this->assertEquals( 'gpt-image-1.5', $result[5][1], 'Sixth model name should be gpt-image-1.5' );
 	}
 
 	/**
@@ -691,4 +697,26 @@ class HelpersTest extends WP_UnitTestCase {
 
 		remove_all_filters( 'wpai_preferred_vision_models' );
 	}
+
+	/**
+	 * Test that get_guidelines() returns guidelines filtered by category.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_guidelines_returns_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site' => 'Use a professional tone.',
+				'copy' => 'Keep sentences under 25 words.',
+			)
+		);
+
+		$result = \WordPress\AI\get_guidelines( 'site' );
+
+		$this->assertIsArray( $result, 'Should return an array' );
+		$this->assertArrayHasKey( 'site', $result, 'Should have site key' );
+		$this->assertEquals( 'Use a professional tone.', $result['site'] );
+	}
+
 }

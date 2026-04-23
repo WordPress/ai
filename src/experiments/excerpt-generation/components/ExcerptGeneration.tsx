@@ -21,9 +21,9 @@ const { aiExcerptGenerationData } = window as any;
  *
  * Provides a button to generate an excerpt.
  *
- * @return {JSX.Element | null} The excerpt generation component.
+ * @return {React.JSX.Element | null} The excerpt generation component.
  */
-export default function ExcerptGeneration(): JSX.Element | null {
+export default function ExcerptGeneration(): React.JSX.Element | null {
 	const { isGenerating, hasExcerpt, handleGenerate } = useExcerptGeneration();
 
 	// Don't render if disabled.
@@ -31,9 +31,13 @@ export default function ExcerptGeneration(): JSX.Element | null {
 		return null;
 	}
 
-	const buttonLabel = hasExcerpt
-		? __( 'Re-generate excerpt', 'ai' )
-		: __( 'Generate excerpt', 'ai' );
+	let buttonLabel: string = __( 'Generate excerpt', 'ai' );
+
+	if ( isGenerating ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasExcerpt ) {
+		buttonLabel = __( 'Regenerate excerpt', 'ai' );
+	}
 
 	return (
 		<Button

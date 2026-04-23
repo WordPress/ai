@@ -37,11 +37,14 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
+* **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
-* **[Image Generation and Editing](docs/experiments/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
+* **Guidelines** - Allows abilities to respect site-wide editorial standards.
+* **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **[Refine Notes](docs/experiments/refine-notes.md)** - Automatically apply editorial notes to content.
 * **[Review Notes](docs/experiments/review-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** -  Generates title suggestions from content.
 

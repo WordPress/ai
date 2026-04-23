@@ -5,7 +5,15 @@
 /**
  * WordPress dependencies
  */
-import { Button, ToolbarGroup, ToolbarButton } from '@wordpress/components';
+import {
+	Button,
+	Flex,
+	FlexItem,
+	Modal,
+	TextareaControl,
+	ToolbarGroup,
+	ToolbarButton,
+} from '@wordpress/components';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -58,9 +66,10 @@ async function generateTitle(
 /**
  * TitleToolbar component.
  *
- * Provides Generate/Re-generate button.
+ * Provides Generate/Regenerate button and a modal for reviewing and
+ * inserting the AI-generated title suggestion.
  *
- * @return {JSX.Element} The toolbar component.
+ * @return {React.JSX.Element} The toolbar component.
  */
 interface TitleToolbarProps {
 	isStandalone?: boolean;
@@ -68,21 +77,35 @@ interface TitleToolbarProps {
 
 export default function TitleToolbar( {
 	isStandalone = false,
-}: TitleToolbarProps ): JSX.Element | null {
+}: TitleToolbarProps ): React.JSX.Element | null {
 	const postId = select( editorStore ).getCurrentPostId();
 	const title = select( editorStore ).getEditedPostAttribute( 'title' );
 
 	const { editPost } = useDispatch( editorStore );
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
+	const [ isRegenerating, setIsRegenerating ] = useState< boolean >( false );
+	const [ isOpen, setOpen ] = useState< boolean >( false );
+	const [ generatedTitle, setGeneratedTitle ] = useState< string >( '' );
+
+	const openModal = () => setOpen( true );
+	const closeModal = () => {
+		setOpen( false );
+		setGeneratedTitle( '' );
+	};
 
 	const hasTitle = title.trim().length > 0;
-	const buttonLabel = hasTitle
-		? __( 'Re-generate', 'ai' )
-		: __( 'Generate', 'ai' );
+
+	let buttonLabel: string = __( 'Generate', 'ai' );
+
+	if ( isGenerating || isRegenerating ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasTitle ) {
+		buttonLabel = __( 'Regenerate', 'ai' );
+	}
 
 	/**
-	 * Handles the generate/re-generate button click.
+	 * Handles the toolbar Generate/Regenerate button click.
 	 */
 	const handleGenerate = async () => {
 		if ( isGenerating ) {
@@ -96,11 +119,9 @@ export default function TitleToolbar( {
 		);
 
 		try {
-			const generatedTitle = await generateTitle(
-				postId as number,
-				content
-			);
-			editPost( { title: generatedTitle } );
+			const result = await generateTitle( postId as number, content );
+			setGeneratedTitle( result );
+			openModal();
 		} catch ( error: any ) {
 			const message =
 				typeof error === 'string'
@@ -113,6 +134,42 @@ export default function TitleToolbar( {
 		} finally {
 			setIsGenerating( false );
 		}
+	};
+
+	/**
+	 * Handles the Regenerate button inside the modal.
+	 * Fetches a new suggestion without closing the modal.
+	 */
+	const handleRegenerate = async () => {
+		const content = select( editorStore ).getEditedPostContent();
+		setIsRegenerating( true );
+		( dispatch( noticesStore ) as any ).removeNotice(
+			'ai_title_generation_error'
+		);
+
+		try {
+			const result = await generateTitle( postId as number, content );
+			setGeneratedTitle( result );
+		} catch ( error: any ) {
+			const message =
+				typeof error === 'string'
+					? error
+					: error?.message ?? __( 'Failed to generate title.', 'ai' );
+			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+				id: 'ai_title_generation_error',
+				isDismissible: true,
+			} );
+		} finally {
+			setIsRegenerating( false );
+		}
+	};
+
+	/**
+	 * Applies the generated title to the post and closes the modal.
+	 */
+	const handleInsert = () => {
+		editPost( { title: generatedTitle } );
+		closeModal();
 	};
 
 	// Don't render if disabled.
@@ -128,7 +185,9 @@ export default function TitleToolbar( {
 					variant="secondary"
 					label={ buttonLabel }
 					onClick={ handleGenerate }
+					disabled={ isGenerating }
 					isBusy={ isGenerating }
+					accessibleWhenDisabled
 					__next40pxDefaultSize
 				>
 					{ buttonLabel }
@@ -145,6 +204,56 @@ export default function TitleToolbar( {
 						{ buttonLabel }
 					</ToolbarButton>
 				</ToolbarGroup>
+			) }
+			{ isOpen && (
+				<Modal
+					title={ __( 'Title suggestion', 'ai' ) }
+					onRequestClose={ closeModal }
+					isFullScreen={ false }
+					size="medium"
+					className="ai-title-generation-modal"
+				>
+					<p className="ai-title-generation-subtitle">
+						{ __(
+							'Review, edit and insert the suggested title or regenerate a new one.',
+							'ai'
+						) }
+					</p>
+					<TextareaControl
+						rows={ 2 }
+						label={ __( 'Generated title', 'ai' ) }
+						hideLabelFromVision
+						value={ generatedTitle }
+						onChange={ setGeneratedTitle }
+						disabled={ isRegenerating }
+						__nextHasNoMarginBottom
+					/>
+					<Flex
+						justify="flex-end"
+						gap="3"
+						className="ai-title-generation-actions"
+					>
+						<FlexItem>
+							<Button
+								variant="secondary"
+								onClick={ handleRegenerate }
+								disabled={ isRegenerating }
+								isBusy={ isRegenerating }
+							>
+								{ buttonLabel }
+							</Button>
+						</FlexItem>
+						<FlexItem>
+							<Button
+								variant="primary"
+								onClick={ handleInsert }
+								disabled={ isRegenerating || ! generatedTitle }
+							>
+								{ __( 'Insert', 'ai' ) }
+							</Button>
+						</FlexItem>
+					</Flex>
+				</Modal>
 			) }
 		</PostTypeSupportCheck>
 	);

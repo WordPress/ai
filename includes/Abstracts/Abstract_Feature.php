@@ -69,6 +69,14 @@ abstract class Abstract_Feature implements Feature {
 	private string $stability;
 
 	/**
+	 * The image URL for feature showcase display.
+	 *
+	 * @since 0.8.0
+	 * @var string
+	 */
+	protected string $image;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -106,6 +114,7 @@ abstract class Abstract_Feature implements Feature {
 		$this->description = $metadata['description'];
 		$this->category    = $metadata['category'];
 		$this->stability   = $metadata['stability'] ?? 'experimental';
+		$this->image       = $metadata['image'] ?? '';
 	}
 
 	/**
@@ -121,6 +130,7 @@ abstract class Abstract_Feature implements Feature {
 	 *  description: string,
 	 *  category?: string,
 	 *  stability?: 'deprecated'|'experimental'|'stable',
+	 *  image?: string,
 	 * } Feature metadata.
 	 */
 	abstract protected function load_metadata(): array;
@@ -199,6 +209,17 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	final public function get_stability(): string {
 		return $this->stability;
+	}
+
+	/**
+	 * Gets the image URL for feature showcase display.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @return string The image URL, or empty string if not set.
+	 */
+	public function get_image(): string {
+		return $this->image;
 	}
 
 	/**

@@ -17,43 +17,43 @@ jobs:
       packages: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    - name: Set up PHP
-      uses: shivammathur/setup-php@ec406be512d7077f68eed36e63f4d91bc006edc4 # v2.35.4
-      with:
-        php-version: '7.4'
-        coverage: none
-        tools: composer:v2
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
+        with:
+          php-version: '7.4'
+          coverage: none
+          tools: composer:v2
 
-    - name: Use desired version of Node.js
-      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
-      with:
-        node-version-file: '.nvmrc'
-    
-    - name: Install Composer dependencies
-      uses: ramsey/composer-install@3cf229dc2919194e9e36783941438d17239e8520 # v3.1.1
-      with:
-         composer-options: '--no-dev -o'
+      - name: Use desired version of Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: '.nvmrc'
 
-    - name: Build
-      run: |
-        npm install
-        npm run build
+      - name: Install Composer dependencies
+        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # v4.0.0
+        with:
+          composer-options: '--no-dev -o'
 
-    - name: WordPress Plugin Deploy
-      id: deploy
-      uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # v2.3.0
-      with:
-        generate-zip: true
-      env:
-        SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-        SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+      - name: Build
+        run: |
+          npm install
+          npm run build
 
-    - name: Upload release asset
-      uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        files: ${{ github.workspace }}/${{ github.event.repository.name }}.zip
+      - name: WordPress Plugin Deploy
+        id: deploy
+        uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # v2.3.0
+        with:
+          generate-zip: true
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ${{ github.workspace }}/${{ github.event.repository.name }}.zip
