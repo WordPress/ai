@@ -145,7 +145,7 @@ class Approvals_StoreTest extends WP_UnitTestCase {
 
 		$expected = null;
 		foreach ( array_keys( get_plugins() ) as $basename ) {
-			if ( 0 === strpos( (string) $basename, 'ai/' ) ) {
+			if ( str_starts_with( (string) $basename, 'ai/' ) ) {
 				$expected = (string) $basename;
 				break;
 			}

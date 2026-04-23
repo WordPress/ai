@@ -78,11 +78,11 @@ final class Connector_Key_Index {
 		foreach ( $keys as $key => $connector_id ) {
 			$encoded_key = rawurlencode( $key );
 			foreach ( $haystacks as $haystack ) {
-				if ( false !== strpos( $haystack, $key ) ) {
+				if ( str_contains( $haystack, $key ) ) {
 					return $connector_id;
 				}
 
-				if ( $encoded_key !== $key && false !== strpos( $haystack, $encoded_key ) ) {
+				if ( $encoded_key !== $key && str_contains( $haystack, $encoded_key ) ) {
 					return $connector_id;
 				}
 			}

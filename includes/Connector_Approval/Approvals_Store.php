@@ -152,7 +152,7 @@ final class Approvals_Store {
 
 		$prefix = $caller_basename . '/';
 		foreach ( array_keys( get_plugins() ) as $basename ) {
-			if ( 0 === strpos( (string) $basename, $prefix ) ) {
+			if ( str_starts_with( (string) $basename, $prefix ) ) {
 				return (string) $basename;
 			}
 		}

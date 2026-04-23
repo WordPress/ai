@@ -154,7 +154,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 		}
 
 		foreach ( array_keys( get_plugins() ) as $basename ) {
-			if ( 0 === strpos( (string) $basename, 'ai/' ) ) {
+			if ( str_starts_with( (string) $basename, 'ai/' ) ) {
 				return (string) $basename;
 			}
 		}

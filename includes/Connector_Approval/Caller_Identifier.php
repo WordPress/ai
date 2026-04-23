@@ -183,7 +183,7 @@ final class Caller_Identifier {
 	private function should_skip( string $file ): bool {
 		$normalized = wp_normalize_path( $file );
 		foreach ( $this->skip_substrings as $needle ) {
-			if ( false !== strpos( $normalized, wp_normalize_path( $needle ) ) ) {
+			if ( str_contains( $normalized, wp_normalize_path( $needle ) ) ) {
 				return true;
 			}
 		}
@@ -249,7 +249,7 @@ final class Caller_Identifier {
 	 */
 	private function match_slug( string $file, string $base_dir ): ?string {
 		$base_dir = rtrim( $base_dir, '/' ) . '/';
-		if ( 0 !== strpos( $file, $base_dir ) ) {
+		if ( ! str_starts_with( $file, $base_dir ) ) {
 			return null;
 		}
 
@@ -299,7 +299,7 @@ final class Caller_Identifier {
 
 		$prefix = $segment . '/';
 		foreach ( $plugins as $plugin_basename => $_plugin_data ) {
-			if ( 0 === strpos( (string) $plugin_basename, $prefix ) ) {
+			if ( str_starts_with( (string) $plugin_basename, $prefix ) ) {
 				return (string) $plugin_basename;
 			}
 		}
