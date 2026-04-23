@@ -36,7 +36,6 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		update_option( 'wpai_features_enabled', true );
@@ -65,7 +64,6 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_connector-approval_enabled' );
-		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'wpai_feature_connector-approval_enabled' );
 		parent::tearDown();
@@ -109,5 +107,28 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		$routes = rest_get_server()->get_routes();
 		$this->assertArrayHasKey( '/ai/v1/connector-approvals', $routes );
 		$this->assertArrayHasKey( '/ai/v1/connector-approvals/pending/(?P<key>[^/]+)', $routes );
+
+		$collection_methods = array();
+		foreach ( $routes['/ai/v1/connector-approvals'] as $handler ) {
+			$methods = $handler['methods'] ?? array();
+			if ( is_array( $methods ) ) {
+				$collection_methods = array_merge( $collection_methods, array_keys( $methods ) );
+			} else {
+				$collection_methods[] = $methods;
+			}
+		}
+		$this->assertContains( 'GET', $collection_methods );
+		$this->assertContains( 'POST', $collection_methods );
+
+		$pending_methods = array();
+		foreach ( $routes['/ai/v1/connector-approvals/pending/(?P<key>[^/]+)'] as $handler ) {
+			$methods = $handler['methods'] ?? array();
+			if ( is_array( $methods ) ) {
+				$pending_methods = array_merge( $pending_methods, array_keys( $methods ) );
+			} else {
+				$pending_methods[] = $methods;
+			}
+		}
+		$this->assertContains( 'DELETE', $pending_methods );
 	}
 }
