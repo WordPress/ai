@@ -609,7 +609,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that guideline_categories() returns site, copy, and additional.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_guideline_categories_returns_site_copy_and_additional(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -625,7 +625,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_system_instruction() includes guidelines when available.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_system_instruction_includes_guidelines(): void {
 		$this->register_guidelines_cpt();

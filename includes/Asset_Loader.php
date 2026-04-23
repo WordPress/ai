@@ -202,7 +202,7 @@ final class Asset_Loader {
 	 * @param string $message The message to display in the admin notice.
 	 */
 	private static function log_and_display_error( string $message ): void {
-		_doing_it_wrong( self::class, esc_html( $message ), 'x.x.x' );
+		_doing_it_wrong( self::class, esc_html( $message ), '0.8.0' );
 
 		$hooks = array(
 			'admin_notices',

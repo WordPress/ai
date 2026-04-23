@@ -16,7 +16,7 @@ use WordPress\AI\Settings\Settings_Registration;
 /**
  * Stub feature A for status widget tests.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Status_Test_Feature_A extends Abstract_Feature {
 
@@ -46,7 +46,7 @@ class Status_Test_Feature_A extends Abstract_Feature {
 /**
  * Stub feature B for status widget tests.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Status_Test_Feature_B extends Abstract_Feature {
 
@@ -76,14 +76,14 @@ class Status_Test_Feature_B extends Abstract_Feature {
 /**
  * AI_Status_Widget test case.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class AI_Status_WidgetTest extends WP_UnitTestCase {
 
 	/**
 	 * Tear down after each test.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function tearDown(): void {
 		delete_option( Settings_Registration::GLOBAL_OPTION );
@@ -98,7 +98,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	 * Without any credentials or enabled features, the widget should
 	 * always show the getting-started checklist.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_render_getting_started_mode() {
 		$registry = new Registry();
@@ -118,7 +118,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that getting-started mode shows all four checklist steps.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_getting_started_has_all_steps() {
 		$registry = new Registry();
@@ -136,7 +136,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that incomplete steps show error icons.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_getting_started_shows_error_icons_for_incomplete_steps() {
 		$registry = new Registry();
@@ -156,7 +156,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the global enabled step shows a success icon when enabled.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_getting_started_shows_success_for_global_enabled() {
 		update_option( Settings_Registration::GLOBAL_OPTION, true );
@@ -178,7 +178,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enabling an feature shows its step as complete.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_getting_started_shows_success_for_enabled_feature() {
 		update_option( Settings_Registration::GLOBAL_OPTION, true );
@@ -208,7 +208,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the checklist links to the correct admin pages.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_getting_started_links_to_admin_pages() {
 		$registry = new Registry();
@@ -225,7 +225,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the widget renders without errors when the registry has features.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_render_with_multiple_features_in_registry() {
 		$registry = new Registry();
@@ -248,7 +248,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the widget renders without errors when the registry is empty.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_render_with_empty_registry() {
 		$registry = new Registry();

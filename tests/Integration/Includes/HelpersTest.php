@@ -701,7 +701,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_guidelines() returns guidelines filtered by category.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_returns_guidelines(): void {
 		$this->register_guidelines_cpt();

@@ -110,7 +110,7 @@ interface Feature {
 	/**
 	 * Gets the image URL for feature showcase display.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return string The image URL, or empty string if not set.
 	 */

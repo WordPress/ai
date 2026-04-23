@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Adds functionality to apply AI-generated refinements based on editorial
  * feedback (Notes) left on individual blocks.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Refine_Notes extends Abstract_Feature {
 
@@ -39,7 +39,7 @@ class Refine_Notes extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -52,7 +52,7 @@ class Refine_Notes extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -62,7 +62,7 @@ class Refine_Notes extends Abstract_Feature {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -78,7 +78,7 @@ class Refine_Notes extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the block editor script.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'refine_notes', 'experiments/refine-notes' );
