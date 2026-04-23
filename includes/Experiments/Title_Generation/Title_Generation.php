@@ -94,6 +94,7 @@ class Title_Generation extends Abstract_Feature {
 		}
 
 		Asset_Loader::enqueue_script( 'title_generation', 'experiments/title-generation' );
+		Asset_Loader::enqueue_style( 'title_generation', 'experiments/title-generation' );
 		Asset_Loader::localize_script(
 			'title_generation',
 			'TitleGenerationData',
