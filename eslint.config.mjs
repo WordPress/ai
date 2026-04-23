@@ -18,7 +18,6 @@ export default [
 			'**/tests/_output/**',
 			// Config files (ESLint does not auto-ignore flat config files).
 			'eslint.config.mjs',
-			'.prettierrc.cjs',
 			'webpack.config.js',
 		],
 	},
@@ -63,6 +62,7 @@ export default [
 						'**/@(webpack|jest).config.@(j|t)s',
 						'**/scripts/**',
 						'**/tests/**',
+						'.prettierrc.js',
 					],
 				},
 			],

@@ -1,74 +1,74 @@
 name: Plugin Check
 
 on:
-    workflow_dispatch:
-    push:
-        branches:
-            - develop
-            - trunk
-    pull_request:
-        types:
-            - opened
-            - synchronize
-            - ready_for_review
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+      - trunk
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - ready_for_review
 
 # Cancels all previous workflow runs for pull requests that have not completed.
 concurrency:
-    # The concurrency group contains the workflow name and the branch name for pull requests
-    # or the commit hash for any other events.
-    group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
-    cancel-in-progress: true
+  # The concurrency group contains the workflow name and the branch name for pull requests
+  # or the commit hash for any other events.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
 
 # Disable permissions for all available scopes by default.
 # Any needed permissions should be configured at the job level.
 permissions: {}
 
 jobs:
-    plugin-check:
-        name: Run Plugin Check
-        runs-on: 'ubuntu-24.04'
-        permissions:
-            contents: read
-        timeout-minutes: 20
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-              with:
-                  show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
-                  persist-credentials: false
+  plugin-check:
+    name: Run Plugin Check
+    runs-on: 'ubuntu-24.04'
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
+          persist-credentials: false
 
-            - name: Set up PHP
-              uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
-              with:
-                  php-version: '8.3'
-                  coverage: none
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
+        with:
+          php-version: '8.3'
+          coverage: none
 
-            - name: Install Composer dependencies
-              uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # v4.0.0
+      - name: Install Composer dependencies
+        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # v4.0.0
 
-            - name: Setup Node
-              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-              with:
-                  cache: 'npm'
-                  node-version-file: '.nvmrc'
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          cache: 'npm'
+          node-version-file: '.nvmrc'
 
-            - name: Install NPM dependencies
-              run: npm ci
+      - name: Install NPM dependencies
+        run: npm ci
 
-            - name: Build assets
-              run: npm run build
+      - name: Build assets
+        run: npm run build
 
-            - name: Run plugin check
-              uses: wordpress/plugin-check-action@6f5a57e173c065a394b78688f75df543e4011902 # v1.1.5
-              with:
-                  wp-version: 'trunk'
-                  # Exclude file_type because of the dev files present in the repository.
-                  exclude-checks: |
-                      file_type
-                  ignore-codes: |
-                      plugin_header_unsupported_plugin_name
-                  exclude-directories: |
-                      .github
-                      build
-                      docs
-                      tests
+      - name: Run plugin check
+        uses: wordpress/plugin-check-action@6f5a57e173c065a394b78688f75df543e4011902 # v1.1.5
+        with:
+          wp-version: 'trunk'
+          # Exclude file_type because of the dev files present in the repository.
+          exclude-checks: |
+            file_type
+          ignore-codes: |
+            plugin_header_unsupported_plugin_name
+          exclude-directories: |
+            .github
+            build
+            docs
+            tests

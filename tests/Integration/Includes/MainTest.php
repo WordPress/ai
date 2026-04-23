@@ -10,8 +10,6 @@ namespace WordPress\AI\Tests\Integration\Includes;
 use WP_UnitTestCase;
 use WordPress\AI\Main;
 
-
-
 /**
  * Main test case.
  *
