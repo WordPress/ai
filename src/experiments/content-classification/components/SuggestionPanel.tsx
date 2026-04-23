@@ -33,7 +33,7 @@ interface SuggestionPanelProps {
  */
 export default function SuggestionPanel( {
 	taxonomy,
-}: SuggestionPanelProps ): JSX.Element | null {
+}: SuggestionPanelProps ): React.JSX.Element | null {
 	const {
 		isGenerating,
 		suggestions,

@@ -376,9 +376,8 @@ Covers:
 **Playwright E2E tests:**
 
 ```bash
-npm run test:e2e:env:start   # Start wp-env + mock server
+npm run wp-env:test start # Start the test environment
 npm run test:e2e -- --grep "AI Review Notes"
-npm run test:e2e:env:stop
 ```
 
 Test file: `tests/e2e/review-notes.spec.ts`
