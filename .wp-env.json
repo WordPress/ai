@@ -1,12 +1,30 @@
 {
-	"$schema": "https://schemas.wp.org/trunk/wp-env.json",
-	"testsEnvironment": false,
-	"core": "WordPress/WordPress#master",
-	"plugins": [ ".", "https://downloads.wordpress.org/plugin/ai-provider-for-google.zip", "https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip" ],
-	"config": {
-		"WP_DEVELOPMENT_MODE": "plugin",
-		"WP_ENVIRONMENT_TYPE": "development",
-		"WP_DEBUG": true,
-		"WP_DEBUG_LOG": "/var/www/html/wp-content/plugins/ai/tests/_output/debug.log"
-	}
+  "$schema": "https://schemas.wp.org/trunk/wp-env.json",
+  "core": "WordPress/WordPress#master",
+  "plugins": [ ".", "https://downloads.wordpress.org/plugin/ai-provider-for-google.zip", "https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip" ],
+  "env": {
+    "development": {
+      "config": {
+        "WP_DEVELOPMENT_MODE": "plugin",
+        "WP_ENVIRONMENT_TYPE": "development",
+        "WP_DEBUG": true,
+        "WP_DEBUG_LOG": "/var/www/html/wp-content/plugins/ai/tests/_output/debug.log"
+      },
+      "mappings": {
+        "wp-content/mu-plugins/dynamic-host.php": "./tests/mu-plugins/dynamic-host.php"
+      }
+    },
+    "tests": {
+      "config": {
+        "WP_DEBUG": true,
+        "FS_METHOD": "direct"
+      },
+      "mappings": {
+        "/wp-content/plugins/ai": "."
+      }
+    }
+  },
+  "lifecycleScripts": {
+    "afterStart": "wp-env run cli wp rewrite structure /%postname%/ --hard"
+  }
 }

@@ -1,0 +1,33 @@
+.c2pa-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	margin: 16px 0;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	font-size: 14px;
+	line-height: 1.4;
+	background: #f6f7f7;
+	color: #3c434a;
+
+	&__icon {
+		flex-shrink: 0;
+		font-size: 18px;
+	}
+
+	&__label {
+		font-weight: 500;
+	}
+
+	&__date {
+		color: #646970;
+		font-size: 12px;
+	}
+
+	&__link {
+		margin-left: auto;
+		font-size: 12px;
+		text-decoration: underline;
+	}
+}

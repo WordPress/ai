@@ -1,0 +1,44 @@
+.content-provenance-panel {
+	// Consistent vertical rhythm between all panel children.
+	.components-panel__body-contents > * + * {
+		margin-top: 12px;
+	}
+}
+
+.content-provenance-badge {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	border: 1px solid var(--badge-color);
+	border-radius: 4px;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.content-provenance-badge__label {
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 20px;
+}
+
+.content-provenance-panel__chain-info {
+	font-size: 12px;
+	color: #646970;
+}
+
+.content-provenance-panel__actions {
+	display: flex;
+	gap: 8px;
+}
+
+.content-provenance-panel__disabled-text {
+	font-size: 13px;
+	color: #646970;
+}
+
+.content-provenance-panel__tier-info {
+	font-size: 12px;
+	color: #646970;
+	margin: 0;
+}

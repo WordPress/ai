@@ -36,6 +36,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Refine_Notes\Refine_Notes::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
+		\WordPress\AI\Experiments\Content_Provenance\Content_Provenance::class,
 	);
 
 	/**

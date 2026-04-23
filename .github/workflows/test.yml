@@ -210,7 +210,7 @@ jobs:
             - name: Install Composer dependencies
               uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # v4.0.0
 
-            - name: Setup Node.js
+            - name: Setup Node
               uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
               with:
                   cache: 'npm'
@@ -218,9 +218,6 @@ jobs:
 
             - name: Install NPM dependencies
               run: npm ci
-
-            - name: Build assets
-              run: npm run build
 
             - name: Start the Docker testing environment
               uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
