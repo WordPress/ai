@@ -134,7 +134,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 == Changelog ==
 
-= 0.8.0 - 2026-09-23 =
+= 0.8.0 - 2026-04-23 =
 
 **Added**
 
