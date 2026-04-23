@@ -49,10 +49,13 @@ class Content_Resizing extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
+				'post_id' => array(
+					'type'        => 'integer',
+					'description' => esc_html__( 'The ID of the post to resize content for.', 'ai' ),
+				),
 				'content' => array(
-					'type'              => 'string',
-					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'The block content to resize.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'The block content to resize.', 'ai' ),
 				),
 				'action'  => array(
 					'type'        => 'enum',
@@ -86,14 +89,15 @@ class Content_Resizing extends Abstract_Ability {
 		$args = wp_parse_args(
 			$input,
 			array(
+				'post_id' => null,
 				'content' => null,
 				'action'  => self::ACTION_DEFAULT,
 			),
 		);
 
-		$content = normalize_content( $args['content'] ?? '' );
+		// Skip normalization of content to retain HTML tags.
+		$content = $args['content'] ?? '';
 
-		// If we have no content, return an error.
 		if ( empty( $content ) ) {
 			return new WP_Error(
 				'content_not_provided',
@@ -101,8 +105,11 @@ class Content_Resizing extends Abstract_Ability {
 			);
 		}
 
-		// Validate minimum word count for the shorten action.
-		if ( 'shorten' === $args['action'] && str_word_count( wp_strip_all_tags( $content ) ) < self::SHORTEN_MIN_WORDS ) {
+		// "shorten" action requires a minimum word count.
+		if (
+			'shorten' === $args['action'] &&
+			str_word_count( wp_strip_all_tags( $content ) ) < self::SHORTEN_MIN_WORDS
+		) {
 			return new WP_Error(
 				'content_too_short',
 				sprintf(
@@ -114,17 +121,6 @@ class Content_Resizing extends Abstract_Ability {
 		}
 
 		$prompt = $this->structure_prompt( $content, $args['action'] );
-
-		/**
-		 * Filters the prompt for the content resizing.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string $prompt The prompt to use for the content resizing.
-		 * @param string $action The resizing action to perform.
-		 * @return string The filtered prompt.
-		 */
-		$prompt = (string) apply_filters( 'wpai_content_resizing_prompt', $prompt, $args['action'] );
 
 		// Generate the resized content.
 		$result = $this->generate_resized_content( $prompt );
@@ -152,7 +148,28 @@ class Content_Resizing extends Abstract_Ability {
 	 * @since x.x.x
 	 */
 	protected function permission_callback( $args ) {
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		// If a post ID is provided, ensure the user has permission to edit the post.
+		if ( isset( $args['post_id'] ) ) {
+			$post_id = absint( $args['post_id'] );
+			$post    = get_post( $post_id );
+
+			// Ensure the post exists.
+			if ( ! $post ) {
+				return new WP_Error(
+					'post_not_found',
+					/* translators: %d: Post ID. */
+					sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), $post_id )
+				);
+			}
+
+			// Ensure the user has permission to edit this particular post.
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
+				return new WP_Error(
+					'insufficient_capabilities',
+					esc_html__( 'You do not have permission to run AI refinements on this post.', 'ai' )
+				);
+			}
+		} elseif ( ! current_user_can( 'edit_posts' ) ) {
 			return new WP_Error(
 				'insufficient_capabilities',
 				esc_html__( 'You do not have permission to resize content.', 'ai' )
@@ -207,7 +224,21 @@ class Content_Resizing extends Abstract_Ability {
 		$prompt_parts[] = '<goal>' . $action_desc . '</goal>';
 		$prompt_parts[] = '<content>' . $content . '</content>';
 
-		return implode( "\n", $prompt_parts );
+		$prompt = implode( "\n", $prompt_parts );
+
+		/**
+		 * Filters the prompt for the content resizing.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string        $prompt       The prompt to use for the content resizing.
+		 * @param string        $action       The resizing action to perform.
+		 * @param array<string> $prompt_parts The prompt parts.
+		 * @return string The filtered prompt.
+		 */
+		$prompt = (string) apply_filters( 'wpai_content_resizing_prompt', $prompt, $action, $prompt_parts );
+
+		return $prompt;
 	}
 
 	/**
