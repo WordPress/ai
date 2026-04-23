@@ -2,7 +2,11 @@
 	"$schema": "https://schemas.wp.org/trunk/wp-env.json",
 	"testsEnvironment": false,
 	"core": "WordPress/WordPress#master",
-	"plugins": [ ".", "https://downloads.wordpress.org/plugin/ai-provider-for-google.zip", "https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip" ],
+	"plugins": [
+		".",
+		"https://downloads.wordpress.org/plugin/ai-provider-for-google.zip",
+		"https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip"
+	],
 	"config": {
 		"WP_DEVELOPMENT_MODE": "plugin",
 		"WP_ENVIRONMENT_TYPE": "development",
