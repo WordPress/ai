@@ -119,10 +119,10 @@ class Content_Resizing extends Abstract_Ability {
 			);
 		}
 
-		$prompt = $this->structure_prompt( $content, $args['action'] );
+		$prompt = '<content>' . $content . '</content>';
 
 		// Generate the resized content.
-		$result = $this->generate_resized_content( $prompt );
+		$result = $this->generate_resized_content( $prompt, $args['action'] );
 
 		// If we have an error, return it.
 		if ( is_wp_error( $result ) ) {
@@ -190,66 +190,16 @@ class Content_Resizing extends Abstract_Ability {
 	}
 
 	/**
-	 * Builds the the prompt for content resizing.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $content The content to resize.
-	 * @param string $action  The resizing action to perform.
-	 * @return string The prompt.
-	 */
-	private function structure_prompt( $content, $action = self::ACTION_DEFAULT ) {
-		$prompt_parts = array();
-
-		// Determine the action-specific instruction.
-		$action_desc = 'Rephrase the content using different wording and sentence structure while preserving the exact same meaning, tone, and level of detail. The output should be approximately the same length as the input.';
-		if ( 'shorten' === $action ) {
-			$action_desc = 'Condense the following text to roughly half its current length. Preserve the core meaning, key facts, and tone. Remove redundancy and filler. Do not add new information.';
-		} elseif ( 'expand' === $action ) {
-			$action_desc = 'Expand the following text to roughly 1.5 to 2 times its current length. Add supporting detail, elaboration, or examples that are consistent with the original meaning and tone. Do not introduce contradictory information.';
-		}
-
-		/**
-		 * Filters the action description for the content resizing.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string $action_desc The action description to use for the content resizing.
-		 * @param string $action      The resizing action to perform.
-		 * @return string The filtered action description.
-		 */
-		$action_desc = (string) apply_filters( 'wpai_content_resizing_action_description', $action_desc, $action );
-
-		$prompt_parts[] = '<goal>' . $action_desc . '</goal>';
-		$prompt_parts[] = '<content>' . $content . '</content>';
-
-		$prompt = implode( "\n", $prompt_parts );
-
-		/**
-		 * Filters the prompt for the content resizing.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string        $prompt       The prompt to use for the content resizing.
-		 * @param string        $action       The resizing action to perform.
-		 * @param array<string> $prompt_parts The prompt parts.
-		 * @return string The filtered prompt.
-		 */
-		$prompt = (string) apply_filters( 'wpai_content_resizing_prompt', $prompt, $action, $prompt_parts );
-
-		return $prompt;
-	}
-
-	/**
 	 * Generates resized content using the AI client.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $prompt The prompt to use for the content resizing.
+	 * @param string $action The resizing action to perform.
 	 * @return string|\WP_Error The resized content, or a WP_Error if there was an error.
 	 */
-	protected function generate_resized_content( string $prompt ) {
-		$builder = $this->get_prompt_builder( $prompt );
+	protected function generate_resized_content( string $prompt, string $action = self::ACTION_DEFAULT ) {
+		$builder = $this->get_prompt_builder( $prompt, $action );
 		if ( is_wp_error( $builder ) ) {
 			return $builder;
 		}
@@ -263,11 +213,14 @@ class Content_Resizing extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string $prompt The prompt to build.
+	 * @param string $action The resizing action to perform.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
 	 */
-	private function get_prompt_builder( string $prompt ) {
+	private function get_prompt_builder( string $prompt, string $action = self::ACTION_DEFAULT ) {
 		$builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
+			->using_system_instruction(
+				$this->get_system_instruction( 'system-instruction.php', array( 'action' => $action ) )
+			)
 			->using_temperature( 0.7 )
 			->using_model_preference( ...get_preferred_models_for_text_generation() );
 

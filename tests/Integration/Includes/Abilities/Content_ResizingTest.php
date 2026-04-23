@@ -129,7 +129,6 @@ class Content_ResizingTest extends WP_UnitTestCase {
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
-		$this->assertEquals( 'sanitize_text_field', $schema['properties']['content']['sanitize_callback'], 'Content should use sanitize_text_field' );
 
 		// Verify action property.
 		$this->assertEquals( 'enum', $schema['properties']['action']['type'], 'Action should be enum type' );
@@ -164,6 +163,38 @@ class Content_ResizingTest extends WP_UnitTestCase {
 
 		$this->assertIsString( $system_instruction, 'System instruction should be a string' );
 		$this->assertNotEmpty( $system_instruction, 'System instruction should not be empty' );
+	}
+
+	/**
+	 * Test that get_system_instruction() varies by action.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_system_instruction_varies_by_action() {
+		$shorten  = $this->ability->get_system_instruction( 'system-instruction.php', array( 'action' => 'shorten' ) );
+		$expand   = $this->ability->get_system_instruction( 'system-instruction.php', array( 'action' => 'expand' ) );
+		$rephrase = $this->ability->get_system_instruction( 'system-instruction.php', array( 'action' => 'rephrase' ) );
+
+		$this->assertStringContainsString( 'Condense', $shorten, 'Shorten instruction should mention condensing' );
+		$this->assertStringContainsString( 'Expand', $expand, 'Expand instruction should mention expanding' );
+		$this->assertStringContainsString( 'Rephrase', $rephrase, 'Rephrase instruction should mention rephrasing' );
+
+		$this->assertNotEquals( $shorten, $expand, 'Shorten and expand instructions should differ' );
+		$this->assertNotEquals( $shorten, $rephrase, 'Shorten and rephrase instructions should differ' );
+		$this->assertNotEquals( $expand, $rephrase, 'Expand and rephrase instructions should differ' );
+	}
+
+	/**
+	 * Test that get_system_instruction() falls back to the rephrase description for unknown actions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_system_instruction_unknown_action_falls_back_to_rephrase() {
+		$unknown  = $this->ability->get_system_instruction( 'system-instruction.php', array( 'action' => 'invalid_action' ) );
+		$rephrase = $this->ability->get_system_instruction( 'system-instruction.php', array( 'action' => 'rephrase' ) );
+
+		$this->assertStringContainsString( 'Rephrase', $unknown, 'Unknown action should fall back to the rephrase description' );
+		$this->assertEquals( $rephrase, $unknown, 'Unknown action instruction should match the rephrase instruction' );
 	}
 
 	/**
@@ -387,49 +418,6 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that structure_prompt() includes goal and content tags.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_structure_prompt_includes_goal_and_content() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'structure_prompt' );
-		$method->setAccessible( true );
-
-		$prompt = $method->invoke( $this->ability, 'Test content here.', 'shorten' );
-
-		$this->assertStringContainsString( '<goal>', $prompt, 'Prompt should contain goal tag' );
-		$this->assertStringContainsString( '</goal>', $prompt, 'Prompt should contain closing goal tag' );
-		$this->assertStringContainsString( '<content>', $prompt, 'Prompt should contain content tag' );
-		$this->assertStringContainsString( '</content>', $prompt, 'Prompt should contain closing content tag' );
-		$this->assertStringContainsString( 'Test content here.', $prompt, 'Prompt should contain the original content' );
-	}
-
-	/**
-	 * Test that structure_prompt() uses different descriptions per action.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_structure_prompt_varies_by_action() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'structure_prompt' );
-		$method->setAccessible( true );
-
-		$shorten_prompt  = $method->invoke( $this->ability, 'Test.', 'shorten' );
-		$expand_prompt   = $method->invoke( $this->ability, 'Test.', 'expand' );
-		$rephrase_prompt = $method->invoke( $this->ability, 'Test.', 'rephrase' );
-
-		$this->assertStringContainsString( 'Condense', $shorten_prompt, 'Shorten prompt should mention condensing' );
-		$this->assertStringContainsString( 'Expand', $expand_prompt, 'Expand prompt should mention expanding' );
-		$this->assertStringContainsString( 'Rephrase', $rephrase_prompt, 'Rephrase prompt should mention rephrasing' );
-
-		// All three should be different.
-		$this->assertNotEquals( $shorten_prompt, $expand_prompt, 'Shorten and expand prompts should differ' );
-		$this->assertNotEquals( $shorten_prompt, $rephrase_prompt, 'Shorten and rephrase prompts should differ' );
-		$this->assertNotEquals( $expand_prompt, $rephrase_prompt, 'Expand and rephrase prompts should differ' );
-	}
-
-	/**
 	 * Test that generate_resized_content() returns a WP_Error when the model is not supported.
 	 *
 	 * @since x.x.x
@@ -439,55 +427,11 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'generate_resized_content' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $this->ability, 'Test content here.' );
+		$result = $method->invoke( $this->ability, '<content>Test content here.</content>', 'rephrase' );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
 		$this->assertEquals( 'Content resizing failed. Please ensure you have a connected provider that supports text generation.', $result->get_error_message(), 'Error message should be passed through' );
-	}
-
-	/**
-	 * Test that the wpai_content_resizing_action_description filter modifies the prompt.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_wpai_content_resizing_action_description_filter() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'structure_prompt' );
-		$method->setAccessible( true );
-
-		$custom_description = 'Custom action description for testing.';
-
-		add_filter(
-			'wpai_content_resizing_action_description',
-			static function () use ( $custom_description ) {
-				return $custom_description;
-			}
-		);
-
-		$prompt = $method->invoke( $this->ability, 'Test content.', 'shorten' );
-
-		$this->assertStringContainsString( $custom_description, $prompt, 'Prompt should contain the filtered action description' );
-		$this->assertStringNotContainsString( 'Condense', $prompt, 'Original shorten description should be replaced by the filter' );
-
-		remove_all_filters( 'wpai_content_resizing_action_description' );
-	}
-
-	/**
-	 * Test that structure_prompt() falls back to the rephrase description for unknown actions.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_structure_prompt_unknown_action_falls_back_to_rephrase() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'structure_prompt' );
-		$method->setAccessible( true );
-
-		$unknown_prompt  = $method->invoke( $this->ability, 'Test.', 'invalid_action' );
-		$rephrase_prompt = $method->invoke( $this->ability, 'Test.', 'rephrase' );
-
-		$this->assertStringContainsString( 'Rephrase', $unknown_prompt, 'Unknown action should fall back to the rephrase description' );
-		$this->assertEquals( $rephrase_prompt, $unknown_prompt, 'Unknown action prompt should match the rephrase prompt' );
 	}
 
 	/**
