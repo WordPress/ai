@@ -18,6 +18,7 @@ import { store as blockEditorStore } from '@wordpress/block-editor';
 import { useState, useCallback } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
+import { store as editorStore } from '@wordpress/editor';
 import { count } from '@wordpress/wordcount';
 
 /**
@@ -51,7 +52,7 @@ export default function ContentResizingToolbar( {
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
 
-	const { blockContent, originalContent } = useSelect(
+	const { blockContent, originalContent, postId } = useSelect(
 		( select ) => {
 			/* eslint-disable dot-notation */
 			const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
@@ -61,6 +62,7 @@ export default function ContentResizingToolbar( {
 				originalContent:
 					( block?.attributes[ 'aiOriginalContent' ] as string ) ??
 					'',
+				postId: select( editorStore )[ 'getCurrentPostId' ]() as number,
 			};
 			/* eslint-enable dot-notation */
 		},
@@ -100,7 +102,7 @@ export default function ContentResizingToolbar( {
 			try {
 				const result = await runAbility< string >(
 					'ai/content-resizing',
-					{ content: blockContent, action }
+					{ content: blockContent, action, postId }
 				);
 				setSuggestedContent( result );
 			} catch ( error: unknown ) {
@@ -120,7 +122,7 @@ export default function ContentResizingToolbar( {
 				setIsLoading( false );
 			}
 		},
-		[ blockContent, noticesDispatch ]
+		[ blockContent, noticesDispatch, postId ]
 	);
 
 	const handleAccept = useCallback( () => {
