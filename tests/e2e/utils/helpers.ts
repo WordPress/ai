@@ -200,11 +200,9 @@ export const enableExperiment = async (
 
 	// Visual-card features use a showcase card with an Enable/Disable button
 	// instead of a toggle input.
-	const showcaseCard = page.locator( '.ai-showcase-card', {
-		has: page.locator( '.ai-showcase-card__title', {
-			hasText: experimentLabel,
-		} ),
-	} );
+	const showcaseCard = page
+		.locator( '.ai-showcase-card' )
+		.filter( { hasText: experimentLabel } );
 
 	// Wait for either the showcase card or the toggle to appear.
 	const toggle = page.getByLabel( experimentLabel );
@@ -214,17 +212,11 @@ export const enableExperiment = async (
 
 	if ( await showcaseCard.isVisible() ) {
 		// Already enabled if the "Enabled" badge is visible.
-		if (
-			await showcaseCard
-				.locator( '.ai-showcase-card__enabled-badge' )
-				.isVisible()
-		) {
+		if ( await showcaseCard.getByText( 'Enabled' ).isVisible() ) {
 			return;
 		}
 
-		await showcaseCard
-			.locator( '.ai-showcase-card__actions button' )
-			.click();
+		await showcaseCard.getByRole( 'button', { name: 'Enable' } ).click();
 	} else {
 		// Nothing to do if this experiment is already enabled.
 		if ( await toggle.isChecked() ) {
@@ -258,11 +250,9 @@ export const disableExperiment = async (
 
 	// Visual-card features use a showcase card with an Enable/Disable button
 	// instead of a toggle input.
-	const showcaseCard = page.locator( '.ai-showcase-card', {
-		has: page.locator( '.ai-showcase-card__title', {
-			hasText: experimentLabel,
-		} ),
-	} );
+	const showcaseCard = page
+		.locator( '.ai-showcase-card' )
+		.filter( { hasText: experimentLabel } );
 
 	// Wait for either the showcase card or the toggle to appear.
 	const toggle = page.getByLabel( experimentLabel );
@@ -272,17 +262,11 @@ export const disableExperiment = async (
 
 	if ( await showcaseCard.isVisible() ) {
 		// Already disabled if there's no "Enabled" badge.
-		if (
-			! ( await showcaseCard
-				.locator( '.ai-showcase-card__enabled-badge' )
-				.isVisible() )
-		) {
+		if ( ! ( await showcaseCard.getByText( 'Enabled' ).isVisible() ) ) {
 			return;
 		}
 
-		await showcaseCard
-			.locator( '.ai-showcase-card__actions button' )
-			.click();
+		await showcaseCard.getByRole( 'button', { name: 'Disable' } ).click();
 	} else {
 		// Nothing to do if this experiment is already disabled.
 		if ( ! ( await toggle.isChecked() ) ) {
