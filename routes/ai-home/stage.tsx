@@ -524,7 +524,11 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 				onChange={ handleChange }
 			/>
 			{ isDirty && (
-				<div className="ai-feature-settings-form__actions">
+				<Stack
+					align="flex-end"
+					className="ai-feature-settings-form__actions"
+					direction="row"
+				>
 					<Button
 						variant="solid"
 						onClick={ handleSave }
@@ -541,7 +545,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 					>
 						{ isSaving ? <Spinner /> : __( 'Save', 'ai' ) }
 					</Button>
-				</div>
+				</Stack>
 			) }
 		</div>
 	);
@@ -600,41 +604,38 @@ function VisualCardToggle( {
 			}` }
 		>
 			<Card.Content>
-				<Card.Header>
-					<Card.Title>{ field.label }</Card.Title>
-				</Card.Header>
 				{ feature?.image && (
 					<Card.FullBleed className="ai-showcase-card__image">
 						<img src={ feature.image } alt="" loading="lazy" />
 					</Card.FullBleed>
 				) }
-				<Text
-					variant="body-md"
-					className="ai-showcase-card__description"
-				>
-					{ field.description }
-				</Text>
-				<Stack
-					className="ai-showcase-card__actions"
-					align="center"
-					direction="row"
-					gap="sm"
-				>
-					<Button
-						variant={ checked ? 'outline' : 'solid' }
-						onClick={ () =>
-							onChange( { [ field.id ]: ! checked } )
-						}
-						disabled={ ! globalEnabled }
-						size="compact"
+				<Stack direction="column" gap="md">
+					<Text variant="heading-lg">{ field.label }</Text>
+					<Text
+						variant="body-md"
+						className="ai-showcase-card__description"
 					>
-						{ checked
-							? __( 'Disable', 'ai' )
-							: __( 'Enable', 'ai' ) }
-					</Button>
-					{ checked && (
-						<Badge intent="stable">{ __( 'Enabled', 'ai' ) }</Badge>
-					) }
+						{ field.description }
+					</Text>
+					<Stack align="center" direction="row" gap="sm">
+						<Button
+							variant={ checked ? 'outline' : 'solid' }
+							onClick={ () =>
+								onChange( { [ field.id ]: ! checked } )
+							}
+							disabled={ ! globalEnabled }
+							size="compact"
+						>
+							{ checked
+								? __( 'Disable', 'ai' )
+								: __( 'Enable', 'ai' ) }
+						</Button>
+						{ checked && (
+							<Badge intent="stable">
+								{ __( 'Enabled', 'ai' ) }
+							</Badge>
+						) }
+					</Stack>
 				</Stack>
 			</Card.Content>
 		</Card.Root>
@@ -989,7 +990,13 @@ function AISettingsPage() {
 					</Notice.Root>
 				) }
 				{ isLoading ? (
-					<Spinner />
+					<Stack
+						align="center"
+						className="ai-settings-page__loading"
+						justify="center"
+					>
+						<Spinner />
+					</Stack>
 				) : (
 					<DataForm< AISettings >
 						data={ data }
