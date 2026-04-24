@@ -8,15 +8,6 @@
 	@media (max-width: 480px) {
 		padding: 8px;
 	}
-
-	.dataforms-layouts-card__field-header-label {
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	.dataforms-layouts-card__field-description {
-		margin-bottom: 36px;
-	}
 }
 
 .ai-settings-page__notice {
@@ -67,8 +58,6 @@
 }
 
 .ai-feature-settings-form__actions {
-	display: flex;
-	justify-content: flex-end;
 	margin-top: 12px;
 }
 

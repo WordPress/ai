@@ -978,9 +978,13 @@ function AISettingsPage() {
 								  ) }
 						</Notice.Description>
 						{ PAGE_DATA.connectorsUrl && (
-							<Link href={ PAGE_DATA.connectorsUrl }>
-								{ __( 'Manage Connectors', 'ai' ) }
-							</Link>
+							<Notice.Actions>
+								<Notice.ActionLink
+									href={ PAGE_DATA.connectorsUrl }
+								>
+									{ __( 'Manage Connectors', 'ai' ) }
+								</Notice.ActionLink>
+							</Notice.Actions>
 						) }
 					</Notice.Root>
 				) }
