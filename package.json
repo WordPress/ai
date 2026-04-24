@@ -59,7 +59,7 @@
 		"concurrently": "^9.2.1",
 		"filenamify": "^7.0.1",
 		"prettier": "npm:wp-prettier@^3",
-		"typescript": "^5.9.3",
+		"typescript": "^6.0.2",
 		"webpack-remove-empty-scripts": "^1.1.1"
 	},
 	"dependencies": {
