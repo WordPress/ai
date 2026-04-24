@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Content_Resizing;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 
+use function WordPress\AI\count_words;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 
 /**
@@ -107,7 +108,7 @@ class Content_Resizing extends Abstract_Ability {
 		// "shorten" action requires a minimum word count.
 		if (
 			'shorten' === $args['action'] &&
-			str_word_count( wp_strip_all_tags( $content ) ) < self::SHORTEN_MIN_WORDS
+			count_words( wp_strip_all_tags( $content ) ) < self::SHORTEN_MIN_WORDS
 		) {
 			return new WP_Error(
 				'content_too_short',

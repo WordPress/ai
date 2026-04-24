@@ -39,7 +39,7 @@ class Content_Resizing extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Content Resizing', 'ai' ),
-			'description' => __( 'Shorten, expand, or rephrase selected block content using AI.', 'ai' ),
+			'description' => __( 'Shorten, expand, or rephrase selected block content. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}

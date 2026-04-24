@@ -31,8 +31,7 @@ Goal: {$action_desc}
 Requirements:
 - Return only the transformed text, nothing else
 - Do not include any preamble, explanation, or commentary
-- Preserve all inline HTML links present in the original content.
-- Return content in the same format as it was provided.
+- Return content in the same format as it was provided. For example, preserve any inline HTML like links.
 - Match the original language of the content. For example, if the content is in English, return the content in English. If the content is in Spanish, return the content in Spanish.
 - Maintain the original perspective and voice
 INSTRUCTION;
