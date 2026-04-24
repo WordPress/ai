@@ -935,10 +935,16 @@ function AISettingsPage() {
 			) }
 			actions={
 				<>
-					<Link href="https://github.com/WordPress/ai/tree/develop/docs">
+					<Link
+						href="https://github.com/WordPress/ai/tree/develop/docs"
+						openInNewTab
+					>
 						{ __( 'Docs', 'ai' ) }
 					</Link>
-					<Link href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
+					<Link
+						href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
+						openInNewTab
+					>
 						{ __( 'Contribute', 'ai' ) }
 					</Link>
 					<div className="ai-settings-page__global-toggle">
