@@ -5,8 +5,13 @@
 /**
  * WordPress dependencies
  */
-import { Button, Icon, Link, Stack } from '@wordpress/ui';
-import { MenuItem, Spinner } from '@wordpress/components';
+import {
+	Button,
+	Flex,
+	FlexItem,
+	MenuItem,
+	Spinner,
+} from '@wordpress/components';
 import { BlockSettingsMenuControls } from '@wordpress/block-editor';
 import { useDispatch } from '@wordpress/data';
 import { store as editPostStore } from '@wordpress/edit-post';
@@ -57,56 +62,62 @@ export default function ReviewNotesPlugin() {
 	return (
 		<>
 			<PluginPostStatusInfo>
-				<Stack direction="column" gap="sm">
-					<Button
-						variant="outline"
-						onClick={ runReview }
-						loading={ isReviewing }
-						disabled={ isReviewing }
-						style={ {
-							justifyContent: 'center',
-							width: '100%',
-						} }
-					>
-						<Icon icon={ commentContent } />
-						{ buttonLabel }
-					</Button>
+				<Flex direction="column" gap={ 2 }>
+					<FlexItem>
+						<Button
+							variant="secondary"
+							icon={ commentContent }
+							onClick={ runReview }
+							isBusy={ isReviewing }
+							disabled={ isReviewing }
+							style={ {
+								justifyContent: 'center',
+								width: '100%',
+							} }
+							__next40pxDefaultSize
+						>
+							{ buttonLabel }
+						</Button>
+					</FlexItem>
 					{ lastRunCount !== null && (
-						<span className="description">
-							{ lastRunCount === 0
-								? __( 'No new suggestions found.', 'ai' )
-								: createInterpolateElement(
-										sprintf(
-											/* translators: %d: number of suggestions added. The <a> tags wrap a link to open the Notes panel. */
-											_n(
-												'%d suggestion added, view those Notes <a>here</a>.',
-												'%d suggestions added, view those Notes <a>here</a>.',
-												lastRunCount,
-												'ai'
+						<FlexItem>
+							<span className="description">
+								{ lastRunCount === 0
+									? __( 'No new suggestions found.', 'ai' )
+									: createInterpolateElement(
+											sprintf(
+												/* translators: %d: number of suggestions added. The <a> tags wrap a link to open the Notes panel. */
+												_n(
+													'%d suggestion added, view those Notes <a>here</a>.',
+													'%d suggestions added, view those Notes <a>here</a>.',
+													lastRunCount,
+													'ai'
+												),
+												lastRunCount
 											),
-											lastRunCount
-										),
-										{
-											a: (
-												<Link
-													href="#"
-													onClick={ ( e ) => {
-														e.preventDefault();
-														openNotesPanel();
-													} }
-												/>
-											),
-										}
-								  ) }
-						</span>
+											{
+												a: (
+													<Button
+														variant="link"
+														onClick={
+															openNotesPanel
+														}
+													/>
+												),
+											}
+									  ) }
+							</span>
+						</FlexItem>
 					) }
-					<span
-						className="description"
-						style={ { color: '#757575' } }
-					>
-						{ buttonDescription }
-					</span>
-				</Stack>
+					<FlexItem>
+						<span
+							className="description"
+							style={ { color: '#757575' } }
+						>
+							{ buttonDescription }
+						</span>
+					</FlexItem>
+				</Flex>
 			</PluginPostStatusInfo>
 			<BlockSettingsMenuControls>
 				{ ( { selectedBlocks, selectedClientIds } ) => {
