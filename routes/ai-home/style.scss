@@ -23,13 +23,6 @@
 	margin-bottom: 24px;
 }
 
-.ai-settings-page__actions {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 16px;
-}
-
 .ai-settings-page__global-toggle {
 	display: flex;
 	align-items: center;
@@ -60,15 +53,6 @@
 	line-height: 1.5;
 }
 
-.ai-settings-page__link {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-
-	svg {
-		fill: currentColor;
-	}
-}
 
 .ai-feature-settings-form {
 	margin-top: 4px;
@@ -89,37 +73,22 @@
 }
 
 .ai-section-actions {
-	border-top: 1px solid var(--wp-components-color-gray-200);
-	display: flex;
-	gap: 8px;
+	border-top: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
 	margin-top: 16px;
 	padding-top: 12px;
 }
 
-.ai-showcase-card {
-	display: flex;
-	flex-direction: column;
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	overflow: hidden;
-	background: #fff;
-}
-
 .ai-showcase-card__image {
-	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	overflow: hidden;
-
+	margin-bottom: var(--wp-ui-card-padding);
 	img {
+		aspect-ratio: 16 / 9;
 		width: 100%;
 		height: 100%;
 	}
 }
 
-.ai-showcase-card__content {
-	padding: 24px;
+.ai-showcase-card__actions {
+	margin-top: 4px;
 }
 
 .ai-showcase-card--disabled {

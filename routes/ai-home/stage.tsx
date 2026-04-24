@@ -3,11 +3,18 @@
  */
 import { Page } from '@wordpress/admin-ui';
 import {
+	Text,
+	Card,
+	Stack,
+	Badge,
 	Button,
-	ExternalLink,
-	Spinner,
-	ToggleControl,
-} from '@wordpress/components';
+	Link,
+	Icon,
+	Notice,
+	Popover,
+	VisuallyHidden,
+} from '@wordpress/ui';
+import { Spinner, ToggleControl } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
@@ -16,7 +23,6 @@ import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { info as infoIcon } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
-import { Icon, Notice, Popover, VisuallyHidden } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -394,9 +400,9 @@ function SectionActions( {
 	}, [ experimentSettings, data, onBulkChange ] );
 
 	return (
-		<div className="ai-section-actions">
+		<Stack className="ai-section-actions" direction="row" gap="sm">
 			<Button
-				variant="secondary"
+				variant="outline"
 				size="compact"
 				onClick={ handleEnableAll }
 				disabled={ ! globalEnabled || allEnabled }
@@ -404,14 +410,14 @@ function SectionActions( {
 				{ __( 'Enable all', 'ai' ) }
 			</Button>
 			<Button
-				variant="secondary"
+				variant="outline"
 				size="compact"
 				onClick={ handleDisableAll }
 				disabled={ ! globalEnabled || allDisabled }
 			>
 				{ __( 'Disable all', 'ai' ) }
 			</Button>
-		</div>
+		</Stack>
 	);
 }
 
@@ -520,9 +526,8 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 			{ isDirty && (
 				<div className="ai-feature-settings-form__actions">
 					<Button
-						variant="primary"
+						variant="solid"
 						onClick={ handleSave }
-						isBusy={ isSaving }
 						disabled={ isSaving }
 						size="compact"
 						aria-label={ sprintf(
@@ -530,8 +535,11 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 							__( 'Save %s settings', 'ai' ),
 							feature.label
 						) }
+						loadingAnnouncement={
+							isSaving ? __( 'Saving…', 'ai' ) : ''
+						}
 					>
-						{ __( 'Save', 'ai' ) }
+						{ isSaving ? <Spinner /> : __( 'Save', 'ai' ) }
 					</Button>
 				</div>
 			) }
@@ -586,28 +594,50 @@ function VisualCardToggle( {
 	const checked = !! field.getValue( { item: data } );
 
 	return (
-		<div
+		<Card.Root
 			className={ `ai-showcase-card${
 				! globalEnabled ? ' ai-showcase-card--disabled' : ''
 			}` }
 		>
-			{ feature?.image && (
-				<div className="ai-showcase-card__image">
-					<img src={ feature.image } alt="" loading="lazy" />
-				</div>
-			) }
-			<div className="ai-showcase-card__content">
-				<ToggleControl
-					label={ field.label }
-					checked={ checked }
-					onChange={ ( value ) =>
-						onChange( { [ field.id ]: value } )
-					}
-					disabled={ ! globalEnabled }
-					help={ field.description }
-				/>
-			</div>
-		</div>
+			<Card.Content>
+				<Card.Header>
+					<Card.Title>{ field.label }</Card.Title>
+				</Card.Header>
+				{ feature?.image && (
+					<Card.FullBleed className="ai-showcase-card__image">
+						<img src={ feature.image } alt="" loading="lazy" />
+					</Card.FullBleed>
+				) }
+				<Text
+					variant="body-md"
+					className="ai-showcase-card__description"
+				>
+					{ field.description }
+				</Text>
+				<Stack
+					className="ai-showcase-card__actions"
+					align="center"
+					direction="row"
+					gap="sm"
+				>
+					<Button
+						variant={ checked ? 'outline' : 'solid' }
+						onClick={ () =>
+							onChange( { [ field.id ]: ! checked } )
+						}
+						disabled={ ! globalEnabled }
+						size="compact"
+					>
+						{ checked
+							? __( 'Disable', 'ai' )
+							: __( 'Enable', 'ai' ) }
+					</Button>
+					{ checked && (
+						<Badge intent="stable">{ __( 'Enabled', 'ai' ) }</Badge>
+					) }
+				</Stack>
+			</Card.Content>
+		</Card.Root>
 	);
 }
 
@@ -907,13 +937,13 @@ function AISettingsPage() {
 				'ai'
 			) }
 			actions={
-				<div className="ai-settings-page__actions">
-					<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
+				<>
+					<Link href="https://github.com/WordPress/ai/tree/develop/docs">
 						{ __( 'Docs', 'ai' ) }
-					</ExternalLink>
-					<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
+					</Link>
+					<Link href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
 						{ __( 'Contribute', 'ai' ) }
-					</ExternalLink>
+					</Link>
 					<div className="ai-settings-page__global-toggle">
 						<ToggleControl
 							label={ __( 'Enable AI', 'ai' ) }
@@ -927,10 +957,10 @@ function AISettingsPage() {
 						/>
 						<InfoTip content={ globalToggleDescription } />
 					</div>
-				</div>
+				</>
 			}
 		>
-			<div className="ai-settings-page">
+			<Stack className="ai-settings-page" direction="column" gap="md">
 				{ ! PAGE_DATA.hasValidCredentials && (
 					<Notice.Root
 						className="ai-settings-page__notice"
@@ -948,13 +978,9 @@ function AISettingsPage() {
 								  ) }
 						</Notice.Description>
 						{ PAGE_DATA.connectorsUrl && (
-							<Notice.Actions>
-								<Notice.ActionLink
-									href={ PAGE_DATA.connectorsUrl }
-								>
-									{ __( 'Manage Connectors', 'ai' ) }
-								</Notice.ActionLink>
-							</Notice.Actions>
+							<Link href={ PAGE_DATA.connectorsUrl }>
+								{ __( 'Manage Connectors', 'ai' ) }
+							</Link>
 						) }
 					</Notice.Root>
 				) }
@@ -968,7 +994,7 @@ function AISettingsPage() {
 						onChange={ handleChange }
 					/>
 				) }
-			</div>
+			</Stack>
 		</Page>
 	);
 }
