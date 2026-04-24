@@ -14,14 +14,14 @@ use WordPress\AI\Features\Registry;
 /**
  * Dashboard_Widgets test case.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Dashboard_WidgetsTest extends WP_UnitTestCase {
 
 	/**
 	 * Tests that init hooks into wp_dashboard_setup.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_init_hooks_wp_dashboard_setup() {
 		$registry = new Registry();
@@ -37,7 +37,7 @@ class Dashboard_WidgetsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_widgets requires manage_options capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_register_widgets_requires_manage_options() {
 		if ( ! function_exists( 'wp_add_dashboard_widget' ) ) {
@@ -67,7 +67,7 @@ class Dashboard_WidgetsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_widgets registers both widgets for admin users.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_register_widgets_for_admin() {
 		if ( ! function_exists( 'wp_add_dashboard_widget' ) ) {

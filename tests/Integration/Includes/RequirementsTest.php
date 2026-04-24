@@ -18,14 +18,14 @@ use WordPress\AI\Requirements;
 class RequirementsTest extends WP_UnitTestCase {
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_are_requirements_met_returns_true_in_test_environment() {
 		$this->assertTrue( ( new Requirements() )->are_requirements_met() );
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_are_requirements_met_returns_false_when_check_fails() {
 		$requirements = new Requirements();
@@ -62,7 +62,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_individual_requirements_are_valid() {
 		$requirements = new Requirements();
@@ -87,7 +87,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that multiple failed requirements render as a list via the admin_notices hook.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_admin_notice_outputs_multiple_failure_messages() {
 		$requirements = new Requirements();
@@ -119,7 +119,7 @@ class RequirementsTest extends WP_UnitTestCase {
 	 * Used to mimic translation functions being called before the plugin's text domain is loaded.
 	 * This is needed since we're manually invoking admin_notices, rather than actually loading the plugin.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_error_message_callbacks_are_deferred_until_admin_notice_render() {
 		$callback_invoked = false;

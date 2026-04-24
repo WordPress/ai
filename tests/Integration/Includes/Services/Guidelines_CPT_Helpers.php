@@ -17,14 +17,14 @@ use WordPress\AI\Services\Guidelines;
  * Consumed by test classes that need to populate guidelines posts and meta
  * without duplicating boilerplate across each file.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 trait Guidelines_CPT_Helpers {
 
 	/**
 	 * Meta key mapping for guideline categories.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var array<string, string>
 	 */
@@ -38,7 +38,7 @@ trait Guidelines_CPT_Helpers {
 	/**
 	 * Registers the guidelines CPT for testing.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return void
 	 */
@@ -58,7 +58,7 @@ trait Guidelines_CPT_Helpers {
 	/**
 	 * Creates a guidelines post with the given category meta values.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param array<string, string> $categories  Keyed array of category => guideline text.
 	 * @param string                $post_status Optional. The post status. Defaults to 'publish'.
