@@ -516,7 +516,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	] );
 
 	return (
-		<div className="ai-feature-settings-form">
+		<Stack direction="column" gap="md" className="ai-feature-settings-form">
 			<DataForm< Record< string, unknown > >
 				data={ data }
 				fields={ fields }
@@ -524,11 +524,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 				onChange={ handleChange }
 			/>
 			{ isDirty && (
-				<Stack
-					align="flex-end"
-					className="ai-feature-settings-form__actions"
-					direction="row"
-				>
+				<Stack align="flex-end" direction="row">
 					<Button
 						variant="solid"
 						onClick={ handleSave }
@@ -547,7 +543,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 					</Button>
 				</Stack>
 			) }
-		</div>
+		</Stack>
 	);
 }
 
