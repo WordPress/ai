@@ -23,7 +23,7 @@ addFilter(
 	'blocks.registerBlockType',
 	'ai/content-resizing-attribute',
 	( settings, name ) => {
-		if ( name !== 'core/paragraph' ) {
+		if ( name !== 'core/paragraph' || ! aiContentResizingData?.enabled ) {
 			return settings;
 		}
 
