@@ -15,7 +15,7 @@ use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 /**
  * Test ability that does NOT opt into guidelines (default behavior).
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Test_Ability_No_Guidelines extends Abstract_Ability {
 
@@ -64,7 +64,7 @@ class Test_Ability_No_Guidelines extends Abstract_Ability {
 /**
  * Test ability that opts into guidelines.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Test_Ability_With_Guidelines extends Test_Ability_No_Guidelines {
 
@@ -89,7 +89,7 @@ class Test_Ability_With_Guidelines extends Test_Ability_No_Guidelines {
 /**
  * Abstract_Ability guidelines integration test case.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 
@@ -98,7 +98,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -111,7 +111,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function tearDown(): void {
 		Guidelines::reset_cache();
@@ -124,7 +124,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that the default guideline_categories() returns an empty array.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_default_guideline_categories_is_empty(): void {
 		$ability = new Test_Ability_No_Guidelines(
@@ -145,7 +145,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_guidelines_for_prompt() returns empty when no categories are declared.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_for_prompt_returns_empty_when_no_categories(): void {
 		$ability = new Test_Ability_No_Guidelines(
@@ -167,7 +167,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_system_instruction() does NOT append the guidelines paragraph
 	 * when no categories are declared.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_system_instruction_does_not_append_when_no_categories(): void {
 		$ability = new Test_Ability_No_Guidelines(
@@ -191,7 +191,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_system_instruction() appends actual guidelines to the system
 	 * instruction when categories are declared and guidelines exist.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_system_instruction_appends_guidelines(): void {
 		$this->register_guidelines_cpt();
@@ -238,7 +238,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_system_instruction() does NOT append guidelines
 	 * when categories are declared but no guidelines exist.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_system_instruction_does_not_append_when_no_guidelines_exist(): void {
 		$ability = new Test_Ability_With_Guidelines(
@@ -274,7 +274,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_system_instruction() does NOT append the guidelines
 	 * when the base instruction is empty (no system instruction file).
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_system_instruction_does_not_append_when_base_empty(): void {
 		$ability = new Test_Ability_With_Guidelines(
@@ -295,7 +295,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_system_instruction() includes block-specific guidelines
 	 * when a block name is provided.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_system_instruction_includes_block_guidelines(): void {
 		$this->register_guidelines_cpt();
@@ -334,7 +334,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_guidelines_for_prompt() returns formatted guidelines
 	 * when categories are declared and guidelines exist.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_for_prompt_delegates_to_helper(): void {
 		$this->register_guidelines_cpt();
@@ -363,7 +363,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that block name is passed through for block-specific guidelines.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_block_name_passthrough_for_block_specific_guidelines(): void {
 		$this->register_guidelines_cpt();

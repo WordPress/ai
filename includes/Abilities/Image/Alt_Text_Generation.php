@@ -45,7 +45,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	protected function guideline_categories(): array {
 		return array( 'site', 'images' );
