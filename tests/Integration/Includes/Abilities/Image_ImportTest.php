@@ -300,6 +300,11 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
 		$this->assertIsInt( $result['image']['id'], 'Image ID should be an integer' );
 		$this->assertGreaterThan( 0, $result['image']['id'], 'Image ID should be greater than 0' );
+		$this->assertStringStartsWith(
+			'ai-generated-image-',
+			$result['image']['filename'],
+			'Filename should fall back to the ai-generated-image-<timestamp> format when no filename is provided'
+		);
 	}
 
 	/**
