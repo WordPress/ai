@@ -290,7 +290,7 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * Returns a prompt builder for meta description generation.
 	 *
-	 * @since x.x.x
+	 * @since 0.7.0
 	 *
 	 * @param string $prompt The prompt to build.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
@@ -299,7 +299,7 @@ class Meta_Description extends Abstract_Ability {
 		/**
 		 * Filters the temperature for the result of the meta description generation.
 		 *
-		 * @since x.x.x
+		 * @since 0.7.0
 		 *
 		 * @param float $result_temperature The temperature for the result of the meta description generation.
 		 */
