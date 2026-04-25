@@ -346,6 +346,9 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
 - [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
+- [Experiment Framework](experiments/experiment-framework.md) - How experiments are registered, toggled, and initialized
+- [Multi-Provider Support](experiments/multi-provider-support.md) - Provider detection, model preference, and fallback behavior
+- [Title Generation](experiments/title-generation.md) - Deep dive into the title generation experiment and ability
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
