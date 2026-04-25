@@ -240,6 +240,102 @@ The plugin also includes the following action hooks:
 - `wpai_register_features`: Fires after default features are registered, receives `$registry` parameter
 - `wpai_features_initialized`: Fires after all registered features have been initialized
 
+### Real-World Usage: Abilities API + MCP Adapter
+
+The following examples show how this plugin uses the Abilities API in production code, and how the same abilities are exposed for MCP consumers through ability metadata.
+
+#### 1) Define an ability with schema, execution, permissions, and MCP metadata
+
+In `includes/Abilities/Image/Alt_Text_Generation.php`, the `Alt_Text_Generation` class extends `Abstract_Ability` and defines:
+
+- Input and output schema (`input_schema()`, `output_schema()`)
+- Runtime behavior (`execute_callback()`)
+- Access control (`permission_callback()`)
+- Ability metadata (`meta()`), including MCP metadata
+
+```php
+protected function meta(): array {
+	return array(
+		'show_in_rest' => true,
+		'mcp'          => array(
+			'public'   => true,
+			'type'     => 'tool',
+			'category' => 'media',
+		),
+	);
+}
+```
+
+This is the key bridge for MCP Adapter compatibility: abilities are declared once, then discoverable/exposable with MCP-specific metadata.
+
+#### 2) Register utility abilities with MCP metadata
+
+In `includes/Abilities/Utilities/Posts.php`, the plugin registers utility abilities such as:
+
+- `ai/get-post-details`
+- `ai/get-post-terms`
+
+Both are registered with `wp_register_ability()` and include MCP metadata under `meta.mcp`, for example:
+
+```php
+'meta' => array(
+	'show_in_rest' => true,
+	'mcp'          => array(
+		'public' => true,
+		'type'   => 'tool',
+	),
+),
+```
+
+This enables the same capability to serve WordPress-native callers and MCP-capable tooling.
+
+#### 3) Compose abilities to build higher-level context
+
+In `includes/helpers.php`, `get_post_context()` resolves registered abilities with `wp_get_ability()` and executes them:
+
+```php
+$details_ability = wp_get_ability( 'ai/get-post-details' );
+$terms_ability   = wp_get_ability( 'ai/get-post-terms' );
+```
+
+The results are normalized and merged into richer context for downstream AI tasks. This demonstrates real orchestration of multiple abilities, not just isolated ability execution.
+
+#### 4) Invoke abilities from editor JavaScript with safe fallback
+
+In `src/utils/run-ability.ts`, the plugin first attempts the client API:
+
+```ts
+window.wp?.abilities?.executeAbility?.( ability, input )
+```
+
+If unavailable, it falls back to REST:
+
+```ts
+/wp-abilities/v1/abilities/${ability}/run
+```
+
+This pattern keeps experiments resilient across admin/editor contexts while still using the same ability contract.
+
+#### 5) Use the invocation helper in real features
+
+In `src/utils/generate-alt-text.ts`, the plugin invokes:
+
+```ts
+runAbility( 'ai/alt-text-generation', params )
+```
+
+This is a concrete production usage path: block/editor context is prepared, ability input is built, and the ability response is mapped to UI behavior.
+
+#### 6) Inspect and test abilities in wp-admin
+
+The Abilities Explorer experiment (`includes/Experiments/Abilities_Explorer/Ability_Handler.php`) uses:
+
+- `wp_get_abilities()` to list capabilities
+- `wp_get_ability()` to inspect specific ability definitions
+- `execute()` to invoke abilities against user-supplied input
+
+It acts as a practical verification interface for both schema and runtime behavior.
+
 ### Asset Loading
 
 The plugin provides a utility class for loading assets. This uses `wp-scripts` to build assets which are expected to live within the `src/` directory. They will then be built into the `build-scripts/` directory, where the asset loader will look for the files, pulling in the proper dependencies and versioning.
