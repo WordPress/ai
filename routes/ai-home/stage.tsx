@@ -5,7 +5,9 @@ import { Page } from '@wordpress/admin-ui';
 import {
 	Button,
 	ExternalLink,
+	Icon,
 	Notice,
+	Popover,
 	Spinner,
 	ToggleControl,
 } from '@wordpress/components';
@@ -534,6 +536,63 @@ const VISUAL_CARD_FEATURES = new Map(
 		.map( ( f ) => [ f.settingName, f ] as const )
 );
 
+function GlobalEnableControl( {
+	enabled,
+	onToggle,
+	disabled,
+}: {
+	enabled: boolean;
+	onToggle: ( value: boolean ) => void;
+	disabled: boolean;
+} ) {
+	const [ isInfoOpen, setIsInfoOpen ] = useState( false );
+
+	return (
+		<div className="ai-settings-page__global-control">
+			<ToggleControl
+				__nextHasNoMarginBottom
+				label={ __( 'Enable AI', 'ai' ) }
+				checked={ enabled }
+				disabled={ disabled }
+				onChange={ onToggle }
+			/>
+			<Button
+				className="ai-settings-page__global-info-button"
+				variant="tertiary"
+				icon={
+					<Icon
+						icon={
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								width={ 18 }
+								height={ 18 }
+							>
+								<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 12 6Zm1.5 12h-3v-1.5h.75V11h-1V9.5h2.5v6.75h.75V18Z" />
+							</svg>
+						}
+					/>
+				}
+				label={ __( 'About global AI setting', 'ai' ) }
+				onClick={ () => setIsInfoOpen( ( open ) => ! open ) }
+			/>
+			{ isInfoOpen && (
+				<Popover
+					placement="bottom-end"
+					onClose={ () => setIsInfoOpen( false ) }
+				>
+					<p className="ai-settings-page__global-info-text">
+						{ __(
+							'Control whether AI is enabled for your site. When disabled, all features and experiments are inactive regardless of their individual settings.',
+							'ai'
+						) }
+					</p>
+				</Popover>
+			) }
+		</div>
+	);
+}
+
 function VisualCardToggle( {
 	field,
 	data,
@@ -779,7 +838,7 @@ function AISettingsPage() {
 			return baseField;
 		} );
 
-		return [ GLOBAL_FIELD, ...sectionActionsFields, ...featureFields ];
+		return [ ...sectionActionsFields, ...featureFields ];
 	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
 
 	const form = useMemo< Form >( () => {
@@ -865,23 +924,7 @@ function AISettingsPage() {
 		}
 
 		return {
-			fields: [
-				{
-					id: 'generalSettings',
-					label: __( 'General Settings', 'ai' ),
-					description: __(
-						'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-						'ai'
-					),
-					layout: {
-						type: 'card',
-						withHeader: true,
-						isCollapsible: false,
-					},
-					children: [ GLOBAL_FIELD_ID ],
-				},
-				...sectionFields,
-			],
+			fields: sectionFields,
 		};
 	}, [ featureDefinitions, featureGroups ] );
 
@@ -899,6 +942,13 @@ function AISettingsPage() {
 			) }
 			actions={
 				<div className="ai-settings-page__actions">
+					<GlobalEnableControl
+						enabled={ globalEnabled }
+						disabled={ isLoading }
+						onToggle={ ( value ) =>
+							void handleChange( { [ GLOBAL_FIELD_ID ]: value } )
+						}
+					/>
 					<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
 						{ __( 'Docs', 'ai' ) }
 					</ExternalLink>

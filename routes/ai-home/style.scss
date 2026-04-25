@@ -26,7 +26,32 @@
 .ai-settings-page__actions {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: 16px;
+}
+
+.ai-settings-page__global-control {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+
+	.components-base-control {
+		margin-bottom: 0;
+	}
+
+	.components-form-toggle {
+		margin-left: 8px;
+	}
+}
+
+.ai-settings-page__global-info-button {
+	min-width: auto;
+	padding-inline: 4px !important;
+}
+
+.ai-settings-page__global-info-text {
+	margin: 8px;
+	max-width: 300px;
 }
 
 .ai-settings-page__link {
