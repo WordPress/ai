@@ -20,6 +20,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
+* **C2PA Monitor** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores the raw manifest plus a structured record alongside the attachment. Read-only and fail-open; never blocks an upload.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.

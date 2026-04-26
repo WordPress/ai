@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Added
+- New Experiment: C2PA Monitor — read-only detection of [C2PA Content Credentials](https://c2pa.org/) in uploaded JPEG/PNG/WebP images. Captures the raw manifest store to a sidecar file under `wp-content/uploads/ai-c2pa/` and stores a structured `_wpai_monitor_record` postmeta entry for downstream consumers. Fail-open and never blocks an upload. JUMBF/CBOR claim decoding deferred to a follow-up PR.
 
 ## [0.7.0] - 2026-04-09
 ### Added

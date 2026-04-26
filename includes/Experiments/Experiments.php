@@ -28,6 +28,7 @@ final class Experiments {
 	 */
 	private const EXPERIMENT_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		\WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer::class,
+		\WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor::class,
 		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,
 		\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
