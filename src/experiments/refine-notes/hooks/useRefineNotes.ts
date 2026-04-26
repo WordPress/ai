@@ -338,7 +338,7 @@ export function useRefineNotes(): {
 						}
 					);
 					lastRevisionId = revisions[ 0 ]?.id ?? null;
-				} catch ( e ) {
+				} catch {
 					lastRevisionId = (
 						select( editorStore ) as any
 					 ).getCurrentPostLastRevisionId() as number | null;

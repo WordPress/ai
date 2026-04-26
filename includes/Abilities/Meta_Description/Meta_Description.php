@@ -27,6 +27,15 @@ class Meta_Description extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.8.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.7.0
 	 */
 	protected function input_schema(): array {
@@ -301,14 +310,9 @@ class Meta_Description extends Abstract_Ability {
 			->using_temperature( $result_temperature )
 			->using_model_preference( ...get_preferred_models_for_text_generation() );
 
-		// Return a more specific error if there isn't a model that supports text generation.
-		if ( ! $builder->is_supported_for_text_generation() ) {
-			return new WP_Error(
-				'unsupported_model',
-				esc_html__( 'Meta description generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
-			);
-		}
-
-		return $builder;
+		return $this->ensure_text_generation_supported(
+			$builder,
+			esc_html__( 'Meta description generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }

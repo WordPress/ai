@@ -74,7 +74,7 @@ const REPLACE_PROMPT_SUFFIX = __(
 interface Preset {
 	label: string;
 	prompt: string;
-	icon: JSX.Element;
+	icon: React.JSX.Element;
 	prepare?: ( url: string ) => Promise< string >;
 	requiresMask?: MaskMode;
 }

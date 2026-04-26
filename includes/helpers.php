@@ -11,6 +11,7 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Services\AI_Service;
+use WordPress\AI\Services\Guidelines;
 
 /**
  * Purposely using return instead of exit here.
@@ -237,11 +238,11 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-1.5',
+			'gpt-image-2',
 		),
 		array(
 			'openai',
-			'gpt-image-1-mini',
+			'gpt-image-1.5',
 		),
 	);
 
@@ -296,6 +297,31 @@ function get_preferred_vision_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred vision models.
 	 */
 	return (array) apply_filters( 'wpai_preferred_vision_models', $preferred_models );
+}
+
+/**
+ * Retrieves guidelines, optionally filtered by category.
+ *
+ * @since 0.8.0
+ *
+ * @param string|null $category Optional. Guideline category to retrieve.
+ * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
+ */
+function get_guidelines( ?string $category = null ): ?array {
+	return Guidelines::get_instance()->get_guidelines( $category );
+}
+
+/**
+ * Formats guidelines as an XML-tagged string for prompt injection.
+ *
+ * @since 0.8.0
+ *
+ * @param list<string> $categories Guideline category slugs to include.
+ * @param string|null  $block_name Optional block name for block-specific guidelines.
+ * @return string Formatted guidelines XML string, or empty string.
+ */
+function format_guidelines_for_prompt( array $categories, ?string $block_name = null ): string {
+	return Guidelines::get_instance()->format_for_prompt( $categories, $block_name );
 }
 
 /**

@@ -71,7 +71,6 @@ function addSelectionToGallery(
 	selection: SelectionItem[]
 ): void {
 	const { getBlock } = select( blockEditorStore );
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const { replaceInnerBlocks, selectBlock } = dispatch(
 		blockEditorStore
 	) as any;

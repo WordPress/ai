@@ -6,7 +6,7 @@
  *
  * @package WordPress\AI\Admin\Dashboard
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 
 declare( strict_types=1 );
@@ -24,14 +24,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Registers and renders dashboard widgets.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Dashboard_Widgets {
 
 	/**
 	 * The feature registry instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var \WordPress\AI\Features\Registry
 	 */
@@ -40,7 +40,7 @@ class Dashboard_Widgets {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
@@ -51,7 +51,7 @@ class Dashboard_Widgets {
 	/**
 	 * Hooks into WordPress to register dashboard widgets.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function init(): void {
 		add_action( 'wp_dashboard_setup', array( $this, 'register_widgets' ) );
@@ -62,7 +62,7 @@ class Dashboard_Widgets {
 	 *
 	 * Only registers widgets for users with the `manage_options` capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function register_widgets(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {

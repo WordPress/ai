@@ -26,6 +26,15 @@ class Excerpt_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.8.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {

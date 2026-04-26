@@ -30,6 +30,15 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.8.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'images' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
@@ -243,6 +252,14 @@ class Generate_Image extends Abstract_Ability {
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() )
 			->using_model_preference( ...get_preferred_image_models() );
+
+		// Inject guidelines as a system instruction to match other abilities.
+		$guidelines = $this->get_guidelines_for_prompt();
+		if ( $guidelines ) {
+			$instruction  = 'The following guidelines represent the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
+			$instruction .= "\n\n" . $guidelines;
+			$prompt_builder->using_system_instruction( $instruction );
+		}
 
 		if ( null !== $reference_image ) {
 			try {
