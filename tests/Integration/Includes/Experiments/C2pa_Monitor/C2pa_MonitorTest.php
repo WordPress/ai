@@ -42,6 +42,10 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 	 */
 	public function setUp(): void {
 		parent::setUp();
+		// Synthetic fixtures are not renderable images; suppress WordPress's image
+		// subsize generation so GD never tries to decode them (GD's WebP codec
+		// fatals on invalid compressed payloads).
+		add_filter( 'intermediate_image_sizes_advanced', '__return_empty_array' );
 		$this->tmp_dir = sys_get_temp_dir() . '/wpai-c2pa-monitor-' . uniqid( '', true );
 		mkdir( $this->tmp_dir, 0700, true );
 		$this->feature = new C2pa_Monitor();
@@ -51,6 +55,7 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 	 * {@inheritDoc}
 	 */
 	public function tearDown(): void {
+		remove_filter( 'intermediate_image_sizes_advanced', '__return_empty_array' );
 		if ( '' !== $this->tmp_dir && is_dir( $this->tmp_dir ) ) {
 			foreach ( glob( $this->tmp_dir . '/*' ) ?: array() as $f ) {
 				@unlink( $f );
