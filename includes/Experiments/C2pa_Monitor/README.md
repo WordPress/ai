@@ -50,6 +50,43 @@ For human-readable shape while iterating:
 }
 ```
 
+## Sidecar layout
+
+```
+wp-content/uploads/ai-c2pa/
+├── .htaccess        ← Apache deny-all (auto-written)
+├── index.php        ← silence-is-golden placeholder (auto-written)
+└── <attachment_id>.<format>.c2pa
+```
+
+**Operators on nginx must add a deny rule manually**, e.g.:
+
+```nginx
+location ^~ /wp-content/uploads/ai-c2pa/ {
+    deny all;
+}
+```
+
+The `.htaccess` and `index.php` files are written on first use and are not
+managed afterwards. Operators may replace them.
+
+## Why a sidecar instead of postmeta?
+
+C2PA manifests in the wild can run into the hundreds of kilobytes. Persisting
+that as serialized postmeta would balloon `wp_postmeta`, slow list-table
+queries, and bloat REST responses for every consumer that fetches attachment
+meta. Sidecars are reversible, cheap, and mirror how core treats
+`wp_get_original_image_path()` (data lives next to the image, the database
+holds a reference).
+
+## Test fixtures
+
+Synthetic fixtures are generated at runtime by
+`tests/Integration/Includes/Experiments/C2pa_Monitor/Fixtures.php`. They are
+just well-formed enough at the container level to drive the detector and are
+**not** valid signed C2PA assets. Generating them at runtime keeps binary
+blobs out of the repo and avoids any third-party fixture licensing.
+
 ## Constraints
 
 - **Read-only** — never mutates images, manifests, or core attachment fields.
