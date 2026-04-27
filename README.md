@@ -22,7 +22,7 @@ The AI plugin provides a set of opt-in AI features for authors, editors, and adm
 
 This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plugins-revisited/) is built following the [Features as Plugins model](https://make.wordpress.org/core/handbook/about/release-cycle/features-as-plugins/). The community will help evaluate which features could evolve toward inclusion in WordPress core based on testing, feedback, and adoption.
 
-*Note: This plugin is experimental.  Features may change, move, or break.  Use on Production sites at your own risk.  It is recommended to test in a non-Production environment and follow the plugin’s development closely if adopting early.*
+*Note: This plugin is experimental. Features may change, move, or break. Use on Production sites at your own risk. It is recommended to test in a non-Production environment and follow the plugin's development closely if adopting early.*
 
 ## Design Goals
 
@@ -46,7 +46,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **[Refine Notes](docs/experiments/refine-notes.md)** - Automatically apply editorial notes to content.
 * **[Review Notes](docs/experiments/review-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
-* **Title Generation** -  Generates title suggestions from content.
+* **Title Generation** - Generates title suggestions from content.
 
 ## Roadmap
 
@@ -64,24 +64,10 @@ Overview of planned features:
 
 ## Developer Experience
 
-The AI plugin is meant to be studied, forked, and extended.  If you’re a host or agency, you can configure AI providers on behalf of your users so they don’t need to bring their own API keys.
-
-If you’re a plugin developer, you’ll be able to:
-
-* Read the [Contributing Guide](CONTRIBUTING.md) for detailed development information.
-* Register new AI abilities.
-* Override default behavior with custom filters.
-* Reuse the same building blocks in your own plugins.
+The AI plugin is designed to be studied, forked, and extended. For detailed information on plugin architecture, creating experiments, and using the Plugin API (registering abilities, custom filters, and reusing building blocks), see the [Developer Guide](docs/DEVELOPER_GUIDE.md). To set up a local development environment and learn about coding standards, see the [Contributing Guidelines](CONTRIBUTING.md).
 
 ## How to Get Involved
 
-We want everyone's input! Whether you're an author, editor, educator, researcher, accessibility expert, user, or someone with strong feelings about AI, all are welcome.
+We welcome contributions from everyone — whether you're an author, editor, educator, researcher, accessibility expert, or developer. See the [Contributing Guidelines](CONTRIBUTING.md) to get started, and join the [`#core-ai` channel](https://wordpress.slack.com/archives/C08TJ8BPULS) on [WordPress Slack](https://make.wordpress.org/chat/) to connect with the community. You can also propose ideas via [GitHub Discussions](https://github.com/WordPress/ai/discussions), report issues or share design feedback through [GitHub Issues](https://github.com/WordPress/ai/issues), and test features as they are [released](https://github.com/WordPress/ai/releases).
 
-Anyone contributing to the AI plugin is expected to conduct themselves in accordance with the WordPress project's [Code of Conduct](https://github.com/WordPress/.github/blob/trunk/CODE_OF_CONDUCT.md).
-
-* **Discuss:** [`#core-ai` channel](https://wordpress.slack.com/archives/C08TJ8BPULS) on WordPress Slack.
-* **Ideate:** Propose and comment on [GitHub discussions](https://github.com/WordPress/ai/discussions).
-* **Design:** [Share feedback](https://github.com/WordPress/ai/issues) on UX flows and accessibility.
-* **Test:** Try features as they're [released](https://github.com/WordPress/ai/releases) and [report feedback](https://github.com/WordPress/ai/issues).
-
-View the [Credits](CREDITS.md) file for maintainers, contributors, and libraries for the AI plugin.
+All contributors are expected to follow the WordPress [Code of Conduct](https://github.com/WordPress/.github/blob/trunk/CODE_OF_CONDUCT.md). View the [Credits](CREDITS.md) file for maintainers, contributors, and libraries.
