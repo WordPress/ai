@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * This class is responsible for parsing various AI provider response formats
  * and extracting relevant metadata for logging purposes.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class Log_Data_Extractor {
 
@@ -75,7 +75,7 @@ class Log_Data_Extractor {
 		 *
 		 * Allows adding custom providers or modifying detection patterns.
 		 *
-		 * @since 0.1.0
+		 * @since x.x.x
 		 *
 		 * @param array<string, array<string>> $patterns Provider name => URL patterns map.
 		 */
@@ -85,8 +85,8 @@ class Log_Data_Extractor {
 	/**
 	 * Extracts log data from a request.
 	 *
-	 * @param string $uri         Request URI.
-	 * @param string $method      HTTP method.
+	 * @param string      $uri         Request URI.
+	 * @param string      $method      HTTP method.
 	 * @param string|null $body   Request body (JSON).
 	 * @return array<string, mixed> Extracted log data.
 	 */
@@ -175,7 +175,7 @@ class Log_Data_Extractor {
 		/**
 		 * Filters the log context data.
 		 *
-		 * @since 0.1.0
+		 * @since x.x.x
 		 *
 		 * @param array<string, mixed> $context  The context data.
 		 * @param array<string, mixed> $decoded  The decoded response.
@@ -252,7 +252,7 @@ class Log_Data_Extractor {
 		 *
 		 * Allows custom providers to supply their own token extraction logic.
 		 *
-		 * @since 0.1.0
+		 * @since x.x.x
 		 *
 		 * @param array{input: int|null, output: int|null} $tokens   Extracted token counts.
 		 * @param array<string, mixed>                     $response The full response data.
@@ -311,7 +311,7 @@ class Log_Data_Extractor {
 		/**
 		 * Filters the detected request kind.
 		 *
-		 * @since 0.1.0
+		 * @since x.x.x
 		 *
 		 * @param string                    $kind     Detected request kind.
 		 * @param string|null               $provider Provider identifier.

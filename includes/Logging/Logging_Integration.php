@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * This class handles wrapping the SDK's HTTP transporter with a logging
  * decorator using the public setHttpTransporter() API.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class Logging_Integration {
 

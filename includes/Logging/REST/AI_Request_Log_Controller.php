@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Provides `/ai/v1/logs` routes for the AI Request Logs admin UI.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class AI_Request_Log_Controller extends WP_REST_Controller {
 
@@ -208,7 +208,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 
 		if ( ! $log ) {
 			return new WP_Error(
-				'ai_log_not_found',
+				'wpai_log_not_found',
 				__( 'Log entry not found.', 'ai' ),
 				array( 'status' => 404 )
 			);

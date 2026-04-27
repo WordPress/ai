@@ -16,17 +16,13 @@ use WordPress\AI\Logging\AI_Request_Log_Page;
 use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AI\Logging\REST\AI_Request_Log_Controller;
 use WordPress\AI\Settings\Settings_Registration;
-use function add_action;
-use function esc_attr;
-use function esc_html_e;
-use function register_setting;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Provides AI request logging for observability and cost tracking.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class AI_Request_Logging extends Abstract_Feature {
 

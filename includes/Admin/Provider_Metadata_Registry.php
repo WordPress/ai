@@ -11,19 +11,6 @@ use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
-use function esc_html__;
-use function get_class;
-use function get_option;
-use function get_transient;
-use function is_array;
-use function is_object;
-use function is_string;
-use function md5;
-use function set_transient;
-use function sprintf;
-use function trim;
-use function wp_json_encode;
-
 /**
  * Provides a single source of truth for provider metadata and branding.
  */

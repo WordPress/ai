@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
  * Coordinates schema management, repository operations, and cost calculation
  * while providing a simple public API for logging AI requests.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class AI_Request_Log_Manager {
 
@@ -89,7 +89,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Constructor.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Schema|null      $schema          Optional schema manager.
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Repository|null  $repository      Optional repository.
@@ -108,7 +108,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Initializes the log manager.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function init(): void {
 		if ( $this->initialized ) {
@@ -129,7 +129,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Whether logging is currently enabled.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return bool True if logging is enabled.
 	 */
@@ -140,7 +140,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Enables or disables logging.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param bool $enabled Whether to enable logging.
 	 */
@@ -159,7 +159,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Gets the retention period in days.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return int Number of days to retain logs.
 	 */
@@ -170,7 +170,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Sets the retention period in days.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param int $days Number of days to retain logs.
 	 */
@@ -181,7 +181,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Gets the maximum number of rows to retain.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return int Maximum rows.
 	 */
@@ -192,7 +192,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Sets the maximum number of rows to retain.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param int $max_rows Maximum rows.
 	 */
@@ -203,7 +203,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Starts a timer for measuring request duration.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return array{start: int} Timer data.
 	 */
@@ -216,7 +216,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Ends a timer and returns duration in milliseconds.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param array{start: int} $timer Timer data from start_timer().
 	 * @return int Duration in milliseconds.
@@ -229,7 +229,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Logs an AI request.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param array{
 	 *     type: string,
@@ -257,7 +257,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Retrieves a single log entry by ID.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $log_id The log identifier.
 	 * @return array<string, mixed>|null The log entry or null if not found.
@@ -269,7 +269,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Retrieves logs with filtering and pagination.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $args Query arguments.
 	 * @return array{items: list<array<string, mixed>>, total: int, pages: int, next_cursor?: array{id: int, timestamp: string}} Results.
@@ -281,7 +281,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Gets aggregate statistics for the dashboard.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $period        Time period: 'day', 'week', 'month', or 'all'.
 	 * @param bool   $force_refresh Whether to bypass the cache.
@@ -294,7 +294,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Gets distinct values for filter dropdowns.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param bool $force_refresh Whether to bypass the cache.
 	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>} Filter options.
@@ -306,7 +306,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Deletes logs older than the retention period.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return int Number of logs deleted.
 	 */
@@ -333,7 +333,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Purges all logs from the database.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return int Number of logs deleted.
 	 */
@@ -344,7 +344,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Estimates the cost of an AI request based on token usage.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $provider      The AI provider.
 	 * @param string $model         The model identifier.
@@ -359,7 +359,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Invalidates the filter options cache.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function invalidate_filter_cache(): void {
 		$this->repository->invalidate_filter_cache();
@@ -368,7 +368,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Invalidates the summary cache.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function invalidate_summary_cache(): void {
 		$this->repository->invalidate_summary_cache();
@@ -377,7 +377,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Invalidates all caches.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
 	public function invalidate_caches(): void {
 		$this->repository->invalidate_caches();
@@ -386,7 +386,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Returns the schema manager for direct access if needed.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return \WordPress\AI\Logging\AI_Request_Log_Schema The schema manager.
 	 */
@@ -397,7 +397,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Returns the repository for direct access if needed.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return \WordPress\AI\Logging\AI_Request_Log_Repository The repository.
 	 */
@@ -408,7 +408,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Returns the cost calculator for direct access if needed.
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 *
 	 * @return \WordPress\AI\Logging\AI_Request_Cost_Calculator The cost calculator.
 	 */

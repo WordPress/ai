@@ -23,7 +23,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Database table name (without prefix).
 	 */
-	public const TABLE_NAME = 'ai_request_logs';
+	public const TABLE_NAME = 'wpai_request_logs';
 
 	/**
 	 * Option key storing the synchronized log table schema version.

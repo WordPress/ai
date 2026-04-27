@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Renders the AI Request Logs screen under Tools.
  *
- * @since 0.1.0
+ * @since x.x.x
  */
 class AI_Request_Log_Page {
 
@@ -142,19 +142,14 @@ class AI_Request_Log_Page {
 	/**
 	 * Returns the plugin icon asset URL for the screen header.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 *
 	 * @return string Asset URL or an empty string.
 	 */
 	private function get_plugin_icon_url(): string {
-		$svg_path = WPAI_PLUGIN_DIR . '.wordpress-org/icon.svg';
+		$svg_path = WPAI_PLUGIN_DIR . 'assets/svg/wpai-icon.svg';
 		if ( file_exists( $svg_path ) ) {
-			return WPAI_PLUGIN_URL . '.wordpress-org/icon.svg';
-		}
-
-		$png_path = WPAI_PLUGIN_DIR . '.wordpress-org/icon-128x128.png';
-		if ( file_exists( $png_path ) ) {
-			return WPAI_PLUGIN_URL . '.wordpress-org/icon-128x128.png';
+			return WPAI_PLUGIN_URL . 'assets/svg/wpai-icon.svg';
 		}
 
 		return '';
