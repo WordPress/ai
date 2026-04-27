@@ -131,7 +131,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
 
 		// Verify action property.
-		$this->assertEquals( 'enum', $schema['properties']['action']['type'], 'Action should be enum type' );
+		$this->assertEquals( 'string', $schema['properties']['action']['type'], 'Action should be string type' );
 		$this->assertEquals( array( 'shorten', 'expand', 'rephrase' ), $schema['properties']['action']['enum'], 'Action should have shorten, expand, rephrase values' );
 		$this->assertEquals( 'rephrase', $schema['properties']['action']['default'], 'Action default should be rephrase' );
 	}

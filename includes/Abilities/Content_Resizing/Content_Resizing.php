@@ -58,7 +58,7 @@ class Content_Resizing extends Abstract_Ability {
 					'description' => esc_html__( 'The block content to resize.', 'ai' ),
 				),
 				'action'  => array(
-					'type'        => 'enum',
+					'type'        => 'string',
 					'enum'        => array( 'shorten', 'expand', 'rephrase' ),
 					'default'     => self::ACTION_DEFAULT,
 					'description' => esc_html__( 'The resizing action to perform.', 'ai' ),
