@@ -216,6 +216,23 @@ class AI_Status_Widget {
 				&& ! empty( $auth['setting_name'] )
 				&& '' !== get_option( $auth['setting_name'], '' ) );
 
+			/**
+			 * Filters whether an AI connector is configured.
+			 *
+			 * Allows third-party plugins to declare credential availability for
+			 * connectors that do not rely on API key settings.
+			 *
+			 * The dynamic portion of the hook name, `$slug`, refers to the connector slug.
+			 * For example, if the connector slug is 'openai', the hook name
+			 * will be 'wpai_is_openai_connector_configured'.
+			 *
+			 * @since x.x.x
+			 *
+			 * @param bool $configured Whether the connector is configured.
+			 * @param array<string, mixed> $connector_data The connector data.
+			 */
+			$configured = (bool) apply_filters( "wpai_is_{$slug}_connector_configured", $configured, $connector_data );
+
 			$connectors[] = array(
 				'name'       => $connector_data['name'] ?? $slug,
 				'configured' => $configured,
