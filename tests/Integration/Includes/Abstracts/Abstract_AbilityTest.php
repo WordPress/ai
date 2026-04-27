@@ -103,6 +103,391 @@ class Test_Ability extends Abstract_Ability {
 }
 
 /**
+ * Test ability: sanitize_text_field on a string input property.
+ *
+ * @since x.x.x
+ */
+class Test_Ability_Sanitize_Text extends Abstract_Ability {
+	/**
+	 * Last input received by execute_callback.
+	 *
+	 * @var mixed
+	 */
+	public $last_input;
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function category(): string {
+		return 'test-category';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'content' => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => 'Content.',
+				),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function output_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'ok' => array( 'type' => 'boolean' ),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function execute_callback( $input ) {
+		$this->last_input = $input;
+		return array( 'ok' => true );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function permission_callback( $input ) {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function meta(): array {
+		return array();
+	}
+}
+
+/**
+ * Test ability: absint and instance-method sanitize callback.
+ *
+ * @since x.x.x
+ */
+class Test_Ability_Sanitize_Callback_Styles extends Abstract_Ability {
+	/**
+	 * Last input received by execute_callback.
+	 *
+	 * @var mixed
+	 */
+	public $last_input;
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function category(): string {
+		return 'test-category';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'count'  => array(
+					'type'              => 'integer',
+					'sanitize_callback' => 'absint',
+					'description'       => 'Count.',
+				),
+				'prefix' => array(
+					'type'              => 'string',
+					'sanitize_callback' => array( $this, 'add_prefix' ),
+					'description'       => 'Prefixed.',
+				),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function output_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'ok' => array( 'type' => 'boolean' ),
+			),
+		);
+	}
+
+	/**
+	 * Test sanitize callback.
+	 *
+	 * @param mixed $value Value.
+	 * @return string
+	 */
+	public function add_prefix( $value ): string {
+		return is_string( $value ) ? 'P:' . $value : '';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function execute_callback( $input ) {
+		$this->last_input = $input;
+		return array( 'ok' => true );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function permission_callback( $input ) {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function meta(): array {
+		return array();
+	}
+}
+
+/**
+ * Test ability: nested object properties and array items with callbacks.
+ *
+ * @since x.x.x
+ */
+class Test_Ability_Sanitize_Nested_And_Items extends Abstract_Ability {
+	/**
+	 * Last input received by execute_callback.
+	 *
+	 * @var mixed
+	 */
+	public $last_input;
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function category(): string {
+		return 'test-category';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'parent'    => array(
+					'type'       => 'object',
+					'properties' => array(
+						'label' => array(
+							'type'              => 'string',
+							'sanitize_callback' => 'strtoupper',
+						),
+					),
+				),
+				'fragments' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function output_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'ok' => array( 'type' => 'boolean' ),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function execute_callback( $input ) {
+		$this->last_input = $input;
+		return array( 'ok' => true );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function permission_callback( $input ) {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function meta(): array {
+		return array();
+	}
+}
+
+/**
+ * Test ability: top-level object default in input schema with per-field callbacks.
+ *
+ * @since x.x.x
+ */
+class Test_Ability_Sanitize_Top_Level_Default extends Abstract_Ability {
+	/**
+	 * Last input received by execute_callback.
+	 *
+	 * @var mixed
+	 */
+	public $last_input;
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function category(): string {
+		return 'test-category';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'default'    => array( 'k' => '7' ),
+			'properties' => array(
+				'k' => array(
+					'type'              => 'integer',
+					'sanitize_callback' => 'absint',
+				),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function output_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'ok' => array( 'type' => 'boolean' ),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function execute_callback( $input ) {
+		$this->last_input = $input;
+		return array( 'ok' => true );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function permission_callback( $input ) {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function meta(): array {
+		return array();
+	}
+}
+
+/**
+ * Test ability: sanitize returns WP_Error.
+ *
+ * @since x.x.x
+ */
+class Test_Ability_Sanitize_Returns_Error extends Abstract_Ability {
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function category(): string {
+		return 'test-category';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'x' => array(
+					'type'              => 'string',
+					'sanitize_callback' => array( $this, 'failing_sanitize' ),
+				),
+			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function output_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'ok' => array( 'type' => 'boolean' ),
+			),
+		);
+	}
+
+	/**
+	 * Returns a WP_Error for "bad" input.
+	 *
+	 * @param mixed $value Value.
+	 * @return mixed|\WP_Error
+	 */
+	public function failing_sanitize( $value ) {
+		if ( 'bad' === $value ) {
+			return new WP_Error( 'test_sanitize', 'Failure from sanitize.' );
+		}
+		return sanitize_text_field( (string) $value );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function execute_callback( $input ) {
+		return array( 'ok' => true );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function permission_callback( $input ) {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function meta(): array {
+		return array();
+	}
+}
+
+/**
  * Test experiment for Abstract_Ability tests.
  *
  * @since 0.1.0
@@ -152,14 +537,14 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Ability_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abstracts\Test_Ability_Experiment
 	 */
 	private Test_Ability_Experiment $experiment;
 
 	/**
 	 * Test ability instance.
 	 *
-	 * @var Test_Ability
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abstracts\Test_Ability
 	 */
 	private Test_Ability $ability;
 
@@ -200,8 +585,8 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 			)
 		);
 
-		$reflection       = new \ReflectionClass( $this->ability );
-		$file_name        = $reflection->getFileName();
+		$reflection        = new \ReflectionClass( $this->ability );
+		$file_name         = $reflection->getFileName();
 		$this->feature_dir = dirname( $file_name );
 	}
 
@@ -212,9 +597,11 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		foreach ( $this->temp_files as $file ) {
-			if ( file_exists( $file ) ) {
-				wp_delete_file( $file );
+			if ( ! file_exists( $file ) ) {
+				continue;
 			}
+
+			wp_delete_file( $file );
 		}
 		$this->temp_files = array();
 
@@ -234,9 +621,11 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$this->temp_files[] = $path;
 		$result             = @file_put_contents( $path, $content );
 
-		if ( false === $result ) {
-			$this->fail( sprintf( 'Failed to create system instruction file at path: %s', $path ) );
+		if ( false !== $result ) {
+			return;
 		}
+
+		$this->fail( sprintf( 'Failed to create system instruction file at path: %s', $path ) );
 	}
 
 	/**
@@ -451,7 +840,7 @@ PHP
 			)
 		);
 
-		$filter_callback = function ( $instruction, $name, $data ) {
+		$filter_callback = static function ( $instruction, $name, $data ) {
 			return $instruction . ' Appended by filter.';
 		};
 
@@ -590,5 +979,122 @@ PHP
 		$result = $method->invoke( $this->ability, $prompt_builder, 'unused' );
 
 		$this->assertSame( $prompt_builder, $result, 'Should return the same builder instance when supported' );
+	}
+
+	/**
+	 * Tests that execute_callback receives input with sanitize_text_field applied from input_schema.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_input_applies_sanitize_text_field_to_string(): void {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability_Sanitize_Text(
+			'ai/test-sanitize-text',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$ability->execute( array( 'content' => '<b>Hello</b>' ) );
+
+		$this->assertIsArray( $ability->last_input );
+		$this->assertArrayHasKey( 'content', $ability->last_input, 'Stripped tags' );
+		$this->assertSame( 'Hello', $ability->last_input['content'] );
+	}
+
+	/**
+	 * Tests that absint and object-method sanitize_callback run before execute.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_input_applies_absint_and_method_callback(): void {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability_Sanitize_Callback_Styles(
+			'ai/test-sanitize-callback-styles',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$ability->execute(
+			array(
+				'count'  => '  42  ',
+				'prefix' => 'x',
+			)
+		);
+
+		$this->assertSame( 42, $ability->last_input['count'] );
+		$this->assertSame( 'P:x', $ability->last_input['prefix'] );
+	}
+
+	/**
+	 * Tests nested object properties and array item sanitize_callback application.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_input_sanitizes_nested_and_array_items(): void {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability_Sanitize_Nested_And_Items(
+			'ai/test-sanitize-nested',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$ability->execute(
+			array(
+				'parent'    => array( 'label' => 'ab' ),
+				'fragments' => array( '<b>one</b>', '  two  ' ),
+			)
+		);
+
+		$this->assertSame( 'AB', $ability->last_input['parent']['label'] );
+		$this->assertSame( array( 'one', 'two' ), $ability->last_input['fragments'] );
+	}
+
+	/**
+	 * Tests that a top-level default from the input schema is passed through sanitize_callback.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_input_sanitizes_top_level_object_default(): void {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability_Sanitize_Top_Level_Default(
+			'ai/test-sanitize-default',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$ability->execute( null );
+
+		$this->assertIsArray( $ability->last_input );
+		$this->assertArrayHasKey( 'k', $ability->last_input );
+		$this->assertSame( 7, $ability->last_input['k'] );
+	}
+
+	/**
+	 * Tests that a WP_Error from a sanitize_callback is returned from execute.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_input_propagates_wp_error_from_sanitize_callback(): void {
+		$experiment = new Test_Ability_Experiment();
+		$ability    = new Test_Ability_Sanitize_Returns_Error(
+			'ai/test-sanitize-wp-error',
+			array(
+				'label'       => $experiment->get_label(),
+				'description' => $experiment->get_description(),
+			)
+		);
+
+		$result = $ability->execute( array( 'x' => 'bad' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'test_sanitize', $result->get_error_code() );
 	}
 }

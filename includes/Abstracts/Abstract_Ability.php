@@ -121,7 +121,7 @@ abstract class Abstract_Ability extends WP_Ability {
 		$input        = parent::normalize_input( $input );
 		$input_schema = $this->get_input_schema();
 
-		if ( empty( $input_schema ) || ! is_array( $input_schema ) ) {
+		if ( empty( $input_schema ) ) {
 			return $input;
 		}
 
