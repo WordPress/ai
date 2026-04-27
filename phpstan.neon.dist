@@ -18,7 +18,6 @@ parameters:
 			min: 70400
 			max: 80400
 		bootstrapFiles:
-				- stubs/wordpress-ai-client.php
 				- ai.php
 		paths:
 				- ai.php
