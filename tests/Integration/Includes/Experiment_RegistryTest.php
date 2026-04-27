@@ -46,6 +46,74 @@ class Test_Experiment extends Abstract_Feature {
 }
 
 /**
+ * Test stable feature for registry tests.
+ *
+ * @since 0.8.0
+ */
+class Test_Stable_Feature extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-stable-feature';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Stable Feature',
+			'description' => 'A stable feature for unit testing',
+			'stability'   => 'stable',
+		);
+	}
+
+	/**
+	 * Registers the feature.
+	 *
+	 * @since 0.8.0
+	 */
+	public function register(): void {
+		// No-op for testing.
+	}
+}
+
+/**
+ * Test deprecated feature for registry tests.
+ *
+ * @since 0.8.0
+ */
+class Test_Deprecated_Feature extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-deprecated-feature';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Deprecated Feature',
+			'description' => 'A deprecated feature for unit testing',
+			'stability'   => 'deprecated',
+		);
+	}
+
+	/**
+	 * Registers the feature.
+	 *
+	 * @since 0.8.0
+	 */
+	public function register(): void {
+		// No-op for testing.
+	}
+}
+
+/**
  * Registry test case.
  *
  * @since 0.1.0
@@ -151,6 +219,39 @@ class Registry_Test extends WP_UnitTestCase {
 		$this->assertCount( 1, $experiments, 'Should have one experiment' );
 		$this->assertArrayHasKey( 'test-experiment', $experiments, 'Experiments array should contain registered experiment' );
 		$this->assertSame( $experiment1, $experiments['test-experiment'], 'Should return same instance' );
+	}
+
+	/**
+	 * Tests filtering registered features by stability.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_features_by_stability() {
+		$experimental_feature = new Test_Experiment();
+		$stable_feature       = new Test_Stable_Feature();
+		$deprecated_feature   = new Test_Deprecated_Feature();
+
+		$this->registry->register_feature( $experimental_feature );
+		$this->registry->register_feature( $stable_feature );
+		$this->registry->register_feature( $deprecated_feature );
+
+		$stable_features = $this->registry->get_features_by_stability( 'stable' );
+
+		$this->assertCount( 1, $stable_features, 'Should return only stable features' );
+		$this->assertArrayHasKey( 'test-stable-feature', $stable_features, 'Should contain stable feature key' );
+		$this->assertSame( $stable_feature, $stable_features['test-stable-feature'], 'Should return stable feature instance' );
+
+		$experimental_features = $this->registry->get_features_by_stability( 'experimental' );
+
+		$this->assertCount( 1, $experimental_features, 'Should return only experimental features' );
+		$this->assertArrayHasKey( 'test-experiment', $experimental_features, 'Should contain experimental feature key' );
+		$this->assertSame( $experimental_feature, $experimental_features['test-experiment'], 'Should return experimental feature instance' );
+
+		$deprecated_features = $this->registry->get_features_by_stability( 'deprecated' );
+
+		$this->assertCount( 1, $deprecated_features, 'Should return only deprecated features' );
+		$this->assertArrayHasKey( 'test-deprecated-feature', $deprecated_features, 'Should contain deprecated feature key' );
+		$this->assertSame( $deprecated_feature, $deprecated_features['test-deprecated-feature'], 'Should return deprecated feature instance' );
 	}
 
 	/**

@@ -2,7 +2,7 @@
  * WordPress dependencies
  */
 import { Button, Spinner } from '@wordpress/components';
-import { dispatch, select } from '@wordpress/data';
+import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -13,17 +13,16 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateImage } from '../functions/generate-image';
 import { uploadImage } from '../functions/upload-image';
-import { useEditorDispatch } from '../../../utils/editor-dispatch';
 
 /**
  * GenerateFeaturedImage component.
  *
  * Provides a button to generate a featured image.
  *
- * @return {JSX.Element} The GenerateFeaturedImage component.
+ * @return {React.JSX.Element} The GenerateFeaturedImage component.
  */
-export default function GenerateFeaturedImage(): JSX.Element {
-	const { editPost } = useEditorDispatch();
+export default function GenerateFeaturedImage(): React.JSX.Element {
+	const { editPost } = useDispatch( editorStore );
 
 	const content = select( editorStore ).getEditedPostContent();
 	const featuredImage =

@@ -5,9 +5,9 @@
 /**
  * WordPress dependencies
  */
-import { createBlock, type BlockInstance } from '@wordpress/blocks';
+import { createBlock } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { dispatch, useSelect } from '@wordpress/data';
+import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useEffect, useState } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
@@ -16,7 +16,6 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { generateSummary } from './generate-summary';
-import { useEditorDispatch } from '../../../utils/editor-dispatch';
 
 /**
  * Summary generation hook.
@@ -30,22 +29,21 @@ export function useSummaryGeneration() {
 			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
 		};
 	} );
-	const { editPost } = useEditorDispatch();
+	const { editPost } = useDispatch( editorStore );
 	const [ isSummarizing, setIsSummarizing ] = useState( false );
 	const [ summary, setSummary ] = useState( '' );
 
 	// Check if a summary block exists and update state accordingly.
 	useEffect( () => {
 		const summaryBlock = allBlocks.find(
-			( block: BlockInstance ) =>
+			( block ) =>
 				block.name === 'core/paragraph' &&
 				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 		);
 		/* eslint-disable dot-notation -- summaryBlock.attributes is a BlockInstance */
 		if ( summaryBlock && summaryBlock.attributes[ 'content' ] ) {
-			setSummary( summaryBlock.attributes[ 'content' ] );
+			setSummary( String( summaryBlock.attributes[ 'content' ] ) );
 		}
-		/* eslint-enable dot-notation */
 	}, [ allBlocks ] );
 
 	/**
@@ -74,9 +72,9 @@ export function useSummaryGeneration() {
 
 			// Check if an existing AI summary block exists.
 			const existingSummaryBlock = allBlocks.find(
-				( block: BlockInstance ) =>
+				( block ) =>
 					block.name === 'core/paragraph' &&
-					block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
+					block.attributes[ 'aiGeneratedSummary' ] === true
 			);
 
 			if ( existingSummaryBlock ) {

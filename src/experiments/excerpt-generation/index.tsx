@@ -23,7 +23,7 @@ import ExcerptInlineWrapper from './components/ExcerptInlineWrapper';
 /**
  * Plugin component that adds a generate button to the excerpt panel.
  */
-const ExcerptGenerationPlugin = (): JSX.Element | null => {
+const ExcerptGenerationPlugin = (): React.JSX.Element | null => {
 	// __experimentalPluginPostExcerpt from @wordpress/edit-post is a function
 	// that returns the component (or null in site editor)
 	const PluginExcerptComponent = PluginPostExcerpt();

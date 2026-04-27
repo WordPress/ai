@@ -1,3 +1,6 @@
+/**
+ * WordPress dependencies
+ */
 const wpConfig = require( '@wordpress/prettier-config' );
 
 /**

@@ -2,7 +2,7 @@
 Contributors:      wordpressdotorg
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      7.0
-Stable tag:        0.7.0
+Stable tag:        0.8.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -22,11 +22,14 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
+* **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
+* **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **Refine Notes** - Automatically apply editorial notes to content.
 * **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
 
@@ -54,7 +57,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. Go to `Settings -> Connectors` and setup at least one AI connector.
 4. Go to `Settings -> AI` and globally enable functionality and then enable the individual features or experiments you want to test.
-5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Re-generate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
+5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Regenerate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
 
 == For Developers ==
 
@@ -130,6 +133,41 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 12. AI settings screen showing toggles to enable specific experiments.
 
 == Changelog ==
+
+= 0.8.0 - 2026-04-23 =
+
+**Added**
+
+* New Experiment: Refine from Notes, automatically apply editorial notes to content ([#289](https://github.com/WordPress/ai/pull/289)).
+* AI Status and AI Capabilities dashboard widgets, plus framework for registering new dashboard widgets ([#311](https://github.com/WordPress/ai/pull/311)).
+* Integrates Gutenberg's Guidelines allowing abilities to respect site-wide editorial standards ([#359](https://github.com/WordPress/ai/pull/359)).
+* Check `wp_supports_ai()` before initializing experiments ([#268](https://github.com/WordPress/ai/pull/268)).
+* Admin redirect from the old `ai` page to the new `ai-wp-admin` page ([#424](https://github.com/WordPress/ai/pull/424)).
+* Set the new `gpt-image-2` model for our preferred model list ([#456](https://github.com/WordPress/ai/pull/456)).
+
+**Changed**
+
+* Promote Image Generation from an Experiment to a Feature ([#418](https://github.com/WordPress/ai/pull/418)).
+* Title Generation now utilizes a modal for editing and regeneration before applying changes to the Post Title ([#290](https://github.com/WordPress/ai/pull/290)).
+* Update feature descriptions to include AI provider model supports ([#377](https://github.com/WordPress/ai/pull/377)).
+* Update button loading states to match the standard loading pattern ([#382](https://github.com/WordPress/ai/pull/382), [#389](https://github.com/WordPress/ai/pull/389), [#396](https://github.com/WordPress/ai/pull/396),[#433](https://github.com/WordPress/ai/pull/433), [#449](https://github.com/WordPress/ai/pull/449)).
+* Refactor `Main` bootstrap class ([#404](https://github.com/WordPress/ai/pull/404)).
+* Allow bulk enabling/disabling Experiments in groups ([#422](https://github.com/WordPress/ai/pull/422)).
+* Improve visual hierarchy on the AI settings page so card titles are more prominent than the toggle labels ([#431](https://github.com/WordPress/ai/pull/431)).
+* Reduce the context we send when running Review Notes to decrease the amount of tokens used ([#434](https://github.com/WordPress/ai/pull/434)).
+* Refactor `strpos` to `str_starts_with` and `str_contains` ([#438](https://github.com/WordPress/ai/pull/438)).
+* Render Review Notes only on post types that support `editor.notes` ([#444](https://github.com/WordPress/ai/pull/444)).
+* Improve accessibility of the Meta Description modal: inline "Copied!" confirmation on the copy button and accessibleWhenDisabled on disabled controls ([#445](https://github.com/WordPress/ai/pull/445)).
+* Refactor `Asset_Loader` class and add error checking when dependencies are missing ([#458](https://github.com/WordPress/ai/pull/458)).
+
+**Removed**
+
+* Remove references to DALL·E image models ([#414](https://github.com/WordPress/ai/pull/414)).
+
+**Fixed**
+
+* Excerpt and Title generation no longer include conversational preambles, wrapper quotes, markdown, or meta-commentary when using smaller language models ([#440](https://github.com/WordPress/ai/pull/440)).
+* Defer failed `Requirements` messages until translation functions are available ([#453](https://github.com/WordPress/ai/pull/453)).
 
 = 0.7.0 - 2026-04-09 =
 

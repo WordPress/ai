@@ -74,6 +74,28 @@ final class Registry {
 	}
 
 	/**
+	 * Gets registered features by stability.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @param 'deprecated'|'experimental'|'stable' $stability The stability level to match.
+	 * @return \WordPress\AI\Contracts\Feature[] Array of matching feature instances keyed by feature ID.
+	 */
+	public function get_features_by_stability( string $stability ): array {
+		$features = array();
+
+		foreach ( $this->features as $feature_id => $feature ) {
+			if ( $stability !== $feature->get_stability() ) {
+				continue;
+			}
+
+			$features[ $feature_id ] = $feature;
+		}
+
+		return $features;
+	}
+
+	/**
 	 * Checks if a feature is registered.
 	 *
 	 * @since 0.6.0

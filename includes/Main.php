@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 
 declare( strict_types=1 );
@@ -13,6 +13,7 @@ namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Admin\Activation;
+use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
@@ -28,12 +29,12 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 final class Main {
 	/**
 	 * Instance of the class.
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 *
 	 * @var ?static
@@ -43,7 +44,7 @@ final class Main {
 	/**
 	 * Gets the (singleton) instance of the Main class.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public static function get_instance(): self {
 		if ( ! isset( self::$instance ) ) {
@@ -68,7 +69,7 @@ final class Main {
 	/**
 	 * Load the plugin classes.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @internal Used in the plugins_loaded action.
 	 */
@@ -100,7 +101,7 @@ final class Main {
 	/**
 	 * Initializes plugin features.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function initialize_features(): void {
 		try {
@@ -116,9 +117,11 @@ final class Main {
 			// Initialize settings registration.
 			( new Settings_Registration( $registry ) )->init();
 
-			// Register admin settings page menu item.
+			// Register admin settings page menu item and dashboard widgets.
 			if ( is_admin() ) {
 				Settings_Page::init( $registry );
+
+				( new Dashboard_Widgets( $registry ) )->init();
 			}
 
 			// Register our post-related WordPress Abilities.
@@ -131,7 +134,7 @@ final class Main {
 					esc_html__( 'AI Plugin initialization failed: %s', 'ai' ),
 					esc_html( $e->getMessage() )
 				),
-				'x.x.x'
+				'0.8.0'
 			);
 		}
 	}
@@ -142,7 +145,7 @@ final class Main {
 	 * This adds "Settings" and "Connectors" links to
 	 * the plugin's action links on the Plugins page.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param array<string> $links Existing action links.
 	 * @return array<string> Modified action links.
@@ -172,7 +175,7 @@ final class Main {
 	 *
 	 * @internal Used in the wp_abilities_api_categories_init action.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function register_ability_category(): void {
 		wp_register_ability_category(
@@ -187,7 +190,7 @@ final class Main {
 	/**
 	 * Prevent the class from being cloned.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function __clone() {
 		_doing_it_wrong(
@@ -197,14 +200,14 @@ final class Main {
 				esc_html__( 'The %s class should not be cloned.', 'ai' ),
 				esc_html( self::class ),
 			),
-			'x.x.x'
+			'0.8.0'
 		);
 	}
 
 	/**
 	 * Prevent the class from being deserialized.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function __wakeup() {
 		_doing_it_wrong(
@@ -214,7 +217,7 @@ final class Main {
 				esc_html__( 'De-serializing instances of %s is not allowed.', 'ai' ),
 				esc_html( self::class ),
 			),
-			'x.x.x'
+			'0.8.0'
 		);
 	}
 }

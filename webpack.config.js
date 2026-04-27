@@ -70,6 +70,11 @@ module.exports = {
 			'src/admin/ai-request-logs',
 			'index.tsx'
 		),
+		'admin/dashboard': path.resolve(
+			process.cwd(),
+			'src/admin/dashboard',
+			'index.scss'
+		),
 		'experiments/content-classification': path.resolve(
 			process.cwd(),
 			'src/experiments/content-classification',

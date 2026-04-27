@@ -51,7 +51,7 @@ export function insertIntoBlock(
 
 		case 'core/gallery': {
 			const { getBlocks } = select( blockEditorStore );
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 			const replaceInnerBlocks = ( dispatch( blockEditorStore ) as any )
 				?.replaceInnerBlocks as
 				| ( ( clientId: string, blocks: unknown[] ) => void )

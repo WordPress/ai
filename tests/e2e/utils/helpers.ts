@@ -352,8 +352,11 @@ export const enableAllExperimentsInGroup = async (
 		return;
 	}
 
+	const disableAllButton = getDisableAllButton( page, groupName );
+
 	await enableAllButton.click();
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect( enableAllButton ).toBeDisabled();
+	await expect( disableAllButton ).toBeEnabled();
 };
 
 /**
@@ -378,8 +381,11 @@ export const disableAllExperimentsInGroup = async (
 		return;
 	}
 
+	const enableAllButton = getEnableAllButton( page, groupName );
+
 	await disableAllButton.click();
-	await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
+	await expect( disableAllButton ).toBeDisabled();
+	await expect( enableAllButton ).toBeEnabled();
 };
 
 /**
@@ -403,7 +409,7 @@ export const getExperimentTogglesInGroup = async (
 	// Get all checkboxes in that section (experiment toggles are checkboxes, buttons are for bulk actions).
 	const allToggles = section.getByRole( 'checkbox' );
 	const count = await allToggles.count();
-	const experimentToggles = [];
+	const experimentToggles: Locator[] = [];
 
 	for ( let i = 0; i < count; i++ ) {
 		const toggle = allToggles.nth( i );

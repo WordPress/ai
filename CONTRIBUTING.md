@@ -44,10 +44,10 @@ composer lint && npm run typecheck && npm run lint:js
 composer phpstan
 
 # Auto-fix coding standards issues
-composer format && npm run lint:js:fix
+composer format && npm run lint:js:fix && npm run format
 
 # Run tests
-npm run test:e2e:env:start && npm run test:e2e && npm run test:php && npm run test:e2e:env:stop
+npm run wp-env:test start -- --xdebug=coverage && npm run test:e2e && npm run test:php && npm run wp-env:test stop
 ```
 
 ---
@@ -78,7 +78,6 @@ The following naming conventions must be followed for consistency and autoloadin
 - File names are the same as the class, trait, and interface name for PSR-4 autoloading.
 - Classes use WordPress naming conventions with underscores (e.g., `Experiment_Loader`).
 - Namespaces follow the pattern `WordPress\AI\{Component}`.
-
 
 ### General rules
 

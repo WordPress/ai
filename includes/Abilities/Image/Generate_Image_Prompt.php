@@ -26,6 +26,15 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.8.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'images' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.3.0
 	 */
 	protected function input_schema(): array {
