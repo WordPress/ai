@@ -2,7 +2,7 @@
 	width="1em"
 	height="1em"
 	viewBox="50 30 160 200"
-	style={ { verticalAlign: '-0.025em' } }
+	style="vertical-align: -0.025em;"
 	fill="none"
 	xmlns="http://www.w3.org/2000/svg"
 	aria-hidden="true"
