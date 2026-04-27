@@ -105,6 +105,121 @@ abstract class Abstract_Ability extends WP_Ability {
 	abstract protected function meta(): array;
 
 	/**
+	 * Normalizes the input for the Ability.
+	 *
+	 * Calls the parent method to run the default normalization logic
+	 * and then will run any sanitize_callback functions that are defined
+	 * in the input schema.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input The raw input provided for the Ability. Default `null`.
+	 * @return mixed|\WP_Error The normalized input, a default from schema, `null`, or a
+	 *                         `WP_Error` if a `sanitize_callback` returned one.
+	 */
+	public function normalize_input( $input = null ) {
+		$input        = parent::normalize_input( $input );
+		$input_schema = $this->get_input_schema();
+
+		if ( empty( $input_schema ) || ! is_array( $input_schema ) ) {
+			return $input;
+		}
+
+		return $this->sanitize_value_from_input_schema( $input, $input_schema );
+	}
+
+	/**
+	 * Validates input data against the input schema.
+	 *
+	 * Short-circuits when normalize_input() returned a WP_Error from a sanitize callback.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The input data to validate. Default `null`.
+	 * @return true|\WP_Error Returns true if valid or the WP_Error object if validation fails.
+	 */
+	public function validate_input( $input = null ) {
+		if ( is_wp_error( $input ) ) {
+			return $input;
+		}
+
+		return parent::validate_input( $input );
+	}
+
+	/**
+	 * Applies input_schema sanitize_callback entries recursively.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The input value to sanitize.
+	 * @param array<string, mixed> $schema The JSON schema fragment.
+	 * @return mixed|\WP_Error The sanitized value, or a WP_Error if a callback returned one.
+	 */
+	protected function sanitize_value_from_input_schema( $value, array $schema ) {
+		if ( isset( $schema['sanitize_callback'] ) && is_callable( $schema['sanitize_callback'] ) ) {
+			$sanitized = call_user_func( $schema['sanitize_callback'], $value );
+			if ( is_wp_error( $sanitized ) ) {
+				return $sanitized;
+			}
+			return $sanitized;
+		}
+
+		$schema_type = $schema['type'] ?? null;
+		$is_object   = ( 'object' === $schema_type && ! empty( $schema['properties'] ) && is_array( $schema['properties'] ) );
+		if ( ! $is_object && 'object' !== $schema_type && ! empty( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+			$is_object = true;
+		}
+
+		if ( $is_object ) {
+			if ( ! is_array( $value ) ) {
+				return $value;
+			}
+
+			$property_schemas = $schema['properties'];
+			foreach ( $property_schemas as $key => $prop_schema ) {
+				if ( ! is_array( $prop_schema ) || ! array_key_exists( $key, $value ) ) {
+					continue;
+				}
+				$sanitized = $this->sanitize_value_from_input_schema( $value[ $key ], $prop_schema );
+				if ( is_wp_error( $sanitized ) ) {
+					return $sanitized;
+				}
+				$value[ $key ] = $sanitized;
+			}
+
+			if ( isset( $schema['additionalProperties'] ) && is_array( $schema['additionalProperties'] ) ) {
+				$addl = $schema['additionalProperties'];
+				foreach ( $value as $key => $v ) {
+					if ( array_key_exists( $key, $property_schemas ) ) {
+						continue;
+					}
+					$sanitized = $this->sanitize_value_from_input_schema( $v, $addl );
+					if ( is_wp_error( $sanitized ) ) {
+						return $sanitized;
+					}
+					$value[ $key ] = $sanitized;
+				}
+			}
+
+			return $value;
+		}
+
+		$is_array = ( 'array' === $schema_type && ! empty( $schema['items'] ) && is_array( $schema['items'] ) );
+		if ( $is_array && is_array( $value ) ) {
+			$items = $schema['items'];
+			foreach ( $value as $i => $item ) {
+				$sanitized = $this->sanitize_value_from_input_schema( $item, $items );
+				if ( is_wp_error( $sanitized ) ) {
+					return $sanitized;
+				}
+				$value[ $i ] = $sanitized;
+			}
+		}
+
+		return $value;
+	}
+
+	/**
 	 * Returns the guideline categories this ability uses.
 	 *
 	 * Override in subclasses to opt into guidelines.
