@@ -332,14 +332,10 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
  * @return bool True if we have AI credentials, false otherwise.
  */
 function has_ai_credentials(): bool {
-	$connectors      = wp_get_connectors();
+	$connectors      = get_ai_connectors();
 	$has_credentials = false;
 
 	foreach ( $connectors as $connector_data ) {
-		if ( 'ai_provider' !== $connector_data['type'] ) {
-			continue;
-		}
-
 		$auth = $connector_data['authentication'];
 		if ( 'api_key' !== $auth['method'] || empty( $auth['setting_name'] ) ) {
 			continue;
@@ -401,4 +397,74 @@ function has_valid_ai_credentials(): bool {
 	} catch ( Throwable $t ) {
 		return false;
 	}
+}
+
+/**
+ * Returns the AI connectors.
+ *
+ * @since x.x.x
+ *
+ * @param bool $active_only Whether to only return active connectors.
+ * @return array<string, array<string, mixed>> The AI connectors.
+ */
+function get_ai_connectors( bool $active_only = true ): array {
+	$connectors = array();
+
+	foreach ( (array) wp_get_connectors() as $connector_id => $data ) {
+		if ( ! is_string( $connector_id ) || ! is_array( $data ) ) {
+			continue;
+		}
+
+		if ( ( $data['type'] ?? '' ) !== 'ai_provider' ) {
+			continue;
+		}
+
+		if ( $active_only && ! is_connector_plugin_active( $data ) ) {
+			continue;
+		}
+
+		$connectors[ $connector_id ] = $data;
+	}
+
+	return $connectors;
+}
+
+/**
+ * Checks whether the connector's related plugin is currently active.
+ *
+ * If plugin metadata is not provided for a connector, it is treated as active.
+ *
+ * @since x.x.x
+ *
+ * @param array<string, mixed> $connector_data Connector metadata.
+ * @return bool True if the connector plugin is active or unknown, false if known inactive.
+ */
+function is_connector_plugin_active( array $connector_data ): bool {
+	if ( empty( $connector_data['plugin'] ) || ! is_array( $connector_data['plugin'] ) ) {
+		return true;
+	}
+
+	$plugin_file = '';
+
+	if ( ! empty( $connector_data['plugin']['file'] ) && is_string( $connector_data['plugin']['file'] ) ) {
+		$plugin_file = $connector_data['plugin']['file'];
+	} elseif ( ! empty( $connector_data['plugin']['plugin_file'] ) && is_string( $connector_data['plugin']['plugin_file'] ) ) {
+		$plugin_file = $connector_data['plugin']['plugin_file'];
+	} elseif ( ! empty( $connector_data['plugin']['pluginFile'] ) && is_string( $connector_data['plugin']['pluginFile'] ) ) {
+		$plugin_file = $connector_data['plugin']['pluginFile'];
+	}
+
+	if ( '' === $plugin_file ) {
+		return true;
+	}
+
+	if ( ! function_exists( 'is_plugin_active' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+	}
+
+	if ( is_plugin_active( $plugin_file ) ) {
+		return true;
+	}
+
+	return is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $plugin_file );
 }

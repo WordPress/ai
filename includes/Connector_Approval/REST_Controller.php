@@ -14,6 +14,8 @@ use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
 
+use function WordPress\AI\get_ai_connectors;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -214,18 +216,13 @@ final class REST_Controller {
 	 */
 	private function describe_connectors(): array {
 		$summary = array();
-		foreach ( (array) wp_get_connectors() as $id => $data ) {
-			if ( ! is_string( $id ) || ! is_array( $data ) ) {
-				continue;
-			}
-			if ( ( $data['type'] ?? '' ) !== 'ai_provider' ) {
-				continue;
-			}
+
+		foreach ( get_ai_connectors() as $connector_id => $data ) {
 			$summary[] = array(
-				'id'   => $id,
+				'id'   => $connector_id,
 				'name' => isset( $data['name'] ) && is_string( $data['name'] ) && '' !== $data['name']
 					? $data['name']
-					: $id,
+					: $connector_id,
 			);
 		}
 

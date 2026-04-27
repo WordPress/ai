@@ -12,6 +12,8 @@ namespace WordPress\AI\Connector_Approval;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiProvider;
 
+use function WordPress\AI\get_ai_connectors;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -168,15 +170,7 @@ final class Connector_Key_Index {
 		$this->key_to_connector  = array();
 		$this->host_to_connector = array();
 
-		foreach ( (array) wp_get_connectors() as $connector_id => $data ) {
-			if ( ! is_string( $connector_id ) || ! is_array( $data ) ) {
-				continue;
-			}
-
-			if ( ( $data['type'] ?? '' ) !== 'ai_provider' ) {
-				continue;
-			}
-
+		foreach ( get_ai_connectors() as $connector_id => $data ) {
 			if ( $ai_registry->hasProvider( $connector_id ) ) {
 				$provider_class_name = $ai_registry->getProviderClassName( $connector_id );
 
