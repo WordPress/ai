@@ -133,6 +133,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'data', $schema['properties'], 'Schema should have data property' );
 		$this->assertArrayHasKey( 'filename', $schema['properties'], 'Schema should have filename property' );
+		$this->assertArrayHasKey( 'filename_context', $schema['properties'], 'Schema should have filename_context property' );
 		$this->assertArrayHasKey( 'title', $schema['properties'], 'Schema should have title property' );
 		$this->assertArrayHasKey( 'description', $schema['properties'], 'Schema should have description property' );
 		$this->assertArrayHasKey( 'alt_text', $schema['properties'], 'Schema should have alt_text property' );
@@ -147,6 +148,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 
 		// Verify optional properties.
 		$this->assertEquals( 'string', $schema['properties']['filename']['type'], 'Filename should be string type' );
+		$this->assertEquals( 'string', $schema['properties']['filename_context']['type'], 'Filename context should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['title']['type'], 'Title should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['description']['type'], 'Description should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['alt_text']['type'], 'Alt text should be string type' );
@@ -272,6 +274,63 @@ class Image_ImportTest extends WP_UnitTestCase {
 
 		// Verify the meta data was saved.
 		$this->assertEquals( 'custom_meta_value', get_post_meta( $result['image']['id'], 'custom_meta_key', true ), 'Meta data should be saved' );
+	}
+
+	/**
+	 * Test that execute_callback() uses filename context when no filename is provided.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_with_filename_context() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create a user with upload_files capability.
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$input = array(
+			'data'             => $this->valid_base64_image,
+			'filename_context' => 'WordPress SEO Guide',
+			'mime_type'        => 'image/png',
+		);
+
+		$result = $method->invoke( $this->ability, $input );
+
+		$this->assertMatchesRegularExpression(
+			'/^ai-generated-image-wordpress-seo-guide-\d+\.png$/',
+			$result['image']['filename'],
+			'Image filename should include the provided filename context.'
+		);
+	}
+
+	/**
+	 * Test that generated filenames can be customized with a filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_default_filename_is_filterable() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_default_filename' );
+		$method->setAccessible( true );
+
+		add_filter(
+			'ai_image_import_filename',
+			static function (): string {
+				return 'custom-ai-image-name';
+			}
+		);
+
+		$result = $method->invoke( $this->ability, 'WordPress SEO Guide' );
+
+		remove_all_filters( 'ai_image_import_filename' );
+
+		$this->assertSame(
+			'custom-ai-image-name',
+			$result,
+			'Filtered filename should be returned.'
+		);
 	}
 
 	/**

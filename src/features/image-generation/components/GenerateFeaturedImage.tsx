@@ -15,6 +15,31 @@ import { generateImage } from '../functions/generate-image';
 import { uploadImage } from '../functions/upload-image';
 
 /**
+ * Gets filename context for generated featured images.
+ *
+ * @param {string} title   The current post title.
+ * @param {string} content The current post content.
+ * @return {string|undefined} The preferred filename context.
+ */
+function getFilenameContext(
+	title: string,
+	content: string
+): string | undefined {
+	const trimmedTitle = title.trim();
+
+	if ( trimmedTitle ) {
+		return trimmedTitle;
+	}
+
+	const plainContent = content
+		.replace( /<[^>]+>/g, ' ' )
+		.replace( /\s+/g, ' ' )
+		.trim();
+
+	return plainContent || undefined;
+}
+
+/**
  * GenerateFeaturedImage component.
  *
  * Provides a button to generate a featured image.
@@ -25,6 +50,7 @@ export default function GenerateFeaturedImage(): React.JSX.Element {
 	const { editPost } = useDispatch( editorStore );
 
 	const content = select( editorStore ).getEditedPostContent();
+	const title = select( editorStore ).getEditedPostAttribute( 'title' );
 	const featuredImage =
 		select( editorStore ).getEditedPostAttribute( 'featured_media' );
 
@@ -51,8 +77,10 @@ export default function GenerateFeaturedImage(): React.JSX.Element {
 			const generatedImageData = await generateImage( content, {
 				onProgress: setProgressMessage,
 			} );
+			const filenameContext = getFilenameContext( title, content );
 			const importedImage = await uploadImage( generatedImageData, {
 				onProgress: setProgressMessage,
+				...( filenameContext ? { filenameContext } : {} ),
 			} );
 			editPost( {
 				featured_media: importedImage.id,

@@ -74,6 +74,7 @@ export interface AILabelProps {
 export interface ImageImportAbilityInput {
 	data: string;
 	filename?: string;
+	filename_context?: string;
 	title?: string;
 	description?: string;
 	alt_text?: string;

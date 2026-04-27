@@ -21,15 +21,20 @@ const { aiImageGenerationData } = window as any;
 /**
  * Uploads an image to the media library.
  *
- * @param {GeneratedImageData} imageData              The generated image data (from generateImage).
- * @param {Object}             options                Optional settings.
- * @param {Function}           options.onProgress     Callback invoked with progress messages.
- * @param                      options.altTextEnabled
+ * @param {GeneratedImageData} imageData               The generated image data (from generateImage).
+ * @param {Object}             options                 Optional settings.
+ * @param {Function}           options.onProgress      Callback invoked with progress messages.
+ * @param {boolean}            options.altTextEnabled  Whether to generate alt text before upload.
+ * @param {string}             options.filenameContext Context used to build a default filename.
  * @return {Promise<UploadedImage>} A promise that resolves to the uploaded image data.
  */
 export async function uploadImage(
 	{ image, prompt, prompts }: GeneratedImageData,
-	options?: { onProgress?: ImageProgressCallback; altTextEnabled?: boolean }
+	options?: {
+		onProgress?: ImageProgressCallback;
+		altTextEnabled?: boolean;
+		filenameContext?: string;
+	}
 ): Promise< UploadedImage > {
 	const onProgress = options?.onProgress;
 	const promptHistory = prompts?.length ? prompts : [ prompt ];
@@ -74,6 +79,10 @@ export async function uploadImage(
 
 	// Set our image title to be a trimmed version of the alt text.
 	params.title = trimText( params.alt_text ?? '' );
+
+	if ( options?.filenameContext?.trim() ) {
+		params.filename_context = options.filenameContext.trim();
+	}
 
 	onProgress?.( __( 'Importing image…', 'ai' ) );
 

@@ -40,6 +40,11 @@ class Import_Base64_Image extends Abstract_Ability {
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => esc_html__( 'The filename of the image.', 'ai' ),
 				),
+				'filename_context' => array(
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => esc_html__( 'Context used to generate a default filename for the image.', 'ai' ),
+				),
 				'title'       => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
@@ -139,14 +144,19 @@ class Import_Base64_Image extends Abstract_Ability {
 		$args = wp_parse_args(
 			$input,
 			array(
-				'filename'    => 'ai-generated-image-' . time(),
-				'title'       => '',
-				'description' => '',
-				'alt_text'    => '',
-				'mime_type'   => null,
-				'meta'        => array(),
+				'filename'         => '',
+				'filename_context' => '',
+				'title'            => '',
+				'description'      => '',
+				'alt_text'         => '',
+				'mime_type'        => null,
+				'meta'             => array(),
 			),
 		);
+
+		if ( empty( $args['filename'] ) ) {
+			$args['filename'] = $this->generate_default_filename( $args['filename_context'] );
+		}
 
 		// Verify the data is a base64 encoded string.
 		try {
@@ -332,6 +342,46 @@ class Import_Base64_Image extends Abstract_Ability {
 			'title'       => $attachment->post_title,
 			'description' => $attachment->post_content,
 			'alt_text'    => get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ),
+		);
+	}
+
+	/**
+	 * Generates a default filename for an imported image.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $context Context to include in the filename.
+	 * @return string The generated filename without a file extension.
+	 */
+	protected function generate_default_filename( string $context = '' ): string {
+		$timestamp = (string) time();
+		$context   = trim( sanitize_text_field( $context ) );
+		$filename  = 'ai-generated-image-' . $timestamp;
+
+		if ( '' !== $context ) {
+			$slug = sanitize_title( wp_trim_words( $context, 8, '' ) );
+
+			if ( '' !== $slug ) {
+				$filename = sprintf(
+					'ai-generated-image-%1$s-%2$s',
+					$slug,
+					$timestamp
+				);
+			}
+		}
+
+		/**
+		 * Filters the default filename used for imported AI-generated images.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $filename The generated filename without a file extension.
+		 * @param string $context  The context used to derive the filename.
+		 */
+		return (string) apply_filters(
+			'ai_image_import_filename',
+			$filename,
+			$context
 		);
 	}
 }
