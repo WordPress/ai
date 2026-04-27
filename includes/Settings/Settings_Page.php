@@ -32,7 +32,7 @@ class Settings_Page {
 	 * Legacy settings page slug.
 	 * TODO: either once [0.6.0 is less than 10% of installs](https://wordpress.org/plugins/ai/advanced/) or we're in October 2026 let's remove this section in case other plugin(s) are attempting to use the `ai` page.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var string
 	 */
@@ -109,7 +109,7 @@ class Settings_Page {
 	/**
 	 * Redirects legacy settings page slug to the current settings route.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public static function maybe_redirect_legacy_page(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for admin page detection only, no data processing.
@@ -137,7 +137,7 @@ class Settings_Page {
 	/**
 	 * Gets feature group metadata for the settings UI.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return array<string, array{
 	 *   label:string,
@@ -183,7 +183,7 @@ class Settings_Page {
 	/**
 	 * Builds feature metadata used by the settings route UI.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	* @param \WordPress\AI\Features\Registry $registry Feature registry instance.
 	* @return array{

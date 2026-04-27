@@ -1,0 +1,389 @@
+<?php
+/**
+ * Integration tests for Guidelines support in Abstract_Ability.
+ *
+ * @package WordPress\AI\Tests\Integration\Includes\Abstracts
+ */
+
+namespace WordPress\AI\Tests\Integration\Includes\Abstracts;
+
+use WP_UnitTestCase;
+use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Services\Guidelines;
+use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
+
+/**
+ * Test ability that does NOT opt into guidelines (default behavior).
+ *
+ * @since 0.8.0
+ */
+class Test_Ability_No_Guidelines extends Abstract_Ability {
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function output_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function execute_callback( $input ) {
+		return array();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function permission_callback( $input ) {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function meta(): array {
+		return array();
+	}
+}
+
+/**
+ * Test ability that opts into guidelines.
+ *
+ * @since 0.8.0
+ */
+class Test_Ability_With_Guidelines extends Test_Ability_No_Guidelines {
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * Exposes get_guidelines_for_prompt() for testing.
+	 *
+	 * @param string|null $block_name Optional block name.
+	 * @return string Formatted guidelines.
+	 */
+	public function public_get_guidelines_for_prompt( ?string $block_name = null ): string {
+		return $this->get_guidelines_for_prompt( $block_name );
+	}
+}
+
+/**
+ * Abstract_Ability guidelines integration test case.
+ *
+ * @since 0.8.0
+ */
+class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
+
+	use Guidelines_CPT_Helpers;
+
+	/**
+	 * Set up test case.
+	 *
+	 * @since 0.8.0
+	 */
+	public function setUp(): void {
+		parent::setUp();
+
+		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		Guidelines::reset_cache();
+	}
+
+	/**
+	 * Tear down test case.
+	 *
+	 * @since 0.8.0
+	 */
+	public function tearDown(): void {
+		Guidelines::reset_cache();
+		delete_option( 'wp_ai_client_provider_credentials' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		remove_all_filters( 'wpai_use_guidelines' );
+		parent::tearDown();
+	}
+
+	/**
+	 * Tests that the default guideline_categories() returns an empty array.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_default_guideline_categories_is_empty(): void {
+		$ability = new Test_Ability_No_Guidelines(
+			'ai/test-no-guidelines',
+			array(
+				'label'       => 'Test No Guidelines',
+				'description' => 'Test ability without guidelines.',
+			)
+		);
+
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'guideline_categories' );
+		$method->setAccessible( true );
+
+		$this->assertSame( array(), $method->invoke( $ability ) );
+	}
+
+	/**
+	 * Tests that get_guidelines_for_prompt() returns empty when no categories are declared.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_guidelines_for_prompt_returns_empty_when_no_categories(): void {
+		$ability = new Test_Ability_No_Guidelines(
+			'ai/test-no-guidelines',
+			array(
+				'label'       => 'Test No Guidelines',
+				'description' => 'Test ability without guidelines.',
+			)
+		);
+
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'get_guidelines_for_prompt' );
+		$method->setAccessible( true );
+
+		$this->assertSame( '', $method->invoke( $ability ) );
+	}
+
+	/**
+	 * Tests that get_system_instruction() does NOT append the guidelines paragraph
+	 * when no categories are declared.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_system_instruction_does_not_append_when_no_categories(): void {
+		$ability = new Test_Ability_No_Guidelines(
+			'ai/test-no-guidelines',
+			array(
+				'label'       => 'Test No Guidelines',
+				'description' => 'Test ability without guidelines.',
+			)
+		);
+
+		$instruction = $ability->get_system_instruction();
+
+		$this->assertStringNotContainsString(
+			'guidelines',
+			$instruction,
+			'Should not contain guidelines paragraph when no categories declared'
+		);
+	}
+
+	/**
+	 * Tests that get_system_instruction() appends actual guidelines to the system
+	 * instruction when categories are declared and guidelines exist.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_system_instruction_appends_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site' => 'Professional tone.',
+				'copy' => 'Keep it short.',
+			)
+		);
+
+		$ability = new Test_Ability_With_Guidelines(
+			'ai/test-with-guidelines',
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
+		);
+
+		// Create a temporary system instruction file.
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+		$test_file   = trailingslashit( $feature_dir ) . 'system-instruction.php';
+
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
+		file_put_contents( $test_file, "<?php\nreturn 'You are a test assistant.';" );
+
+		try {
+			$instruction = $ability->get_system_instruction();
+
+			$this->assertStringContainsString( 'You are a test assistant.', $instruction );
+			$this->assertStringContainsString( '<guidelines>', $instruction );
+			$this->assertStringContainsString( '<site-context>Professional tone.</site-context>', $instruction );
+			$this->assertStringContainsString( '<copy-guidelines>Keep it short.</copy-guidelines>', $instruction );
+			$this->assertStringContainsString( 'Do not fabricate content to satisfy guidelines.', $instruction );
+		} finally {
+			if ( file_exists( $test_file ) ) {
+				wp_delete_file( $test_file );
+			}
+		}
+	}
+
+	/**
+	 * Tests that get_system_instruction() does NOT append guidelines
+	 * when categories are declared but no guidelines exist.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_system_instruction_does_not_append_when_no_guidelines_exist(): void {
+		$ability = new Test_Ability_With_Guidelines(
+			'ai/test-with-guidelines',
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
+		);
+
+		// Create a temporary system instruction file.
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+		$test_file   = trailingslashit( $feature_dir ) . 'system-instruction.php';
+
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
+		file_put_contents( $test_file, "<?php\nreturn 'You are a test assistant.';" );
+
+		try {
+			$instruction = $ability->get_system_instruction();
+
+			$this->assertStringContainsString( 'You are a test assistant.', $instruction );
+			$this->assertStringNotContainsString( 'guidelines', $instruction );
+		} finally {
+			if ( file_exists( $test_file ) ) {
+				wp_delete_file( $test_file );
+			}
+		}
+	}
+
+	/**
+	 * Tests that get_system_instruction() does NOT append the guidelines
+	 * when the base instruction is empty (no system instruction file).
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_system_instruction_does_not_append_when_base_empty(): void {
+		$ability = new Test_Ability_With_Guidelines(
+			'ai/test-with-guidelines',
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
+		);
+
+		// No system instruction file exists for this test ability.
+		$instruction = $ability->get_system_instruction();
+
+		$this->assertSame( '', $instruction, 'Should return empty when no base instruction exists' );
+	}
+
+	/**
+	 * Tests that get_system_instruction() includes block-specific guidelines
+	 * when a block name is provided.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_system_instruction_includes_block_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
+		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+
+		$ability = new Test_Ability_With_Guidelines(
+			'ai/test-with-guidelines',
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
+		);
+
+		// Create a temporary system instruction file.
+		$reflection  = new \ReflectionClass( $ability );
+		$file_name   = $reflection->getFileName();
+		$feature_dir = dirname( $file_name );
+		$test_file   = trailingslashit( $feature_dir ) . 'system-instruction.php';
+
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
+		file_put_contents( $test_file, "<?php\nreturn 'You are a test assistant.';" );
+
+		try {
+			$instruction = $ability->get_system_instruction( null, array( 'block_name' => 'core/paragraph' ) );
+
+			$this->assertStringContainsString( '<block-guidelines>Keep paragraphs concise.</block-guidelines>', $instruction );
+		} finally {
+			if ( file_exists( $test_file ) ) {
+				wp_delete_file( $test_file );
+			}
+		}
+	}
+
+	/**
+	 * Tests that get_guidelines_for_prompt() returns formatted guidelines
+	 * when categories are declared and guidelines exist.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_get_guidelines_for_prompt_delegates_to_helper(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site' => 'Professional tone.',
+				'copy' => 'Keep it short.',
+			)
+		);
+
+		$ability = new Test_Ability_With_Guidelines(
+			'ai/test-with-guidelines',
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
+		);
+
+		$result = $ability->public_get_guidelines_for_prompt();
+
+		$this->assertStringContainsString( '<guidelines>', $result );
+		$this->assertStringContainsString( '<site-context>Professional tone.</site-context>', $result );
+		$this->assertStringContainsString( '<copy-guidelines>Keep it short.</copy-guidelines>', $result );
+	}
+
+	/**
+	 * Tests that block name is passed through for block-specific guidelines.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_block_name_passthrough_for_block_specific_guidelines(): void {
+		$this->register_guidelines_cpt();
+		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
+		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+
+		$ability = new Test_Ability_With_Guidelines(
+			'ai/test-with-guidelines',
+			array(
+				'label'       => 'Test With Guidelines',
+				'description' => 'Test ability with guidelines.',
+			)
+		);
+
+		$result = $ability->public_get_guidelines_for_prompt( 'core/paragraph' );
+
+		$this->assertStringContainsString(
+			'<block-guidelines>Keep paragraphs concise.</block-guidelines>',
+			$result
+		);
+	}
+
+}

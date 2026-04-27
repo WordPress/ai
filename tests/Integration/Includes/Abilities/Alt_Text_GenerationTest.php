@@ -99,6 +99,22 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that guideline_categories() returns site and images.
+	 *
+	 * @since 0.8.0
+	 */
+	public function test_guideline_categories_returns_site_and_images(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'guideline_categories' );
+		$method->setAccessible( true );
+
+		$this->assertSame(
+			array( 'site', 'images' ),
+			$method->invoke( $this->ability )
+		);
+	}
+
+	/**
 	 * Test that category() returns the correct category.
 	 *
 	 * @since 0.3.0

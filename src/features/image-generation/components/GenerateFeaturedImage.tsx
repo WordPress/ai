@@ -19,9 +19,9 @@ import { uploadImage } from '../functions/upload-image';
  *
  * Provides a button to generate a featured image.
  *
- * @return {JSX.Element} The GenerateFeaturedImage component.
+ * @return {React.JSX.Element} The GenerateFeaturedImage component.
  */
-export default function GenerateFeaturedImage(): JSX.Element {
+export default function GenerateFeaturedImage(): React.JSX.Element {
 	const { editPost } = useDispatch( editorStore );
 
 	const content = select( editorStore ).getEditedPostContent();

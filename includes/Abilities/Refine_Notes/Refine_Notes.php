@@ -25,14 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Receives block content and active notes, then returns the revised block content.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Refine_Notes extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return array<string, mixed> The input schema of the ability.
 	 */
@@ -71,7 +71,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return array<string, mixed> The output schema of the ability.
 	 */
@@ -85,7 +85,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
 	 * @return string|\WP_Error
@@ -136,7 +136,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param mixed $input The input arguments to the ability.
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
@@ -190,7 +190,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -201,7 +201,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * Generates refined content for a single block based on notes.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param string $block_type The block type identifier.
 	 * @param string $block_content The plain-text block content.
@@ -238,7 +238,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating refinement.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param string $prompt The prompt to generate refinement from.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
@@ -257,7 +257,7 @@ class Refine_Notes extends Abstract_Ability {
 	/**
 	 * Creates the prompt for the refinement.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param string $block_type The block type identifier.
 	 * @param string $block_content The plain-text block content.

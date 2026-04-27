@@ -29,7 +29,7 @@ export default function SummarizationPlugin() {
 	if ( isSummarizing ) {
 		buttonLabel = __( 'Generating…', 'ai' );
 	} else if ( hasSummary ) {
-		buttonLabel = __( 'Re-generate Summary', 'ai' );
+		buttonLabel = __( 'Regenerate Summary', 'ai' );
 	}
 	const buttonDescription = hasSummary
 		? __(

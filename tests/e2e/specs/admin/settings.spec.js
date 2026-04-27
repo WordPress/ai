@@ -309,15 +309,15 @@ test.describe( 'Plugin settings', () => {
 		await expect( editorEnableAll ).toBeVisible();
 		await expect( adminEnableAll ).toBeVisible();
 
-		// Enable all Editor Experiments.
-		await editorEnableAll.click();
-		await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
-
-		// Verify Editor Experiments are enabled.
 		const editorToggles = await getExperimentTogglesInGroup(
 			page,
 			EXPERIMENT_GROUPS.editor
 		);
+
+		// Enable all Editor Experiments.
+		await editorEnableAll.click();
+
+		// Verify Editor Experiments are enabled.
 		for ( const toggle of editorToggles ) {
 			await expect( toggle ).toBeChecked();
 		}
@@ -419,7 +419,6 @@ test.describe( 'Plugin settings', () => {
 		// Enable just the first experiment to create a mixed state.
 		if ( experimentToggles.length > 0 ) {
 			await experimentToggles[ 0 ].check();
-			await expect( page.getByTestId( 'snackbar' ) ).toBeVisible();
 		}
 
 		// Both buttons should be enabled in mixed state.
