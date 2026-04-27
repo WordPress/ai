@@ -202,7 +202,7 @@
 
 /* Onboarding Guide Modal Consistency Styles */
 .ai-settings-guide {
-	width: 320px !important;
+	width: var(--wpds-dimension-surface-width-sm) !important;
 	max-width: 100% !important;
 
 	.components-guide__page {
@@ -211,19 +211,19 @@
 	}
 
 	.components-guide__title {
-		margin-top: 20px !important;
-		margin-bottom: 0px !important;
-		padding-left: 24px;
-		padding-right: 24px;
-		font-size: 20px;
-		line-height: 1.4;
+		margin-top: var(--wpds-dimension-padding-lg) !important;
+		margin-bottom: 0 !important;
+		padding-left: var(--wpds-dimension-padding-xl);
+		padding-right: var(--wpds-dimension-padding-xl);
+		font-size: var(--wpds-typography-font-size-xl);
+		line-height: var(--wpds-typography-line-height-lg);
 	}
 
 	.components-guide__description {
-		margin-bottom: 20px !important;
-		padding-left: 24px;
-		padding-right: 24px;
-		font-size: 13px;
-		line-height: 1.5;
+		margin-bottom: var(--wpds-dimension-padding-lg) !important;
+		padding-left: var(--wpds-dimension-padding-xl);
+		padding-right: var(--wpds-dimension-padding-xl);
+		font-size: var(--wpds-typography-font-size-sm);
+		line-height: var(--wpds-typography-line-height-md);
 	}
 }

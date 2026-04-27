@@ -1,3 +1,6 @@
+/**
+ * Internal dependencies
+ */
 import { WpLogoDecoration } from './wp-logo-decoration';
 
 export function GuideGraphic() {

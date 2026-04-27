@@ -624,7 +624,6 @@ function VisualCardToggle( {
 function AISettingsPage() {
 	const { editedRecord, isLoading, currentUser, isResolvingUser } = useSelect(
 		( select ) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- core-data store selectors aren't fully typed for 'root'/'site' entity args.
 			const store: any = select( coreStore );
 			return {
 				editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
