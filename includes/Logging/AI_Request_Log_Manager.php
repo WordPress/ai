@@ -9,13 +9,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
-use function add_action;
-use function get_option;
-use function max;
-use function update_option;
-use function wp_next_scheduled;
-use function wp_schedule_event;
-
 defined( 'ABSPATH' ) || exit;
 
 /**
