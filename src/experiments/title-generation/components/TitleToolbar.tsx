@@ -14,7 +14,7 @@ import {
 	ToolbarGroup,
 	ToolbarButton,
 } from '@wordpress/components';
-import { dispatch, select, useDispatch } from '@wordpress/data';
+import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
@@ -78,8 +78,15 @@ interface TitleToolbarProps {
 export default function TitleToolbar( {
 	isStandalone = false,
 }: TitleToolbarProps ): React.JSX.Element | null {
-	const postId = select( editorStore ).getCurrentPostId();
-	const title = select( editorStore ).getEditedPostAttribute( 'title' );
+	const { postId, content, title } = useSelect( ( select ) => {
+		const editor = select( editorStore );
+
+		return {
+			postId: editor.getCurrentPostId(),
+			content: editor.getEditedPostContent() || '',
+			title: editor.getEditedPostAttribute( 'title' ) || '',
+		};
+	}, [] );
 
 	const { editPost } = useDispatch( editorStore );
 
@@ -94,6 +101,7 @@ export default function TitleToolbar( {
 		setGeneratedTitle( '' );
 	};
 
+	const hasContent = content.trim().length > 0;
 	const hasTitle = title.trim().length > 0;
 
 	let buttonLabel: string = __( 'Generate', 'ai' );
@@ -112,7 +120,6 @@ export default function TitleToolbar( {
 			return;
 		}
 
-		const content = select( editorStore ).getEditedPostContent();
 		setIsGenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_title_generation_error'
@@ -141,7 +148,6 @@ export default function TitleToolbar( {
 	 * Fetches a new suggestion without closing the modal.
 	 */
 	const handleRegenerate = async () => {
-		const content = select( editorStore ).getEditedPostContent();
 		setIsRegenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_title_generation_error'
@@ -172,8 +178,8 @@ export default function TitleToolbar( {
 		closeModal();
 	};
 
-	// Don't render if disabled.
-	if ( ! aiTitleGenerationData?.enabled ) {
+	// Don't render if disabled or there is no post content to generate from.
+	if ( ! aiTitleGenerationData?.enabled || ! hasContent ) {
 		return null;
 	}
 

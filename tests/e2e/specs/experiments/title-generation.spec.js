@@ -95,6 +95,52 @@ test.describe( 'Title Generation Experiment', () => {
 		await editor.saveDraft();
 	} );
 
+	test( 'Only shows Title Generation after content exists', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Title Generation Experiment.
+		await enableExperiment( admin, page, 'Title Generation' );
+
+		// Create a new empty post.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: '',
+			content: '',
+		} );
+
+		// Click into the title field.
+		await editor.canvas.locator( '.editor-post-title__input' ).click();
+
+		// Ensure the title toolbar is not visible before content exists.
+		await expect(
+			editor.canvas.locator( '.ai-title-toolbar-container button' )
+		).toHaveCount( 0 );
+
+		// Add content to the post body.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is some test content for the Title Generation Experiment.',
+			},
+		} );
+
+		// Refocus the title field.
+		await editor.canvas.locator( '.editor-post-title__input' ).click();
+
+		// Ensure the title toolbar is visible with "Generate" label.
+		await expect(
+			editor.canvas.locator( '.ai-title-toolbar-container', {
+				hasText: 'Generate',
+			} )
+		).toBeVisible();
+	} );
+
 	test( 'Can use the Title Generation Experiment with a post with a title', async ( {
 		admin,
 		editor,
