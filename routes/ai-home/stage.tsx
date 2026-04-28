@@ -58,6 +58,7 @@ interface FeatureData {
 	settingsFields: SettingsFieldData[];
 	stability: string;
 	image: string;
+	capability: string;
 }
 
 interface PageData {
@@ -139,6 +140,7 @@ function parseFeature( value: unknown ): FeatureData | null {
 		settingsFields: ( rawFields as unknown[] ).filter( isSettingsField ),
 		stability: toStringValue( feature.stability ) || 'experimental',
 		image: toStringValue( feature.image ),
+		capability: toStringValue( feature.capability ) || 'text_generation',
 	};
 }
 
@@ -222,6 +224,22 @@ function getPageData(): PageData {
 }
 
 const PAGE_DATA = getPageData();
+
+// Pre-computed at module level so the reference is stable across re-renders.
+// When this is non-empty, the featureDefinitions useMemo returns it directly,
+// preventing unnecessary downstream re-computation when unrelated parts of the
+// entity record change (e.g. saving developer settings).
+const STABLE_FEATURE_DEFINITIONS: FeatureData[] = ( () => {
+	const unique: FeatureData[] = [];
+	const seen = new Set< string >();
+	for ( const feature of PAGE_DATA.features ) {
+		if ( ! seen.has( feature.settingName ) ) {
+			seen.add( feature.settingName );
+			unique.push( feature );
+		}
+	}
+	return unique;
+} )();
 
 interface InfoTipProps {
 	content: string;
@@ -533,9 +551,9 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 }
 
 const FEATURES_BY_SETTING = new Map(
-	PAGE_DATA.features
-		.filter( ( f ) => f.settingsFields.length > 0 )
-		.map( ( f ) => [ f.settingName, f ] as const )
+	STABLE_FEATURE_DEFINITIONS.filter(
+		( f ) => f.settingsFields.length > 0
+	).map( ( f ) => [ f.settingName, f ] as const )
 );
 
 function FeatureToggleWithSettings( {
@@ -560,15 +578,20 @@ function FeatureToggleWithSettings( {
 			{ checked && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
-			{ checked && isDeveloperMode && <DeveloperSettings /> }
+			{ checked && isDeveloperMode && feature && (
+				<DeveloperSettings
+					featureId={ feature.id }
+					capability={ feature.capability }
+				/>
+			) }
 		</div>
 	);
 }
 
 const VISUAL_CARD_FEATURES = new Map(
-	PAGE_DATA.features
-		.filter( ( f ) => f.stability === 'stable' && f.image !== '' )
-		.map( ( f ) => [ f.settingName, f ] as const )
+	STABLE_FEATURE_DEFINITIONS.filter(
+		( f ) => f.stability === 'stable' && f.image !== ''
+	).map( ( f ) => [ f.settingName, f ] as const )
 );
 
 function VisualCardToggle( {
@@ -625,7 +648,12 @@ function VisualCardToggle( {
 						</span>
 					) }
 				</div>
-				{ checked && isDeveloperMode && <DeveloperSettings /> }
+				{ checked && isDeveloperMode && feature && (
+					<DeveloperSettings
+						featureId={ feature.id }
+						capability={ feature.capability }
+					/>
+				) }
 			</div>
 		</div>
 	);
@@ -654,41 +682,37 @@ function AISettingsPage() {
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
-		const sourceFeatures =
-			PAGE_DATA.features.length > 0
-				? PAGE_DATA.features
-				: Object.keys( editedRecord ?? {} )
-						.filter( ( key ) =>
-							FEATURE_SETTING_PATTERN.test( key )
-						)
-						.sort()
-						.map( ( settingName ) => {
-							const id =
-								getFeatureIdFromSettingName( settingName );
-							return {
-								id,
-								settingName,
-								label: getDefaultLabel( id ),
-								description: '',
-								category: 'other',
-								settingsFields: [],
-								stability: 'experimental',
-								image: '',
-							};
-						} );
-
-		const uniqueFeatures: FeatureData[] = [];
-		const seenSettingNames = new Set< string >();
-		for ( const feature of sourceFeatures ) {
-			if ( seenSettingNames.has( feature.settingName ) ) {
-				continue;
-			}
-
-			seenSettingNames.add( feature.settingName );
-			uniqueFeatures.push( feature );
+		// Return the stable module-level reference when page data is available so
+		// that downstream useMemos/useCallbacks don't re-run when unrelated parts
+		// of the entity record change (e.g. saving developer settings).
+		if ( STABLE_FEATURE_DEFINITIONS.length > 0 ) {
+			return STABLE_FEATURE_DEFINITIONS;
 		}
 
-		return uniqueFeatures;
+		// Fallback: derive from the entity record when page data is absent.
+		const seen = new Set< string >();
+		return Object.keys( editedRecord ?? {} )
+			.filter( ( key ) => FEATURE_SETTING_PATTERN.test( key ) )
+			.sort()
+			.reduce< FeatureData[] >( ( acc, settingName ) => {
+				if ( seen.has( settingName ) ) {
+					return acc;
+				}
+				seen.add( settingName );
+				const id = getFeatureIdFromSettingName( settingName );
+				acc.push( {
+					id,
+					settingName,
+					label: getDefaultLabel( id ),
+					description: '',
+					category: 'other',
+					settingsFields: [],
+					stability: 'experimental',
+					image: '',
+					capability: 'text_generation',
+				} );
+				return acc;
+			}, [] );
 	}, [ editedRecord ] );
 
 	const featureGroups = useMemo< FeatureGroupData[] >(
@@ -817,7 +841,15 @@ function AISettingsPage() {
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
 			} else {
-				baseField.Edit = FeatureToggle;
+				const featureId = feature.id;
+				const featureCapability = feature.capability;
+				baseField.Edit = ( props ) => (
+					<FeatureToggle
+						{ ...props }
+						featureId={ featureId }
+						capability={ featureCapability }
+					/>
+				);
 			}
 
 			return baseField;

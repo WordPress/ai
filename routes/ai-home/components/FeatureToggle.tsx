@@ -12,22 +12,38 @@ import { DeveloperSettings } from './DeveloperSettings';
 
 type AISettings = Record< string, boolean >;
 
+type FeatureToggleProps = DataFormControlProps< AISettings > & {
+	featureId?: string;
+	capability?: string;
+};
+
+const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
+
 /**
  * FeatureToggle component.
  *
- * @param {DataFormControlProps< AISettings >} props          The component props.
- * @param {DataFormControlProps< AISettings >} props.field    The field to display.
- * @param {AISettings}                         props.data     The data to display.
- * @param {Function}                           props.onChange The function to call when the value changes.
+ * @param {FeatureToggleProps} props            The component props.
+ * @param {FeatureToggleProps} props.field      The field to display.
+ * @param {AISettings}         props.data       The data to display.
+ * @param {Function}           props.onChange   The function to call when the value changes.
+ * @param {string}             props.featureId  The feature ID.
+ * @param {string}             props.capability The AI capability type for model filtering.
  * @return {React.JSX.Element} The component.
  */
 export function FeatureToggle( {
 	field,
 	data,
 	onChange,
-}: DataFormControlProps< AISettings > ): React.JSX.Element {
+	featureId,
+	capability = 'text_generation',
+}: FeatureToggleProps ): React.JSX.Element {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+
+	const resolvedFeatureId =
+		featureId ??
+		FEATURE_SETTING_PATTERN.exec( field.id )?.[ 1 ] ??
+		field.id;
 
 	return (
 		<>
@@ -39,7 +55,12 @@ export function FeatureToggle( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
-			{ checked && isDeveloperMode && <DeveloperSettings /> }
+			{ checked && isDeveloperMode && (
+				<DeveloperSettings
+					featureId={ resolvedFeatureId }
+					capability={ capability }
+				/>
+			) }
 		</>
 	);
 }
