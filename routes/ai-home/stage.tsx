@@ -23,8 +23,8 @@ import { Icon, Popover, VisuallyHidden } from '@wordpress/ui';
  * Internal dependencies
  */
 import AIIcon from './ai-icon';
+import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
-import { ModelSelector } from './components/ModelSelector';
 import {
 	DeveloperModeContext,
 	useDeveloperMode,
@@ -560,7 +560,7 @@ function FeatureToggleWithSettings( {
 			{ checked && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
-			{ checked && isDeveloperMode && <ModelSelector /> }
+			{ checked && isDeveloperMode && <DeveloperSettings /> }
 		</div>
 	);
 }
@@ -625,7 +625,7 @@ function VisualCardToggle( {
 						</span>
 					) }
 				</div>
-				{ checked && isDeveloperMode && <ModelSelector /> }
+				{ checked && isDeveloperMode && <DeveloperSettings /> }
 			</div>
 		</div>
 	);

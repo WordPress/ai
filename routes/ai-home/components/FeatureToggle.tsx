@@ -8,7 +8,7 @@ import type { DataFormControlProps } from '@wordpress/dataviews';
  * Internal dependencies
  */
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
-import { ModelSelector } from './ModelSelector';
+import { DeveloperSettings } from './DeveloperSettings';
 
 type AISettings = Record< string, boolean >;
 
@@ -39,7 +39,7 @@ export function FeatureToggle( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
-			{ checked && isDeveloperMode && <ModelSelector /> }
+			{ checked && isDeveloperMode && <DeveloperSettings /> }
 		</>
 	);
 }
