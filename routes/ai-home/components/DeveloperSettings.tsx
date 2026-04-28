@@ -2,8 +2,10 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
-import { Button, SelectControl, Spinner } from '@wordpress/components';
-import { useEffect, useState } from '@wordpress/element';
+import { Button, Spinner } from '@wordpress/components';
+import { DataForm } from '@wordpress/dataviews';
+import type { Field, Form } from '@wordpress/dataviews';
+import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -25,6 +27,11 @@ interface ProviderData {
 interface DeveloperSettingsProps {
 	featureId: string;
 	capability: string;
+}
+
+interface DeveloperSelection {
+	provider: string;
+	model: string;
 }
 
 /**
@@ -69,70 +76,83 @@ export function DeveloperSettings( {
 			} );
 	}, [ capability ] );
 
-	const selectedProvider = providers.find(
-		( p ) => p.id === settings.provider
+	const getModelElements = useCallback( () => {
+		const provider = providers.find( ( p ) => p.id === settings.provider );
+		if ( ! provider ) {
+			return Promise.resolve( [] );
+		}
+		return Promise.resolve( [
+			{ value: '', label: __( '— Default —', 'ai' ) },
+			...provider.models.map( ( m ) => ( {
+				value: m.id,
+				label: m.name,
+			} ) ),
+		] );
+	}, [ settings.provider, providers ] );
+
+	const fields = useMemo< Field< DeveloperSelection >[] >(
+		() => [
+			{
+				id: 'provider',
+				type: 'text' as const,
+				label: __( 'Provider', 'ai' ),
+				elements: [
+					{ value: '', label: __( '— Default —', 'ai' ) },
+					...providers.map( ( p ) => ( {
+						value: p.id,
+						label: p.name,
+					} ) ),
+				],
+			},
+			{
+				id: 'model',
+				type: 'text' as const,
+				label: __( 'Model', 'ai' ),
+				isVisible: ( data: DeveloperSelection ) => !! data.provider,
+				getElements: getModelElements,
+			},
+		],
+		[ providers, getModelElements ]
 	);
 
-	const providerOptions = [
-		{ label: __( '— Default —', 'ai' ), value: '' },
-		...providers.map( ( p ) => ( { label: p.name, value: p.id } ) ),
-	];
+	const form = useMemo< Form >(
+		() => ( { fields: [ 'provider', 'model' ] } ),
+		[]
+	);
 
-	const modelOptions = selectedProvider
-		? [
-				{ label: __( '— Default —', 'ai' ), value: '' },
-				...selectedProvider.models.map( ( m ) => ( {
-					label: m.name,
-					value: m.id,
-				} ) ),
-		  ]
-		: null;
+	const handleChange = useCallback(
+		( changes: Partial< DeveloperSelection > ) => {
+			if ( 'provider' in changes ) {
+				void update( { provider: changes.provider ?? '', model: '' } );
+			} else {
+				void update( { ...settings, ...changes } );
+			}
+		},
+		[ update, settings ]
+	);
 
 	const hasSavedSelection = settings.provider !== '' || settings.model !== '';
 
-	const handleProviderChange = ( value: string ) => {
-		void update( { provider: value, model: '' } );
-	};
-
-	const handleModelChange = ( value: string ) => {
-		void update( { provider: settings.provider, model: value } );
-	};
-
-	const handleClear = () => {
-		void clear();
-	};
-
 	return (
-		<div className="ai-developer-mode-field">
+		<div className="ai-developer-mode-fields ai-feature-settings-form">
 			{ isLoading && <Spinner /> }
 			{ ! isLoading && fetchError && (
 				<p className="ai-developer-mode-field__error">{ fetchError }</p>
 			) }
 			{ ! isLoading && ! fetchError && (
 				<>
-					<SelectControl
-						__next40pxDefaultSize
-						label={ __( 'Provider', 'ai' ) }
-						options={ providerOptions }
-						value={ settings.provider }
-						onChange={ handleProviderChange }
-						disabled={ isSaving }
+					<DataForm< DeveloperSelection >
+						data={ settings }
+						fields={ fields }
+						form={ form }
+						onChange={ handleChange }
 					/>
-					{ modelOptions !== null && (
-						<SelectControl
-							__next40pxDefaultSize
-							label={ __( 'Model', 'ai' ) }
-							options={ modelOptions }
-							value={ settings.model }
-							onChange={ handleModelChange }
-							disabled={ isSaving }
-						/>
-					) }
 					{ hasSavedSelection && (
 						<Button
-							variant="tertiary"
-							size="compact"
-							onClick={ handleClear }
+							variant="link"
+							onClick={ () => {
+								void clear();
+							} }
 							disabled={ isSaving }
 						>
 							{ __( 'Reset to default', 'ai' ) }

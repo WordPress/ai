@@ -127,6 +127,11 @@
 	flex-direction: column;
 	gap: 8px;
 	flex: 1;
+
+	.ai-developer-mode-fields {
+		padding-left: 0;
+		max-width: 100%;
+	}
 }
 
 .ai-showcase-card__title {
@@ -164,13 +169,10 @@
 	opacity: 0.6;
 }
 
-.ai-developer-mode-field {
-	margin-top: 4px;
-	padding-left: 40px;
-	max-width: 480px;
+.ai-developer-mode-fields {
+	margin-top: var(--wpds-dimension-gap-lg, 16px);
 
-	.components-base-control__label,
-	.components-input-control__label {
-		text-transform: none !important;
+	button {
+		margin-top: var(--wpds-dimension-gap-lg, 12px) !important;
 	}
 }
