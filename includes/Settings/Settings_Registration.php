@@ -105,6 +105,31 @@ class Settings_Registration {
 				)
 			);
 
+			// Register the developer settings option for every feature.
+			register_setting(
+				self::OPTION_GROUP,
+				"wpai_feature_{$feature_id}_field_developer",
+				array(
+					'type'         => 'object',
+					'default'      => array(),
+					'show_in_rest' => array(
+						'schema' => array(
+							'type'       => 'object',
+							'properties' => array(
+								'provider' => array(
+									'type'    => 'string',
+									'default' => '',
+								),
+								'model'    => array(
+									'type'    => 'string',
+									'default' => '',
+								),
+							),
+						),
+					),
+				)
+			);
+
 			// Allow experiments to register their own custom settings.
 			if ( ! method_exists( $feature, 'register_settings' ) ) {
 				continue;
