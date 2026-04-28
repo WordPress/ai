@@ -58,6 +58,22 @@ class C2pa_Monitor extends Abstract_Feature {
 	public const MAX_SCAN_BYTES = 67108864; // 64 MB.
 
 	/**
+	 * JSON-LD context URL embedded in every stored postmeta record.
+	 *
+	 * Interim URL resolving via raw.githubusercontent.com. Migrate to
+	 * https://w3id.org/openverifiable/v1 once the w3id.org PR is merged
+	 * and the openverifiable/contexts repo is live (Phase 3 of the OVE
+	 * vocabulary hosting plan). Bump SCHEMA_VERSION when this changes.
+	 *
+	 * @todo Migrate to https://w3id.org/openverifiable/v1 (Phase 3).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @var string
+	 */
+	public const CONTEXT_URL = 'https://raw.githubusercontent.com/decentralized-identity/credential-schemas/main/community-schemas/WordPress/schemas/wpai-monitor-record/context.json';
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -201,6 +217,7 @@ class C2pa_Monitor extends Abstract_Feature {
 				Record::store(
 					$attachment_id,
 					array(
+						'@context'       => array( 'https://schema.org/', self::CONTEXT_URL ),
 						'schema_version' => self::SCHEMA_VERSION,
 						'captured_at'    => gmdate( 'Y-m-d\TH:i:s\Z' ),
 						'duration_ms'    => $duration_ms,

@@ -23,6 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @see https://raw.githubusercontent.com/decentralized-identity/credential-schemas/main/community-schemas/WordPress/schemas/wpai-monitor-record/schema.json
  *     Subject-only JSON Schema (DIF credential-schemas; wrap in a VC at issuance if needed).
+ * @see C2pa_Monitor::CONTEXT_URL for the JSON-LD context embedded in every stored record.
  *
  * @since 0.7.0
  */
@@ -33,6 +34,7 @@ class Record {
 	 * @var string[]
 	 */
 	private const REQUIRED_KEYS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- List of top-level postmeta record keys, same pattern as Experiments::EXPERIMENT_CLASSES.
+		'@context',
 		'schema_version',
 		'captured_at',
 		'duration_ms',
@@ -125,6 +127,8 @@ class Record {
 	 */
 	private static function default_for( string $key ) {
 		switch ( $key ) {
+			case '@context':
+				return array( 'https://schema.org/', C2pa_Monitor::CONTEXT_URL );
 			case 'schema_version':
 				return C2pa_Monitor::SCHEMA_VERSION;
 			case 'captured_at':

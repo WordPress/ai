@@ -82,6 +82,11 @@ class RecordTest extends WP_UnitTestCase {
 		$this->assertSame( $record['traditional'], $loaded['traditional'] );
 		$this->assertSame( $record['c2pa'], $loaded['c2pa'] );
 		$this->assertSame( $record['errors'], $loaded['errors'] );
+
+		$this->assertArrayHasKey( '@context', $loaded, 'Record must embed @context for JSON-LD linkability.' );
+		$this->assertIsArray( $loaded['@context'] );
+		$this->assertContains( 'https://schema.org/', $loaded['@context'] );
+		$this->assertContains( C2pa_Monitor::CONTEXT_URL, $loaded['@context'] );
 	}
 
 	/**
@@ -117,6 +122,10 @@ class RecordTest extends WP_UnitTestCase {
 		$this->assertNull( $loaded['c2pa']['format'] );
 
 		$this->assertSame( array(), $loaded['errors'] );
+
+		$this->assertArrayHasKey( '@context', $loaded, 'Default-filled record must embed @context.' );
+		$this->assertIsArray( $loaded['@context'] );
+		$this->assertContains( C2pa_Monitor::CONTEXT_URL, $loaded['@context'] );
 	}
 
 	/**

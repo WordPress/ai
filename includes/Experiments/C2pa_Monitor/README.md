@@ -45,6 +45,10 @@ extending
 
 ```jsonc
 {
+	"@context": [
+		"https://schema.org/",
+		"https://raw.githubusercontent.com/decentralized-identity/credential-schemas/main/community-schemas/WordPress/schemas/wpai-monitor-record/context.json"
+	],
 	"schema_version": 1,
 	"captured_at": "2026-04-22T19:30:00Z",
 	"duration_ms": 47,

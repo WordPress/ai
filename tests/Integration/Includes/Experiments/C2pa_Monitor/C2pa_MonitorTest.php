@@ -113,6 +113,11 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 		$absolute = trailingslashit( (string) $uploads['basedir'] ) . $record['c2pa']['sidecar_path_relative'];
 		$this->assertFileExists( $absolute );
 		$this->assertSame( $payload, file_get_contents( $absolute ) );
+
+		$this->assertArrayHasKey( '@context', $record, 'Stored record must embed @context for JSON-LD linkability.' );
+		$this->assertIsArray( $record['@context'] );
+		$this->assertContains( 'https://schema.org/', $record['@context'] );
+		$this->assertContains( C2pa_Monitor::CONTEXT_URL, $record['@context'] );
 	}
 
 	/**
