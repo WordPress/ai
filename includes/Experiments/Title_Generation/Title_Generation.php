@@ -93,6 +93,7 @@ class Title_Generation extends Abstract_Feature {
 			return;
 		}
 
+		wp_enqueue_script_module( '@wordpress/core-abilities' );
 		Asset_Loader::enqueue_script( 'title_generation', 'experiments/title-generation' );
 		Asset_Loader::enqueue_style( 'title_generation', 'experiments/title-generation' );
 		Asset_Loader::localize_script(

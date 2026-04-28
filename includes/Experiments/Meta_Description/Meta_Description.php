@@ -140,6 +140,7 @@ class Meta_Description extends Abstract_Feature {
 
 		$seo_plugin = SEO_Integration::detect_active_plugin();
 
+		wp_enqueue_script_module( '@wordpress/core-abilities' );
 		Asset_Loader::enqueue_script( 'meta_description', 'experiments/meta-description' );
 		Asset_Loader::enqueue_style( 'meta_description', 'experiments/meta-description' );
 		Asset_Loader::localize_script(
