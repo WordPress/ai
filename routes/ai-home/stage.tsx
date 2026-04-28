@@ -23,7 +23,13 @@ import { Icon, Popover, VisuallyHidden } from '@wordpress/ui';
  * Internal dependencies
  */
 import AIIcon from './ai-icon';
-import { DeveloperModeContext, useDeveloperMode } from './use-developer-mode';
+import { FeatureToggle } from './components/FeatureToggle';
+import { ModelSelector } from './components/ModelSelector';
+import {
+	DeveloperModeContext,
+	useDeveloperMode,
+	useDeveloperModeContext,
+} from './hooks/use-developer-mode';
 import './style.scss';
 
 type AISettings = Record< string, boolean >;
@@ -539,6 +545,7 @@ function FeatureToggleWithSettings( {
 }: DataFormControlProps< AISettings > ) {
 	const feature = FEATURES_BY_SETTING.get( field.id );
 	const checked = !! field.getValue( { item: data } );
+	const isDeveloperMode = useDeveloperModeContext();
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
@@ -553,6 +560,7 @@ function FeatureToggleWithSettings( {
 			{ checked && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
+			{ checked && isDeveloperMode && <ModelSelector /> }
 		</div>
 	);
 }
@@ -571,6 +579,7 @@ function VisualCardToggle( {
 	const feature = VISUAL_CARD_FEATURES.get( field.id );
 	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
 	const checked = !! field.getValue( { item: data } );
+	const isDeveloperMode = useDeveloperModeContext();
 
 	return (
 		<div
@@ -616,6 +625,7 @@ function VisualCardToggle( {
 						</span>
 					) }
 				</div>
+				{ checked && isDeveloperMode && <ModelSelector /> }
 			</div>
 		</div>
 	);
@@ -807,7 +817,7 @@ function AISettingsPage() {
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
 			} else {
-				baseField.Edit = 'toggle' as const;
+				baseField.Edit = FeatureToggle;
 			}
 
 			return baseField;

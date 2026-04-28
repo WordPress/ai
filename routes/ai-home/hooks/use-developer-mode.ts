@@ -22,6 +22,11 @@ interface UseDeveloperModeReturn {
 	toggleDeveloperMode: () => void;
 }
 
+/**
+ * useDeveloperMode hook.
+ *
+ * @return {UseDeveloperModeReturn} The developer mode return object.
+ */
 export function useDeveloperMode(): UseDeveloperModeReturn {
 	const [ isDeveloperMode, setIsDeveloperMode ] = useState< boolean >( () => {
 		try {
