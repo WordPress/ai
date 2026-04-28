@@ -49,6 +49,13 @@ class Image_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
+	public function get_capability(): string {
+		return 'image_generation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	public function register(): void {
 		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );

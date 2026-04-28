@@ -56,6 +56,13 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
+	public function get_capability(): string {
+		return 'vision';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
