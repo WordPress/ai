@@ -313,7 +313,6 @@ function buildToggleMessage(
 function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	return (
 		<ToggleControl
-			__nextHasNoMarginBottom
 			label={ field.label }
 			help={ field.description }
 			checked={ !! field.getValue( { item: data } ) }
@@ -543,7 +542,6 @@ function FeatureToggleWithSettings( {
 	return (
 		<div className="ai-feature-toggle-with-settings">
 			<ToggleControl
-				__nextHasNoMarginBottom
 				label={ field.label }
 				help={ field.description }
 				checked={ checked }
@@ -923,18 +921,19 @@ function AISettingsPage() {
 					<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
 						{ __( 'Contribute', 'ai' ) }
 					</ExternalLink>
-					<ToggleControl
-						__nextHasNoMarginBottom
-						label={ __( 'Enable AI', 'ai' ) }
-						checked={ globalEnabled }
-						onChange={ ( checked ) => {
-							void handleChange( {
-								[ GLOBAL_FIELD_ID ]: checked,
-							} );
-						} }
-						disabled={ isLoading }
-					/>
-					<InfoTip content={ globalToggleDescription } />
+					<div className="ai-settings-page__global-toggle">
+						<ToggleControl
+							label={ __( 'Enable AI', 'ai' ) }
+							checked={ globalEnabled }
+							onChange={ ( checked ) => {
+								void handleChange( {
+									[ GLOBAL_FIELD_ID ]: checked,
+								} );
+							} }
+							disabled={ isLoading }
+						/>
+						<InfoTip content={ globalToggleDescription } />
+					</div>
 				</div>
 			}
 		>
