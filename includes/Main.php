@@ -18,7 +18,6 @@ use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
-use WordPress\AI\REST\Models_Controller;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -117,9 +116,6 @@ final class Main {
 
 			// Initialize settings registration.
 			( new Settings_Registration( $registry ) )->init();
-
-			// Initialize the provider/model discovery REST endpoint.
-			( new Models_Controller() )->init();
 
 			// Register admin settings page menu item and dashboard widgets.
 			if ( is_admin() ) {

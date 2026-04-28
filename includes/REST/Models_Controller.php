@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since x.x.x
  */
-class Models_Controller {
+final class Models_Controller {
 
 	/**
 	 * The REST API namespace.
