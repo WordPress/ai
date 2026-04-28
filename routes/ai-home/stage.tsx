@@ -15,7 +15,7 @@ import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
 import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import { info as infoIcon } from '@wordpress/icons';
+import { cog as cogIcon, info as infoIcon } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 import { Icon, Popover, VisuallyHidden } from '@wordpress/ui';
 
@@ -23,6 +23,7 @@ import { Icon, Popover, VisuallyHidden } from '@wordpress/ui';
  * Internal dependencies
  */
 import AIIcon from './ai-icon';
+import { DeveloperModeContext, useDeveloperMode } from './use-developer-mode';
 import './style.scss';
 
 type AISettings = Record< string, boolean >;
@@ -640,6 +641,7 @@ function AISettingsPage() {
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
 	const registry = useRegistry();
+	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		const sourceFeatures =
@@ -902,75 +904,88 @@ function AISettingsPage() {
 	}, [ featureDefinitions, featureGroups ] );
 
 	return (
-		<Page
-			title={
-				<>
-					<AIIcon />
-					{ __( 'AI', 'ai' ) }
-				</>
-			}
-			subTitle={ __(
-				'Configure AI features and experiments for your WordPress site.',
-				'ai'
-			) }
-			actions={
-				<div className="ai-settings-page__actions">
-					<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
-						{ __( 'Docs', 'ai' ) }
-					</ExternalLink>
-					<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
-						{ __( 'Contribute', 'ai' ) }
-					</ExternalLink>
-					<div className="ai-settings-page__global-toggle">
-						<ToggleControl
-							label={ __( 'Enable AI', 'ai' ) }
-							checked={ globalEnabled }
-							onChange={ ( checked ) => {
-								void handleChange( {
-									[ GLOBAL_FIELD_ID ]: checked,
-								} );
-							} }
-							disabled={ isLoading }
+		<DeveloperModeContext.Provider value={ isDeveloperMode }>
+			<Page
+				title={
+					<>
+						<AIIcon />
+						{ __( 'AI', 'ai' ) }
+					</>
+				}
+				subTitle={ __(
+					'Configure AI features and experiments for your WordPress site.',
+					'ai'
+				) }
+				actions={
+					<div className="ai-settings-page__actions">
+						<div className="ai-settings-page__global-toggle">
+							<ToggleControl
+								label={ __( 'Enable AI', 'ai' ) }
+								checked={ globalEnabled }
+								onChange={ ( checked ) => {
+									void handleChange( {
+										[ GLOBAL_FIELD_ID ]: checked,
+									} );
+								} }
+								disabled={ isLoading }
+							/>
+							<InfoTip content={ globalToggleDescription } />
+						</div>
+						<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
+							{ __( 'Docs', 'ai' ) }
+						</ExternalLink>
+						<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
+							{ __( 'Contribute', 'ai' ) }
+						</ExternalLink>
+						<Button
+							icon={ cogIcon }
+							label={ __( 'Developer mode', 'ai' ) }
+							showTooltip
+							aria-pressed={ isDeveloperMode }
+							onClick={ toggleDeveloperMode }
+							className={ `ai-settings-page__developer-mode-toggle${
+								isDeveloperMode ? ' is-active' : ''
+							}` }
+							size="compact"
 						/>
-						<InfoTip content={ globalToggleDescription } />
 					</div>
+				}
+			>
+				<div className="ai-settings-page">
+					{ ! PAGE_DATA.hasValidCredentials && (
+						<Notice status="error" isDismissible={ false }>
+							{ ! PAGE_DATA.hasCredentials
+								? __(
+										'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
+										'ai'
+								  )
+								: __(
+										'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+										'ai'
+								  ) }{ ' ' }
+							{ PAGE_DATA.connectorsUrl && (
+								<Button
+									variant="link"
+									href={ PAGE_DATA.connectorsUrl }
+								>
+									{ __( 'Manage Connectors', 'ai' ) }
+								</Button>
+							) }
+						</Notice>
+					) }
+					{ isLoading ? (
+						<Spinner />
+					) : (
+						<DataForm< AISettings >
+							data={ data }
+							fields={ fields }
+							form={ form }
+							onChange={ handleChange }
+						/>
+					) }
 				</div>
-			}
-		>
-			<div className="ai-settings-page">
-				{ ! PAGE_DATA.hasValidCredentials && (
-					<Notice status="error" isDismissible={ false }>
-						{ ! PAGE_DATA.hasCredentials
-							? __(
-									'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
-									'ai'
-							  )
-							: __(
-									'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
-									'ai'
-							  ) }{ ' ' }
-						{ PAGE_DATA.connectorsUrl && (
-							<Button
-								variant="link"
-								href={ PAGE_DATA.connectorsUrl }
-							>
-								{ __( 'Manage Connectors', 'ai' ) }
-							</Button>
-						) }
-					</Notice>
-				) }
-				{ isLoading ? (
-					<Spinner />
-				) : (
-					<DataForm< AISettings >
-						data={ data }
-						fields={ fields }
-						form={ form }
-						onChange={ handleChange }
-					/>
-				) }
-			</div>
-		</Page>
+			</Page>
+		</DeveloperModeContext.Provider>
 	);
 }
 export const stage = AISettingsPage;
