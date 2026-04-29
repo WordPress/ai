@@ -1,7 +1,7 @@
 /**
  * Internal dependencies
  */
-import './style.scss';
+import './index.scss';
 
 /**
  * WordPress dependencies

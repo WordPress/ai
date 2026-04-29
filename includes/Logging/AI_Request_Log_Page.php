@@ -84,7 +84,7 @@ class AI_Request_Log_Page {
 		}
 
 		Asset_Loader::enqueue_script( 'ai_request_logs', 'admin/ai-request-logs' );
-		Asset_Loader::enqueue_style( 'ai_request_logs', 'admin/style-ai-request-logs' );
+		Asset_Loader::enqueue_style( 'ai_request_logs', 'admin/ai-request-logs' );
 
 		Asset_Loader::localize_script(
 			'ai_request_logs',
