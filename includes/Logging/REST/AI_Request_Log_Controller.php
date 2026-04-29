@@ -129,7 +129,9 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 						'id' => array(
 							'type'              => 'string',
 							'required'          => true,
-							'validate_callback' => array( $this, 'validate_uuid' ),
+							'validate_callback' => static function ( $value ): bool {
+								return wp_is_uuid( $value );
+							},
 						),
 					),
 				),
@@ -142,16 +144,6 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 */
 	public function permissions_check(): bool {
 		return current_user_can( 'manage_options' );
-	}
-
-	/**
-	 * Validates a UUID format.
-	 *
-	 * @param string $value The value to validate.
-	 * @return bool Whether the value is a valid UUID.
-	 */
-	public function validate_uuid( string $value ): bool {
-		return (bool) preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $value );
 	}
 
 	/**

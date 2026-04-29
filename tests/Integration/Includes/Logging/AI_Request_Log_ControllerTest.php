@@ -110,24 +110,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that validate_uuid accepts a valid UUID.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_validate_uuid_accepts_valid(): void {
-		$this->assertTrue( $this->controller->validate_uuid( 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' ) );
-	}
-
-	/**
-	 * Tests that validate_uuid rejects an invalid string.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_validate_uuid_rejects_invalid(): void {
-		$this->assertFalse( $this->controller->validate_uuid( 'not-a-uuid' ) );
-	}
-
-	/**
 	 * Tests that get_logs returns items with pagination headers.
 	 *
 	 * @since x.x.x
