@@ -70,8 +70,9 @@ class AI_Request_Log_Page {
 	 * Enqueues the React bundle and passes localized data.
 	 */
 	public function enqueue_assets(): void {
-		// Enqueue bundled DataViews styles — copied into build/ by the build step.
-		// Falls back to the WP-registered handle if available in a future WP release.
+		// WP core doesn't register a `wp-dataviews` style handle yet, so ship the
+		// bundled CSS. If a future WP version registers the handle, fall through
+		// and let the registered style win.
 		$dataviews_css = WPAI_PLUGIN_DIR . 'build/admin/dataviews.css';
 		if ( ! wp_styles()->query( 'wp-dataviews' ) && file_exists( $dataviews_css ) ) {
 			wp_enqueue_style(
