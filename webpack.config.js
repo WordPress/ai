@@ -105,9 +105,8 @@ module.exports = {
 	plugins: [
 		...defaultConfig.plugins,
 
-		// Ship the DataViews stylesheet alongside the build so the request-logs
-		// page can enqueue it. WP core does not register a `wp-dataviews` style
-		// handle yet — once it does, the page falls through to the registered handle.
+		// Copy DataViews CSS into build/ so the plugin can enqueue it
+		// on WP versions where wp-dataviews is not a registered style.
 		new CopyWebpackPlugin( {
 			patterns: [
 				{

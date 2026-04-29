@@ -29,7 +29,7 @@ This approach uses the SDK's public API rather than reflection or internal hacks
 The logging system exposes several filter hooks for extensibility:
 
 ### `wpai_request_log_providers`
-Filters the provider detection patterns. Allows adding custom providers or modifying detection patterns.
+Filters the provider detection patterns. The default map is derived from the connectors registry — every `ai_provider` connector contributes a host-substring pattern equal to its slug (with `google` matching `googleapis` since its API runs on a different domain). This filter is the extension point for non-connector providers or for connectors whose slug doesn't appear in their API host (for example, a connector whose API is served from an unrelated domain).
 
 ```php
 add_filter( 'wpai_request_log_providers', function( $patterns ) {
@@ -88,7 +88,7 @@ add_filter( 'wpai_request_log_kind', function( $kind, $provider, $path, $payload
 1. Enable Experiments globally, toggle **AI Request Logging**, and ensure valid AI credentials exist (the experiment won't enable otherwise).
 2. Trigger an AI-powered feature (e.g., Type Ahead or Title Generation) so the system issues at least one completion request.
 3. Navigate to `Tools → AI Request Logs`. Confirm the chart and table populate, that the "Logging enabled" toggle reflects the current setting, and that `*:models` discovery calls only appear after you explicitly include them in the operations filter.
-4. Change the retention days value, save, and verify the option persists (reload the page or inspect `wpai_request_logs_retention_days`).
+4. Change the retention days value, save, and verify the option persists (reload the page or inspect `wpai_feature_ai-request-logging_field_retention_days`).
 5. Click "Purge logs", confirm the success notice, and check the table empties.
 6. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
 

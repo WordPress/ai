@@ -115,10 +115,10 @@ class AI_Request_Logging extends Abstract_Feature {
 	}
 
 	/**
-	 * Clamps a retention value to the allowed range.
+	 * Sanitize retention day values from the settings UI.
 	 *
 	 * @param mixed $value Raw value.
-	 * @return int
+	 * @return int Sanitized value within 1-365.
 	 */
 	public function sanitize_retention_days( $value ): int {
 		return max( self::MIN_RETENTION_DAYS, min( self::MAX_RETENTION_DAYS, (int) $value ) );
