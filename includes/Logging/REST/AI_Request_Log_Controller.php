@@ -362,7 +362,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			'orderby'          => array(
 				'description' => __( 'Sort collection by attribute.', 'ai' ),
 				'type'        => 'string',
-				'enum'        => array( 'timestamp', 'type', 'operation', 'duration_ms', 'tokens_total', 'cost_estimate', 'status' ),
+				'enum'        => array( 'timestamp', 'type', 'operation', 'duration_ms', 'tokens_total', 'status' ),
 				'default'     => 'timestamp',
 			),
 			'order'            => array(

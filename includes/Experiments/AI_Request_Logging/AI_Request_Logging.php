@@ -20,7 +20,7 @@ use WordPress\AI\Settings\Settings_Registration;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Provides AI request logging for observability and cost tracking.
+ * Provides AI request logging for observability and debugging.
  *
  * @since x.x.x
  */
@@ -44,7 +44,7 @@ class AI_Request_Logging extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'AI Request Logging', 'ai' ),
-			'description' => __( 'Logs AI requests for observability, debugging, and cost tracking. View detailed logs under Tools.', 'ai' ),
+			'description' => __( 'Logs AI requests for observability and debugging. View detailed logs under Tools.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}

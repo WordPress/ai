@@ -48,23 +48,14 @@ class AI_Request_Log_Repository {
 	private AI_Request_Log_Schema $schema;
 
 	/**
-	 * The cost calculator instance.
-	 *
-	 * @var \WordPress\AI\Logging\AI_Request_Cost_Calculator
-	 */
-	private AI_Request_Cost_Calculator $cost_calculator;
-
-	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Logging\AI_Request_Log_Schema      $schema          The schema manager.
-	 * @param \WordPress\AI\Logging\AI_Request_Cost_Calculator $cost_calculator The cost calculator.
+	 * @param \WordPress\AI\Logging\AI_Request_Log_Schema $schema The schema manager.
 	 */
-	public function __construct( AI_Request_Log_Schema $schema, AI_Request_Cost_Calculator $cost_calculator ) {
-		$this->schema          = $schema;
-		$this->cost_calculator = $cost_calculator;
+	public function __construct( AI_Request_Log_Schema $schema ) {
+		$this->schema = $schema;
 	}
 
 	/**
@@ -93,13 +84,6 @@ class AI_Request_Log_Repository {
 		$log_id       = wp_generate_uuid4();
 		$tokens_total = ( $data['tokens_input'] ?? 0 ) + ( $data['tokens_output'] ?? 0 );
 
-		$cost_estimate = $this->cost_calculator->estimate(
-			$data['provider'] ?? '',
-			$data['model'] ?? '',
-			$data['tokens_input'] ?? 0,
-			$data['tokens_output'] ?? 0
-		);
-
 		$context          = $data['context'] ?? array();
 		$request_preview  = $context['input_preview'] ?? null;
 		$response_preview = $context['output_preview'] ?? null;
@@ -115,7 +99,6 @@ class AI_Request_Log_Repository {
 			'tokens_input'     => $data['tokens_input'] ?? null,
 			'tokens_output'    => $data['tokens_output'] ?? null,
 			'tokens_total'     => $tokens_total > 0 ? $tokens_total : null,
-			'cost_estimate'    => $cost_estimate,
 			'status'           => $data['status'],
 			'error_message'    => $data['error_message'] ?? null,
 			'user_id'          => $data['user_id'] ?? get_current_user_id(),
@@ -127,7 +110,7 @@ class AI_Request_Log_Repository {
 		$result = $wpdb->insert(
 			$this->schema->get_table_name(),
 			$insert_data,
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%f', '%s', '%s', '%d', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s' )
 		);
 
 		if ( false === $result ) {
@@ -237,7 +220,7 @@ class AI_Request_Log_Repository {
 
 		$where_clause = implode( ' AND ', $where );
 
-		$allowed_orderby = array( 'timestamp', 'type', 'operation', 'duration_ms', 'tokens_total', 'cost_estimate', 'status' );
+		$allowed_orderby = array( 'timestamp', 'type', 'operation', 'duration_ms', 'tokens_total', 'status' );
 		$orderby         = in_array( $args['orderby'], $allowed_orderby, true ) ? $args['orderby'] : 'timestamp';
 		$order           = 'ASC' === strtoupper( $args['order'] ) ? 'ASC' : 'DESC';
 
@@ -286,7 +269,6 @@ class AI_Request_Log_Repository {
 	 * @return array{
 	 *     total_requests: int,
 	 *     total_tokens: int,
-	 *     total_cost: float,
 	 *     avg_duration_ms: float,
 	 *     success_rate: float,
 	 *     by_type: array<string, int>,
@@ -300,7 +282,7 @@ class AI_Request_Log_Repository {
 		if ( ! $force_refresh ) {
 			$cached = get_transient( $cache_key );
 			if ( is_array( $cached ) ) {
-				/** @var array{total_requests: int, total_tokens: int, total_cost: float, avg_duration_ms: float, success_rate: float, by_type: array<string, int>, by_provider: array<string, int>, by_status: array<string, int>} $cached */
+				/** @var array{total_requests: int, total_tokens: int, avg_duration_ms: float, success_rate: float, by_type: array<string, int>, by_provider: array<string, int>, by_status: array<string, int>} $cached */
 				return $cached;
 			}
 		}
@@ -313,7 +295,6 @@ class AI_Request_Log_Repository {
 		$sql = "SELECT
 			COUNT(*) as total_requests,
 			COALESCE(SUM(tokens_total), 0) as total_tokens,
-			COALESCE(SUM(cost_estimate), 0) as total_cost,
 			COALESCE(AVG(duration_ms), 0) as avg_duration_ms,
 			SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
 			type,
@@ -816,12 +797,11 @@ class AI_Request_Log_Repository {
 	 * @since x.x.x
 	 *
 	 * @param list<array<string, mixed>> $rows Raw query rows.
-	 * @return array{total_requests: int, total_tokens: int, total_cost: float, avg_duration_ms: float, success_rate: float, by_type: array<string, int>, by_provider: array<string, int>, by_status: array<string, int>} Aggregated statistics.
+	 * @return array{total_requests: int, total_tokens: int, avg_duration_ms: float, success_rate: float, by_type: array<string, int>, by_provider: array<string, int>, by_status: array<string, int>} Aggregated statistics.
 	 */
 	private function aggregate_summary_rows( array $rows ): array {
 		$total_requests = 0;
 		$total_tokens   = 0;
-		$total_cost     = 0.0;
 		$total_duration = 0.0;
 		$success_count  = 0;
 		$by_type        = array();
@@ -833,7 +813,6 @@ class AI_Request_Log_Repository {
 
 			$total_requests += $count;
 			$total_tokens   += (int) $row['total_tokens'];
-			$total_cost     += (float) $row['total_cost'];
 			$total_duration += (float) $row['avg_duration_ms'] * $count;
 			$success_count  += (int) $row['success_count'];
 
@@ -858,7 +837,6 @@ class AI_Request_Log_Repository {
 		return array(
 			'total_requests'  => $total_requests,
 			'total_tokens'    => $total_tokens,
-			'total_cost'      => $total_cost,
 			'avg_duration_ms' => round( $avg_duration_ms, 2 ),
 			'success_rate'    => round( $success_rate, 2 ),
 			'by_type'         => $by_type,
@@ -937,7 +915,6 @@ class AI_Request_Log_Repository {
 			'tokens_output'     => $row['tokens_output'] ? (int) $row['tokens_output'] : null,
 			'tokens_total'      => $tokens_total,
 			'tokens_per_second' => null !== $tokens_per_second ? (float) $tokens_per_second : null,
-			'cost_estimate'     => $row['cost_estimate'] ? (float) $row['cost_estimate'] : null,
 			'status'            => $row['status'],
 			'error_message'     => $row['error_message'],
 			'user_id'           => $row['user_id'] ? (int) $row['user_id'] : null,

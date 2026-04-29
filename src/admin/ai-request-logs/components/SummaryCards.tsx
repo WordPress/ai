@@ -24,13 +24,6 @@ const formatNumber = ( num: number ): string => {
 	return num.toLocaleString();
 };
 
-const formatCost = ( cost: number ): string => {
-	if ( cost < 0.01 ) {
-		return '$' + cost.toFixed( 4 );
-	}
-	return '$' + cost.toFixed( 2 );
-};
-
 const formatDuration = ( ms: number ): string => {
 	if ( ms < 1000 ) {
 		return ms.toFixed( 0 ) + 'ms';
@@ -71,17 +64,6 @@ const SummaryCards: React.FC< SummaryCardsProps > = ( { summary } ) => {
 						</div>
 						<div className="ai-request-logs__stat-label">
 							{ __( 'Avg Time', 'ai' ) }
-						</div>
-					</CardBody>
-				</Card>
-
-				<Card className="ai-request-logs__stat-card">
-					<CardBody>
-						<div className="ai-request-logs__stat-value">
-							{ formatCost( summary.total_cost ) }
-						</div>
-						<div className="ai-request-logs__stat-label">
-							{ __( 'Est. Cost', 'ai' ) }
 						</div>
 					</CardBody>
 				</Card>

@@ -1,7 +1,7 @@
 # AI Request Logging
 
 ## Summary
-Provides an opt-in observability surface that records every AI request (provider, model, duration, token counts, status, cost estimate, and request source) and exposes them through a React-powered dashboard under `Tools → AI Request Logs`. When enabled, the SDK's HTTP transporter is wrapped with a logging decorator using the public `setHttpTransporter()` API.
+Provides an opt-in observability surface that records every AI request (provider, model, duration, token counts, status, and request source) and exposes them through a React-powered dashboard under `Tools → AI Request Logs`. When enabled, the SDK's HTTP transporter is wrapped with a logging decorator using the public `setHttpTransporter()` API.
 
 ## Key Hooks & Entry Points
 - `WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::register()`:
@@ -95,4 +95,3 @@ add_filter( 'wpai_request_log_kind', function( $kind, $provider, $path, $payload
 ## Notes
 - The HTTP logging layer only boots when both the global experiment switch and the `ai-request-logging` toggle are on, preventing unnecessary DB tables or cron events on installs that don't need observability.
 - REST endpoints require `manage_options`.
-- Model cost estimates rely on the static pricing table inside `AI_Request_Cost_Calculator`; update it as provider pricing evolves.

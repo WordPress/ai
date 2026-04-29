@@ -39,7 +39,6 @@ export interface LogEntry {
 	tokens_output: number | null;
 	tokens_total: number | null;
 	tokens_per_second: number | null;
-	cost_estimate: number | null;
 	status: 'success' | 'error' | 'timeout';
 	error_message: string | null;
 	user_id: number | null;
@@ -49,7 +48,6 @@ export interface LogEntry {
 export interface LogSummary {
 	total_requests: number;
 	total_tokens: number;
-	total_cost: number;
 	avg_duration_ms: number;
 	success_rate: number;
 	by_type: Record< string, number >;

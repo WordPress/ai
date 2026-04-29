@@ -125,7 +125,6 @@ class AI_Request_Log_Schema {
 			tokens_input INT UNSIGNED DEFAULT NULL,
 			tokens_output INT UNSIGNED DEFAULT NULL,
 			tokens_total INT UNSIGNED DEFAULT NULL,
-			cost_estimate DECIMAL(10, 6) DEFAULT NULL,
 			status VARCHAR(32) NOT NULL,
 			error_message TEXT DEFAULT NULL,
 			user_id BIGINT UNSIGNED DEFAULT NULL,

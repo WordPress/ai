@@ -8,7 +8,6 @@
 namespace WordPress\AI\Tests\Integration\Includes\Logging;
 
 use WP_UnitTestCase;
-use WordPress\AI\Logging\AI_Request_Cost_Calculator;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Repository;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
@@ -119,7 +118,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 
 		global $wpdb;
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
-		$sql   = "SELECT operation, status, tokens_total, cost_estimate FROM {$table} WHERE log_id = %s"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$sql   = "SELECT operation, status, tokens_total FROM {$table} WHERE log_id = %s"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$row   = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
 			$wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				$sql, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -132,7 +131,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 		$this->assertSame( 'completion', $row['operation'] );
 		$this->assertSame( 'success', $row['status'] );
 		$this->assertSame( 250, (int) $row['tokens_total'] );
-		$this->assertGreaterThan( 0, (float) $row['cost_estimate'] );
 	}
 
 	/**
@@ -348,27 +346,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that estimate_cost delegates to the cost calculator.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_estimate_cost_delegates_to_calculator(): void {
-		$cost = $this->manager->estimate_cost( 'openai', 'gpt-4o', 1000, 1000 );
-
-		$this->assertNotNull( $cost );
-		$this->assertGreaterThan( 0, $cost );
-	}
-
-	/**
-	 * Tests that estimate_cost returns null for unknown models.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_estimate_cost_returns_null_for_unknown(): void {
-		$this->assertNull( $this->manager->estimate_cost( 'unknown', 'unknown', 100, 100 ) );
-	}
-
-	/**
 	 * Tests that get_summary delegates to repository.
 	 *
 	 * @since x.x.x
@@ -378,7 +355,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 
 		$this->assertArrayHasKey( 'total_requests', $summary );
 		$this->assertArrayHasKey( 'total_tokens', $summary );
-		$this->assertArrayHasKey( 'total_cost', $summary );
 		$this->assertArrayHasKey( 'avg_duration_ms', $summary );
 		$this->assertArrayHasKey( 'success_rate', $summary );
 	}
@@ -405,6 +381,5 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	public function test_accessors_return_correct_instances(): void {
 		$this->assertInstanceOf( AI_Request_Log_Schema::class, $this->manager->get_schema() );
 		$this->assertInstanceOf( AI_Request_Log_Repository::class, $this->manager->get_repository() );
-		$this->assertInstanceOf( AI_Request_Cost_Calculator::class, $this->manager->get_cost_calculator() );
 	}
 }

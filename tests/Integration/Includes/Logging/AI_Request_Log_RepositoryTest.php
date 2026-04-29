@@ -8,7 +8,6 @@
 namespace WordPress\AI\Tests\Integration\Includes\Logging;
 
 use WP_UnitTestCase;
-use WordPress\AI\Logging\AI_Request_Cost_Calculator;
 use WordPress\AI\Logging\AI_Request_Log_Repository;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 
@@ -49,10 +48,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 		$this->schema = new AI_Request_Log_Schema();
 		$this->schema->maybe_upgrade_table();
 
-		$this->repository = new AI_Request_Log_Repository(
-			$this->schema,
-			new AI_Request_Cost_Calculator()
-		);
+		$this->repository = new AI_Request_Log_Repository( $this->schema );
 
 		global $wpdb;
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
@@ -130,27 +126,6 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 		$log = $this->repository->find( $log_id );
 
 		$this->assertSame( 300, $log['tokens_total'] );
-	}
-
-	/**
-	 * Tests that insert calculates a cost estimate for known models.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_insert_calculates_cost_estimate(): void {
-		$log_id = $this->insert_log(
-			array(
-				'provider'      => 'openai',
-				'model'         => 'gpt-4o',
-				'tokens_input'  => 1000,
-				'tokens_output' => 500,
-			)
-		);
-
-		$log = $this->repository->find( $log_id );
-
-		$this->assertNotNull( $log['cost_estimate'] );
-		$this->assertGreaterThan( 0, $log['cost_estimate'] );
 	}
 
 	/**
@@ -569,7 +544,6 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 
 		$this->assertSame( 0, $summary['total_requests'] );
 		$this->assertSame( 0, $summary['total_tokens'] );
-		$this->assertSame( 0.0, $summary['total_cost'] );
 	}
 
 	/**

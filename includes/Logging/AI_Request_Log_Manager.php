@@ -1,6 +1,6 @@
 <?php
 /**
- * Manages AI request logging for observability and cost tracking.
+ * Manages AI request logging for observability and debugging.
  *
  * @package WordPress\AI\Logging
  */
@@ -14,8 +14,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Facade for AI request logging functionality.
  *
- * Coordinates schema management, repository operations, and cost calculation
- * while providing a simple public API for logging AI requests.
+ * Coordinates schema management and repository operations while providing
+ * a simple public API for logging AI requests.
  *
  * @since x.x.x
  */
@@ -73,29 +73,19 @@ class AI_Request_Log_Manager {
 	private AI_Request_Log_Repository $repository;
 
 	/**
-	 * The cost calculator instance.
-	 *
-	 * @var \WordPress\AI\Logging\AI_Request_Cost_Calculator
-	 */
-	private AI_Request_Cost_Calculator $cost_calculator;
-
-	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Logging\AI_Request_Log_Schema|null      $schema          Optional schema manager.
-	 * @param \WordPress\AI\Logging\AI_Request_Log_Repository|null  $repository      Optional repository.
-	 * @param \WordPress\AI\Logging\AI_Request_Cost_Calculator|null $cost_calculator Optional cost calculator.
+	 * @param \WordPress\AI\Logging\AI_Request_Log_Schema|null     $schema     Optional schema manager.
+	 * @param \WordPress\AI\Logging\AI_Request_Log_Repository|null $repository Optional repository.
 	 */
 	public function __construct(
 		?AI_Request_Log_Schema $schema = null,
-		?AI_Request_Log_Repository $repository = null,
-		?AI_Request_Cost_Calculator $cost_calculator = null
+		?AI_Request_Log_Repository $repository = null
 	) {
-		$this->schema          = $schema ?? new AI_Request_Log_Schema();
-		$this->cost_calculator = $cost_calculator ?? new AI_Request_Cost_Calculator();
-		$this->repository      = $repository ?? new AI_Request_Log_Repository( $this->schema, $this->cost_calculator );
+		$this->schema     = $schema ?? new AI_Request_Log_Schema();
+		$this->repository = $repository ?? new AI_Request_Log_Repository( $this->schema );
 	}
 
 	/**
@@ -335,21 +325,6 @@ class AI_Request_Log_Manager {
 	}
 
 	/**
-	 * Estimates the cost of an AI request based on token usage.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $provider      The AI provider.
-	 * @param string $model         The model identifier.
-	 * @param int    $tokens_input  Number of input tokens.
-	 * @param int    $tokens_output Number of output tokens.
-	 * @return float|null Estimated cost in USD, or null if unknown.
-	 */
-	public function estimate_cost( string $provider, string $model, int $tokens_input, int $tokens_output ): ?float {
-		return $this->cost_calculator->estimate( $provider, $model, $tokens_input, $tokens_output );
-	}
-
-	/**
 	 * Invalidates the filter options cache.
 	 *
 	 * @since x.x.x
@@ -396,16 +371,5 @@ class AI_Request_Log_Manager {
 	 */
 	public function get_repository(): AI_Request_Log_Repository {
 		return $this->repository;
-	}
-
-	/**
-	 * Returns the cost calculator for direct access if needed.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return \WordPress\AI\Logging\AI_Request_Cost_Calculator The cost calculator.
-	 */
-	public function get_cost_calculator(): AI_Request_Cost_Calculator {
-		return $this->cost_calculator;
 	}
 }

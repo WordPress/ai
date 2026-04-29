@@ -22,16 +22,6 @@ const formatTimestamp = ( timestamp: string ): string => {
 	} );
 };
 
-const formatCost = ( cost: number | null ): string => {
-	if ( cost === null ) {
-		return '-';
-	}
-	if ( cost < 0.01 ) {
-		return '$' + cost.toFixed( 6 );
-	}
-	return '$' + cost.toFixed( 4 );
-};
-
 const formatKindLabel = ( value: string ): string =>
 	value
 		.split( '_' )
@@ -283,10 +273,6 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 											log.tokens_per_second ?? null
 										) }
 									</td>
-								</tr>
-								<tr>
-									<th>{ __( 'Estimated Cost', 'ai' ) }</th>
-									<td>{ formatCost( log.cost_estimate ) }</td>
 								</tr>
 							</tbody>
 						</table>
