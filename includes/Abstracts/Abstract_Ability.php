@@ -17,6 +17,7 @@ use WordPress\AiClient\AiClient;
 
 use function WordPress\AI\format_guidelines_for_prompt;
 use function WordPress\AI\get_feature_developer_model_config;
+use function WordPress\AI\get_preferred_models_for_text_generation;
 
 /**
  * Base implementation for a WordPress Ability.
@@ -306,7 +307,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @param array<int, array{string, string}> $fallback_models The default models to use when no override is set.
 	 * @return \WP_AI_Client_Prompt_Builder The prompt builder.
 	 */
-	protected function set_provider_model_preference( \WP_AI_Client_Prompt_Builder $prompt_builder, string $feature_class, array $fallback_models ): \WP_AI_Client_Prompt_Builder {
+	protected function set_provider_model_preference( \WP_AI_Client_Prompt_Builder $prompt_builder, string $feature_class, array $fallback_models = array() ): \WP_AI_Client_Prompt_Builder {
 		$config   = get_feature_developer_model_config( $feature_class::get_id() );
 		$provider = $config['provider'];
 		$model    = $config['model'];
@@ -318,6 +319,10 @@ abstract class Abstract_Ability extends WP_Ability {
 		} else {
 			if ( $provider ) {
 				$prompt_builder->using_provider( $provider );
+			}
+
+			if ( empty( $fallback_models ) ) {
+				$fallback_models = get_preferred_models_for_text_generation();
 			}
 
 			$prompt_builder->using_model_preference( ...$fallback_models );
