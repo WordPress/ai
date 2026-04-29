@@ -49,7 +49,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 
 		delete_option( AI_Request_Log_Manager::OPTION_LOGGING_ENABLED );
 		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
-		delete_option( AI_Request_Log_Manager::OPTION_MAX_ROWS );
 	}
 
 	/**
@@ -60,9 +59,9 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	protected function tearDown(): void {
 		delete_option( AI_Request_Log_Manager::OPTION_LOGGING_ENABLED );
 		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
-		delete_option( AI_Request_Log_Manager::OPTION_MAX_ROWS );
 		delete_option( 'wpai_request_logs_schema_version' );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
+		remove_all_filters( 'wpai_request_log_max_rows' );
 
 		parent::tearDown();
 	}
@@ -281,13 +280,19 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that set_max_rows enforces a minimum of 1000.
+	 * Tests that get_max_rows can be overridden via the wpai_request_log_max_rows filter.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_set_max_rows_enforces_minimum(): void {
-		$this->manager->set_max_rows( 500 );
-		$this->assertSame( 1000, $this->manager->get_max_rows() );
+	public function test_get_max_rows_is_filterable(): void {
+		add_filter(
+			'wpai_request_log_max_rows',
+			static function () {
+				return 12345;
+			}
+		);
+
+		$this->assertSame( 12345, $this->manager->get_max_rows() );
 	}
 
 	/**

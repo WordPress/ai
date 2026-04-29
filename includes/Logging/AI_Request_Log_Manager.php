@@ -26,12 +26,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Option key for logging enabled.
 	 */
-	public const OPTION_LOGGING_ENABLED = 'wpai_request_logs_enabled';
-
-	/**
-	 * Option key for max rows limit.
-	 */
-	public const OPTION_MAX_ROWS = 'wpai_request_logs_max_rows';
+	public const OPTION_LOGGING_ENABLED = 'wpai_feature_ai-request-logging_logging_enabled';
 
 	/**
 	 * Cron hook used for log cleanup.
@@ -183,18 +178,16 @@ class AI_Request_Log_Manager {
 	 * @return int Maximum rows.
 	 */
 	public function get_max_rows(): int {
-		return (int) get_option( self::OPTION_MAX_ROWS, self::DEFAULT_MAX_ROWS );
-	}
-
-	/**
-	 * Sets the maximum number of rows to retain.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int $max_rows Maximum rows.
-	 */
-	public function set_max_rows( int $max_rows ): void {
-		update_option( self::OPTION_MAX_ROWS, max( 1000, $max_rows ), false );
+		/**
+		 * Filters the maximum number of AI request log rows retained as a count-based backstop.
+		 *
+		 * Complements the time-based retention setting; whichever cap is hit first applies during cleanup.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $max_rows Maximum number of rows.
+		 */
+		return (int) apply_filters( 'wpai_request_log_max_rows', self::DEFAULT_MAX_ROWS );
 	}
 
 	/**
