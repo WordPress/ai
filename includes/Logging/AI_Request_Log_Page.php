@@ -9,7 +9,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
-use WordPress\AI\Admin\Provider_Metadata_Registry;
 use WordPress\AI\Asset_Loader;
 
 defined( 'ABSPATH' ) || exit;
@@ -105,7 +104,7 @@ class AI_Request_Log_Page {
 					'summary'       => $this->manager->get_summary( 'day' ),
 					'filters'       => $this->manager->get_filter_options(),
 				),
-				'providerMetadata' => Provider_Metadata_Registry::get_metadata(),
+				'providerMetadata' => $this->get_provider_metadata(),
 			)
 		);
 	}
@@ -153,5 +152,48 @@ class AI_Request_Log_Page {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Builds the provider metadata payload sent to the React app.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function get_provider_metadata(): array {
+		if ( ! function_exists( 'wp_get_connectors' ) ) {
+			return array();
+		}
+
+		$providers = array();
+
+		foreach ( wp_get_connectors() as $slug => $connector_data ) {
+			if ( ! is_array( $connector_data ) || 'ai_provider' !== ( $connector_data['type'] ?? '' ) ) {
+				continue;
+			}
+
+			$auth = isset( $connector_data['authentication'] ) && is_array( $connector_data['authentication'] )
+				? $connector_data['authentication']
+				: array();
+
+			$entry = array(
+				'id'   => (string) $slug,
+				'name' => isset( $connector_data['name'] ) && is_string( $connector_data['name'] ) ? $connector_data['name'] : (string) $slug,
+				'type' => 'none' === ( $auth['method'] ?? '' ) ? 'client' : 'cloud',
+			);
+
+			if ( ! empty( $connector_data['logo_url'] ) && is_string( $connector_data['logo_url'] ) ) {
+				$entry['logo'] = $connector_data['logo_url'];
+			}
+
+			if ( ! empty( $auth['credentials_url'] ) && is_string( $auth['credentials_url'] ) ) {
+				$entry['url'] = $auth['credentials_url'];
+			}
+
+			$providers[ (string) $slug ] = $entry;
+		}
+
+		return $providers;
 	}
 }
