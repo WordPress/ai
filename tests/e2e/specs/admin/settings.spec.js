@@ -435,4 +435,49 @@ test.describe( 'Plugin settings', () => {
 		await expect( enableAllButton ).toBeEnabled();
 		await expect( disableAllButton ).toBeEnabled();
 	} );
+
+	test( 'Can use developer mode', async ( { admin, page } ) => {
+		// Globally turn on experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Excerpt Generation Experiment.
+		await enableExperiment( admin, page, 'Excerpt Generation' );
+
+		// Toggle on developer mode.
+		await page
+			.locator( '.ai-settings-page__developer-mode-toggle' )
+			.click();
+
+		// Verify the developer mode toggle has the is-pressed class.
+		await expect(
+			page.locator(
+				'.ai-settings-page__developer-mode-toggle.is-pressed'
+			)
+		).toBeVisible();
+
+		// Verify the Excerpt Generation Experiment has developer settings.
+		await expect(
+			page.locator( '.ai-developer-mode-fields' ).first()
+		).toBeVisible();
+
+		// Toggle off developer mode.
+		await page
+			.locator( '.ai-settings-page__developer-mode-toggle' )
+			.click();
+
+		// Verify the developer mode toggle has the is-pressed class removed.
+		await expect(
+			page.locator(
+				'.ai-settings-page__developer-mode-toggle.is-pressed'
+			)
+		).not.toBeVisible();
+
+		// Verify the developer settings are no longer visible.
+		await expect(
+			page.locator( '.ai-developer-mode-fields' )
+		).not.toBeVisible();
+
+		// Disable the Excerpt Generation Experiment.
+		await disableExperiment( admin, page, 'Excerpt Generation' );
+	} );
 } );
