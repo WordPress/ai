@@ -173,7 +173,7 @@ final class Models_Controller {
 					array(
 						new RequiredOption(
 							OptionEnum::inputModalities(),
-							array( ModalityEnum::image() )
+							array( ModalityEnum::text(), ModalityEnum::image() )
 						),
 					)
 				);
