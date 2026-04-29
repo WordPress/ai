@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import { Button, Modal } from '@wordpress/components';
+import { useCopyToClipboard } from '@wordpress/compose';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -117,19 +118,7 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 				)
 		: [];
 
-	const handleCopyId = async () => {
-		try {
-			await navigator.clipboard.writeText( log.id );
-		} catch ( e ) {
-			// Fallback for older browsers
-			const textarea = document.createElement( 'textarea' );
-			textarea.value = log.id;
-			document.body.appendChild( textarea );
-			textarea.select();
-			document.execCommand( 'copy' );
-			document.body.removeChild( textarea );
-		}
-	};
+	const copyIdRef = useCopyToClipboard< HTMLButtonElement >( log.id );
 
 	const getStatusIcon = ( status: string ): string => {
 		switch ( status ) {
@@ -365,11 +354,7 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 					<code className="ai-request-logs__detail-id">
 						{ log.id }
 					</code>
-					<Button
-						variant="secondary"
-						size="small"
-						onClick={ handleCopyId }
-					>
+					<Button ref={ copyIdRef } variant="secondary" size="small">
 						{ __( 'Copy Log ID', 'ai' ) }
 					</Button>
 				</div>
