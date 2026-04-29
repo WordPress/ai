@@ -96,11 +96,10 @@ class Settings_Registration {
 		// Register settings for each experiment.
 		foreach ( $this->registry->get_all_features() as $feature ) {
 			$feature_id = $feature::get_id();
-			$option_key = "wpai_feature_{$feature_id}_enabled";
 
 			register_setting(
 				self::OPTION_GROUP,
-				$option_key,
+				"wpai_feature_{$feature_id}_enabled",
 				array(
 					'type'              => 'boolean',
 					'default'           => false,
@@ -109,7 +108,6 @@ class Settings_Registration {
 				)
 			);
 
-			// Register the developer settings option for every feature.
 			register_setting(
 				self::OPTION_GROUP,
 				"wpai_feature_{$feature_id}_field_developer",

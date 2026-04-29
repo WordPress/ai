@@ -300,6 +300,22 @@ function get_preferred_vision_models(): array {
 }
 
 /**
+ * Returns the developer-mode provider/model config saved for a feature.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id The feature ID (e.g. 'excerpt-generation').
+ * @return array{provider: string, model: string} The saved provider and model, or empty strings if unset.
+ */
+function get_feature_developer_model_config( string $feature_id ): array {
+	$option = get_option( "wpai_feature_{$feature_id}_field_developer", array() );
+	return array(
+		'provider' => is_array( $option ) ? ( $option['provider'] ?? '' ) : '',
+		'model'    => is_array( $option ) ? ( $option['model'] ?? '' ) : '',
+	);
+}
+
+/**
  * Retrieves guidelines, optionally filtered by category.
  *
  * @since 0.8.0
