@@ -27,6 +27,16 @@ defined( 'ABSPATH' ) || exit;
 class AI_Request_Logging extends Abstract_Feature {
 
 	/**
+	 * Minimum allowed retention in days.
+	 */
+	public const MIN_RETENTION_DAYS = 1;
+
+	/**
+	 * Maximum allowed retention in days.
+	 */
+	public const MAX_RETENTION_DAYS = 365;
+
+	/**
 	 * Shared log manager instance.
 	 */
 	private ?AI_Request_Log_Manager $manager = null;
@@ -70,11 +80,18 @@ class AI_Request_Logging extends Abstract_Feature {
 	public function register_settings(): void {
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			AI_Request_Log_Manager::OPTION_RETENTION_DAYS,
+			$this->get_field_option_name( 'retention_days' ),
 			array(
 				'type'              => 'integer',
 				'default'           => AI_Request_Log_Manager::DEFAULT_RETENTION_DAYS,
 				'sanitize_callback' => array( $this, 'sanitize_retention_days' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'    => 'integer',
+						'minimum' => self::MIN_RETENTION_DAYS,
+						'maximum' => self::MAX_RETENTION_DAYS,
+					),
+				),
 			)
 		);
 	}
@@ -82,43 +99,29 @@ class AI_Request_Logging extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function render_settings_fields(): void {
-		$retention_days = $this->get_manager()->get_retention_days();
-		?>
-		<div class="ai-experiment-settings">
-			<label for="<?php echo esc_attr( AI_Request_Log_Manager::OPTION_RETENTION_DAYS ); ?>" class="ai-experiment-settings__label">
-				<?php esc_html_e( 'Log retention (days)', 'ai' ); ?>
-			</label>
-			<input
-				type="number"
-				min="1"
-				max="365"
-				step="1"
-				id="<?php echo esc_attr( AI_Request_Log_Manager::OPTION_RETENTION_DAYS ); ?>"
-				name="<?php echo esc_attr( AI_Request_Log_Manager::OPTION_RETENTION_DAYS ); ?>"
-				value="<?php echo esc_attr( (string) $retention_days ); ?>"
-			/>
-			<p class="description">
-				<?php esc_html_e( 'Logs older than this will be automatically deleted.', 'ai' ); ?>
-			</p>
-			<p class="description">
-				<a href="<?php echo esc_url( admin_url( 'tools.php?page=ai-request-logs' ) ); ?>">
-					<?php esc_html_e( 'Open the AI Request Logs screen.', 'ai' ); ?>
-				</a>
-			</p>
-		</div>
-		<?php
+	public function get_settings_fields(): array {
+		return array(
+			array(
+				'id'      => 'retention_days',
+				'label'   => __( 'Log retention (days)', 'ai' ),
+				'type'    => 'integer',
+				'default' => AI_Request_Log_Manager::DEFAULT_RETENTION_DAYS,
+				'isValid' => array(
+					'min' => self::MIN_RETENTION_DAYS,
+					'max' => self::MAX_RETENTION_DAYS,
+				),
+			),
+		);
 	}
 
 	/**
-	 * Sanitize retention day values from the settings UI.
+	 * Clamps a retention value to the allowed range.
 	 *
 	 * @param mixed $value Raw value.
-	 * @return int Sanitized value within 1-365.
+	 * @return int
 	 */
 	public function sanitize_retention_days( $value ): int {
-		$value = (int) $value;
-		return max( 1, min( 365, $value ) );
+		return max( self::MIN_RETENTION_DAYS, min( self::MAX_RETENTION_DAYS, (int) $value ) );
 	}
 
 	/**

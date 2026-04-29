@@ -15,7 +15,6 @@ import { useCallback, useMemo, useState } from '@wordpress/element';
 /**
  * Internal dependencies
  */
-import { getProviderIconComponent } from '../../components/provider-icons';
 import type { ProviderMetadata } from '../../types/providers';
 import type { FilterOptions, LogEntry, LogsQuery } from '../types';
 
@@ -270,6 +269,23 @@ interface ProviderCellProps {
 	metadata: ProviderMetadata | undefined;
 }
 
+const renderProviderLogo = ( metadata: ProviderMetadata ): JSX.Element =>
+	metadata.logo ? (
+		<img
+			src={ metadata.logo }
+			alt=""
+			aria-hidden="true"
+			className="ai-provider-logo"
+		/>
+	) : (
+		<span
+			aria-hidden="true"
+			className="ai-provider-logo ai-provider-logo--initial"
+		>
+			{ metadata.name.charAt( 0 ).toUpperCase() }
+		</span>
+	);
+
 const ProviderCell: React.FC< ProviderCellProps > = ( {
 	provider,
 	model,
@@ -298,11 +314,6 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 		);
 	}
 
-	const IconComponent = getProviderIconComponent(
-		metadata.icon || metadata.id,
-		provider || undefined
-	);
-
 	return (
 		<div
 			className="ai-request-logs__provider-cell"
@@ -318,7 +329,7 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 		>
 			<div className="ai-request-logs__provider-row">
 				<span className="ai-request-logs__provider-icon">
-					<IconComponent />
+					{ renderProviderLogo( metadata ) }
 				</span>
 				<span className="ai-request-logs__provider-name">
 					{ metadata.name }
@@ -338,7 +349,7 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 					<div className="ai-request-logs__popover-content">
 						<div className="ai-request-logs__popover-header">
 							<span className="ai-request-logs__popover-icon">
-								<IconComponent />
+								{ renderProviderLogo( metadata ) }
 							</span>
 							<span className="ai-request-logs__popover-title">
 								{ metadata.name }

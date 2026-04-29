@@ -131,9 +131,10 @@
 	align-items: center;
 	color: #757575;
 
-	svg {
+	.ai-provider-logo {
 		width: 16px;
 		height: 16px;
+		font-size: 9px;
 	}
 }
 
@@ -193,10 +194,29 @@
 	align-items: center;
 	color: #1e1e1e;
 
-	svg {
+	.ai-provider-logo {
 		width: 20px;
 		height: 20px;
+		font-size: 11px;
 	}
+}
+
+.ai-provider-logo {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	object-fit: contain;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.ai-provider-logo--initial {
+	background: #f0f0f0;
+	color: #1e1e1e;
+	font-weight: 600;
+	text-transform: uppercase;
+	line-height: 1;
 }
 
 .ai-request-logs__popover-title {

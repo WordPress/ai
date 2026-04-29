@@ -24,7 +24,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Option key for log retention days.
 	 */
-	public const OPTION_RETENTION_DAYS = 'wpai_request_logs_retention_days';
+	public const OPTION_RETENTION_DAYS = 'wpai_feature_ai-request-logging_field_retention_days';
 
 	/**
 	 * Option key for logging enabled.
