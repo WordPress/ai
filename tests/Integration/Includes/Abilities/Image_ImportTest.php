@@ -200,7 +200,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array(
@@ -236,7 +236,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array(
@@ -285,7 +285,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array(
@@ -364,7 +364,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array(
@@ -388,7 +388,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array();
@@ -410,7 +410,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$mime_types = array( 'image/png', 'image/jpeg' );
@@ -441,7 +441,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$result = $method->invoke( $this->ability, array() );
@@ -460,7 +460,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user without upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
 
 		$result = $method->invoke( $this->ability, array() );
