@@ -308,6 +308,52 @@ class Image_ImportTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the wpai_generated_image_filename filter can override the final filename.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_filter_overrides_filename() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create a user with upload_files capability.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$captured_args = null;
+
+		$filter = static function ( $filename, $args ) use ( &$captured_args ) {
+			$captured_args = $args;
+			return 'filtered-image-name.png';
+		};
+
+		add_filter( 'wpai_generated_image_filename', $filter, 10, 2 );
+
+		try {
+			$input = array(
+				'data'      => $this->valid_base64_image,
+				'filename'  => 'original-filename',
+				'mime_type' => 'image/png',
+			);
+
+			$result = $method->invoke( $this->ability, $input );
+		} finally {
+			remove_filter( 'wpai_generated_image_filename', $filter, 10 );
+		}
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertStringStartsWith(
+			'filtered-image-name',
+			$result['image']['filename'],
+			'Filter should be able to override the final filename'
+		);
+		$this->assertIsArray( $captured_args, 'Filter should receive args as second parameter' );
+		$this->assertSame( 'original-filename', $captured_args['filename'], 'Filter args should expose the unsanitized filename' );
+		$this->assertSame( 'image/png', $captured_args['mime_type'], 'Filter args should expose the MIME type' );
+	}
+
+	/**
 	 * Test that execute_callback() returns error when data is invalid base64.
 	 *
 	 * @since 0.2.0
