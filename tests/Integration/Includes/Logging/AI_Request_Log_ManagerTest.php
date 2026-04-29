@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes\Logging;
 
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Repository;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
@@ -47,7 +48,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 
 		delete_option( AI_Request_Log_Manager::OPTION_LOGGING_ENABLED );
-		delete_option( AI_Request_Log_Manager::OPTION_RETENTION_DAYS );
+		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 		delete_option( AI_Request_Log_Manager::OPTION_MAX_ROWS );
 	}
 
@@ -58,7 +59,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 */
 	protected function tearDown(): void {
 		delete_option( AI_Request_Log_Manager::OPTION_LOGGING_ENABLED );
-		delete_option( AI_Request_Log_Manager::OPTION_RETENTION_DAYS );
+		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 		delete_option( AI_Request_Log_Manager::OPTION_MAX_ROWS );
 		delete_option( 'wpai_request_logs_schema_version' );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );

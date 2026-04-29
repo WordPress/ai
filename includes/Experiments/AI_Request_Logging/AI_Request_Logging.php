@@ -70,7 +70,7 @@ class AI_Request_Logging extends Abstract_Feature {
 	public function register_settings(): void {
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			$this->get_field_option_name( 'retention_days' ),
+			static::get_field_option_name( 'retention_days' ),
 			array(
 				'type'              => 'integer',
 				'default'           => AI_Request_Log_Manager::DEFAULT_RETENTION_DAYS,

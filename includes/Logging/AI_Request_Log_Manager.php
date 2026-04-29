@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+use WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -20,11 +22,6 @@ defined( 'ABSPATH' ) || exit;
  * @since x.x.x
  */
 class AI_Request_Log_Manager {
-
-	/**
-	 * Option key for log retention days.
-	 */
-	public const OPTION_RETENTION_DAYS = 'wpai_feature_ai-request-logging_field_retention_days';
 
 	/**
 	 * Option key for logging enabled.
@@ -157,7 +154,10 @@ class AI_Request_Log_Manager {
 	 * @return int Number of days to retain logs.
 	 */
 	public function get_retention_days(): int {
-		return (int) get_option( self::OPTION_RETENTION_DAYS, self::DEFAULT_RETENTION_DAYS );
+		return (int) get_option(
+			AI_Request_Logging::get_field_option_name( 'retention_days' ),
+			self::DEFAULT_RETENTION_DAYS
+		);
 	}
 
 	/**
@@ -168,7 +168,11 @@ class AI_Request_Log_Manager {
 	 * @param int $days Number of days to retain logs.
 	 */
 	public function set_retention_days( int $days ): void {
-		update_option( self::OPTION_RETENTION_DAYS, max( self::MIN_RETENTION_DAYS, $days ), false );
+		update_option(
+			AI_Request_Logging::get_field_option_name( 'retention_days' ),
+			max( self::MIN_RETENTION_DAYS, $days ),
+			false
+		);
 	}
 
 	/**
