@@ -50,7 +50,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that OpenAI URLs are detected correctly.
+	 * Tests that an OpenAI URL is detected via the connector slug.
 	 *
 	 * @since x.x.x
 	 */
@@ -59,7 +59,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that Anthropic URLs are detected correctly.
+	 * Tests that an Anthropic URL is detected via the connector slug.
 	 *
 	 * @since x.x.x
 	 */
@@ -68,21 +68,12 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that Google URLs are detected correctly.
+	 * Tests that the Google connector matches via the googleapis override.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_detect_provider_google(): void {
+	public function test_detect_provider_google_uses_googleapis_override(): void {
 		$this->assertSame( 'google', $this->extractor->detect_provider( 'https://generativelanguage.googleapis.com/v1/models/gemini-pro' ) );
-	}
-
-	/**
-	 * Tests that fal.ai URLs are detected correctly.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_detect_provider_fal(): void {
-		$this->assertSame( 'fal', $this->extractor->detect_provider( 'https://fal.run/fal-ai/flux' ) );
 	}
 
 	/**
@@ -101,6 +92,25 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	 */
 	public function test_detect_provider_returns_null_for_empty_host(): void {
 		$this->assertNull( $this->extractor->detect_provider( '/relative/path' ) );
+	}
+
+	/**
+	 * Tests that the wpai_request_log_providers filter can extend the map.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_detect_provider_filter_can_add_patterns(): void {
+		add_filter(
+			'wpai_request_log_providers',
+			static function ( $patterns ) {
+				$patterns['custom'] = array( 'my-ai.example' );
+				return $patterns;
+			}
+		);
+
+		$extractor = new Log_Data_Extractor();
+
+		$this->assertSame( 'custom', $extractor->detect_provider( 'https://my-ai.example/v1/run' ) );
 	}
 
 	/**
@@ -218,7 +228,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the operation includes provider prefix.
+	 * Tests that the operation includes the provider prefix.
 	 *
 	 * @since x.x.x
 	 */

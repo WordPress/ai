@@ -34,7 +34,8 @@ class Log_Data_Extractor {
 	/**
 	 * Provider detection patterns.
 	 *
-	 * Maps provider names to URL patterns. Filterable via 'wpai_request_log_providers'.
+	 * Maps provider names to URL patterns.
+	 * Filterable via 'wpai_request_log_providers'.
 	 *
 	 * @var array<string, array<string>>
 	 */
@@ -48,32 +49,28 @@ class Log_Data_Extractor {
 	}
 
 	/**
-	 * Returns the default provider detection patterns.
+	 * Returns the provider detection patterns, derived from the connectors registry.
 	 *
 	 * @return array<string, array<string>> Provider name => URL patterns.
 	 */
 	private function get_default_provider_patterns(): array {
-		$patterns = array(
-			'openai'      => array( 'openai' ),
-			'anthropic'   => array( 'anthropic' ),
-			'google'      => array( 'googleapis', 'google' ),
-			'fal'         => array( 'fal.run', 'fal.ai' ),
-			'cloudflare'  => array( 'cloudflare', 'workers.ai' ),
-			'groq'        => array( 'groq' ),
-			'grok'        => array( 'x.ai', 'xai' ),
-			'huggingface' => array( 'huggingface' ),
-			'deepseek'    => array( 'deepseek' ),
-			'ollama'      => array( 'ollama' ),
-			'openrouter'  => array( 'openrouter' ),
-			'azure'       => array( 'azure' ),
-			'cohere'      => array( 'cohere' ),
-			'mistral'     => array( 'mistral' ),
-		);
+		// Slugs whose API host doesn't contain the slug itself. Google's API runs at googleapis.com.
+		$overrides = array( 'google' => 'googleapis' );
+		$patterns  = array();
+
+		if ( function_exists( 'wp_get_connectors' ) ) {
+			foreach ( wp_get_connectors() as $slug => $connector_data ) {
+				if ( ! is_array( $connector_data ) || 'ai_provider' !== ( $connector_data['type'] ?? '' ) ) {
+					continue;
+				}
+
+				$slug              = strtolower( (string) $slug );
+				$patterns[ $slug ] = array( $overrides[ $slug ] ?? $slug );
+			}
+		}
 
 		/**
-		 * Filters the provider detection patterns.
-		 *
-		 * Allows adding custom providers or modifying detection patterns.
+		 * Filters the provider detection patterns used to label log entries.
 		 *
 		 * @since x.x.x
 		 *
