@@ -74,6 +74,15 @@ add_filter( 'wpai_request_log_kind', function( $kind, $provider, $path, $payload
 }, 10, 4 );
 ```
 
+### `wpai_request_log_max_rows`
+Filters the count-based backstop for the AI request log table. Complements the time-based retention setting — whichever cap is hit first applies during the daily cleanup. Defaults to 100,000 rows.
+
+```php
+add_filter( 'wpai_request_log_max_rows', function() {
+    return 250000;
+} );
+```
+
 ## Assets & Data Flow
 1. When `AI Request Logs` is visited, `Asset_Loader` enqueues `admin/ai-request-logs` (`src/admin/ai-request-logs/index.tsx`) plus its stylesheet. The localized payload (`window.AiRequestLogsSettings`) includes REST routes, a nonce, and initial state (enabled flag, retention days, summary, filters).
 2. The React app:
