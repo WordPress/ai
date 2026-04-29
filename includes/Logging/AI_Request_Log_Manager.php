@@ -42,21 +42,31 @@ class AI_Request_Log_Manager {
 	private const CLEANUP_HOOK = 'wpai_request_logs_cleanup';
 
 	/**
-	 * Whether initialization hooks have already been registered.
-	 *
-	 * @var bool
-	 */
-	private bool $initialized = false;
-
-	/**
 	 * Default retention period in days.
 	 */
 	public const DEFAULT_RETENTION_DAYS = 30;
 
 	/**
+	 * Minimum allowed retention in days.
+	 */
+	public const MIN_RETENTION_DAYS = 1;
+
+	/**
+	 * Maximum allowed retention in days.
+	 */
+	public const MAX_RETENTION_DAYS = 365;
+
+	/**
 	 * Default maximum number of rows.
 	 */
 	public const DEFAULT_MAX_ROWS = 100000;
+
+	/**
+	 * Whether initialization hooks have already been registered.
+	 *
+	 * @var bool
+	 */
+	private bool $initialized = false;
 
 	/**
 	 * The schema manager instance.
@@ -158,7 +168,7 @@ class AI_Request_Log_Manager {
 	 * @param int $days Number of days to retain logs.
 	 */
 	public function set_retention_days( int $days ): void {
-		update_option( self::OPTION_RETENTION_DAYS, max( 1, $days ), false );
+		update_option( self::OPTION_RETENTION_DAYS, max( self::MIN_RETENTION_DAYS, $days ), false );
 	}
 
 	/**

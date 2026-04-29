@@ -70,8 +70,8 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 						'retention_days' => array(
 							'type'     => 'integer',
 							'required' => false,
-							'minimum'  => 1,
-							'maximum'  => 365,
+							'minimum'  => AI_Request_Log_Manager::MIN_RETENTION_DAYS,
+							'maximum'  => AI_Request_Log_Manager::MAX_RETENTION_DAYS,
 						),
 					),
 				),

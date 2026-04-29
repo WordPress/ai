@@ -9,6 +9,7 @@ import {
 	type Filter,
 	type ViewTable,
 } from '@wordpress/dataviews';
+import { dateI18n, getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 import { useCallback, useMemo, useState } from '@wordpress/element';
 
@@ -61,8 +62,8 @@ const sortFieldsByCanonicalOrder = ( ids: string[] ): string[] =>
 	} );
 
 const formatTimestamp = ( timestamp: string ): string => {
-	const date = new Date( timestamp + 'Z' );
-	return date.toLocaleString();
+	const { formats } = getSettings();
+	return dateI18n( `${ formats.date } ${ formats.time }`, timestamp + 'Z' );
 };
 
 const formatDuration = ( ms: number | null ): string => {

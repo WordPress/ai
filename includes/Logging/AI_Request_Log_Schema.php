@@ -243,19 +243,6 @@ class AI_Request_Log_Schema {
 	}
 
 	/**
-	 * Returns the active database name for information_schema queries.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return string Database name.
-	 */
-	private function get_database_name(): string {
-		global $wpdb;
-
-		return (string) $wpdb->get_var( 'SELECT DATABASE()' );
-	}
-
-	/**
 	 * Checks if the FULLTEXT search index exists on the table.
 	 *
 	 * @since x.x.x
@@ -280,7 +267,7 @@ class AI_Request_Log_Schema {
 				AND table_name = %s
 				AND index_name = 'ft_search'
 				AND index_type = 'FULLTEXT'",
-				$this->get_database_name(),
+				$wpdb->dbname,
 				$table_name
 			)
 		);

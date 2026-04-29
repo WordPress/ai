@@ -27,16 +27,6 @@ defined( 'ABSPATH' ) || exit;
 class AI_Request_Logging extends Abstract_Feature {
 
 	/**
-	 * Minimum allowed retention in days.
-	 */
-	public const MIN_RETENTION_DAYS = 1;
-
-	/**
-	 * Maximum allowed retention in days.
-	 */
-	public const MAX_RETENTION_DAYS = 365;
-
-	/**
 	 * Shared log manager instance.
 	 */
 	private ?AI_Request_Log_Manager $manager = null;
@@ -88,8 +78,8 @@ class AI_Request_Logging extends Abstract_Feature {
 				'show_in_rest'      => array(
 					'schema' => array(
 						'type'    => 'integer',
-						'minimum' => self::MIN_RETENTION_DAYS,
-						'maximum' => self::MAX_RETENTION_DAYS,
+						'minimum' => AI_Request_Log_Manager::MIN_RETENTION_DAYS,
+						'maximum' => AI_Request_Log_Manager::MAX_RETENTION_DAYS,
 					),
 				),
 			)
@@ -107,8 +97,8 @@ class AI_Request_Logging extends Abstract_Feature {
 				'type'    => 'integer',
 				'default' => AI_Request_Log_Manager::DEFAULT_RETENTION_DAYS,
 				'isValid' => array(
-					'min' => self::MIN_RETENTION_DAYS,
-					'max' => self::MAX_RETENTION_DAYS,
+					'min' => AI_Request_Log_Manager::MIN_RETENTION_DAYS,
+					'max' => AI_Request_Log_Manager::MAX_RETENTION_DAYS,
 				),
 			),
 		);
@@ -121,7 +111,10 @@ class AI_Request_Logging extends Abstract_Feature {
 	 * @return int Sanitized value within 1-365.
 	 */
 	public function sanitize_retention_days( $value ): int {
-		return max( self::MIN_RETENTION_DAYS, min( self::MAX_RETENTION_DAYS, (int) $value ) );
+		return max(
+			AI_Request_Log_Manager::MIN_RETENTION_DAYS,
+			min( AI_Request_Log_Manager::MAX_RETENTION_DAYS, (int) $value )
+		);
 	}
 
 	/**

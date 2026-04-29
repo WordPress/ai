@@ -3,6 +3,7 @@
  */
 import { Button, Modal } from '@wordpress/components';
 import { useCopyToClipboard } from '@wordpress/compose';
+import { dateI18n, getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -16,11 +17,8 @@ interface LogDetailModalProps {
 }
 
 const formatTimestamp = ( timestamp: string ): string => {
-	const date = new Date( timestamp + 'Z' );
-	return date.toLocaleString( undefined, {
-		dateStyle: 'full',
-		timeStyle: 'medium',
-	} );
+	const { formats } = getSettings();
+	return dateI18n( `${ formats.date } ${ formats.time }`, timestamp + 'Z' );
 };
 
 const formatKindLabel = ( value: string ): string =>
