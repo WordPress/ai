@@ -269,21 +269,36 @@ function buildToggleMessage(
 		if ( allEnabled ) {
 			return sprintf(
 				// translators: %d: Number of experiments.
-				_n( '%d experiment enabled', '%d experiments enabled', count, 'ai' ),
+				_n(
+					'%d experiment enabled',
+					'%d experiments enabled',
+					count,
+					'ai'
+				),
 				count
 			);
 		}
 		if ( allDisabled ) {
 			return sprintf(
 				// translators: %d: Number of experiments.
-				_n( '%d experiment disabled', '%d experiments disabled', count, 'ai' ),
+				_n(
+					'%d experiment disabled',
+					'%d experiments disabled',
+					count,
+					'ai'
+				),
 				count
 			);
 		}
 		// Just a fallback for mixed state (shouldn't happen with our buttons, but handle it).
 		return sprintf(
 			// translators: %d: Number of experiments.
-			_n( '%d experiment updated', '%d experiments updated', count, 'ai' ),
+			_n(
+				'%d experiment updated',
+				'%d experiments updated',
+				count,
+				'ai'
+			),
 			count
 		);
 	}
