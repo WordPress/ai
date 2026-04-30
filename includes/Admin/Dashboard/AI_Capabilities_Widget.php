@@ -7,7 +7,7 @@
  *
  * @package WordPress\AI\Admin\Dashboard
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 
 declare( strict_types=1 );
@@ -27,14 +27,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Renders the AI Capabilities dashboard widget.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class AI_Capabilities_Widget {
 
 	/**
 	 * The feature registry instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var \WordPress\AI\Features\Registry
 	 */
@@ -43,7 +43,7 @@ class AI_Capabilities_Widget {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
 	 */
@@ -56,7 +56,7 @@ class AI_Capabilities_Widget {
 	 *
 	 * Shows Ability statistics and per-provider capabilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function render(): void {
 		?>
@@ -70,7 +70,7 @@ class AI_Capabilities_Widget {
 	/**
 	 * Renders the Abilities summary with stat cards.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	private function render_abilities_summary(): void {
 		if ( ! class_exists( Ability_Handler::class ) ) {
@@ -123,7 +123,7 @@ class AI_Capabilities_Widget {
 	 * Uses the PHP AI Client's ProviderRegistry and ModelMetadataDirectory
 	 * to discover what each registered provider is capable of.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	private function render_provider_capabilities(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -189,7 +189,7 @@ class AI_Capabilities_Widget {
 	/**
 	 * Returns a human-readable label for a capability enum value.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param string $capability The capability enum value.
 	 * @return string The human-readable label.

@@ -19,14 +19,14 @@ use WP_Query;
  * Provides a centralized interface for fetching and formatting Guidelines
  * from the wp_guideline custom post type. Requires Gutenberg 23.0+.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Guidelines {
 
 	/**
 	 * Post type slug.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var string
 	 */
@@ -35,7 +35,7 @@ class Guidelines {
 	/**
 	 * Singleton instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var self|null
 	 */
@@ -44,7 +44,7 @@ class Guidelines {
 	/**
 	 * Cached guidelines data.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var array<string, string>|false|null False means not yet fetched.
 	 */
@@ -53,7 +53,7 @@ class Guidelines {
 	/**
 	 * Cached guidelines post ID.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var int|null
 	 */
@@ -62,7 +62,7 @@ class Guidelines {
 	/**
 	 * Post meta keys for each guideline category.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var array<string, string>
 	 */
@@ -77,7 +77,7 @@ class Guidelines {
 	/**
 	 * XML tag names for each guideline category.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var array<string, string>
 	 */
@@ -92,7 +92,7 @@ class Guidelines {
 	/**
 	 * Default maximum character length per guideline category.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @var int
 	 */
@@ -101,7 +101,7 @@ class Guidelines {
 	/**
 	 * Gets the singleton instance.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return self The singleton instance.
 	 */
@@ -115,14 +115,14 @@ class Guidelines {
 	/**
 	 * Private constructor to enforce singleton pattern.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	private function __construct() {}
 
 	/**
 	 * Checks if the Guidelines feature is available.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return bool True if the guidelines CPT is registered.
 	 */
@@ -133,7 +133,7 @@ class Guidelines {
 	/**
 	 * Retrieves guidelines, optionally filtered by category.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param string|null $category Optional. Guideline category to retrieve ('site', 'copy', 'images', 'additional').
 	 * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
@@ -162,7 +162,7 @@ class Guidelines {
 	/**
 	 * Retrieves guidelines for a specific block type.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param string $block_name The block name (e.g., 'core/paragraph').
 	 * @return string|null The block-specific guidelines, or null if unavailable.
@@ -192,7 +192,7 @@ class Guidelines {
 	/**
 	 * Formats guidelines as an XML-tagged string suitable for prompt injection.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param list<string> $categories  Guideline category slugs to include.
 	 * @param string|null  $block_name  Optional block name for block-specific guidelines.
@@ -212,7 +212,7 @@ class Guidelines {
 		/**
 		 * Filters the maximum character length per guideline category.
 		 *
-		 * @since x.x.x
+		 * @since 0.8.0
 		 *
 		 * @param int $max_length The maximum character length per category. Default 2000.
 		 * @return int The filtered maximum length.
@@ -258,7 +258,7 @@ class Guidelines {
 	/**
 	 * Resets the internal cache. Intended for use in tests.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return void
 	 */
@@ -270,7 +270,7 @@ class Guidelines {
 	/**
 	 * Checks whether guidelines should be used.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return bool True if guidelines should be used.
 	 */
@@ -282,7 +282,7 @@ class Guidelines {
 		/**
 		 * Filters whether guidelines integration is enabled.
 		 *
-		 * @since x.x.x
+		 * @since 0.8.0
 		 *
 		 * @param bool $use_guidelines Whether to use guidelines. Default true.
 		 * @return bool Whether to use guidelines.
@@ -293,7 +293,7 @@ class Guidelines {
 	/**
 	 * Fetches guidelines from the database, using cache when available.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
 	 */

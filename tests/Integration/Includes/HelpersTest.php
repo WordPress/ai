@@ -533,13 +533,13 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-1.5', $result[4][1], 'Fifth model name should be gpt-image-1.5' );
+		$this->assertEquals( 'gpt-image-2', $result[4][1], 'Fifth model name should be gpt-image-2' );
 
 		// Check sixth model (openai).
 		$this->assertIsArray( $result[5], 'Sixth model should be an array' );
 		$this->assertCount( 2, $result[5], 'Sixth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[5][0], 'Sixth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-1-mini', $result[5][1], 'Sixth model name should be gpt-image-1' );
+		$this->assertEquals( 'gpt-image-1.5', $result[5][1], 'Sixth model name should be gpt-image-1.5' );
 	}
 
 	/**
@@ -701,7 +701,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_guidelines() returns guidelines filtered by category.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_returns_guidelines(): void {
 		$this->register_guidelines_cpt();
