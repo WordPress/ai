@@ -14,7 +14,7 @@ import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
 import { useCallback, useMemo, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import { info as infoIcon } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 import { Icon, Popover, VisuallyHidden } from '@wordpress/ui';
@@ -269,21 +269,36 @@ function buildToggleMessage(
 		if ( allEnabled ) {
 			return sprintf(
 				// translators: %d: Number of experiments.
-				__( '%d experiments enabled', 'ai' ),
+				_n(
+					'%d experiment enabled',
+					'%d experiments enabled',
+					count,
+					'ai'
+				),
 				count
 			);
 		}
 		if ( allDisabled ) {
 			return sprintf(
 				// translators: %d: Number of experiments.
-				__( '%d experiments disabled', 'ai' ),
+				_n(
+					'%d experiment disabled',
+					'%d experiments disabled',
+					count,
+					'ai'
+				),
 				count
 			);
 		}
 		// Just a fallback for mixed state (shouldn't happen with our buttons, but handle it).
 		return sprintf(
 			// translators: %d: Number of experiments.
-			__( '%d experiments updated', 'ai' ),
+			_n(
+				'%d experiment updated',
+				'%d experiments updated',
+				count,
+				'ai'
+			),
 			count
 		);
 	}
