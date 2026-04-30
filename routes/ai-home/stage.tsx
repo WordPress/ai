@@ -5,7 +5,6 @@ import { Page } from '@wordpress/admin-ui';
 import {
 	Button,
 	ExternalLink,
-	Notice,
 	Spinner,
 	ToggleControl,
 } from '@wordpress/components';
@@ -17,7 +16,7 @@ import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { info as infoIcon } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
-import { Icon, Popover, VisuallyHidden } from '@wordpress/ui';
+import { Icon, Notice, Popover, VisuallyHidden } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -939,25 +938,28 @@ function AISettingsPage() {
 		>
 			<div className="ai-settings-page">
 				{ ! PAGE_DATA.hasValidCredentials && (
-					<Notice status="error" isDismissible={ false }>
-						{ ! PAGE_DATA.hasCredentials
-							? __(
-									'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
-									'ai'
-							  )
-							: __(
-									'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
-									'ai'
-							  ) }{ ' ' }
+					<Notice.Root intent="error">
+						<Notice.Description>
+							{ ! PAGE_DATA.hasCredentials
+								? __(
+										'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
+										'ai'
+								  )
+								: __(
+										'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+										'ai'
+								  ) }
+						</Notice.Description>
 						{ PAGE_DATA.connectorsUrl && (
-							<Button
-								variant="link"
-								href={ PAGE_DATA.connectorsUrl }
-							>
-								{ __( 'Manage Connectors', 'ai' ) }
-							</Button>
+							<Notice.Actions>
+								<Notice.ActionLink
+									href={ PAGE_DATA.connectorsUrl }
+								>
+									{ __( 'Manage Connectors', 'ai' ) }
+								</Notice.ActionLink>
+							</Notice.Actions>
 						) }
-					</Notice>
+					</Notice.Root>
 				) }
 				{ isLoading ? (
 					<Spinner />
