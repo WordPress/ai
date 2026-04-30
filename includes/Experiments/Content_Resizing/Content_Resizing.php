@@ -81,6 +81,7 @@ class Content_Resizing extends Abstract_Feature {
 			return;
 		}
 
+		wp_enqueue_script_module( '@wordpress/core-abilities' );
 		Asset_Loader::enqueue_script( 'content_resizing', 'experiments/content-resizing' );
 		Asset_Loader::enqueue_style( 'content_resizing', 'experiments/content-resizing' );
 		Asset_Loader::localize_script(
