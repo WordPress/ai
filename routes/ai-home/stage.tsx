@@ -938,7 +938,10 @@ function AISettingsPage() {
 		>
 			<div className="ai-settings-page">
 				{ ! PAGE_DATA.hasValidCredentials && (
-					<Notice.Root intent="error">
+					<Notice.Root
+						className="ai-settings-page__notice"
+						intent="error"
+					>
 						<Notice.Description>
 							{ ! PAGE_DATA.hasCredentials
 								? __(
