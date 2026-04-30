@@ -917,12 +917,8 @@ function AISettingsPage() {
 
 	return (
 		<Page
-			title={
-				<>
-					<AIIcon />
-					{ __( 'AI', 'ai' ) }
-				</>
-			}
+			visual={ <AIIcon /> }
+			title={ __( 'AI', 'ai' ) }
 			subTitle={ __(
 				'Configure AI features and experiments for your WordPress site.',
 				'ai'
