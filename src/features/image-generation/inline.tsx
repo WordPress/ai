@@ -66,6 +66,14 @@ const withGenerateImageInlineButton = createHigherOrderComponent(
 				return <Component { ...props } />;
 			}
 
+			// Block-level MediaUploads (MediaPlaceholder, MediaReplaceFlow) always
+			// receive a `multiple` prop. Format-type MediaUploads (e.g. the inline
+			// image format rendered inside RichText captions) do not. Little hacky
+			// but use that to avoid injecting our button inline in the editor content.
+			if ( ! ( 'multiple' in props ) ) {
+				return <Component { ...props } />;
+			}
+
 			const setAttributes = ( attrs: Record< string, unknown > ) =>
 				( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
 					blockClientId,
