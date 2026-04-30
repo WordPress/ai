@@ -10,18 +10,20 @@ import {
 	ToggleControl,
 } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
-import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
+import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
+import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
 import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
+import { info as infoIcon } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
-import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
+import { Icon, Popover, VisuallyHidden } from '@wordpress/ui';
 
 /**
  * Internal dependencies
  */
-import './style.scss';
 import AIIcon from './ai-icon';
+import './style.scss';
 
 type AISettings = Record< string, boolean >;
 
@@ -214,12 +216,40 @@ function getPageData(): PageData {
 
 const PAGE_DATA = getPageData();
 
-const GLOBAL_FIELD: Field< AISettings > = {
-	id: GLOBAL_FIELD_ID,
-	label: __( 'Enable AI', 'ai' ),
-	type: 'boolean',
-	Edit: 'toggle',
-};
+interface InfoTipProps {
+	content: string;
+}
+
+function InfoTip( { content }: InfoTipProps ) {
+	const title = __( 'More information', 'ai' );
+
+	return (
+		<Popover.Root>
+			<Popover.Trigger
+				openOnHover
+				delay={ 200 }
+				closeDelay={ 200 }
+				aria-label={ title }
+				className="ai-settings-page__infotip-trigger"
+			>
+				<Icon icon={ infoIcon } size={ 20 } />
+			</Popover.Trigger>
+			<Popover.Popup
+				side="bottom"
+				align="end"
+				className="ai-settings-page__infotip-popover"
+			>
+				<Popover.Arrow />
+				<VisuallyHidden render={ <Popover.Title /> }>
+					{ title }
+				</VisuallyHidden>
+				<Popover.Description className="ai-settings-page__infotip-description">
+					{ content }
+				</Popover.Description>
+			</Popover.Popup>
+		</Popover.Root>
+	);
+}
 
 function buildToggleMessage(
 	edits: Record< string, unknown >,
@@ -283,7 +313,6 @@ function buildToggleMessage(
 function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	return (
 		<ToggleControl
-			__nextHasNoMarginBottom
 			label={ field.label }
 			help={ field.description }
 			checked={ !! field.getValue( { item: data } ) }
@@ -513,7 +542,6 @@ function FeatureToggleWithSettings( {
 	return (
 		<div className="ai-feature-toggle-with-settings">
 			<ToggleControl
-				__nextHasNoMarginBottom
 				label={ field.label }
 				help={ field.description }
 				checked={ checked }
@@ -677,7 +705,11 @@ function AISettingsPage() {
 		return aiSettings;
 	}, [ aiSettingKeys, editedRecord ] );
 
-	const globalEnabled = Boolean( data[ GLOBAL_FIELD.id ] );
+	const globalEnabled = Boolean( data[ GLOBAL_FIELD_ID ] );
+	const globalToggleDescription = __(
+		'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
+		'ai'
+	);
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
@@ -779,7 +811,7 @@ function AISettingsPage() {
 			return baseField;
 		} );
 
-		return [ GLOBAL_FIELD, ...sectionActionsFields, ...featureFields ];
+		return [ ...sectionActionsFields, ...featureFields ];
 	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
 
 	const form = useMemo< Form >( () => {
@@ -865,23 +897,7 @@ function AISettingsPage() {
 		}
 
 		return {
-			fields: [
-				{
-					id: 'generalSettings',
-					label: __( 'General Settings', 'ai' ),
-					description: __(
-						'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-						'ai'
-					),
-					layout: {
-						type: 'card',
-						withHeader: true,
-						isCollapsible: false,
-					},
-					children: [ GLOBAL_FIELD_ID ],
-				},
-				...sectionFields,
-			],
+			fields: sectionFields,
 		};
 	}, [ featureDefinitions, featureGroups ] );
 
@@ -905,6 +921,19 @@ function AISettingsPage() {
 					<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
 						{ __( 'Contribute', 'ai' ) }
 					</ExternalLink>
+					<div className="ai-settings-page__global-toggle">
+						<ToggleControl
+							label={ __( 'Enable AI', 'ai' ) }
+							checked={ globalEnabled }
+							onChange={ ( checked ) => {
+								void handleChange( {
+									[ GLOBAL_FIELD_ID ]: checked,
+								} );
+							} }
+							disabled={ isLoading }
+						/>
+						<InfoTip content={ globalToggleDescription } />
+					</div>
 				</div>
 			}
 		>
