@@ -75,6 +75,34 @@ function normalize_content( string $content ): string {
 }
 
 /**
+ * Counts the number of words in a string with Unicode support.
+ * Handles non-Latin scripts including; CJK (Chinese, Japanese, Korean), Arabic, Cyrillic, etc.
+ * This approach mirrors the approach used by WordPress's JavaScript word counter.
+ *
+ * @since x.x.x
+ *
+ * @param string $text The text to count words in.
+ * @return int The number of words.
+ */
+function count_words( string $text ): int {
+	$text = trim( $text );
+	if ( '' === $text ) {
+		return 0;
+	}
+
+	/*
+	 * Insert spaces around CJK ideographs and Japanese kana so each
+	 * character is counted individually.
+	 */
+	$cjk_pattern = '/([\x{2E80}-\x{9FFF}\x{F900}-\x{FAFF}\x{FE30}-\x{FE4F}\x{20000}-\x{2FA1F}\x{3040}-\x{309F}\x{30A0}-\x{30FF}])/u';
+	$text        = preg_replace( $cjk_pattern, ' $1 ', $text ) ?? $text;
+	$text        = trim( preg_replace( '/\s+/u', ' ', $text ) ?? $text );
+	$words       = preg_split( '/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY );
+
+	return is_array( $words ) ? count( $words ) : 0;
+}
+
+/**
  * Returns the context for the given post ID.
  *
  * @since 0.1.0
