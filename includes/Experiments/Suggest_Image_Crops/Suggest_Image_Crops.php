@@ -22,6 +22,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Provides AI-generated focal point and crop window suggestions for images.
  *
+ * @todo Wire up the experiment to the Gutenberg Media Editor focal point UI when available.
+ *
  * @since x.x.x
  */
 class Suggest_Image_Crops extends Abstract_Feature {
