@@ -30,6 +30,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer::class,
 		\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
 		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,
+		\WordPress\AI\Experiments\Content_Resizing\Content_Resizing::class,
 		\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
 		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,

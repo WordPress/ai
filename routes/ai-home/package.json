@@ -18,6 +18,7 @@
 		"@wordpress/icons": "*",
 		"@wordpress/i18n": "*",
 		"@wordpress/notices": "*",
+		"@wordpress/primitives": "*",
 		"@wordpress/ui": "*"
 	}
 }

@@ -45,6 +45,11 @@ module.exports = {
 			'src/experiments/abilities-explorer',
 			'index.js'
 		),
+		'experiments/content-resizing': path.resolve(
+			process.cwd(),
+			'src/experiments/content-resizing',
+			'index.tsx'
+		),
 		'experiments/example-experiment': path.resolve(
 			process.cwd(),
 			'src/experiments/example-experiment',
