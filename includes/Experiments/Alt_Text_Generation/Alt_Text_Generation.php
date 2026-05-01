@@ -117,10 +117,6 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */
 	public function maybe_enqueue_media_library_assets( string $hook_suffix ): void {
-		if ( ! $this->is_enabled() ) {
-			return;
-		}
-
 		if ( in_array( $hook_suffix, array( 'upload.php', 'media-new.php' ), true ) ) {
 			$this->maybe_enqueue_media_script();
 			$this->maybe_enqueue_bulk_script();

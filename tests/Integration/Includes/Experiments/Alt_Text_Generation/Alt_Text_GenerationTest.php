@@ -281,4 +281,52 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
 	}
+
+	public function test_button_is_added_after_alt_field() {
+		$feature = new \WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation();
+
+		// Create fake attachment
+		$post_id = self::factory()->post->create([
+			'post_type' => 'attachment',
+		]);
+
+		update_post_meta($post_id, '_wp_attached_file', 'test.jpg');
+
+		$post = get_post($post_id);
+
+		$fields = [
+			'alt' => [
+				'label' => 'Alt Text',
+				'input' => 'text',
+			],
+			'title' => [
+				'label' => 'Title',
+			],
+		];
+
+		$result = $feature->add_button_to_attachment_fields($fields, $post);
+
+		// ✅ This line triggers coverage
+		$this->assertArrayHasKey('ai_alt_text', $result);
+
+		// ✅ This ensures correct placement
+		$keys = array_keys($result);
+
+		$this->assertEquals(
+			array_search('alt', $keys) + 1,
+			array_search('ai_alt_text', $keys)
+		);
+	}
+
+	public function test_no_button_when_not_image() {
+		$feature = new \WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation();
+
+		$post = self::factory()->post->create_and_get([
+			'post_type' => 'post',
+		]);
+
+		$result = $feature->add_button_to_attachment_fields([], $post);
+
+		$this->assertArrayNotHasKey('ai_alt_text', $result);
+	}
 }
