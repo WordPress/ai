@@ -10,14 +10,16 @@
 /**
  * WordPress dependencies
  */
-import { useState } from '@wordpress/element';
-import { dispatch } from '@wordpress/data';
+import {
+	Children,
+	Fragment,
+	isValidElement,
+	useState,
+} from '@wordpress/element';
+import { dispatch, useSelect } from '@wordpress/data';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import {
-	store as blockEditorStore,
-	useBlockProps,
-} from '@wordpress/block-editor';
+import { store as blockEditorStore } from '@wordpress/block-editor';
 import { Button, MenuItem } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { create } from '@wordpress/icons';
@@ -37,84 +39,207 @@ const TARGET_BLOCKS = [
 	'core/gallery',
 ];
 
+type SelectedTargetBlock = {
+	name: string;
+	clientId: string;
+};
+
 /**
- * Higher-order component that wraps the MediaUpload component for targeted
- * blocks and injects the inline/toolbar button + modal.
+ * Flattens a React node tree to an array of children.
+ *
+ * @param {React.ReactNode} content The React node tree to flatten.
+ * @return {React.ReactNode[]} An array of children.
  */
-const withGenerateImageInlineButton = createHigherOrderComponent(
+const flattenFragmentChildren = (
+	content: React.ReactNode
+): React.ReactNode[] =>
+	Children.toArray( content ).flatMap( ( child ) => {
+		if ( isValidElement( child ) && child.type === Fragment ) {
+			return flattenFragmentChildren(
+				( child.props as { children?: React.ReactNode } ).children
+			);
+		}
+
+		return child;
+	} );
+
+/**
+ * Inserts the inserted content after the first child of the content.
+ *
+ * @param {React.ReactNode} content         The content to insert the button after.
+ * @param {React.ReactNode} insertedContent The content to insert.
+ * @return {React.ReactNode} The content with the button inserted after the first child.
+ */
+const insertAfterUploadButton = (
+	content: React.ReactNode,
+	insertedContent: React.ReactNode
+): React.ReactNode => {
+	const children = flattenFragmentChildren( content );
+
+	if ( children.length === 0 ) {
+		return insertedContent;
+	}
+
+	const insertAfterIndex = children.length > 1 ? 1 : 0;
+
+	return (
+		<>
+			{ children.slice( 0, insertAfterIndex + 1 ) }
+			{ insertedContent }
+			{ children.slice( insertAfterIndex + 1 ) }
+		</>
+	);
+};
+
+/**
+ * Returns the selected target block.
+ *
+ * @return {SelectedTargetBlock|null} The selected target block.
+ */
+const useSelectedTargetBlock = (): SelectedTargetBlock | null =>
+	useSelect( ( select ) => {
+		const { getSelectedBlock } = select( blockEditorStore ) as any;
+		const selectedBlock = getSelectedBlock();
+
+		if (
+			! selectedBlock ||
+			! TARGET_BLOCKS.includes( selectedBlock.name )
+		) {
+			return null;
+		}
+
+		return {
+			name: selectedBlock.name,
+			clientId: selectedBlock.clientId,
+		};
+	}, [] );
+
+/**
+ * Higher-order component that wraps MediaPlaceholder for targeted blocks and
+ * injects the inline button + modal.
+ */
+const withGenerateImageButton = createHigherOrderComponent( ( Component ) => {
+	if ( ! aiImageGenerationData?.enabled ) {
+		return Component;
+	}
+
+	return ( props: any ) => {
+		const [ isModalOpen, setModalOpen ] = useState( false );
+		const selectedBlock = useSelectedTargetBlock();
+
+		if ( ! selectedBlock ) {
+			return <Component { ...props } />;
+		}
+
+		const setAttributes = ( attrs: Record< string, unknown > ) =>
+			( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
+				selectedBlock.clientId,
+				attrs
+			);
+
+		const modal = isModalOpen && (
+			<GenerateImageInlineModal
+				blockName={ selectedBlock.name }
+				clientId={ selectedBlock.clientId }
+				setAttributes={ setAttributes }
+				onClose={ () => setModalOpen( false ) }
+			/>
+		);
+
+		const button = (
+			<Button
+				variant="secondary"
+				onClick={ () => setModalOpen( true ) }
+				__next40pxDefaultSize
+			>
+				{ __( 'Generate Image', 'ai' ) }
+			</Button>
+		);
+
+		const { children, placeholder, ...rest } = props;
+
+		if ( placeholder ) {
+			return (
+				<>
+					<Component
+						{ ...rest }
+						placeholder={ ( content: React.ReactNode ) =>
+							placeholder(
+								insertAfterUploadButton( content, button )
+							)
+						}
+					>
+						{ children }
+					</Component>
+					{ modal }
+				</>
+			);
+		}
+
+		return (
+			<>
+				<Component { ...rest }>
+					{ button }
+					{ children }
+				</Component>
+				{ modal }
+			</>
+		);
+	};
+}, 'withGenerateImageButton' );
+
+addFilter(
+	'editor.MediaPlaceholder',
+	'ai/image-generation-placeholder-button',
+	withGenerateImageButton
+);
+
+const withGenerateImageReplaceFlowButton = createHigherOrderComponent(
 	( Component ) => {
-		// Don't render if disabled.
 		if ( ! aiImageGenerationData?.enabled ) {
 			return Component;
 		}
 
 		return ( props: any ) => {
 			const [ isModalOpen, setModalOpen ] = useState( false );
-			const { render, mode, ...rest } = props;
-			let blockProps;
+			const selectedBlock = useSelectedTargetBlock();
 
-			try {
-				blockProps = useBlockProps();
-			} catch {
+			if ( ! selectedBlock ) {
 				return <Component { ...props } />;
 			}
 
-			const { 'data-type': blockName, 'data-block': blockClientId } =
-				blockProps;
-
-			if ( ! TARGET_BLOCKS.includes( blockName ) ) {
-				return <Component { ...props } />;
-			}
-
-			// Block-level MediaUploads (MediaPlaceholder, MediaReplaceFlow) always
-			// receive a `multiple` prop. Format-type MediaUploads (e.g. the inline
-			// image format rendered inside RichText captions) do not. Little hacky
-			// but use that to avoid injecting our button inline in the editor content.
-			if ( ! ( 'multiple' in props ) ) {
-				return <Component { ...props } />;
-			}
-
+			const { children, ...rest } = props;
 			const setAttributes = ( attrs: Record< string, unknown > ) =>
 				( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
-					blockClientId,
+					selectedBlock.clientId,
 					attrs
 				);
 
-			// MediaPlaceholder uses mode="browse" and expects Buttons. MediaReplaceFlow
-			// (toolbar Add/Replace dropdown) uses no mode and expects MenuItems.
-			const isToolbarContext = mode !== 'browse';
-
 			return (
 				<>
-					<Component
-						{ ...rest }
-						mode="generate"
-						render={ () =>
-							isToolbarContext ? (
+					<Component { ...rest }>
+						{ ( childProps: any ) => (
+							<>
 								<MenuItem
 									icon={ create }
-									onClick={ () => setModalOpen( true ) }
+									onClick={ () => {
+										childProps.onClose?.();
+										setModalOpen( true );
+									} }
 								>
 									{ __( 'Generate Image', 'ai' ) }
 								</MenuItem>
-							) : (
-								<Button
-									variant="secondary"
-									onClick={ () => setModalOpen( true ) }
-									__next40pxDefaultSize
-								>
-									{ __( 'Generate Image', 'ai' ) }
-								</Button>
-							)
-						}
-					/>
-
-					<Component { ...props } />
+								{ typeof children === 'function'
+									? children( childProps )
+									: children }
+							</>
+						) }
+					</Component>
 
 					{ isModalOpen && (
 						<GenerateImageInlineModal
-							blockName={ blockName }
-							clientId={ blockClientId }
+							blockName={ selectedBlock.name }
+							clientId={ selectedBlock.clientId }
 							setAttributes={ setAttributes }
 							onClose={ () => setModalOpen( false ) }
 						/>
@@ -123,11 +248,11 @@ const withGenerateImageInlineButton = createHigherOrderComponent(
 			);
 		};
 	},
-	'withGenerateImageInlineButton'
+	'withGenerateImageReplaceFlowButton'
 );
 
 addFilter(
-	'editor.MediaUpload',
-	'ai/image-generation-inline-button',
-	withGenerateImageInlineButton
+	'editor.MediaReplaceFlow',
+	'ai/image-generation-replace-flow-button',
+	withGenerateImageReplaceFlowButton
 );
