@@ -108,7 +108,7 @@ class Summarization extends Abstract_Feature {
 		 *
 		 * @param int $min_content_length The minimum number of characters required. Default 100.
 		 */
-		$min_content_length = (int) apply_filters( 'ai_summarization_min_content_length', 100 );
+		$min_content_length = (int) apply_filters( 'wpai_summarization_min_content_length', 100 );
 
 		Asset_Loader::localize_script(
 			'summarization',
