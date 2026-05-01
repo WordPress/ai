@@ -57,17 +57,17 @@ test.describe( 'Alt Text Generation Experiment', () => {
 
 		// Ensure the alt text generation button is visible and says Generate
 		await expect(
-			page.locator( '#ai-alt-text-generate-button', {
+			page.locator( '.ai-alt-text-generate-button', {
 				hasText: 'Generate',
 			} )
 		).toBeVisible();
 
 		// Click the alt text generation button.
-		await page.locator( '#ai-alt-text-generate-button' ).click();
+		await page.locator( '.ai-alt-text-generate-button' ).click();
 
 		// Ensure the alt text generation button now says Regenerate
 		await expect(
-			page.locator( '#ai-alt-text-generate-button', {
+			page.locator( '.ai-alt-text-generate-button', {
 				hasText: 'Regenerate',
 			} )
 		).toBeVisible();
@@ -129,17 +129,17 @@ test.describe( 'Alt Text Generation Experiment', () => {
 
 		// Ensure the alt text generation button is visible and says Generate
 		await expect(
-			page.locator( '#ai-alt-text-generate-button', {
+			page.locator( '.ai-alt-text-generate-button', {
 				hasText: 'Generate',
 			} )
 		).toBeVisible();
 
 		// Click the alt text generation button.
-		await page.locator( '#ai-alt-text-generate-button' ).click();
+		await page.locator( '.ai-alt-text-generate-button' ).click();
 
 		// Ensure the alt text generation button now says Regenerate
 		await expect(
-			page.locator( '#ai-alt-text-generate-button', {
+			page.locator( '.ai-alt-text-generate-button', {
 				hasText: 'Regenerate',
 			} )
 		).toBeVisible();
@@ -253,7 +253,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 
 		// Ensure the alt text generation button is not visible.
 		await expect(
-			page.locator( '#ai-alt-text-generate-button' )
+			page.locator( '.ai-alt-text-generate-button' )
 		).not.toBeVisible();
 
 		// Create a new post.
@@ -286,7 +286,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 
 		// Ensure the alt text generation button is not visible.
 		await expect(
-			page.locator( '#ai-alt-text-generate-button' )
+			page.locator( '.ai-alt-text-generate-button' )
 		).not.toBeVisible();
 
 		// Click the Select button.
@@ -327,7 +327,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 
 		// Ensure the alt text generation button is not visible.
 		await expect(
-			page.locator( '#ai-alt-text-generate-button' )
+			page.locator( '.ai-alt-text-generate-button' )
 		).not.toBeVisible();
 
 		// Create a new post.
@@ -360,7 +360,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 
 		// Ensure the alt text generation button is not visible.
 		await expect(
-			page.locator( '#ai-alt-text-generate-button' )
+			page.locator( '.ai-alt-text-generate-button' )
 		).not.toBeVisible();
 
 		// Click the Select button.
