@@ -17,6 +17,8 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateSummary } from './generate-summary';
 
+const { aiSummarizationData } = window as any;
+
 /**
  * Summary generation hook.
  */
@@ -110,10 +112,20 @@ export function useSummaryGeneration() {
 		}
 	};
 
+	// Minimum content length required for summarization.
+	const minContentLength: number =
+		aiSummarizationData?.minContentLength ?? 100;
+	const strippedContent = content
+		? content.replace( /<[^>]+>/g, '' ).trim()
+		: '';
+	const isContentTooShort = strippedContent.length < minContentLength;
+
 	return {
 		isSummarizing,
 		hasSummary: summary && summary.trim().length > 0,
 		summary,
 		handleSummarize,
+		isContentTooShort,
+		minContentLength,
 	};
 }

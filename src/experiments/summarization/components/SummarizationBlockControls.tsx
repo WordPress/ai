@@ -23,7 +23,7 @@ const { aiSummarizationData } = window as any;
  * Block controls component.
  */
 const Controls = () => {
-	const { isSummarizing, hasSummary, handleSummarize } =
+	const { isSummarizing, hasSummary, handleSummarize, isContentTooShort } =
 		useSummaryGeneration();
 	let buttonLabel: string = __( 'Generate Summary', 'ai' );
 
@@ -46,7 +46,7 @@ const Controls = () => {
 					icon={ update }
 					className="ai-summarization-block-controls-button"
 					onClick={ handleSummarize }
-					disabled={ isSummarizing }
+					disabled={ isSummarizing || isContentTooShort }
 					isBusy={ isSummarizing }
 				/>
 			</ToolbarGroup>

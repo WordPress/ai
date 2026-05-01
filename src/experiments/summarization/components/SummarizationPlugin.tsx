@@ -7,7 +7,7 @@
  */
 import { Button, Flex, FlexItem } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { update } from '@wordpress/icons';
 
 /**
@@ -21,8 +21,13 @@ const { aiSummarizationData } = window as any;
  * Summarization plugin component.
  */
 export default function SummarizationPlugin() {
-	const { isSummarizing, hasSummary, handleSummarize } =
-		useSummaryGeneration();
+	const {
+		isSummarizing,
+		hasSummary,
+		handleSummarize,
+		isContentTooShort,
+		minContentLength,
+	} = useSummaryGeneration();
 
 	let buttonLabel: string = __( 'Generate Summary', 'ai' );
 
@@ -31,15 +36,31 @@ export default function SummarizationPlugin() {
 	} else if ( hasSummary ) {
 		buttonLabel = __( 'Regenerate Summary', 'ai' );
 	}
-	const buttonDescription = hasSummary
-		? __(
-				'This will update the AI generated summary block with a new summary of the content of this post.',
+
+	const isDisabled = isSummarizing || isContentTooShort;
+
+	let buttonDescription: string;
+
+	if ( isContentTooShort ) {
+		buttonDescription = sprintf(
+			/* translators: %d: minimum number of characters required */
+			__(
+				'The summarization experiment will be enabled when the post content has at least %d characters.',
 				'ai'
-		  )
-		: __(
-				'This will create a block that is a summary of the content of this post.',
-				'ai'
-		  );
+			),
+			minContentLength
+		);
+	} else if ( hasSummary ) {
+		buttonDescription = __(
+			'This will update the AI generated summary block with a new summary of the content of this post.',
+			'ai'
+		);
+	} else {
+		buttonDescription = __(
+			'This will create a block that is a summary of the content of this post.',
+			'ai'
+		);
+	}
 
 	// Don't render if disabled.
 	if ( ! aiSummarizationData?.enabled ) {
@@ -60,7 +81,7 @@ export default function SummarizationPlugin() {
 						label={ buttonLabel }
 						icon={ update }
 						onClick={ handleSummarize }
-						disabled={ isSummarizing }
+						disabled={ isDisabled }
 						isBusy={ isSummarizing }
 						__next40pxDefaultSize
 					>
