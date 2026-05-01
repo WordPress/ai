@@ -61,7 +61,6 @@ class Alt_Text_Generation extends Abstract_Feature {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
 		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
-		add_action( 'add_meta_boxes_attachment', array( $this, 'setup_attachment_meta_box' ) );
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
 		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
 		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
@@ -160,47 +159,6 @@ class Alt_Text_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Sets up the attachment meta box.
-	 *
-	 * Adds a meta box to the attachment edit screen that contains
-	 * the Generate/Regenerate button.
-	 *
-	 * @since 0.3.0
-	 *
-	 * @param \WP_Post $post The attachment post.
-	 */
-	public function setup_attachment_meta_box( \WP_Post $post ): void {
-		if (
-			! $this->is_enabled() ||
-			! wp_attachment_is_image( $post )
-		) {
-			return;
-		}
-
-		add_meta_box(
-			'ai_alt_text_generation',
-			__( 'Alt Text', 'ai' ),
-			array( $this, 'render_attachment_meta_box' ),
-			'attachment',
-		);
-	}
-
-	/**
-	 * Renders the attachment meta box content.
-	 *
-	 * @since 0.3.0
-	 *
-	 * @param \WP_Post $post The attachment post.
-	 */
-	public function render_attachment_meta_box( \WP_Post $post ): void {
-		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
-
-		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 150px;">';
-		echo '<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
-		echo '</div>';
-	}
-
-	/**
 	 * Adds the "Generate Alt Text" option to the Media Library bulk actions menu.
 	 *
 	 * @since 0.7.0
@@ -278,13 +236,13 @@ class Alt_Text_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Adds a button to the media modal to generate alt text.
+	 * Adds media alt text generation controls directly beneath the alt text field.
 	 *
 	 * @since 0.3.0
 	 *
 	 * @param array<string, mixed> $fields The attachment fields.
 	 * @param \WP_Post|null $post The attachment post.
-	 * @return array<string, mixed> The attachment fields with the button added.
+	 * @return array<string, mixed> The attachment fields with controls added.
 	 */
 	public function add_button_to_media_modal( array $fields, ?\WP_Post $post ): array {
 		if (
@@ -300,8 +258,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 		$fields['ai_alt_text'] = array(
 			'label'        => __( 'Alt Text', 'ai' ),
 			'input'        => 'html',
-			'show_in_edit' => false,
-			'html'         => '<div class="ai-alt-text-media-actions"><button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p></div>',
+			'show_in_edit' => true,
+			'html'         => '<div class="ai-alt-text-media-actions"><button id="ai-alt-text-generate-button" class="button button-secondary ai-alt-text-generate-button" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p></div>',
 		);
 
 		return $fields;
