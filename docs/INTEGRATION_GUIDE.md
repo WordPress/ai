@@ -26,13 +26,26 @@ The AI plugin itself ships:
 
 ## 2. End‑user setup
 
-1. Install the plugin (`ai.php`) plus at least one **provider connector plugin** (OpenAI, Google, Anthropic, etc.). The AI plugin itself ships zero provider credentials.
+### 2.1 Prerequisites
+
+Before activation, the plugin enforces four requirements (`includes/Requirements.php::get_requirements()`) and refuses to load with an admin notice if any fail:
+
+- **PHP 7.4** or higher.
+- **WordPress 7.0** or higher (the floor declared by `Requirements::MIN_WP_VERSION`; in practice this means a release that supports the AI primitives below).
+- **`wp_supports_ai()` returning truthy** — the plugin will not run on a WP build where AI support is disabled.
+- **Built front-end assets at `build/build.php`** — source-only checkouts must run `nvm use && npm ci && npm run build` before activating. Test suites can define `WPAI_IS_TEST` to bypass this check.
+
+A provider connector plugin is also required for the plugin to do anything useful — the AI plugin itself ships zero provider credentials.
+
+### 2.2 Install and configure
+
+1. Install the plugin (`ai.php`) plus at least one **provider connector plugin** (OpenAI, Google, Anthropic, etc.).
 2. Visit **Connectors** (`options-connectors.php`) and configure each provider you installed.
    - Paste the API key for each provider. Internally these are stored in options whose names are declared by the connector (`authentication.setting_name`).
 3. Visit **Settings → AI**:
    - Turn on the global **Enable AI** setting. This is stored in the option `wpai_features_enabled`.
    - Toggle the features/experiments you want. Each feature's toggle is stored in the option `wpai_feature_{id}_enabled`.
-4. For host/agency setups: pre‑seed the connector credential options, `wpai_features_enabled`, and the relevant `wpai_feature_{id}_enabled` options on behalf of users (e.g., from `wp-config.php` or `mu-plugins`) so end users don't need to BYO key.
+4. For host/agency setups: pre‑seed the connector credential options, `wpai_features_enabled`, and the relevant `wpai_feature_{id}_enabled` options on behalf of users (e.g., from `wp-config.php` or `mu-plugins`) so end users don't need to BYO key. Pre-seeding works automatically for connectors whose `authentication.method` is `api_key` (the value is read with `get_option()`); for OAuth-, IAM-, or env-var-based providers, also implement the `wpai_has_ai_credentials` filter so the AI plugin recognizes the site as configured.
 
 The **AI Status** dashboard widget (`includes/Admin/Dashboard/AI_Status_Widget.php`) shows which connectors are configured and which features are on. Its connector check uses `WordPress\AI\has_ai_credentials()` (option presence). The Settings page additionally calls `WordPress\AI\has_valid_ai_credentials()`, which first checks option presence and then runs a real probe via `wp_ai_client_prompt('Test')->is_supported_for_text_generation()`.
 
@@ -85,7 +98,19 @@ You don't touch this repo. Write a small companion plugin that calls `wp_registe
 
 Every AI ability in this plugin extends `WordPress\AI\Abstracts\Abstract_Ability`, which itself extends `WP_Ability` (from the Abilities API). Each ability declares input/output schemas, a permission callback, and an execute callback.
 
-### 4.1 Calling abilities from PHP
+### 4.1 Three exposure layers
+
+A registered ability can be reached in up to three ways depending on its `meta` array:
+
+| Layer | How it's enabled | Reachable via |
+|---|---|---|
+| In-process (PHP) | Always — `wp_register_ability()` | `wp_get_ability( $name )->execute( $input )` from any PHP code |
+| REST | `meta()` returns `[ 'show_in_rest' => true ]` | `POST /wp-json/wp-abilities/v1/abilities/{name}/run` |
+| MCP tool | `meta()` returns `[ 'mcp' => [ 'public' => true, 'type' => 'tool' ] ]` | Whatever MCP transport the host exposes (separate from the REST namespace above) |
+
+Built-in abilities mix these layers. `ai/get-post-details` (`includes/Abilities/Utilities/Posts.php`) registers all three (`show_in_rest` and `mcp`). `ai/get-post-terms` registers as MCP-only and is **not** reachable via REST. Most feature abilities (`ai/excerpt-generation`, `ai/title-generation`, `ai/content-resizing`, `ai/meta-description`, `ai/content-classification`, `ai/summarization`, etc.) register `show_in_rest` only.
+
+### 4.2 Calling abilities from PHP
 
 ```php
 $ability = wp_get_ability( 'ai/excerpt-generation' );
@@ -112,7 +137,7 @@ Built‑in ability names follow the pattern `ai/{slug}`:
 - `ai/alt-text-generation`
 - `ai/get-post-details`, `ai/get-post-terms` (utilities used by the others)
 
-### 4.2 Calling abilities over REST
+### 4.3 Calling abilities over REST
 
 A registered ability whose `meta()` returns `[ 'show_in_rest' => true ]` is exposed at:
 
@@ -133,7 +158,24 @@ curl -X POST "https://example.test/wp-json/wp-abilities/v1/abilities/ai/excerpt-
 
 Common errors (401/405/400/404) are documented in [`TESTING_REST_API.md`](TESTING_REST_API.md).
 
-### 4.3 Registering your own ability
+#### Permissions for built-in abilities
+
+Each ability runs its own `permission_callback` against the supplied input, so the capability the caller needs depends on the ability *and* the input shape. The defaults for built-in abilities:
+
+| Ability | When the input includes a post / attachment ID | When called without an ID |
+|---|---|---|
+| `ai/excerpt-generation`, `ai/title-generation`, `ai/summarization`, `ai/meta-description` | `edit_post` on that post + post type must have `show_in_rest` | `edit_posts` |
+| `ai/refine-notes`, `ai/review-notes` | `edit_post` on that post + post type must have `show_in_rest` | `edit_posts` |
+| `ai/content-resizing` | `edit_post` on that post | `edit_posts` |
+| `ai/content-classification` | `edit_post` on that post + post type must have `show_in_rest` | `edit_posts` |
+| `ai/get-post-details`, `ai/get-post-terms` | `edit_post` on the post (post ID is required input) | n/a |
+| `ai/image-prompt-generation` | `edit_post` on that post | `edit_posts` |
+| `ai/image-generation`, `ai/image-import` | n/a | `upload_files` |
+| `ai/alt-text-generation` | `edit_post` on the attachment | `upload_files` |
+
+The Content Classification editor UI additionally gates its asset enqueue on `current_user_can( 'manage_categories' )` plus the post type being attached to `category` or `post_tag` — so a user with `edit_posts` but not `manage_categories` can call `ai/content-classification` over REST but won't see the in-editor "Suggest Tags / Categories" buttons.
+
+### 4.4 Registering your own ability
 
 Subclass `Abstract_Ability` and register it on `wp_abilities_api_init` with `wp_register_ability()`, usually from your feature's `register()` method. This is the pattern used by the feature classes in `includes/Experiments/*` and `includes/Features/Image_Generation/Image_Generation.php`.
 
@@ -156,14 +198,65 @@ Required overrides:
 - `output_schema()`
 - `execute_callback( $input )`
 - `permission_callback( $input )`
-- `meta()` — return `[ 'show_in_rest' => true ]` to expose over REST
+- `meta()` — return `[ 'show_in_rest' => true ]` to expose over REST, and/or `[ 'mcp' => [ 'public' => true, 'type' => 'tool' ] ]` to expose as an MCP tool
 
 Optional:
 
-- `guideline_categories()` — return any of `'site' | 'copy' | 'images' | 'additional'` to have site editorial guidelines automatically appended to your system instruction (see `includes/Services/Guidelines.php`).
+- `guideline_categories()` — return any of `'site' | 'copy' | 'images' | 'additional'` to have site editorial guidelines automatically appended to your system instruction (see [§4.5 Editorial Guidelines](#45-editorial-guidelines)).
 - A `system-instruction.php` file next to your ability class that returns a string. `Abstract_Ability::get_system_instruction()` will auto‑load it via reflection and `extract()` any `$data` you pass in as variables.
 
 The result of your system instruction is filterable via `wpai_system_instruction` (filter — `string $instruction, string $name, array $data`).
+
+### 4.5 Editorial Guidelines
+
+The plugin can inject site-wide editorial guidance into every ability's system instruction so all abilities share a consistent tone, vocabulary, and policy. Guidelines come from a single `wp_guideline` custom post type managed by Gutenberg ≥ 23.0; the plugin only consumes them.
+
+#### The `wp_guideline` CPT
+
+`Guidelines::is_available()` (`includes/Services/Guidelines.php`) returns true when the `wp_guideline` post type is registered. The service reads the most recent guideline post (`publish` or `draft`), then pulls these post-meta keys:
+
+| Category slug | Post meta key | XML tag in the prompt |
+|---|---|---|
+| `site` | `_guideline_site` | `<site-context>` |
+| `copy` | `_guideline_copy` | `<copy-guidelines>` |
+| `images` | `_guideline_images` | `<image-guidelines>` |
+| `additional` | `_guideline_additional` | `<additional-guidelines>` |
+| Block-specific | `_guideline_block_{sanitized_block_name}` (the `/` in block names is replaced with `_`, e.g. `core/paragraph` → `core_paragraph`) | `<block-guidelines>` |
+
+If the CPT isn't registered (Gutenberg < 23.0 or no plugin registers it), `format_for_prompt()` returns an empty string and ability prompts are unaffected.
+
+#### Wiring an ability to guidelines
+
+Implement `guideline_categories()` on your ability. Return any subset of `'site' | 'copy' | 'images' | 'additional'`. `Abstract_Ability::get_system_instruction()` then prepends the matching guideline blocks (wrapped in `<guidelines>...</guidelines>`) to your `system-instruction.php` output.
+
+```php
+class My_Ability extends Abstract_Ability {
+    protected function guideline_categories(): array {
+        return array( 'site', 'copy' );
+    }
+}
+```
+
+#### Helpers for non-ability code
+
+If you generate text outside the Abilities API but still want guideline injection:
+
+```php
+$xml = WordPress\AI\format_guidelines_for_prompt(
+    array( 'site', 'copy' ),
+    'core/paragraph'  // optional block name → adds <block-guidelines>
+);
+
+$keyed = WordPress\AI\get_guidelines();          // all categories
+$copy  = WordPress\AI\get_guidelines( 'copy' );  // single category
+```
+
+#### Filters
+
+| Filter | Type | Use |
+|---|---|---|
+| `wpai_use_guidelines` | filter — `bool` (default `true`) | Globally disable injection without un-registering the CPT (e.g., `__return_false` in staging). |
+| `wpai_max_guideline_length` | filter — `int` (default `5000`) | Cap the per-category character length used in `format_for_prompt()`; longer content is truncated with `mb_substr`. |
 
 ---
 
@@ -268,6 +361,61 @@ add_filter( 'wpai_default_feature_classes', function ( array $classes ): array {
 } );
 ```
 
+#### Adding feature-specific settings
+
+To expose toggles, dropdowns, or numeric inputs on **Settings → AI**, override `register_settings()` to hook into the WordPress Settings API (using the `Settings_Registration::OPTION_GROUP` constant) *and* `get_settings_fields()` to describe how each field should render in the React UI:
+
+```php
+use WordPress\AI\Settings\Settings_Registration;
+
+class My_Feature extends Abstract_Feature {
+    // ...id, metadata, register, enqueue_assets omitted...
+
+    public function register_settings(): void {
+        register_setting(
+            Settings_Registration::OPTION_GROUP,
+            $this->get_field_option_name( 'mode' ),
+            array(
+                'type'              => 'string',
+                'default'           => 'fast',
+                'sanitize_callback' => array( $this, 'sanitize_mode' ),
+                'show_in_rest'      => array(
+                    'schema' => array(
+                        'type' => 'string',
+                        'enum' => array( 'fast', 'thorough' ),
+                    ),
+                ),
+            )
+        );
+    }
+
+    public function get_settings_fields(): array {
+        return array(
+            array(
+                'id'       => 'mode',
+                'label'    => __( 'Generation mode', 'my-plugin' ),
+                'type'     => 'text',
+                'default'  => 'fast',
+                'elements' => array(
+                    array( 'value' => 'fast',     'label' => __( 'Fast', 'my-plugin' ) ),
+                    array( 'value' => 'thorough', 'label' => __( 'Thorough', 'my-plugin' ) ),
+                ),
+            ),
+        );
+    }
+
+    public function sanitize_mode( $value ): string {
+        return in_array( $value, array( 'fast', 'thorough' ), true ) ? $value : 'fast';
+    }
+}
+```
+
+Mechanics:
+
+- **Option naming.** `get_field_option_name( 'mode' )` resolves to `wpai_feature_my-feature_field_mode`. Always go through this helper instead of hard-coding the option name — it keeps your settings co-located with the feature ID and lets `Settings_Registration` collect them into the `ai_experiments` option group automatically.
+- **Field IDs are short.** In `get_settings_fields()` use `'mode'`, not the namespaced form. `Settings_Page::get_settings_feature_metadata()` calls `get_field_option_name()` per field before sending the payload to the React UI.
+- **Field shape.** The `id`, `label`, `type`, `default`, `elements`, and `isValid` keys map to Gutenberg's DataForm Field contract. `Content_Classification` (`includes/Experiments/Content_Classification/Content_Classification.php`) is the canonical reference for `text` (with `elements`) and `integer` (with `isValid: { min, max }`) field types.
+
 ### 6.3 Feature/experiment hooks summary
 
 | Hook | Type | Purpose |
@@ -277,6 +425,8 @@ add_filter( 'wpai_default_feature_classes', function ( array $classes ): array {
 | `wpai_features_initialized` | action | Fires once all enabled features have run `register()`. Does not fire if the loader-level `wpai_features_enabled` filter returns false. |
 | `wpai_features_enabled` | filter | Loader-level hard kill switch for *all* features (e.g., `__return_false` in staging). This is separate from the global option of the same name. |
 | `wpai_feature_{id}_enabled` | filter | Override the individual feature option after the global option has allowed feature checks to continue. It cannot enable a feature while the global option is false. |
+| `wpai_settings_feature_groups` | filter — `array $groups` | Override the `id => { label, description, order }` map of group headers shown on Settings → AI. Defaults cover the `editor`, `admin`, and `other` categories. |
+| `wpai_settings_feature_metadata` | filter — `array $metadata, Registry $registry` | Final pass over the full `{ groups, features }` payload sent to the React settings UI. Use to inject custom field types, hide a feature, or override labels. |
 | Option `wpai_features_enabled` | option | Backing store for the global **Enable AI** setting. Required before any feature's `is_enabled()` can return true. |
 | Option `wpai_feature_{id}_enabled` | option | Backing store toggled from Settings → AI. |
 | Option `wpai_feature_{id}_field_{option_name}` | option | Backing store for custom per‑feature settings fields registered by a feature. |
@@ -324,6 +474,8 @@ Source files live in `src/`; entry points are configured in `webpack.config.js`.
 
 ## 8. Other useful filters
 
+### 8.1 Cross-cutting filters
+
 | Filter | Where | Use |
 |---|---|---|
 | `wpai_pre_normalize_content` | `helpers.php` (`normalize_content`) | Mutate content before HTML stripping. |
@@ -331,6 +483,25 @@ Source files live in `src/`; entry points are configured in `webpack.config.js`.
 | `wpai_system_instruction` | `Abstract_Ability::get_system_instruction()` | Inject site‑specific tone/policy into every ability's system prompt. |
 | `wpai_has_ai_credentials` | `helpers.php` (`has_ai_credentials`) | Mark site as credentialed even when no API key is in options. |
 | `wpai_pre_has_valid_credentials_check` | `helpers.php` (`has_valid_ai_credentials`) | Skip the live `is_supported_for_text_generation()` probe (e.g., during tests). |
+| `wpai_use_guidelines` | `Services\Guidelines::should_use_guidelines()` | Globally enable/disable editorial guideline injection (see [§4.5](#45-editorial-guidelines)). |
+| `wpai_max_guideline_length` | `Services\Guidelines::format_for_prompt()` | Per-category character cap (default 5000). |
+| `wpai_ability_category` | `Experiments\Abilities_Explorer\Ability_Handler` | Override the category label shown for an ability in the Abilities Explorer UI. Receives `$category_label, $slug`. |
+
+### 8.2 Ability-specific filters
+
+| Filter | Where | Signature |
+|---|---|---|
+| `wpai_get_post_details` | `Abilities\Utilities\Posts` (`ai/get-post-details`) | `array $details, int $post_id, array $fields` — mutate the `{ content, title, slug, ... }` array. |
+| `wpai_get_post_terms` | `Abilities\Utilities\Posts` (`ai/get-post-terms`) | `WP_Term[] $terms, int $post_id, string[] $allowed_taxonomies` — mutate the term list. |
+| `wpai_content_classification_strategy` | `Experiments\Content_Classification` | `string $strategy` — override `existing_only` / `allow_new` independently of the stored option. |
+| `wpai_content_classification_max_suggestions` | `Experiments\Content_Classification` | `int $max` — override the max suggestion count (clamped 1–10). |
+| `wpai_content_classification_prompt` | `Abilities\Content_Classification` | `string $prompt, string $context, string $taxonomy, array $assigned_terms, array $available_terms` — replace the constructed user prompt before sending to the model. |
+| `wpai_content_classification_suggestions` | `Abilities\Content_Classification` | `array $suggestions, string $taxonomy, string $strategy` — post-process the parsed suggestion array (e.g., drop low-confidence ones). |
+| `wpai_meta_description` | `Experiments\Meta_Description` | `string $meta_description` — final hook before the value is returned/stored. |
+| `wpai_meta_description_prompt` | `Abilities\Meta_Description` | `string $prompt, string $content, string $title` — mutate the user prompt before model call. |
+| `wpai_meta_description_result_temperature` | `Abilities\Meta_Description` | `float $temperature` (default `0.7`) — controls how aggressively the model varies its output across regenerations. |
+| `wpai_meta_description_meta_key` | `Abilities\Meta_Description\SEO_Integration` | `string $key, string $plugin_slug` — override the post-meta key used when writing back to the SEO plugin. |
+| `wpai_meta_description_seo_plugins` | `Abilities\Meta_Description\SEO_Integration` | `array $plugins` — add or remove SEO plugins from the auto-detection list. |
 
 ---
 
@@ -338,9 +509,21 @@ Source files live in `src/`; entry points are configured in `webpack.config.js`.
 
 Block‑editor‑side features generally:
 
-1. Localize a `window.ai{Name}Data` blob with the feature's enabled state, REST root, and nonce.
-2. Call abilities through the standard `wp.apiFetch` against `/wp-abilities/v1/abilities/ai/{name}/run` with `{ input: {...} }`.
+1. Localize a `window.ai{Name}Data` blob with the feature's enabled state and any per-feature configuration (`Asset_Loader::localize_script()` adds the `ai` prefix automatically — see §7).
+2. Call abilities through the `runAbility()` helper at `src/utils/run-ability.ts` rather than hitting REST directly:
+   - The helper prefers `window.wp.abilities.executeAbility` when the upstream Abilities API client script is on the page (it knows about request/response shape, nonces, and extension points).
+   - It transparently falls back to `wp.apiFetch` against `/wp-abilities/v1/abilities/{name}/run` with `{ input: { ... } }` when the client script isn't available, logging a one-shot console warning.
+   - Pass `{ method: 'GET' | 'DELETE' }` in the third argument when an ability requires a non-POST verb; the helper serializes `input` into the query string for those.
 3. Use `@wordpress/data` and Gutenberg slot‑fills (sidebar plugins, block toolbar items) to surface buttons.
+
+```ts
+import { runAbility } from '../../utils/run-ability';
+
+const result = await runAbility< { title: string } >(
+    'ai/title-generation',
+    { context: String( postId ) }
+);
+```
 
 The **Abilities Explorer** experiment (`Tools → Abilities Explorer`) is the easiest way to see live schemas and exercise endpoints without writing JS.
 
@@ -356,7 +539,9 @@ The **Abilities Explorer** experiment (`Tools → Abilities Explorer`) is the ea
 | Feature registration loop | `includes/Features/Loader.php`, `includes/Features/Registry.php` |
 | Experiment registration | `includes/Experiments/Experiments.php` |
 | AI provider plumbing | `includes/Services/AI_Service.php`, `includes/helpers.php` |
-| Settings page | `includes/Settings/Settings_Page.php`, `includes/Settings/Settings_Registration.php` |
+| Editorial guidelines service | `includes/Services/Guidelines.php` |
+| Settings page + registration | `includes/Settings/Settings_Page.php`, `includes/Settings/Settings_Registration.php` |
+| JS ability helper | `src/utils/run-ability.ts` |
 | REST API testing recipes | `docs/TESTING_REST_API.md` |
 | Architecture overview | `docs/ARCHITECTURE_OVERVIEW.md` |
 | Per‑experiment specs | `docs/experiments/*.md`, `docs/features/image-generation.md` |
