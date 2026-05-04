@@ -536,10 +536,11 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 							feature.label
 						) }
 						loadingAnnouncement={
-							isSaving ? __( 'Saving…', 'ai' ) : ''
+							isSaving ? __( 'Saving settings…', 'ai' ) : ''
 						}
+						loading={ isSaving }
 					>
-						{ isSaving ? <Spinner /> : __( 'Save', 'ai' ) }
+						{ __( 'Save', 'ai' ) }
 					</Button>
 				</Stack>
 			) }
