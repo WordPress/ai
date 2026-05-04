@@ -95,6 +95,7 @@
 		"prettier": "npm:wp-prettier@^3",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
+		"serialize-javascript": ">=7.0.3",
 		"webpack-dev-server@<=5.2.0": ">=5.2.1"
 	},
 	"engines": {
