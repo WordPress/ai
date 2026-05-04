@@ -66,6 +66,27 @@ const showNotice = (
 		type: 'snackbar',
 	} );
 
+const PERIOD_OFFSETS_MS: Record< Exclude< SummaryPeriod, 'all' >, number > = {
+	minute: 60 * 1000,
+	hour: 60 * 60 * 1000,
+	day: 24 * 60 * 60 * 1000,
+	week: 7 * 24 * 60 * 60 * 1000,
+	month: 30 * 24 * 60 * 60 * 1000,
+};
+
+/**
+ * Resolves the GMT MySQL datetime that bounds the start of the selected period.
+ * Returns null for 'all' (no time-based filter).
+ */
+const periodToDateFrom = ( period: SummaryPeriod ): string | null => {
+	if ( period === 'all' ) {
+		return null;
+	}
+
+	const since = new Date( Date.now() - PERIOD_OFFSETS_MS[ period ] );
+	return since.toISOString().slice( 0, 19 ).replace( 'T', ' ' );
+};
+
 const getErrorMessage = ( error: unknown ): string => {
 	if ( typeof error === 'string' ) {
 		return error;
@@ -178,6 +199,11 @@ const App: React.FC = () => {
 				params.append( 'search', deferredSearch );
 			}
 
+			const dateFrom = periodToDateFrom( summaryPeriod );
+			if ( dateFrom ) {
+				params.append( 'date_from', dateFrom );
+			}
+
 			params.append( 'orderby', logsQuery.orderby );
 			params.append( 'order', logsQuery.order.toUpperCase() );
 
@@ -212,6 +238,7 @@ const App: React.FC = () => {
 		logsQuery.userId,
 		logsQuery.orderby,
 		logsQuery.order,
+		summaryPeriod,
 		hasOperationSelection,
 		serializedOperationSelection,
 	] );
@@ -250,6 +277,8 @@ const App: React.FC = () => {
 	const handlePeriodChange = ( period: SummaryPeriod ) => {
 		setSummaryPeriod( period );
 		fetchSummary( period );
+		// Reset to page 1 — a narrower period probably has fewer pages.
+		setLogsQuery( ( previous ) => ( { ...previous, page: 1 } ) );
 	};
 
 	const handlePurge = async () => {
