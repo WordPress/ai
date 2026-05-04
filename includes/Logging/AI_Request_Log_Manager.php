@@ -24,11 +24,6 @@ defined( 'ABSPATH' ) || exit;
 class AI_Request_Log_Manager {
 
 	/**
-	 * Option key for logging enabled.
-	 */
-	public const OPTION_LOGGING_ENABLED = 'wpai_feature_ai-request-logging_logging_enabled';
-
-	/**
 	 * Cron hook used for log cleanup.
 	 */
 	private const CLEANUP_HOOK = 'wpai_request_logs_cleanup';
@@ -109,36 +104,6 @@ class AI_Request_Log_Manager {
 		}
 
 		$this->initialized = true;
-	}
-
-	/**
-	 * Whether logging is currently enabled.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return bool True if logging is enabled.
-	 */
-	public function is_logging_enabled(): bool {
-		return (bool) get_option( self::OPTION_LOGGING_ENABLED, true );
-	}
-
-	/**
-	 * Enables or disables logging.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param bool $enabled Whether to enable logging.
-	 */
-	public function set_logging_enabled( bool $enabled ): void {
-		$current_value = get_option( self::OPTION_LOGGING_ENABLED, null );
-
-		// get_option() returns false when the option is missing, so explicitly check for null.
-		if ( null === $current_value ) {
-			add_option( self::OPTION_LOGGING_ENABLED, $enabled, '', false );
-			return;
-		}
-
-		update_option( self::OPTION_LOGGING_ENABLED, $enabled, false );
 	}
 
 	/**
@@ -237,10 +202,6 @@ class AI_Request_Log_Manager {
 	 * @return string|false The log ID on success, false on failure.
 	 */
 	public function log( array $data ) {
-		if ( ! $this->is_logging_enabled() ) {
-			return false;
-		}
-
 		return $this->repository->insert( $data );
 	}
 

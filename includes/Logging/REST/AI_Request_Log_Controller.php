@@ -63,10 +63,6 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 					'callback'            => array( $this, 'update_settings' ),
 					'permission_callback' => array( $this, 'permissions_check' ),
 					'args'                => array(
-						'enabled'        => array(
-							'type'     => 'boolean',
-							'required' => false,
-						),
 						'retention_days' => array(
 							'type'     => 'integer',
 							'required' => false,
@@ -241,17 +237,12 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 * @return \WP_REST_Response
 	 */
 	public function update_settings( WP_REST_Request $request ): WP_REST_Response {
-		if ( $request->has_param( 'enabled' ) ) {
-			$this->manager->set_logging_enabled( (bool) $request->get_param( 'enabled' ) );
-		}
-
 		if ( $request->has_param( 'retention_days' ) ) {
 			$this->manager->set_retention_days( (int) $request->get_param( 'retention_days' ) );
 		}
 
 		return rest_ensure_response(
 			array(
-				'enabled'        => $this->manager->is_logging_enabled(),
 				'retention_days' => $this->manager->get_retention_days(),
 			)
 		);

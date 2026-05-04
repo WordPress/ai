@@ -99,7 +99,6 @@ class AI_Request_Log_Page {
 					),
 				),
 				'initialState'     => array(
-					'enabled'       => $this->manager->is_logging_enabled(),
 					'retentionDays' => $this->manager->get_retention_days(),
 					'summary'       => $this->manager->get_summary( 'day' ),
 					'filters'       => $this->manager->get_filter_options(),

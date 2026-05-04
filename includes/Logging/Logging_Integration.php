@@ -76,7 +76,7 @@ class Logging_Integration {
 	public static function wrap_transporter(): void {
 		static $wrapped = false;
 
-		if ( $wrapped || ! self::$log_manager || ! self::$log_manager->is_logging_enabled() ) {
+		if ( $wrapped || ! self::$log_manager ) {
 			return;
 		}
 
