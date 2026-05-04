@@ -47,7 +47,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 
-		delete_option( AI_Request_Log_Manager::OPTION_LOGGING_ENABLED );
 		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 	}
 
@@ -57,7 +56,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	protected function tearDown(): void {
-		delete_option( AI_Request_Log_Manager::OPTION_LOGGING_ENABLED );
 		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 		delete_option( 'wpai_request_logs_schema_version' );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
@@ -67,37 +65,11 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that log returns false when logging is disabled.
+	 * Tests that log persists an entry.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_log_returns_false_when_logging_disabled(): void {
-		$this->manager->set_logging_enabled( false );
-
-		$result = $this->manager->log(
-			array(
-				'type'      => 'ui',
-				'operation' => 'completion',
-				'status'    => 'success',
-			)
-		);
-
-		$this->assertFalse( $result );
-
-		global $wpdb;
-		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
-		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
-		$this->assertSame( 0, $count );
-	}
-
-	/**
-	 * Tests that log persists an entry when enabled.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_log_persists_entry_when_enabled(): void {
-		$this->manager->set_logging_enabled( true );
-
+	public function test_log_persists_entry(): void {
 		$log_id = $this->manager->log(
 			array(
 				'type'          => 'ui',
@@ -139,8 +111,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_log_persists_context_source_metadata(): void {
-		$this->manager->set_logging_enabled( true );
-
 		$log_id = $this->manager->log(
 			array(
 				'type'      => 'ai_client',
@@ -171,8 +141,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_logs_search_matches_request_preview(): void {
-		$this->manager->set_logging_enabled( true );
-
 		$matching_id = $this->manager->log(
 			array(
 				'type'      => 'ai_client',
@@ -212,8 +180,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_logs_search_falls_back_for_short_terms(): void {
-		$this->manager->set_logging_enabled( true );
-
 		$matching_id = $this->manager->log(
 			array(
 				'type'      => 'ai_client',
@@ -296,26 +262,12 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that set_logging_enabled persists via add_option on first call.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_set_logging_enabled_creates_option(): void {
-		$this->manager->set_logging_enabled( false );
-		$this->assertFalse( $this->manager->is_logging_enabled() );
-
-		$this->manager->set_logging_enabled( true );
-		$this->assertTrue( $this->manager->is_logging_enabled() );
-	}
-
-	/**
 	 * Tests that cleanup_old_logs delegates to repository.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_cleanup_old_logs_returns_count(): void {
-		$this->manager->set_logging_enabled( true );
-		$this->manager->log(
+			$this->manager->log(
 			array(
 				'type'      => 'ai_client',
 				'operation' => 'openai:completions',
@@ -337,8 +289,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_purge_all_logs_returns_deleted_count(): void {
-		$this->manager->set_logging_enabled( true );
-		$this->manager->log(
+			$this->manager->log(
 			array(
 				'type'      => 'ai_client',
 				'operation' => 'openai:completions',

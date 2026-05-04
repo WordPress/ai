@@ -63,7 +63,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 
-		delete_option( AI_Request_Log_Manager::OPTION_LOGGING_ENABLED );
 		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 	}
 
@@ -74,7 +73,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	 */
 	protected function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( AI_Request_Log_Manager::OPTION_LOGGING_ENABLED );
 		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
 
@@ -90,8 +88,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	 * @return string The log ID.
 	 */
 	private function insert_log( array $overrides = array() ): string {
-		$this->manager->set_logging_enabled( true );
-
 		$defaults = array(
 			'type'          => 'ai_client',
 			'operation'     => 'openai:completions',
@@ -247,27 +243,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'types', $data );
 		$this->assertArrayHasKey( 'providers', $data );
 		$this->assertContains( 'openai', $data['providers'] );
-	}
-
-	/**
-	 * Tests that update_settings enables logging.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_settings_enables_logging(): void {
-		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $admin_id );
-
-		$this->manager->set_logging_enabled( false );
-
-		$request = new WP_REST_Request( 'POST', '/ai/v1/logs' );
-		$request->set_param( 'enabled', true );
-		$response = rest_get_server()->dispatch( $request );
-
-		$this->assertSame( 200, $response->get_status() );
-
-		$data = $response->get_data();
-		$this->assertTrue( $data['enabled'] );
 	}
 
 	/**
