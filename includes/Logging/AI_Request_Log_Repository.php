@@ -361,6 +361,11 @@ class AI_Request_Log_Repository {
 	 * @return int Number of logs deleted.
 	 */
 	public function cleanup_by_retention( int $retention_days ): int {
+		// Retention <= 0 means logs are kept indefinitely.
+		if ( $retention_days <= 0 ) {
+			return 0;
+		}
+
 		global $wpdb;
 
 		$table_name    = $this->schema->get_table_name();
@@ -384,56 +389,6 @@ class AI_Request_Log_Repository {
 
 			usleep( 100000 );
 		} while ( $batch_deleted >= self::DELETE_BATCH_SIZE );
-
-		return $total_deleted;
-	}
-
-	/**
-	 * Deletes oldest logs when table exceeds max rows limit.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int $max_rows Maximum number of rows to retain.
-	 * @return int Number of logs deleted.
-	 */
-	public function cleanup_by_max_rows( int $max_rows ): int {
-		global $wpdb;
-
-		$table_name = $this->schema->get_table_name();
-
-		$current_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		if ( $current_count <= $max_rows ) {
-			return 0;
-		}
-
-		$rows_to_delete = $current_count - $max_rows;
-		$total_deleted  = 0;
-
-		while ( $rows_to_delete > 0 ) {
-			$batch_size = min( $rows_to_delete, self::DELETE_BATCH_SIZE );
-
-			$deleted = $wpdb->query(
-				$wpdb->prepare(
-					"DELETE FROM {$table_name} WHERE id IN (SELECT id FROM (SELECT id FROM {$table_name} ORDER BY timestamp ASC LIMIT %d) AS oldest)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					$batch_size
-				)
-			);
-
-			$batch_deleted   = ( $deleted ? $deleted : 0 );
-			$total_deleted  += $batch_deleted;
-			$rows_to_delete -= $batch_deleted;
-
-			if ( 0 === $batch_deleted ) {
-				break;
-			}
-
-			if ( $batch_deleted < self::DELETE_BATCH_SIZE ) {
-				continue;
-			}
-
-			usleep( 100000 );
-		}
 
 		return $total_deleted;
 	}

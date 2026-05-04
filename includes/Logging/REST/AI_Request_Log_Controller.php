@@ -46,7 +46,6 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 */
 	public function register_routes(): void {
 		// GET /ai/v1/logs - List logs with filtering.
-		// POST /ai/v1/logs - Update settings (enabled, retention).
 		// DELETE /ai/v1/logs - Purge all logs.
 		register_rest_route(
 			$this->namespace,
@@ -57,19 +56,6 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 					'callback'            => array( $this, 'get_logs' ),
 					'permission_callback' => array( $this, 'permissions_check' ),
 					'args'                => $this->get_collection_params(),
-				),
-				array(
-					'methods'             => WP_REST_Server::EDITABLE,
-					'callback'            => array( $this, 'update_settings' ),
-					'permission_callback' => array( $this, 'permissions_check' ),
-					'args'                => array(
-						'retention_days' => array(
-							'type'     => 'integer',
-							'required' => false,
-							'minimum'  => AI_Request_Log_Manager::MIN_RETENTION_DAYS,
-							'maximum'  => AI_Request_Log_Manager::MAX_RETENTION_DAYS,
-						),
-					),
 				),
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
@@ -228,24 +214,6 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 		$filters = $this->manager->get_filter_options();
 
 		return rest_ensure_response( $filters );
-	}
-
-	/**
-	 * Updates logging settings.
-	 *
-	 * @param \WP_REST_Request $request Request.
-	 * @return \WP_REST_Response
-	 */
-	public function update_settings( WP_REST_Request $request ): WP_REST_Response {
-		if ( $request->has_param( 'retention_days' ) ) {
-			$this->manager->set_retention_days( (int) $request->get_param( 'retention_days' ) );
-		}
-
-		return rest_ensure_response(
-			array(
-				'retention_days' => $this->manager->get_retention_days(),
-			)
-		);
 	}
 
 	/**

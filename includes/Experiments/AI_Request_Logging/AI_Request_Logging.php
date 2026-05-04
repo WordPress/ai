@@ -15,7 +15,6 @@ use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Page;
 use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AI\Logging\REST\AI_Request_Log_Controller;
-use WordPress\AI\Settings\Settings_Registration;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -62,59 +61,6 @@ class AI_Request_Logging extends Abstract_Feature {
 
 		add_action( 'rest_api_init', array( $controller, 'register_routes' ) );
 		add_action( 'admin_menu', array( $page, 'register_menu' ) );
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register_settings(): void {
-		register_setting(
-			Settings_Registration::OPTION_GROUP,
-			static::get_field_option_name( 'retention_days' ),
-			array(
-				'type'              => 'integer',
-				'default'           => AI_Request_Log_Manager::DEFAULT_RETENTION_DAYS,
-				'sanitize_callback' => array( $this, 'sanitize_retention_days' ),
-				'show_in_rest'      => array(
-					'schema' => array(
-						'type'    => 'integer',
-						'minimum' => AI_Request_Log_Manager::MIN_RETENTION_DAYS,
-						'maximum' => AI_Request_Log_Manager::MAX_RETENTION_DAYS,
-					),
-				),
-			)
-		);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function get_settings_fields(): array {
-		return array(
-			array(
-				'id'      => 'retention_days',
-				'label'   => __( 'Log retention (days)', 'ai' ),
-				'type'    => 'integer',
-				'default' => AI_Request_Log_Manager::DEFAULT_RETENTION_DAYS,
-				'isValid' => array(
-					'min' => AI_Request_Log_Manager::MIN_RETENTION_DAYS,
-					'max' => AI_Request_Log_Manager::MAX_RETENTION_DAYS,
-				),
-			),
-		);
-	}
-
-	/**
-	 * Sanitize retention day values from the settings UI.
-	 *
-	 * @param mixed $value Raw value.
-	 * @return int Sanitized value within 1-365.
-	 */
-	public function sanitize_retention_days( $value ): int {
-		return max(
-			AI_Request_Log_Manager::MIN_RETENTION_DAYS,
-			min( AI_Request_Log_Manager::MAX_RETENTION_DAYS, (int) $value )
-		);
 	}
 
 	/**

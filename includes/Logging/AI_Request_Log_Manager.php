@@ -9,8 +9,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
-use WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging;
-
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -27,26 +25,6 @@ class AI_Request_Log_Manager {
 	 * Cron hook used for log cleanup.
 	 */
 	private const CLEANUP_HOOK = 'wpai_request_logs_cleanup';
-
-	/**
-	 * Default retention period in days.
-	 */
-	public const DEFAULT_RETENTION_DAYS = 30;
-
-	/**
-	 * Minimum allowed retention in days.
-	 */
-	public const MIN_RETENTION_DAYS = 1;
-
-	/**
-	 * Maximum allowed retention in days.
-	 */
-	public const MAX_RETENTION_DAYS = 365;
-
-	/**
-	 * Default maximum number of rows.
-	 */
-	public const DEFAULT_MAX_ROWS = 100000;
 
 	/**
 	 * Whether initialization hooks have already been registered.
@@ -95,12 +73,18 @@ class AI_Request_Log_Manager {
 			return;
 		}
 
-		add_action( self::CLEANUP_HOOK, array( $this, 'handle_cleanup_old_logs' ) );
-
 		$this->schema->maybe_upgrade_table();
 
-		if ( ! wp_next_scheduled( self::CLEANUP_HOOK ) ) {
+		add_action( self::CLEANUP_HOOK, array( $this, 'handle_cleanup_old_logs' ) );
+
+		// Only register the cleanup cron job if maximum retention is enabled.
+		$retention_days = $this->get_retention_days();
+		$is_scheduled   = (bool) wp_next_scheduled( self::CLEANUP_HOOK );
+
+		if ( $retention_days > 0 && ! $is_scheduled ) {
 			wp_schedule_event( time(), 'daily', self::CLEANUP_HOOK );
+		} elseif ( 0 === $retention_days && $is_scheduled ) {
+			wp_clear_scheduled_hook( self::CLEANUP_HOOK );
 		}
 
 		$this->initialized = true;
@@ -109,50 +93,24 @@ class AI_Request_Log_Manager {
 	/**
 	 * Gets the retention period in days.
 	 *
+	 * Logs are retained indefinitely by default.
+	 *
 	 * @since x.x.x
 	 *
-	 * @return int Number of days to retain logs.
+	 * @return int Number of days to retain logs, or 0 to retain forever.
 	 */
 	public function get_retention_days(): int {
-		return (int) get_option(
-			AI_Request_Logging::get_field_option_name( 'retention_days' ),
-			self::DEFAULT_RETENTION_DAYS
-		);
-	}
-
-	/**
-	 * Sets the retention period in days.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int $days Number of days to retain logs.
-	 */
-	public function set_retention_days( int $days ): void {
-		update_option(
-			AI_Request_Logging::get_field_option_name( 'retention_days' ),
-			max( self::MIN_RETENTION_DAYS, $days ),
-			false
-		);
-	}
-
-	/**
-	 * Gets the maximum number of rows to retain.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return int Maximum rows.
-	 */
-	public function get_max_rows(): int {
 		/**
-		 * Filters the maximum number of AI request log rows retained as a count-based backstop.
+		 * Filters the retention period for AI request logs.
 		 *
-		 * Complements the time-based retention setting; whichever cap is hit first applies during cleanup.
+		 * Return a positive integer to enable time-based cleanup (e.g. 30 to
+		 * keep the last 30 days). Return 0 to retain logs indefinitely.
 		 *
 		 * @since x.x.x
 		 *
-		 * @param int $max_rows Maximum number of rows.
+		 * @param int $retention_days Number of days to retain logs (0 = forever).
 		 */
-		return (int) apply_filters( 'wpai_request_log_max_rows', self::DEFAULT_MAX_ROWS );
+		return (int) apply_filters( 'wpai_request_log_retention_days', 0 );
 	}
 
 	/**
@@ -262,8 +220,7 @@ class AI_Request_Log_Manager {
 	 * @return int Number of logs deleted.
 	 */
 	public function cleanup_old_logs(): int {
-		$total_deleted  = $this->repository->cleanup_by_retention( $this->get_retention_days() );
-		$total_deleted += $this->repository->cleanup_by_max_rows( $this->get_max_rows() );
+		$total_deleted = $this->repository->cleanup_by_retention( $this->get_retention_days() );
 
 		if ( $total_deleted > 0 ) {
 			$this->repository->invalidate_caches();

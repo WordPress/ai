@@ -99,9 +99,8 @@ class AI_Request_Log_Page {
 					),
 				),
 				'initialState'     => array(
-					'retentionDays' => $this->manager->get_retention_days(),
-					'summary'       => $this->manager->get_summary( 'day' ),
-					'filters'       => $this->manager->get_filter_options(),
+					'summary' => $this->manager->get_summary( 'day' ),
+					'filters' => $this->manager->get_filter_options(),
 				),
 				'providerMetadata' => $this->get_provider_metadata(),
 			)
