@@ -3,7 +3,7 @@
  */
 import { select } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
