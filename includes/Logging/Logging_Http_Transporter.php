@@ -152,8 +152,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	 * @return array<string, string>|null Source metadata.
 	 */
 	private function detect_request_source(): ?array {
-		$logging_dir = wp_normalize_path( __DIR__ ) . '/';
-		$frames      = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Required to attribute the originating plugin/theme/core source for a request.
+		$frames = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Required to attribute the originating plugin/theme/core source for a request.
 
 		foreach ( $frames as $frame ) {
 			if ( empty( $frame['file'] ) || ! is_string( $frame['file'] ) ) {
@@ -162,7 +161,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 
 			$file = wp_normalize_path( $frame['file'] );
 
-			if ( 0 === strpos( $file, $logging_dir ) || false !== strpos( $file, '/vendor/' ) ) {
+			if ( $this->is_infrastructure_file( $file ) ) {
 				continue;
 			}
 
@@ -174,6 +173,91 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Whether a stack frame's file is plumbing rather than the request originator.
+	 *
+	 * Skips frames in this plugin's logging dir, any composer vendor folder, the
+	 * core AI client wrapper and bundled SDK (under wp-includes/ai-client and
+	 * wp-includes/php-ai-client), and any registered AI provider plugin.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $file Normalized absolute file path.
+	 * @return bool
+	 */
+	private function is_infrastructure_file( string $file ): bool {
+		$logging_dir = wp_normalize_path( __DIR__ ) . '/';
+
+		if ( 0 === strpos( $file, $logging_dir ) || false !== strpos( $file, '/vendor/' ) ) {
+			return true;
+		}
+
+		foreach ( $this->get_infrastructure_dirs() as $dir ) {
+			if ( 0 === strpos( $file, $dir ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Directory prefixes treated as infrastructure for source attribution.
+	 *
+	 * Includes the AI Client SDK shipped with WordPress core and every
+	 * registered AI provider plugin's directory.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string>
+	 */
+	private function get_infrastructure_dirs(): array {
+		// Both AI-related directories shipped with core: the bundled SDK and core's
+		// higher-level wrapper (WP_AI_Client_* classes that abilities call into).
+		$dirs = array(
+			wp_normalize_path( ABSPATH . 'wp-includes/php-ai-client' ) . '/',
+			wp_normalize_path( ABSPATH . 'wp-includes/ai-client' ) . '/',
+		);
+
+		$plugins_dir = trailingslashit( wp_normalize_path( WP_PLUGIN_DIR ) );
+
+		foreach ( wp_get_connectors() as $connector_data ) {
+			if ( 'ai_provider' !== ( $connector_data['type'] ?? '' ) ) {
+				continue;
+			}
+
+			$slug = $this->resolve_connector_plugin_slug( $connector_data );
+			if ( '' === $slug ) {
+				continue;
+			}
+
+			$dirs[] = $plugins_dir . $slug . '/';
+		}
+
+		return $dirs;
+	}
+
+	/**
+	 * Pulls the plugin directory slug out of a connector's `plugin.file` value.
+	 *
+	 * The connector registry canonicalizes plugin metadata to `['file' => 'slug/main.php']`
+	 * (see WP_Connector_Registry::register()), so we just take the first path segment.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $connector_data Connector definition.
+	 * @return string Plugin slug, or empty string when none can be derived.
+	 */
+	private function resolve_connector_plugin_slug( array $connector_data ): string {
+		$file = $connector_data['plugin']['file'] ?? '';
+
+		if ( ! is_string( $file ) || '' === $file ) {
+			return '';
+		}
+
+		return (string) ( explode( '/', $file )[0] ?? '' );
 	}
 
 	/**
@@ -215,10 +299,6 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	 * @return array<string, string>|null Source metadata.
 	 */
 	private function match_plugin_source( string $file ): ?array {
-		if ( ! defined( 'WP_PLUGIN_DIR' ) ) {
-			return null;
-		}
-
 		$plugins_dir = trailingslashit( wp_normalize_path( WP_PLUGIN_DIR ) );
 
 		if ( 0 !== strpos( $file, $plugins_dir ) ) {
@@ -250,10 +330,6 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	 * @return array<string, string>|null Source metadata.
 	 */
 	private function match_mu_plugin_source( string $file ): ?array {
-		if ( ! defined( 'WPMU_PLUGIN_DIR' ) ) {
-			return null;
-		}
-
 		$mu_plugins_dir = trailingslashit( wp_normalize_path( WPMU_PLUGIN_DIR ) );
 
 		if ( 0 !== strpos( $file, $mu_plugins_dir ) ) {
