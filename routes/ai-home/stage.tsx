@@ -948,7 +948,7 @@ function AISettingsPage() {
 					>
 						{ __( 'Contribute', 'ai' ) }
 					</Link>
-					<div className="ai-settings-page__global-toggle">
+					<Stack align="center" gap="xs">
 						<ToggleControl
 							label={ __( 'Enable AI', 'ai' ) }
 							checked={ globalEnabled }
@@ -960,7 +960,7 @@ function AISettingsPage() {
 							disabled={ isLoading }
 						/>
 						<InfoTip content={ globalToggleDescription } />
-					</div>
+					</Stack>
 				</>
 			}
 		>
