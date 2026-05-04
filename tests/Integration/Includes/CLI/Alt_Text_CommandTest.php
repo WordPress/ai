@@ -286,14 +286,14 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test stop_the_insanity clears the query log.
+	 * Test free_batch_memory clears the query log.
 	 */
-	public function test_stop_the_insanity_clears_query_log(): void {
+	public function test_free_batch_memory_clears_query_log(): void {
 		global $wpdb;
 
 		$wpdb->queries = array( 'some query' );
 
-		$this->invoke_private_method( 'stop_the_insanity' );
+		$this->invoke_private_method( 'free_batch_memory' );
 
 		$this->assertEmpty( $wpdb->queries );
 	}

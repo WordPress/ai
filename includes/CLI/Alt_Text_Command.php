@@ -148,7 +148,9 @@ class Alt_Text_Command {
 			WP_CLI::error( 'No administrator user found. Create one or pass --user=<id>.' );
 		}
 
-		wp_set_current_user( (int) $admins[0] );
+		$admin_id = (int) $admins[0];
+		wp_set_current_user( $admin_id );
+		WP_CLI::log( sprintf( 'No --user supplied; running as administrator #%d.', $admin_id ) );
 	}
 
 	/**
@@ -377,7 +379,7 @@ class Alt_Text_Command {
 				usleep( $delay_ms * 1000 );
 			}
 
-			$this->stop_the_insanity();
+			$this->free_batch_memory();
 		}
 
 		$progress->finish();
@@ -423,33 +425,22 @@ class Alt_Text_Command {
 	}
 
 	/**
-	 * Clears the WordPress object cache to prevent memory exhaustion during batch processing.
+	 * Frees memory held between batches so long-running CLI runs do not exhaust it.
+	 *
+	 * Uses `wp_cache_flush_runtime()` (WP 6.0+) to drop the in-memory portion of
+	 * the object cache without touching persistent backends like Redis. Falls
+	 * back to a no-op when the helper is unavailable. Also resets the query log
+	 * so it does not grow unbounded when `SAVEQUERIES` is enabled.
 	 */
-	private function stop_the_insanity(): void {
-		global $wpdb, $wp_object_cache;
+	private function free_batch_memory(): void {
+		global $wpdb;
 
 		$wpdb->queries = array();
 
-		if ( ! is_object( $wp_object_cache ) ) {
+		if ( ! function_exists( 'wp_cache_flush_runtime' ) ) {
 			return;
 		}
 
-		if ( property_exists( $wp_object_cache, 'group_ops' ) ) {
-			$wp_object_cache->group_ops = array();
-		}
-		if ( property_exists( $wp_object_cache, 'stats' ) ) {
-			$wp_object_cache->stats = array();
-		}
-		if ( property_exists( $wp_object_cache, 'memcache_debug' ) ) {
-			$wp_object_cache->memcache_debug = array();
-		}
-		if ( property_exists( $wp_object_cache, 'cache' ) ) {
-			$wp_object_cache->cache = array();
-		}
-		if ( ! method_exists( $wp_object_cache, '__remoteset' ) ) {
-			return;
-		}
-
-		$wp_object_cache->__remoteset();
+		wp_cache_flush_runtime();
 	}
 }
