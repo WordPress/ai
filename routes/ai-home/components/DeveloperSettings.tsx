@@ -57,6 +57,13 @@ export function DeveloperSettings( {
 		useDeveloperFeatureSettings( featureId );
 
 	useEffect( () => {
+		if ( capability === 'none' ) {
+			setProviders( [] );
+			setFetchError( null );
+			setIsLoading( false );
+			return;
+		}
+
 		setIsLoading( true );
 		setFetchError( null );
 
@@ -132,6 +139,19 @@ export function DeveloperSettings( {
 	);
 
 	const hasSavedSelection = settings.provider !== '' || settings.model !== '';
+
+	if ( capability === 'none' ) {
+		return (
+			<div className="ai-developer-mode-fields ai-feature-settings-form">
+				<p>
+					{ __(
+						'This feature does not require an AI provider or model.',
+						'ai'
+					) }
+				</p>
+			</div>
+		);
+	}
 
 	return (
 		<div className="ai-developer-mode-fields ai-feature-settings-form">
