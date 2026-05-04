@@ -118,6 +118,7 @@ class AI_Request_Log_Repository {
 		}
 
 		$this->invalidate_summary_cache();
+		$this->invalidate_filter_cache();
 
 		/**
 		 * Fires after an AI request is logged.
@@ -191,8 +192,6 @@ class AI_Request_Log_Repository {
 			'status'           => '',
 			'provider'         => '',
 			'operation'        => '',
-			'tokens_gt'        => null,
-			'tokens_lt'        => null,
 			'tokens_filter'    => '',
 			'user_id'          => 0,
 			'date_from'        => '',
@@ -319,7 +318,7 @@ class AI_Request_Log_Repository {
 	 * @since x.x.x
 	 *
 	 * @param bool $force_refresh Whether to bypass the cache.
-	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>} Filter options.
+	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, user_ids: list<int>} Filter options.
 	 */
 	public function get_filter_options( bool $force_refresh = false ): array {
 		$cache_key = self::CACHE_GROUP . '_filter_options';
@@ -341,7 +340,9 @@ class AI_Request_Log_Repository {
 				UNION ALL
 				SELECT 'status' as category, status as value FROM {$table_name} WHERE status IS NOT NULL GROUP BY status
 				UNION ALL
-				SELECT 'operation' as category, operation as value FROM {$table_name} WHERE operation IS NOT NULL GROUP BY operation"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				SELECT 'operation' as category, operation as value FROM {$table_name} WHERE operation IS NOT NULL GROUP BY operation
+				UNION ALL
+				SELECT 'user' as category, user_id as value FROM {$table_name} WHERE user_id IS NOT NULL AND user_id > 0 GROUP BY user_id";
 
 		$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
@@ -516,16 +517,6 @@ class AI_Request_Log_Repository {
 	 * @param list<mixed>          $values Values array (modified by reference).
 	 */
 	private function build_token_filter_clauses( array $args, array &$where, array &$values ): void {
-		if ( isset( $args['tokens_gt'] ) && is_numeric( $args['tokens_gt'] ) ) {
-			$where[]  = 'tokens_total > %d';
-			$values[] = (int) $args['tokens_gt'];
-		}
-
-		if ( isset( $args['tokens_lt'] ) && is_numeric( $args['tokens_lt'] ) ) {
-			$where[]  = 'tokens_total < %d';
-			$values[] = (int) $args['tokens_lt'];
-		}
-
 		if ( empty( $args['tokens_filter'] ) ) {
 			return;
 		}
@@ -814,6 +805,7 @@ class AI_Request_Log_Repository {
 			'providers'  => array(),
 			'statuses'   => array(),
 			'operations' => array(),
+			'user_ids'   => array(),
 		);
 
 		foreach ( $rows as $row ) {
@@ -830,6 +822,9 @@ class AI_Request_Log_Repository {
 				case 'operation':
 					$result['operations'][] = $row['value'];
 					break;
+				case 'user':
+					$result['user_ids'][] = (int) $row['value'];
+					break;
 			}
 		}
 
@@ -837,6 +832,7 @@ class AI_Request_Log_Repository {
 		sort( $result['providers'] );
 		sort( $result['statuses'] );
 		sort( $result['operations'] );
+		sort( $result['user_ids'] );
 
 		return $result;
 	}

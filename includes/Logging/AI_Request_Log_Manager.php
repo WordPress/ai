@@ -206,10 +206,54 @@ class AI_Request_Log_Manager {
 	 * @since x.x.x
 	 *
 	 * @param bool $force_refresh Whether to bypass the cache.
-	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>} Filter options.
+	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, users: list<array{value: string, label: string}>} Filter options.
 	 */
 	public function get_filter_options( bool $force_refresh = false ): array {
-		return $this->repository->get_filter_options( $force_refresh );
+		$options = $this->repository->get_filter_options( $force_refresh );
+
+		return $this->resolve_user_filter_options( $options );
+	}
+
+	/**
+	 * Replaces the raw `user_ids` list with a `users` list of value/label pairs.
+	 *
+	 * Display names are looked up via WordPress; absent users fall back to a
+	 * "User #N" label so the chip stays informative if a user has been deleted.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $options Filter options from the repository.
+	 * @return array<string, mixed>
+	 */
+	private function resolve_user_filter_options( array $options ): array {
+		$user_ids = $options['user_ids'] ?? array();
+		unset( $options['user_ids'] );
+
+		$users = array();
+
+		foreach ( (array) $user_ids as $user_id ) {
+			$user_id = (int) $user_id;
+
+			if ( $user_id <= 0 ) {
+				continue;
+			}
+
+			$user  = get_user_by( 'id', $user_id );
+			$label = $user ? $user->display_name : sprintf(
+				/* translators: %d: user ID. */
+				__( 'User #%d', 'ai' ),
+				$user_id
+			);
+
+			$users[] = array(
+				'value' => (string) $user_id,
+				'label' => $label,
+			);
+		}
+
+		$options['users'] = $users;
+
+		return $options;
 	}
 
 	/**

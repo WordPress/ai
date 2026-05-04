@@ -140,8 +140,6 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			'status'           => $request->get_param( 'status' ) ?? '',
 			'provider'         => $request->get_param( 'provider' ) ?? '',
 			'operation'        => $request->get_param( 'operation' ) ?? '',
-			'tokens_gt'        => $request->get_param( 'tokens_gt' ),
-			'tokens_lt'        => $request->get_param( 'tokens_lt' ),
 			'tokens_filter'    => $request->get_param( 'tokens_filter' ) ?? '',
 			'user_id'          => $request->get_param( 'user_id' ) ?? 0,
 			'date_from'        => $request->get_param( 'date_from' ) ?? '',
@@ -281,16 +279,6 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 				'description' => __( 'Search in operations, request previews, response previews, and error messages.', 'ai' ),
 				'type'        => 'string',
 				'default'     => '',
-			),
-			'tokens_gt'        => array(
-				'description' => __( 'Filter logs with tokens greater than this value.', 'ai' ),
-				'type'        => 'integer',
-				'minimum'     => 0,
-			),
-			'tokens_lt'        => array(
-				'description' => __( 'Filter logs with tokens less than this value.', 'ai' ),
-				'type'        => 'integer',
-				'minimum'     => 0,
 			),
 			'tokens_filter'    => array(
 				'description' => __( 'Filter by tokens: "gt:N", "lt:N", or "none".', 'ai' ),
