@@ -929,7 +929,6 @@ function AISettingsPage() {
 		<Page
 			visual={ <AIIcon /> }
 			title={ __( 'AI', 'ai' ) }
-			ariaLabel={ __( 'AI', 'ai' ) }
 			subTitle={ __(
 				'Configure AI features and experiments for your WordPress site.',
 				'ai'
