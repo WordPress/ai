@@ -35,6 +35,43 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the providers route declares the expected capability argument schema.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_routes_declares_capability_argument_schema(): void {
+		$controller = new Models_Controller();
+		$controller->init();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Testing registration on the core REST API hook.
+		do_action( 'rest_api_init' );
+
+		$routes              = rest_get_server()->get_routes();
+		$capability_argument = $routes['/ai/v1/providers'][0]['args']['capability'];
+
+		$this->assertSame( 'string', $capability_argument['type'] );
+		$this->assertTrue( $capability_argument['required'] );
+		$this->assertSame(
+			array( 'text_generation', 'image_generation', 'vision' ),
+			$capability_argument['enum']
+		);
+		$this->assertSame( 'sanitize_key', $capability_argument['sanitize_callback'] );
+	}
+
+	/**
+	 * Test that the providers endpoint allows users with manage_options.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_check_permission_allows_manage_options_users(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$controller = new Models_Controller();
+
+		$this->assertTrue( $controller->check_permission() );
+	}
+
+	/**
 	 * Test that the providers endpoint requires manage_options.
 	 *
 	 * @since x.x.x
@@ -77,6 +114,37 @@ class Models_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 400, $response->get_status() );
 		$this->assertSame( 'invalid_capability', $response->as_error()->get_error_code() );
+	}
+
+	/**
+	 * Test that the providers endpoint returns provider data for a valid request.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_providers_route_returns_provider_data_for_valid_capability(): void {
+		$controller = new Models_Controller();
+		$controller->init();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Testing registration on the core REST API hook.
+		do_action( 'rest_api_init' );
+
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$request = new WP_REST_Request( 'GET', '/ai/v1/providers' );
+		$request->set_param( 'capability', 'text_generation' );
+
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertIsArray( $data );
+
+		foreach ( $data as $provider ) {
+			$this->assertArrayHasKey( 'id', $provider );
+			$this->assertArrayHasKey( 'name', $provider );
+			$this->assertArrayHasKey( 'models', $provider );
+			$this->assertIsArray( $provider['models'] );
+		}
 	}
 
 	/**
