@@ -61,14 +61,8 @@ class Stub_Image_Capability_Feature extends Abstract_Feature {
 			'label'       => 'Stub Image Capability',
 			'description' => 'A feature with a custom capability.',
 			'category'    => Experiment_Category::EDITOR,
+			'capability'  => 'image_generation',
 		);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function get_capability(): string {
-		return 'image_generation';
 	}
 
 	/**

@@ -50,14 +50,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'label'       => __( 'Alt Text Generation', 'ai' ),
 			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'capability'  => 'vision',
 		);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function get_capability(): string {
-		return 'vision';
 	}
 
 	/**

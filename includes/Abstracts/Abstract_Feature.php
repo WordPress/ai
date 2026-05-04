@@ -123,6 +123,7 @@ abstract class Abstract_Feature implements Feature {
 		$this->category    = $metadata['category'];
 		$this->stability   = $metadata['stability'] ?? 'experimental';
 		$this->image       = $metadata['image'] ?? '';
+		$this->capability  = $metadata['capability'] ?? 'text_generation';
 	}
 
 	/**
@@ -230,7 +231,7 @@ abstract class Abstract_Feature implements Feature {
 	 * {@inheritDoc}
 	 */
 	public function get_capability(): string {
-		return $this->capability ?? 'text_generation';
+		return $this->capability;
 	}
 
 	/**
