@@ -333,20 +333,6 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests filtering by tokens_gt.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_query_filters_by_tokens_gt(): void {
-		$this->insert_log( array( 'tokens_input' => 100, 'tokens_output' => 50 ) );   // total=150
-		$this->insert_log( array( 'tokens_input' => 1000, 'tokens_output' => 500 ) ); // total=1500
-
-		$result = $this->repository->query( array( 'tokens_gt' => 500 ) );
-
-		$this->assertSame( 1, $result['total'] );
-	}
-
-	/**
 	 * Tests filtering by tokens_filter 'none' for entries without tokens.
 	 *
 	 * @since x.x.x

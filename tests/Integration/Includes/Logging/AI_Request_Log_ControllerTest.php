@@ -298,8 +298,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 			'date_from',
 			'date_to',
 			'search',
-			'tokens_gt',
-			'tokens_lt',
 			'tokens_filter',
 			'page',
 			'per_page',
