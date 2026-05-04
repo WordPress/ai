@@ -58,8 +58,11 @@
 }
 
 .ai-showcase-card__image {
+	// Negative top margin to bump against top border.
+	// Remove margins when Card supports this natively:
+	// https://github.com/WordPress/gutenberg/pull/77856
 	margin-bottom: var(--wp-ui-card-padding);
-	margin-top: calc(-1 * var(--wp-ui-card-padding)); // Negative to bump against top border.
+	margin-top: calc(-1 * var(--wp-ui-card-padding));
 	img {
 		aspect-ratio: 16 / 9;
 		width: 100%;
