@@ -333,6 +333,14 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 - Pull request requirements
 - Code review process
 
+## Merge Strategy
+
+This project makes use of squash merges from PR branches to the `develop` branch and as such we've disabled the "Allow merge commits" and "Allow rebase merging" in the repo so that anyone merging will be forced into the "Allow squash merging" approach.
+
+Note that not every commit message should be kept in the resulting squash merge commit message, feel free to strip out unhelpful commit messages to keep the resulting squash merge commit message as concise as possible (e.g. get ride of those "lets try this again" commit messages).
+
+An example of a squash merge from #359 can be seen in 4c9699f, while an example of the prior approach of a merge commit from #311 can be seen in e63d8c0.
+
 ---
 
 ## Additional Resources
