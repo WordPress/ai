@@ -1,29 +1,17 @@
 /**
  * WordPress dependencies
  */
-import {
-	Button,
-	Card,
-	CardBody,
-	CardHeader,
-	RangeControl,
-} from '@wordpress/components';
-import { __, sprintf } from '@wordpress/i18n';
+import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
+import { __ } from '@wordpress/i18n';
 import { useState } from '@wordpress/element';
 
 interface SettingsPanelProps {
-	retentionDays: number;
-	onRetentionChange: ( days: number ) => void;
 	onPurgeLogs: () => void;
-	saving: boolean;
 	purging: boolean;
 }
 
 const SettingsPanel: React.FC< SettingsPanelProps > = ( {
-	retentionDays,
-	onRetentionChange,
 	onPurgeLogs,
-	saving,
 	purging,
 } ) => {
 	const [ showPurgeConfirm, setShowPurgeConfirm ] = useState( false );
@@ -40,28 +28,9 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 	return (
 		<Card className="ai-request-logs__card ai-request-logs__settings">
 			<CardHeader>
-				<h2>{ __( 'Settings', 'ai' ) }</h2>
+				<h2>{ __( 'Manage Logs', 'ai' ) }</h2>
 			</CardHeader>
 			<CardBody>
-				<RangeControl
-					label={ __( 'Log Retention', 'ai' ) }
-					help={ sprintf(
-						/* translators: %d: number of days before logs are deleted. */
-						__(
-							'Logs older than %d days will be automatically deleted.',
-							'ai'
-						),
-						retentionDays
-					) }
-					value={ retentionDays }
-					onChange={ ( value ) => onRetentionChange( value ?? 30 ) }
-					min={ 1 }
-					max={ 365 }
-					disabled={ saving }
-					__nextHasNoMarginBottom
-					__next40pxDefaultSize
-				/>
-
 				<div className="ai-request-logs__settings-danger">
 					<h3>{ __( 'Danger Zone', 'ai' ) }</h3>
 					<p className="description">

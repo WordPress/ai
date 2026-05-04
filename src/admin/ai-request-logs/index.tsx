@@ -97,10 +97,6 @@ const getInitialLogsQuery = (): LogsQuery => {
 };
 
 const App: React.FC = () => {
-	const [ retentionDays, setRetentionDays ] = useState(
-		settings.initialState.retentionDays
-	);
-
 	const [ summary, setSummary ] = useState< LogSummary >(
 		settings.initialState.summary
 	);
@@ -125,7 +121,6 @@ const App: React.FC = () => {
 
 	const [ selectedLog, setSelectedLog ] = useState< LogEntry | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
-	const [ saving, setSaving ] = useState( false );
 	const [ purging, setPurging ] = useState( false );
 
 	useEffect( () => {
@@ -249,26 +244,6 @@ const App: React.FC = () => {
 		fetchSummary( period );
 	};
 
-	const handleRetentionUpdate = async ( newRetention: number ) => {
-		setSaving( true );
-
-		try {
-			await apiFetch( {
-				path: settings.rest.routes.logs,
-				method: 'POST',
-				data: { retention_days: newRetention },
-			} );
-
-			setRetentionDays( newRetention );
-
-			showNotice( 'success', __( 'Settings saved.', 'ai' ) );
-		} catch ( apiError ) {
-			showNotice( 'error', getErrorMessage( apiError ) );
-		} finally {
-			setSaving( false );
-		}
-	};
-
 	const handlePurge = async () => {
 		setPurging( true );
 
@@ -326,10 +301,7 @@ const App: React.FC = () => {
 				/>
 
 				<SettingsPanel
-					retentionDays={ retentionDays }
-					onRetentionChange={ handleRetentionUpdate }
 					onPurgeLogs={ handlePurge }
-					saving={ saving }
 					purging={ purging }
 				/>
 			</div>

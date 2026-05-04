@@ -73,10 +73,6 @@ export interface LogsQuery {
 	tokensFilter: string;
 }
 
-export interface LogSettings {
-	retentionDays: number;
-}
-
 export interface LocalizedSettings {
 	rest: {
 		nonce: string;
@@ -88,7 +84,6 @@ export interface LocalizedSettings {
 		};
 	};
 	initialState: {
-		retentionDays: number;
 		summary: LogSummary;
 		filters: FilterOptions;
 	};
