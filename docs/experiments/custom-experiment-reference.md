@@ -1,6 +1,6 @@
 # Custom Experiment Reference
 
-This page is a reference example for developers extending the WordPress AI plugin with a custom experiment.
+This serves as a reference example for developers extending the WordPress AI plugin with a custom experiment.
 
 The example is intentionally small and uses the same APIs and patterns as the plugin itself. It is demo code, not production-ready plugin scaffolding.
 
