@@ -178,8 +178,6 @@ class My_Experiment extends Abstract_Experiment {
 }
 ```
 
----
-
 ## Plugin API
 
 The plugin provides a set of hooks and filters to allow third-party developers to extend its functionality.
@@ -286,8 +284,6 @@ Asset_Loader::localize_script(
 );
 ```
 
----
-
 ## Development Workflow
 
 ### 1. Create a Feature Branch
@@ -341,18 +337,12 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 
 ## Additional Resources
 
-### Documentation
+For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
+- [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
+- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
-- [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
-- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
-- [WordPress AI Team](https://make.wordpress.org/ai/)
-
-### Getting Help
-
-- **GitHub Issues**: Report bugs or request features
-- **WordPress Slack**: Join the `#core-ai` channel in Slack, see the [WordPress Slack page](https://make.wordpress.org/chat/) for signup information; it is free to join.
-- **Make WordPress AI**: https://make.wordpress.org/ai/
+- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
