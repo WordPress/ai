@@ -74,7 +74,6 @@ export interface LogsQuery {
 }
 
 export interface LogSettings {
-	enabled: boolean;
 	retentionDays: number;
 }
 
@@ -89,7 +88,6 @@ export interface LocalizedSettings {
 		};
 	};
 	initialState: {
-		enabled: boolean;
 		retentionDays: number;
 		summary: LogSummary;
 		filters: FilterOptions;

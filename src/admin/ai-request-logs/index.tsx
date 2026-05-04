@@ -97,7 +97,6 @@ const getInitialLogsQuery = (): LogsQuery => {
 };
 
 const App: React.FC = () => {
-	const [ enabled, setEnabled ] = useState( settings.initialState.enabled );
 	const [ retentionDays, setRetentionDays ] = useState(
 		settings.initialState.retentionDays
 	);
@@ -250,39 +249,17 @@ const App: React.FC = () => {
 		fetchSummary( period );
 	};
 
-	const handleSettingsUpdate = async (
-		newEnabled?: boolean,
-		newRetention?: number
-	) => {
+	const handleRetentionUpdate = async ( newRetention: number ) => {
 		setSaving( true );
 
 		try {
-			const data: {
-				enabled?: boolean;
-				retention_days?: number;
-			} = {};
-
-			if ( undefined !== newEnabled ) {
-				data.enabled = newEnabled;
-			}
-
-			if ( undefined !== newRetention ) {
-				data.retention_days = newRetention;
-			}
-
 			await apiFetch( {
 				path: settings.rest.routes.logs,
 				method: 'POST',
-				data,
+				data: { retention_days: newRetention },
 			} );
 
-			if ( undefined !== newEnabled ) {
-				setEnabled( newEnabled );
-			}
-
-			if ( undefined !== newRetention ) {
-				setRetentionDays( newRetention );
-			}
+			setRetentionDays( newRetention );
 
 			showNotice( 'success', __( 'Settings saved.', 'ai' ) );
 		} catch ( apiError ) {
@@ -349,14 +326,8 @@ const App: React.FC = () => {
 				/>
 
 				<SettingsPanel
-					enabled={ enabled }
 					retentionDays={ retentionDays }
-					onToggleEnabled={ ( value ) =>
-						handleSettingsUpdate( value, undefined )
-					}
-					onRetentionChange={ ( value ) =>
-						handleSettingsUpdate( undefined, value )
-					}
+					onRetentionChange={ handleRetentionUpdate }
 					onPurgeLogs={ handlePurge }
 					saving={ saving }
 					purging={ purging }

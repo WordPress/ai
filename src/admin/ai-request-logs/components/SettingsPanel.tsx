@@ -7,15 +7,12 @@ import {
 	CardBody,
 	CardHeader,
 	RangeControl,
-	ToggleControl,
 } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
 import { useState } from '@wordpress/element';
 
 interface SettingsPanelProps {
-	enabled: boolean;
 	retentionDays: number;
-	onToggleEnabled: ( enabled: boolean ) => void;
 	onRetentionChange: ( days: number ) => void;
 	onPurgeLogs: () => void;
 	saving: boolean;
@@ -23,9 +20,7 @@ interface SettingsPanelProps {
 }
 
 const SettingsPanel: React.FC< SettingsPanelProps > = ( {
-	enabled,
 	retentionDays,
-	onToggleEnabled,
 	onRetentionChange,
 	onPurgeLogs,
 	saving,
@@ -48,18 +43,6 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 				<h2>{ __( 'Settings', 'ai' ) }</h2>
 			</CardHeader>
 			<CardBody>
-				<ToggleControl
-					label={ __( 'Enable Logging', 'ai' ) }
-					help={ __(
-						'When enabled, AI client requests will be logged for observability.',
-						'ai'
-					) }
-					checked={ enabled }
-					onChange={ onToggleEnabled }
-					disabled={ saving }
-					__nextHasNoMarginBottom
-				/>
-
 				<RangeControl
 					label={ __( 'Log Retention', 'ai' ) }
 					help={ sprintf(
