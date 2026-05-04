@@ -10,11 +10,6 @@
 	}
 }
 
-.ai-settings-page__notice {
-	margin-bottom: 24px;
-}
-
-
 .ai-settings-page__infotip-trigger {
 	background: none;
 	border: none;
@@ -41,15 +36,15 @@
 
 
 .ai-feature-settings-form {
-	margin-top: 4px;
+	margin-top: var(--wpds-dimension-padding-xs);
 	padding-left: 40px;
 	max-width: 480px;
 }
 
 .ai-section-actions {
 	border-top: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
-	margin-top: 16px;
-	padding-top: 12px;
+	margin-top: var(--wpds-dimension-padding-md);
+	padding-top: var(--wpds-dimension-padding-sm);
 }
 
 .ai-showcase-card__image {
