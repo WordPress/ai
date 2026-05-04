@@ -161,10 +161,6 @@ class AI_Request_Log_Page {
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function get_provider_metadata(): array {
-		if ( ! function_exists( 'wp_get_connectors' ) ) {
-			return array();
-		}
-
 		$providers = array();
 
 		foreach ( wp_get_connectors() as $slug => $connector_data ) {

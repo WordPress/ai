@@ -58,15 +58,13 @@ class Log_Data_Extractor {
 		$overrides = array( 'google' => 'googleapis' );
 		$patterns  = array();
 
-		if ( function_exists( 'wp_get_connectors' ) ) {
-			foreach ( wp_get_connectors() as $slug => $connector_data ) {
-				if ( ! is_array( $connector_data ) || 'ai_provider' !== ( $connector_data['type'] ?? '' ) ) {
-					continue;
-				}
-
-				$slug              = strtolower( (string) $slug );
-				$patterns[ $slug ] = array( $overrides[ $slug ] ?? $slug );
+		foreach ( wp_get_connectors() as $slug => $connector_data ) {
+			if ( 'ai_provider' !== ( $connector_data['type'] ?? '' ) ) {
+				continue;
 			}
+
+			$slug              = strtolower( (string) $slug );
+			$patterns[ $slug ] = array( $overrides[ $slug ] ?? $slug );
 		}
 
 		/**

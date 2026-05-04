@@ -86,7 +86,7 @@ class Logging_Integration {
 			// Get the current transporter.
 			$current_transporter = $registry->getHttpTransporter();
 
-				// Don't wrap if already wrapped.
+			// Don't wrap if already wrapped.
 			if ( $current_transporter instanceof Logging_Http_Transporter ) {
 				$wrapped = true;
 				return;
