@@ -86,6 +86,24 @@ namespace {
 		public static function add_command( $name, $handler ): void {
 			// No-op for tests.
 		}
+
+		/**
+		 * Stub confirmation. Auto-confirms when --yes is set; otherwise records
+		 * the question and treats it as accepted so tests can run unattended.
+		 *
+		 * @param string               $question   The confirmation question.
+		 * @param array<string, mixed> $assoc_args Associative args (checked for --yes).
+		 */
+		public static function confirm( $question, $assoc_args = array() ): void {
+			self::$messages[] = array(
+				'level'   => 'confirm',
+				'message' => (string) $question,
+			);
+			if ( ! empty( $assoc_args['yes'] ) ) {
+				return;
+			}
+			// In tests, treat as auto-accepted.
+		}
 	}
 
 	/**

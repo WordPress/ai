@@ -196,41 +196,80 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test get_attachment_ids returns only images without alt text.
+	 * Test fetch_attachment_batch returns only images without alt text.
 	 */
-	public function test_get_attachment_ids_returns_images_without_alt_text(): void {
+	public function test_fetch_attachment_batch_returns_images_without_alt_text(): void {
 		$image_without_alt = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
 		$image_with_alt    = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
 		update_post_meta( $image_with_alt, '_wp_attachment_image_alt', 'Existing alt text' );
 
-		$ids = $this->invoke_private_method( 'get_attachment_ids', array( '', false ) );
+		$ids = $this->invoke_private_method( 'fetch_attachment_batch', array( false, 50, 0 ) );
 
 		$this->assertContains( $image_without_alt, $ids );
 		$this->assertNotContains( $image_with_alt, $ids );
 	}
 
 	/**
-	 * Test get_attachment_ids with force flag includes images with alt text.
+	 * Test fetch_attachment_batch with force flag includes images with alt text.
 	 */
-	public function test_get_attachment_ids_force_includes_all_images(): void {
+	public function test_fetch_attachment_batch_force_includes_all_images(): void {
 		$image_without_alt = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
 		$image_with_alt    = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
 		update_post_meta( $image_with_alt, '_wp_attachment_image_alt', 'Existing alt text' );
 
-		$ids = $this->invoke_private_method( 'get_attachment_ids', array( '', true ) );
+		$ids = $this->invoke_private_method( 'fetch_attachment_batch', array( true, 50, 0 ) );
 
 		$this->assertContains( $image_without_alt, $ids );
 		$this->assertContains( $image_with_alt, $ids );
 	}
 
 	/**
-	 * Test get_attachment_ids with specific IDs filters to valid images only.
+	 * Test fetch_attachment_batch returns at most the requested batch size.
 	 */
-	public function test_get_attachment_ids_with_specific_ids(): void {
+	public function test_fetch_attachment_batch_respects_batch_size(): void {
+		$ids = array();
+		for ( $i = 0; $i < 5; $i++ ) {
+			$ids[] = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+		}
+
+		$batch = $this->invoke_private_method( 'fetch_attachment_batch', array( true, 2, 0 ) );
+
+		$this->assertCount( 2, $batch );
+	}
+
+	/**
+	 * Test fetch_attachment_batch advances past a cursor ID.
+	 */
+	public function test_fetch_attachment_batch_advances_past_cursor(): void {
+		$first  = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+		$second = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+
+		$batch = $this->invoke_private_method( 'fetch_attachment_batch', array( true, 50, $first ) );
+
+		$this->assertNotContains( $first, $batch );
+		$this->assertContains( $second, $batch );
+	}
+
+	/**
+	 * Test count_matching_attachments counts images missing alt text by default.
+	 */
+	public function test_count_matching_attachments_counts_missing_alt(): void {
+		$this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+		$image_with_alt = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+		update_post_meta( $image_with_alt, '_wp_attachment_image_alt', 'Has alt text' );
+
+		$this->assertEquals( 1, $this->invoke_private_method( 'count_matching_attachments', array( false ) ) );
+		$this->assertEquals( 2, $this->invoke_private_method( 'count_matching_attachments', array( true ) ) );
+	}
+
+	/**
+	 * Test parse_ids_flag filters to valid images only.
+	 */
+	public function test_parse_ids_flag_filters_invalid(): void {
 		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
 		$post_id  = $this->factory->post->create();
 
-		$ids = $this->invoke_private_method( 'get_attachment_ids', array( "$image_id,$post_id,99999", false ) );
+		$ids = $this->invoke_private_method( 'parse_ids_flag', array( "$image_id,$post_id,99999" ) );
 
 		$this->assertContains( $image_id, $ids );
 		$this->assertNotContains( $post_id, $ids );
@@ -238,24 +277,12 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test get_attachment_ids returns empty for IDs flag with no valid images.
+	 * Test parse_ids_flag returns empty for no valid images.
 	 */
-	public function test_get_attachment_ids_with_invalid_ids_returns_empty(): void {
-		$ids = $this->invoke_private_method( 'get_attachment_ids', array( '99999,88888', false ) );
+	public function test_parse_ids_flag_returns_empty_when_invalid(): void {
+		$ids = $this->invoke_private_method( 'parse_ids_flag', array( '99999,88888' ) );
 
 		$this->assertEmpty( $ids );
-	}
-
-	/**
-	 * Test get_attachment_ids returns empty when all images have alt text.
-	 */
-	public function test_get_attachment_ids_returns_empty_when_all_have_alt(): void {
-		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
-		update_post_meta( $image_id, '_wp_attachment_image_alt', 'Has alt text' );
-
-		$ids = $this->invoke_private_method( 'get_attachment_ids', array( '', false ) );
-
-		$this->assertNotContains( $image_id, $ids );
 	}
 
 	/**
@@ -311,16 +338,39 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test display_dry_run outputs table without errors.
+	 * Test display_dry_run outputs table for explicit IDs without errors.
 	 */
 	public function test_display_dry_run_runs_without_error(): void {
 		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
 
 		ob_start();
-		$this->invoke_private_method( 'display_dry_run', array( array( $image_id ) ) );
+		$this->invoke_private_method( 'display_dry_run', array( array( $image_id ), false, 1 ) );
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( (string) $image_id, $output );
+	}
+
+	/**
+	 * Test display_dry_run includes images with alt text when force is true.
+	 *
+	 * Reviewer feedback: dry-run results should match what an actual run would
+	 * process, so passing --force should show images that already have alt text.
+	 */
+	public function test_display_dry_run_respects_force(): void {
+		$image_with_alt = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+		update_post_meta( $image_with_alt, '_wp_attachment_image_alt', 'Existing alt text' );
+
+		// Without force: image with alt text should not appear.
+		ob_start();
+		$this->invoke_private_method( 'display_dry_run', array( null, false, 0 ) );
+		$without_force = ob_get_clean();
+		$this->assertStringNotContainsString( (string) $image_with_alt, $without_force );
+
+		// With force: image with alt text should appear.
+		ob_start();
+		$this->invoke_private_method( 'display_dry_run', array( null, true, 1 ) );
+		$with_force = ob_get_clean();
+		$this->assertStringContainsString( (string) $image_with_alt, $with_force );
 	}
 
 	/**
@@ -336,7 +386,7 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		};
 
 		ob_start();
-		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, false ) );
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 1, 10, 0, false ) );
 		ob_end_clean();
 
 		$this->assertEquals( 1, $stats['generated'] );
@@ -362,7 +412,7 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		};
 
 		ob_start();
-		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, false ) );
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 1, 10, 0, false ) );
 		ob_end_clean();
 
 		$this->assertEquals( 0, $stats['generated'] );
@@ -384,7 +434,7 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		};
 
 		ob_start();
-		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, false ) );
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 1, 10, 0, false ) );
 		ob_end_clean();
 
 		$this->assertEquals( 0, $stats['generated'] );
@@ -406,7 +456,7 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		};
 
 		ob_start();
-		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, true ) );
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 1, 10, 0, true ) );
 		ob_end_clean();
 
 		$this->assertEquals( 1, $stats['generated'] );
@@ -427,7 +477,7 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		};
 
 		ob_start();
-		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 10, 0, false ) );
+		$stats = $this->invoke_private_method( 'process_images', array( $fake_ability, array( $image_id ), 1, 10, 0, false ) );
 		ob_end_clean();
 
 		$this->assertEquals( 1, $stats['failed'] );
@@ -493,7 +543,13 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		$image_id = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
 
 		ob_start();
-		$this->command->generate( array(), array( 'delay' => 0 ) );
+		$this->command->generate(
+			array(),
+			array(
+				'delay' => 0,
+				'yes'   => true,
+			)
+		);
 		ob_end_clean();
 
 		$this->assertEquals(
@@ -526,5 +582,57 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		ob_end_clean();
 
 		$this->assertEmpty( get_post_meta( $image_id, '_wp_attachment_image_alt', true ) );
+	}
+
+	/**
+	 * Test generate iterates across multiple paginated batches without holding the full
+	 * ID set in memory (reviewer feedback for sites with thousands of attachments).
+	 */
+	public function test_generate_processes_multiple_batches(): void {
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->register_fake_ability( array( 'alt_text' => 'Generated alt' ) );
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+
+		$image_ids = array();
+		for ( $i = 0; $i < 5; $i++ ) {
+			$image_ids[] = $this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+		}
+
+		ob_start();
+		$this->command->generate(
+			array(),
+			array(
+				'batch-size' => 2,
+				'delay'      => 0,
+				'yes'        => true,
+			)
+		);
+		ob_end_clean();
+
+		foreach ( $image_ids as $id ) {
+			$this->assertEquals( 'Generated alt', get_post_meta( $id, '_wp_attachment_image_alt', true ) );
+		}
+	}
+
+	/**
+	 * Test generate prompts for confirmation when --yes is not passed.
+	 */
+	public function test_generate_prompts_for_confirmation(): void {
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->register_fake_ability( array( 'alt_text' => 'A generated description' ) );
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+
+		$this->factory->attachment->create_upload_object( TESTS_REPO_ROOT_DIR . '/tests/data/sample.png' );
+
+		ob_start();
+		$this->command->generate( array(), array( 'delay' => 0 ) );
+		ob_end_clean();
+
+		$this->assertNotEmpty(
+			$this->get_cli_messages( 'confirm' ),
+			'Expected a confirmation prompt when --yes is not provided.'
+		);
 	}
 }
