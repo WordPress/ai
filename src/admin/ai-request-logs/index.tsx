@@ -50,6 +50,7 @@ const settings: LocalizedSettings =
 	} )();
 
 const providerMetadata = settings.providerMetadata ?? {};
+const connectorsUrl = settings.connectorsUrl;
 const LOGS_QUERY_STORAGE_KEY = 'ai.requestLogs.query';
 const INITIAL_FILTERS: FilterOptions = {
 	...settings.initialState.filters,
@@ -298,6 +299,7 @@ const App: React.FC = () => {
 					query={ logsQuery }
 					setQuery={ setLogsQuery }
 					providerMetadata={ providerMetadata }
+					connectorsUrl={ connectorsUrl }
 				/>
 
 				<SettingsPanel

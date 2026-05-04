@@ -87,6 +87,7 @@ export interface LocalizedSettings {
 		summary: LogSummary;
 		filters: FilterOptions;
 	};
+	connectorsUrl: string;
 	providerMetadata: ProviderMetadataMap;
 }
 

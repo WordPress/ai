@@ -29,6 +29,7 @@ interface LogsTableProps {
 	query: LogsQuery;
 	setQuery: React.Dispatch< React.SetStateAction< LogsQuery > >;
 	providerMetadata: Record< string, ProviderMetadata >;
+	connectorsUrl: string;
 }
 
 /**
@@ -268,6 +269,7 @@ interface ProviderCellProps {
 	provider: string | null;
 	model: string | null;
 	metadata: ProviderMetadata | undefined;
+	connectorsUrl: string;
 }
 
 const renderProviderLogo = ( metadata: ProviderMetadata ): JSX.Element =>
@@ -291,6 +293,7 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 	provider,
 	model,
 	metadata,
+	connectorsUrl,
 } ) => {
 	const [ isPopoverVisible, setIsPopoverVisible ] = useState( false );
 
@@ -378,10 +381,10 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 								</a>
 							) }
 							<a
-								href="admin.php?page=ai-provider-credentials"
+								href={ connectorsUrl }
 								className="ai-request-logs__popover-link"
 							>
-								{ __( 'Provider Credentials', 'ai' ) }
+								{ __( 'Manage Connectors', 'ai' ) }
 							</a>
 						</div>
 					</div>
@@ -401,6 +404,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	query,
 	setQuery,
 	providerMetadata,
+	connectorsUrl,
 } ) => {
 	const [ viewConfig, setViewConfig ] = useState< ViewConfig >( () => ( {
 		filters: buildFiltersFromQuery( query ),
@@ -535,6 +539,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 								? providerMetadata[ item.provider ]
 								: undefined
 						}
+						connectorsUrl={ connectorsUrl }
 					/>
 				),
 			},
@@ -637,7 +642,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				),
 			},
 		],
-		[ filterOptions, providerMetadata ]
+		[ filterOptions, providerMetadata, connectorsUrl ]
 	);
 
 	const actions = useMemo(

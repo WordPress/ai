@@ -102,6 +102,7 @@ class AI_Request_Log_Page {
 					'summary' => $this->manager->get_summary( 'day' ),
 					'filters' => $this->manager->get_filter_options(),
 				),
+				'connectorsUrl'    => admin_url( 'options-connectors.php' ),
 				'providerMetadata' => $this->get_provider_metadata(),
 			)
 		);
