@@ -27,9 +27,7 @@ export async function getContext( postId: number ): Promise< PostContext > {
 				return response as PostContext;
 			}
 
-			throw new Error(
-				__( 'Invalid response from get context.', 'ai' )
-			);
+			throw new Error( __( 'Invalid response from get context.', 'ai' ) );
 		} )
 		.catch( ( error ) => {
 			throw new Error( error.message );
