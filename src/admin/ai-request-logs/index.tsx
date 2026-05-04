@@ -6,6 +6,7 @@ import './index.scss';
 /**
  * WordPress dependencies
  */
+import { Page } from '@wordpress/admin-ui';
 import apiFetch from '@wordpress/api-fetch';
 import { Notice } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
@@ -22,6 +23,7 @@ import {
 /**
  * Internal dependencies
  */
+import AiIcon from '../../../routes/ai-home/ai-icon';
 import HeaderPeriodSelector from './components/HeaderPeriodSelector';
 import LogDetailModal from './components/LogDetailModal';
 import LogsTable from './components/LogsTable';
@@ -309,48 +311,58 @@ const App: React.FC = () => {
 	};
 
 	return (
-		<div className="ai-request-logs__app">
-			<HeaderPeriodSelector
-				period={ summaryPeriod }
-				onPeriodChange={ handlePeriodChange }
-				loading={ summaryLoading }
-			/>
-
-			{ error && (
-				<Notice status="error" onRemove={ () => setError( null ) }>
-					{ error }
-				</Notice>
+		<Page
+			visual={ <AiIcon /> }
+			title={ __( 'AI Request Logs', 'ai' ) }
+			subTitle={ __(
+				'Detailed logs of every AI request made by the WordPress AI plugin.',
+				'ai'
 			) }
-
-			<SummaryCards summary={ summary } loading={ summaryLoading } />
-
-			<div className="ai-request-logs__main">
-				<LogsTable
-					logs={ logs }
-					filterOptions={ filterOptions }
-					onViewLog={ setSelectedLog }
-					loading={ logsLoading }
-					totalPages={ totalPages }
-					total={ total }
-					query={ logsQuery }
-					setQuery={ setLogsQuery }
-					providerMetadata={ providerMetadata }
-					connectorsUrl={ connectorsUrl }
+			actions={
+				<HeaderPeriodSelector
+					period={ summaryPeriod }
+					onPeriodChange={ handlePeriodChange }
+					loading={ summaryLoading }
 				/>
+			}
+		>
+			<div className="ai-request-logs__app">
+				{ error && (
+					<Notice status="error" onRemove={ () => setError( null ) }>
+						{ error }
+					</Notice>
+				) }
 
-				<SettingsPanel
-					onPurgeLogs={ handlePurge }
-					purging={ purging }
-				/>
+				<SummaryCards summary={ summary } loading={ summaryLoading } />
+
+				<div className="ai-request-logs__main">
+					<LogsTable
+						logs={ logs }
+						filterOptions={ filterOptions }
+						onViewLog={ setSelectedLog }
+						loading={ logsLoading }
+						totalPages={ totalPages }
+						total={ total }
+						query={ logsQuery }
+						setQuery={ setLogsQuery }
+						providerMetadata={ providerMetadata }
+						connectorsUrl={ connectorsUrl }
+					/>
+
+					<SettingsPanel
+						onPurgeLogs={ handlePurge }
+						purging={ purging }
+					/>
+				</div>
+
+				{ selectedLog && (
+					<LogDetailModal
+						log={ selectedLog }
+						onClose={ () => setSelectedLog( null ) }
+					/>
+				) }
 			</div>
-
-			{ selectedLog && (
-				<LogDetailModal
-					log={ selectedLog }
-					onClose={ () => setSelectedLog( null ) }
-				/>
-			) }
-		</div>
+		</Page>
 	);
 };
 

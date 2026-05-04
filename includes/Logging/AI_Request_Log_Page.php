@@ -117,40 +117,9 @@ class AI_Request_Log_Page {
 		}
 		?>
 		<div class="wrap ai-request-logs">
-			<div class="ai-admin-header">
-				<div class="ai-admin-header__inner">
-					<div class="ai-admin-header__left">
-						<span class="ai-admin-header__icon">
-							<?php if ( $this->get_plugin_icon_url() ) : ?>
-								<img src="<?php echo esc_url( $this->get_plugin_icon_url() ); ?>" alt="" aria-hidden="true" />
-							<?php endif; ?>
-						</span>
-						<div class="ai-admin-header__title">
-							<h1><?php esc_html_e( 'AI Request Logs', 'ai' ); ?></h1>
-						</div>
-					</div>
-					<div id="ai-request-logs-header-period" class="ai-admin-header__right"></div>
-				</div>
-			</div>
 			<div id="ai-request-logs-root"></div>
 		</div>
 		<?php
-	}
-
-	/**
-	 * Returns the plugin icon asset URL for the screen header.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return string Asset URL or an empty string.
-	 */
-	private function get_plugin_icon_url(): string {
-		$svg_path = WPAI_PLUGIN_DIR . 'assets/svg/wpai-icon.svg';
-		if ( file_exists( $svg_path ) ) {
-			return WPAI_PLUGIN_URL . 'assets/svg/wpai-icon.svg';
-		}
-
-		return '';
 	}
 
 	/**
