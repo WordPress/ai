@@ -6,6 +6,7 @@ Welcome to the AI plugin development guide. This document provides everything yo
 
 - [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
 - [Creating a New Experiment](#creating-a-new-experiment)
+- [Custom Experiment Reference](experiments/custom-experiment-reference.md)
 - [Plugin API](#plugin-api)
 - [Development Workflow](#development-workflow)
 - [Additional Resources](#additional-resources)
@@ -124,6 +125,8 @@ class My_Experiment extends Abstract_Feature {
   }
 }
 ```
+
+If you want a complete end-to-end reference instead of a starter snippet, see the [Custom Experiment Reference](experiments/custom-experiment-reference.md). It points to the in-repo `Example_Experiment` implementation and shows a minimal third-party plugin example using the same extension points.
 
 ### Step 3: Register the Experiment
 
@@ -353,4 +356,5 @@ For more detailed information on plugin architecture, creating experiments, and 
 - [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
+- [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
 - [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
