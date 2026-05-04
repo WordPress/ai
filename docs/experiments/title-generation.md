@@ -34,35 +34,6 @@ The ability can be called directly via REST API for automation, bulk back-fills,
 
 ## Architecture & Implementation
 
-### Key Hooks & Entry Points
-
-- `WordPress\AI\Experiments\Title_Generation\Title_Generation::register()` wires everything once the experiment is enabled:
-  - `wp_abilities_api_init` → registers the `ai/title-generation` ability (`includes/Abilities/Title_Generation/Title_Generation.php`)
-  - `admin_enqueue_scripts` → enqueues the React bundle and stylesheet on `post.php` and `post-new.php` screens, but only when the post type supports `title` and is not an attachment
-
-### Assets & Data Flow
-
-1. **PHP Side:**
-   - `enqueue_assets()` loads `experiments/title-generation` (`src/experiments/title-generation/index.tsx`) and localizes `window.aiTitleGenerationData` with:
-     - `enabled`: Whether the experiment is enabled
-
-2. **React Side:** The experiment supports two editor modes, registered as a single bundle:
-   - **Block mode** (template editor / site editor / any context where the title is a `core/post-title` block): an `editor.BlockEdit` filter wraps the block to add a `BlockControls` toolbar containing `<TitleToolbar />`.
-   - **Normal editing mode** (classic post editor where the title is an `<input>`): the bundle also calls `registerPlugin( 'ai-title-generation-normal-mode', { render: TitleToolbarWrapper } )`. `TitleToolbarWrapper` uses a `MutationObserver` to find `.editor-post-title__input` inside the editor iframe, wraps it, and renders a floating toolbar via `createRoot`. The toolbar is shown on focus and hidden on blur.
-   - Both modes render the same `TitleToolbar` component (`src/experiments/title-generation/components/TitleToolbar.tsx`), which is gated on `aiTitleGenerationData.enabled` and additionally wrapped in `<PostTypeSupportCheck supportKeys="title">` so it self-disables for post types without title support.
-
-3. **Ability call:**
-   - The toolbar reads the current post ID and content from `editorStore`, then calls `runAbility< { title: string } >( 'ai/title-generation', { context: String( postId ), content } )`.
-   - The button label flips between **Generate**, **Regenerate**, and **Generating…** based on whether a title already exists and whether a request is in flight.
-   - Errors are surfaced as a dismissible notice with the ID `ai_title_generation_error`.
-
-4. **Ability Execution:**
-   - Accepts `content` (string) and `context` (string or post ID as a string).
-   - If `context` is numeric, treats it as a post ID and fetches the rest of the post context via `get_post_context()`. If `content` is also passed, the passed content takes precedence (normalized via `normalize_content()`); the post-derived context (title, taxonomies) is still appended as `<additional-context>`.
-   - If `context` is non-numeric, treats it as freeform text and appends it as `<additional-context>`.
-   - Wraps the content in `<content>...</content>`, sends to the AI client at temperature 0.7, with the system instruction (which has `<site-context>` and `<copy-guidelines>` blocks prepended automatically when the Editorial Guidelines service is configured).
-   - The returned text is trimmed of surrounding spaces and quotes, run through `sanitize_text_field()`, and wrapped as `{ title: string }`.
-
 ### Input Schema
 
 ```php
@@ -314,19 +285,6 @@ add_filter( 'wpai_get_post_details', function ( array $details, int $post_id, ar
    - Test with a valid post ID, with freeform content, and with both
    - Verify error handling for invalid inputs (`post_not_found`, `content_not_provided`)
 
-### Automated Testing
-
-Tests are located in:
-
-- `tests/Integration/Includes/Abilities/Title_GenerationTest.php`
-- `tests/Integration/Includes/Experiments/Title_Generation/Title_GenerationTest.php`
-
-Run tests with:
-
-```bash
-npm run test:php
-```
-
 ## Notes & Considerations
 
 ### Requirements
@@ -365,15 +323,3 @@ When the Editorial Guidelines service is configured, `<site-context>` and `<copy
 - The `TitleToolbarWrapper` reaches into the editor iframe via DOM querying and a `MutationObserver`. It is resilient to late-loading editors but assumes the standard `editor-canvas` / `wp-block-editor-iframe__iframe` markup; heavily customized editors may need additional selectors.
 - Suggestions are generated in real time and not cached.
 - The output of the ability is sanitized with `sanitize_text_field()` and stripped of surrounding `"`/`'` characters; titles that legitimately need leading/trailing quotes will lose them.
-
-## Related Files
-
-- **Experiment:** `includes/Experiments/Title_Generation/Title_Generation.php`
-- **Ability:** `includes/Abilities/Title_Generation/Title_Generation.php`
-- **System Instruction:** `includes/Abilities/Title_Generation/system-instruction.php`
-- **React Entry:** `src/experiments/title-generation/index.tsx`
-- **React Components:** `src/experiments/title-generation/components/TitleToolbar.tsx`, `src/experiments/title-generation/components/TitleToolbarWrapper.tsx`
-- **Styles:** `src/experiments/title-generation/index.scss`
-- **Types:** `src/experiments/title-generation/types.ts`
-- **Tests:** `tests/Integration/Includes/Abilities/Title_GenerationTest.php`
-- **Tests:** `tests/Integration/Includes/Experiments/Title_Generation/Title_GenerationTest.php`

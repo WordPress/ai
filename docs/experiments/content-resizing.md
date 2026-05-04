@@ -30,35 +30,6 @@ The ability can be called directly via REST API, making it useful for batch tran
 
 ## Architecture & Implementation
 
-### Key Hooks & Entry Points
-
-- `WordPress\AI\Experiments\Content_Resizing\Content_Resizing::register()` wires everything once the experiment is enabled:
-  - `wp_abilities_api_init` → registers the `ai/content-resizing` ability (`includes/Abilities/Content_Resizing/Content_Resizing.php`)
-  - `admin_enqueue_scripts` → enqueues the React bundle and stylesheet on `post.php` and `post-new.php` screens (no post-type filtering — paragraph blocks can appear anywhere the editor renders)
-
-### Assets & Data Flow
-
-1. **PHP Side:**
-   - `enqueue_assets()` loads `experiments/content-resizing` (`src/experiments/content-resizing/index.tsx`) and localizes `window.aiContentResizingData` with:
-     - `enabled`: Whether the experiment is enabled
-
-2. **React Side:**
-   - The React entry point (`index.tsx`) registers an `aiResized` boolean attribute on `core/paragraph` blocks via the `blocks.registerBlockType` filter (gated on `aiContentResizingData.enabled`). The attribute lets accepted suggestions be flagged visually.
-   - It then wraps `editor.BlockEdit` with a higher-order component that adds a `<BlockControls>` toolbar (`ContentResizingToolbar`) when a paragraph block is selected.
-   - `ContentResizingToolbar` (`src/experiments/content-resizing/components/ContentResizingToolbar.tsx`):
-     - Reads `block.attributes.content`, `block.attributes.aiResized`, and the current post ID from the editor stores.
-     - Pre-checks the 5-word minimum for **Shorten** client-side using `@wordpress/wordcount`, surfacing an error notice if the block is too short.
-     - Calls `runAbility< string >( 'ai/content-resizing', { content, action, post_id } )`.
-     - Opens a modal showing original vs. suggested text with a word-delta badge (positive / negative / neutral).
-     - **Accept** dispatches `updateBlockAttributes(clientId, { content: suggestion, aiResized: true })`; **Regenerate** re-runs the last action; closing discards the suggestion.
-
-3. **Ability Execution:**
-   - Accepts `post_id` (optional), `content` (required), and `action` (defaults to `rephrase`).
-   - **Does not** normalize content — inline HTML is preserved so the round-trip keeps links and emphasis intact.
-   - Re-checks the 5-word minimum for `shorten` server-side and returns `content_too_short` if it fails.
-   - Wraps the block content in `<content>...</content>`, picks an action-specific system instruction, sends to the AI client at temperature 0.7.
-   - Runs the model output through `wp_kses_post()` before returning.
-
 ### Input Schema
 
 ```php
@@ -271,19 +242,6 @@ The shipping experiment only adds the toolbar to `core/paragraph` (and only regi
    - Test with each of the three actions
    - Verify `content_too_short` is returned for `shorten` on inputs with fewer than 5 words
 
-### Automated Testing
-
-Tests are located in:
-
-- `tests/Integration/Includes/Abilities/Content_ResizingTest.php`
-- `tests/Integration/Includes/Experiments/Content_Resizing/Content_ResizingTest.php`
-
-Run tests with:
-
-```bash
-npm run test:php
-```
-
 ## Notes & Considerations
 
 ### Requirements
@@ -320,16 +278,3 @@ All three share these requirements: return only the transformed text (no preambl
 - Suggestions are generated in real time and not cached.
 - The toolbar is hard-coded to `core/paragraph`; other blocks need a custom integration (see "Extending to Other Block Types" above).
 - The `aiResized` flag is purely informational — it doesn't change how the block renders on the front end.
-
-## Related Files
-
-- **Experiment:** `includes/Experiments/Content_Resizing/Content_Resizing.php`
-- **Ability:** `includes/Abilities/Content_Resizing/Content_Resizing.php`
-- **System Instruction:** `includes/Abilities/Content_Resizing/system-instruction.php`
-- **React Entry:** `src/experiments/content-resizing/index.tsx`
-- **React Components:** `src/experiments/content-resizing/components/ContentResizingToolbar.tsx`
-- **Icons:** `src/experiments/content-resizing/icons.tsx`
-- **Styles:** `src/experiments/content-resizing/index.scss`
-- **Types:** `src/experiments/content-resizing/types.ts`
-- **Tests:** `tests/Integration/Includes/Abilities/Content_ResizingTest.php`
-- **Tests:** `tests/Integration/Includes/Experiments/Content_Resizing/Content_ResizingTest.php`
