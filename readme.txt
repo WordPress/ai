@@ -21,6 +21,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
+* **Content Resizing** - Shorten, expand, or rephrase selected block content.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
