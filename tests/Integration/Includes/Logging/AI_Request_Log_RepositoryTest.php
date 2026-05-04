@@ -611,35 +611,6 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that cleanup_by_max_rows returns zero when under the limit.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_cleanup_by_max_rows_returns_zero_when_under_limit(): void {
-		$this->insert_log();
-		$this->insert_log();
-
-		$deleted = $this->repository->cleanup_by_max_rows( 10 );
-
-		$this->assertSame( 0, $deleted );
-	}
-
-	/**
-	 * Tests that cleanup_by_max_rows deletes excess rows.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_cleanup_by_max_rows_deletes_excess(): void {
-		for ( $i = 0; $i < 5; $i++ ) {
-			$this->insert_log();
-		}
-
-		$deleted = $this->repository->cleanup_by_max_rows( 2 );
-
-		$this->assertSame( 3, $deleted );
-	}
-
-	/**
 	 * Tests that purge_all returns the row count and empties the table.
 	 *
 	 * This test must run last in the class because purge_all() uses

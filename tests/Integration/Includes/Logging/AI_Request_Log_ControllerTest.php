@@ -9,7 +9,6 @@ namespace WordPress\AI\Tests\Integration\Includes\Logging;
 
 use WP_REST_Request;
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\REST\AI_Request_Log_Controller;
@@ -63,7 +62,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 
-		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 	}
 
 	/**
@@ -73,7 +71,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	 */
 	protected function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
 
 		parent::tearDown();
@@ -246,25 +243,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that update_settings changes retention days.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_settings_changes_retention_days(): void {
-		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $admin_id );
-
-		$request = new WP_REST_Request( 'POST', '/ai/v1/logs' );
-		$request->set_param( 'retention_days', 7 );
-		$response = rest_get_server()->dispatch( $request );
-
-		$this->assertSame( 200, $response->get_status() );
-
-		$data = $response->get_data();
-		$this->assertSame( 7, $data['retention_days'] );
-	}
-
-	/**
 	 * Tests that purge_logs returns a success response structure.
 	 *
 	 * This test uses TRUNCATE internally via purge_all(), so it must
@@ -287,22 +265,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		$this->assertTrue( $data['success'] );
 		$this->assertArrayHasKey( 'deleted', $data );
 		$this->assertArrayHasKey( 'message', $data );
-	}
-
-	/**
-	 * Tests that subscribers cannot update settings.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_settings_requires_manage_options(): void {
-		$subscriber_id = $this->factory()->user->create( array( 'role' => 'subscriber' ) );
-		wp_set_current_user( $subscriber_id );
-
-		$request = new WP_REST_Request( 'POST', '/ai/v1/logs' );
-		$request->set_param( 'enabled', true );
-		$response = rest_get_server()->dispatch( $request );
-
-		$this->assertSame( 403, $response->get_status() );
 	}
 
 	/**

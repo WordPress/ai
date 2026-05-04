@@ -74,33 +74,32 @@ add_filter( 'wpai_request_log_kind', function( $kind, $provider, $path, $payload
 }, 10, 4 );
 ```
 
-### `wpai_request_log_max_rows`
-Filters the count-based backstop for the AI request log table. Complements the time-based retention setting — whichever cap is hit first applies during the daily cleanup. Defaults to 100,000 rows.
+### `wpai_request_log_retention_days`
+Filters the time-based retention period in days. Logs are retained indefinitely by default (the filter returns `0`). Return a positive integer to delete entries older than that many days during the daily cleanup.
 
 ```php
-add_filter( 'wpai_request_log_max_rows', function() {
-    return 250000;
+add_filter( 'wpai_request_log_retention_days', function() {
+    return 30;
 } );
 ```
 
 ## Assets & Data Flow
-1. When `AI Request Logs` is visited, `Asset_Loader` enqueues `admin/ai-request-logs` (`src/admin/ai-request-logs/index.tsx`) plus its stylesheet. The localized payload (`window.AiRequestLogsSettings`) includes REST routes, a nonce, and initial state (enabled flag, retention days, summary, filters).
+1. When `AI Request Logs` is visited, `Asset_Loader` enqueues `admin/ai-request-logs` (`src/admin/ai-request-logs/index.tsx`) plus its stylesheet. The localized payload (`window.AiRequestLogsSettings`) includes REST routes, a nonce, and initial state (summary and filter metadata).
 2. The React app:
    - Configures `@wordpress/api-fetch` with the nonce/root.
    - Fetches logs (`GET /ai/v1/logs` with search/filter params) and displays them in a table with pagination.
    - Uses a persisted operations multi-select that excludes `*:models` discovery calls by default so capability lookups do not drown out actual request traffic unless the user opts in.
    - Fetches summaries (`GET /ai/v1/logs/summary`) for the KPI cards, including `minute`, `hour`, `day`, `week`, `month`, and `all` periods, and filter metadata (`GET /ai/v1/logs/filters`).
-   - Posts to `/ai/v1/logs` to toggle logging and retention, and sends `DELETE /ai/v1/logs` to purge the table.
+   - Sends `DELETE /ai/v1/logs` to purge the table.
 3. On the backend, every AI HTTP request flows through `Logging_Http_Transporter`, which records metrics via `AI_Request_Log_Manager::log()` before returning the response to callers. Logs are stored in the `wp_ai_request_logs` table alongside JSON-encoded context for later inspection.
 
 ## Testing
 1. Enable Experiments globally, toggle **AI Request Logging**, and ensure valid AI credentials exist (the experiment won't enable otherwise).
 2. Trigger an AI-powered feature (e.g., Type Ahead or Title Generation) so the system issues at least one completion request.
-3. Navigate to `Tools → AI Request Logs`. Confirm the chart and table populate, that the "Logging enabled" toggle reflects the current setting, and that `*:models` discovery calls only appear after you explicitly include them in the operations filter.
-4. Change the retention days value, save, and verify the option persists (reload the page or inspect `wpai_feature_ai-request-logging_field_retention_days`).
-5. Click "Purge logs", confirm the success notice, and check the table empties.
-6. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
+3. Navigate to `Tools → AI Request Logs`. Confirm the chart and table populate, and that `*:models` discovery calls only appear after you explicitly include them in the operations filter.
+4. Click "Purge logs", confirm the success notice, and check the table empties.
+5. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
 
 ## Notes
-- The HTTP logging layer only boots when both the global experiment switch and the `ai-request-logging` toggle are on, preventing unnecessary DB tables or cron events on installs that don't need observability.
+- Logs are retained indefinitely by default. Add an `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup.
 - REST endpoints require `manage_options`.

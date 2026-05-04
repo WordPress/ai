@@ -57,7 +57,6 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_ai-request-logging_enabled' );
-		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
 
 		parent::tearDown();

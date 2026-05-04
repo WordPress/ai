@@ -8,7 +8,6 @@
 namespace WordPress\AI\Tests\Integration\Includes\Logging;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Repository;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
@@ -47,7 +46,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 
-		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 	}
 
 	/**
@@ -56,10 +54,9 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	protected function tearDown(): void {
-		delete_option( AI_Request_Logging::get_field_option_name( 'retention_days' ) );
 		delete_option( 'wpai_request_logs_schema_version' );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
-		remove_all_filters( 'wpai_request_log_max_rows' );
+		remove_all_filters( 'wpai_request_log_retention_days' );
 
 		parent::tearDown();
 	}
@@ -215,50 +212,28 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_retention_days returns the default when no option is set.
+	 * Tests that get_retention_days returns 0 (forever) by default.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_get_retention_days_returns_default(): void {
-		$this->assertSame( AI_Request_Log_Manager::DEFAULT_RETENTION_DAYS, $this->manager->get_retention_days() );
+	public function test_get_retention_days_defaults_to_forever(): void {
+		$this->assertSame( 0, $this->manager->get_retention_days() );
 	}
 
 	/**
-	 * Tests that set_retention_days enforces a minimum of 1.
+	 * Tests that get_retention_days can be overridden via the wpai_request_log_retention_days filter.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_set_retention_days_enforces_minimum(): void {
-		$this->manager->set_retention_days( 0 );
-		$this->assertSame( 1, $this->manager->get_retention_days() );
-
-		$this->manager->set_retention_days( -5 );
-		$this->assertSame( 1, $this->manager->get_retention_days() );
-	}
-
-	/**
-	 * Tests that get_max_rows returns the default when no option is set.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_max_rows_returns_default(): void {
-		$this->assertSame( AI_Request_Log_Manager::DEFAULT_MAX_ROWS, $this->manager->get_max_rows() );
-	}
-
-	/**
-	 * Tests that get_max_rows can be overridden via the wpai_request_log_max_rows filter.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_max_rows_is_filterable(): void {
+	public function test_get_retention_days_is_filterable(): void {
 		add_filter(
-			'wpai_request_log_max_rows',
+			'wpai_request_log_retention_days',
 			static function () {
-				return 12345;
+				return 14;
 			}
 		);
 
-		$this->assertSame( 12345, $this->manager->get_max_rows() );
+		$this->assertSame( 14, $this->manager->get_retention_days() );
 	}
 
 	/**
@@ -267,7 +242,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_cleanup_old_logs_returns_count(): void {
-			$this->manager->log(
+		$this->manager->log(
 			array(
 				'type'      => 'ai_client',
 				'operation' => 'openai:completions',
@@ -275,7 +250,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 			)
 		);
 
-		// With a large retention and max_rows, nothing should be deleted.
+		// Default retention is 0 (forever), so nothing should be deleted.
 		$deleted = $this->manager->cleanup_old_logs();
 		$this->assertSame( 0, $deleted );
 	}
