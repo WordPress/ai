@@ -43,10 +43,8 @@ import type {
 
 const settings: LocalizedSettings =
 	window.aiRequestLogsSettings ??
-	window.aiAiRequestLogsSettings ??
-	window.AiRequestLogsSettings ??
 	( () => {
-		throw new Error( 'AiRequestLogsSettings is not defined.' );
+		throw new Error( 'aiRequestLogsSettings is not defined.' );
 	} )();
 
 const providerMetadata = settings.providerMetadata ?? {};
@@ -173,9 +171,15 @@ const App: React.FC = () => {
 			if ( logsQuery.tokensFilter ) {
 				params.append( 'tokens_filter', logsQuery.tokensFilter );
 			}
+			if ( logsQuery.userId ) {
+				params.append( 'user_id', logsQuery.userId );
+			}
 			if ( deferredSearch ) {
 				params.append( 'search', deferredSearch );
 			}
+
+			params.append( 'orderby', logsQuery.orderby );
+			params.append( 'order', logsQuery.order.toUpperCase() );
 
 			const response = await apiFetch< LogEntry[], false >( {
 				path: `${ settings.rest.routes.logs }?${ params.toString() }`,
@@ -205,6 +209,9 @@ const App: React.FC = () => {
 		logsQuery.status,
 		logsQuery.tokensFilter,
 		logsQuery.type,
+		logsQuery.userId,
+		logsQuery.orderby,
+		logsQuery.order,
 		hasOperationSelection,
 		serializedOperationSelection,
 	] );

@@ -194,6 +194,13 @@ const buildFiltersFromQuery = ( query: LogsQuery ): Filter[] => {
 			value: query.tokensFilter,
 		} );
 	}
+	if ( query.userId ) {
+		filters.push( {
+			field: 'user_id',
+			operator: 'is' as Operator,
+			value: query.userId,
+		} );
+	}
 
 	return filters;
 };
@@ -230,6 +237,9 @@ const viewToQuery = ( view: View ): LogsQuery => {
 		operations = [];
 	}
 
+	const sortField = view.sort?.field ?? 'timestamp';
+	const sortDir = view.sort?.direction === 'asc' ? 'asc' : 'desc';
+
 	return {
 		page: ( view.page ?? 1 ) || 1,
 		perPage: view.perPage ?? 25,
@@ -239,6 +249,9 @@ const viewToQuery = ( view: View ): LogsQuery => {
 		provider: extractStringFilter( filters, 'provider' ),
 		operation: operations,
 		tokensFilter: extractStringFilter( filters, 'tokensFilter' ),
+		userId: extractStringFilter( filters, 'user_id' ),
+		orderby: typeof sortField === 'string' ? sortField : 'timestamp',
+		order: sortDir,
 	};
 };
 
@@ -257,8 +270,8 @@ const queryToView = ( query: LogsQuery, viewConfig: ViewConfig ): View => {
 		page: query.page,
 		perPage: query.perPage,
 		sort: {
-			field: 'timestamp',
-			direction: 'desc' as const,
+			field: query.orderby,
+			direction: query.order,
 		},
 		fields: viewConfig.fields,
 		layout: viewConfig.layout,
@@ -440,7 +453,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			{
 				id: 'timestamp',
 				label: __( 'Time', 'ai' ),
-				enableSorting: false,
+				enableSorting: true,
 				enableHiding: false,
 				render: ( { item }: { item: LogEntry } ) => (
 					<span className="ai-request-logs__cell--time">
@@ -451,7 +464,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			{
 				id: 'operation',
 				label: __( 'Operation', 'ai' ),
-				enableSorting: false,
+				enableSorting: true,
 				elements: ( filterOptions.operations ?? [] ).map(
 					( value ) => ( {
 						label: value,
@@ -504,7 +517,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			{
 				id: 'type',
 				label: __( 'Type', 'ai' ),
-				enableSorting: false,
+				enableSorting: true,
 				enableHiding: false,
 				elements: filterOptions.types.map( ( value ) => ( {
 					label: formatSelectLabel( value ),
@@ -546,7 +559,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			{
 				id: 'tokens_total',
 				label: __( 'Tokens', 'ai' ),
-				enableSorting: false,
+				enableSorting: true,
 				getValue: ( { item }: { item: LogEntry } ) =>
 					item.tokens_total ?? 0,
 				render: ( { item }: { item: LogEntry } ) => (
@@ -613,7 +626,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			{
 				id: 'duration_ms',
 				label: __( 'Duration', 'ai' ),
-				enableSorting: false,
+				enableSorting: true,
 				getValue: ( { item }: { item: LogEntry } ) =>
 					item.duration_ms ?? 0,
 				render: ( { item }: { item: LogEntry } ) => (
@@ -623,7 +636,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 			{
 				id: 'status',
 				label: __( 'Status', 'ai' ),
-				enableSorting: false,
+				enableSorting: true,
 				elements: filterOptions.statuses.map( ( value ) => ( {
 					label: formatSelectLabel( value ),
 					value,
@@ -640,6 +653,17 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 						{ formatSelectLabel( item.status ) }
 					</span>
 				),
+			},
+			{
+				id: 'user_id',
+				label: __( 'User', 'ai' ),
+				enableSorting: false,
+				enableHiding: false,
+				elements: filterOptions.users ?? [],
+				filterBy: {
+					operators: [ 'is' as const ],
+				},
+				render: () => null,
 			},
 		],
 		[ filterOptions, providerMetadata, connectorsUrl ]

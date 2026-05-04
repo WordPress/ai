@@ -55,11 +55,17 @@ export interface LogSummary {
 	by_status: Record< string, number >;
 }
 
+export interface UserFilterOption {
+	value: string;
+	label: string;
+}
+
 export interface FilterOptions {
 	types: string[];
 	providers: string[];
 	statuses: string[];
 	operations: string[];
+	users: UserFilterOption[];
 }
 
 export interface LogsQuery {
@@ -71,6 +77,9 @@ export interface LogsQuery {
 	provider: string;
 	operation: string[];
 	tokensFilter: string;
+	userId: string;
+	orderby: string;
+	order: 'asc' | 'desc';
 }
 
 export interface LocalizedSettings {
@@ -94,7 +103,5 @@ export interface LocalizedSettings {
 declare global {
 	interface Window {
 		aiRequestLogsSettings?: LocalizedSettings;
-		aiAiRequestLogsSettings?: LocalizedSettings;
-		AiRequestLogsSettings?: LocalizedSettings;
 	}
 }

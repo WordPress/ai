@@ -60,6 +60,9 @@ export const getDefaultLogsQuery = (): LogsQuery => ( {
 	provider: '',
 	operation: [],
 	tokensFilter: '',
+	userId: '',
+	orderby: 'timestamp',
+	order: 'desc',
 } );
 
 export const normalizeLogsQuery = (
@@ -100,6 +103,18 @@ export const normalizeLogsQuery = (
 			typeof parsed.tokensFilter === 'string'
 				? parsed.tokensFilter
 				: defaultQuery.tokensFilter,
+		userId:
+			typeof parsed.userId === 'string'
+				? parsed.userId
+				: defaultQuery.userId,
+		orderby:
+			typeof parsed.orderby === 'string' && parsed.orderby.length > 0
+				? parsed.orderby
+				: defaultQuery.orderby,
+		order:
+			'asc' === parsed.order || 'desc' === parsed.order
+				? parsed.order
+				: defaultQuery.order,
 	};
 };
 
