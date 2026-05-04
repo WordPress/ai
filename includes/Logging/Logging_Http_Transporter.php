@@ -176,11 +176,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	}
 
 	/**
-	 * Whether a stack frame's file is plumbing rather than the request originator.
-	 *
-	 * Skips frames in this plugin's logging dir, any composer vendor folder, the
-	 * core AI client wrapper and bundled SDK (under wp-includes/ai-client and
-	 * wp-includes/php-ai-client), and any registered AI provider plugin.
+	 * Determine if a file is part of the infrastructure or the actual request originator.
 	 *
 	 * @since x.x.x
 	 *
@@ -206,16 +202,12 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Directory prefixes treated as infrastructure for source attribution.
 	 *
-	 * Includes the AI Client SDK shipped with WordPress core and every
-	 * registered AI provider plugin's directory.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return list<string>
 	 */
 	private function get_infrastructure_dirs(): array {
-		// Both AI-related directories shipped with core: the bundled SDK and core's
-		// higher-level wrapper (WP_AI_Client_* classes that abilities call into).
+		// Core AI client wrapper and bundled SDK.
 		$dirs = array(
 			wp_normalize_path( ABSPATH . 'wp-includes/php-ai-client' ) . '/',
 			wp_normalize_path( ABSPATH . 'wp-includes/ai-client' ) . '/',
