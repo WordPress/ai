@@ -99,8 +99,7 @@ class Summarization extends Abstract_Feature {
 			return;
 		}
 
-		wp_enqueue_script_module( '@wordpress/core-abilities' );
-		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization' );
+		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization', true );
 		Asset_Loader::enqueue_style( 'summarization', 'experiments/summarization' );
 		Asset_Loader::localize_script(
 			'summarization',

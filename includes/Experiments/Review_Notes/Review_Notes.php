@@ -123,8 +123,7 @@ class Review_Notes extends Abstract_Feature {
 	 * @since 0.4.0
 	 */
 	public function enqueue_assets(): void {
-		wp_enqueue_script_module( '@wordpress/core-abilities' );
-		Asset_Loader::enqueue_script( 'review_notes', 'experiments/review-notes' );
+		Asset_Loader::enqueue_script( 'review_notes', 'experiments/review-notes', true );
 		Asset_Loader::localize_script(
 			'review_notes',
 			'ReviewNotesData',

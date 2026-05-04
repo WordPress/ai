@@ -91,8 +91,7 @@ class Excerpt_Generation extends Abstract_Feature {
 			return;
 		}
 
-		wp_enqueue_script_module( '@wordpress/core-abilities' );
-		Asset_Loader::enqueue_script( 'excerpt_generation', 'experiments/excerpt-generation' );
+		Asset_Loader::enqueue_script( 'excerpt_generation', 'experiments/excerpt-generation', true );
 		Asset_Loader::localize_script(
 			'excerpt_generation',
 			'ExcerptGenerationData',

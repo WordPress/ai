@@ -219,8 +219,7 @@ class Image_Generation extends Abstract_Feature {
 	 * @since 0.4.0
 	 */
 	private function enqueue_shared_assets(): void {
-		wp_enqueue_script_module( '@wordpress/core-abilities' );
-		Asset_Loader::enqueue_script( 'image_generation', 'features/image-generation' );
+		Asset_Loader::enqueue_script( 'image_generation', 'features/image-generation', true );
 		Asset_Loader::enqueue_style( 'image_generation', 'features/image-generation' );
 		Asset_Loader::localize_script(
 			'image_generation',
