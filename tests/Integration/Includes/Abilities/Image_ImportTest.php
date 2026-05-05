@@ -366,6 +366,43 @@ class Image_ImportTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that values returned from the wpai_generated_image_filename filter are sanitized.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_filter_return_value_is_sanitized() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create a user with upload_files capability.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$filter = static function () {
+			return '../../etc/passwd';
+		};
+
+		add_filter( 'wpai_generated_image_filename', $filter );
+
+		try {
+			$input = array(
+				'data'      => $this->valid_base64_image,
+				'mime_type' => 'image/png',
+			);
+
+			$result = $method->invoke( $this->ability, $input );
+		} finally {
+			remove_filter( 'wpai_generated_image_filename', $filter );
+		}
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertStringNotContainsString( '/', $result['image']['filename'], 'Slashes should be stripped from a filter-returned filename' );
+		$this->assertStringNotContainsString( '..', $result['image']['filename'], 'Path traversal sequences should be stripped from a filter-returned filename' );
+		$this->assertStringEndsWith( '.png', $result['image']['filename'], 'Extension should still be appended after sanitization' );
+	}
+
+	/**
 	 * Test that execute_callback() returns error when data is invalid base64.
 	 *
 	 * @since 0.2.0
