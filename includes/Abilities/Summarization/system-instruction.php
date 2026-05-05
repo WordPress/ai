@@ -13,12 +13,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 
 // Determine the length from the passed in global.
-$length_desc = '2-3 sentences; 25-80 words';
+$length_desc = '1-2 paragraphs; 50-120 words';
 if ( isset( $length ) ) {
 	if ( 'short' === $length ) {
 		$length_desc = '1 sentence; <= 25 words';
 	} elseif ( 'long' === $length ) {
-		$length_desc = '4-6 sentences; 80-160 words';
+		$length_desc = '2-4 paragraphs; 100-250 words';
 	}
 }
 
@@ -31,7 +31,7 @@ Goal: You will be provided with content and optionally some additional context. 
 The summary should follow these requirements:
 
 - Target {$length_desc}
-- Should not contain any markdown, bullets, numbering, or formatting - plain text only
+- Use plain text only within each paragraph — no markdown, bullets, numbering, or HTML. Separate distinct paragraphs with a blank line.
 - Provide a high-level overview, not a list of details
 - Do not start with "This article is about..." or "This post explains..." or "This content describes..." or any other generic introduction
 - Must reflect the actual content, not generic filler text
