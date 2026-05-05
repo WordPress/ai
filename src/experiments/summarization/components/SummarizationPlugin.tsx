@@ -45,7 +45,7 @@ export default function SummarizationPlugin() {
 		buttonDescription = sprintf(
 			/* translators: %d: minimum number of characters required */
 			__(
-				'The summarization experiment will be enabled when the post content has at least %d characters.',
+				'Summarization will be available when the post content has at least %d characters.',
 				'ai'
 			),
 			minContentLength
