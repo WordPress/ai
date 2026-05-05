@@ -600,12 +600,15 @@ function VisualCardToggle( {
 				! globalEnabled ? ' ai-showcase-card--disabled' : ''
 			}` }
 		>
+			{ feature?.image && (
+				<img
+					alt=""
+					className="ai-showcase-card__image"
+					loading="lazy"
+					src={ feature.image }
+				/>
+			) }
 			<Card.Content>
-				{ feature?.image && (
-					<Card.FullBleed className="ai-showcase-card__image">
-						<img src={ feature.image } alt="" loading="lazy" />
-					</Card.FullBleed>
-				) }
 				<Stack direction="column" gap="md">
 					<Text variant="heading-lg">{ field.label }</Text>
 					<Text
