@@ -327,11 +327,21 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 
 ## Merge Strategy
 
+### Squash Merging
+
 This project makes use of squash merges from PR branches to the `develop` branch and as such we've disabled the "Allow merge commits" and "Allow rebase merging" in the repo so that anyone merging will be forced into the "Allow squash merging" approach.
 
 Note that not every commit message should be kept in the resulting squash merge commit message, feel free to strip out unhelpful commit messages to keep the resulting squash merge commit message as concise as possible (e.g. get ride of those "lets try this again" commit messages).
 
 An example of a squash merge from #359 can be seen in 4c9699f, while an example of the prior approach of a merge commit from #311 can be seen in e63d8c0.
+
+### Squash Merge Commit Titles
+
+As you squash merge a PR, please update the title of the squash merge commit to match the Changelog entry in the PR description.  If there's no Changelog entry in the PR description, then please do you best to generate that changelog entry from your perspective in what's happening in the PR.
+
+The ideal format here would be like "Added > New Experiment: Comment Moderation" so that reviewing the commit history on `develop` can quickly comprehend the changes happening.  Similarly when we get into the [release process](RELEASE_INSTRUCTIONS.md) we can much more quickly build a release changelog by leveraging the squash merge commit titles.
+
+A minute of your time when merging a PR to appropriately set the squash merge commit title to the Changelog entry will save many others even more time when reviewing changes in `develop` and when building a release.  Thanks for helping others save time!
 
 ---
 
