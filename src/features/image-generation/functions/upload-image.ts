@@ -87,7 +87,9 @@ export async function uploadImage(
 				return response.image as UploadedImage;
 			}
 
-			throw new Error( 'Invalid response from image import' );
+			throw new Error(
+				__( 'Invalid response from image import.', 'ai' )
+			);
 		} )
 		.catch( ( error ) => {
 			throw new Error( error.message );
