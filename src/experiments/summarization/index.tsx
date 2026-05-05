@@ -27,7 +27,7 @@ addFilter(
 	'blocks.registerBlockType',
 	'ai/summarization-attribute',
 	( settings, name ) => {
-		if ( name !== 'core/paragraph' ) {
+		if ( name !== 'core/group' ) {
 			return settings;
 		}
 
@@ -45,7 +45,7 @@ addFilter(
 );
 
 // Register the block variation.
-registerBlockVariation( 'core/paragraph', {
+registerBlockVariation( 'core/group', {
 	name: 'ai-summarization-summary',
 	title: __( 'AI Summary', 'ai' ),
 	description: __(
