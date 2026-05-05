@@ -181,8 +181,6 @@ class My_Experiment extends Abstract_Experiment {
 }
 ```
 
----
-
 ## Plugin API
 
 The plugin provides a set of hooks and filters to allow third-party developers to extend its functionality.
@@ -289,8 +287,6 @@ Asset_Loader::localize_script(
 );
 ```
 
----
-
 ## Development Workflow
 
 ### 1. Create a Feature Branch
@@ -340,33 +336,25 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 - Pull request requirements
 - Code review process
 
+## Merge Strategy
+
+This project makes use of squash merges from PR branches to the `develop` branch and as such we've disabled the "Allow merge commits" and "Allow rebase merging" in the repo so that anyone merging will be forced into the "Allow squash merging" approach.
+
+Note that not every commit message should be kept in the resulting squash merge commit message, feel free to strip out unhelpful commit messages to keep the resulting squash merge commit message as concise as possible (e.g. get ride of those "lets try this again" commit messages).
+
+An example of a squash merge from #359 can be seen in 4c9699f, while an example of the prior approach of a merge commit from #311 can be seen in e63d8c0.
+
 ---
 
 ## Additional Resources
 
-### Documentation
+For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
+- [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
+- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
+- [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
-- [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - In-repo reference implementation
-- [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
-- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
-- [WordPress AI Team](https://make.wordpress.org/ai/)
-
-### Getting Help
-
-- **GitHub Issues**: Report bugs or request features
-- **WordPress Slack**: Join the `#core-ai` channel in Slack, see the [WordPress Slack page](https://make.wordpress.org/chat/) for signup information; it is free to join.
-- **Make WordPress AI**: https://make.wordpress.org/ai/
-
----
-
-## License
-
-GPL-2.0-or-later
-
----
-
-<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
+- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
