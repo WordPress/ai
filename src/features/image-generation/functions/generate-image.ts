@@ -3,7 +3,7 @@
  */
 import { select } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -44,7 +44,11 @@ export async function generateImage(
 		prompt = await generatePrompt( content, formatContext( context ) );
 	} catch ( error: any ) {
 		throw new Error(
-			`Failed to generate prompt: ${ error.message || error }`
+			sprintf(
+				/* translators: %s: Error message returned while generating an image prompt. */
+				__( 'Failed to generate prompt: %s', 'ai' ),
+				error?.message || error
+			)
 		);
 	}
 
@@ -66,7 +70,9 @@ export async function generateImage(
 				return result as GeneratedImageData;
 			}
 
-			throw new Error( 'Invalid response from generate image' );
+			throw new Error(
+				__( 'Invalid response from generate image.', 'ai' )
+			);
 		} )
 		.catch( ( error ) => {
 			throw new Error( error.message );
