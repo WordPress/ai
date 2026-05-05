@@ -17,6 +17,10 @@ const {
 } = require( '../../utils/helpers' );
 
 test.describe( 'Dashboard widgets', () => {
+	test.afterAll( async ( { requestUtils } ) => {
+		await requestUtils.deleteAllUsers();
+	} );
+
 	test( 'Admin can see AI dashboard widgets', async ( { admin, page } ) => {
 		await visitAdminPage( admin, 'index.php' );
 
