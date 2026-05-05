@@ -13,12 +13,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 
 // Determine the length from the passed in global.
-$length_desc = '1-2 paragraphs; 50-120 words';
+$length_desc = '1-2 paragraphs; <= 50 words words in each paragraph';
 if ( isset( $length ) ) {
 	if ( 'short' === $length ) {
-		$length_desc = '1 sentence; <= 25 words';
+		$length_desc = '1 paragraph; <= 50 words';
 	} elseif ( 'long' === $length ) {
-		$length_desc = '2-4 paragraphs; 100-250 words';
+		$length_desc = '2-4 paragraphs; <= 50 words in each paragraph';
 	}
 }
 
