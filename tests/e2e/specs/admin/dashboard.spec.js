@@ -1,7 +1,11 @@
 /**
  * WordPress dependencies
  */
-const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
+const {
+	RequestUtils,
+	test,
+	expect,
+} = require( '@wordpress/e2e-test-utils-playwright' );
 
 /**
  * Internal dependencies
@@ -12,25 +16,8 @@ const {
 	visitAdminPage,
 } = require( '../../utils/helpers' );
 
-async function loginAsUser( page, username, password ) {
-	await page.goto( '/wp-login.php' );
-	await page.getByLabel( 'Username or Email Address' ).fill( username );
-	await page.getByLabel( 'Password', { exact: true } ).fill( password );
-	await page.getByRole( 'button', { name: 'Log In' } ).click();
-}
-
 test.describe( 'Dashboard widgets', () => {
-	test.beforeAll( async ( { requestUtils } ) => {
-		await requestUtils.deactivatePlugin( 'e2e-test-request-mocking' );
-	} );
-
-	test( 'Admin can see AI dashboard widgets', async ( {
-		admin,
-		page,
-		requestUtils,
-	} ) => {
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
-
+	test( 'Admin can see AI dashboard widgets', async ( { admin, page } ) => {
 		await visitAdminPage( admin, 'index.php' );
 
 		await expect(
@@ -44,10 +31,7 @@ test.describe( 'Dashboard widgets', () => {
 	test( 'AI Capabilities shows the expected summary metrics', async ( {
 		admin,
 		page,
-		requestUtils,
 	} ) => {
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
-
 		await visitAdminPage( admin, 'index.php' );
 
 		const capabilitiesWidget = page.locator( '#wpai_capabilities' );
@@ -72,10 +56,7 @@ test.describe( 'Dashboard widgets', () => {
 	test( 'AI Status shows getting started checklist when setup is incomplete', async ( {
 		admin,
 		page,
-		requestUtils,
 	} ) => {
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
-
 		await clearConnectors( admin, page );
 		await disableExperiments( admin, page );
 
@@ -112,7 +93,17 @@ test.describe( 'Dashboard widgets', () => {
 			roles: [ 'editor' ],
 		} );
 
-		await loginAsUser( page, username, password );
+		const editorRequestUtils = await RequestUtils.setup( {
+			user: { username, password },
+		} );
+
+		await editorRequestUtils.login();
+		await page
+			.context()
+			.addCookies(
+				( await editorRequestUtils.request.storageState() ).cookies
+			);
+		await editorRequestUtils.request.dispose();
 		await page.goto( '/wp-admin/index.php' );
 
 		await expect(
