@@ -321,11 +321,13 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		$captured_args = null;
+		$captured_filename = null;
+		$captured_args     = null;
 
-		$filter = static function ( $filename, $args ) use ( &$captured_args ) {
-			$captured_args = $args;
-			return 'filtered-image-name.png';
+		$filter = static function ( $filename, $args ) use ( &$captured_filename, &$captured_args ) {
+			$captured_filename = $filename;
+			$captured_args     = $args;
+			return 'filtered-image-name';
 		};
 
 		add_filter( 'wpai_generated_image_filename', $filter, 10, 2 );
@@ -343,13 +345,23 @@ class Image_ImportTest extends WP_UnitTestCase {
 		}
 
 		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertSame(
+			'original-filename',
+			$captured_filename,
+			'Filter should receive the base filename without extension'
+		);
 		$this->assertStringStartsWith(
 			'filtered-image-name',
 			$result['image']['filename'],
 			'Filter should be able to override the final filename'
 		);
+		$this->assertStringEndsWith(
+			'.png',
+			$result['image']['filename'],
+			'Extension should be appended after the filter runs'
+		);
 		$this->assertIsArray( $captured_args, 'Filter should receive args as second parameter' );
-		$this->assertSame( 'original-filename', $captured_args['filename'], 'Filter args should expose the unsanitized filename' );
+		$this->assertSame( 'original-filename', $captured_args['filename'], 'Filter args should expose the original filename' );
 		$this->assertSame( 'image/png', $captured_args['mime_type'], 'Filter args should expose the MIME type' );
 	}
 
