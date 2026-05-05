@@ -2,17 +2,6 @@
 
 Welcome to the AI plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered experiments.
 
-## Table of Contents
-
-- [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
-- [Creating a New Experiment](#creating-a-new-experiment)
-- [Custom Experiment Reference](experiments/custom-experiment-reference.md)
-- [Plugin API](#plugin-api)
-- [Development Workflow](#development-workflow)
-- [Additional Resources](#additional-resources)
-
----
-
 ## Creating a New Experiment
 
 Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct piece of functionality that may utilize AI capabilities.
