@@ -88,7 +88,7 @@ protected function guideline_categories(): array {
 }
 ```
 
-When the `wp_guideline` CPT is registered (Gutenberg ≥ 23.0) and the corresponding `_guideline_site` / `_guideline_copy` post-meta values are set, `Abstract_Ability::get_system_instruction()` automatically prepends them to the title-generation system prompt as `<guidelines><site-context>...</site-context><copy-guidelines>...</copy-guidelines></guidelines>`. See [INTEGRATION_GUIDE §4.5](../INTEGRATION_GUIDE.md#45-editorial-guidelines) for the full Guidelines surface.
+When the `wp_guideline` CPT is registered (Gutenberg ≥ 23.0) and the corresponding `_guideline_site` / `_guideline_copy` post-meta values are set, `Abstract_Ability::get_system_instruction()` automatically prepends them to the title-generation system prompt as `<guidelines><site-context>...</site-context><copy-guidelines>...</copy-guidelines></guidelines>`. See [Editorial Guidelines](../DEVELOPER_GUIDE.md#editorial-guidelines) in the Developer Guide for the shared Guidelines surface.
 
 ## Using the Ability via REST API
 

@@ -240,6 +240,33 @@ The plugin also includes the following action hooks:
 - `wpai_register_features`: Fires after default features are registered, receives `$registry` parameter
 - `wpai_features_initialized`: Fires after all enabled features have run `register()`. It does not fire if the loader-level `wpai_features_enabled` filter returns false.
 
+### Editorial Guidelines
+
+When the `wp_guideline` post type is available, AI abilities can opt into site-wide editorial guidance for tone, copy, image, and other prompt constraints. The plugin consumes those guidelines; it does not manage the guidelines UI.
+
+Abilities opt in by returning the categories they support:
+
+```php
+protected function guideline_categories(): array {
+  return array( 'site', 'copy' );
+}
+```
+
+Supported categories are `site`, `copy`, `images`, and `additional`. Block-specific guidelines can also be included when a block name is supplied to the prompt formatter.
+
+For code that generates prompts outside an ability, use the helper functions:
+
+```php
+$xml = WordPress\AI\format_guidelines_for_prompt(
+  array( 'site', 'copy' ),
+  'core/paragraph'
+);
+
+$guidelines = WordPress\AI\get_guidelines();
+```
+
+The `wpai_use_guidelines` filter can disable guideline injection, and `wpai_max_guideline_length` controls the per-category character limit.
+
 ### Asset Loading
 
 The plugin provides a utility class for loading assets. This uses `wp-scripts` to build assets which are expected to live within the `src/` directory. They will then be built into the `build-scripts/` directory, where the asset loader will look for the files, pulling in the proper dependencies and versioning.
