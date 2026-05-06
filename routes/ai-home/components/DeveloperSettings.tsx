@@ -110,6 +110,7 @@ export function DeveloperSettings( {
 						label: p.name,
 					} ) ),
 				],
+				Edit: 'select',
 			},
 			{
 				id: 'model',
@@ -117,6 +118,7 @@ export function DeveloperSettings( {
 				label: __( 'Model', 'ai' ),
 				isVisible: ( data: DeveloperSelection ) => !! data.provider,
 				getElements: getModelElements,
+				Edit: 'select',
 			},
 		],
 		[ providers, getModelElements ]
@@ -170,6 +172,7 @@ export function DeveloperSettings( {
 					{ hasSavedSelection && (
 						<Button
 							variant="link"
+							className="ai-developer-mode-fields__reset-button"
 							onClick={ () => {
 								void clear();
 							} }

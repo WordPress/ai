@@ -133,7 +133,7 @@
 .ai-developer-mode-fields {
 	margin-top: var(--wpds-dimension-gap-lg, 16px);
 
-	button {
-		margin-top: var(--wpds-dimension-gap-lg, 12px) !important;
+	.ai-developer-mode-fields__reset-button {
+		margin-top: var(--wpds-dimension-gap-lg, 12px);
 	}
 }
