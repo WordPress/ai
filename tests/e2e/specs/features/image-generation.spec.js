@@ -364,6 +364,9 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-generate-image-inline-modal' )
 		).not.toBeVisible();
 
+		// Click the Add image toolbar button.
+		await addImageButton.click();
+
 		// Click the generate image toolbar button again to open the modal.
 		await generateImageButton.click();
 
