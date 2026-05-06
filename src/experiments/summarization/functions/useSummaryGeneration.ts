@@ -75,7 +75,7 @@ export function useSummaryGeneration() {
 				createBlock( 'core/paragraph', { content: text.trim() } )
 			);
 
-			// Check if an existing AI summary group block exists.
+			// Check if an existing Content Summary group block exists.
 			const existingSummaryBlock = allBlocks.find(
 				( block ) =>
 					block.name === 'core/group' &&
