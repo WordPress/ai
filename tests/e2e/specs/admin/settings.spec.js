@@ -444,16 +444,24 @@ test.describe( 'Plugin settings', () => {
 		// Enable the Excerpt Generation Experiment.
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
-		// Toggle on developer mode.
+		// Open the settings menu and verify model selection is described.
+		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+		await expect( page.getByText( 'DEVELOPER TOOLS' ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+		).toBeVisible();
+		await expect(
+			page.getByText( 'Select a specific provider and model per feature' )
+		).toBeVisible();
+
+		// Toggle on model selection.
 		await page
-			.locator( '.ai-settings-page__developer-mode-toggle' )
+			.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
 			.click();
 
-		// Verify the developer mode toggle has the is-pressed class.
+		// Verify the menu remains open after toggling the option.
 		await expect(
-			page.locator(
-				'.ai-settings-page__developer-mode-toggle.is-pressed'
-			)
+			page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
 		).toBeVisible();
 
 		// Verify the Excerpt Generation Experiment has developer settings.
@@ -461,17 +469,17 @@ test.describe( 'Plugin settings', () => {
 			page.locator( '.ai-developer-mode-fields' ).first()
 		).toBeVisible();
 
-		// Toggle off developer mode.
-		await page
-			.locator( '.ai-settings-page__developer-mode-toggle' )
-			.click();
-
-		// Verify the developer mode toggle has the is-pressed class removed.
+		// Verify the selected option shows a checkmark.
 		await expect(
-			page.locator(
-				'.ai-settings-page__developer-mode-toggle.is-pressed'
-			)
-		).not.toBeVisible();
+			page
+				.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+				.locator( 'svg' )
+		).toBeVisible();
+
+		// Toggle off model selection.
+		await page
+			.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+			.click();
 
 		// Verify the developer settings are no longer visible.
 		await expect(

@@ -4,7 +4,10 @@
 import { Page } from '@wordpress/admin-ui';
 import {
 	Button,
+	DropdownMenu,
 	ExternalLink,
+	MenuGroup,
+	MenuItem,
 	Spinner,
 	ToggleControl,
 } from '@wordpress/components';
@@ -14,7 +17,11 @@ import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
 import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
-import { cog as cogIcon, info as infoIcon } from '@wordpress/icons';
+import {
+	check as checkIcon,
+	info as infoIcon,
+	moreVertical as moreVerticalIcon,
+} from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 import { Icon, Notice, Popover, VisuallyHidden } from '@wordpress/ui';
 
@@ -972,17 +979,33 @@ function AISettingsPage() {
 						<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
 							{ __( 'Contribute', 'ai' ) }
 						</ExternalLink>
-						<Button
-							icon={ cogIcon }
-							label={ __( 'Developer mode', 'ai' ) }
-							showTooltip
-							aria-pressed={ isDeveloperMode }
-							onClick={ toggleDeveloperMode }
-							className={ `ai-settings-page__developer-mode-toggle${
-								isDeveloperMode ? ' is-active' : ''
-							}` }
-							size="compact"
-						/>
+						<DropdownMenu
+							icon={ moreVerticalIcon }
+							label={ __( 'Developer Tools', 'ai' ) }
+						>
+							{ () => (
+								<MenuGroup
+									label={ __( 'Developer Tools', 'ai' ) }
+								>
+									<MenuItem
+										role="menuitemcheckbox"
+										isSelected={ isDeveloperMode }
+										info={ __(
+											'Select a specific provider and model per feature',
+											'ai'
+										) }
+										icon={
+											isDeveloperMode ? checkIcon : null
+										}
+										onClick={ () => {
+											toggleDeveloperMode();
+										} }
+									>
+										{ __( 'Model selection', 'ai' ) }
+									</MenuItem>
+								</MenuGroup>
+							) }
+						</DropdownMenu>
 					</div>
 				}
 			>
