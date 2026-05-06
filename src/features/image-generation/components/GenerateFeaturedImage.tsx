@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Button, Spinner } from '@wordpress/components';
+import { Button } from '@wordpress/components';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -21,7 +21,7 @@ import { uploadImage } from '../functions/upload-image';
  *
  * @return {React.JSX.Element} The GenerateFeaturedImage component.
  */
-export default function GenerateFeaturedImage(): React.JSX.Element {
+export default function GenerateFeaturedImage(): React.JSX.Element | null {
 	const { editPost } = useDispatch( editorStore );
 
 	const content = select( editorStore ).getEditedPostContent();
@@ -29,12 +29,9 @@ export default function GenerateFeaturedImage(): React.JSX.Element {
 		select( editorStore ).getEditedPostAttribute( 'featured_media' );
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
-	const [ progressMessage, setProgressMessage ] = useState< string | null >(
-		null
-	);
 
-	const buttonLabel = featuredImage
-		? __( 'Generate new featured image', 'ai' )
+	const buttonLabel = isGenerating
+		? __( 'Generating…', 'ai' )
 		: __( 'Generate featured image', 'ai' );
 
 	/**
@@ -42,31 +39,33 @@ export default function GenerateFeaturedImage(): React.JSX.Element {
 	 */
 	const handleGenerate = async () => {
 		setIsGenerating( true );
-		setProgressMessage( null );
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_image_generation_error'
 		);
 
 		try {
-			const generatedImageData = await generateImage( content, {
-				onProgress: setProgressMessage,
-			} );
-			const importedImage = await uploadImage( generatedImageData, {
-				onProgress: setProgressMessage,
-			} );
+			const generatedImageData = await generateImage( content );
+			const importedImage = await uploadImage( generatedImageData );
 			editPost( {
 				featured_media: importedImage.id,
 			} );
-		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
+		} catch ( error: unknown ) {
+			const message =
+				error instanceof Error
+					? error.message
+					: __( 'An error occurred during image generation.', 'ai' );
+			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
 				id: 'ai_image_generation_error',
 				isDismissible: true,
 			} );
 		} finally {
 			setIsGenerating( false );
-			setProgressMessage( null );
 		}
 	};
+
+	if ( featuredImage && ! isGenerating ) {
+		return null;
+	}
 
 	return (
 		<div className="ai-featured-image editor-post-featured-image">
@@ -80,24 +79,6 @@ export default function GenerateFeaturedImage(): React.JSX.Element {
 				>
 					{ buttonLabel }
 				</Button>
-				{ progressMessage && (
-					<div
-						className="ai-featured-image__progress"
-						role="status"
-						aria-live="polite"
-						style={ { color: '#757575', marginTop: '10px' } }
-					>
-						{ progressMessage }
-						<Spinner
-							style={ {
-								marginLeft: '5px',
-								marginTop: '0',
-								position: 'inherit',
-								verticalAlign: 'text-top',
-							} }
-						/>
-					</div>
-				) }
 			</div>
 		</div>
 	);
