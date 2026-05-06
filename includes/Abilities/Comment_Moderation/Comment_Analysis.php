@@ -79,7 +79,22 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @return array{comment_id: int, toxicity_score: float, sentiment: string}|\WP_Error The result of the ability execution.
 	 */
 	protected function execute_callback( $input ) {
-		$comment_id = absint( $input['comment_id'] ?? 0 );
+		return $this->analyze_comment_by_id( absint( $input['comment_id'] ?? 0 ) );
+	}
+
+	/**
+	 * Analyzes a comment by ID from trusted internal plugin flows.
+	 *
+	 * This method intentionally does not perform user capability checks. User-invoked
+	 * ability execution must go through execute(), which runs permission_callback().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $comment_id Comment ID.
+	 * @return array{comment_id: int, toxicity_score: float, sentiment: string}|\WP_Error The result of the analysis.
+	 */
+	public function analyze_comment_by_id( int $comment_id ) {
+		$comment_id = absint( $comment_id );
 
 		if ( ! $comment_id ) {
 			return new WP_Error(
@@ -201,6 +216,24 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @return array{toxicity_score: float, sentiment: string}|\WP_Error The analysis result.
 	 */
 	private function analyze_comment( string $content, string $author ) {
+		/**
+		 * Filters the comment analysis result before calling the AI provider.
+		 *
+		 * Returning an array short-circuits the provider call. This is primarily useful for tests
+		 * and integrations that provide their own comment analysis implementation.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array{toxicity_score: float, sentiment: string}|null $result  Precomputed analysis result.
+		 * @param string                                              $content Comment content.
+		 * @param string                                              $author  Comment author name.
+		 */
+		$pre_result = apply_filters( 'wpai_comment_analysis_result', null, $content, $author );
+
+		if ( is_array( $pre_result ) ) {
+			return $this->sanitize_analysis_result( $pre_result );
+		}
+
 		$prompt = sprintf(
 			"Comment by %s:\n\"\"\"%s\"\"\"",
 			$author,
@@ -229,20 +262,7 @@ class Comment_Analysis extends Abstract_Ability {
 			);
 		}
 
-		// Validate and sanitize the response.
-		$toxicity_score = isset( $parsed['toxicity_score'] )
-			? max( 0, min( 1, (float) $parsed['toxicity_score'] ) )
-			: 0;
-
-		$valid_sentiments = array( 'positive', 'negative', 'neutral' );
-		$sentiment        = isset( $parsed['sentiment'] ) && in_array( $parsed['sentiment'], $valid_sentiments, true )
-			? $parsed['sentiment']
-			: 'neutral';
-
-		return array(
-			'toxicity_score' => $toxicity_score,
-			'sentiment'      => $sentiment,
-		);
+		return $this->sanitize_analysis_result( $parsed );
 	}
 
 	/**
@@ -262,6 +282,30 @@ class Comment_Analysis extends Abstract_Ability {
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
 			esc_html__( 'Comment analysis failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
+	}
+
+	/**
+	 * Sanitizes an analysis result.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $result Raw analysis result.
+	 * @return array{toxicity_score: float, sentiment: string} Sanitized analysis result.
+	 */
+	private function sanitize_analysis_result( array $result ): array {
+		$toxicity_score = isset( $result['toxicity_score'] )
+			? max( 0, min( 1, (float) $result['toxicity_score'] ) )
+			: 0;
+
+		$valid_sentiments = array( 'positive', 'negative', 'neutral' );
+		$sentiment        = isset( $result['sentiment'] ) && in_array( $result['sentiment'], $valid_sentiments, true )
+			? $result['sentiment']
+			: 'neutral';
+
+		return array(
+			'toxicity_score' => $toxicity_score,
+			'sentiment'      => $sentiment,
 		);
 	}
 }

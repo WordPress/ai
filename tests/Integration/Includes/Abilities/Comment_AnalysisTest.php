@@ -9,8 +9,8 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
 use WP_Error;
 use WP_UnitTestCase;
-use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis;
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 
 /**
