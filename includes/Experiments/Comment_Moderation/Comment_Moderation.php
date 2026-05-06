@@ -403,7 +403,7 @@ class Comment_Moderation extends Abstract_Feature {
 			return $actions;
 		}
 
-		$actions['wpai_analyze'] = __( 'Analyze with AI', 'ai' );
+		$actions['wpai_analyze'] = __( 'Analyze Sentiment and Toxicity', 'ai' );
 		return $actions;
 	}
 
@@ -501,15 +501,15 @@ class Comment_Moderation extends Abstract_Feature {
 		$actions['wpai_analyze'] = sprintf(
 			'<a href="%s" aria-label="%s">%s</a>',
 			esc_url( $url ),
-			esc_attr__( 'Analyze this comment with AI', 'ai' ),
-			esc_html__( 'Analyze with AI', 'ai' )
+			esc_attr__( 'Analyze this comment', 'ai' ),
+			esc_html__( 'Analyze Sentiment and Toxicity', 'ai' )
 		);
 
 		return $actions;
 	}
 
 	/**
-	 * Handles the inline Analyze with AI action from the comment row.
+	 * Handles the inline analyze action from the comment row.
 	 *
 	 * @since x.x.x
 	 */

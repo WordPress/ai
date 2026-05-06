@@ -123,7 +123,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 		// Ensure our bulk option doesn't exist.
 		await expect(
 			page.locator( '#bulk-action-selector-top' )
-		).not.toContainText( 'Analyze with AI' );
+		).not.toContainText( 'Analyze Sentiment and Toxicity' );
 	} );
 
 	test( 'Ensure the Comment Moderation Experiment UI is not visible when the experiment is disabled', async ( {
@@ -147,6 +147,6 @@ test.describe( 'Comment Moderation Experiment', () => {
 		// Ensure our bulk option doesn't exist.
 		await expect(
 			page.locator( '#bulk-action-selector-top' )
-		).not.toContainText( 'Analyze with AI' );
+		).not.toContainText( 'Analyze Sentiment and Toxicity' );
 	} );
 } );

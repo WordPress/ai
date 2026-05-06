@@ -171,7 +171,7 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @return array<string, mixed> JSON schema for the output of the comment analysis.
 	 */
 	private function response_schema(): array {
-		return array(
+		$schema = array(
 			'type'                 => 'object',
 			'properties'           => array(
 				'toxicity_score' => array( 'type' => 'number' ),
@@ -180,6 +180,15 @@ class Comment_Analysis extends Abstract_Ability {
 			'required'             => array( 'toxicity_score', 'sentiment' ),
 			'additionalProperties' => false,
 		);
+
+		/**
+		 * Filters the JSON schema used for the output of the comment analysis.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<string, mixed> $schema JSON schema for the output of the comment analysis.
+		 */
+		return (array) apply_filters( 'wpai_comment_analysis_response_schema', $schema );
 	}
 
 	/**

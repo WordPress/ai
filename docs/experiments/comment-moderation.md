@@ -2,18 +2,16 @@
 
 ## Summary
 
-The Comment Moderation experiment adds AI-powered sentiment and toxicity analysis to the classic Comments admin screen (`edit-comments.php`). It also performs automatic moderation when new comments are created: comments with **high toxicity** and **negative sentiment** are moved to moderation. The experiment exposes one WordPress Ability (`ai/comment-analysis`) that can be used from the UI or via REST API.
+The Comment Moderation experiment adds sentiment and toxicity analysis to the classic Comments admin screen (`edit-comments.php`). It also performs automatic moderation when new comments are created: comments with **high toxicity** and **negative sentiment** are moved to moderation. The experiment exposes one WordPress Ability (`ai/comment-analysis`) that can be used from the UI or via REST API.
 
 ## Overview
-
-### For End Users
 
 When enabled, the Comments list table gets two additional columns: **Sentiment** and **Toxicity**. Each comment can show a badge with the current analysis state or result.
 
 **Key Features:**
 
 - Adds sentiment and toxicity badges to the Comments admin list table
-- Adds a bulk action (**Analyze with AI**) to queue selected comments for analysis
+- Adds a bulk action (**Analyze Sentiment and Toxicity**) to queue selected comments for analysis
 - Processes queued comments in the browser, sequentially, to avoid server overload
 - Automatically moderates newly created comments when analysis indicates high risk
 - Uses one shared ability (`ai/comment-analysis`) for both automated and manual workflows
@@ -21,55 +19,6 @@ When enabled, the Comments list table gets two additional columns: **Sentiment**
 **Automatic moderation rule (default):**
 
 - If `toxicity_score >= 0.7` **and** `sentiment === 'negative'`, the comment is set to pending moderation (`comment_approved = '0'`).
-
-### For Developers
-
-The experiment consists of three main parts:
-
-1. **Experiment Class** (`WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation`): Registers hooks, list-table columns, bulk action handling, automatic moderation on insert, and asset loading
-2. **Ability Class** (`WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis`): Runs AI analysis, validates output, and stores result metadata on comments
-3. **Frontend Controller** (`src/experiments/comment-moderation/components/LazyAnalysisController.tsx`): Detects pending/failed badges in the DOM, runs analysis sequentially, updates badges in place, and strips queue query args from the URL after processing
-
-## Architecture & Implementation
-
-### Key Hooks & Entry Points
-
-- `WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::register()` wires everything when the experiment is enabled:
-  - `wp_abilities_api_init` -> registers `ai/comment-analysis` (`includes/Abilities/Comment_Moderation/Comment_Analysis.php`)
-  - `wp_insert_comment` -> `moderate_comment()` analyzes newly inserted comments and may set them to moderation
-  - `manage_edit-comments_columns`, `manage_comments_custom_column` -> adds/renders `Sentiment` and `Toxicity` columns
-  - `bulk_actions-edit-comments`, `handle_bulk_actions-edit-comments`, `admin_notices` -> adds and handles **Analyze with AI** with queued-count notice
-  - `admin_enqueue_scripts` -> enqueues `experiments/comment-moderation` on `edit-comments.php`
-  - `admin_head-edit-comments.php` -> prints badge styles inline
-
-### Assets & Data Flow
-
-1. **PHP side:**
-   - `enqueue_assets()` loads `experiments/comment-moderation` (`src/experiments/comment-moderation/index.tsx`)
-   - Localizes `window.aiCommentModerationData` with:
-     - `enabled`: whether the experiment is enabled
-
-2. **React side:**
-   - `index.tsx` mounts `LazyAnalysisController` after `domReady`
-   - `LazyAnalysisController` scans for badges marked `data-ai-status="pending"` or `data-ai-status="failed"`
-   - For each comment, it calls `runAbility( 'ai/comment-analysis', { comment_id } )` and updates sentiment/toxicity badges from the response
-   - Processing is sequential (one comment at a time)
-   - After processing (or if nothing is pending), it removes `wpai_analysis_queued` from the URL via `history.replaceState()` so refresh does not re-show the queue notice
-
-3. **Ability execution:**
-   - Validates `comment_id` and permission (`moderate_comments`)
-   - Prevents concurrent runs for the same comment if status is already `processing`
-   - Builds prompt from comment author + content and requests strict JSON output (`toxicity_score`, `sentiment`)
-   - Stores analysis metadata on the comment:
-     - `_wpai_toxicity_score`
-     - `_wpai_sentiment`
-     - `_wpai_analysis_status`
-     - `_wpai_analyzed_at`
-
-4. **Automatic moderation:**
-   - `moderate_comment()` executes the ability on new comments
-   - Applies default moderation threshold logic (`>= 0.7` + `negative`)
-   - Uses a filter so integrators can override the moderation decision
 
 ### Input Schema
 
@@ -192,7 +141,7 @@ add_filter( 'wpai_comment_moderation_should_moderate', function( $should_moderat
 
 2. **List table badges and bulk analysis:**
    - Go to `Comments -> All Comments`
-   - Select multiple comments and run **Analyze with AI**
+   - Select multiple comments and run **Analyze Sentiment and Toxicity**
    - Confirm a success notice reports queued count
    - Verify pending badges transition to analyzed badges (or failed state) as processing runs
    - Confirm `wpai_analysis_queued` is removed from the URL after processing, and refresh does not re-show the queue notice
@@ -212,7 +161,6 @@ add_filter( 'wpai_comment_moderation_should_moderate', function( $should_moderat
 
 - Requires valid AI credentials and text-generation-capable models
 - Requires users with comment moderation capabilities for ability access
-- Runs in wp-admin on the classic comments list screen (`edit-comments.php`)
 
 ### Performance & Behavior
 
