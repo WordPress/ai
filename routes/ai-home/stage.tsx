@@ -630,38 +630,15 @@ function VisualCardToggle( {
 				</div>
 			) }
 			<div className="ai-showcase-card__content">
-				<h3 className="ai-showcase-card__title">{ field.label }</h3>
-				<p className="ai-showcase-card__description">
-					{ field.description }
-				</p>
-				<div className="ai-showcase-card__actions">
-					<Button
-						variant={ checked ? 'secondary' : 'primary' }
-						onClick={ () =>
-							onChange( { [ field.id ]: ! checked } )
-						}
-						disabled={ ! globalEnabled }
-						size="compact"
-					>
-						{ checked
-							? __( 'Disable', 'ai' )
-							: __( 'Enable', 'ai' ) }
-					</Button>
-					{ checked && (
-						<span className="ai-showcase-card__enabled-badge">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 24 24"
-								width={ 16 }
-								height={ 16 }
-								fill="currentColor"
-							>
-								<path d="M16.5 7.5 10 13.9l-2.5-2.4-1 1 3.5 3.6 7.5-7.6z" />
-							</svg>
-							{ __( 'Enabled', 'ai' ) }
-						</span>
-					) }
-				</div>
+				<ToggleControl
+					label={ field.label }
+					checked={ checked }
+					onChange={ ( value ) =>
+						onChange( { [ field.id ]: value } )
+					}
+					disabled={ ! globalEnabled }
+					help={ field.description }
+				/>
 				{ checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
@@ -819,7 +796,7 @@ function AISettingsPage() {
 		// Create section action fields for each group
 		for ( const group of featureGroups ) {
 			const experimentSettings = groupedFields.get( group.id ) ?? [];
-			if ( experimentSettings.length === 0 ) {
+			if ( experimentSettings.length <= 1 ) {
 				continue;
 			}
 
@@ -930,7 +907,10 @@ function AISettingsPage() {
 					isOpened: true,
 					isCollapsible: true,
 				},
-				children: [ ...children, actionFieldId ],
+				children:
+					children.length > 1
+						? [ ...children, actionFieldId ]
+						: children,
 			} );
 		}
 
@@ -950,7 +930,10 @@ function AISettingsPage() {
 					isOpened: true,
 					isCollapsible: true,
 				},
-				children: [ ...children, actionFieldId ],
+				children:
+					children.length > 1
+						? [ ...children, actionFieldId ]
+						: children,
 			} );
 		}
 

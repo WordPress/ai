@@ -2,17 +2,6 @@
 
 Welcome to the AI plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered experiments.
 
-## Table of Contents
-
-- [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
-- [Creating a New Experiment](#creating-a-new-experiment)
-- [Custom Experiment Reference](experiments/custom-experiment-reference.md)
-- [Plugin API](#plugin-api)
-- [Development Workflow](#development-workflow)
-- [Additional Resources](#additional-resources)
-
----
-
 ## Creating a New Experiment
 
 Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct piece of functionality that may utilize AI capabilities.
@@ -181,8 +170,6 @@ class My_Experiment extends Abstract_Experiment {
 }
 ```
 
----
-
 ## Plugin API
 
 The plugin provides a set of hooks and filters to allow third-party developers to extend its functionality.
@@ -289,8 +276,6 @@ Asset_Loader::localize_script(
 );
 ```
 
----
-
 ## Development Workflow
 
 ### 1. Create a Feature Branch
@@ -340,33 +325,35 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 - Pull request requirements
 - Code review process
 
+## Merge Strategy
+
+### Squash Merging
+
+This project makes use of squash merges from PR branches to the `develop` branch and as such we've disabled the "Allow merge commits" and "Allow rebase merging" in the repo so that anyone merging will be forced into the "Allow squash merging" approach.
+
+Note that not every commit message should be kept in the resulting squash merge commit message, feel free to strip out unhelpful commit messages to keep the resulting squash merge commit message as concise as possible (e.g. get ride of those "lets try this again" commit messages).
+
+An example of a squash merge from #359 can be seen in 4c9699f, while an example of the prior approach of a merge commit from #311 can be seen in e63d8c0.
+
+### Squash Merge Commit Titles
+
+As you squash merge a PR, please update the title of the squash merge commit to match the Changelog entry in the PR description.  If there's no Changelog entry in the PR description, then please do your best to generate that changelog entry from your perspective in what's happening in the PR.
+
+The ideal format here would be like "Added > New Experiment: Comment Moderation" so that reviewing the commit history on `develop` can quickly comprehend the changes happening.  Similarly when we get into the [release process](RELEASE_INSTRUCTIONS.md) we can much more quickly build a release changelog by leveraging the squash merge commit titles.
+
+A minute of your time when merging a PR to appropriately set the squash merge commit title to the Changelog entry will save many others even more time when reviewing changes in `develop` and when building a release.  Thanks for helping others save time!
+
 ---
 
 ## Additional Resources
 
-### Documentation
+For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
+- [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
+- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
+- [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
-- [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - In-repo reference implementation
-- [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
-- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
-- [WordPress AI Team](https://make.wordpress.org/ai/)
-
-### Getting Help
-
-- **GitHub Issues**: Report bugs or request features
-- **WordPress Slack**: Join the `#core-ai` channel in Slack, see the [WordPress Slack page](https://make.wordpress.org/chat/) for signup information; it is free to join.
-- **Make WordPress AI**: https://make.wordpress.org/ai/
-
----
-
-## License
-
-GPL-2.0-or-later
-
----
-
-<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
+- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
