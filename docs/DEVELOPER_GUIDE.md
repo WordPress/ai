@@ -337,7 +337,7 @@ An example of a squash merge from #359 can be seen in 4c9699f, while an example 
 
 ### Squash Merge Commit Titles
 
-As you squash merge a PR, please update the title of the squash merge commit to match the Changelog entry in the PR description.  If there's no Changelog entry in the PR description, then please do you best to generate that changelog entry from your perspective in what's happening in the PR.
+As you squash merge a PR, please update the title of the squash merge commit to match the Changelog entry in the PR description.  If there's no Changelog entry in the PR description, then please do your best to generate that changelog entry from your perspective in what's happening in the PR.
 
 The ideal format here would be like "Added > New Experiment: Comment Moderation" so that reviewing the commit history on `develop` can quickly comprehend the changes happening.  Similarly when we get into the [release process](RELEASE_INSTRUCTIONS.md) we can much more quickly build a release changelog by leveraging the squash merge commit titles.
 
