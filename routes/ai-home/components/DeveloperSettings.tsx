@@ -157,7 +157,14 @@ export function DeveloperSettings( {
 
 	return (
 		<div className="ai-developer-mode-fields ai-feature-settings-form">
-			{ isLoading && <Spinner /> }
+			{ isLoading && (
+				<div className="ai-developer-mode-fields__loading-provider">
+					<span className="ai-developer-mode-fields__loading-provider-label">
+						{ __( 'Provider', 'ai' ) }
+					</span>
+					<Spinner />
+				</div>
+			) }
 			{ ! isLoading && fetchError && (
 				<p className="ai-developer-mode-field__error">{ fetchError }</p>
 			) }
