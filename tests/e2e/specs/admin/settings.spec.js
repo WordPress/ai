@@ -301,14 +301,13 @@ test.describe( 'Plugin settings', () => {
 			EXPERIMENT_GROUPS.editor
 		);
 
-		// TODO: Once we have a second admin experiment, uncomment these lines.
-		// const adminEnableAll = getEnableAllButton(
-		// 	page,
-		// 	EXPERIMENT_GROUPS.admin
-		// );
+		const adminEnableAll = getEnableAllButton(
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
 
 		await expect( editorEnableAll ).toBeVisible();
-		// await expect( adminEnableAll ).toBeVisible();
+		await expect( adminEnableAll ).toBeVisible();
 
 		const editorToggles = await getExperimentTogglesInGroup(
 			page,
