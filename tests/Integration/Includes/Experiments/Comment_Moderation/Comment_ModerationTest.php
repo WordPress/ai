@@ -292,7 +292,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'notice-success', $output );
-		$this->assertStringContainsString( '2 comments queued for AI analysis.', $output );
+		$this->assertStringContainsString( '2 comments queued for analysis.', $output );
 	}
 
 	/**
