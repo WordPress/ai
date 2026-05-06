@@ -215,7 +215,8 @@ class Comment_Moderation extends Abstract_Feature {
 	 */
 	private function get_comment_analysis_ability(): Comment_Analysis_Ability {
 		if ( ! $this->comment_analysis_ability ) {
-			$this->comment_analysis_ability = new Comment_Analysis_Ability( 'ai/comment-analysis',
+			$this->comment_analysis_ability = new Comment_Analysis_Ability(
+				'ai/comment-analysis',
 				array(
 					'label'       => __( 'Comment Analysis', 'ai' ),
 					'description' => __( 'Analyzes a comment for toxicity and sentiment.', 'ai' ),
