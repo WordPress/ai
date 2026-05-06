@@ -13,7 +13,7 @@ use WordPress\AI\Asset_Loader;
 /**
  * Asset_Loader test case.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Asset_LoaderTest extends WP_UnitTestCase {
 
@@ -60,7 +60,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_script_enqueues_with_full_asset_data(): void {
 		$asset_handle   = 'test-image-gen';
@@ -80,7 +80,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_script_bails_when_asset_file_missing(): void {
 		$this->setExpectedIncorrectUsage( Asset_Loader::class );
@@ -98,7 +98,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_script_bails_when_asset_file_returns_non_array(): void {
 		$this->setExpectedIncorrectUsage( Asset_Loader::class );
@@ -117,7 +117,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_script_falls_back_to_filemtime_when_version_missing(): void {
 		$this->create_asset_file(
@@ -132,7 +132,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_script_falls_back_to_empty_deps_when_missing(): void {
 		$this->create_asset_file(
@@ -147,7 +147,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_style_enqueues_with_full_asset_data(): void {
 		$asset_handle   = 'test-image-gen-style';
@@ -165,7 +165,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_styles_enqueues_with_rtl_context(): void {
 		// Preserve global locale to restore later.
@@ -185,7 +185,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_style_bails_when_asset_file_missing(): void {
 		$this->setExpectedIncorrectUsage( Asset_Loader::class );
@@ -203,7 +203,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_style_bails_when_asset_file_returns_non_array(): void {
 		$this->setExpectedIncorrectUsage( Asset_Loader::class );
@@ -223,7 +223,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_enqueue_style_works_when_rtl_file_missing(): void {
 		$this->setExpectedIncorrectUsage( Asset_Loader::class );
@@ -243,7 +243,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_localize_script_prefixes_correctly(): void {
 		$this->create_asset_file(

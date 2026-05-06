@@ -1,4 +1,3 @@
-
 # Release Instructions
 
 The following can be copied into a [new, blank GitHub issue](https://github.com/WordPress/ai/issues) who's title is formatted as `Release version X.Y.Z`.  Once the issue is submitted, the checklist in the body of the issue should be followed to release a new version of the AI plugin.  All references to `X.Y.Z` below should be updated to the actual release version number.
@@ -13,7 +12,7 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 ## [Release steps](https://github.com/WordPress/ai/blob/develop/docs/RELEASE_INSTRUCTIONS.md)
 
 - [ ] Branch: Starting from `develop`, cut a release branch named `release/X.Y.Z` for your changes.
-- [ ] Version bump: Bump the version number in `ai.php`, `package-lock.json`, and `readme.txt` if it does not already reflect the version being released.  In `ai.php`, ensure you're updating the `WPAI_VERSION` version constant.
+- [ ] Version bump: Bump the version number in `ai.php` and `readme.txt` if it does not already reflect the version being released.  In `ai.php`, ensure you're updating the `WPAI_VERSION` version constant.
 - [ ] Update `@since`: Find all new `@since x.x.x` lines and update those with the new version number in place of `x.x.x`.
 - [ ] Changelog: Add/update the changelog in `CHANGELOG.md` and in `readme.txt`.
 - [ ] Props: update `CREDITS.md` file with any new contributors, confirm maintainers are accurate.

@@ -13,7 +13,7 @@ use WordPress\AI\Services\Guidelines;
 /**
  * Guidelines test case.
  *
- * @since x.x.x
+ * @since 0.8.0
  */
 class Guidelines_Test extends WP_UnitTestCase {
 
@@ -29,7 +29,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -40,7 +40,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function tearDown(): void {
 		Guidelines::reset_cache();
@@ -52,7 +52,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that is_available() returns false when the CPT is not registered.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_is_available_returns_false_when_cpt_not_registered(): void {
 		if ( post_type_exists( Guidelines::POST_TYPE ) ) {
@@ -72,7 +72,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 * Gutenberg's REST controller saves new guideline posts as 'draft' by default,
 	 * so the service must accept both 'publish' and 'draft' statuses.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_returns_array_for_draft_post(): void {
 		$this->register_guidelines_cpt();
@@ -91,7 +91,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_guidelines() returns null when the CPT is unavailable.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_returns_null_when_unavailable(): void {
 		$this->assertNull(
@@ -103,7 +103,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_guidelines() returns null when no guidelines post exists.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_returns_null_when_no_post_exists(): void {
 		$this->register_guidelines_cpt();
@@ -117,7 +117,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_guidelines() returns a keyed array when a post exists.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_returns_array_when_post_exists(): void {
 		$this->register_guidelines_cpt();
@@ -140,7 +140,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_guidelines() filters by category when a category is passed.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_filters_by_category(): void {
 		$this->register_guidelines_cpt();
@@ -161,7 +161,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_guidelines() returns null for a nonexistent category.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_returns_null_for_nonexistent_category(): void {
 		$this->register_guidelines_cpt();
@@ -180,7 +180,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_block_guidelines() returns a string for a block with guidelines.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_block_guidelines_returns_string(): void {
 		$this->register_guidelines_cpt();
@@ -197,7 +197,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_block_guidelines() returns null for a block without guidelines.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_block_guidelines_returns_null_for_missing_block(): void {
 		$this->register_guidelines_cpt();
@@ -212,7 +212,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that format_for_prompt() returns an empty string when no guidelines exist.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_format_for_prompt_returns_empty_when_no_guidelines(): void {
 		$this->register_guidelines_cpt();
@@ -227,7 +227,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that format_for_prompt() returns an XML string with correct structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_format_for_prompt_returns_xml_string(): void {
 		$this->register_guidelines_cpt();
@@ -249,7 +249,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that format_for_prompt() truncates long guidelines.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_format_for_prompt_truncates_long_guidelines(): void {
 		$this->register_guidelines_cpt();
@@ -269,7 +269,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that format_for_prompt() includes block-specific guidelines.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_format_for_prompt_includes_block_guidelines(): void {
 		$this->register_guidelines_cpt();
@@ -284,7 +284,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that the service caches results and only queries the database once.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_caching_only_queries_once(): void {
 		$this->register_guidelines_cpt();
@@ -299,7 +299,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that the wpai_use_guidelines filter can disable guidelines.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_wpai_use_guidelines_filter_disables(): void {
 		$this->register_guidelines_cpt();
@@ -321,7 +321,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that the wpai_max_guideline_length filter is applied.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_wpai_max_guideline_length_filter(): void {
 		$this->register_guidelines_cpt();
@@ -344,7 +344,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_guidelines() returns null when a post exists but has no guideline meta.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_guidelines_returns_null_when_post_has_no_meta(): void {
 		$this->register_guidelines_cpt();
@@ -367,7 +367,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that get_block_guidelines() returns null when disabled by filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_get_block_guidelines_returns_null_when_disabled_by_filter(): void {
 		$this->register_guidelines_cpt();
@@ -385,7 +385,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that format_for_prompt() skips empty categories.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function test_format_for_prompt_skips_empty_categories(): void {
 		$this->register_guidelines_cpt();

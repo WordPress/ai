@@ -5,23 +5,24 @@ import { Page } from '@wordpress/admin-ui';
 import {
 	Button,
 	ExternalLink,
-	Notice,
 	Spinner,
 	ToggleControl,
 } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
-import { useSelect, useDispatch, useRegistry } from '@wordpress/data';
+import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
+import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
 import { useCallback, useMemo, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
+import { info as infoIcon } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
-import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
+import { Icon, Notice, Popover, VisuallyHidden } from '@wordpress/ui';
 
 /**
  * Internal dependencies
  */
-import './style.scss';
 import AIIcon from './ai-icon';
+import './style.scss';
 
 type AISettings = Record< string, boolean >;
 
@@ -214,12 +215,40 @@ function getPageData(): PageData {
 
 const PAGE_DATA = getPageData();
 
-const GLOBAL_FIELD: Field< AISettings > = {
-	id: GLOBAL_FIELD_ID,
-	label: __( 'Enable AI', 'ai' ),
-	type: 'boolean',
-	Edit: 'toggle',
-};
+interface InfoTipProps {
+	content: string;
+}
+
+function InfoTip( { content }: InfoTipProps ) {
+	const title = __( 'More information', 'ai' );
+
+	return (
+		<Popover.Root>
+			<Popover.Trigger
+				openOnHover
+				delay={ 200 }
+				closeDelay={ 200 }
+				aria-label={ title }
+				className="ai-settings-page__infotip-trigger"
+			>
+				<Icon icon={ infoIcon } size={ 20 } />
+			</Popover.Trigger>
+			<Popover.Popup
+				side="bottom"
+				align="end"
+				className="ai-settings-page__infotip-popover"
+			>
+				<Popover.Arrow />
+				<VisuallyHidden render={ <Popover.Title /> }>
+					{ title }
+				</VisuallyHidden>
+				<Popover.Description className="ai-settings-page__infotip-description">
+					{ content }
+				</Popover.Description>
+			</Popover.Popup>
+		</Popover.Root>
+	);
+}
 
 function buildToggleMessage(
 	edits: Record< string, unknown >,
@@ -239,21 +268,36 @@ function buildToggleMessage(
 		if ( allEnabled ) {
 			return sprintf(
 				// translators: %d: Number of experiments.
-				__( '%d experiments enabled', 'ai' ),
+				_n(
+					'%d experiment enabled',
+					'%d experiments enabled',
+					count,
+					'ai'
+				),
 				count
 			);
 		}
 		if ( allDisabled ) {
 			return sprintf(
 				// translators: %d: Number of experiments.
-				__( '%d experiments disabled', 'ai' ),
+				_n(
+					'%d experiment disabled',
+					'%d experiments disabled',
+					count,
+					'ai'
+				),
 				count
 			);
 		}
 		// Just a fallback for mixed state (shouldn't happen with our buttons, but handle it).
 		return sprintf(
 			// translators: %d: Number of experiments.
-			__( '%d experiments updated', 'ai' ),
+			_n(
+				'%d experiment updated',
+				'%d experiments updated',
+				count,
+				'ai'
+			),
 			count
 		);
 	}
@@ -283,7 +327,6 @@ function buildToggleMessage(
 function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	return (
 		<ToggleControl
-			__nextHasNoMarginBottom
 			label={ field.label }
 			help={ field.description }
 			checked={ !! field.getValue( { item: data } ) }
@@ -513,7 +556,6 @@ function FeatureToggleWithSettings( {
 	return (
 		<div className="ai-feature-toggle-with-settings">
 			<ToggleControl
-				__nextHasNoMarginBottom
 				label={ field.label }
 				help={ field.description }
 				checked={ checked }
@@ -555,38 +597,15 @@ function VisualCardToggle( {
 				</div>
 			) }
 			<div className="ai-showcase-card__content">
-				<h3 className="ai-showcase-card__title">{ field.label }</h3>
-				<p className="ai-showcase-card__description">
-					{ field.description }
-				</p>
-				<div className="ai-showcase-card__actions">
-					<Button
-						variant={ checked ? 'secondary' : 'primary' }
-						onClick={ () =>
-							onChange( { [ field.id ]: ! checked } )
-						}
-						disabled={ ! globalEnabled }
-						size="compact"
-					>
-						{ checked
-							? __( 'Disable', 'ai' )
-							: __( 'Enable', 'ai' ) }
-					</Button>
-					{ checked && (
-						<span className="ai-showcase-card__enabled-badge">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 24 24"
-								width={ 16 }
-								height={ 16 }
-								fill="currentColor"
-							>
-								<path d="M16.5 7.5 10 13.9l-2.5-2.4-1 1 3.5 3.6 7.5-7.6z" />
-							</svg>
-							{ __( 'Enabled', 'ai' ) }
-						</span>
-					) }
-				</div>
+				<ToggleControl
+					label={ field.label }
+					checked={ checked }
+					onChange={ ( value ) =>
+						onChange( { [ field.id ]: value } )
+					}
+					disabled={ ! globalEnabled }
+					help={ field.description }
+				/>
 			</div>
 		</div>
 	);
@@ -677,7 +696,11 @@ function AISettingsPage() {
 		return aiSettings;
 	}, [ aiSettingKeys, editedRecord ] );
 
-	const globalEnabled = Boolean( data[ GLOBAL_FIELD.id ] );
+	const globalEnabled = Boolean( data[ GLOBAL_FIELD_ID ] );
+	const globalToggleDescription = __(
+		'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
+		'ai'
+	);
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
@@ -737,7 +760,7 @@ function AISettingsPage() {
 		// Create section action fields for each group
 		for ( const group of featureGroups ) {
 			const experimentSettings = groupedFields.get( group.id ) ?? [];
-			if ( experimentSettings.length === 0 ) {
+			if ( experimentSettings.length <= 1 ) {
 				continue;
 			}
 
@@ -779,7 +802,7 @@ function AISettingsPage() {
 			return baseField;
 		} );
 
-		return [ GLOBAL_FIELD, ...sectionActionsFields, ...featureFields ];
+		return [ ...sectionActionsFields, ...featureFields ];
 	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
 
 	const form = useMemo< Form >( () => {
@@ -840,7 +863,10 @@ function AISettingsPage() {
 					isOpened: true,
 					isCollapsible: true,
 				},
-				children: [ ...children, actionFieldId ],
+				children:
+					children.length > 1
+						? [ ...children, actionFieldId ]
+						: children,
 			} );
 		}
 
@@ -860,39 +886,22 @@ function AISettingsPage() {
 					isOpened: true,
 					isCollapsible: true,
 				},
-				children: [ ...children, actionFieldId ],
+				children:
+					children.length > 1
+						? [ ...children, actionFieldId ]
+						: children,
 			} );
 		}
 
 		return {
-			fields: [
-				{
-					id: 'generalSettings',
-					label: __( 'General Settings', 'ai' ),
-					description: __(
-						'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-						'ai'
-					),
-					layout: {
-						type: 'card',
-						withHeader: true,
-						isCollapsible: false,
-					},
-					children: [ GLOBAL_FIELD_ID ],
-				},
-				...sectionFields,
-			],
+			fields: sectionFields,
 		};
 	}, [ featureDefinitions, featureGroups ] );
 
 	return (
 		<Page
-			title={
-				<>
-					<AIIcon />
-					{ __( 'AI', 'ai' ) }
-				</>
-			}
+			visual={ <AIIcon /> }
+			title={ __( 'AI', 'ai' ) }
 			subTitle={ __(
 				'Configure AI features and experiments for your WordPress site.',
 				'ai'
@@ -905,30 +914,49 @@ function AISettingsPage() {
 					<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
 						{ __( 'Contribute', 'ai' ) }
 					</ExternalLink>
+					<div className="ai-settings-page__global-toggle">
+						<ToggleControl
+							label={ __( 'Enable AI', 'ai' ) }
+							checked={ globalEnabled }
+							onChange={ ( checked ) => {
+								void handleChange( {
+									[ GLOBAL_FIELD_ID ]: checked,
+								} );
+							} }
+							disabled={ isLoading }
+						/>
+						<InfoTip content={ globalToggleDescription } />
+					</div>
 				</div>
 			}
 		>
 			<div className="ai-settings-page">
 				{ ! PAGE_DATA.hasValidCredentials && (
-					<Notice status="error" isDismissible={ false }>
-						{ ! PAGE_DATA.hasCredentials
-							? __(
-									'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
-									'ai'
-							  )
-							: __(
-									'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
-									'ai'
-							  ) }{ ' ' }
+					<Notice.Root
+						className="ai-settings-page__notice"
+						intent="error"
+					>
+						<Notice.Description>
+							{ ! PAGE_DATA.hasCredentials
+								? __(
+										'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
+										'ai'
+								  )
+								: __(
+										'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+										'ai'
+								  ) }
+						</Notice.Description>
 						{ PAGE_DATA.connectorsUrl && (
-							<Button
-								variant="link"
-								href={ PAGE_DATA.connectorsUrl }
-							>
-								{ __( 'Manage Connectors', 'ai' ) }
-							</Button>
+							<Notice.Actions>
+								<Notice.ActionLink
+									href={ PAGE_DATA.connectorsUrl }
+								>
+									{ __( 'Manage Connectors', 'ai' ) }
+								</Notice.ActionLink>
+							</Notice.Actions>
 						) }
-					</Notice>
+					</Notice.Root>
 				) }
 				{ isLoading ? (
 					<Spinner />

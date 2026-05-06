@@ -15,7 +15,10 @@
 		"@wordpress/data": "*",
 		"@wordpress/dataviews": "*",
 		"@wordpress/element": "*",
+		"@wordpress/icons": "*",
 		"@wordpress/i18n": "*",
-		"@wordpress/notices": "*"
+		"@wordpress/notices": "*",
+		"@wordpress/primitives": "*",
+		"@wordpress/ui": "*"
 	}
 }

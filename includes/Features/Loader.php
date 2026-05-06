@@ -56,7 +56,7 @@ final class Loader {
 	/**
 	 * Initializes the Loader by registering and initializing features.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 */
 	public function init(): void {
 		$this->register_features();
