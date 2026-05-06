@@ -32,6 +32,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Refine Notes** - Automatically apply editorial notes to content.
 * **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Comment Moderation** - Automatic moderation of comments based on toxicity and sentiment analysis and bulk moderation features in the Comments admin screen.
 
 **Coming Soon:**
 
@@ -131,6 +132,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 10. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
 11. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
 12. AI settings screen showing toggles to enable specific experiments.
+#. Comments admin screen showing AI-powered comment moderation features, including color-coded badges for toxicity scoring and comment sentiment.
 
 == Changelog ==
 
