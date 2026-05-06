@@ -96,9 +96,7 @@ test.describe( 'Image Editing Feature', () => {
 		await page
 			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiling face emoji' );
-		await page
-			.locator( '.ai-image-generation__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the Refine Image button is visible.
 		const refineButton = page.locator(
@@ -213,9 +211,7 @@ test.describe( 'Image Editing Feature', () => {
 		await page
 			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-image-generation__actions button' )
-			.click();
+		await page.locator( '.ai-image-generation__actions button' ).click();
 
 		const refineButton = page.locator(
 			'.ai-image-generation__actions button',

@@ -141,9 +141,7 @@ test.describe( 'Image Generation Feature', () => {
 		await page
 			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiling face emoji' );
-		await page
-			.locator( '.ai-image-generation__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
@@ -209,9 +207,7 @@ test.describe( 'Image Generation Feature', () => {
 		await page
 			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiling face' );
-		await page
-			.locator( '.ai-image-generation__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
@@ -223,12 +219,9 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
-		useImageButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Use Image',
-			}
-		);
+		useImageButton = page.locator( '.ai-image-generation__actions button', {
+			hasText: 'Use Image',
+		} );
 		await expect( useImageButton ).toBeVisible();
 
 		useImageButton.click();
@@ -312,9 +305,7 @@ test.describe( 'Image Generation Feature', () => {
 		await page
 			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-image-generation__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
@@ -374,9 +365,7 @@ test.describe( 'Image Generation Feature', () => {
 		await page
 			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-image-generation__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
@@ -388,12 +377,9 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
-		useImageButton = page.locator(
-			'.ai-image-generation__actions button',
-			{
-				hasText: 'Use Image',
-			}
-		);
+		useImageButton = page.locator( '.ai-image-generation__actions button', {
+			hasText: 'Use Image',
+		} );
 		await expect( useImageButton ).toBeVisible();
 
 		useImageButton.click();
@@ -457,9 +443,7 @@ test.describe( 'Image Generation Feature', () => {
 		await page
 			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-image-generation__actions button' )
-			.click();
+		await page.locator( '.ai-image-generation__actions button' ).click();
 
 		// Ensure the image is visible.
 		await expect(
@@ -511,9 +495,7 @@ test.describe( 'Image Generation Feature', () => {
 		await page
 			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-image-generation__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible.
 		await expect(
