@@ -38,6 +38,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Suggest_Image_Crops\Suggest_Image_Crops::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
+		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 	);
 
 	/**
