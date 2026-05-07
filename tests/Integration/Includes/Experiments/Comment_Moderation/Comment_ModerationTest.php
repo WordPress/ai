@@ -69,6 +69,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
 
 		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_comment-moderation_enabled', true );
@@ -98,6 +99,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_comment-moderation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
 		unset( $_GET['wpai_analysis_queued'] );
 		parent::tearDown();
 	}
