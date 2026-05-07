@@ -395,7 +395,7 @@ class Comment_Moderation extends Abstract_Feature {
 				$meta_query[] = array(
 					'key'     => self::META_TOXICITY_SCORE,
 					'value'   => 0.7,
-					'type'    => 'DECIMAL',
+					'type'    => 'DECIMAL(10, 5)',
 					'compare' => '>=',
 				);
 			} elseif ( 'medium' === $toxicity ) {
@@ -404,13 +404,13 @@ class Comment_Moderation extends Abstract_Feature {
 					array(
 						'key'     => self::META_TOXICITY_SCORE,
 						'value'   => 0.4,
-						'type'    => 'DECIMAL',
+						'type'    => 'DECIMAL(10, 5)',
 						'compare' => '>=',
 					),
 					array(
 						'key'     => self::META_TOXICITY_SCORE,
 						'value'   => 0.7,
-						'type'    => 'DECIMAL',
+						'type'    => 'DECIMAL(10, 5)',
 						'compare' => '<',
 					),
 				);
@@ -418,7 +418,7 @@ class Comment_Moderation extends Abstract_Feature {
 				$meta_query[] = array(
 					'key'     => self::META_TOXICITY_SCORE,
 					'value'   => 0.4,
-					'type'    => 'DECIMAL',
+					'type'    => 'DECIMAL(10, 5)',
 					'compare' => '<',
 				);
 			}
