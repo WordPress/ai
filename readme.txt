@@ -168,15 +168,6 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 * Bump `postcss` from 8.5.10 to 8.5.14 ([#503](https://github.com/WordPress/ai/pull/503)).
 * Bump `minimatch` from 3.0.8 to 3.1.4 ([#503](https://github.com/WordPress/ai/pull/503)).
 
-**Developer**
-
-* Ignore `/.wp-env.test.override.json` so local test-only `wp-env` overrides stay untracked ([#484](https://github.com/WordPress/ai/pull/484)).
-* Add E2E coverage for Dashboard Widgets ([#498](https://github.com/WordPress/ai/pull/498)).
-* Add custom experiment reference documentation for developers extending the plugin ([#499](https://github.com/WordPress/ai/pull/499)).
-* Add squash merge commit approach to developer guide ([#504](https://github.com/WordPress/ai/pull/504), [#511](https://github.com/WordPress/ai/pull/511), [#521](https://github.com/WordPress/ai/pull/521)).
-* Bump `phpstan/phpstan` from 2.1.46 to 2.1.51 ([#468](https://github.com/WordPress/ai/pull/468), [#493](https://github.com/WordPress/ai/pull/493)).
-* Bump `actions/setup-node` from 6.3.0 to 6.4.0 ([#469](https://github.com/WordPress/ai/pull/469)).
-
 = 0.8.0 - 2026-04-23 =
 
 **Added**
