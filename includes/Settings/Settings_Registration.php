@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace WordPress\AI\Settings;
 
 use WordPress\AI\Features\Registry;
+use WordPress\AI\REST\Models_Controller;
 
 /**
  * Handles registration of settings for the AI plugin.
@@ -67,6 +68,9 @@ class Settings_Registration {
 	 */
 	public function init(): void {
 		$this->register_settings();
+
+		// Initialize the provider/model discovery REST endpoint.
+		( new Models_Controller() )->init();
 	}
 
 	/**
@@ -92,16 +96,39 @@ class Settings_Registration {
 		// Register settings for each experiment.
 		foreach ( $this->registry->get_all_features() as $feature ) {
 			$feature_id = $feature::get_id();
-			$option_key = "wpai_feature_{$feature_id}_enabled";
 
 			register_setting(
 				self::OPTION_GROUP,
-				$option_key,
+				"wpai_feature_{$feature_id}_enabled",
 				array(
 					'type'              => 'boolean',
 					'default'           => false,
 					'sanitize_callback' => 'rest_sanitize_boolean',
 					'show_in_rest'      => true,
+				)
+			);
+
+			register_setting(
+				self::OPTION_GROUP,
+				"wpai_feature_{$feature_id}_field_developer",
+				array(
+					'type'         => 'object',
+					'default'      => array(),
+					'show_in_rest' => array(
+						'schema' => array(
+							'type'       => 'object',
+							'properties' => array(
+								'provider' => array(
+									'type'    => 'string',
+									'default' => '',
+								),
+								'model'    => array(
+									'type'    => 'string',
+									'default' => '',
+								),
+							),
+						),
+					),
 				)
 			);
 

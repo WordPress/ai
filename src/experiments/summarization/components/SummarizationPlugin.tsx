@@ -33,7 +33,7 @@ export default function SummarizationPlugin() {
 	}
 	const buttonDescription = hasSummary
 		? __(
-				'This will update the AI generated summary block with a new summary of the content of this post.',
+				'This will update the generated summary block with a new summary of the content of this post.',
 				'ai'
 		  )
 		: __(
