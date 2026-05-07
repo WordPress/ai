@@ -12,6 +12,7 @@ import apiFetch from '@wordpress/api-fetch';
  * Internal dependencies
  */
 import { runAbility } from '../../utils/run-ability';
+import { isProviderAvailable } from '../../utils/provider-status';
 
 type AbilityResponse = {
 	alt_text?: string;
@@ -73,6 +74,13 @@ async function processBulkAltText(): Promise< void > {
 	const data = window.aiAltTextGenerationBulkData;
 
 	if ( ! data || ! data.attachmentIds || data.attachmentIds.length === 0 ) {
+		return;
+	}
+
+	const noProviderMessage = __( 'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in Settings → Connectors.', 'ai' );
+
+	if ( ! isProviderAvailable() ) {
+		createNotice( noProviderMessage );
 		return;
 	}
 
