@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [0.9.0] - 2026-05-07
+### Added
+- New Experiment: Comment Moderation to automatically moderate comments based on toxicity detection and sentiment analysis ([#155](https://github.com/WordPress/ai/pull/155), [#516](https://github.com/WordPress/ai/pull/516)).
+- New Experiment: Content Resizing to shorten, expand, or rephrase selected block content ([#331](https://github.com/WordPress/ai/pull/331)).
+- Developer Mode settings page toggle to set the desired provider and model per feature ([#486](https://github.com/WordPress/ai/pull/486)).
+- WP-CLI command, `wp ai alt-text generate`, for bulk alt text generation ([#436](https://github.com/WordPress/ai/pull/436)).
+- Basic styles for the Content Summary block ([#510](https://github.com/WordPress/ai/pull/510)).
+
+### Changed
+- Compress the AI settings page by moving the global AI toggle into the header with an infotip ([#455](https://github.com/WordPress/ai/pull/455)).
+- Update AI settings page to use `@wordpress/ui` components and related UI adjustments ([#472](https://github.com/WordPress/ai/pull/472), [#488](https://github.com/WordPress/ai/pull/488), [#490](https://github.com/WordPress/ai/pull/490), [#491](https://github.com/WordPress/ai/pull/491), [#505](https://github.com/WordPress/ai/pull/505), [#519](https://github.com/WordPress/ai/pull/519)).
+- AI-generated images are now saved with descriptive, slugified filenames derived from the post title or prompt instead of `ai-generated-image-<timestamp>` ([#471](https://github.com/WordPress/ai/pull/471)).
+- For image generation, set guidelines as part of the prompt instead of system instructions ([#497](https://github.com/WordPress/ai/pull/497)).
+- Update the Content Summary experiment to render the summary in a Group variation block instead of a Paragraph variation block ([#510](https://github.com/WordPress/ai/pull/510)).
+
+### Fixed
+- Standards compliance switch from the custom `$builder->is_text_generation_supported()` method with the abstract `ensure_text_generation_supported()` method ([#465](https://github.com/WordPress/ai/pull/465)).
+- Ability schema JSON viewer now stays LTR under RTL admin languages ([#485](https://github.com/WordPress/ai/pull/485)).
+- Ensure the Generate Image button doesn't render in contexts that aren't valid ([#489](https://github.com/WordPress/ai/pull/489)).
+- Localize several user-facing fallback error strings in image-generation and summarization flows ([#500](https://github.com/WordPress/ai/pull/500)).
+
+### Security
+- Bump `serialize-javascript` from 6.0.2 to 7.0.5 ([#503](https://github.com/WordPress/ai/pull/503)).
+- Bump `postcss` from 8.5.10 to 8.5.14 ([#503](https://github.com/WordPress/ai/pull/503)).
+- Bump `minimatch` from 3.0.8 to 3.1.4 ([#503](https://github.com/WordPress/ai/pull/503)).
+
+### Developer
+- Ignore `/.wp-env.test.override.json` so local test-only `wp-env` overrides stay untracked ([#484](https://github.com/WordPress/ai/pull/484)).
+- Add E2E coverage for Dashboard Widgets ([#498](https://github.com/WordPress/ai/pull/498)).
+- Add custom experiment reference documentation for developers extending the plugin ([#499](https://github.com/WordPress/ai/pull/499)).
+- Add squash merge commit approach to developer guide ([#504](https://github.com/WordPress/ai/pull/504), [#511](https://github.com/WordPress/ai/pull/511), [#521](https://github.com/WordPress/ai/pull/521)).
+- Bump `phpstan/phpstan` from 2.1.46 to 2.1.51 ([#468](https://github.com/WordPress/ai/pull/468), [#493](https://github.com/WordPress/ai/pull/493)).
+- Bump `actions/setup-node` from 6.3.0 to 6.4.0 ([#469](https://github.com/WordPress/ai/pull/469)).
+
 ## [0.8.0] - 2026-04-23
 ### Added
 - New Experiment: Refine from Notes, automatically apply editorial notes to content ([#289](https://github.com/WordPress/ai/pull/289)).
@@ -17,7 +51,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 - Promote Image Generation from an Experiment to a Feature ([#418](https://github.com/WordPress/ai/pull/418)).
 - Title Generation now utilizes a modal for editing and regeneration before applying changes to the Post Title ([#290](https://github.com/WordPress/ai/pull/290)).
 - Update feature descriptions to include AI provider model supports ([#377](https://github.com/WordPress/ai/pull/377)).
-- Update button loading states to match the standard loading pattern ([#382](https://github.com/WordPress/ai/pull/382), [#389](https://github.com/WordPress/ai/pull/389), [#396](https://github.com/WordPress/ai/pull/396),[#433](https://github.com/WordPress/ai/pull/433), [#449](https://github.com/WordPress/ai/pull/449)).
+- Update button loading states to match the standard loading pattern ([#382](https://github.com/WordPress/ai/pull/382), [#389](https://github.com/WordPress/ai/pull/389), [#396](https://github.com/WordPress/ai/pull/396), [#433](https://github.com/WordPress/ai/pull/433), [#449](https://github.com/WordPress/ai/pull/449)).
 - Refactor `Main` bootstrap class ([#404](https://github.com/WordPress/ai/pull/404)).
 - Allow bulk enabling/disabling Experiments in groups ([#422](https://github.com/WordPress/ai/pull/422)).
 - Improve visual hierarchy on the AI settings page so card titles are more prominent than the toggle labels ([#431](https://github.com/WordPress/ai/pull/431)).
@@ -278,6 +312,7 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[0.9.0]: https://github.com/WordPress/ai/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/WordPress/ai/compare/0.7.0...0.8.0
 [0.7.0]: https://github.com/WordPress/ai/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/WordPress/ai/compare/0.5.0...0.6.0

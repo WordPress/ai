@@ -13,8 +13,9 @@ use WP_Error;
 use WP_Post;
 use WP_Post_Type;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Experiments\Meta_Description\Meta_Description as Meta_Description_Experiment;
+
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
 
 /**
@@ -305,19 +306,15 @@ class Meta_Description extends Abstract_Ability {
 		 */
 		$result_temperature = (float) apply_filters( 'wpai_meta_description_result_temperature', 0.7 );
 
-		$builder = wp_ai_client_prompt( $prompt )
+		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( $result_temperature )
-			->using_model_preference( ...get_preferred_models_for_text_generation() );
+			->using_temperature( $result_temperature );
 
-		// Return a more specific error if there isn't a model that supports text generation.
-		if ( ! $builder->is_supported_for_text_generation() ) {
-			return new WP_Error(
-				'unsupported_model',
-				esc_html__( 'Meta description generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
-			);
-		}
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Meta_Description_Experiment::class );
 
-		return $builder;
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Meta description generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }
