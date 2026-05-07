@@ -163,7 +163,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * Conditionally enqueues assets for the experimental Gutenberg media editor.
 	 *
-	 * Requires the Gutenberg media editor experiment to be enabled.
+	 * Requires the Gutenberg media editor experiment or media modal experiment to be enabled.
 	 *
 	 * @since x.x.x
 	 */
@@ -173,7 +173,10 @@ class Alt_Text_Generation extends Abstract_Feature {
 		}
 
 		$experiments = get_option( 'gutenberg-experiments' );
-		if ( ! isset( $experiments['gutenberg-media-editor'] ) ) {
+		if (
+			! isset( $experiments['gutenberg-media-editor'] ) &&
+			! isset( $experiments['gutenberg-media-editor-modal'] )
+		) {
 			return;
 		}
 

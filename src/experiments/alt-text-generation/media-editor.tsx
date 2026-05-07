@@ -1,8 +1,5 @@
 /**
  * Alt text generation integration for Gutenberg's experimental Media Editor.
- *
- * Re-registers the core `alt_text` entity field on the `attachment` post type
- * to render a generate/regenerate control next to the standard textarea.
  */
 
 /**
@@ -21,9 +18,14 @@ import type { MediaEditorAttachment } from './types';
 
 interface MediaEditorWindow extends Window {
 	__experimentalMediaEditor?: boolean;
+	__experimentalMediaEditorModal?: boolean;
 }
 
-const { __experimentalMediaEditor } = window as MediaEditorWindow;
+const { __experimentalMediaEditor, __experimentalMediaEditorModal } =
+	window as MediaEditorWindow;
+
+const isMediaEditorEnabled =
+	!! __experimentalMediaEditor || !! __experimentalMediaEditorModal;
 
 const field: Field< MediaEditorAttachment > = {
 	id: 'alt_text',
@@ -37,41 +39,84 @@ const field: Field< MediaEditorAttachment > = {
 
 // `registerPostTypeSchema` runs asynchronously from `usePostFields` and may
 // land after our module-level dispatch, which would remove our override.
-// Re-register once whenever the current post type transitions into `attachment`.
+// We need to re-register on both the route-based editor and modal editor to ensure our override is applied.
 let lastHandledPostType: string | undefined;
+let lastMediaEditorModalOpen = false;
 let scheduled: ReturnType< typeof setTimeout > | null = null;
 
-const doRegister = () => {
-	if ( ! __experimentalMediaEditor ) {
+const registerAltTextField = () => {
+	if ( ! isMediaEditorEnabled ) {
 		return;
 	}
 
 	registerEntityField( 'postType', 'attachment', field );
 };
 
-doRegister();
-
-subscribe( () => {
-	if ( ! __experimentalMediaEditor ) {
-		return;
-	}
-
-	const postType = select( editorStore ).getCurrentPostType() as
-		| string
-		| undefined;
-
-	if ( postType === lastHandledPostType ) {
-		return;
-	}
-
-	lastHandledPostType = postType;
-	if ( postType !== 'attachment' ) {
-		return;
-	}
-
+const scheduleRegister = () => {
 	// Debounce to coalesce core's burst of `registerEntityField` dispatches from `registerPostTypeSchema`.
 	if ( scheduled ) {
 		clearTimeout( scheduled );
 	}
-	scheduled = setTimeout( doRegister, 100 );
-}, 'core/editor' );
+	scheduled = setTimeout( registerAltTextField, 100 );
+};
+
+/**
+ * Re-registers our override when the route-based Media Editor activates,
+ * detected by `core/editor.getCurrentPostType()` transitioning to
+ * `attachment`.
+ */
+const subscribeToRouteMediaEditor = () => {
+	subscribe( () => {
+		if ( ! isMediaEditorEnabled ) {
+			return;
+		}
+
+		const postType = select( editorStore ).getCurrentPostType() as
+			| string
+			| undefined;
+
+		if ( postType === lastHandledPostType ) {
+			return;
+		}
+
+		lastHandledPostType = postType;
+		if ( postType !== 'attachment' ) {
+			return;
+		}
+
+		scheduleRegister();
+	}, 'core/editor' );
+};
+
+/**
+ * Re-registers our override when the Media Editor Modal opens.
+ */
+const subscribeToModalMediaEditor = () => {
+	subscribe( () => {
+		if ( ! isMediaEditorEnabled ) {
+			return;
+		}
+
+		// `@wordpress/media-editor` doesn't publicly export its store,
+		// so for now we need to use the string literal to access it.
+		const mediaEditorState = select( 'core/media-editor' ) as  // eslint-disable-line @wordpress/data-no-store-string-literals
+			| { isOpen?: () => boolean }
+			| undefined;
+		const isOpen = !! mediaEditorState?.isOpen?.();
+
+		if ( isOpen === lastMediaEditorModalOpen ) {
+			return;
+		}
+
+		lastMediaEditorModalOpen = isOpen;
+		if ( ! isOpen ) {
+			return;
+		}
+
+		scheduleRegister();
+	}, 'core/media-editor' );
+};
+
+registerAltTextField();
+subscribeToRouteMediaEditor();
+subscribeToModalMediaEditor();
