@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments;
 
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer;
+use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Experiments;
 
 /**
@@ -35,5 +36,6 @@ class ExperimentsTest extends WP_UnitTestCase {
 
 		// Test a random experiment to ensure it's registered as a default experiment.
 		$this->assertContains( Abilities_Explorer::class, $results, 'Abilities_Explorer should be registered as a default experiment.' );
+		$this->assertContains( Comment_Moderation::class, $results, 'Comment_Moderation should be registered as a default experiment.' );
 	}
 }
