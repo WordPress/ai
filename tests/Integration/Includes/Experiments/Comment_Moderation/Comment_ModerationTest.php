@@ -239,12 +239,52 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test moderate_comment() analyzes comments when the current user cannot moderate comments.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_moderate_comment_analyzes_comment_for_user_without_moderate_comments_capability() {
+		$user_id    = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$comment_id = $this->create_comment_without_hooks();
+		$experiment = new Comment_Moderation();
+
+		wp_set_current_user( $user_id );
+		add_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+
+		$experiment->moderate_comment( $comment_id );
+
+		remove_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+
+		$this->assertSame(
+			Comment_Moderation::STATUS_COMPLETE,
+			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true )
+		);
+		$this->assertSame( 'negative', get_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, true ) );
+		$this->assertSame( '0.8', get_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, true ) );
+		$this->assertSame( '0', get_comment( $comment_id )->comment_approved );
+	}
+
+	/**
+	 * Filters the analysis result for tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array{toxicity_score: float, sentiment: string} Analysis result.
+	 */
+	public function filter_comment_analysis_result(): array {
+		return array(
+			'toxicity_score' => 0.8,
+			'sentiment'      => 'negative',
+		);
+	}
+
+	/**
 	 * Test show_bulk_action_notice() renders notice when queued count is valid.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_show_bulk_action_notice_renders_notice() {
-		$experiment                    = new Comment_Moderation();
+		$experiment                   = new Comment_Moderation();
 		$_GET['wpai_analysis_queued'] = '2';
 
 		ob_start();
@@ -252,7 +292,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'notice-success', $output );
-		$this->assertStringContainsString( '2 comments queued for AI analysis.', $output );
+		$this->assertStringContainsString( '2 comments queued for analysis.', $output );
 	}
 
 	/**
@@ -261,7 +301,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_show_bulk_action_notice_does_nothing_for_invalid_count() {
-		$experiment                    = new Comment_Moderation();
+		$experiment                   = new Comment_Moderation();
 		$_GET['wpai_analysis_queued'] = '0';
 
 		ob_start();

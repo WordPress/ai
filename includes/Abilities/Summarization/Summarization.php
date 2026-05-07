@@ -149,7 +149,7 @@ class Summarization extends Abstract_Ability {
 		}
 
 		// Return the summary in the format the Ability expects.
-		return sanitize_text_field( trim( $result ) );
+		return sanitize_textarea_field( trim( $result ) );
 	}
 
 	/**
