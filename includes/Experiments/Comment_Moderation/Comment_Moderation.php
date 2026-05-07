@@ -135,6 +135,10 @@ class Comment_Moderation extends Abstract_Feature {
 
 		// Add inline styles for badges.
 		add_action( 'admin_head-edit-comments.php', array( $this, 'add_inline_styles' ) );
+		add_action( 'admin_head-index.php', array( $this, 'add_inline_styles' ) );
+
+		// Add dashboard pills.
+		add_filter( 'get_comment_excerpt', array( $this, 'add_dashboard_pills' ), 10, 3 );
 	}
 
 	/**
@@ -227,6 +231,63 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		return $new_columns;
+	}
+	/**
+	 * Adds sentiment and toxicity pills to the dashboard recent comments widget.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string      $comment_excerpt The comment excerpt.
+	 * @param string      $comment_id      The comment ID.
+	 * @param \WP_Comment $comment         The comment object.
+	 * @return string The modified comment excerpt.
+	 */
+	public function add_dashboard_pills( $comment_excerpt, $comment_id, $comment ): string {
+		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
+			return $comment_excerpt;
+		}
+
+		$screen = get_current_screen();
+		if ( ! $screen || 'dashboard' !== $screen->id ) {
+			return $comment_excerpt;
+		}
+
+		$comment_id = (int) $comment_id;
+
+		/**
+		 * Filters whether to show AI sentiment and toxicity pills in the dashboard.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool        $show       Whether to show the pills. Default true.
+		 * @param int         $comment_id The comment ID.
+		 * @param \WP_Comment $comment    The comment object.
+		 */
+		if ( ! apply_filters( 'wpai_comment_moderation_show_dashboard_pills', true, $comment_id, $comment ) ) {
+			return $comment_excerpt;
+		}
+
+		$status = get_comment_meta( $comment_id, self::META_ANALYSIS_STATUS, true );
+		if ( self::STATUS_COMPLETE !== $status ) {
+			return $comment_excerpt;
+		}
+
+		$sentiment = get_comment_meta( $comment_id, self::META_SENTIMENT, true );
+		$score     = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
+
+		// Capture the pills HTML in an output buffer.
+		ob_start();
+		?>
+		<div class="ai-dashboard-pills">
+			<?php
+			$this->render_sentiment_badge( (string) $sentiment );
+			$this->render_toxicity_badge( $score );
+			?>
+		</div>
+		<?php
+		$pills = ob_get_clean();
+
+		return $comment_excerpt . $pills;
 	}
 
 	/**
@@ -569,13 +630,18 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function add_inline_styles(): void {
+		$current_hook = current_action();
+
+		$is_comments_screen  = 'admin_head-edit-comments.php' === $current_hook;
+		$is_dashboard_screen = 'admin_head-index.php' === $current_hook;
 		?>
 		<style>
+			<?php if ( $is_comments_screen ) : ?>
 			.column-ai_sentiment,
 			.column-ai_toxicity {
 				width: 100px;
 			}
-
+			<?php endif; ?>
 			.ai-badge {
 				display: inline-flex;
 				align-items: center;
@@ -637,6 +703,13 @@ class Comment_Moderation extends Abstract_Feature {
 				background-color: #f8d7da;
 				color: #721c24;
 			}
+			<?php if ( $is_dashboard_screen ) : ?>
+			.ai-dashboard-pills {
+				margin-top: 8px;
+				display: flex;
+				gap: 8px;
+			}
+			<?php endif; ?>
 		</style>
 		<?php
 	}
