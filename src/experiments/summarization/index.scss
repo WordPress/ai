@@ -1,3 +1,16 @@
+.ai-summarization-summary {
+	--ai-summary-border-color: #1d2327;
+	--ai-summary-background-color: rgba(29, 35, 39, 0.04);
+
+	background-color: var(--ai-summary-background-color);
+	border-left: 4px solid var(--ai-summary-border-color);
+	padding: 1em 1.25em;
+
+	> :last-child {
+		margin-bottom: 0;
+	}
+}
+
 .ai-summarization-plugin-container {
 	.components-button.ai-summarization-plugin-button {
 		width: 100%;
