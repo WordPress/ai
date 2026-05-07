@@ -596,7 +596,7 @@ function VisualCardToggle( {
 
 	return (
 		<Card.Root
-			className={ `ai-showcase-card${
+			className={ `${
 				! globalEnabled ? ' ai-showcase-card--disabled' : ''
 			}` }
 		>
@@ -609,34 +609,15 @@ function VisualCardToggle( {
 				/>
 			) }
 			<Card.Content>
-				<Stack direction="column" gap="md">
-					<Text variant="heading-lg">{ field.label }</Text>
-					<Text
-						variant="body-md"
-						className="ai-showcase-card__description"
-					>
-						{ field.description }
-					</Text>
-					<Stack align="center" direction="row" gap="sm">
-						<Button
-							variant={ checked ? 'outline' : 'solid' }
-							onClick={ () =>
-								onChange( { [ field.id ]: ! checked } )
-							}
-							disabled={ ! globalEnabled }
-							size="compact"
-						>
-							{ checked
-								? __( 'Disable', 'ai' )
-								: __( 'Enable', 'ai' ) }
-						</Button>
-						{ checked && (
-							<Badge intent="stable">
-								{ __( 'Enabled', 'ai' ) }
-							</Badge>
-						) }
-					</Stack>
-				</Stack>
+				<ToggleControl
+					label={ field.label }
+					checked={ checked }
+					onChange={ ( value ) =>
+						onChange( { [ field.id ]: value } )
+					}
+					disabled={ ! globalEnabled }
+					help={ field.description }
+				/>
 			</Card.Content>
 		</Card.Root>
 	);
@@ -969,10 +950,7 @@ function AISettingsPage() {
 		>
 			<Stack className="ai-settings-page" direction="column" gap="md">
 				{ ! PAGE_DATA.hasValidCredentials && (
-					<Notice.Root
-						className="ai-settings-page__notice"
-						intent="error"
-					>
+					<Notice.Root intent="error">
 						<Notice.Description>
 							{ ! PAGE_DATA.hasCredentials
 								? __(
