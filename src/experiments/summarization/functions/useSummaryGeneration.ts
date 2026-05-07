@@ -18,6 +18,8 @@ import { store as noticesStore } from '@wordpress/notices';
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
 
+const NOTICE_ID = 'ai_summarization_error';
+
 /**
  * Summary generation hook.
  */
@@ -48,14 +50,12 @@ export function useSummaryGeneration() {
 	 * Handles the summarization button click.
 	 */
 	const handleSummarize = async () => {
-		if ( ! ensureProvider( 'ai_summarization_error' ) ) {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
 
 		setIsSummarizing( true );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_summarization_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedSummary = await generateSummary(
@@ -113,7 +113,7 @@ export function useSummaryGeneration() {
 			}
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
-				id: 'ai_summarization_error',
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 			setSummary( '' );

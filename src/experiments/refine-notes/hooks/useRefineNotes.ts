@@ -31,6 +31,7 @@ import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
+const NOTICE_ID = 'wpai_refine_notes_error';
 
 interface BlockAttributes {
 	content?: string;
@@ -116,7 +117,7 @@ export function useRefineNotes(): {
 	);
 
 	const runRefinement = async () => {
-		if ( ! ensureProvider( 'wpai_refine_notes_error' ) ) {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
 
@@ -124,9 +125,7 @@ export function useRefineNotes(): {
 		setProgress( 0 );
 		setTotal( 0 );
 
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'wpai_refine_notes_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const content = (
@@ -317,7 +316,7 @@ export function useRefineNotes(): {
 					firstErrorMessage ??
 						__( 'Refinement failed for all blocks.', 'ai' ),
 					{
-						id: 'wpai_refine_notes_error',
+						id: NOTICE_ID,
 						isDismissible: true,
 					}
 				);
@@ -393,7 +392,7 @@ export function useRefineNotes(): {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
-					id: 'wpai_refine_notes_error',
+					id: NOTICE_ID,
 					isDismissible: true,
 				}
 			);

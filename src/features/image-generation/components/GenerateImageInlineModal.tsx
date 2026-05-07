@@ -27,6 +27,8 @@ import type {
 	UploadedImage,
 } from '../types';
 
+const NOTICE_ID = 'ai_image_generation_error';
+
 const { aiImageGenerationData } = window as any;
 
 type ModalState = 'idle' | 'generating' | 'preview' | 'refining';
@@ -88,7 +90,7 @@ export function GenerateImageInlineModal( {
 		referenceImage?: string,
 		refHistoryIndex?: number
 	): Promise< void > {
-		if ( ! ensureProvider( 'ai_image_generation_error' ) ) {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
 

@@ -17,6 +17,8 @@ import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
 import type { ExcerptGenerationAbilityInput } from '../types';
 
+const NOTICE_ID = 'ai_excerpt_generation_error';
+
 /**
  * Generates an excerpt for the given post ID and content.
  *
@@ -66,14 +68,12 @@ export function useExcerptGeneration(): {
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 
 	const handleGenerate = async () => {
-		if ( ! ensureProvider( 'ai_excerpt_generation_error' ) ) {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
 
 		setIsGenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_excerpt_generation_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedExcerpt = await generateExcerpt(
@@ -116,7 +116,7 @@ export function useExcerptGeneration(): {
 			}
 		} catch ( error: any ) {
 			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
-				id: 'ai_excerpt_generation_error',
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
