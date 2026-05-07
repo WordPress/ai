@@ -9,6 +9,7 @@ import type { Locator, Page } from '@playwright/test';
 import {
 	type Admin,
 	type Editor,
+	type RequestUtils,
 	expect,
 } from '@wordpress/e2e-test-utils-playwright';
 
@@ -75,6 +76,27 @@ export const visitSettingsPage = async ( admin: Admin ) => {
  */
 export const visitConnectorsPage = async ( admin: Admin ) => {
 	await admin.visitAdminPage( 'options-connectors.php' );
+};
+
+/**
+ * Visits the AI Request Logs page under Tools.
+ *
+ * @param admin The admin fixture from the test context.
+ */
+export const visitRequestLogsPage = async ( admin: Admin ) => {
+	await admin.visitAdminPage( 'tools.php', 'page=ai-request-logs' );
+};
+
+/**
+ * Empties the AI request log table via the REST endpoint.
+ *
+ * @param requestUtils The request utils fixture from the test context.
+ */
+export const purgeRequestLogs = async ( requestUtils: RequestUtils ) => {
+	await requestUtils.rest( {
+		method: 'DELETE',
+		path: '/ai/v1/logs',
+	} );
 };
 
 /**
