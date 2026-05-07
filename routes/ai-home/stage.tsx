@@ -4,8 +4,16 @@
 import { Page } from '@wordpress/admin-ui';
 import {
 	Button,
+	Card,
+	Icon,
+	Link,
+	Notice,
+	Popover,
+	Stack,
+	VisuallyHidden,
+} from '@wordpress/ui';
+import {
 	DropdownMenu,
-	ExternalLink,
 	MenuGroup,
 	MenuItem,
 	Spinner,
@@ -23,7 +31,6 @@ import {
 	moreVertical as moreVerticalIcon,
 } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
-import { Icon, Notice, Popover, VisuallyHidden } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -426,9 +433,9 @@ function SectionActions( {
 	}, [ experimentSettings, data, onBulkChange ] );
 
 	return (
-		<div className="ai-section-actions">
+		<Stack className="ai-section-actions" direction="row" gap="sm">
 			<Button
-				variant="secondary"
+				variant="outline"
 				size="compact"
 				onClick={ handleEnableAll }
 				disabled={ ! globalEnabled || allEnabled }
@@ -436,14 +443,14 @@ function SectionActions( {
 				{ __( 'Enable all', 'ai' ) }
 			</Button>
 			<Button
-				variant="secondary"
+				variant="outline"
 				size="compact"
 				onClick={ handleDisableAll }
 				disabled={ ! globalEnabled || allDisabled }
 			>
 				{ __( 'Disable all', 'ai' ) }
 			</Button>
-		</div>
+		</Stack>
 	);
 }
 
@@ -542,7 +549,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	] );
 
 	return (
-		<div className="ai-feature-settings-form">
+		<Stack direction="column" gap="md" className="ai-feature-settings-form">
 			<DataForm< Record< string, unknown > >
 				data={ data }
 				fields={ fields }
@@ -550,11 +557,10 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 				onChange={ handleChange }
 			/>
 			{ isDirty && (
-				<div className="ai-feature-settings-form__actions">
+				<Stack align="flex-end" direction="row">
 					<Button
-						variant="primary"
+						variant="solid"
 						onClick={ handleSave }
-						isBusy={ isSaving }
 						disabled={ isSaving }
 						size="compact"
 						aria-label={ sprintf(
@@ -562,12 +568,16 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 							__( 'Save %s settings', 'ai' ),
 							feature.label
 						) }
+						loadingAnnouncement={
+							isSaving ? __( 'Saving settings…', 'ai' ) : ''
+						}
+						loading={ isSaving }
 					>
 						{ __( 'Save', 'ai' ) }
 					</Button>
-				</div>
+				</Stack>
 			) }
-		</div>
+		</Stack>
 	);
 }
 
@@ -626,17 +636,15 @@ function VisualCardToggle( {
 	const isDeveloperMode = useDeveloperModeContext();
 
 	return (
-		<div
-			className={ `ai-showcase-card${
+		<Card.Root
+			className={ `${
 				! globalEnabled ? ' ai-showcase-card--disabled' : ''
 			}` }
 		>
 			{ feature?.image && (
-				<div className="ai-showcase-card__image">
-					<img src={ feature.image } alt="" loading="lazy" />
-				</div>
+				<img alt="" loading="lazy" src={ feature.image } />
 			) }
-			<div className="ai-showcase-card__content">
+			<Card.Content>
 				<ToggleControl
 					label={ field.label }
 					checked={ checked }
@@ -652,8 +660,8 @@ function VisualCardToggle( {
 						capability={ feature.capability }
 					/>
 				) }
-			</div>
-		</div>
+			</Card.Content>
+		</Card.Root>
 	);
 }
 
@@ -959,8 +967,8 @@ function AISettingsPage() {
 					'ai'
 				) }
 				actions={
-					<div className="ai-settings-page__actions">
-						<div className="ai-settings-page__global-toggle">
+					<>
+						<Stack align="center" gap="xs">
 							<ToggleControl
 								label={ __( 'Enable AI', 'ai' ) }
 								checked={ globalEnabled }
@@ -972,13 +980,19 @@ function AISettingsPage() {
 								disabled={ isLoading }
 							/>
 							<InfoTip content={ globalToggleDescription } />
-						</div>
-						<ExternalLink href="https://github.com/WordPress/ai/tree/develop/docs">
+						</Stack>
+						<Link
+							href="https://github.com/WordPress/ai/tree/develop/docs"
+							openInNewTab
+						>
 							{ __( 'Docs', 'ai' ) }
-						</ExternalLink>
-						<ExternalLink href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md">
+						</Link>
+						<Link
+							href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
+							openInNewTab
+						>
 							{ __( 'Contribute', 'ai' ) }
-						</ExternalLink>
+						</Link>
 						<DropdownMenu
 							icon={ moreVerticalIcon }
 							label={ __( 'Developer Tools', 'ai' ) }
@@ -1006,15 +1020,12 @@ function AISettingsPage() {
 								</MenuGroup>
 							) }
 						</DropdownMenu>
-					</div>
+					</>
 				}
 			>
-				<div className="ai-settings-page">
+				<Stack className="ai-settings-page" direction="column" gap="md">
 					{ ! PAGE_DATA.hasValidCredentials && (
-						<Notice.Root
-							className="ai-settings-page__notice"
-							intent="error"
-						>
+						<Notice.Root intent="error">
 							<Notice.Description>
 								{ ! PAGE_DATA.hasCredentials
 									? __(
@@ -1038,7 +1049,13 @@ function AISettingsPage() {
 						</Notice.Root>
 					) }
 					{ isLoading ? (
-						<Spinner />
+						<Stack
+							align="center"
+							className="ai-settings-page__loading"
+							justify="center"
+						>
+							<Spinner />
+						</Stack>
 					) : (
 						<DataForm< AISettings >
 							data={ data }
@@ -1047,7 +1064,7 @@ function AISettingsPage() {
 							onChange={ handleChange }
 						/>
 					) }
-				</div>
+				</Stack>
 			</Page>
 		</DeveloperModeContext.Provider>
 	);

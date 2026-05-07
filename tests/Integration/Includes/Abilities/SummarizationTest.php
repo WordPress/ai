@@ -497,6 +497,34 @@ class SummarizationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that execute_callback() preserves newlines in the output.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_preserves_newlines_in_output(): void {
+		$ability = new class(
+			'ai/summarization',
+			array(
+				'label'       => 'Content Summarization',
+				'description' => 'Test',
+			)
+		) extends Summarization {
+			protected function generate_summary( string $content, $context, string $length ) {
+				return "First paragraph.\n\nSecond paragraph.";
+			}
+		};
+
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $ability, array( 'content' => 'Some test content.' ) );
+
+		$this->assertIsString( $result, 'Result should be a string' );
+		$this->assertStringContainsString( "\n\n", $result, 'Result should preserve double newlines for paragraph breaks' );
+	}
+
+	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
 	 * @since 0.2.0
