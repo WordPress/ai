@@ -42,9 +42,7 @@ test.describe( 'AI Request Logging Experiment', () => {
 		).toBeVisible();
 
 		// Period selector defaults to "Last 24 Hours"
-		await expect(
-			page.getByRole( 'combobox' ).filter( { hasText: 'Last 24 Hours' } )
-		).toBeVisible();
+		await expect( page.getByLabel( 'Time period' ) ).toHaveValue( 'day' );
 	} );
 
 	test( 'Tools menu does not list AI Request Logs when the experiment is disabled', async ( {
@@ -107,6 +105,77 @@ test.describe( 'AI Request Logging Experiment', () => {
 		await expect(
 			page.locator( 'code', { hasText: 'openai:responses' } ).first()
 		).toBeVisible( { timeout: 10000 } );
+	} );
+
+	test( 'Period selector switches the table data window', async ( {
+		admin,
+		page,
+	} ) => {
+		await visitRequestLogsPage( admin );
+
+		const periodSelect = page.getByLabel( 'Time period' );
+
+		// Make sure the request is for the logs list, not the filters or summary.
+		const isLogsListRequest = ( req ) => {
+			const url = decodeURIComponent( req.url() );
+			return (
+				url.includes( 'ai/v1/logs' ) &&
+				! url.includes( '/logs/summary' ) &&
+				! url.includes( '/logs/filters' )
+			);
+		};
+
+		// Check if the request includes the date_from parameter
+		const isDateFromRequest = ( req ) => {
+			const url = decodeURIComponent( req.url() );
+			return url.includes( 'date_from=' );
+		};
+
+		// Switching to "Last Minute" should fire a new logs request scoped by date_from
+		const minuteRequestPromise = page.waitForRequest(
+			( req ) => isLogsListRequest( req ) && isDateFromRequest( req )
+		);
+		await periodSelect.selectOption( 'minute' );
+		const minuteRequest = await minuteRequestPromise;
+		expect( decodeURIComponent( minuteRequest.url() ) ).toContain(
+			'date_from='
+		);
+
+		// Switching to "All Time" should fire a request without date_from
+		const allTimeRequestPromise = page.waitForRequest(
+			( req ) => isLogsListRequest( req ) && ! isDateFromRequest( req )
+		);
+		await periodSelect.selectOption( 'all' );
+		const allTimeRequest = await allTimeRequestPromise;
+		expect( decodeURIComponent( allTimeRequest.url() ) ).not.toContain(
+			'date_from='
+		);
+	} );
+
+	test( 'Search box filters table rows', async ( { admin, page } ) => {
+		await visitRequestLogsPage( admin );
+
+		// Make sure there is at least one row in the table (from previous test)
+		await expect(
+			page.locator( 'code', { hasText: 'openai:responses' } ).first()
+		).toBeVisible();
+
+		const searchBox = page.getByRole( 'searchbox' );
+
+		// Search for an operation that doesn't exist
+		await searchBox.fill( 'this-operation-does-not-exist' );
+
+		await expect( page.getByText( 'No results' ) ).toBeVisible();
+		await expect(
+			page.locator( 'code', { hasText: 'openai:responses' } )
+		).toHaveCount( 0 );
+
+		// Clearing the search restores the row
+		await searchBox.clear();
+
+		await expect(
+			page.locator( 'code', { hasText: 'openai:responses' } ).first()
+		).toBeVisible();
 	} );
 
 	test( 'Purge All Logs clears the table', async ( { admin, page } ) => {

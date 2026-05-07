@@ -21,6 +21,8 @@ const HeaderPeriodSelector: React.FC< HeaderPeriodSelectorProps > = ( {
 	loading,
 } ) => (
 	<SelectControl
+		label={ __( 'Time period', 'ai' ) }
+		hideLabelFromVision
 		value={ period }
 		options={ [
 			{ label: __( 'Last Minute', 'ai' ), value: 'minute' },
