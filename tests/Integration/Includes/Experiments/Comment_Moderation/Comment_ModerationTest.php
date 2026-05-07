@@ -244,7 +244,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_show_bulk_action_notice_renders_notice() {
-		$experiment                    = new Comment_Moderation();
+		$experiment                   = new Comment_Moderation();
 		$_GET['wpai_analysis_queued'] = '2';
 
 		ob_start();
@@ -261,7 +261,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_show_bulk_action_notice_does_nothing_for_invalid_count() {
-		$experiment                    = new Comment_Moderation();
+		$experiment                   = new Comment_Moderation();
 		$_GET['wpai_analysis_queued'] = '0';
 
 		ob_start();
@@ -301,5 +301,48 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'data-ai-status="pending"', $output );
 		$this->assertStringContainsString( 'data-comment-id="' . $comment_id . '"', $output );
+	}
+
+	/**
+	 * Test filtering logic via handle_sorting_and_filtering.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_comment_filtering_integration() {
+		set_current_screen( 'edit-comments' );
+		$experiment = new Comment_Moderation();
+		add_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+
+		$comment_pos = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_pos, Comment_Moderation::META_SENTIMENT, 'positive' );
+		update_comment_meta( $comment_pos, Comment_Moderation::META_TOXICITY_SCORE, 0.2 );
+
+		$comment_neg = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_neg, Comment_Moderation::META_SENTIMENT, 'negative' );
+		update_comment_meta( $comment_neg, Comment_Moderation::META_TOXICITY_SCORE, 0.8 );
+
+		$comment_neu = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_neu, Comment_Moderation::META_SENTIMENT, 'neutral' );
+		update_comment_meta( $comment_neu, Comment_Moderation::META_TOXICITY_SCORE, 0.5 );
+
+		// Filter for positive sentiment.
+		$_GET['wpai_sentiment'] = 'positive';
+		$comments               = get_comments( array( 'fields' => 'ids' ) );
+		$this->assertContains( $comment_pos, $comments );
+		$this->assertNotContains( $comment_neg, $comments );
+		$this->assertNotContains( $comment_neu, $comments );
+
+		// Filter for medium toxicity.
+		unset( $_GET['wpai_sentiment'] );
+		$_GET['wpai_toxicity'] = 'medium';
+		$comments              = get_comments( array( 'fields' => 'ids' ) );
+		$this->assertContains( $comment_neu, $comments );
+		$this->assertNotContains( $comment_pos, $comments );
+		$this->assertNotContains( $comment_neg, $comments );
+
+		// Cleanup.
+		unset( $_GET['wpai_toxicity'] );
+		remove_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+		set_current_screen( 'front' );
 	}
 }
