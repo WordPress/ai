@@ -94,6 +94,9 @@ final class Main {
 		// Defer feature initialization to the 'init' action.
 		add_action( 'init', array( $this, 'initialize_features' ), 15 );
 
+		// Output global provider availability data for frontend scripts.
+		add_action( 'admin_head', array( $this, 'print_provider_data' ) );
+
 		// Register the default ability category.
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_ability_category' ) );
 	}
@@ -184,6 +187,20 @@ final class Main {
 				'label'       => __( 'AI', 'ai' ),
 				'description' => __( 'Various AI features and experiments.', 'ai' ),
 			),
+		);
+	}
+
+	/**
+	 * Outputs provider data as a global JavaScript object.
+	 *
+	 * Every experiment can subscribe to Provider data.
+	 *
+	 * @since x.x.x
+	 */
+	public function print_provider_data(): void {
+		printf(
+			'<script>window.aiProviderData = %s;</script>',
+			wp_json_encode( get_provider_availability_data() )
 		);
 	}
 
