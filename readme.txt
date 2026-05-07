@@ -21,6 +21,8 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
+* **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis.
+* **Content Resizing** - Shorten, expand, or rephrase selected block content.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
@@ -38,7 +40,6 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 We're actively developing new features to enhance your WordPress workflow:
 
-* **Comment Moderation** – AI-assisted moderation tools to help classify or manage user comments.
 * **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 * **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
 * **AI Playground** – Experiment with different AI models and providers.
