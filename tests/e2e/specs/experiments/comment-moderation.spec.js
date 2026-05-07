@@ -69,7 +69,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 		// Ensure the admin notice shows and has the right text.
 		await expect(
 			page.locator( '.notice-success', {
-				hasText: /1 comment queued for AI analysis/,
+				hasText: /1 comment queued for analysis/,
 			} )
 		).toBeVisible();
 

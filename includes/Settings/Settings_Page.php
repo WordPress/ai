@@ -240,6 +240,7 @@ class Settings_Page {
 				'settingsFields' => $feature->get_settings_fields_metadata(),
 				'stability'      => $feature->get_stability(),
 				'image'          => esc_url( $feature->get_image() ),
+				'capability'     => $feature->get_capability(),
 			);
 		}
 
