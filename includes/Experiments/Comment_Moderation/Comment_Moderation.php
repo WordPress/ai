@@ -84,6 +84,15 @@ class Comment_Moderation extends Abstract_Feature {
 	public const STATUS_FAILED = 'failed';
 
 	/**
+	 * Comment analysis ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis|null
+	 */
+	private $comment_analysis_ability = null;
+
+	/**
 	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
@@ -166,13 +175,7 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
-		// Analyze the comment using the comment-analysis ability.
-		$ability = wp_get_ability( 'ai/comment-analysis' );
-		if ( ! $ability ) {
-			return;
-		}
-
-		$analysis = $ability->execute( array( 'comment_id' => $comment_id ) );
+		$analysis = $this->get_comment_analysis_ability()->analyze_comment_by_id( (int) $comment_id );
 		if ( is_wp_error( $analysis ) ) {
 			return;
 		}
@@ -201,6 +204,27 @@ class Comment_Moderation extends Abstract_Feature {
 				'comment_approved' => '0',
 			)
 		);
+	}
+
+	/**
+	 * Gets the comment analysis ability for trusted internal use.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis Comment analysis ability.
+	 */
+	private function get_comment_analysis_ability(): Comment_Analysis_Ability {
+		if ( ! $this->comment_analysis_ability ) {
+			$this->comment_analysis_ability = new Comment_Analysis_Ability(
+				'ai/comment-analysis',
+				array(
+					'label'       => __( 'Comment Analysis', 'ai' ),
+					'description' => __( 'Analyzes a comment for toxicity and sentiment.', 'ai' ),
+				)
+			);
+		}
+
+		return $this->comment_analysis_ability;
 	}
 
 	/**
@@ -461,8 +485,8 @@ class Comment_Moderation extends Abstract_Feature {
 				sprintf(
 					/* translators: %d: Number of comments queued for analysis. */
 					_n(
-						'%d comment queued for AI analysis.',
-						'%d comments queued for AI analysis.',
+						'%d comment queued for analysis.',
+						'%d comments queued for analysis.',
 						$count,
 						'ai'
 					),
