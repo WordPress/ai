@@ -3,15 +3,13 @@
  */
 import { Page } from '@wordpress/admin-ui';
 import {
-	Text,
-	Card,
-	Stack,
-	Badge,
 	Button,
-	Link,
+	Card,
 	Icon,
+	Link,
 	Notice,
 	Popover,
+	Stack,
 	VisuallyHidden,
 } from '@wordpress/ui';
 import { Spinner, ToggleControl } from '@wordpress/components';
