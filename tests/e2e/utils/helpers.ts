@@ -198,33 +198,16 @@ export const enableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	// Visual-card features use a showcase card with an Enable/Disable button
-	// instead of a toggle input.
-	const showcaseCard = page
-		.locator( '.ai-showcase-card' )
-		.filter( { hasText: experimentLabel } );
-
-	// Wait for either the showcase card or the toggle to appear.
 	const toggle = page.getByLabel( experimentLabel );
-	await expect( showcaseCard.or( toggle ) ).toBeVisible( {
-		timeout: 10000,
-	} );
+	await expect( toggle ).toBeVisible( { timeout: 10000 } );
+	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
-	if ( await showcaseCard.isVisible() ) {
-		// Already enabled if the "Enabled" badge is visible.
-		if ( await showcaseCard.getByText( 'Enabled' ).isVisible() ) {
-			return;
-		}
-
-		await showcaseCard.getByRole( 'button', { name: 'Enable' } ).click();
-	} else {
-		// Nothing to do if this experiment is already enabled.
-		if ( await toggle.isChecked() ) {
-			return;
-		}
-
-		await toggle.check();
+	// Nothing to do if this experiment is already enabled.
+	if ( await toggle.isChecked() ) {
+		return;
 	}
+
+	await toggle.check();
 
 	// Ensure the save was successful.
 	await expect(
@@ -248,33 +231,16 @@ export const disableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	// Visual-card features use a showcase card with an Enable/Disable button
-	// instead of a toggle input.
-	const showcaseCard = page
-		.locator( '.ai-showcase-card' )
-		.filter( { hasText: experimentLabel } );
-
-	// Wait for either the showcase card or the toggle to appear.
 	const toggle = page.getByLabel( experimentLabel );
-	await expect( showcaseCard.or( toggle ) ).toBeVisible( {
-		timeout: 10000,
-	} );
+	await expect( toggle ).toBeVisible( { timeout: 10000 } );
+	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
-	if ( await showcaseCard.isVisible() ) {
-		// Already disabled if there's no "Enabled" badge.
-		if ( ! ( await showcaseCard.getByText( 'Enabled' ).isVisible() ) ) {
-			return;
-		}
-
-		await showcaseCard.getByRole( 'button', { name: 'Disable' } ).click();
-	} else {
-		// Nothing to do if this experiment is already disabled.
-		if ( ! ( await toggle.isChecked() ) ) {
-			return;
-		}
-
-		await toggle.uncheck();
+	// Nothing to do if this experiment is already disabled.
+	if ( ! ( await toggle.isChecked() ) ) {
+		return;
 	}
+
+	await toggle.uncheck();
 
 	// Ensure the save was successful.
 	await expect(
