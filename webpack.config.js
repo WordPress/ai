@@ -38,6 +38,11 @@ module.exports = {
 			'src/experiments/abilities-explorer',
 			'index.js'
 		),
+		'experiments/content-resizing': path.resolve(
+			process.cwd(),
+			'src/experiments/content-resizing',
+			'index.tsx'
+		),
 		'experiments/example-experiment': path.resolve(
 			process.cwd(),
 			'src/experiments/example-experiment',
@@ -76,6 +81,11 @@ module.exports = {
 		'experiments/title-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/title-generation',
+			'index.tsx'
+		),
+		'experiments/comment-moderation': path.resolve(
+			process.cwd(),
+			'src/experiments/comment-moderation',
 			'index.tsx'
 		),
 		'experiments/alt-text-generation': path.resolve(

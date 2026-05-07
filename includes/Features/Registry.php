@@ -76,7 +76,7 @@ final class Registry {
 	/**
 	 * Gets registered features by stability.
 	 *
-	 * @since x.x.x
+	 * @since 0.8.0
 	 *
 	 * @param 'deprecated'|'experimental'|'stable' $stability The stability level to match.
 	 * @return \WordPress\AI\Contracts\Feature[] Array of matching feature instances keyed by feature ID.

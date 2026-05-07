@@ -11,6 +11,7 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Services\AI_Service;
+use WordPress\AI\Services\Guidelines;
 
 /**
  * Purposely using return instead of exit here.
@@ -71,6 +72,34 @@ function normalize_content( string $content ): string {
 	$content = (string) apply_filters( 'wpai_normalize_content', (string) $content );
 
 	return trim( $content );
+}
+
+/**
+ * Counts the number of words in a string with Unicode support.
+ * Handles non-Latin scripts including; CJK (Chinese, Japanese, Korean), Arabic, Cyrillic, etc.
+ * This approach mirrors the approach used by WordPress's JavaScript word counter.
+ *
+ * @since x.x.x
+ *
+ * @param string $text The text to count words in.
+ * @return int The number of words.
+ */
+function count_words( string $text ): int {
+	$text = trim( $text );
+	if ( '' === $text ) {
+		return 0;
+	}
+
+	/*
+	 * Insert spaces around CJK ideographs and Japanese kana so each
+	 * character is counted individually.
+	 */
+	$cjk_pattern = '/([\x{2E80}-\x{9FFF}\x{F900}-\x{FAFF}\x{FE30}-\x{FE4F}\x{20000}-\x{2FA1F}\x{3040}-\x{309F}\x{30A0}-\x{30FF}])/u';
+	$text        = preg_replace( $cjk_pattern, ' $1 ', $text ) ?? $text;
+	$text        = trim( preg_replace( '/\s+/u', ' ', $text ) ?? $text );
+	$words       = preg_split( '/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY );
+
+	return is_array( $words ) ? count( $words ) : 0;
 }
 
 /**
@@ -237,11 +266,11 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-1.5',
+			'gpt-image-2',
 		),
 		array(
 			'openai',
-			'gpt-image-1-mini',
+			'gpt-image-1.5',
 		),
 	);
 
@@ -296,6 +325,31 @@ function get_preferred_vision_models(): array {
 	 * @return array<int, array{string, string}> The filtered preferred vision models.
 	 */
 	return (array) apply_filters( 'wpai_preferred_vision_models', $preferred_models );
+}
+
+/**
+ * Retrieves guidelines, optionally filtered by category.
+ *
+ * @since 0.8.0
+ *
+ * @param string|null $category Optional. Guideline category to retrieve.
+ * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
+ */
+function get_guidelines( ?string $category = null ): ?array {
+	return Guidelines::get_instance()->get_guidelines( $category );
+}
+
+/**
+ * Formats guidelines as an XML-tagged string for prompt injection.
+ *
+ * @since 0.8.0
+ *
+ * @param list<string> $categories Guideline category slugs to include.
+ * @param string|null  $block_name Optional block name for block-specific guidelines.
+ * @return string Formatted guidelines XML string, or empty string.
+ */
+function format_guidelines_for_prompt( array $categories, ?string $block_name = null ): string {
+	return Guidelines::get_instance()->format_for_prompt( $categories, $block_name );
 }
 
 /**

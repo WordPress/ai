@@ -8,7 +8,7 @@ import { __, sprintf } from '@wordpress/i18n';
  */
 import { generateAltText } from '../../../utils/generate-alt-text';
 import { runAbility } from '../../../utils/run-ability';
-import { trimText } from '../../../utils/text';
+import { slugifyForFilename, trimText } from '../../../utils/text';
 import type {
 	GeneratedImageData,
 	ImageImportAbilityInput,
@@ -67,13 +67,20 @@ export async function uploadImage(
 				`data:image/png;base64,${ image.data }`
 			);
 			params.alt_text = altResult.alt_text;
-		} catch ( error ) {
+		} catch {
 			params.alt_text = prompt;
 		}
 	}
 
 	// Set our image title to be a trimmed version of the alt text.
 	params.title = trimText( params.alt_text ?? '' );
+
+	// If nothing usable remains after slugifying, leave filename unset so
+	// the PHP ability falls back to `ai-generated-image-<timestamp>`.
+	const filenameSlug = slugifyForFilename( params.alt_text ?? '' );
+	if ( filenameSlug ) {
+		params.filename = filenameSlug;
+	}
 
 	onProgress?.( __( 'Importing image…', 'ai' ) );
 
@@ -87,7 +94,9 @@ export async function uploadImage(
 				return response.image as UploadedImage;
 			}
 
-			throw new Error( 'Invalid response from image import' );
+			throw new Error(
+				__( 'Invalid response from image import.', 'ai' )
+			);
 		} )
 		.catch( ( error ) => {
 			throw new Error( error.message );

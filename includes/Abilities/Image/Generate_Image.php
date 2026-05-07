@@ -30,6 +30,15 @@ class Generate_Image extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 0.8.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'images' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.2.0
 	 */
 	protected function input_schema(): array {
@@ -238,6 +247,14 @@ class Generate_Image extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
 		$request_options = new RequestOptions();
 		$request_options->setTimeout( 90 );
+
+		// Inject guidelines into the prompt. Unlike the other features, we don't
+		// use system instructions here because most image gen models don't support them.
+		$guidelines = $this->get_guidelines_for_prompt();
+		if ( $guidelines ) {
+			$prompt .= "\n\n" . 'The following guidelines represent the site&#039;s editorial standards. Apply them where relevant. If guidelines conflict with the above input, prioritize accuracy.';
+			$prompt .= "\n\n" . $guidelines;
+		}
 
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_request_options( $request_options )

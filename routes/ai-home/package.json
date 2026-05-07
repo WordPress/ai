@@ -1,21 +1,24 @@
 {
-  "name": "@ai/ai-home-route",
-  "version": "1.0.0",
-  "private": true,
-  "route": {
-    "path": "/",
-    "page": [
-      "ai"
-    ]
-  },
-  "dependencies": {
-    "@wordpress/admin-ui": "*",
-    "@wordpress/components": "*",
-    "@wordpress/core-data": "*",
-    "@wordpress/data": "*",
-    "@wordpress/dataviews": "*",
-    "@wordpress/element": "*",
-    "@wordpress/i18n": "*",
-    "@wordpress/notices": "*"
-  }
+	"name": "@ai/ai-home-route",
+	"version": "1.0.0",
+	"private": true,
+	"route": {
+		"path": "/",
+		"page": [
+			"ai"
+		]
+	},
+	"dependencies": {
+		"@wordpress/admin-ui": "*",
+		"@wordpress/components": "*",
+		"@wordpress/core-data": "*",
+		"@wordpress/data": "*",
+		"@wordpress/dataviews": "*",
+		"@wordpress/element": "*",
+		"@wordpress/icons": "*",
+		"@wordpress/i18n": "*",
+		"@wordpress/notices": "*",
+		"@wordpress/primitives": "*",
+		"@wordpress/ui": "*"
+	}
 }

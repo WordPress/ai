@@ -19,14 +19,45 @@
 	}
 }
 
-.ai-settings-page .components-notice {
-	margin: 0 0 24px;
+.ai-settings-page__notice {
+	margin-bottom: 24px;
 }
 
 .ai-settings-page__actions {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 16px;
+}
+
+.ai-settings-page__global-toggle {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.ai-settings-page__infotip-trigger {
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: var(--wpds-cursor-control);
+	display: inline-flex;
+	align-items: center;
+	border-radius: var(--wpds-border-radius-sm);
+	color: inherit;
+}
+
+.ai-settings-page__infotip-trigger:focus-visible {
+	outline: 2px solid var(--wp-admin-theme-color);
+	outline-offset: 2px;
+}
+
+.ai-settings-page__infotip-description {
+	margin: 0;
+	display: block;
+	width: min(360px, calc(100vw - 40px));
+	max-width: 100%;
+	line-height: 1.5;
 }
 
 .ai-settings-page__link {
@@ -76,8 +107,6 @@
 
 .ai-showcase-card__image {
 	width: 100%;
-	aspect-ratio: 16 / 9;
-	background: #f0f0f0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -86,47 +115,11 @@
 	img {
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
 	}
 }
 
 .ai-showcase-card__content {
-	padding: 16px;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	flex: 1;
-}
-
-.ai-showcase-card__title {
-	font-size: 14px;
-	font-weight: 600;
-	margin: 0;
-	line-height: 1.4;
-}
-
-.ai-showcase-card__description {
-	font-size: 13px;
-	color: #757575;
-	margin: 0;
-	flex: 1;
-}
-
-.ai-showcase-card__actions {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-top: 4px;
-}
-
-.ai-showcase-card__enabled-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 2px;
-	font-size: 12px;
-	font-weight: 500;
-	color: #00a32a;
-	white-space: nowrap;
+	padding: 24px;
 }
 
 .ai-showcase-card--disabled {

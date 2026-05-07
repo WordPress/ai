@@ -1,4 +1,9 @@
 /**
+ * WordPress dependencies
+ */
+import { __ } from '@wordpress/i18n';
+
+/**
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
@@ -26,7 +31,7 @@ export async function generateSummary(
 				return response as string;
 			}
 
-			throw new Error( 'Invalid response from API' );
+			throw new Error( __( 'Invalid response from API.', 'ai' ) );
 		} )
 		.catch( ( error ) => {
 			throw new Error( error.message );
