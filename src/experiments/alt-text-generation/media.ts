@@ -150,7 +150,13 @@ class AltTextMediaControls {
 		}
 
 		if ( ! isProviderAvailable() ) {
-			this.setStatus( __( 'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in Settings → Connectors.', 'ai' ), true );
+			this.setStatus(
+				__(
+					'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in Settings → Connectors.',
+					'ai'
+				),
+				true
+			);
 			return;
 		}
 

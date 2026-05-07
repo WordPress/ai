@@ -77,7 +77,10 @@ async function processBulkAltText(): Promise< void > {
 		return;
 	}
 
-	const noProviderMessage = __( 'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in Settings → Connectors.', 'ai' );
+	const noProviderMessage = __(
+		'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in Settings → Connectors.',
+		'ai'
+	);
 
 	if ( ! isProviderAvailable() ) {
 		createNotice( noProviderMessage );
