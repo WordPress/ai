@@ -528,7 +528,7 @@ class Comment_Moderation extends Abstract_Feature {
 	private function show_missing_provider_notice(): void {
 		$connectors_url = get_provider_availability_data()['connectorsUrl'];
 		$notice_message = sprintf(
-			/* translators: %s: URL to connectors settings page. */
+			/* translators: %s: Link to connectors settings page. */
 			__( 'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in %s.', 'ai' ),
 			'<a href="' . esc_url( $connectors_url ) . '" target="_blank">' . esc_html__( 'Settings → Connectors', 'ai' ) . '</a>'
 		);
