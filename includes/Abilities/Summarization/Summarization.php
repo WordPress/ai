@@ -11,9 +11,9 @@ namespace WordPress\AI\Abilities\Summarization;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Experiments\Summarization\Summarization as Summarization_Experiment;
 
 use function WordPress\AI\get_post_context;
-use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
 
 /**
@@ -149,7 +149,7 @@ class Summarization extends Abstract_Ability {
 		}
 
 		// Return the summary in the format the Ability expects.
-		return sanitize_text_field( trim( $result ) );
+		return sanitize_textarea_field( trim( $result ) );
 	}
 
 	/**
@@ -272,8 +272,9 @@ class Summarization extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt, string $length ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
-			->using_temperature( 0.9 )
-			->using_model_preference( ...get_preferred_models_for_text_generation() );
+			->using_temperature( 0.9 );
+
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Summarization_Experiment::class );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

@@ -74,6 +74,8 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );
 		}

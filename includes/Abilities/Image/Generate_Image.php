@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Image;
 use Throwable;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Features\Image_Generation\Image_Generation as Image_Generation_Feature;
 use WordPress\AiClient\Files\DTO\File;
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
@@ -258,8 +259,9 @@ class Generate_Image extends Abstract_Ability {
 
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_request_options( $request_options )
-			->as_output_file_type( FileTypeEnum::inline() )
-			->using_model_preference( ...get_preferred_image_models() );
+			->as_output_file_type( FileTypeEnum::inline() );
+
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Image_Generation_Feature::class, get_preferred_image_models() );
 
 		if ( null !== $reference_image ) {
 			try {

@@ -66,7 +66,7 @@ const SummarizationBlockControls = createHigherOrderComponent(
 				attributes: { aiGeneratedSummary = false },
 			} = props;
 
-			if ( name !== 'core/paragraph' || ! aiGeneratedSummary ) {
+			if ( name !== 'core/group' || ! aiGeneratedSummary ) {
 				return <BlockEdit { ...props } />;
 			}
 
