@@ -222,8 +222,8 @@ class AI_Request_Log_Manager {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $options Filter options from the repository.
-	 * @return array<string, mixed>
+	 * @param array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, user_ids: list<int>} $options Filter options from the repository.
+	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, users: list<array{value: string, label: string}>}
 	 */
 	private function resolve_user_filter_options( array $options ): array {
 		$user_ids = $options['user_ids'] ?? array();

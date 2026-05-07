@@ -797,7 +797,7 @@ class AI_Request_Log_Repository {
 	 * @since x.x.x
 	 *
 	 * @param list<array<string, mixed>> $rows Raw query rows.
-	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>} Filter options.
+	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, user_ids: list<int>} Filter options.
 	 */
 	private function aggregate_filter_options( array $rows ): array {
 		$result = array(
