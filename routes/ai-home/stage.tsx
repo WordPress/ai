@@ -601,12 +601,7 @@ function VisualCardToggle( {
 			}` }
 		>
 			{ feature?.image && (
-				<img
-					alt=""
-					className="ai-showcase-card__image"
-					loading="lazy"
-					src={ feature.image }
-				/>
+				<img alt="" loading="lazy" src={ feature.image } />
 			) }
 			<Card.Content>
 				<ToggleControl
