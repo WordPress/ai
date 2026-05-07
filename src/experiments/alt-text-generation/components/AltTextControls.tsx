@@ -51,9 +51,9 @@ export function getButtonLabel(
  *
  * Displays a notice when an image is decorative.
  *
- * @return {JSX.Element} The component.
+ * @return {React.JSX.Element} The component.
  */
-export function DecorativeNotice(): JSX.Element {
+export function DecorativeNotice(): React.JSX.Element {
 	return (
 		<Notice status="info" isDismissible={ false }>
 			{ __(

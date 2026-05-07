@@ -30,14 +30,14 @@ import type { MediaEditorAttachment } from '../types';
  * @param {Object}                                      props.field               The normalized field definition.
  * @param {Function}                                    props.onChange            Callback to update the attachment record.
  * @param {boolean}                                     props.hideLabelFromVision Whether to visually hide the textarea label.
- * @return {JSX.Element|null} The control.
+ * @return {React.JSX.Element|null} The control.
  */
 export function MediaEditorAltTextControl( {
 	data,
 	field,
 	onChange,
 	hideLabelFromVision,
-}: DataFormControlProps< MediaEditorAttachment > ): JSX.Element | null {
+}: DataFormControlProps< MediaEditorAttachment > ): React.JSX.Element | null {
 	const {
 		id: attachmentId,
 		alt_text: currentAlt,
