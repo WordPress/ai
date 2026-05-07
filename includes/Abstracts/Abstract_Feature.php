@@ -79,7 +79,7 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * The AI capability type required by this feature.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 * @var string
 	 */
 	protected string $capability;

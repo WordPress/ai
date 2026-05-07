@@ -287,7 +287,7 @@ class Import_Base64_Image extends Abstract_Ability {
 		 * extension is appended afterwards, so filter implementations cannot
 		 * accidentally bypass sanitization or change the file extension.
 		 *
-		 * @since x.x.x
+		 * @since 0.9.0
 		 *
 		 * @param string               $filename The base filename, without extension.
 		 * @param array<string, mixed> $args     The import arguments. Includes mime_type,

@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  * Provides toxicity detection, sentiment analysis, and moderation
  * for WordPress comments.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Comment_Moderation extends Abstract_Feature {
 
@@ -86,7 +86,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Comment analysis ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @var \WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis|null
 	 */
@@ -95,7 +95,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public static function get_id(): string {
 		return 'comment-moderation';
@@ -104,7 +104,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -117,7 +117,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function register(): void {
 		// Register abilities.
@@ -149,7 +149,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Registers the comment moderation abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -165,7 +165,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Moderate newly added comments.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param int $comment_id Comment ID.
 	 */
@@ -186,7 +186,7 @@ class Comment_Moderation extends Abstract_Feature {
 		/**
 		 * Filters whether the comment should be moderated.
 		 *
-		 * @since x.x.x
+		 * @since 0.9.0
 		 *
 		 * @param bool $should_moderate Whether the comment should be moderated.
 		 * @param array $analysis The analysis results.
@@ -209,7 +209,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Gets the comment analysis ability for trusted internal use.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @return \WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis Comment analysis ability.
 	 */
@@ -230,7 +230,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds custom columns to the comments list table.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param array<string, string> $columns The existing columns.
 	 * @return array<string, string> The modified columns.
@@ -256,7 +256,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders the custom column content.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $column_name The column name.
 	 * @param int    $comment_id  The comment ID.
@@ -274,7 +274,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders the sentiment column content.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param int    $comment_id The comment ID.
 	 * @param string $status     The analysis status.
@@ -296,7 +296,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders the toxicity column content.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param int    $comment_id The comment ID.
 	 * @param string $status     The analysis status.
@@ -318,7 +318,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a sentiment badge.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $sentiment The sentiment value.
 	 */
@@ -355,7 +355,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a toxicity badge.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param float $score The toxicity score (0-1).
 	 */
@@ -387,7 +387,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a pending badge for comments queued for analysis.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param int $comment_id The comment ID.
 	 */
@@ -402,7 +402,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a processing badge.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param int $comment_id The comment ID.
 	 */
@@ -417,7 +417,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds bulk actions to the comments list.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param array<string, string> $actions The existing bulk actions.
 	 * @return array<string, string> The modified bulk actions.
@@ -434,7 +434,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Handles the bulk action for AI analysis.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $redirect_url The redirect URL.
 	 * @param string $action       The action being performed.
@@ -466,7 +466,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Shows admin notice after bulk action.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function show_bulk_action_notice(): void {
 		if ( ! isset( $_GET['wpai_analysis_queued'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -499,7 +499,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds an inline action to the comment row actions.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param array<string, string> $actions The existing actions.
 	 * @param \WP_Comment $comment The comment object.
@@ -535,7 +535,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Handles the inline analyze action from the comment row.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function handle_inline_action(): void {
 		if ( ! current_user_can( 'moderate_comments' ) ) {
@@ -568,7 +568,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Enqueues admin assets for the comments screen.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
@@ -590,7 +590,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds inline styles for the comment moderation badges.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function add_inline_styles(): void {
 		?>

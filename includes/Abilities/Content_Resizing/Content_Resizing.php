@@ -18,14 +18,14 @@ use function WordPress\AI\count_words;
 /**
  * Content resizing WordPress Ability.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Content_Resizing extends Abstract_Ability {
 
 	/**
 	 * The default action.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @var string
 	 */
@@ -34,7 +34,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * The minimum word count for the shorten action.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @var int
 	 */
@@ -43,7 +43,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -70,7 +70,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -82,7 +82,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function execute_callback( $input ) {
 		// Default arguments.
@@ -145,7 +145,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function permission_callback( $args ) {
 		// If a post ID is provided, ensure the user has permission to edit the post.
@@ -182,7 +182,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -193,7 +193,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * Generates resized content using the AI client.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $prompt The prompt to use for the content resizing.
 	 * @param string $action The resizing action to perform.
@@ -211,7 +211,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * Returns a prompt builder for content resizing.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $prompt The prompt to build.
 	 * @param string $action The resizing action to perform.

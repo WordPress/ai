@@ -113,7 +113,7 @@ class Summarization extends Abstract_Feature {
 	/**
 	 * Enqueues the block stylesheet for the editor iframe and the front end.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function enqueue_block_assets(): void {
 		Asset_Loader::enqueue_style( 'summarization', 'experiments/summarization' );

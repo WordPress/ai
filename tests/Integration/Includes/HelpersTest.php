@@ -723,7 +723,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_feature_developer_model_config() returns empty strings when unset.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_get_feature_developer_model_config_returns_empty_strings_when_unset(): void {
 		$result = \WordPress\AI\get_feature_developer_model_config( 'test-feature' );
@@ -740,7 +740,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_feature_developer_model_config() returns saved provider and model values.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_get_feature_developer_model_config_returns_saved_provider_and_model(): void {
 		update_option(
@@ -760,7 +760,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_feature_developer_model_config() tolerates malformed option values.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_get_feature_developer_model_config_handles_malformed_option(): void {
 		update_option( 'wpai_feature_test-feature_field_developer', 'not-an-array' );
@@ -774,7 +774,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that connector plugin checks treat connectors without plugin metadata as active.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_is_connector_plugin_active_returns_true_without_plugin_metadata(): void {
 		$this->assertTrue( \WordPress\AI\is_connector_plugin_active( array() ) );
@@ -783,7 +783,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that connector plugin checks support plugin_file metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_is_connector_plugin_active_returns_false_for_inactive_plugin_file(): void {
 		$this->assertFalse(

@@ -20,14 +20,14 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
  *
  * Analyzes comments for toxicity and sentiment.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Comment_Analysis extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -46,7 +46,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -74,7 +74,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @return array{comment_id: int, toxicity_score: float, sentiment: string}|\WP_Error The result of the ability execution.
 	 */
@@ -88,7 +88,7 @@ class Comment_Analysis extends Abstract_Ability {
 	 * This method intentionally does not perform user capability checks. User-invoked
 	 * ability execution must go through execute(), which runs permission_callback().
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param int $comment_id Comment ID.
 	 * @return array{comment_id: int, toxicity_score: float, sentiment: string}|\WP_Error The result of the analysis.
@@ -154,7 +154,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function permission_callback( $input ) {
 		if ( ! current_user_can( 'moderate_comments' ) ) {
@@ -170,7 +170,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -181,7 +181,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Returns the JSON schema used for the output of the comment analysis.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @return array<string, mixed> JSON schema for the output of the comment analysis.
 	 */
@@ -199,7 +199,7 @@ class Comment_Analysis extends Abstract_Ability {
 		/**
 		 * Filters the JSON schema used for the output of the comment analysis.
 		 *
-		 * @since x.x.x
+		 * @since 0.9.0
 		 *
 		 * @param array<string, mixed> $schema JSON schema for the output of the comment analysis.
 		 */
@@ -209,7 +209,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Analyzes a comment for toxicity and sentiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $content The comment content.
 	 * @param string $author  The comment author name.
@@ -222,7 +222,7 @@ class Comment_Analysis extends Abstract_Ability {
 		 * Returning an array short-circuits the provider call. This is primarily useful for tests
 		 * and integrations that provide their own comment analysis implementation.
 		 *
-		 * @since x.x.x
+		 * @since 0.9.0
 		 *
 		 * @param array{toxicity_score: float, sentiment: string}|null $result  Precomputed analysis result.
 		 * @param string                                              $content Comment content.
@@ -268,7 +268,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for analyzing a comment.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $prompt The prompt to analyze a comment.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
@@ -288,7 +288,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Sanitizes an analysis result.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param array<string, mixed> $result Raw analysis result.
 	 * @return array{toxicity_score: float, sentiment: string} Sanitized analysis result.

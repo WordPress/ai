@@ -310,7 +310,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that the wpai_generated_image_filename filter can override the final filename.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_filter_overrides_filename() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -368,7 +368,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that values returned from the wpai_generated_image_filename filter are sanitized.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_filter_return_value_is_sanitized() {
 		$reflection = new \ReflectionClass( $this->ability );
