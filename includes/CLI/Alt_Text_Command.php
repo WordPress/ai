@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 
 declare( strict_types=1 );
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Manages AI-powered alt text generation for media library images.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Alt_Text_Command {
 

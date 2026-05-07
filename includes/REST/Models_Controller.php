@@ -26,14 +26,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * Returns providers and models filtered by capability.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 final class Models_Controller {
 
 	/**
 	 * The REST API namespace.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @var string
 	 */
@@ -42,7 +42,7 @@ final class Models_Controller {
 	/**
 	 * The REST API route.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @var string
 	 */
@@ -51,7 +51,7 @@ final class Models_Controller {
 	/**
 	 * Supported capability values.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @var list<string>
 	 */
@@ -60,7 +60,7 @@ final class Models_Controller {
 	/**
 	 * Initializes the REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function init(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
@@ -69,7 +69,7 @@ final class Models_Controller {
 	/**
 	 * Registers the REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function register_routes(): void {
 		register_rest_route(
@@ -94,7 +94,7 @@ final class Models_Controller {
 	/**
 	 * Checks whether the current user can access this endpoint.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @return bool True if the user has permission.
 	 */
@@ -105,7 +105,7 @@ final class Models_Controller {
 	/**
 	 * Returns providers and their models for the requested capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return \WP_REST_Response|\WP_Error The response.
@@ -147,7 +147,7 @@ final class Models_Controller {
 	/**
 	 * Builds model requirements for a capability string.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $capability The capability slug.
 	 * @return \WordPress\AiClient\Providers\Models\DTO\ModelRequirements The requirements.
@@ -194,7 +194,7 @@ final class Models_Controller {
 	 *
 	 * Only considers active connectors registered in the plugin.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param \WordPress\AiClient\Providers\Models\DTO\ModelRequirements $requirements The model requirements.
 	 * @return list<array{id: string, name: string, models: list<array{id: string, name: string}>}> Provider data.

@@ -14,13 +14,13 @@ use WordPress\AI\Features\Image_Generation\Image_Generation;
 /**
  * Feature capability test case.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Feature_CapabilityTest extends WP_UnitTestCase {
 	/**
 	 * Test that image generation advertises image generation capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_image_generation_feature_uses_image_generation_capability(): void {
 		$feature = new Image_Generation();
@@ -31,7 +31,7 @@ class Feature_CapabilityTest extends WP_UnitTestCase {
 	/**
 	 * Test that alt text generation advertises vision capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_alt_text_generation_feature_uses_vision_capability(): void {
 		$feature = new Alt_Text_Generation();

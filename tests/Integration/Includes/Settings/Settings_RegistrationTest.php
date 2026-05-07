@@ -42,7 +42,7 @@ class Settings_Registration_Test_Feature extends Abstract_Feature {
 /**
  * Settings_Registration test case.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
@@ -59,7 +59,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that register_settings() registers developer model settings for each feature.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_register_settings_registers_developer_model_setting(): void {
 		global $wp_registered_settings;
@@ -84,7 +84,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that init() registers the provider discovery REST route hook.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_init_registers_provider_discovery_rest_hook(): void {
 		global $wp_filter;
