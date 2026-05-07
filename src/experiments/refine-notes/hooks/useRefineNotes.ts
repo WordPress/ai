@@ -27,6 +27,7 @@ import {
 	fetchAllNotesByStatus,
 	buildContextWindow,
 } from '../../../utils/notes';
+import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
@@ -115,6 +116,10 @@ export function useRefineNotes(): {
 	);
 
 	const runRefinement = async () => {
+		if ( ! ensureProvider( 'wpai_refine_notes_error' ) ) {
+			return;
+		}
+
 		setIsRefining( true );
 		setProgress( 0 );
 		setTotal( 0 );

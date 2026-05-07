@@ -14,6 +14,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
 import type { ExcerptGenerationAbilityInput } from '../types';
 
 /**
@@ -65,6 +66,10 @@ export function useExcerptGeneration(): {
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 
 	const handleGenerate = async () => {
+		if ( ! ensureProvider( 'ai_excerpt_generation_error' ) ) {
+			return;
+		}
+
 		setIsGenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_excerpt_generation_error'

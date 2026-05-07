@@ -16,6 +16,7 @@ import { image, chevronLeft, chevronRight } from '@wordpress/icons';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
 import { uploadImage } from '../functions/upload-image';
 import { insertIntoBlock } from '../functions/insert-into-block';
 import { openGalleryMediaLibraryWithImage } from '../functions/open-gallery-media-library';
@@ -87,6 +88,10 @@ export function GenerateImageInlineModal( {
 		referenceImage?: string,
 		refHistoryIndex?: number
 	): Promise< void > {
+		if ( ! ensureProvider( 'ai_image_generation_error' ) ) {
+			return;
+		}
+
 		setError( null );
 		setState( 'generating' );
 		setProgress( __( 'Generating image…', 'ai' ) );

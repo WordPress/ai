@@ -19,6 +19,7 @@ import { store as editorStore } from '@wordpress/editor';
  */
 import type { ImageBlockAttributes } from '../types';
 import { generateAltText } from '../../../utils/generate-alt-text';
+import { ensureProvider } from '../../../utils/provider-status';
 
 interface AltTextControlsProps {
 	clientId: string;
@@ -80,6 +81,10 @@ export function AltTextControls( {
 	 * Handles the generate button click.
 	 */
 	const handleGenerate = async () => {
+		if ( ! ensureProvider( 'ai_alt_text_generation_error' ) ) {
+			return;
+		}
+
 		setIsGenerating( true );
 		setGeneratedAlt( null );
 		setIsDecorative( false );

@@ -16,6 +16,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { generateSummary } from './generate-summary';
+import { ensureProvider } from '../../../utils/provider-status';
 
 /**
  * Summary generation hook.
@@ -50,6 +51,10 @@ export function useSummaryGeneration() {
 	 * Handles the summarization button click.
 	 */
 	const handleSummarize = async () => {
+		if ( ! ensureProvider( 'ai_summarization_error' ) ) {
+			return;
+		}
+
 		setIsSummarizing( true );
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_summarization_error'

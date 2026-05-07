@@ -25,6 +25,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
 import type { TitleGenerationAbilityInput, GeneratedTitleData } from '../types';
 
 const { aiTitleGenerationData } = window as any;
@@ -109,6 +110,10 @@ export default function TitleToolbar( {
 	 */
 	const handleGenerate = async () => {
 		if ( isGenerating ) {
+			return;
+		}
+
+		if ( ! ensureProvider( 'ai_title_generation_error' ) ) {
 			return;
 		}
 

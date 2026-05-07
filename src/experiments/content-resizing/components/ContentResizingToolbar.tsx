@@ -27,6 +27,7 @@ import { count } from '@wordpress/wordcount';
 import { runAbility } from '../../../utils/run-ability';
 import type { ContentResizingAction } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
+import { ensureProvider } from '../../../utils/provider-status';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
 const SHORTEN_MIN_WORDS = 5;
@@ -73,6 +74,10 @@ export default function ContentResizingToolbar( {
 
 	const handleAction = useCallback(
 		async ( action: ContentResizingAction ) => {
+			if ( ! ensureProvider( 'ai_content_resizing_error' ) ) {
+				return;
+			}
+
 			if ( action === 'shorten' ) {
 				const wordCount = count( blockContent, 'words', {} );
 				// We need at least 5 words to shorten the content.

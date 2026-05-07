@@ -28,6 +28,7 @@ import {
 	fetchAllNotesByStatus,
 	buildContextWindow,
 } from '../../../utils/notes';
+import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
@@ -171,6 +172,10 @@ export function useReviewNotes(): {
 	const [ lastRunCount, setLastRunCount ] = useState< number | null >( null );
 
 	const runReview = async () => {
+		if ( ! ensureProvider( 'ai_review_notes_error' ) ) {
+			return;
+		}
+
 		setIsReviewing( true );
 		setProgress( 0 );
 		setTotal( 0 );
