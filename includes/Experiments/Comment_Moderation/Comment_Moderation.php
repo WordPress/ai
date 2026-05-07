@@ -130,6 +130,12 @@ class Comment_Moderation extends Abstract_Feature {
 		add_filter( 'comment_row_actions', array( $this, 'add_inline_action' ), 10, 2 );
 		add_action( 'load-edit-comments.php', array( $this, 'handle_inline_action' ) );
 
+		// Add sortable columns.
+		add_filter( 'manage_edit-comments_sortable_columns', array( $this, 'add_sortable_columns' ) );
+
+		// Add custom sorting.
+		add_action( 'pre_get_comments', array( $this, 'handle_sorting' ) );
+
 		// Enqueue assets.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
@@ -288,6 +294,48 @@ class Comment_Moderation extends Abstract_Feature {
 		$pills = ob_get_clean();
 
 		return $comment_excerpt . $pills;
+	}
+
+	/**
+	 * Adds sortable columns to the comments list table.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $columns The existing sortable columns.
+	 * @return array<string, string> The modified sortable columns.
+	 */
+	public function add_sortable_columns( $columns ): array {
+		$columns['wpai_sentiment'] = 'wpai_sentiment';
+		$columns['wpai_toxicity']  = 'wpai_toxicity';
+		return $columns;
+	}
+
+	/**
+	 * Handles the custom sorting for comments.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Comment_Query $query The comment query object.
+	 */
+	public function handle_sorting( $query ): void {
+		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
+			return;
+		}
+
+		$screen = get_current_screen();
+		if ( ! $screen || 'edit-comments' !== $screen->id ) {
+			return;
+		}
+
+		$orderby = $query->query_vars['orderby'] ?? '';
+
+		if ( 'wpai_sentiment' === $orderby ) {
+			$query->query_vars['meta_key'] = self::META_SENTIMENT;
+			$query->query_vars['orderby']  = 'meta_value';
+		} elseif ( 'wpai_toxicity' === $orderby ) {
+			$query->query_vars['meta_key'] = self::META_TOXICITY_SCORE;
+			$query->query_vars['orderby']  = 'meta_value_num';
+		}
 	}
 
 	/**
