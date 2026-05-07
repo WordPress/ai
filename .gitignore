@@ -48,6 +48,7 @@ CLAUDE.md
 
 # WP ENV
 /.wp-env.override.json
+/.wp-env.test.override.json
 
 # Tests & Coverage
 /coverage/

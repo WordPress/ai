@@ -200,7 +200,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array(
@@ -236,7 +236,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array(
@@ -285,7 +285,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array(
@@ -300,6 +300,106 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'image', $result, 'Result should have image key' );
 		$this->assertIsInt( $result['image']['id'], 'Image ID should be an integer' );
 		$this->assertGreaterThan( 0, $result['image']['id'], 'Image ID should be greater than 0' );
+		$this->assertStringStartsWith(
+			'ai-generated-image-',
+			$result['image']['filename'],
+			'Filename should fall back to the ai-generated-image-<timestamp> format when no filename is provided'
+		);
+	}
+
+	/**
+	 * Test that the wpai_generated_image_filename filter can override the final filename.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_filter_overrides_filename() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create a user with upload_files capability.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$captured_filename = null;
+		$captured_args     = null;
+
+		$filter = static function ( $filename, $args ) use ( &$captured_filename, &$captured_args ) {
+			$captured_filename = $filename;
+			$captured_args     = $args;
+			return 'filtered-image-name';
+		};
+
+		add_filter( 'wpai_generated_image_filename', $filter, 10, 2 );
+
+		try {
+			$input = array(
+				'data'      => $this->valid_base64_image,
+				'filename'  => 'original-filename',
+				'mime_type' => 'image/png',
+			);
+
+			$result = $method->invoke( $this->ability, $input );
+		} finally {
+			remove_filter( 'wpai_generated_image_filename', $filter, 10 );
+		}
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertSame(
+			'original-filename',
+			$captured_filename,
+			'Filter should receive the base filename without extension'
+		);
+		$this->assertStringStartsWith(
+			'filtered-image-name',
+			$result['image']['filename'],
+			'Filter should be able to override the final filename'
+		);
+		$this->assertStringEndsWith(
+			'.png',
+			$result['image']['filename'],
+			'Extension should be appended after the filter runs'
+		);
+		$this->assertIsArray( $captured_args, 'Filter should receive args as second parameter' );
+		$this->assertSame( 'original-filename', $captured_args['filename'], 'Filter args should expose the original filename' );
+		$this->assertSame( 'image/png', $captured_args['mime_type'], 'Filter args should expose the MIME type' );
+	}
+
+	/**
+	 * Test that values returned from the wpai_generated_image_filename filter are sanitized.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_filter_return_value_is_sanitized() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create a user with upload_files capability.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$filter = static function () {
+			return '../../etc/passwd';
+		};
+
+		add_filter( 'wpai_generated_image_filename', $filter );
+
+		try {
+			$input = array(
+				'data'      => $this->valid_base64_image,
+				'mime_type' => 'image/png',
+			);
+
+			$result = $method->invoke( $this->ability, $input );
+		} finally {
+			remove_filter( 'wpai_generated_image_filename', $filter );
+		}
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertStringNotContainsString( '/', $result['image']['filename'], 'Slashes should be stripped from a filter-returned filename' );
+		$this->assertStringNotContainsString( '..', $result['image']['filename'], 'Path traversal sequences should be stripped from a filter-returned filename' );
+		$this->assertStringEndsWith( '.png', $result['image']['filename'], 'Extension should still be appended after sanitization' );
 	}
 
 	/**
@@ -313,7 +413,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array(
@@ -337,7 +437,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$input = array();
@@ -359,7 +459,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$mime_types = array( 'image/png', 'image/jpeg' );
@@ -390,7 +490,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user with upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
 		$result = $method->invoke( $this->ability, array() );
@@ -409,7 +509,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a user without upload_files capability.
-		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
 
 		$result = $method->invoke( $this->ability, array() );

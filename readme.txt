@@ -121,7 +121,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 1. Post editor showing Generate button above the post title field and title recommendations in a modal.
 2. Post editor sidebar showing Generate Excerpt button and generated excerpt.
-3. Post editor sidebar showing Generate AI Summary button and the generated content summary within an AI Summary block.
+3. Post editor sidebar showing Generate AI Summary button and the generated content summary within a Content Summary block.
 4. Post editor sidebar showing Generate featured image button and the generated featured image preview with Alt Text, Title, and Description.
 5. Post editor showing Generate Image flows.
 6. Media Library showing Generate Image flows.
@@ -131,6 +131,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 10. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
 11. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
 12. AI settings screen showing toggles to enable specific experiments.
+#. Comments admin screen showing AI-powered comment moderation features, including color-coded badges for toxicity scoring and comment sentiment.
 
 == Changelog ==
 
