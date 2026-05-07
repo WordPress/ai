@@ -8,32 +8,6 @@
 	@media (max-width: 480px) {
 		padding: 8px;
 	}
-
-	.dataforms-layouts-card__field-header-label {
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	.dataforms-layouts-card__field-description {
-		margin-bottom: 36px;
-	}
-}
-
-.ai-settings-page__notice {
-	margin-bottom: 24px;
-}
-
-.ai-settings-page__actions {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 16px;
-}
-
-.ai-settings-page__global-toggle {
-	display: flex;
-	align-items: center;
-	gap: 4px;
 }
 
 .ai-settings-page__infotip-trigger {
@@ -60,68 +34,23 @@
 	line-height: 1.5;
 }
 
-.ai-settings-page__link {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-
-	svg {
-		fill: currentColor;
-	}
-}
 
 .ai-feature-settings-form {
-	margin-top: 4px;
+	margin-top: var(--wpds-dimension-padding-xs);
 	padding-left: 40px;
 	max-width: 480px;
-
-	.components-base-control__label,
-	.components-input-control__label,
-	.dataforms-layouts-regular__field-label {
-		text-transform: none !important;
-	}
-}
-
-.ai-feature-settings-form__actions {
-	display: flex;
-	justify-content: flex-end;
-	margin-top: 12px;
 }
 
 .ai-section-actions {
-	border-top: 1px solid var(--wp-components-color-gray-200);
-	display: flex;
-	gap: 8px;
-	margin-top: 16px;
-	padding-top: 12px;
-}
-
-.ai-showcase-card {
-	display: flex;
-	flex-direction: column;
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	overflow: hidden;
-	background: #fff;
-}
-
-.ai-showcase-card__image {
-	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	overflow: hidden;
-
-	img {
-		width: 100%;
-		height: 100%;
-	}
-}
-
-.ai-showcase-card__content {
-	padding: 24px;
+	border-top: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	margin-top: var(--wpds-dimension-padding-md);
+	padding-top: var(--wpds-dimension-padding-sm);
 }
 
 .ai-showcase-card--disabled {
 	opacity: 0.6;
+}
+
+.ai-settings-page__loading {
+	min-height: calc(50vh); // Leave space for the page header.
 }
