@@ -105,6 +105,31 @@ class Mock_Custom_Stability_Experiment extends Test_Uncategorized_Experiment {
 }
 
 /**
+ * Mock experiment with custom capability metadata.
+ *
+ * @since x.x.x
+ */
+class Mock_Custom_Capability_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-custom-capability';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Custom Capability',
+			'description' => 'Test description',
+			'capability'  => 'none',
+		);
+	}
+}
+
+/**
  * Test experiment with an empty string category.
  *
  * @since 0.4.0
@@ -318,6 +343,36 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	public function test_get_stability_custom() {
 		$experiment = new Mock_Custom_Stability_Experiment();
 		$this->assertEquals( 'stable', $experiment->get_stability(), 'Custom stability should be returned from metadata' );
+	}
+
+	/**
+	 * Tests that get_capability() defaults to text_generation when the capability key is absent from metadata.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_capability_defaults_to_text_generation_when_missing(): void {
+		$experiment = new Test_Uncategorized_Experiment();
+
+		$this->assertSame(
+			'text_generation',
+			$experiment->get_capability(),
+			'get_capability() should return text_generation when no capability key is present in metadata'
+		);
+	}
+
+	/**
+	 * Tests that get_capability() returns the value declared in metadata.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_capability_returns_metadata_value(): void {
+		$experiment = new Mock_Custom_Capability_Experiment();
+
+		$this->assertSame(
+			'none',
+			$experiment->get_capability(),
+			'get_capability() should return the capability declared in load_metadata()'
+		);
 	}
 
 	/**

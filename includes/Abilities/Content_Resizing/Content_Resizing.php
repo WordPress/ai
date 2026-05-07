@@ -11,9 +11,9 @@ namespace WordPress\AI\Abilities\Content_Resizing;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Experiments\Content_Resizing\Content_Resizing as Content_Resizing_Experiment;
 
 use function WordPress\AI\count_words;
-use function WordPress\AI\get_preferred_models_for_text_generation;
 
 /**
  * Content resizing WordPress Ability.
@@ -218,15 +218,16 @@ class Content_Resizing extends Abstract_Ability {
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
 	 */
 	private function get_prompt_builder( string $prompt, string $action = self::ACTION_DEFAULT ) {
-		$builder = wp_ai_client_prompt( $prompt )
+		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction(
 				$this->get_system_instruction( 'system-instruction.php', array( 'action' => $action ) )
 			)
-			->using_temperature( 0.7 )
-			->using_model_preference( ...get_preferred_models_for_text_generation() );
+			->using_temperature( 0.7 );
+
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Content_Resizing_Experiment::class );
 
 		return $this->ensure_text_generation_supported(
-			$builder,
+			$prompt_builder,
 			esc_html__( 'Content resizing failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
 		);
 	}
