@@ -133,8 +133,9 @@ class Comment_Moderation extends Abstract_Feature {
 		// Add sortable columns.
 		add_filter( 'manage_edit-comments_sortable_columns', array( $this, 'add_sortable_columns' ) );
 
-		// Add custom sorting.
-		add_action( 'pre_get_comments', array( $this, 'handle_sorting' ) );
+		// Add custom sorting and filtering.
+		add_action( 'restrict_manage_comments', array( $this, 'add_filter_dropdowns' ) );
+		add_action( 'pre_get_comments', array( $this, 'handle_sorting_and_filtering' ) );
 
 		// Enqueue assets.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
@@ -297,6 +298,52 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
+	 * Adds filter dropdowns for sentiment and toxicity.
+	 *
+	 * @since x.x.x
+	 */
+	public function add_filter_dropdowns(): void {
+		$current_sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$current_toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		// Sentiment Dropdown.
+		$sentiments = array(
+			'positive' => __( 'Positive', 'ai' ),
+			'neutral'  => __( 'Neutral', 'ai' ),
+			'negative' => __( 'Negative', 'ai' ),
+		);
+		?>
+		<label class="screen-reader-text" for="wpai-filter-sentiment"><?php esc_html_e( 'Filter by Sentiment', 'ai' ); ?></label>
+		<select name="wpai_sentiment" id="wpai-filter-sentiment">
+			<option value=""><?php esc_html_e( 'All Sentiments', 'ai' ); ?></option>
+			<?php foreach ( $sentiments as $value => $label ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current_sentiment, $value ); ?>>
+					<?php echo esc_html( $label ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+
+		<?php
+		// Toxicity Dropdown.
+		$toxicities = array(
+			'low'    => __( 'Low Toxicity (<40%)', 'ai' ),
+			'medium' => __( 'Medium Toxicity (40%-69%)', 'ai' ),
+			'high'   => __( 'High Toxicity (>=70%)', 'ai' ),
+		);
+		?>
+		<label class="screen-reader-text" for="wpai-filter-toxicity"><?php esc_html_e( 'Filter by Toxicity', 'ai' ); ?></label>
+		<select name="wpai_toxicity" id="wpai-filter-toxicity">
+			<option value=""><?php esc_html_e( 'All Toxicities', 'ai' ); ?></option>
+			<?php foreach ( $toxicities as $value => $label ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current_toxicity, $value ); ?>>
+					<?php echo esc_html( $label ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	/**
 	 * Adds sortable columns to the comments list table.
 	 *
 	 * @since x.x.x
@@ -311,13 +358,13 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
-	 * Handles the custom sorting for comments.
+	 * Handles the custom sorting and filtering for comments.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Comment_Query $query The comment query object.
 	 */
-	public function handle_sorting( $query ): void {
+	public function handle_sorting_and_filtering( $query ): void {
 		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
 			return;
 		}
@@ -327,6 +374,61 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
+		$meta_query = $query->meta_query->queries;
+		if ( empty( $meta_query ) ) {
+			$meta_query = array();
+		}
+
+		// Handle filtering.
+		$sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( ! empty( $sentiment ) && in_array( $sentiment, array( 'positive', 'neutral', 'negative' ), true ) ) {
+			$meta_query[] = array(
+				'key'   => self::META_SENTIMENT,
+				'value' => $sentiment,
+			);
+		}
+
+		if ( ! empty( $toxicity ) && in_array( $toxicity, array( 'low', 'medium', 'high' ), true ) ) {
+			if ( 'high' === $toxicity ) {
+				$meta_query[] = array(
+					'key'     => self::META_TOXICITY_SCORE,
+					'value'   => 0.7,
+					'type'    => 'DECIMAL',
+					'compare' => '>=',
+				);
+			} elseif ( 'medium' === $toxicity ) {
+				$meta_query[] = array(
+					'relation' => 'AND',
+					array(
+						'key'     => self::META_TOXICITY_SCORE,
+						'value'   => 0.4,
+						'type'    => 'DECIMAL',
+						'compare' => '>=',
+					),
+					array(
+						'key'     => self::META_TOXICITY_SCORE,
+						'value'   => 0.7,
+						'type'    => 'DECIMAL',
+						'compare' => '<',
+					),
+				);
+			} elseif ( 'low' === $toxicity ) {
+				$meta_query[] = array(
+					'key'     => self::META_TOXICITY_SCORE,
+					'value'   => 0.4,
+					'type'    => 'DECIMAL',
+					'compare' => '<',
+				);
+			}
+		}
+
+		if ( ! empty( $meta_query ) ) {
+			$query->query_vars['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+		}
+
+		// Handle sorting.
 		$orderby = $query->query_vars['orderby'] ?? '';
 
 		if ( 'wpai_sentiment' === $orderby ) {
