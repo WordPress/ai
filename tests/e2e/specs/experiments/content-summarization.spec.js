@@ -36,12 +36,12 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post.
+		// Create a new post with content that meets the minimum length requirement (>= 100 chars).
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Content Summarization Experiment',
 			content:
-				'This is some test content for the Content Summarization Experiment.',
+				'This is some test content for the Content Summarization Experiment. It needs to be at least one hundred characters long.',
 		} );
 
 		// Save the post.
@@ -111,6 +111,83 @@ test.describe( 'Content Summarization Experiment', () => {
 		await expect(
 			page.locator( '.ai-summarization-plugin-container button' )
 		).not.toBeVisible();
+	} );
+
+	test( 'Summarize button is disabled when content is shorter than the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// Create a new post with content shorter than 100 characters.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Short Content',
+			content: 'Too short.',
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		const generateButton = page.locator(
+			'.ai-summarization-plugin-container button'
+		);
+
+		// Button should be visible but disabled.
+		await expect( generateButton ).toBeVisible();
+		await expect( generateButton ).toBeDisabled();
+
+		// The descriptive text should explain when the button will be enabled.
+		await expect(
+			page.locator( '.ai-summarization-plugin-container .description' )
+		).toContainText( '100 characters' );
+	} );
+
+	test( 'Summarize button is enabled when content meets the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// Create a new post with content that is at least 100 characters.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Sufficient Content',
+			content:
+				'This post has enough content to meet the minimum character requirement for the summarization feature to be enabled.',
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		const generateButton = page.locator(
+			'.ai-summarization-plugin-container button'
+		);
+
+		// Button should be visible and enabled.
+		await expect( generateButton ).toBeVisible();
+		await expect( generateButton ).toBeEnabled();
+
+		// The descriptive text should NOT mention the minimum character requirement.
+		await expect(
+			page.locator( '.ai-summarization-plugin-container .description' )
+		).not.toContainText( 'characters' );
 	} );
 
 	test( 'Ensure the Content Summarization Experiment UI is not visible when the experiment is disabled', async ( {
