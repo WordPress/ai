@@ -92,9 +92,14 @@
 		"@babel/runtime": ">=7.26.10",
 		"@wordpress/route": "^0.10.0",
 		"@wordpress/theme": "^0.11.0",
+		"markdownlint-cli": {
+			"minimatch": "3.1.4"
+		},
+		"postcss": ">=8.5.10",
 		"prettier": "npm:wp-prettier@^3",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
+		"serialize-javascript": ">=7.0.3",
 		"webpack-dev-server@<=5.2.0": ">=5.2.1"
 	},
 	"engines": {
