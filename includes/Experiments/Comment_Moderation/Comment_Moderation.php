@@ -414,7 +414,7 @@ class Comment_Moderation extends Abstract_Feature {
 						'compare' => '<',
 					),
 				);
-			} elseif ( 'low' === $toxicity ) {
+			} else { // Low toxicity.
 				$meta_query[] = array(
 					'key'     => self::META_TOXICITY_SCORE,
 					'value'   => 0.4,
