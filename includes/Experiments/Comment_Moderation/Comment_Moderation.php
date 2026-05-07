@@ -14,8 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
-use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\get_provider_availability_data;
+use function WordPress\AI\has_ai_credentials;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -535,7 +535,15 @@ class Comment_Moderation extends Abstract_Feature {
 
 		printf(
 			'<div class="notice notice-error is-dismissible"><p>%s</p></div>',
-			$notice_message
+			wp_kses(
+				$notice_message,
+				array(
+					'a' => array(
+						'href'   => array(),
+						'target' => array(),
+					),
+				)
+			)
 		);
 	}
 
