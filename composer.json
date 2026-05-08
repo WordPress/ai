@@ -16,7 +16,7 @@
 		"phpstan/php-8-stubs": "^0.4.0",
 		"phpstan/phpstan-deprecation-rules": "^2.0.4",
 		"phpstan/phpstan-phpunit": "^2.0.16",
-		"phpstan/phpstan": "^2.1.51",
+		"phpstan/phpstan": "^2.1.54",
 		"phpunit/phpunit": "^8.5|^9.6",
 		"slevomat/coding-standard": "^8.0",
 		"szepeviktor/phpstan-wordpress": "^2.0.2",
