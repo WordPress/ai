@@ -60,12 +60,20 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Click the Generate Summary button.
 		await generateButton.click();
 
-		// Ensure the generated summary is inserted as a block.
+		// Ensure the generated summary is inserted as a group block.
 		await expect(
-			editor.canvas.locator( '.ai-summarization-summary', {
-				hasText:
-					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
-			} )
+			editor.canvas.locator( '.wp-block-group.ai-summarization-summary' )
+		).toBeVisible();
+
+		// Ensure the summary content is inside a paragraph within the group.
+		await expect(
+			editor.canvas.locator(
+				'.wp-block-group.ai-summarization-summary p',
+				{
+					hasText:
+						'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+				}
+			)
 		).toBeVisible();
 
 		// Ensure the sidebar is visible and on the Post tab.
