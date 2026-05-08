@@ -24,7 +24,10 @@ import { commentContent } from '@wordpress/icons';
  * Internal dependencies
  */
 import { REVIEWABLE_BLOCK_TYPES } from '../../../utils/notes';
-import { useEditorialBlock, useEditorialNotes } from '../hooks/useEditorialNotes';
+import {
+	useEditorialBlock,
+	useEditorialNotes,
+} from '../hooks/useEditorialNotes';
 
 /**
  * EditorialNotesPlugin component.

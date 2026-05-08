@@ -450,7 +450,9 @@ test.describe( 'Editorial Updates Experiment', () => {
 			const notices = window.wp.data
 				.select( 'core/notices' )
 				.getNotices();
-			return notices.find( ( n ) => n.id === 'wpai_editorial_updates_error' );
+			return notices.find(
+				( n ) => n.id === 'wpai_editorial_updates_error'
+			);
 		} );
 		expect( errorNotice ).toBeDefined();
 		expect( errorNotice.status ).toBe( 'error' );
