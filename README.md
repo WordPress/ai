@@ -46,8 +46,8 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
-* **[Refine Notes](docs/experiments/refine-notes.md)** - Automatically apply editorial notes to content.
-* **[Review Notes](docs/experiments/review-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
+* **[Editorial Updates](docs/experiments/editorial-updates.md)** - Automatically apply editorial notes to content.
+* **[Editorial Notes](docs/experiments/editorial-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
 
 ## Roadmap
