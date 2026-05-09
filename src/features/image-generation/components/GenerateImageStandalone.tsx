@@ -28,6 +28,9 @@ const { aiImageGenerationData } = window as any;
  */
 export function GenerateImageStandalone() {
 	const [ savedUploads, setSavedUploads ] = useState< UploadedImage[] >( [] );
+	const [ savedHistoryIndices, setSavedHistoryIndices ] = useState<
+		Set< number >
+	>( new Set() );
 
 	const {
 		state,
@@ -73,6 +76,9 @@ export function GenerateImageStandalone() {
 				}
 			);
 			setSavedUploads( ( prev ) => [ ...prev, uploaded ] );
+			setSavedHistoryIndices(
+				( prev ) => new Set( [ ...prev, historyIndex ] )
+			);
 			setState( 'preview' );
 		} catch ( err: unknown ) {
 			setError(
@@ -107,26 +113,6 @@ export function GenerateImageStandalone() {
 
 			{ state === 'preview' && previewSrc && (
 				<div className="ai-generate-image-standalone__preview">
-					{ lastSaved && (
-						<Notice
-							status="success"
-							onDismiss={ () =>
-								setSavedUploads( ( prev ) =>
-									prev.filter(
-										( u ) => u.id !== lastSaved.id
-									)
-								)
-							}
-						>
-							{ __(
-								'Image successfully added to the Media Library.',
-								'ai'
-							) }{ ' ' }
-							<a href={ `upload.php?item=${ lastSaved.id }` }>
-								{ __( 'View in Media Library', 'ai' ) }
-							</a>
-						</Notice>
-					) }
 					<ImageHistoryNav
 						previewSrc={ previewSrc }
 						activeEntry={ activeEntry }
@@ -141,7 +127,11 @@ export function GenerateImageStandalone() {
 						comparisonRightLabel={ comparisonRightLabel }
 					/>
 					<div className="ai-image-generation__actions">
-						<Button variant="primary" onClick={ handleSaveImage }>
+						<Button
+							variant="primary"
+							onClick={ handleSaveImage }
+							disabled={ savedHistoryIndices.has( historyIndex ) }
+						>
 							{ __( 'Save to Media Library', 'ai' ) }
 						</Button>
 						<Button
@@ -182,6 +172,7 @@ export function GenerateImageStandalone() {
 							onClick={ () => {
 								resetHistory();
 								setSavedUploads( [] );
+								setSavedHistoryIndices( new Set() );
 								setPrompt( '' );
 								setState( 'idle' );
 								setError( null );
@@ -191,6 +182,26 @@ export function GenerateImageStandalone() {
 							{ __( 'Cancel', 'ai' ) }
 						</Button>
 					</div>
+					{ lastSaved && (
+						<Notice
+							status="success"
+							onDismiss={ () =>
+								setSavedUploads( ( prev ) =>
+									prev.filter(
+										( u ) => u.id !== lastSaved.id
+									)
+								)
+							}
+						>
+							{ __(
+								'Image successfully added to the Media Library.',
+								'ai'
+							) }{ ' ' }
+							<a href={ `upload.php?item=${ lastSaved.id }` }>
+								{ __( 'View in Media Library', 'ai' ) }
+							</a>
+						</Notice>
+					) }
 					{ error && (
 						<Notice status="error" isDismissible={ false }>
 							{ error }

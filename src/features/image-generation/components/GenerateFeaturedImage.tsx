@@ -29,23 +29,25 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 		select( editorStore ).getEditedPostAttribute( 'featured_media' );
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
-
-	const buttonLabel = isGenerating
-		? __( 'Generating…', 'ai' )
-		: __( 'Generate featured image', 'ai' );
+	const [ progress, setProgress ] = useState( '' );
 
 	/**
 	 * Handles the generate button click.
 	 */
 	const handleGenerate = async () => {
 		setIsGenerating( true );
+		setProgress( '' );
 		( dispatch( noticesStore ) as any ).removeNotice(
 			'ai_image_generation_error'
 		);
 
 		try {
-			const generatedImageData = await generateImage( content );
-			const importedImage = await uploadImage( generatedImageData );
+			const generatedImageData = await generateImage( content, {
+				onProgress: setProgress,
+			} );
+			const importedImage = await uploadImage( generatedImageData, {
+				onProgress: setProgress,
+			} );
 			editPost( {
 				featured_media: importedImage.id,
 			} );
@@ -60,6 +62,7 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 			} );
 		} finally {
 			setIsGenerating( false );
+			setProgress( '' );
 		}
 	};
 
@@ -77,8 +80,15 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 					disabled={ isGenerating }
 					isBusy={ isGenerating }
 				>
-					{ buttonLabel }
+					{ isGenerating
+						? __( 'Generating…', 'ai' )
+						: __( 'Generate featured image', 'ai' ) }
 				</Button>
+				{ isGenerating && progress && (
+					<p className="ai-featured-image__progress description">
+						{ progress }
+					</p>
+				) }
 			</div>
 		</div>
 	);

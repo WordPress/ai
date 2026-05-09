@@ -41,7 +41,7 @@ export function useImageGeneration() {
 	): Promise< void > {
 		setError( null );
 		setState( 'generating' );
-		setProgress( __( 'Generating image…', 'ai' ) );
+		setProgress( __( 'Generating…', 'ai' ) );
 
 		try {
 			const input: ImageGenerationAbilityInput = { prompt: activePrompt };

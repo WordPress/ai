@@ -25,7 +25,7 @@
 	&__skeleton {
 		width: 100%;
 		aspect-ratio: 1 / 1;
-		max-width: 480px;
+		max-width: 320px;
 		border-radius: 4px;
 		background: #e0e0e0;
 		animation: ai-skeleton-pulse 1.6s ease-in-out infinite;
@@ -122,6 +122,10 @@
 
 	textarea {
 		max-width: 600px;
+	}
+
+	.ai-image-generation__generating {
+		align-items: flex-start;
 	}
 
 	.components-notice {
