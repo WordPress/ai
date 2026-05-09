@@ -106,4 +106,16 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 			'enqueue_block_editor_assets action should be registered'
 		);
 	}
+
+	/**
+	 * Tests that register_abilities() registers the ai/editorial-updates ability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_abilities_registers_editorial_updates_ability() {
+		do_action( 'wp_abilities_api_init' );
+
+		$ability = wp_get_ability( 'ai/editorial-updates' );
+		$this->assertNotNull( $ability, 'ai/editorial-updates ability should be registered' );
+	}
 }

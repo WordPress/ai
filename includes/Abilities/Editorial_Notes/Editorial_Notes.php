@@ -11,7 +11,7 @@ namespace WordPress\AI\Abilities\Editorial_Notes;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI\Experiments\Review_Notes\Review_Notes as Review_Notes_Experiment;
+use WordPress\AI\Experiments\Editorial_Notes\Editorial_Notes as Editorial_Notes_Experiment;
 
 use function WordPress\AI\normalize_content;
 
@@ -372,7 +372,7 @@ class Editorial_Notes extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => $block_type ) ) )
 			->as_json_response( $this->suggestions_schema() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Review_Notes_Experiment::class );
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Editorial_Notes_Experiment::class );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

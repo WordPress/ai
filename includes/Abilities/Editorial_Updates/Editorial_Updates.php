@@ -11,7 +11,7 @@ namespace WordPress\AI\Abilities\Editorial_Updates;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI\Experiments\Refine_Notes\Refine_Notes as Refine_Notes_Experiment;
+use WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates as Editorial_Updates_Experiment;
 
 use function WordPress\AI\normalize_content;
 
@@ -247,7 +247,7 @@ class Editorial_Updates extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Refine_Notes_Experiment::class );
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Editorial_Updates_Experiment::class );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

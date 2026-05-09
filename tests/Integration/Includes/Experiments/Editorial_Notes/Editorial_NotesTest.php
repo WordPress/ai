@@ -102,6 +102,18 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that register_abilities() registers the ai/editorial-notes ability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_abilities_registers_editorial_notes_ability() {
+		do_action( 'wp_abilities_api_init' );
+
+		$ability = wp_get_ability( 'ai/editorial-notes' );
+		$this->assertNotNull( $ability, 'ai/editorial-notes ability should be registered' );
+	}
+
+	/**
 	 * Tests that the ai_note comment meta is registered with show_in_rest.
 	 *
 	 * @since 0.4.0
