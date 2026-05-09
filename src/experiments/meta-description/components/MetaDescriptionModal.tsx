@@ -116,6 +116,8 @@ export default function MetaDescriptionModal( {
 				{ /* Editable textarea */ }
 				<div className="ai-meta-description-modal__editor">
 					<TextareaControl
+						label={ __( 'Meta description', 'ai' ) }
+						hideLabelFromVision
 						value={ editableText }
 						onChange={ onEditableTextChange }
 						rows={ 3 }
