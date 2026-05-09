@@ -45,6 +45,7 @@ class Abilities_Explorer extends Abstract_Feature {
 			'label'       => __( 'Abilities Explorer', 'ai' ),
 			'description' => __( 'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
+			'capability'  => 'none',
 		);
 	}
 

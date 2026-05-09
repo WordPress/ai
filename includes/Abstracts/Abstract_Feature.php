@@ -77,6 +77,14 @@ abstract class Abstract_Feature implements Feature {
 	protected string $image;
 
 	/**
+	 * The AI capability type required by this feature.
+	 *
+	 * @since 0.9.0
+	 * @var string
+	 */
+	protected string $capability;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -115,6 +123,7 @@ abstract class Abstract_Feature implements Feature {
 		$this->category    = $metadata['category'];
 		$this->stability   = $metadata['stability'] ?? 'experimental';
 		$this->image       = $metadata['image'] ?? '';
+		$this->capability  = $metadata['capability'] ?? 'text_generation';
 	}
 
 	/**
@@ -212,14 +221,17 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * Gets the image URL for feature showcase display.
-	 *
-	 * @since 0.8.0
-	 *
-	 * @return string The image URL, or empty string if not set.
+	 * {@inheritDoc}
 	 */
 	public function get_image(): string {
 		return $this->image;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_capability(): string {
+		return $this->capability;
 	}
 
 	/**

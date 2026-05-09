@@ -15,7 +15,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 /**
  * Test experiment for Content Resizing Ability tests.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Test_Content_Resizing_Experiment extends Abstract_Feature {
 	/**
@@ -38,7 +38,7 @@ class Test_Content_Resizing_Experiment extends Abstract_Feature {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -48,7 +48,7 @@ class Test_Content_Resizing_Experiment extends Abstract_Feature {
 /**
  * Content Resizing Ability test case.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Content_ResizingTest extends WP_UnitTestCase {
 
@@ -69,7 +69,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -87,7 +87,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -97,7 +97,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -112,7 +112,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -139,7 +139,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -156,7 +156,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() returns the system instruction.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_get_system_instruction_returns_system_instruction() {
 		$system_instruction = $this->ability->get_system_instruction();
@@ -168,7 +168,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() varies by action.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_get_system_instruction_varies_by_action() {
 		$shorten  = $this->ability->get_system_instruction( 'system-instruction.php', array( 'action' => 'shorten' ) );
@@ -187,7 +187,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() falls back to the rephrase description for unknown actions.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_get_system_instruction_unknown_action_falls_back_to_rephrase() {
 		$unknown  = $this->ability->get_system_instruction( 'system-instruction.php', array( 'action' => 'invalid_action' ) );
@@ -200,7 +200,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_without_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -216,7 +216,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is empty.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_with_empty_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -232,7 +232,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when shorten action is used with short content.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_shorten_with_short_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -254,7 +254,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() does not return content_too_short for expand action with short content.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_expand_with_short_content_does_not_error() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -287,7 +287,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() with valid content calls the AI client.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_with_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -318,7 +318,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() defaults to rephrase action.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_defaults_to_rephrase_action() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -348,7 +348,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -366,7 +366,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -385,7 +385,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -403,7 +403,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -420,7 +420,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_resized_content() returns a WP_Error when the model is not supported.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_generate_resized_content_returns_wp_error_when_model_is_not_supported() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -437,7 +437,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that the shorten word count validation strips HTML tags before counting.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_shorten_word_count_ignores_html_tags() {
 		$reflection = new \ReflectionClass( $this->ability );
