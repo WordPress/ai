@@ -56,15 +56,35 @@ trait Guidelines_CPT_Helpers {
 	}
 
 	/**
+	 * Registers the guideline type taxonomy (Gutenberg 23.1+) for testing.
+	 *
+	 * @since 0.9.1
+	 *
+	 * @return void
+	 */
+	private function register_guideline_type_taxonomy(): void {
+		if ( taxonomy_exists( Guidelines::GUIDELINE_TYPE_TAXONOMY ) ) {
+			return;
+		}
+
+		register_taxonomy(
+			Guidelines::GUIDELINE_TYPE_TAXONOMY,
+			Guidelines::POST_TYPE,
+			array( 'public' => false )
+		);
+	}
+
+	/**
 	 * Creates a guidelines post with the given category meta values.
 	 *
 	 * @since 0.8.0
 	 *
-	 * @param array<string, string> $categories  Keyed array of category => guideline text.
-	 * @param string                $post_status Optional. The post status. Defaults to 'publish'.
+	 * @param array<string, string> $categories    Keyed array of category => guideline text.
+	 * @param string                $post_status   Optional. The post status. Defaults to 'publish'.
+	 * @param string|null           $guideline_type Optional. Term slug to assign via the type taxonomy (e.g. 'content', 'artifact').
 	 * @return int The created post ID.
 	 */
-	private function create_guidelines_post( array $categories, string $post_status = 'publish' ): int {
+	private function create_guidelines_post( array $categories, string $post_status = 'publish', ?string $guideline_type = null ): int {
 		$post_id = self::factory()->post->create(
 			array(
 				'post_type'   => Guidelines::POST_TYPE,
@@ -79,6 +99,10 @@ trait Guidelines_CPT_Helpers {
 			}
 
 			update_post_meta( $post_id, self::$guideline_category_meta_keys[ $category ], $value );
+		}
+
+		if ( null !== $guideline_type && taxonomy_exists( Guidelines::GUIDELINE_TYPE_TAXONOMY ) ) {
+			wp_set_object_terms( $post_id, $guideline_type, Guidelines::GUIDELINE_TYPE_TAXONOMY );
 		}
 
 		// Reset cache so the service picks up the new post.

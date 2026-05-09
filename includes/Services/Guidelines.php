@@ -33,6 +33,24 @@ class Guidelines {
 	public const POST_TYPE = 'wp_guideline';
 
 	/**
+	 * Taxonomy used by Gutenberg 23.1+ to distinguish guideline types.
+	 *
+	 * @since 0.9.1
+	 *
+	 * @var string
+	 */
+	public const GUIDELINE_TYPE_TAXONOMY = 'wp_guideline_type';
+
+	/**
+	 * Term slug that identifies content guidelines within the type taxonomy.
+	 *
+	 * @since 0.9.1
+	 *
+	 * @var string
+	 */
+	private const GUIDELINE_TYPE_CONTENT = 'content';
+
+	/**
 	 * Singleton instance.
 	 *
 	 * @since 0.8.0
@@ -304,16 +322,28 @@ class Guidelines {
 		}
 
 		// Gutenberg saves guidelines as 'draft' by default; both statuses are valid.
-		$query = new WP_Query(
-			array(
-				'post_type'      => self::POST_TYPE,
-				'posts_per_page' => 1,
-				'post_status'    => array( 'publish', 'draft' ),
-				'orderby'        => 'date',
-				'order'          => 'DESC',
-				'no_found_rows'  => true,
-			)
+		$query_args = array(
+			'post_type'      => self::POST_TYPE,
+			'posts_per_page' => 1,
+			'post_status'    => array( 'publish', 'draft' ),
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+			'no_found_rows'  => true,
 		);
+
+		// Gutenberg 23.1+ registers a type taxonomy; restrict to content guidelines
+		// so artifact guidelines cannot shadow them during prompt assembly.
+		if ( taxonomy_exists( self::GUIDELINE_TYPE_TAXONOMY ) ) {
+			$query_args['tax_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+				array(
+					'taxonomy' => self::GUIDELINE_TYPE_TAXONOMY,
+					'field'    => 'slug',
+					'terms'    => self::GUIDELINE_TYPE_CONTENT,
+				),
+			);
+		}
+
+		$query = new WP_Query( $query_args );
 
 		$post = $query->posts[0] ?? null;
 
