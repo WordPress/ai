@@ -113,6 +113,8 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_abilities_registers_editorial_updates_ability() {
+		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
+
 		do_action( 'wp_abilities_api_init' );
 
 		$ability = wp_get_ability( 'ai/editorial-updates' );
