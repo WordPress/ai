@@ -383,6 +383,59 @@ class Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a newer artifact guideline does not shadow a content guideline
+	 * when the wp_guideline_type taxonomy is registered (Gutenberg 23.1+).
+	 *
+	 * @since 0.9.1
+	 */
+	public function test_get_guidelines_ignores_artifact_type_when_taxonomy_exists(): void {
+		$this->register_guidelines_cpt();
+		$this->register_guideline_type_taxonomy();
+
+		// Create the content guideline first (older).
+		$content_post_id = $this->create_guidelines_post(
+			array( 'site' => 'Content guideline text.' ),
+			'publish',
+			'content'
+		);
+
+		// Create a newer artifact guideline — without the fix this would be picked up instead.
+		$this->create_guidelines_post(
+			array( 'site' => 'Artifact guideline text.' ),
+			'publish',
+			'artifact'
+		);
+
+		$guidelines = $this->service->get_guidelines( 'site' );
+
+		$this->assertIsArray( $guidelines );
+		$this->assertSame(
+			'Content guideline text.',
+			$guidelines['site'],
+			'Should return the content-type guideline, not the newer artifact-type one'
+		);
+	}
+
+	/**
+	 * Tests that guidelines are still returned when the type taxonomy exists
+	 * but the post has no type term assigned (untyped posts are excluded).
+	 *
+	 * @since 0.9.1
+	 */
+	public function test_get_guidelines_returns_null_for_untyped_post_when_taxonomy_exists(): void {
+		$this->register_guidelines_cpt();
+		$this->register_guideline_type_taxonomy();
+
+		// Post exists but has no wp_guideline_type term.
+		$this->create_guidelines_post( array( 'site' => 'Untyped guideline.' ) );
+
+		$this->assertNull(
+			$this->service->get_guidelines(),
+			'Should return null when no content-typed guideline post exists'
+		);
+	}
+
+	/**
 	 * Tests that format_for_prompt() skips empty categories.
 	 *
 	 * @since 0.8.0
