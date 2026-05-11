@@ -16,6 +16,9 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { generateSummary } from './generate-summary';
+import { count } from '@wordpress/wordcount';
+
+const { aiSummarizationData } = window as any;
 
 /**
  * Summary generation hook.
@@ -117,10 +120,18 @@ export function useSummaryGeneration() {
 		}
 	};
 
+	// Minimum content length required for summarization.
+	const minContentLength: number =
+		aiSummarizationData?.minContentLength ?? 100;
+	const isContentTooShort =
+		count( content, 'characters_including_spaces' ) < minContentLength;
+
 	return {
 		isSummarizing,
 		hasSummary: summary && summary.trim().length > 0,
 		summary,
 		handleSummarize,
+		isContentTooShort,
+		minContentLength,
 	};
 }
