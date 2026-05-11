@@ -5,7 +5,13 @@ import apiFetch from '@wordpress/api-fetch';
 import { Button, Spinner } from '@wordpress/components';
 import { DataForm } from '@wordpress/dataviews';
 import type { Field, Form } from '@wordpress/dataviews';
-import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -52,6 +58,8 @@ export function DeveloperSettings( {
 	const [ providers, setProviders ] = useState< ProviderData[] >( [] );
 	const [ isLoading, setIsLoading ] = useState( true );
 	const [ fetchError, setFetchError ] = useState< string | null >( null );
+
+	const formWrapperRef = useRef< HTMLDivElement >( null );
 
 	const { settings, update, clear, isSaving } =
 		useDeveloperFeatureSettings( featureId );
@@ -170,20 +178,28 @@ export function DeveloperSettings( {
 			) }
 			{ ! isLoading && ! fetchError && (
 				<>
-					<DataForm< DeveloperSelection >
-						data={ settings }
-						fields={ fields }
-						form={ form }
-						onChange={ handleChange }
-					/>
+					<div ref={ formWrapperRef }>
+						<DataForm< DeveloperSelection >
+							data={ settings }
+							fields={ fields }
+							form={ form }
+							onChange={ handleChange }
+						/>
+					</div>
 					{ hasSavedSelection && (
 						<Button
 							variant="link"
 							className="ai-developer-mode-fields__reset-button"
 							onClick={ () => {
+								formWrapperRef.current
+									?.querySelector< HTMLSelectElement >(
+										'select'
+									)
+									?.focus();
 								void clear();
 							} }
 							disabled={ isSaving }
+							accessibleWhenDisabled
 						>
 							{ __( 'Reset to default', 'ai' ) }
 						</Button>
