@@ -577,7 +577,7 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'comment_moderation', 'experiments/comment-moderation' );
+		Asset_Loader::enqueue_script( 'comment_moderation', 'experiments/comment-moderation', true );
 		Asset_Loader::localize_script(
 			'comment_moderation',
 			'CommentModerationData',

@@ -36,7 +36,6 @@ class Comment_Analysis extends Abstract_Ability {
 				'comment_id' => array(
 					'type'        => 'integer',
 					'description' => esc_html__( 'The ID of the comment to analyze.', 'ai' ),
-					'required'    => true,
 				),
 			),
 			'required'   => array( 'comment_id' ),
