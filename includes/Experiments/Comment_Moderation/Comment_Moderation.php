@@ -130,7 +130,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array The sentiment configuration.
+	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string}> The sentiment configuration.
 	 */
 	public static function get_sentiment_config(): array {
 		return array(
@@ -160,7 +160,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array The toxicity configuration.
+	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> The toxicity configuration.
 	 */
 	public static function get_toxicity_config(): array {
 		return array(
