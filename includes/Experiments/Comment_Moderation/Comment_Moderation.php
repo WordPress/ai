@@ -804,18 +804,13 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function add_inline_styles(): void {
-		$current_hook = current_action();
-
-		$is_comments_screen  = 'admin_head-edit-comments.php' === $current_hook;
-		$is_dashboard_screen = 'admin_head-index.php' === $current_hook;
 		?>
 		<style>
-			<?php if ( $is_comments_screen ) : ?>
-			.column-ai_sentiment,
-			.column-ai_toxicity {
+			.edit-comments-php .column-wpai_sentiment,
+			.edit-comments-php .column-wpai_toxicity {
 				width: 100px;
 			}
-			<?php endif; ?>
+
 			.ai-badge {
 				display: inline-flex;
 				align-items: center;
@@ -877,13 +872,12 @@ class Comment_Moderation extends Abstract_Feature {
 				background-color: #f8d7da;
 				color: #721c24;
 			}
-			<?php if ( $is_dashboard_screen ) : ?>
-			.ai-dashboard-pills {
+
+			.dashboard-comment-wrap .ai-dashboard-pills {
 				margin-top: 8px;
 				display: flex;
 				gap: 8px;
 			}
-			<?php endif; ?>
 		</style>
 		<?php
 	}
