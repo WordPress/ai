@@ -165,7 +165,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 			status: 'publish',
 		} );
 
-		// Create two comments with distinct content.
+		// Create three comments with distinct content.
 		await requestUtils.createComment( {
 			content: 'This is a negative comment.',
 			post: post.id,
@@ -174,23 +174,23 @@ test.describe( 'Comment Moderation Experiment', () => {
 			content: 'This is a positive comment.',
 			post: post.id,
 		} );
+		await requestUtils.createComment( {
+			content: 'This is a neutral comment.',
+			post: post.id,
+		} );
 
 		// Go to the comments admin page.
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		// Select all comments and analyze.
-		await page.locator( '#cb-select-all-1' ).check();
-		await page
-			.locator( '#bulk-action-selector-top' )
-			.selectOption( 'wpai_analyze' );
-		await page.locator( '#doaction' ).click();
-
-		// Wait for analysis to complete.
+		// Verify all labels.
 		await expect(
 			page.locator( '.wpai_sentiment', { hasText: /Negative/ } ).first()
 		).toBeVisible();
 		await expect(
 			page.locator( '.wpai_sentiment', { hasText: /Positive/ } ).first()
+		).toBeVisible();
+		await expect(
+			page.locator( '.wpai_sentiment', { hasText: /Neutral/ } ).first()
 		).toBeVisible();
 
 		// Test Filtering: Filter by Negative sentiment.
@@ -203,6 +203,26 @@ test.describe( 'Comment Moderation Experiment', () => {
 		await expect(
 			page.locator( '.wpai_sentiment', { hasText: /Negative/ } ).first()
 		).toBeVisible();
+		await expect(
+			page.locator( '.wpai_sentiment', { hasText: /Positive/ } )
+		).not.toBeVisible();
+		await expect(
+			page.locator( '.wpai_sentiment', { hasText: /Neutral/ } )
+		).not.toBeVisible();
+
+		// Test Filtering: Filter by Neutral sentiment.
+		await page
+			.locator( '#wpai-filter-sentiment' )
+			.selectOption( 'neutral' );
+		await page.locator( '#post-query-submit' ).click();
+
+		// Verify only Neutral is visible.
+		await expect(
+			page.locator( '.wpai_sentiment', { hasText: /Neutral/ } ).first()
+		).toBeVisible();
+		await expect(
+			page.locator( '.wpai_sentiment', { hasText: /Negative/ } )
+		).not.toBeVisible();
 		await expect(
 			page.locator( '.wpai_sentiment', { hasText: /Positive/ } )
 		).not.toBeVisible();
@@ -237,7 +257,8 @@ test.describe( 'Comment Moderation Experiment', () => {
 			.locator( '.wpai_toxicity' )
 			.allTextContents();
 		expect( toxicityLabels[ 0 ] ).toContain( 'Low' );
-		expect( toxicityLabels[ 1 ] ).toContain( 'High' );
+		expect( toxicityLabels[ 1 ] ).toContain( 'Medium' );
+		expect( toxicityLabels[ 2 ] ).toContain( 'High' );
 
 		// Click again to sort (DESC).
 		await page.locator( 'th#wpai_toxicity a' ).click();
@@ -247,29 +268,32 @@ test.describe( 'Comment Moderation Experiment', () => {
 			.locator( '.wpai_toxicity' )
 			.allTextContents();
 		expect( toxicityLabels[ 0 ] ).toContain( 'High' );
-		expect( toxicityLabels[ 1 ] ).toContain( 'Low' );
+		expect( toxicityLabels[ 1 ] ).toContain( 'Medium' );
+		expect( toxicityLabels[ 2 ] ).toContain( 'Low' );
 
 		// Test Sorting: Click the Sentiment column header to sort.
 		await page.locator( 'th#wpai_sentiment a' ).click();
 		await expect( page ).toHaveURL( /orderby=wpai_sentiment/ );
 		await expect( page ).toHaveURL( /order=asc/ );
 
-		// Verify order: Negative (N) should be before Positive (P) in ASC.
+		// Verify order: Negative (N) should be before Neutral (N) before Positive (P) in ASC.
 		let sentimentLabels = await page
 			.locator( '.wpai_sentiment' )
 			.allTextContents();
 		expect( sentimentLabels[ 0 ] ).toContain( 'Negative' );
-		expect( sentimentLabels[ 1 ] ).toContain( 'Positive' );
+		expect( sentimentLabels[ 1 ] ).toContain( 'Neutral' );
+		expect( sentimentLabels[ 2 ] ).toContain( 'Positive' );
 
 		// Click again to sort (DESC).
 		await page.locator( 'th#wpai_sentiment a' ).click();
 		await expect( page ).toHaveURL( /order=desc/ );
 
-		// Verify order: Positive (P) should be before Negative (N) in DESC.
+		// Verify order: Positive (P) should be before Neutral (N) before Negative (N) in DESC.
 		sentimentLabels = await page
 			.locator( '.wpai_sentiment' )
 			.allTextContents();
 		expect( sentimentLabels[ 0 ] ).toContain( 'Positive' );
-		expect( sentimentLabels[ 1 ] ).toContain( 'Negative' );
+		expect( sentimentLabels[ 1 ] ).toContain( 'Neutral' );
+		expect( sentimentLabels[ 2 ] ).toContain( 'Negative' );
 	} );
 } );
