@@ -8,7 +8,7 @@ import { __, sprintf } from '@wordpress/i18n';
  */
 import { generateAltText } from '../../../utils/generate-alt-text';
 import { runAbility } from '../../../utils/run-ability';
-import { trimText } from '../../../utils/text';
+import { slugifyForFilename, trimText } from '../../../utils/text';
 import type {
 	GeneratedImageData,
 	ImageImportAbilityInput,
@@ -74,6 +74,13 @@ export async function uploadImage(
 
 	// Set our image title to be a trimmed version of the alt text.
 	params.title = trimText( params.alt_text ?? '' );
+
+	// If nothing usable remains after slugifying, leave filename unset so
+	// the PHP ability falls back to `ai-generated-image-<timestamp>`.
+	const filenameSlug = slugifyForFilename( params.alt_text ?? '' );
+	if ( filenameSlug ) {
+		params.filename = filenameSlug;
+	}
 
 	onProgress?.( __( 'Importing image…', 'ai' ) );
 

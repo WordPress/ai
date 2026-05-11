@@ -11,8 +11,8 @@ namespace WordPress\AI\Abilities\Review_Notes;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Experiments\Review_Notes\Review_Notes as Review_Notes_Experiment;
 
-use function WordPress\AI\get_preferred_models_for_text_generation;
 use function WordPress\AI\normalize_content;
 
 // Exit if accessed directly.
@@ -372,8 +372,9 @@ class Review_Notes extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt, string $block_type ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => $block_type ) ) )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->suggestions_schema() );
+
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Review_Notes_Experiment::class );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

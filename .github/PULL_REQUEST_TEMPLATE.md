@@ -39,10 +39,11 @@ Used for: Initial code skeleton and test suggestions; final implementation and t
 ## Changelog Entry
 <!--
 Please include a summary for this PR, noting whether this is something being Added / Changed / Deprecated / Removed / Fixed / or Security related.  You can replace the sample entries after this comment block with the single changelog entry line for this PR. -->
+
 > Added - New feature.
 > Changed - Existing functionality.
 > Deprecated - Soon-to-be removed feature.
 > Removed - Feature.
 > Fixed - Bug fix.
 > Security - Vulnerability.
-> Development Update - Development related updates.
+> Developer - Development related updates.

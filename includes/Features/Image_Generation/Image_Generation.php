@@ -43,6 +43,7 @@ class Image_Generation extends Abstract_Feature {
 			'description' => __( 'Generate and edit images using AI. Requires an AI connector that includes support for image generation models.', 'ai' ),
 			'stability'   => 'stable',
 			'image'       => WPAI_PLUGIN_URL . 'assets/images/showcase-image-generation.webp',
+			'capability'  => 'image_generation',
 		);
 	}
 

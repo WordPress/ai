@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Content resizing experiment.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Content_Resizing extends Abstract_Feature {
 
@@ -55,7 +55,7 @@ class Content_Resizing extends Abstract_Feature {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -71,7 +71,7 @@ class Content_Resizing extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */

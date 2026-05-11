@@ -102,7 +102,7 @@ export default function MetaDescriptionModal( {
 		: __( 'Generate', 'ai' );
 
 	if ( isGenerating ) {
-		generateButtonLabel = __( 'Generating', 'ai' );
+		generateButtonLabel = __( 'Generating…', 'ai' );
 	}
 
 	return (
@@ -117,6 +117,7 @@ export default function MetaDescriptionModal( {
 				<div className="ai-meta-description-modal__editor">
 					<TextareaControl
 						label={ __( 'Meta description', 'ai' ) }
+						hideLabelFromVision
 						value={ editableText }
 						onChange={ onEditableTextChange }
 						rows={ 3 }
