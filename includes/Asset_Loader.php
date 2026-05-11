@@ -64,10 +64,16 @@ final class Asset_Loader {
 			return;
 		}
 
-		$args = array( 'strategy' => 'defer' );
+		$args = array(
+			'in_footer' => true,
+			'strategy'  => 'defer',
+		);
+
 		if ( $include_core_abilities ) {
-			wp_enqueue_script_module( '@wordpress/core-abilities' );
-			$args['module_dependencies'] = array( '@wordpress/core-abilities' );
+			$args['module_dependencies'] = array(
+				'@wordpress/abilities',
+				'@wordpress/core-abilities',
+			);
 		}
 
 		wp_enqueue_script(

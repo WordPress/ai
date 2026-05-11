@@ -71,6 +71,7 @@
 		"@wordpress/blocks": "^15.17.0",
 		"@wordpress/components": "^32.6.0",
 		"@wordpress/compose": "^7.44.0",
+		"@wordpress/core-abilities": "^0.10.0",
 		"@wordpress/core-data": "^7.44.0",
 		"@wordpress/data": "^10.44.0",
 		"@wordpress/dataviews": "^14.1.0",

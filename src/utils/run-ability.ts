@@ -37,8 +37,12 @@ let hasShownFallbackNotice = false;
 
 const importAbilitiesModule = async (): Promise< AbilitiesModule | null > => {
 	try {
-		// Keep this as a runtime import so webpack does not emit a hard
+		// Keep these as runtime imports so webpack does not emit a hard
 		// "wp-abilities" script dependency for classic enqueued bundles.
+		const { ready } = await import(
+			/* webpackIgnore: true */ '@wordpress/core-abilities'
+		);
+		await ready;
 		return ( await import(
 			/* webpackIgnore: true */ '@wordpress/abilities'
 		) ) as AbilitiesModule;
