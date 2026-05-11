@@ -155,6 +155,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
+		await requestUtils.deleteAllComments();
 		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Comment Moderation' );
 
@@ -166,11 +167,11 @@ test.describe( 'Comment Moderation Experiment', () => {
 
 		// Create two comments with distinct content.
 		await requestUtils.createComment( {
-			content: 'This is a very bad and mean comment. I hate this!',
+			content: 'This is a negative comment.',
 			post: post.id,
 		} );
 		await requestUtils.createComment( {
-			content: 'This is a wonderful and kind comment. I love this!',
+			content: 'This is a positive comment.',
 			post: post.id,
 		} );
 
@@ -186,10 +187,10 @@ test.describe( 'Comment Moderation Experiment', () => {
 
 		// Wait for analysis to complete.
 		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Negative/ } )
+			page.locator( '.wpai_sentiment', { hasText: /Negative/ } ).first()
 		).toBeVisible();
 		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Positive/ } )
+			page.locator( '.wpai_sentiment', { hasText: /Positive/ } ).first()
 		).toBeVisible();
 
 		// Test Filtering: Filter by Negative sentiment.
@@ -200,7 +201,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 
 		// Verify only Negative is visible.
 		await expect(
-			page.locator( '.wpai_sentiment', { hasText: /Negative/ } )
+			page.locator( '.wpai_sentiment', { hasText: /Negative/ } ).first()
 		).toBeVisible();
 		await expect(
 			page.locator( '.wpai_sentiment', { hasText: /Positive/ } )
@@ -216,7 +217,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 
 		// Verify only High toxicity is visible.
 		await expect(
-			page.locator( '.wpai_toxicity', { hasText: /High/ } )
+			page.locator( '.wpai_toxicity', { hasText: /High/ } ).first()
 		).toBeVisible();
 		await expect(
 			page.locator( '.wpai_toxicity', { hasText: /Low/ } )
