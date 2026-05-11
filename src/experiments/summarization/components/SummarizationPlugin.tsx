@@ -52,7 +52,7 @@ export default function SummarizationPlugin() {
 		);
 	} else if ( hasSummary ) {
 		buttonDescription = __(
-			'This will update the AI generated summary block with a new summary of the content of this post.',
+			'This will update the generated summary block with a new summary of the content of this post.',
 			'ai'
 		);
 	} else {

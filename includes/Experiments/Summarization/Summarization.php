@@ -101,6 +101,7 @@ class Summarization extends Abstract_Feature {
 		}
 
 		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization' );
+
 		/**
 		 * Filters the minimum content length required to enable summarization.
 		 *
