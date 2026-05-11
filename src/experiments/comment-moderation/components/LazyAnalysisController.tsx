@@ -25,11 +25,31 @@ type AnalysisResult = {
 	sentiment: 'positive' | 'negative' | 'neutral';
 };
 
-type SentimentDisplay = {
-	label: string;
-	className: string;
-	icon: string;
-};
+declare global {
+	interface Window {
+		aiCommentModerationData: {
+			enabled: boolean;
+			labels: {
+				sentiment: Record<
+					string,
+					{ label: string; class: string; icon: string }
+				> & {
+					neutral: { label: string; class: string; icon: string }; // Allows us to access neutral for fallbacks directly.
+				};
+				toxicity: Record<
+					string,
+					{
+						label: string;
+						class: string;
+						icon: string;
+						min: number;
+						max: number;
+					}
+				>;
+			};
+		};
+	}
+}
 
 type PendingComment = {
 	id: number;
@@ -45,20 +65,21 @@ function getToxicityDisplay( score: number ): {
 	className: string;
 	icon: string;
 } {
-	if ( score >= 0.7 ) {
-		return {
-			label: 'High',
-			className: 'ai-badge--high-toxicity',
-			icon: '⚠️',
-		};
+	const toxicities = window.aiCommentModerationData?.labels?.toxicity || {};
+
+	for ( const config of Object.values( toxicities ) ) {
+		if (
+			score >= config.min &&
+			( score < config.max || config.max === 1 )
+		) {
+			return {
+				label: config.label,
+				className: config.class,
+				icon: config.icon,
+			};
+		}
 	}
-	if ( score >= 0.4 ) {
-		return {
-			label: 'Medium',
-			className: 'ai-badge--medium-toxicity',
-			icon: '⚡',
-		};
-	}
+
 	return { label: 'Low', className: 'ai-badge--low-toxicity', icon: '✓' };
 }
 
@@ -70,34 +91,14 @@ function getSentimentDisplay( sentiment: string ): {
 	className: string;
 	icon: string;
 } {
-	const displays: Record< AnalysisResult[ 'sentiment' ], SentimentDisplay > =
-		{
-			positive: {
-				label: 'Positive',
-				className: 'ai-badge--positive',
-				icon: '😊',
-			},
-			negative: {
-				label: 'Negative',
-				className: 'ai-badge--negative',
-				icon: '😟',
-			},
-			neutral: {
-				label: 'Neutral',
-				className: 'ai-badge--neutral',
-				icon: '😐',
-			},
-		};
+	const sentiments = window.aiCommentModerationData?.labels?.sentiment || {};
+	const config = sentiments[ sentiment ] || sentiments.neutral;
 
-	if (
-		sentiment === 'positive' ||
-		sentiment === 'negative' ||
-		sentiment === 'neutral'
-	) {
-		return displays[ sentiment ];
-	}
-
-	return displays.neutral;
+	return {
+		label: config.label,
+		className: config.class,
+		icon: config.icon,
+	};
 }
 
 /**
