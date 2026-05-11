@@ -327,6 +327,15 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function add_filter_dropdowns(): void {
+		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
+			return;
+		}
+
+		$screen = get_current_screen();
+		if ( ! $screen || 'edit-comments' !== $screen->id ) {
+			return;
+		}
+
 		$current_sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$current_toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
