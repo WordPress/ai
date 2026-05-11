@@ -263,6 +263,7 @@ class Comment_Moderation extends Abstract_Feature {
 
 		return $new_columns;
 	}
+
 	/**
 	 * Adds sentiment and toxicity pills to the dashboard recent comments widget.
 	 *
