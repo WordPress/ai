@@ -59,7 +59,6 @@ export function ensureProvider( noticeId: string ): boolean {
 						{
 							label: __( 'Manage Connectors', 'ai' ),
 							url: connectorsUrl,
-							openInNewTab: true,
 						},
 				  ]
 				: [],

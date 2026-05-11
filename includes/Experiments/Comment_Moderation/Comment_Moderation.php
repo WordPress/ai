@@ -554,7 +554,7 @@ class Comment_Moderation extends Abstract_Feature {
 		$notice_message = sprintf(
 			/* translators: %s: Link to connectors settings page. */
 			__( 'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in %s.', 'ai' ),
-			'<a href="' . esc_url( $connectors_url ) . '" target="_blank">' . esc_html__( 'Settings → Connectors', 'ai' ) . '</a>'
+			'<a href="' . esc_url( $connectors_url ) . '">' . esc_html__( 'Settings → Connectors', 'ai' ) . '</a>'
 		);
 
 		printf(
@@ -563,8 +563,7 @@ class Comment_Moderation extends Abstract_Feature {
 				$notice_message,
 				array(
 					'a' => array(
-						'href'   => array(),
-						'target' => array(),
+						'href' => array(),
 					),
 				)
 			)
