@@ -398,8 +398,8 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
-		$meta_query = $query->meta_query->queries;
-		if ( empty( $meta_query ) ) {
+		$meta_query = $query->query_vars['meta_query'] ?? array();
+		if ( ! is_array( $meta_query ) ) {  // Handle empty strings.
 			$meta_query = array();
 		}
 
