@@ -44,7 +44,7 @@ export function ensureProvider( noticeId: string ): boolean {
 
 	const { connectorsUrl } = providerStatus;
 
-	( dispatch( noticesStore ) as any ).createInfoNotice(
+	( dispatch( noticesStore ) as any ).createErrorNotice(
 		__(
 			'This feature requires an AI Connector to function properly.',
 			'ai'
@@ -52,8 +52,6 @@ export function ensureProvider( noticeId: string ): boolean {
 		{
 			id: noticeId,
 			isDismissible: true,
-			type: 'snackbar',
-			explicitDismiss: true,
 			actions: connectorsUrl
 				? [
 						{
