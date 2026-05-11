@@ -73,6 +73,7 @@ class HelpersTest extends WP_UnitTestCase {
 		update_option( 'active_plugins', $this->active_plugins );
 		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
+		delete_option( 'wpai_feature_test-feature_field_developer' );
 		parent::tearDown();
 	}
 
@@ -259,7 +260,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_get_post_context_includes_categories_and_tags() {
 		$category_id = $this->factory->category->create( array( 'name' => 'Test Category' ) );
-		$tag_id      = $this->factory->tag->create( array( 'name' => 'Test Tag' ) );
 		$post_id     = $this->factory->post->create(
 			array(
 				'post_content' => 'Test content',
@@ -609,7 +609,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_image_models_filter_can_replace_models() {
 		add_filter(
 			'wpai_preferred_image_models',
-			static function ( $models ) {
+			static function () {
 				// Replace with a single model.
 				return array(
 					array(
@@ -711,7 +711,7 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_get_preferred_vision_models_filter_can_replace_models() {
 		add_filter(
 			'wpai_preferred_vision_models',
-			static function ( $models ) {
+			static function () {
 				return array(
 					array(
 						'test',
@@ -930,5 +930,73 @@ class HelpersTest extends WP_UnitTestCase {
 		$active_plugins[] = $plugin_file;
 
 		update_option( 'active_plugins', array_values( array_unique( $active_plugins ) ) );
+	}
+
+	/**
+	 * Test that get_feature_developer_model_config() returns empty strings when unset.
+	 *
+	 * @since 0.9.0
+	 */
+	public function test_get_feature_developer_model_config_returns_empty_strings_when_unset(): void {
+		$result = \WordPress\AI\get_feature_developer_model_config( 'test-feature' );
+
+		$this->assertSame(
+			array(
+				'provider' => '',
+				'model'    => '',
+			),
+			$result
+		);
+	}
+
+	/**
+	 * Test that get_feature_developer_model_config() returns saved provider and model values.
+	 *
+	 * @since 0.9.0
+	 */
+	public function test_get_feature_developer_model_config_returns_saved_provider_and_model(): void {
+		update_option(
+			'wpai_feature_test-feature_field_developer',
+			array(
+				'provider' => 'openai',
+				'model'    => 'gpt-test',
+			)
+		);
+
+		$result = \WordPress\AI\get_feature_developer_model_config( 'test-feature' );
+
+		$this->assertSame( 'openai', $result['provider'] );
+		$this->assertSame( 'gpt-test', $result['model'] );
+	}
+
+	/**
+	 * Test that get_feature_developer_model_config() tolerates malformed option values.
+	 *
+	 * @since 0.9.0
+	 */
+	public function test_get_feature_developer_model_config_handles_malformed_option(): void {
+		update_option( 'wpai_feature_test-feature_field_developer', 'not-an-array' );
+
+		$result = \WordPress\AI\get_feature_developer_model_config( 'test-feature' );
+
+		$this->assertSame( '', $result['provider'] );
+		$this->assertSame( '', $result['model'] );
+	}
+
+	/**
+	 * Test that connector plugin checks support plugin_file metadata.
+	 *
+	 * @since 0.9.0
+	 */
+	public function test_is_connector_plugin_active_returns_false_for_inactive_plugin_file(): void {
+		$this->assertFalse(
+			\WordPress\AI\is_connector_plugin_active(
+				array(
+					'plugin' => array(
+						'plugin_file' => 'inactive-test-plugin/inactive-test-plugin.php',
+					),
+				)
+			)
+		);
 	}
 }

@@ -1,4 +1,3 @@
-
 # Release Instructions
 
 The following can be copied into a [new, blank GitHub issue](https://github.com/WordPress/ai/issues) who's title is formatted as `Release version X.Y.Z`.  Once the issue is submitted, the checklist in the body of the issue should be followed to release a new version of the AI plugin.  All references to `X.Y.Z` below should be updated to the actual release version number.

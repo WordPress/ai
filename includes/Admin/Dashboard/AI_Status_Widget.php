@@ -222,7 +222,7 @@ class AI_Status_Widget {
 			 * For example, if the connector slug is 'openai', the hook name
 			 * will be 'wpai_is_openai_connector_configured'.
 			 *
-			 * @since x.x.x
+			 * @since 0.9.0
 			 *
 			 * @param bool $configured Whether the connector is configured.
 			 * @param array<string, mixed> $connector_data The connector data.
