@@ -13,7 +13,11 @@ use ReflectionClass;
 use WP_Ability;
 use WP_Error;
 
+use WordPress\AiClient\AiClient;
+
 use function WordPress\AI\format_guidelines_for_prompt;
+use function WordPress\AI\get_feature_developer_model_config;
+use function WordPress\AI\get_preferred_models_for_text_generation;
 
 /**
  * Base implementation for a WordPress Ability.
@@ -284,6 +288,44 @@ abstract class Abstract_Ability extends WP_Ability {
 	protected function ensure_image_generation_supported( $prompt_builder, string $message ) {
 		if ( ! $prompt_builder->is_supported_for_image_generation() ) {
 			return new WP_Error( 'unsupported_model', $message );
+		}
+
+		return $prompt_builder;
+	}
+
+	/**
+	 * Sets the provider and model preference for a prompt builder based on developer mode settings.
+	 *
+	 * Reads the developer-configured provider/model for the given feature class and applies it
+	 * to the prompt builder. Falls back to the supplied model preference list when no override
+	 * is saved.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The prompt builder.
+	 * @param class-string<\WordPress\AI\Contracts\Feature> $feature_class The feature class to read settings from.
+	 * @param array<int, array{string, string}> $fallback_models The default models to use when no override is set.
+	 * @return \WP_AI_Client_Prompt_Builder The prompt builder.
+	 */
+	protected function set_provider_model_preference( \WP_AI_Client_Prompt_Builder $prompt_builder, string $feature_class, array $fallback_models = array() ): \WP_AI_Client_Prompt_Builder {
+		$config   = get_feature_developer_model_config( $feature_class::get_id() );
+		$provider = $config['provider'];
+		$model    = $config['model'];
+
+		if ( $provider && $model ) {
+			$prompt_builder->using_model(
+				AiClient::defaultRegistry()->getProviderModel( $provider, $model )
+			);
+		} else {
+			if ( $provider ) {
+				$prompt_builder->using_provider( $provider );
+			}
+
+			if ( empty( $fallback_models ) ) {
+				$fallback_models = get_preferred_models_for_text_generation();
+			}
+
+			$prompt_builder->using_model_preference( ...$fallback_models );
 		}
 
 		return $prompt_builder;

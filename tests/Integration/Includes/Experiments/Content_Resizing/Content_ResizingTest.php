@@ -16,13 +16,13 @@ use WordPress\AI\Features\Registry;
 /**
  * Content Resizing experiment test case.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -48,7 +48,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -62,7 +62,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Content_Resizing();
@@ -76,7 +76,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment can be disabled via filter.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_experiment_can_be_disabled() {
 		add_filter( 'wpai_feature_content-resizing_enabled', '__return_false' );
@@ -91,7 +91,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment metadata is correct.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_experiment_metadata() {
 		$experiment = new Content_Resizing();
@@ -104,7 +104,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that register() hooks all required actions.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_register_hooks_actions() {
 		$experiment = new Content_Resizing();
@@ -123,7 +123,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that enqueue_assets() does not enqueue the assets on the wrong admin page.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_enqueue_assets_does_not_enqueue_on_wrong_admin_page() {
 		$experiment = new Content_Resizing();
@@ -136,7 +136,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is disabled when the global toggle is off.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_experiment_disabled_when_global_toggle_off() {
 		update_option( 'wpai_features_enabled', false );

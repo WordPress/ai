@@ -51,6 +51,7 @@ class Summarization extends Abstract_Feature {
 		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 	}
 
 	/**
@@ -100,13 +101,32 @@ class Summarization extends Abstract_Feature {
 		}
 
 		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization' );
-		Asset_Loader::enqueue_style( 'summarization', 'experiments/summarization' );
+
+		/**
+		 * Filters the minimum content length required to enable summarization.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $min_content_length The minimum number of characters required. Default 100.
+		 */
+		$min_content_length = (int) apply_filters( 'wpai_summarization_min_content_length', 100 );
+
 		Asset_Loader::localize_script(
 			'summarization',
 			'SummarizationData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => $min_content_length,
 			)
 		);
+	}
+
+	/**
+	 * Enqueues the block stylesheet for the editor iframe and the front end.
+	 *
+	 * @since 0.9.0
+	 */
+	public function enqueue_block_assets(): void {
+		Asset_Loader::enqueue_style( 'summarization', 'experiments/summarization' );
 	}
 }
