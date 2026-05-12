@@ -548,20 +548,46 @@ class Comment_Moderation extends Abstract_Feature {
 			);
 		}
 
-		if ( ! empty( $meta_query ) ) {
-			$query->query_vars['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-		}
-
 		// Handle sorting.
 		$orderby = $query->query_vars['orderby'] ?? '';
 
+		// Use named meta queries so comments without analysis metadata remain visible when sorted.
 		if ( 'wpai_sentiment' === $orderby ) {
-			$query->query_vars['meta_key'] = self::META_SENTIMENT;
-			$query->query_vars['orderby']  = 'meta_value';
+			$meta_query[] = array(
+				'relation'             => 'OR',
+				'wpai_sentiment_sort'  => array(
+					'key'     => self::META_SENTIMENT,
+					'compare' => 'EXISTS',
+				),
+				'wpai_sentiment_empty' => array(
+					'key'     => self::META_SENTIMENT,
+					'compare' => 'NOT EXISTS',
+				),
+			);
+
+			$query->query_vars['orderby'] = 'wpai_sentiment_sort';
 		} elseif ( 'wpai_toxicity' === $orderby ) {
-			$query->query_vars['meta_key'] = self::META_TOXICITY_SCORE;
-			$query->query_vars['orderby']  = 'meta_value_num';
+			$meta_query[] = array(
+				'relation'            => 'OR',
+				'wpai_toxicity_sort'  => array(
+					'key'     => self::META_TOXICITY_SCORE,
+					'compare' => 'EXISTS',
+					'type'    => 'DECIMAL(10, 5)',
+				),
+				'wpai_toxicity_empty' => array(
+					'key'     => self::META_TOXICITY_SCORE,
+					'compare' => 'NOT EXISTS',
+				),
+			);
+
+			$query->query_vars['orderby'] = 'wpai_toxicity_sort';
 		}
+
+		if ( empty( $meta_query ) ) {
+			return;
+		}
+
+		$query->query_vars['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 	}
 
 	/**

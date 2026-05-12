@@ -387,6 +387,72 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that sorting keeps comments without moderation metadata visible.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_comment_sorting_includes_comments_without_analysis_meta() {
+		set_current_screen( 'edit-comments' );
+		$experiment = new Comment_Moderation();
+		add_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+
+		try {
+			$comment_without_meta = $this->create_comment_without_hooks();
+
+			$comment_neg = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_neg, Comment_Moderation::META_SENTIMENT, 'negative' );
+			update_comment_meta( $comment_neg, Comment_Moderation::META_TOXICITY_SCORE, 0.8 );
+
+			$comment_pos = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_pos, Comment_Moderation::META_SENTIMENT, 'positive' );
+			update_comment_meta( $comment_pos, Comment_Moderation::META_TOXICITY_SCORE, 0.2 );
+
+			$comments = get_comments(
+				array(
+					'fields'  => 'ids',
+					'orderby' => 'wpai_sentiment',
+					'order'   => 'ASC',
+				)
+			);
+
+			$this->assertSame( array( $comment_without_meta, $comment_neg, $comment_pos ), $comments );
+
+			$comments = get_comments(
+				array(
+					'fields'  => 'ids',
+					'orderby' => 'wpai_sentiment',
+					'order'   => 'DESC',
+				)
+			);
+
+			$this->assertSame( array( $comment_pos, $comment_neg, $comment_without_meta ), $comments );
+
+			$comments = get_comments(
+				array(
+					'fields'  => 'ids',
+					'orderby' => 'wpai_toxicity',
+					'order'   => 'ASC',
+				)
+			);
+
+			$this->assertSame( array( $comment_without_meta, $comment_pos, $comment_neg ), $comments );
+
+			$comments = get_comments(
+				array(
+					'fields'  => 'ids',
+					'orderby' => 'wpai_toxicity',
+					'order'   => 'DESC',
+				)
+			);
+
+			$this->assertSame( array( $comment_neg, $comment_pos, $comment_without_meta ), $comments );
+		} finally {
+			remove_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+			set_current_screen( 'front' );
+		}
+	}
+
+	/**
 	 * Test that add_dashboard_pills appends HTML only on the dashboard screen.
 	 *
 	 * @since x.x.x
