@@ -15,14 +15,6 @@ import { createRoot } from '@wordpress/element';
  */
 import { LazyAnalysisController } from './components/LazyAnalysisController';
 
-declare global {
-	interface Window {
-		aiCommentModerationData?: {
-			enabled: boolean;
-		};
-	}
-}
-
 /**
  * Initialize the comment moderation experiment.
  */

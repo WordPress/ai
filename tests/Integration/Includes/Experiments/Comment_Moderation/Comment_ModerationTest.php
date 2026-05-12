@@ -16,7 +16,7 @@ use WordPress\AI\Features\Registry;
 /**
  * Comment_Moderation experiment test case.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
@@ -29,7 +29,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Creates a comment row directly without triggering wp_insert_comment hooks.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @return int Comment ID.
 	 */
@@ -62,7 +62,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -91,7 +91,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -107,7 +107,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Comment_Moderation();
@@ -121,7 +121,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that register() adds expected hooks.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_register_adds_expected_hooks() {
 		$experiment = new Comment_Moderation();
@@ -142,7 +142,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that register_abilities() registers comment analysis ability.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_register_abilities_registers_comment_analysis() {
 		$experiment = new Comment_Moderation();
@@ -154,7 +154,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test add_columns() inserts sentiment and toxicity columns after comment.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_add_columns_inserts_custom_columns_after_comment() {
 		$experiment = new Comment_Moderation();
@@ -179,7 +179,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test add_bulk_actions() adds expected action.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_add_bulk_actions_adds_analyze_with_ai() {
 		$experiment = new Comment_Moderation();
@@ -192,7 +192,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test add_inline_action() adds a nonce-protected link for a comment.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_add_inline_action_adds_nonce_protected_link() {
 		$comment_id = $this->create_comment_without_hooks();
@@ -210,7 +210,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test handle_bulk_action() ignores unrelated actions.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_handle_bulk_action_ignores_other_actions() {
 		$experiment = new Comment_Moderation();
@@ -223,7 +223,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test handle_bulk_action() marks selected comments as pending.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_handle_bulk_action_marks_comments_pending_and_adds_query_arg() {
 		wp_set_current_user( $this->admin_user_id );
@@ -243,7 +243,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test moderate_comment() analyzes comments when the current user cannot moderate comments.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_moderate_comment_analyzes_comment_for_user_without_moderate_comments_capability() {
 		$user_id    = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -269,7 +269,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Filters the analysis result for tests.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @return array{toxicity_score: float, sentiment: string} Analysis result.
 	 */
@@ -283,7 +283,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test show_bulk_action_notice() renders notice when queued count is valid.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_show_bulk_action_notice_renders_notice() {
 		$experiment                   = new Comment_Moderation();
@@ -300,7 +300,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test show_bulk_action_notice() does nothing for empty/invalid counts.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_show_bulk_action_notice_does_nothing_for_invalid_count() {
 		$experiment                   = new Comment_Moderation();
@@ -316,7 +316,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test enqueue_assets() returns early for non-comments screens.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_enqueue_assets_returns_early_for_non_comment_screens() {
 		$experiment = new Comment_Moderation();
@@ -328,7 +328,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test render_column() outputs pending badge markup for pending status.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_render_column_outputs_pending_badge_for_pending_status() {
 		wp_set_current_user( $this->admin_user_id );
@@ -343,5 +343,84 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'data-ai-status="pending"', $output );
 		$this->assertStringContainsString( 'data-comment-id="' . $comment_id . '"', $output );
+	}
+
+	/**
+	 * Test filtering logic via handle_sorting_and_filtering.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_comment_filtering_integration() {
+		set_current_screen( 'edit-comments' );
+		$experiment = new Comment_Moderation();
+		add_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+
+		$comment_pos = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_pos, Comment_Moderation::META_SENTIMENT, 'positive' );
+		update_comment_meta( $comment_pos, Comment_Moderation::META_TOXICITY_SCORE, 0.2 );
+
+		$comment_neg = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_neg, Comment_Moderation::META_SENTIMENT, 'negative' );
+		update_comment_meta( $comment_neg, Comment_Moderation::META_TOXICITY_SCORE, 0.8 );
+
+		$comment_neu = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_neu, Comment_Moderation::META_SENTIMENT, 'neutral' );
+		update_comment_meta( $comment_neu, Comment_Moderation::META_TOXICITY_SCORE, 0.5 );
+
+		// Filter for positive sentiment.
+		$_GET['wpai_sentiment'] = 'positive';
+		$comments               = get_comments( array( 'fields' => 'ids' ) );
+		$this->assertContains( $comment_pos, $comments );
+		$this->assertNotContains( $comment_neg, $comments );
+		$this->assertNotContains( $comment_neu, $comments );
+
+		// Filter for medium toxicity.
+		unset( $_GET['wpai_sentiment'] );
+		$_GET['wpai_toxicity'] = 'medium';
+		$comments              = get_comments( array( 'fields' => 'ids' ) );
+		$this->assertContains( $comment_neu, $comments );
+		$this->assertNotContains( $comment_pos, $comments );
+		$this->assertNotContains( $comment_neg, $comments );
+
+		// Cleanup.
+		unset( $_GET['wpai_toxicity'] );
+		remove_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+		set_current_screen( 'front' );
+	}
+
+	/**
+	 * Test that add_dashboard_pills appends HTML only on the dashboard screen.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_dashboard_pills() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+		$comment    = get_comment( $comment_id );
+
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, 'positive' );
+		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, 0.2 );
+
+		$original_excerpt = 'This is an excerpt.';
+
+		// Not on dashboard: no change.
+		set_current_screen( 'edit-comments' );
+		$result = $experiment->add_dashboard_pills( $original_excerpt, $comment_id, $comment );
+		$this->assertSame( $original_excerpt, $result );
+
+		// On dashboard: pills appended.
+		set_current_screen( 'dashboard' );
+		$result_dashboard = $experiment->add_dashboard_pills( $original_excerpt, $comment_id, $comment );
+		$this->assertStringContainsString( 'ai-dashboard-pills', $result_dashboard );
+		$this->assertStringContainsString( 'Positive', $result_dashboard );
+
+		// Test filter opt-out.
+		add_filter( 'wpai_comment_moderation_show_dashboard_pills', '__return_false' );
+		$result_filtered = $experiment->add_dashboard_pills( $original_excerpt, $comment_id, $comment );
+		$this->assertSame( $original_excerpt, $result_filtered );
+		remove_filter( 'wpai_comment_moderation_show_dashboard_pills', '__return_false' );
+
+		set_current_screen( 'front' );
 	}
 }

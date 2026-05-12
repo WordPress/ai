@@ -17,8 +17,10 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
+import { count } from '@wordpress/wordcount';
 
 const NOTICE_ID = 'ai_summarization_error';
+const { aiSummarizationData } = window as any;
 
 /**
  * Summary generation hook.
@@ -122,10 +124,18 @@ export function useSummaryGeneration() {
 		}
 	};
 
+	// Minimum content length required for summarization.
+	const minContentLength: number =
+		aiSummarizationData?.minContentLength ?? 100;
+	const isContentTooShort =
+		count( content, 'characters_including_spaces' ) < minContentLength;
+
 	return {
 		isSummarizing,
 		hasSummary: summary && summary.trim().length > 0,
 		summary,
 		handleSummarize,
+		isContentTooShort,
+		minContentLength,
 	};
 }

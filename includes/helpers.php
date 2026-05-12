@@ -79,7 +79,7 @@ function normalize_content( string $content ): string {
  * Handles non-Latin scripts including; CJK (Chinese, Japanese, Korean), Arabic, Cyrillic, etc.
  * This approach mirrors the approach used by WordPress's JavaScript word counter.
  *
- * @since x.x.x
+ * @since 0.9.0
  *
  * @param string $text The text to count words in.
  * @return int The number of words.
@@ -330,7 +330,7 @@ function get_preferred_vision_models(): array {
 /**
  * Returns the developer-mode provider/model config saved for a feature.
  *
- * @since x.x.x
+ * @since 0.9.0
  *
  * @param string $feature_id The feature ID (e.g. 'excerpt-generation').
  * @return array{provider: string, model: string} The saved provider and model, or empty strings if unset.
@@ -460,7 +460,7 @@ function has_valid_ai_credentials(): bool {
 /**
  * Returns the AI connectors.
  *
- * @since x.x.x
+ * @since 0.9.0
  *
  * @param bool $active_only Whether to only return active connectors.
  * @return array<string, array<string, mixed>> The AI connectors.
@@ -492,7 +492,7 @@ function get_ai_connectors( bool $active_only = true ): array {
  *
  * If plugin metadata is not provided for a connector, it is treated as active.
  *
- * @since x.x.x
+ * @since 0.9.0
  *
  * @param array<string, mixed> $connector_data Connector metadata.
  * @return bool True if the connector plugin is active or unknown, false if known inactive.

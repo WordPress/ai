@@ -300,7 +300,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * to the prompt builder. Falls back to the supplied model preference list when no override
 	 * is saved.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The prompt builder.
 	 * @param class-string<\WordPress\AI\Contracts\Feature> $feature_class The feature class to read settings from.

@@ -536,7 +536,7 @@ export function MediaLibraryImageEditor( {
 					) }
 					<div className="ai-media-library-editor__spinner-row">
 						<Spinner />
-						<span>{ __( 'Generating image…', 'ai' ) }</span>
+						<span>{ __( 'Generating…', 'ai' ) }</span>
 					</div>
 				</div>
 			) }

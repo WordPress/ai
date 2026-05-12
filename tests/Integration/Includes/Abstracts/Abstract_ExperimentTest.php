@@ -107,7 +107,7 @@ class Mock_Custom_Stability_Experiment extends Test_Uncategorized_Experiment {
 /**
  * Mock experiment with custom capability metadata.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Mock_Custom_Capability_Experiment extends Test_Uncategorized_Experiment {
 	/**
@@ -348,7 +348,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_capability() defaults to text_generation when the capability key is absent from metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_get_capability_defaults_to_text_generation_when_missing(): void {
 		$experiment = new Test_Uncategorized_Experiment();
@@ -363,7 +363,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_capability() returns the value declared in metadata.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_get_capability_returns_metadata_value(): void {
 		$experiment = new Mock_Custom_Capability_Experiment();
