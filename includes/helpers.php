@@ -369,6 +369,44 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
 }
 
 /**
+ * Determines if an API key is set for a given connector.
+ *
+ * Checks in order: environment variable, PHP constant, database.
+ * Environment variable and constant are only checked when their
+ * respective names are provided.
+ *
+ * @since 1.0.0
+ *
+ * @param array{setting_name?: string, env_var_name?: string, constant_name?: string} $auth Authentication configuration.
+ * @return bool True if an API key is set by one of the configuration options, false otherwise.
+ */
+function has_api_key_configured( array $auth ): bool {
+	$setting_name  = $auth['setting_name'] ?? '';
+	$env_var_name  = $auth['env_var_name'] ?? '';
+	$constant_name = $auth['constant_name'] ?? '';
+
+	// Check environment variable first.
+	if ( '' !== $env_var_name ) {
+		$env_value = getenv( $env_var_name );
+		if ( false !== $env_value && '' !== $env_value ) {
+			return true;
+		}
+	}
+
+	// Check PHP constant.
+	if ( '' !== $constant_name && defined( $constant_name ) ) {
+		$const_value = constant( $constant_name );
+		if ( is_string( $const_value ) && '' !== $const_value ) {
+			return true;
+		}
+	}
+
+	// Check database.
+	$db_value = get_option( $setting_name, '' );
+	return '' !== $db_value;
+}
+
+/**
  * Checks if we have AI credentials set.
  *
  * @since 0.1.0
@@ -385,7 +423,7 @@ function has_ai_credentials(): bool {
 			continue;
 		}
 
-		if ( '' === get_option( $auth['setting_name'], '' ) ) {
+		if ( ! has_api_key_configured( $auth ) ) {
 			continue;
 		}
 
