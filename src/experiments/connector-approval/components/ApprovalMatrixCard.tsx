@@ -16,16 +16,22 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { buildMatrixPluginList } from '../functions/helpers';
-import type { ApprovalMatrix, Connector, PluginSummary } from '../types';
+import { buildMatrixCallerList } from '../functions/helpers';
+import type {
+	ApprovalMatrix,
+	Connector,
+	PluginSummary,
+	ThemeSummary,
+} from '../types';
 
 interface ApprovalMatrixCardProps {
 	connectors: Connector[];
 	plugins: PluginSummary[];
+	themes: ThemeSummary[];
 	approvals: ApprovalMatrix;
 	isSaving: boolean;
 	onToggle: (
-		pluginBasename: string,
+		callerBasename: string,
 		connectorId: string,
 		approved: boolean
 	) => void;
@@ -34,11 +40,12 @@ interface ApprovalMatrixCardProps {
 const ApprovalMatrixCard = ( {
 	connectors,
 	plugins,
+	themes,
 	approvals,
 	isSaving,
 	onToggle,
 }: ApprovalMatrixCardProps ): JSX.Element => {
-	const matrixPlugins = buildMatrixPluginList( plugins, approvals );
+	const matrixCallers = buildMatrixCallerList( plugins, themes, approvals );
 
 	return (
 		<Card className="ai-connector-approval__matrix">
@@ -57,7 +64,7 @@ const ApprovalMatrixCard = ( {
 					<table className="widefat striped">
 						<thead>
 							<tr>
-								<th>{ __( 'Plugin', 'ai' ) }</th>
+								<th>{ __( 'Caller', 'ai' ) }</th>
 								{ connectors.map( ( connector ) => (
 									<th key={ connector.id }>
 										{ connector.name }
@@ -66,16 +73,22 @@ const ApprovalMatrixCard = ( {
 							</tr>
 						</thead>
 						<tbody>
-							{ matrixPlugins.map( ( plugin ) => (
-								<tr key={ plugin.basename }>
+							{ matrixCallers.map( ( caller ) => (
+								<tr key={ caller.basename }>
 									<td>
-										<strong>{ plugin.name }</strong>
+										<strong>{ caller.name }</strong>
 										<br />
-										<code>{ plugin.basename }</code>
+										<em>
+											{ 'theme' === caller.type
+												? __( 'Theme', 'ai' )
+												: __( 'Plugin', 'ai' ) }
+										</em>
+										<br />
+										<code>{ caller.basename }</code>
 									</td>
 									{ connectors.map( ( connector ) => {
 										const approved = Boolean(
-											approvals[ plugin.basename ]?.[
+											approvals[ caller.basename ]?.[
 												connector.id
 											]
 										);
@@ -91,7 +104,7 @@ const ApprovalMatrixCard = ( {
 														value: boolean
 													) =>
 														onToggle(
-															plugin.basename,
+															caller.basename,
 															connector.id,
 															value
 														)

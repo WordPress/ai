@@ -53,6 +53,7 @@ const ConnectorApprovalApp = (): JSX.Element => {
 			<ApprovalMatrixCard
 				connectors={ state.connectors }
 				plugins={ state.plugins }
+				themes={ state.themes }
 				approvals={ state.approvals }
 				isSaving={ isSaving }
 				onToggle={ setApproval }

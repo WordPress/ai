@@ -5,7 +5,13 @@
 /**
  * Internal dependencies
  */
-import type { ApprovalMatrix, Connector, PluginSummary } from '../types';
+import type {
+	ApprovalMatrix,
+	CallerSummary,
+	Connector,
+	PluginSummary,
+	ThemeSummary,
+} from '../types';
 
 /**
  * Formats a timestamp as a human-readable string.
@@ -30,27 +36,41 @@ export function connectorLabel( connectors: Connector[], id: string ): string {
 }
 
 /**
- * Returns the union of active plugins and plugins that appear in the approval
+ * Returns the union of active callers and callers that appear in the approval
  * matrix (even if inactive), deduplicated and sorted for rendering.
  * @param {PluginSummary[]} plugins   Active plugin summaries.
- * @param {ApprovalMatrix}  approvals Plugin basename → connector ID → approved.
- * @return {PluginSummary[]} Plugin summaries sorted by name.
+ * @param {ThemeSummary[]}  themes    Active theme summaries.
+ * @param {ApprovalMatrix}  approvals Caller basename → connector ID → approved.
+ * @return {CallerSummary[]} Caller summaries sorted by name.
  */
-export function buildMatrixPluginList(
+export function buildMatrixCallerList(
 	plugins: PluginSummary[],
+	themes: ThemeSummary[],
 	approvals: ApprovalMatrix
-): PluginSummary[] {
+): CallerSummary[] {
+	const activeCallers = [
+		...plugins.map( ( plugin ) => ( {
+			...plugin,
+			type: 'plugin' as const,
+		} ) ),
+		...themes.map( ( theme ) => ( { ...theme, type: 'theme' as const } ) ),
+	];
 	const basenames = new Set< string >( [
-		...plugins.map( ( plugin ) => plugin.basename ),
+		...activeCallers.map( ( caller ) => caller.basename ),
 		...Object.keys( approvals ),
 	] );
 
 	return Array.from( basenames )
-		.map( ( basename ) => ( {
-			basename,
-			name:
-				plugins.find( ( plugin ) => plugin.basename === basename )
-					?.name ?? basename,
-		} ) )
+		.map( ( basename ): CallerSummary => {
+			const activeCaller = activeCallers.find(
+				( caller ) => caller.basename === basename
+			);
+
+			return {
+				basename,
+				type: activeCaller?.type ?? 'unknown',
+				name: activeCaller?.name ?? basename,
+			};
+		} )
 		.sort( ( a, b ) => a.name.localeCompare( b.name ) );
 }

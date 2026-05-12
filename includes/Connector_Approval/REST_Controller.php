@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  * Exposes approval state to the admin UI and accepts approval updates.
  *
  * Endpoints (namespace `ai/v1`):
- * - GET  /connector-approvals                        returns connectors, approvals, pending, and active plugins
+ * - GET  /connector-approvals                        returns connectors, approvals, pending, active plugins, and active theme
  * - POST /connector-approvals                        sets or revokes approval for a plugin/connector pair
  * - DELETE /connector-approvals/pending/(?P<key>...) dismisses a pending entry without approving
  *
@@ -148,6 +148,7 @@ final class REST_Controller {
 				'approvals'  => $this->store->get_approvals(),
 				'pending'    => $pending_list,
 				'plugins'    => $this->list_active_plugins(),
+				'themes'     => $this->list_active_themes(),
 			),
 			200
 		);
@@ -273,5 +274,24 @@ final class REST_Controller {
 		);
 
 		return $list;
+	}
+
+	/**
+	 * Returns the active theme for the UI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<array{basename: string, name: string}>
+	 */
+	private function list_active_themes(): array {
+		$theme = wp_get_theme();
+		$name  = $theme->get( 'Name' );
+
+		return array(
+			array(
+				'basename' => get_stylesheet(),
+				'name'     => is_string( $name ) && '' !== $name ? $name : get_stylesheet(),
+			),
+		);
 	}
 }

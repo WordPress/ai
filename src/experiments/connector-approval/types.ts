@@ -12,6 +12,17 @@ export interface PluginSummary {
 	name: string;
 }
 
+export interface ThemeSummary {
+	basename: string;
+	name: string;
+}
+
+export interface CallerSummary {
+	basename: string;
+	name: string;
+	type: 'plugin' | 'theme' | 'unknown';
+}
+
 export interface PendingEntry {
 	key: string;
 	caller_type: string;
@@ -30,6 +41,7 @@ export interface ApprovalState {
 	approvals: ApprovalMatrix;
 	pending: PendingEntry[];
 	plugins: PluginSummary[];
+	themes: ThemeSummary[];
 }
 
 export interface LocalizedData {

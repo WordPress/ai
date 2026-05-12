@@ -65,6 +65,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 		$this->store      = new Approvals_Store();
 		$this->controller = new REST_Controller( $this->store );
 		add_action( 'rest_api_init', array( $this->controller, 'register_routes' ) );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invokes a WordPress core hook in test setup.
 		do_action( 'rest_api_init' );
 
 		$this->admin_id      = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -110,7 +111,33 @@ class REST_ControllerTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'approvals', $data );
 		$this->assertArrayHasKey( 'pending', $data );
 		$this->assertArrayHasKey( 'plugins', $data );
+		$this->assertArrayHasKey( 'themes', $data );
 		$this->assertCount( 1, $data['pending'] );
+	}
+
+	/**
+	 * Test that connector approval state includes the active theme.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_state_includes_active_theme() {
+		wp_set_current_user( $this->admin_id );
+
+		$request  = new WP_REST_Request( 'GET', '/ai/v1/connector-approvals' );
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertArrayHasKey( 'themes', $data );
+		$this->assertSame(
+			array(
+				array(
+					'basename' => get_stylesheet(),
+					'name'     => wp_get_theme()->get( 'Name' ),
+				),
+			),
+			$data['themes']
+		);
 	}
 
 	/**

@@ -11,9 +11,9 @@ The Connector Approval experiment adds an administrator-controlled permission la
 When enabled, a new admin page appears under `Settings > AI Connector Approvals`. The page provides:
 
 - A **Pending requests** table showing plugins/themes that attempted to use a connector without approval
-- An **Approval matrix** showing plugin-by-connector approvals
+- An **Approval matrix** showing caller-by-connector approvals for active plugins and the active theme
 - One-click **Approve** and **Dismiss** actions for pending requests
-- Toggle controls to grant or revoke connector access per plugin
+- Toggle controls to grant or revoke connector access per caller
 
 Pending requests are also surfaced through an admin notice so administrators can quickly review them.
 
@@ -66,7 +66,7 @@ Pending entries are keyed as `caller_basename::connector_id` and capped at 50 en
    - `GET /ai/v1/connector-approvals` for initial state
    - `POST /ai/v1/connector-approvals` to set/revoke approval
    - `DELETE /ai/v1/connector-approvals/pending/<key>` to dismiss pending entries
-3. REST responses always return the latest full state (connectors, approvals, pending, plugins).
+3. REST responses always return the latest full state (connectors, approvals, pending, plugins, themes).
 
 ## REST API
 
