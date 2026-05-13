@@ -270,11 +270,11 @@ class Review_Notes extends Abstract_Ability {
 							'text'        => array( 'type' => 'string' ),
 							'priority'    => array( 'type' => 'integer' ),
 						),
-						'required' => array( 'review_type', 'text', 'priority' ),
+						'required'   => array( 'review_type', 'text', 'priority' ),
 					),
 				),
 			),
-			'required' => array( 'suggestions' ),
+			'required'   => array( 'suggestions' ),
 		);
 	}
 
