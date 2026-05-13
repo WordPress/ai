@@ -40,6 +40,58 @@ test.describe( 'AI Review Notes Experiment', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Disables Review Notes until the post content reaches the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Short Review Notes Test',
+			content: 'Too short.',
+		} );
+
+		await editor.openDocumentSettingsSidebar();
+
+		const reviewButton = page.getByRole( 'button', {
+			name: 'Generate Review Notes',
+		} );
+		await expect( reviewButton ).toBeVisible();
+		await expect( reviewButton ).toBeDisabled();
+
+		await expect(
+			page.locator( '.description', {
+				hasText:
+					'Review Notes will be available when the post content has at least 100 characters.',
+			} )
+		).toBeVisible();
+	} );
+
+	test( 'Enables Review Notes once the post content meets the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Long Review Notes Test',
+			content:
+				'This paragraph contains enough content for the Review Notes feature to become available and analyze the post block-by-block.',
+		} );
+
+		await editor.openDocumentSettingsSidebar();
+
+		const reviewButton = page.getByRole( 'button', {
+			name: 'Generate Review Notes',
+		} );
+		await expect( reviewButton ).toBeVisible();
+		await expect( reviewButton ).toBeEnabled();
+
+		await expect(
+			page.locator( '.description', {
+				hasText: 'at least 100 characters',
+			} )
+		).toHaveCount( 0 );
+	} );
+
 	test( 'Shows the "Review with AI" button in the block toolbar', async ( {
 		admin,
 		editor,
@@ -65,6 +117,29 @@ test.describe( 'AI Review Notes Experiment', () => {
 				hasText: 'Generate Review Note',
 			} )
 		).toBeVisible();
+	} );
+
+	test( 'Disables single-block Review Notes when the post content is shorter than the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Short Single Block Review Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content: 'Tiny text.',
+			},
+		} );
+
+		await editor.clickBlockToolbarButton( 'Options' );
+
+		await expect(
+			page.getByRole( 'menuitem', { name: 'Generate Review Note' } )
+		).toBeDisabled();
 	} );
 
 	test( 'Shows suggestion count after a successful review', async ( {
