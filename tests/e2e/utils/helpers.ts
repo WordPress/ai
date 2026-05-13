@@ -9,6 +9,7 @@ import type { Locator, Page } from '@playwright/test';
 import {
 	type Admin,
 	type Editor,
+	type RequestUtils,
 	expect,
 } from '@wordpress/e2e-test-utils-playwright';
 
@@ -390,4 +391,28 @@ export const selectFirstParagraph = async ( editor: Editor ) => {
 		.first();
 	await editor.selectBlocks( paragraph );
 	return paragraph;
+};
+
+/**
+ * Seeds a dummy OpenAI API key.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ */
+export const seedCredentials = async ( requestUtils: RequestUtils ) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/credentials/seed',
+		method: 'POST',
+	} );
+};
+
+/**
+ * Clears the dummy OpenAI API key.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ */
+export const clearCredentials = async ( requestUtils: RequestUtils ) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/credentials/clear',
+		method: 'POST',
+	} );
 };

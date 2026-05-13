@@ -14,6 +14,9 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_provider_availability_data;
+use function WordPress\AI\has_ai_credentials;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -767,6 +770,10 @@ class Comment_Moderation extends Abstract_Feature {
 			return $redirect_url;
 		}
 
+		if ( ! has_ai_credentials() ) {
+			return add_query_arg( 'wpai_no_provider', 1, (string) $redirect_url );
+		}
+
 		// Mark selected comments as pending for analysis.
 		$queued = 0;
 		foreach ( (array) $comment_ids as $comment_id ) {
@@ -790,6 +797,11 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @since 0.9.0
 	 */
 	public function show_bulk_action_notice(): void {
+		if ( isset( $_GET['wpai_no_provider'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			self::show_missing_provider_notice();
+			return;
+		}
+
 		if ( ! isset( $_GET['wpai_analysis_queued'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return;
 		}
@@ -851,6 +863,32 @@ class Comment_Moderation extends Abstract_Feature {
 		);
 
 		return $actions;
+	}
+
+	/**
+	 * Shows an admin notice if the inline action is attempted without a provider.
+	 *
+	 * @since x.x.x
+	 */
+	private function show_missing_provider_notice(): void {
+		$connectors_url = get_provider_availability_data()['connectorsUrl'];
+		$notice_message = sprintf(
+			/* translators: %s: Link to connectors settings page. */
+			__( 'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in %s.', 'ai' ),
+			'<a href="' . esc_url( $connectors_url ) . '">' . esc_html__( 'Settings → Connectors', 'ai' ) . '</a>'
+		);
+
+		printf(
+			'<div class="notice notice-error is-dismissible"><p>%s</p></div>',
+			wp_kses(
+				$notice_message,
+				array(
+					'a' => array(
+						'href' => array(),
+					),
+				)
+			)
+		);
 	}
 
 	/**

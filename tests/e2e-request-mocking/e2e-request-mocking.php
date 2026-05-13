@@ -12,8 +12,63 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Register a REST endpoint for setting up/tearing down credentials in E2E tests.
+add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
+
+/**
+ * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
+ *
+ * POST /ai-e2e/v1/credentials/seed  — sets a dummy provider API key.
+ * POST /ai-e2e/v1/credentials/clear — removes it.
+ */
+function ai_e2e_register_credentials_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/credentials/seed',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_seed_credentials',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/credentials/clear',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_clear_credentials',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+
+/**
+ * Seeds a dummy provider key so has_ai_credentials() returns true.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_seed_credentials() {
+	update_option( 'connectors_ai_openai_api_key', 'valid-api-key' );
+	return new WP_REST_Response( array( 'seeded' => true ) );
+}
+
+/**
+ * Removes the dummy provider key so has_ai_credentials() returns false.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_clear_credentials() {
+	delete_option( 'connectors_ai_openai_api_key' );
+	return new WP_REST_Response( array( 'cleared' => true ) );
+}
 
 /**
  * Mock the HTTP requests and provide known responses.

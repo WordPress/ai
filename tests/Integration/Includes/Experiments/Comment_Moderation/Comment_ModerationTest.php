@@ -69,6 +69,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
 
 		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_comment-moderation_enabled', true );
@@ -98,6 +99,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_comment-moderation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
 		unset( $_GET['wpai_analysis_queued'] );
 		parent::tearDown();
 	}
@@ -321,6 +323,86 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$experiment->enqueue_assets( 'options-general.php' );
 
 		$this->assertFalse( wp_script_is( 'ai_comment_moderation', 'enqueued' ) );
+	}
+
+	/**
+	 * Test handle_bulk_action() redirects with no_provider arg when credentials are missing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_redirects_with_no_provider_when_credentials_missing() {
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
+
+		$experiment = new Comment_Moderation();
+		$redirect   = 'https://example.com/wp-admin/edit-comments.php';
+		$comment_id = $this->create_comment_without_hooks();
+
+		$result = $experiment->handle_bulk_action( $redirect, 'wpai_analyze', array( $comment_id ) );
+
+		$this->assertStringContainsString( 'wpai_no_provider=1', $result );
+		$this->assertStringNotContainsString( 'wpai_analysis_queued', $result );
+	}
+
+	/**
+	 * Test show_bulk_action_notice() renders provider notice when no_provider query arg is set.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_show_bulk_action_notice_renders_provider_notice_when_no_provider() {
+		$experiment               = new Comment_Moderation();
+		$_GET['wpai_no_provider'] = '1';
+
+		ob_start();
+		$experiment->show_bulk_action_notice();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'notice-error', $output );
+
+		unset( $_GET['wpai_no_provider'] );
+	}
+
+	/**
+	 * Test show_bulk_action_notice() renders notice with connectors link.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_show_bulk_action_notice_renders_connectors_link_when_no_provider() {
+		$experiment               = new Comment_Moderation();
+		$_GET['wpai_no_provider'] = '1';
+
+		ob_start();
+		$experiment->show_bulk_action_notice();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'options-connectors.php', $output );
+		$this->assertStringContainsString( 'Settings', $output );
+
+		unset( $_GET['wpai_no_provider'] );
+	}
+
+	/**
+	 * Test handle_inline_action() delegates to handle_bulk_action() which redirects
+	 * with no_provider arg when credentials are missing.
+	 *
+	 * Since handle_inline_action() calls wp_safe_redirect() and exit, we test
+	 * the underlying handle_bulk_action() path it uses.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_from_inline_returns_no_provider_redirect() {
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
+
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		$redirect = 'https://example.com/wp-admin/edit-comments.php';
+		$result   = $experiment->handle_bulk_action( $redirect, 'wpai_analyze', array( $comment_id ) );
+
+		$this->assertStringContainsString( 'wpai_no_provider=1', $result );
+		$this->assertStringNotContainsString( 'wpai_analysis_queued', $result );
+
+		$comment_meta = get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true );
+		$this->assertEmpty( $comment_meta, 'No analysis metadata should be set when credentials are missing.' );
 	}
 
 	/**
