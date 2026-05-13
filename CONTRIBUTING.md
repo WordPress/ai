@@ -21,7 +21,7 @@ cd ai
 2. **Install dependencies and build assets:**
 
 ```bash
-composer install && npm i && npm run build
+composer install && nvm use && npm i && npm run build
 ```
 
 3. **Activate the plugin:**
