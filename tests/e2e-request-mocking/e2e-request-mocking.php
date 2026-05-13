@@ -76,6 +76,16 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
+
+			// Dynamically adjust response based on comment content for E2E variety.
+			// We look for specific phrases from the E2E test to avoid matching the system prompt.
+			if ( str_contains( $body, 'This is a positive comment' ) ) {
+				$response = str_replace( 'negative', 'positive', $response );
+				$response = str_replace( '0.95', '0.1', $response );
+			} elseif ( str_contains( $body, 'This is a neutral comment' ) ) {
+				$response = str_replace( 'negative', 'neutral', $response );
+				$response = str_replace( '0.95', '0.5', $response );
+			}
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );
 		}

@@ -342,4 +342,83 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'data-ai-status="pending"', $output );
 		$this->assertStringContainsString( 'data-comment-id="' . $comment_id . '"', $output );
 	}
+
+	/**
+	 * Test filtering logic via handle_sorting_and_filtering.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_comment_filtering_integration() {
+		set_current_screen( 'edit-comments' );
+		$experiment = new Comment_Moderation();
+		add_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+
+		$comment_pos = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_pos, Comment_Moderation::META_SENTIMENT, 'positive' );
+		update_comment_meta( $comment_pos, Comment_Moderation::META_TOXICITY_SCORE, 0.2 );
+
+		$comment_neg = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_neg, Comment_Moderation::META_SENTIMENT, 'negative' );
+		update_comment_meta( $comment_neg, Comment_Moderation::META_TOXICITY_SCORE, 0.8 );
+
+		$comment_neu = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_neu, Comment_Moderation::META_SENTIMENT, 'neutral' );
+		update_comment_meta( $comment_neu, Comment_Moderation::META_TOXICITY_SCORE, 0.5 );
+
+		// Filter for positive sentiment.
+		$_GET['wpai_sentiment'] = 'positive';
+		$comments               = get_comments( array( 'fields' => 'ids' ) );
+		$this->assertContains( $comment_pos, $comments );
+		$this->assertNotContains( $comment_neg, $comments );
+		$this->assertNotContains( $comment_neu, $comments );
+
+		// Filter for medium toxicity.
+		unset( $_GET['wpai_sentiment'] );
+		$_GET['wpai_toxicity'] = 'medium';
+		$comments              = get_comments( array( 'fields' => 'ids' ) );
+		$this->assertContains( $comment_neu, $comments );
+		$this->assertNotContains( $comment_pos, $comments );
+		$this->assertNotContains( $comment_neg, $comments );
+
+		// Cleanup.
+		unset( $_GET['wpai_toxicity'] );
+		remove_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+		set_current_screen( 'front' );
+	}
+
+	/**
+	 * Test that add_dashboard_pills appends HTML only on the dashboard screen.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_dashboard_pills() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+		$comment    = get_comment( $comment_id );
+
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, 'positive' );
+		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, 0.2 );
+
+		$original_excerpt = 'This is an excerpt.';
+
+		// Not on dashboard: no change.
+		set_current_screen( 'edit-comments' );
+		$result = $experiment->add_dashboard_pills( $original_excerpt, $comment_id, $comment );
+		$this->assertSame( $original_excerpt, $result );
+
+		// On dashboard: pills appended.
+		set_current_screen( 'dashboard' );
+		$result_dashboard = $experiment->add_dashboard_pills( $original_excerpt, $comment_id, $comment );
+		$this->assertStringContainsString( 'ai-dashboard-pills', $result_dashboard );
+		$this->assertStringContainsString( 'Positive', $result_dashboard );
+
+		// Test filter opt-out.
+		add_filter( 'wpai_comment_moderation_show_dashboard_pills', '__return_false' );
+		$result_filtered = $experiment->add_dashboard_pills( $original_excerpt, $comment_id, $comment );
+		$this->assertSame( $original_excerpt, $result_filtered );
+		remove_filter( 'wpai_comment_moderation_show_dashboard_pills', '__return_false' );
+
+		set_current_screen( 'front' );
+	}
 }

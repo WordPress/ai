@@ -84,6 +84,114 @@ class Comment_Moderation extends Abstract_Feature {
 	public const STATUS_FAILED = 'failed';
 
 	/**
+	 * Sentiment: positive.
+	 *
+	 * @var string
+	 */
+	public const SENTIMENT_POSITIVE = 'positive';
+
+	/**
+	 * Sentiment: neutral.
+	 *
+	 * @var string
+	 */
+	public const SENTIMENT_NEUTRAL = 'neutral';
+
+	/**
+	 * Sentiment: negative.
+	 *
+	 * @var string
+	 */
+	public const SENTIMENT_NEGATIVE = 'negative';
+
+	/**
+	 * Toxicity level: low.
+	 *
+	 * @var string
+	 */
+	public const TOXICITY_LOW = 'low';
+
+	/**
+	 * Toxicity level: medium.
+	 *
+	 * @var string
+	 */
+	public const TOXICITY_MEDIUM = 'medium';
+
+	/**
+	 * Toxicity level: high.
+	 *
+	 * @var string
+	 */
+	public const TOXICITY_HIGH = 'high';
+
+	/**
+	 * Gets the configuration for sentiment levels.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string}> The sentiment configuration.
+	 */
+	public static function get_sentiment_config(): array {
+		return array(
+			self::SENTIMENT_POSITIVE => array(
+				'label'       => __( 'Positive', 'ai' ),
+				'filterLabel' => __( 'Positive', 'ai' ),
+				'class'       => 'ai-badge--positive',
+				'icon'        => '😊',
+			),
+			self::SENTIMENT_NEUTRAL  => array(
+				'label'       => __( 'Neutral', 'ai' ),
+				'filterLabel' => __( 'Neutral', 'ai' ),
+				'class'       => 'ai-badge--neutral',
+				'icon'        => '😐',
+			),
+			self::SENTIMENT_NEGATIVE => array(
+				'label'       => __( 'Negative', 'ai' ),
+				'filterLabel' => __( 'Negative', 'ai' ),
+				'class'       => 'ai-badge--negative',
+				'icon'        => '😟',
+			),
+		);
+	}
+
+	/**
+	 * Gets the configuration for toxicity levels.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> The toxicity configuration.
+	 */
+	public static function get_toxicity_config(): array {
+		return array(
+			self::TOXICITY_LOW    => array(
+				'label'       => __( 'Low', 'ai' ),
+				'filterLabel' => __( 'Low Toxicity (<40%)', 'ai' ),
+				'class'       => 'ai-badge--low-toxicity',
+				'icon'        => '✓',
+				'min'         => 0.0,
+				'max'         => 0.4,
+			),
+			self::TOXICITY_MEDIUM => array(
+				'label'       => __( 'Medium', 'ai' ),
+				'filterLabel' => __( 'Medium Toxicity (40%-69%)', 'ai' ),
+				'class'       => 'ai-badge--medium-toxicity',
+				'icon'        => '⚡',
+				'min'         => 0.4,
+				'max'         => 0.7,
+			),
+			self::TOXICITY_HIGH   => array(
+				'label'       => __( 'High', 'ai' ),
+				'filterLabel' => __( 'High Toxicity (>=70%)', 'ai' ),
+				'class'       => 'ai-badge--high-toxicity',
+				'icon'        => '⚠️',
+				'min'         => 0.7,
+				'max'         => 1.0,
+			),
+		);
+	}
+
+	/**
 	 * Comment analysis ability.
 	 *
 	 * @since 0.9.0
@@ -139,11 +247,22 @@ class Comment_Moderation extends Abstract_Feature {
 		add_filter( 'comment_row_actions', array( $this, 'add_inline_action' ), 10, 2 );
 		add_action( 'load-edit-comments.php', array( $this, 'handle_inline_action' ) );
 
+		// Add sortable columns.
+		add_filter( 'manage_edit-comments_sortable_columns', array( $this, 'add_sortable_columns' ) );
+
+		// Add custom sorting and filtering.
+		add_action( 'restrict_manage_comments', array( $this, 'add_filter_dropdowns' ) );
+		add_action( 'pre_get_comments', array( $this, 'handle_sorting_and_filtering' ) );
+
 		// Enqueue assets.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
 		// Add inline styles for badges.
 		add_action( 'admin_head-edit-comments.php', array( $this, 'add_inline_styles' ) );
+		add_action( 'admin_head-index.php', array( $this, 'add_inline_styles' ) );
+
+		// Add dashboard pills.
+		add_filter( 'get_comment_excerpt', array( $this, 'add_dashboard_pills' ), 10, 3 );
 	}
 
 	/**
@@ -254,6 +373,198 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
+	 * Adds sentiment and toxicity pills to the dashboard recent comments widget.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string      $comment_excerpt The comment excerpt.
+	 * @param string      $comment_id      The comment ID.
+	 * @param \WP_Comment $comment         The comment object.
+	 * @return string The modified comment excerpt.
+	 */
+	public function add_dashboard_pills( $comment_excerpt, $comment_id, $comment ): string {
+		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
+			return $comment_excerpt;
+		}
+
+		$screen = get_current_screen();
+		if ( ! $screen || 'dashboard' !== $screen->id ) {
+			return $comment_excerpt;
+		}
+
+		$comment_id = (int) $comment_id;
+
+		/**
+		 * Filters whether to show AI sentiment and toxicity pills in the dashboard.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool        $show       Whether to show the pills. Default true.
+		 * @param int         $comment_id The comment ID.
+		 * @param \WP_Comment $comment    The comment object.
+		 */
+		if ( ! apply_filters( 'wpai_comment_moderation_show_dashboard_pills', true, $comment_id, $comment ) ) {
+			return $comment_excerpt;
+		}
+
+		$status = get_comment_meta( $comment_id, self::META_ANALYSIS_STATUS, true );
+		if ( self::STATUS_COMPLETE !== $status ) {
+			return $comment_excerpt;
+		}
+
+		$sentiment = get_comment_meta( $comment_id, self::META_SENTIMENT, true );
+		$score     = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
+
+		// Capture the pills HTML in an output buffer.
+		ob_start();
+		?>
+		<div class="ai-dashboard-pills">
+			<?php
+			$this->render_sentiment_badge( (string) $sentiment );
+			$this->render_toxicity_badge( $score );
+			?>
+		</div>
+		<?php
+		$pills = ob_get_clean();
+
+		return $comment_excerpt . $pills;
+	}
+
+	/**
+	 * Adds filter dropdowns for sentiment and toxicity.
+	 *
+	 * @since x.x.x
+	 */
+	public function add_filter_dropdowns(): void {
+		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
+			return;
+		}
+
+		$screen = get_current_screen();
+		if ( ! $screen || 'edit-comments' !== $screen->id ) {
+			return;
+		}
+
+		$current_sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$current_toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		// Sentiment Dropdown.
+		$sentiments = self::get_sentiment_config();
+		?>
+		<label class="screen-reader-text" for="wpai-filter-sentiment"><?php esc_html_e( 'Filter by Sentiment', 'ai' ); ?></label>
+		<select name="wpai_sentiment" id="wpai-filter-sentiment">
+			<option value=""><?php esc_html_e( 'All Sentiments', 'ai' ); ?></option>
+			<?php foreach ( $sentiments as $value => $config ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current_sentiment, $value ); ?>>
+					<?php echo esc_html( $config['filterLabel'] ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+
+		<?php
+		// Toxicity Dropdown.
+		$toxicities = self::get_toxicity_config();
+		?>
+		<label class="screen-reader-text" for="wpai-filter-toxicity"><?php esc_html_e( 'Filter by Toxicity', 'ai' ); ?></label>
+		<select name="wpai_toxicity" id="wpai-filter-toxicity">
+			<option value=""><?php esc_html_e( 'All Toxicities', 'ai' ); ?></option>
+			<?php foreach ( $toxicities as $value => $config ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current_toxicity, $value ); ?>>
+					<?php echo esc_html( $config['filterLabel'] ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	/**
+	 * Adds sortable columns to the comments list table.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $columns The existing sortable columns.
+	 * @return array<string, string> The modified sortable columns.
+	 */
+	public function add_sortable_columns( $columns ): array {
+		$columns['wpai_sentiment'] = 'wpai_sentiment';
+		$columns['wpai_toxicity']  = 'wpai_toxicity';
+		return $columns;
+	}
+
+	/**
+	 * Handles the custom sorting and filtering for comments.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Comment_Query $query The comment query object.
+	 */
+	public function handle_sorting_and_filtering( $query ): void {
+		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
+			return;
+		}
+
+		$screen = get_current_screen();
+		if ( ! $screen || 'edit-comments' !== $screen->id ) {
+			return;
+		}
+
+		$meta_query = $query->query_vars['meta_query'] ?? array();
+		if ( ! is_array( $meta_query ) ) {  // Handle empty strings.
+			$meta_query = array();
+		}
+
+		// Handle filtering.
+		$sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		$sentiments = self::get_sentiment_config();
+		if ( ! empty( $sentiment ) && array_key_exists( $sentiment, $sentiments ) ) {
+			$meta_query[] = array(
+				'key'   => self::META_SENTIMENT,
+				'value' => $sentiment,
+			);
+		}
+
+		$toxicities = self::get_toxicity_config();
+		if ( ! empty( $toxicity ) && array_key_exists( $toxicity, $toxicities ) ) {
+			$config = $toxicities[ $toxicity ];
+			$min    = $config['min'];
+			$max    = $config['max'];
+
+			$meta_query[] = array(
+				'relation' => 'AND',
+				array(
+					'key'     => self::META_TOXICITY_SCORE,
+					'value'   => $min,
+					'type'    => 'DECIMAL(10, 5)',
+					'compare' => '>=',
+				),
+				array(
+					'key'     => self::META_TOXICITY_SCORE,
+					'value'   => $max,
+					'type'    => 'DECIMAL(10, 5)',
+					'compare' => 1.0 === $max ? '<=' : '<', // For the end boundary of 1.0 to be included.
+				),
+			);
+		}
+
+		if ( ! empty( $meta_query ) ) {
+			$query->query_vars['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+		}
+
+		// Handle sorting.
+		$orderby = $query->query_vars['orderby'] ?? '';
+
+		if ( 'wpai_sentiment' === $orderby ) {
+			$query->query_vars['meta_key'] = self::META_SENTIMENT;
+			$query->query_vars['orderby']  = 'meta_value';
+		} elseif ( 'wpai_toxicity' === $orderby ) {
+			$query->query_vars['meta_key'] = self::META_TOXICITY_SCORE;
+			$query->query_vars['orderby']  = 'meta_value_num';
+		}
+	}
+
+	/**
 	 * Renders the custom column content.
 	 *
 	 * @since 0.9.0
@@ -323,23 +634,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @param string $sentiment The sentiment value.
 	 */
 	private function render_sentiment_badge( string $sentiment ): void {
-		$badges = array(
-			'positive' => array(
-				'label' => __( 'Positive', 'ai' ),
-				'class' => 'ai-badge--positive',
-				'icon'  => '😊',
-			),
-			'negative' => array(
-				'label' => __( 'Negative', 'ai' ),
-				'class' => 'ai-badge--negative',
-				'icon'  => '😟',
-			),
-			'neutral'  => array(
-				'label' => __( 'Neutral', 'ai' ),
-				'class' => 'ai-badge--neutral',
-				'icon'  => '😐',
-			),
-		);
+		$badges = self::get_sentiment_config();
 
 		$badge = $badges[ $sentiment ] ?? $badges['neutral'];
 
@@ -360,19 +655,19 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @param float $score The toxicity score (0-1).
 	 */
 	private function render_toxicity_badge( float $score ): void {
-		if ( $score >= 0.7 ) {
-			$label = __( 'High', 'ai' );
-			$class = 'ai-badge--high-toxicity';
-			$icon  = '⚠️';
-		} elseif ( $score >= 0.4 ) {
-			$label = __( 'Medium', 'ai' );
-			$class = 'ai-badge--medium-toxicity';
-			$icon  = '⚡';
-		} else {
-			$label = __( 'Low', 'ai' );
-			$class = 'ai-badge--low-toxicity';
-			$icon  = '✓';
+		$config = self::get_toxicity_config();
+		$badge  = $config[ self::TOXICITY_LOW ];
+
+		foreach ( $config as $tier ) {
+			if ( $score >= $tier['min'] && ( $score < $tier['max'] || 1.0 === $tier['max'] ) ) {
+				$badge = $tier;
+				break;
+			}
 		}
+
+		$label = $badge['label'];
+		$class = $badge['class'];
+		$icon  = $badge['icon'];
 
 		printf(
 			'<span class="ai-badge %s" title="%s (%d%%)">%s %s</span>',
@@ -583,6 +878,10 @@ class Comment_Moderation extends Abstract_Feature {
 			'CommentModerationData',
 			array(
 				'enabled' => $this->is_enabled(),
+				'labels'  => array(
+					'sentiment' => self::get_sentiment_config(),
+					'toxicity'  => self::get_toxicity_config(),
+				),
 			)
 		);
 	}
@@ -595,8 +894,8 @@ class Comment_Moderation extends Abstract_Feature {
 	public function add_inline_styles(): void {
 		?>
 		<style>
-			.column-ai_sentiment,
-			.column-ai_toxicity {
+			.edit-comments-php .column-wpai_sentiment,
+			.edit-comments-php .column-wpai_toxicity {
 				width: 100px;
 			}
 
@@ -660,6 +959,12 @@ class Comment_Moderation extends Abstract_Feature {
 			.ai-badge--failed {
 				background-color: #f8d7da;
 				color: #721c24;
+			}
+
+			.dashboard-comment-wrap .ai-dashboard-pills {
+				margin-top: 8px;
+				display: flex;
+				gap: 8px;
 			}
 		</style>
 		<?php
