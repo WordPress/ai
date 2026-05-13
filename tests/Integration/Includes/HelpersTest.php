@@ -780,6 +780,37 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertTrue( \WordPress\AI\is_connector_plugin_active( array() ) );
 	}
 
+
+	/**
+	 * Test get_provider_availability_data() returns expected structure.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_provider_availability_data_returns_expected_structure(): void {
+		$data = \WordPress\AI\get_provider_availability_data();
+
+		$this->assertArrayHasKey( 'hasProvider', $data );
+		$this->assertArrayHasKey( 'connectorsUrl', $data );
+		$this->assertIsBool( $data['hasProvider'] );
+	}
+
+	/**
+	 * Test get_provider_availability_data() reflects credential state via filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_provider_availability_data_reflects_credential_filter(): void {
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		$data = \WordPress\AI\get_provider_availability_data();
+		$this->assertTrue( $data['hasProvider'] );
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
+
+		add_filter( 'wpai_has_ai_credentials', '__return_false' );
+		$data = \WordPress\AI\get_provider_availability_data();
+		$this->assertFalse( $data['hasProvider'] );
+		remove_filter( 'wpai_has_ai_credentials', '__return_false' );
+	}
+
 	/**
 	 * Test that connector plugin checks support plugin_file metadata.
 	 *
