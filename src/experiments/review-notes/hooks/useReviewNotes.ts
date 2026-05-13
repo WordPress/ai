@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { dispatch, select } from '@wordpress/data';
+import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editPostStore } from '@wordpress/edit-post';
@@ -13,6 +13,7 @@ import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
+import { count } from '@wordpress/wordcount';
 
 /**
  * Internal dependencies
@@ -66,6 +67,32 @@ interface ReviewResult {
 interface NoteRecord {
 	id: number;
 	[ key: string ]: unknown;
+}
+
+/**
+ * Hook for determining whether Review Notes should be available for the
+ * current post content.
+ *
+ * @return Availability state for the Review Notes feature.
+ */
+function useReviewNotesAvailability(): {
+	content: string;
+	minContentLength: number;
+	isContentTooShort: boolean;
+} {
+	const content =
+		useSelect( ( selectStore ) => {
+			return ( selectStore( editorStore ) as any ).getEditedPostContent();
+		}, [] ) ?? '';
+	const minContentLength: number =
+		( window as any ).aiReviewNotesData?.minContentLength ?? 100;
+
+	return {
+		content,
+		minContentLength,
+		isContentTooShort:
+			count( content, 'characters_including_spaces' ) < minContentLength,
+	};
 }
 
 /**
@@ -163,14 +190,22 @@ export function useReviewNotes(): {
 	progress: number;
 	total: number;
 	lastRunCount: number | null;
+	isContentTooShort: boolean;
+	minContentLength: number;
 	runReview: () => Promise< void >;
 } {
 	const [ isReviewing, setIsReviewing ] = useState< boolean >( false );
 	const [ progress, setProgress ] = useState< number >( 0 );
 	const [ total, setTotal ] = useState< number >( 0 );
 	const [ lastRunCount, setLastRunCount ] = useState< number | null >( null );
+	const { content, isContentTooShort, minContentLength } =
+		useReviewNotesAvailability();
 
 	const runReview = async () => {
+		if ( isContentTooShort ) {
+			return;
+		}
+
 		setIsReviewing( true );
 		setProgress( 0 );
 		setTotal( 0 );
@@ -184,9 +219,6 @@ export function useReviewNotes(): {
 			const postId = (
 				select( editorStore ) as any
 			 ).getCurrentPostId() as number;
-			const content = (
-				select( editorStore ) as any
-			 ).getEditedPostContent() as string;
 
 			// Get all blocks and flatten the tree.
 			const allBlocks = (
@@ -275,7 +307,15 @@ export function useReviewNotes(): {
 		}
 	};
 
-	return { isReviewing, progress, total, lastRunCount, runReview };
+	return {
+		isReviewing,
+		progress,
+		total,
+		lastRunCount,
+		isContentTooShort,
+		minContentLength,
+		runReview,
+	};
 }
 
 /**
@@ -285,11 +325,17 @@ export function useReviewNotes(): {
  */
 export function useReviewBlock(): {
 	isReviewing: boolean;
+	isContentTooShort: boolean;
 	reviewBlock: ( clientId: string ) => Promise< void >;
 } {
 	const [ isReviewing, setIsReviewing ] = useState< boolean >( false );
+	const { content, isContentTooShort } = useReviewNotesAvailability();
 
 	const reviewBlock = async ( clientId: string ) => {
+		if ( isContentTooShort ) {
+			return;
+		}
+
 		setIsReviewing( true );
 
 		( dispatch( noticesStore ) as any ).removeNotice(
@@ -308,9 +354,6 @@ export function useReviewBlock(): {
 			const postId = (
 				select( editorStore ) as any
 			 ).getCurrentPostId() as number;
-			const content = (
-				select( editorStore ) as any
-			 ).getEditedPostContent() as string;
 
 			// Fetch fresh note state for this invocation.
 			const [ pendingNotes, approvedNotes ] = await Promise.all( [
@@ -375,7 +418,7 @@ export function useReviewBlock(): {
 		}
 	};
 
-	return { isReviewing, reviewBlock };
+	return { isReviewing, isContentTooShort, reviewBlock };
 }
 
 /**

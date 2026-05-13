@@ -34,9 +34,20 @@ import { useReviewBlock, useReviewNotes } from '../hooks/useReviewNotes';
  * reviewable blocks.
  */
 export default function ReviewNotesPlugin() {
-	const { isReviewing, progress, total, lastRunCount, runReview } =
-		useReviewNotes();
-	const { isReviewing: isReviewingBlock, reviewBlock } = useReviewBlock();
+	const {
+		isReviewing,
+		progress,
+		total,
+		lastRunCount,
+		runReview,
+		isContentTooShort,
+		minContentLength,
+	} = useReviewNotes();
+	const {
+		isReviewing: isReviewingBlock,
+		reviewBlock,
+		isContentTooShort: isBlockReviewDisabled,
+	} = useReviewBlock();
 	const { openGeneralSidebar } = useDispatch( editPostStore );
 	const openNotesPanel = () =>
 		openGeneralSidebar?.( 'edit-post/collab-sidebar' );
@@ -54,10 +65,19 @@ export default function ReviewNotesPlugin() {
 	const buttonLabel = isReviewing
 		? reviewingLabel
 		: __( 'Generate Review Notes', 'ai' );
-	const buttonDescription = __(
-		'This will review the content of this post block-by-block, and create Notes attached to each block with suggestions.',
-		'ai'
-	);
+	const buttonDescription = isContentTooShort
+		? sprintf(
+				/* translators: %d: minimum number of characters required. */
+				__(
+					'Review Notes will be available when the post content has at least %d characters.',
+					'ai'
+				),
+				minContentLength
+		  )
+		: __(
+				'This will review the content of this post block-by-block, and create Notes attached to each block with suggestions.',
+				'ai'
+		  );
 
 	return (
 		<>
@@ -69,7 +89,7 @@ export default function ReviewNotesPlugin() {
 							icon={ commentContent }
 							onClick={ runReview }
 							isBusy={ isReviewing }
-							disabled={ isReviewing }
+							disabled={ isReviewing || isContentTooShort }
 							style={ {
 								justifyContent: 'center',
 								width: '100%',
@@ -136,7 +156,9 @@ export default function ReviewNotesPlugin() {
 							icon={
 								isReviewingBlock ? <Spinner /> : commentContent
 							}
-							disabled={ isReviewingBlock }
+							disabled={
+								isReviewingBlock || isBlockReviewDisabled
+							}
 							onClick={ () => {
 								if ( clientId ) {
 									reviewBlock( clientId );

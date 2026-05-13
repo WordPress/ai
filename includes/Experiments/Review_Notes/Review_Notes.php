@@ -124,11 +124,22 @@ class Review_Notes extends Abstract_Feature {
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'review_notes', 'experiments/review-notes' );
+
+		/**
+		 * Filters the minimum content length required to enable review notes.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $min_content_length The minimum number of characters required. Default 100.
+		 */
+		$min_content_length = (int) apply_filters( 'wpai_review_notes_min_content_length', 100 );
+
 		Asset_Loader::localize_script(
 			'review_notes',
 			'ReviewNotesData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => $min_content_length,
 			)
 		);
 	}
