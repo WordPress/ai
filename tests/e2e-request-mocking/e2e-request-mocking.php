@@ -56,7 +56,7 @@ function ai_e2e_register_credentials_endpoint() {
  * @return WP_REST_Response
  */
 function ai_e2e_seed_credentials() {
-	update_option( 'connectors_ai_openai_api_key', 'sk-fake-e2e-test-key' );
+	update_option( 'connectors_ai_openai_api_key', 'valid-api-key' );
 	return new WP_REST_Response( array( 'seeded' => true ) );
 }
 
