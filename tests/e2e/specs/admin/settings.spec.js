@@ -435,4 +435,57 @@ test.describe( 'Plugin settings', () => {
 		await expect( enableAllButton ).toBeEnabled();
 		await expect( disableAllButton ).toBeEnabled();
 	} );
+
+	test( 'Can use developer mode', async ( { admin, page } ) => {
+		// Globally turn on experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Excerpt Generation Experiment.
+		await enableExperiment( admin, page, 'Excerpt Generation' );
+
+		// Open the settings menu and verify model selection is described.
+		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+		await expect( page.getByText( 'DEVELOPER TOOLS' ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+		).toBeVisible();
+		await expect(
+			page.getByText( 'Select a specific provider and model per feature' )
+		).toBeVisible();
+
+		// Toggle on model selection.
+		await page
+			.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+			.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+		).toBeVisible();
+
+		// Verify the Excerpt Generation Experiment has developer settings.
+		await expect(
+			page.locator( '.ai-developer-mode-fields' ).first()
+		).toBeVisible();
+
+		// Verify the selected option shows a checkmark.
+		await expect(
+			page
+				.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+				.locator( 'svg' )
+		).toBeVisible();
+
+		// Toggle off model selection.
+		await page
+			.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+			.click();
+
+		// Verify the developer settings are no longer visible.
+		await expect(
+			page.locator( '.ai-developer-mode-fields' )
+		).not.toBeVisible();
+
+		// Disable the Excerpt Generation Experiment.
+		await disableExperiment( admin, page, 'Excerpt Generation' );
+	} );
 } );

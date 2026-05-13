@@ -93,7 +93,9 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					isBusy={ isGenerating }
 					accessibleWhenDisabled
 				>
-					{ __( 'Generate Meta Description', 'ai' ) }
+					{ isGenerating
+						? __( 'Generating…', 'ai' )
+						: __( 'Generate Meta Description', 'ai' ) }
 				</Button>
 			) }
 

@@ -23,6 +23,7 @@ parameters:
 				- ai.php
 				- includes/
 		scanFiles:
+			- vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
 			# These are needed due config.platform.php being 7.4 in composer.json and wordpress-stubs not including polyfills.
 			# See <https://github.com/php-stubs/wordpress-stubs/issues/100>.
 			- vendor/phpstan/php-8-stubs/stubs/ext/standard/str_contains.php
@@ -33,6 +34,7 @@ parameters:
 			- '#WP_AI_Client_[A-Za-z0-9_]+#'
 			- '#WordPress\\AiClient\\#'
 			- '#Function wp_get_connectors not found\.#'
+			- '#class cli\\progress\\Bar#'
 			- '#Function wp_supports_ai not found\.#'
 		excludePaths:
 			analyse:

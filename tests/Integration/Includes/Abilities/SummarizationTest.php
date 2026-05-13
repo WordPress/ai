@@ -499,7 +499,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() preserves newlines in the output.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_execute_callback_preserves_newlines_in_output(): void {
 		$ability = new class(
