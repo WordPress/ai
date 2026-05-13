@@ -8,6 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	clearConnectors,
+	seedCredentials,
 	disableExperiments,
 	disableExperiment,
 	enableExperiment,
@@ -29,6 +30,11 @@ const EXPERIMENT_GROUPS = {
 test.describe( 'Plugin settings', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
 		await requestUtils.deactivatePlugin( 'e2e-test-request-mocking' );
+	} );
+
+	test.afterAll( async ( { requestUtils } ) => {
+		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await seedCredentials( requestUtils );
 	} );
 
 	test( 'Can visit the settings page and see error message', async ( {

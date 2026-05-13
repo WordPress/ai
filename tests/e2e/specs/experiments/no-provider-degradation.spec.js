@@ -7,7 +7,8 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  * Internal dependencies
  */
 const {
-	clearConnectors,
+	clearCredentials,
+	seedCredentials,
 	enableExperiment,
 	enableExperiments,
 } = require( '../../utils/helpers' );
@@ -47,9 +48,13 @@ async function expectProviderNotice( page ) {
 }
 
 test.describe( 'Graceful degradation when no AI provider is configured', () => {
-	test.beforeEach( async ( { admin, page } ) => {
-		await clearConnectors( admin, page );
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await clearCredentials( requestUtils );
 		await enableExperiments( admin, page );
+	} );
+
+	test.afterAll( async ( { requestUtils } ) => {
+		await seedCredentials( requestUtils );
 	} );
 
 	test( 'Title Generation shows notice when clicking Generate without a provider', async ( {
