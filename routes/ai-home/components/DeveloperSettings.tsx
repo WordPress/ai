@@ -78,7 +78,9 @@ export function DeveloperSettings( {
 				id: 'model',
 				type: 'text' as const,
 				label: __( 'Model', 'ai' ),
-				isVisible: ( data: DeveloperSelection ) => !! data.provider,
+				isVisible: ( data: DeveloperSelection ) =>
+					!! data.provider &&
+					!! providers.find( ( p ) => p.id === data.provider ),
 				getElements: getModelElements,
 				Edit: 'select',
 			},
