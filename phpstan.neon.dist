@@ -28,6 +28,9 @@ parameters:
 			# See <https://github.com/php-stubs/wordpress-stubs/issues/100>.
 			- vendor/phpstan/php-8-stubs/stubs/ext/standard/str_contains.php
 			- vendor/phpstan/php-8-stubs/stubs/ext/standard/str_starts_with.php
+			# Optional displace-secrets-manager plugin (https://github.com/ericmann/displace-secrets-manager).
+			# Used by the Key_Encryption experiment, runtime-checked via function_exists().
+			- tests/phpstan-stubs/displace-secrets-manager.php
 		# Temporary while WP 7.0 beta AI Client migration is in progress.
 		ignoreErrors:
 			- '#Function wp_ai_client_prompt not found\.#'
