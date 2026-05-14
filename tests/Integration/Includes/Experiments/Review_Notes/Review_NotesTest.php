@@ -124,7 +124,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_review_notes', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":100',
+			'"minContentLength":"100"',
 			(string) wp_scripts()->get_data( 'ai_review_notes', 'data' )
 		);
 	}
@@ -147,7 +147,7 @@ class Review_NotesTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_review_notes_min_content_length', $filter );
 
 		$this->assertStringContainsString(
-			'"minContentLength":250',
+			'"minContentLength":"250"',
 			(string) wp_scripts()->get_data( 'ai_review_notes', 'data' )
 		);
 	}
