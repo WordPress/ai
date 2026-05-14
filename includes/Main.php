@@ -14,6 +14,7 @@ namespace WordPress\AI;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
+use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
@@ -64,6 +65,7 @@ final class Main {
 
 		// Register activation and deactivation hooks.
 		register_activation_hook( WPAI_PLUGIN_FILE, array( Activation::class, 'activation_callback' ) );
+		register_deactivation_hook( WPAI_PLUGIN_FILE, array( Deactivation::class, 'deactivation_callback' ) );
 	}
 
 	/**
