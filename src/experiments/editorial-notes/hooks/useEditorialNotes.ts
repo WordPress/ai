@@ -28,11 +28,13 @@ import {
 	fetchAllNotesByStatus,
 	buildContextWindow,
 } from '../../../utils/notes';
+import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 
 const BATCH_SIZE = 4;
+const NOTICE_ID = 'ai_editorial_notes_error';
 const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
 
 interface BlockAttributes {
@@ -171,14 +173,16 @@ export function useEditorialNotes(): {
 	const [ lastRunCount, setLastRunCount ] = useState< number | null >( null );
 
 	const runReview = async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsReviewing( true );
 		setProgress( 0 );
 		setTotal( 0 );
 		setLastRunCount( null );
 
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_editorial_notes_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const postId = (
@@ -266,7 +270,7 @@ export function useEditorialNotes(): {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
-					id: 'ai_editorial_notes_error',
+					id: NOTICE_ID,
 					isDismissible: true,
 				}
 			);

@@ -27,9 +27,11 @@ import {
 	fetchAllNotesByStatus,
 	buildContextWindow,
 } from '../../../utils/notes';
+import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
+const NOTICE_ID = 'wpai_editorial_updates_error';
 
 interface BlockAttributes {
 	content?: string;
@@ -115,13 +117,15 @@ export function useEditorialUpdates(): {
 	);
 
 	const runRefinement = async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsRefining( true );
 		setProgress( 0 );
 		setTotal( 0 );
 
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'wpai_editorial_updates_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const content = (
@@ -312,7 +316,7 @@ export function useEditorialUpdates(): {
 					firstErrorMessage ??
 						__( 'Refinement failed for all blocks.', 'ai' ),
 					{
-						id: 'wpai_editorial_updates_error',
+						id: NOTICE_ID,
 						isDismissible: true,
 					}
 				);
@@ -388,7 +392,7 @@ export function useEditorialUpdates(): {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
-					id: 'wpai_editorial_updates_error',
+					id: NOTICE_ID,
 					isDismissible: true,
 				}
 			);
