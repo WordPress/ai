@@ -131,8 +131,6 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_runs_without_error() {
-		$this->setExpectedIncorrectUsage( 'WordPress\AI\Asset_Loader' );
-
 		$this->experiment->enqueue_assets();
 
 		$this->assertTrue( true, 'enqueue_assets() should run without throwing an exception' );
