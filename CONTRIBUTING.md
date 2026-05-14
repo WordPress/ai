@@ -20,8 +20,13 @@ cd ai
 
 2. **Install dependencies and build assets:**
 
+Before running `npm i`, ensure your Node.js and npm versions match the minimum requirements specified in the `package.json` file.
+
+If you use `nvm` for managing Node.js versions, run `nvm use` before `npm i` to automatically switch to the correct version.
+
 ```bash
-composer install && nvm use && npm i && npm run build
+# If using nvm, run: nvm use
+composer install && npm i && npm run build
 ```
 
 3. **Activate the plugin:**
