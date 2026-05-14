@@ -107,6 +107,7 @@ namespace WordPress\AI\Tests\Integration\Experiments\Key_Encryption {
 			delete_option( self::GLOBAL_TOGGLE );
 			delete_option( self::TOGGLE );
 			delete_option( self::SETTING_NAME );
+			delete_option( Key_Encryption::RESUME_MIGRATION_OPTION );
 			$GLOBALS['wpai_test_secret_store'] = array();
 			parent::tearDown();
 		}
@@ -255,6 +256,60 @@ namespace WordPress\AI\Tests\Integration\Experiments\Key_Encryption {
 			Deactivation::deactivation_callback();
 
 			$this->assertSame( 'sk-still-plaintext', $this->raw_option( self::SETTING_NAME ) );
+		}
+
+		/**
+		 * Plugin lifecycle: deactivate decrypts; reactivate (via the deferred resume flag) re-encrypts.
+		 *
+		 * @since x.x.x
+		 */
+		public function test_reactivation_re_encrypts_plaintext_keys() {
+			update_option( self::TOGGLE, true );
+			update_option( self::SETTING_NAME, 'sk-roundtrip' );
+			$this->assertArrayHasKey( self::SECRET_KEY, $GLOBALS['wpai_test_secret_store'] );
+
+			// Simulate deactivation: keys decrypted, secret cleared.
+			Deactivation::deactivation_callback();
+			$this->assertSame( 'sk-roundtrip', $this->raw_option( self::SETTING_NAME ) );
+			$this->assertArrayNotHasKey( self::SECRET_KEY, $GLOBALS['wpai_test_secret_store'] );
+
+			// Simulate reactivation: activation hook sets the deferred flag.
+			Key_Encryption::flag_resume_migration();
+			$this->assertSame( '1', get_option( Key_Encryption::RESUME_MIGRATION_OPTION ) );
+
+			// On the next request, `register()` runs first (because the feature is effectively
+			// enabled) and wires the option filters BEFORE init+16 fires the deferred migration.
+			// Simulate that ordering — `encrypt_all` must defang those filters during its own
+			// run, otherwise its `update_option( $setting, '' )` call gets intercepted by the
+			// write filter and the just-stored secret is deleted right back out.
+			Key_Encryption::get_bridge()->register_option_filters();
+
+			// Simulate init+16.
+			Key_Encryption::maybe_resume_migration();
+
+			$this->assertSame( '', $this->raw_option( self::SETTING_NAME ) );
+			$this->assertSame( 'sk-roundtrip', $GLOBALS['wpai_test_secret_store'][ self::SECRET_KEY ] ?? null );
+			$this->assertFalse( get_option( Key_Encryption::RESUME_MIGRATION_OPTION, false ) );
+
+			// And the read filter still works after the migration.
+			$this->assertSame( 'sk-roundtrip', get_option( self::SETTING_NAME ) );
+		}
+
+		/**
+		 * Fresh activation with the experiment never enabled is a no-op: the flag is consumed but
+		 * no migration runs.
+		 *
+		 * @since x.x.x
+		 */
+		public function test_resume_migration_noop_when_not_effectively_enabled() {
+			update_option( self::SETTING_NAME, 'sk-plaintext' );
+			Key_Encryption::flag_resume_migration();
+
+			Key_Encryption::maybe_resume_migration();
+
+			$this->assertSame( 'sk-plaintext', $this->raw_option( self::SETTING_NAME ) );
+			$this->assertArrayNotHasKey( self::SECRET_KEY, $GLOBALS['wpai_test_secret_store'] );
+			$this->assertFalse( get_option( Key_Encryption::RESUME_MIGRATION_OPTION, false ) );
 		}
 
 		/**

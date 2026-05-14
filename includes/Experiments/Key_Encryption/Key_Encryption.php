@@ -30,6 +30,16 @@ defined( 'ABSPATH' ) || exit;
 class Key_Encryption extends Abstract_Feature {
 
 	/**
+	 * Option that records re-encryption is needed on the next request.
+	 *
+	 * Set by `Activation::activation_callback()` so re-activating the plugin while the experiment
+	 * is still toggled on re-encrypts the plaintext keys that the previous deactivation restored.
+	 *
+	 * @since x.x.x
+	 */
+	public const RESUME_MIGRATION_OPTION = 'wpai_key_encryption_resume_migration';
+
+	/**
 	 * Process-wide bridge instance.
 	 *
 	 * Hooks are registered against this single bridge so that re-instantiation of the experiment
@@ -125,11 +135,46 @@ class Key_Encryption extends Abstract_Feature {
 		$individual = self::get_toggle_option_name();
 		$global     = Settings_Registration::GLOBAL_OPTION;
 
-		self::ensure_action( "update_option_{$individual}", array( self::class, 'handle_individual_toggle_update' ), 2 );
-		self::ensure_action( "add_option_{$individual}", array( self::class, 'handle_individual_toggle_add' ), 2 );
+		self::ensure_action( "update_option_{$individual}", array( self::class, 'handle_individual_toggle_update' ), 10, 2 );
+		self::ensure_action( "add_option_{$individual}", array( self::class, 'handle_individual_toggle_add' ), 10, 2 );
 
-		self::ensure_action( "update_option_{$global}", array( self::class, 'handle_global_toggle_update' ), 2 );
-		self::ensure_action( "add_option_{$global}", array( self::class, 'handle_global_toggle_add' ), 2 );
+		self::ensure_action( "update_option_{$global}", array( self::class, 'handle_global_toggle_update' ), 10, 2 );
+		self::ensure_action( "add_option_{$global}", array( self::class, 'handle_global_toggle_add' ), 10, 2 );
+
+		// Process any deferred re-encryption flagged by the activation hook. Priority 16 runs
+		// after `_wp_connectors_init` (priority 15), so `get_ai_connectors()` is populated.
+		self::ensure_action( 'init', array( self::class, 'maybe_resume_migration' ), 16, 0 );
+	}
+
+	/**
+	 * Sets the deferred-migration flag.
+	 *
+	 * Called from the plugin activation hook so the migration runs
+	 * on the next request, when the connector registry has been populated.
+	 *
+	 * @since x.x.x
+	 */
+	public static function flag_resume_migration(): void {
+		update_option( self::RESUME_MIGRATION_OPTION, '1', false );
+	}
+
+	/**
+	 * Consumes the deferred-migration flag and re-encrypts plaintext keys if effectively enabled.
+	 *
+	 * @since x.x.x
+	 */
+	public static function maybe_resume_migration(): void {
+		if ( '1' !== get_option( self::RESUME_MIGRATION_OPTION, '' ) ) {
+			return;
+		}
+
+		delete_option( self::RESUME_MIGRATION_OPTION );
+
+		if ( ! self::is_effectively_enabled() ) {
+			return;
+		}
+
+		self::get_bridge()->encrypt_all();
 	}
 
 	/**
@@ -139,13 +184,14 @@ class Key_Encryption extends Abstract_Feature {
 	 *
 	 * @param string   $hook          Hook name.
 	 * @param callable $callback      Callback to register.
+	 * @param int      $priority      Hook priority.
 	 * @param int      $accepted_args Number of accepted args.
 	 */
-	private static function ensure_action( string $hook, callable $callback, int $accepted_args ): void {
+	private static function ensure_action( string $hook, callable $callback, int $priority, int $accepted_args ): void {
 		if ( false !== has_action( $hook, $callback ) ) {
 			return;
 		}
-		add_action( $hook, $callback, 10, $accepted_args );
+		add_action( $hook, $callback, $priority, $accepted_args );
 	}
 
 	/**

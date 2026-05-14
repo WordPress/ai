@@ -99,6 +99,11 @@ final class Secrets_Bridge {
 			return 0;
 		}
 
+		// Tear down filters first so the `update_option` calls below
+		// don't get intercepted by `on_write` which would "helpfully"
+		// delete the secret we just stored.
+		$this->unregister_option_filters();
+
 		$count = 0;
 		foreach ( $this->get_connector_setting_names() as $connector_id => $setting_name ) {
 			$plaintext = $this->read_raw_option( $setting_name );
@@ -106,8 +111,15 @@ final class Secrets_Bridge {
 				continue;
 			}
 
-			$stored = set_secret( $this->secret_key( $connector_id ), $plaintext );
+			$secret_key = $this->secret_key( $connector_id );
+
+			$stored = set_secret( $secret_key, $plaintext );
 			if ( ! $stored ) {
+				continue;
+			}
+
+			// Verify the secret actually persisted before we drop the plaintext.
+			if ( get_secret( $secret_key ) !== $plaintext ) {
 				continue;
 			}
 
