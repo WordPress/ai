@@ -42,7 +42,7 @@ class Editorial_Notes extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Editorial Notes', 'ai' ),
-			'description' => __( 'Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Adds editorial suggestions to posts block-by-block, covering Accessibility, Readability, Grammar, and SEO. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}

@@ -293,7 +293,7 @@ export function useEditorialBlock(): {
 		setIsReviewing( true );
 
 		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_review_block_error'
+			'ai_editorial_block_error'
 		);
 
 		try {
@@ -366,7 +366,7 @@ export function useEditorialBlock(): {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
-					id: 'ai_review_block_error',
+					id: 'ai_editorial_block_error',
 					isDismissible: true,
 				}
 			);

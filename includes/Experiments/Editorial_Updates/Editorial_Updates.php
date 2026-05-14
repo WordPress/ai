@@ -44,7 +44,7 @@ class Editorial_Updates extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Editorial Updates', 'ai' ),
-			'description' => __( 'Analyze feedback that has been left via Notes and apply edits where needed.', 'ai' ),
+			'description' => __( 'Applies pending editorial Notes to your content automatically. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}

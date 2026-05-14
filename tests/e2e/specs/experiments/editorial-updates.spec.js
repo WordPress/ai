@@ -36,7 +36,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 
 		// The button should NOT be visible initially since there are no notes.
 		await expect(
-			page.getByRole( 'button', { name: 'Editorial Updates' } )
+			page.getByRole( 'button', { name: 'Apply Editorial Updates' } )
 		).toBeHidden();
 	} );
 
@@ -170,7 +170,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 
 		// The button should be visible now.
 		const refineButton = page.getByRole( 'button', {
-			name: 'Editorial Updates',
+			name: 'Apply Editorial Updates',
 		} );
 		await expect( refineButton ).toBeVisible( { timeout: 10000 } );
 
@@ -237,7 +237,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 		await editor.openDocumentSettingsSidebar();
 
 		await expect(
-			page.getByRole( 'button', { name: 'Editorial Updates' } )
+			page.getByRole( 'button', { name: 'Apply Editorial Updates' } )
 		).toHaveCount( 0 );
 	} );
 
@@ -256,7 +256,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 		await editor.openDocumentSettingsSidebar();
 
 		await expect(
-			page.getByRole( 'button', { name: 'Editorial Updates' } )
+			page.getByRole( 'button', { name: 'Apply Editorial Updates' } )
 		).toHaveCount( 0 );
 	} );
 
@@ -390,7 +390,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 		}, noteId );
 
 		const refineButton = page.getByRole( 'button', {
-			name: 'Editorial Updates',
+			name: 'Apply Editorial Updates',
 		} );
 		await expect( refineButton ).toBeVisible( { timeout: 10000 } );
 
@@ -439,7 +439,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 		await refineButton.click();
 
 		// Button should return to idle state after the error.
-		await expect( refineButton ).toHaveText( 'Editorial Updates', {
+		await expect( refineButton ).toHaveText( 'Apply Editorial Updates', {
 			timeout: 15000,
 		} );
 

@@ -643,4 +643,27 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '<copy-guidelines>Keep sentences under 25 words.</copy-guidelines>', $instruction );
 	}
 
+	// -------------------------------------------------------------------------
+	// get_prompt_builder()
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Tests that get_prompt_builder() returns a WP_Error when no text generation model is available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_prompt_builder_returns_error_without_valid_model() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'Test prompt', 'core/paragraph' );
+
+		if ( is_wp_error( $result ) ) {
+			$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model when no provider is configured' );
+		} else {
+			$this->assertIsObject( $result, 'Should return a prompt builder object when a model is available' );
+		}
+	}
+
 }

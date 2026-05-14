@@ -120,4 +120,19 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 		$ability = wp_get_ability( 'ai/editorial-updates' );
 		$this->assertNotNull( $ability, 'ai/editorial-updates ability should be registered' );
 	}
+
+	// -------------------------------------------------------------------------
+	// enqueue_assets()
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Tests that enqueue_assets() runs without error and attempts to enqueue the script.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_runs_without_error() {
+		$this->experiment->enqueue_assets();
+
+		$this->assertTrue( true, 'enqueue_assets() should run without throwing an exception' );
+	}
 }

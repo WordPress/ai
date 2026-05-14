@@ -58,7 +58,7 @@ export default function EditorialNotesPlugin() {
 		? reviewingLabel
 		: __( 'Generate Editorial Notes', 'ai' );
 	const buttonDescription = __(
-		'This will review the content of this post block-by-block, and create Notes attached to each block with suggestions.',
+		'This analyzes the content of this post block-by-block and adds editorial Notes with suggestions on each block.',
 		'ai'
 	);
 

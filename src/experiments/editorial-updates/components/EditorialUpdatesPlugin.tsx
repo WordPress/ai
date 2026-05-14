@@ -36,10 +36,10 @@ export default function EditorialUpdatesPlugin() {
 				progress,
 				total
 		  )
-		: __( 'Editorial Updates', 'ai' );
+		: __( 'Apply Editorial Updates', 'ai' );
 
 	const buttonDescription = __(
-		'Automatically updates blocks using unresolved feedback Notes.',
+		'Automatically applies pending editorial Notes to update your content.',
 		'ai'
 	);
 

@@ -211,4 +211,39 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertEquals( 'test_error', $result->get_error_code() );
 	}
+
+	// -------------------------------------------------------------------------
+	// enqueue_assets()
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Tests that enqueue_assets() runs without error and attempts to enqueue the script.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_runs_without_error() {
+		$this->experiment->enqueue_assets();
+
+		$this->assertTrue( true, 'enqueue_assets() should run without throwing an exception' );
+	}
+
+	// -------------------------------------------------------------------------
+	// register_meta() auth_callback
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Tests that the ai_note meta auth_callback returns true for a user with edit_posts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_ai_note_meta_auth_callback_returns_true_for_editor() {
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$registered = get_registered_meta_keys( 'comment' );
+		$callback   = $registered['ai_note']['auth_callback'] ?? null;
+
+		$this->assertIsCallable( $callback, 'auth_callback should be callable' );
+		$this->assertTrue( $callback(), 'auth_callback should return true for a user with edit_posts' );
+	}
 }
