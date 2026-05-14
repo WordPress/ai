@@ -33,8 +33,7 @@ final class Deactivation {
 	 * @since x.x.x
 	 */
 	public static function deactivation_callback(): void {
-		$option = 'wpai_feature_' . Key_Encryption::get_id() . '_enabled';
-		if ( ! (bool) get_option( $option, false ) ) {
+		if ( ! Key_Encryption::is_effectively_enabled() ) {
 			return;
 		}
 

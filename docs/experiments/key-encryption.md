@@ -35,3 +35,21 @@ While enabled, the experiment registers two transparent option filters per conne
 All existing callers — `Connector_Key_Index`, REST dispatch, the AI client registry — keep
 working because `get_option()` transparently returns the decrypted value through the read
 filter.
+
+## Opt-in / opt-out lifecycle
+
+Migration is driven by the **effective** enabled state — the conjunction of the global features
+toggle (`wpai_features_enabled`) and this experiment's individual toggle. Either toggle flipping
+off is a transition out of "effectively enabled" and triggers the reverse migration. This matters
+because when the global toggle is off the transparent read filter never gets installed at all —
+without the reverse migration, the user would be locked out of their own keys.
+
+## Disabling the experiment
+
+Toggle the experiment off from the Experiments settings page. The reverse migration runs as soon
+as the toggle (or the global features toggle) flips off.
+
+Avoid using the `wpai_feature_key-encryption_enabled` filter to force-disable this experiment: the
+filter only short-circuits `is_enabled()`, so the transparent read filter is never installed —
+but no toggle changes, so the reverse migration is never triggered either, and the user is locked
+out of encrypted keys. Always change the stored toggle (or the global toggle) instead.
