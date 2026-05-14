@@ -29,12 +29,14 @@ import {
 	fetchAllNotesByStatus,
 	buildContextWindow,
 } from '../../../utils/notes';
+import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 
 const BATCH_SIZE = 4;
 const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
+const NOTICE_ID = 'ai_review_notes_error';
 
 interface BlockAttributes {
 	content?: string;
@@ -202,6 +204,10 @@ export function useReviewNotes(): {
 		useReviewNotesAvailability();
 
 	const runReview = async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		if ( isContentTooShort ) {
 			return;
 		}
@@ -211,9 +217,7 @@ export function useReviewNotes(): {
 		setTotal( 0 );
 		setLastRunCount( null );
 
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_review_notes_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const postId = (
@@ -298,7 +302,7 @@ export function useReviewNotes(): {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
-					id: 'ai_review_notes_error',
+					id: NOTICE_ID,
 					isDismissible: true,
 				}
 			);

@@ -14,6 +14,9 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_provider_availability_data;
+use function WordPress\AI\has_ai_credentials;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -548,20 +551,46 @@ class Comment_Moderation extends Abstract_Feature {
 			);
 		}
 
-		if ( ! empty( $meta_query ) ) {
-			$query->query_vars['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-		}
-
 		// Handle sorting.
 		$orderby = $query->query_vars['orderby'] ?? '';
 
+		// Use named meta queries so comments without analysis metadata remain visible when sorted.
 		if ( 'wpai_sentiment' === $orderby ) {
-			$query->query_vars['meta_key'] = self::META_SENTIMENT;
-			$query->query_vars['orderby']  = 'meta_value';
+			$meta_query[] = array(
+				'relation'             => 'OR',
+				'wpai_sentiment_sort'  => array(
+					'key'     => self::META_SENTIMENT,
+					'compare' => 'EXISTS',
+				),
+				'wpai_sentiment_empty' => array(
+					'key'     => self::META_SENTIMENT,
+					'compare' => 'NOT EXISTS',
+				),
+			);
+
+			$query->query_vars['orderby'] = 'wpai_sentiment_sort';
 		} elseif ( 'wpai_toxicity' === $orderby ) {
-			$query->query_vars['meta_key'] = self::META_TOXICITY_SCORE;
-			$query->query_vars['orderby']  = 'meta_value_num';
+			$meta_query[] = array(
+				'relation'            => 'OR',
+				'wpai_toxicity_sort'  => array(
+					'key'     => self::META_TOXICITY_SCORE,
+					'compare' => 'EXISTS',
+					'type'    => 'DECIMAL(10, 5)',
+				),
+				'wpai_toxicity_empty' => array(
+					'key'     => self::META_TOXICITY_SCORE,
+					'compare' => 'NOT EXISTS',
+				),
+			);
+
+			$query->query_vars['orderby'] = 'wpai_toxicity_sort';
 		}
+
+		if ( empty( $meta_query ) ) {
+			return;
+		}
+
+		$query->query_vars['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 	}
 
 	/**
@@ -741,6 +770,10 @@ class Comment_Moderation extends Abstract_Feature {
 			return $redirect_url;
 		}
 
+		if ( ! has_ai_credentials() ) {
+			return add_query_arg( 'wpai_no_provider', 1, (string) $redirect_url );
+		}
+
 		// Mark selected comments as pending for analysis.
 		$queued = 0;
 		foreach ( (array) $comment_ids as $comment_id ) {
@@ -764,6 +797,11 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @since 0.9.0
 	 */
 	public function show_bulk_action_notice(): void {
+		if ( isset( $_GET['wpai_no_provider'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			self::show_missing_provider_notice();
+			return;
+		}
+
 		if ( ! isset( $_GET['wpai_analysis_queued'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return;
 		}
@@ -825,6 +863,32 @@ class Comment_Moderation extends Abstract_Feature {
 		);
 
 		return $actions;
+	}
+
+	/**
+	 * Shows an admin notice if the inline action is attempted without a provider.
+	 *
+	 * @since x.x.x
+	 */
+	private function show_missing_provider_notice(): void {
+		$connectors_url = get_provider_availability_data()['connectorsUrl'];
+		$notice_message = sprintf(
+			/* translators: %s: Link to connectors settings page. */
+			__( 'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in %s.', 'ai' ),
+			'<a href="' . esc_url( $connectors_url ) . '">' . esc_html__( 'Settings → Connectors', 'ai' ) . '</a>'
+		);
+
+		printf(
+			'<div class="notice notice-error is-dismissible"><p>%s</p></div>',
+			wp_kses(
+				$notice_message,
+				array(
+					'a' => array(
+						'href' => array(),
+					),
+				)
+			)
+		);
 	}
 
 	/**

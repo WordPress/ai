@@ -203,7 +203,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	public function render_attachment_meta_box( \WP_Post $post ): void {
 		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
-		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 150px;">';
+		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px;">';
 		echo '<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
 		echo '</div>';
 	}

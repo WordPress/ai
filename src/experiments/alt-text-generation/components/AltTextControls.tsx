@@ -19,6 +19,9 @@ import { store as editorStore } from '@wordpress/editor';
  */
 import type { ImageBlockAttributes } from '../types';
 import { generateAltText } from '../../../utils/generate-alt-text';
+import { ensureProvider } from '../../../utils/provider-status';
+
+const NOTICE_ID = 'ai_alt_text_generation_error';
 
 interface AltTextControlsProps {
 	clientId: string;
@@ -80,14 +83,16 @@ export function AltTextControls( {
 	 * Handles the generate button click.
 	 */
 	const handleGenerate = async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsGenerating( true );
 		setGeneratedAlt( null );
 		setIsDecorative( false );
 
 		// Clear any previous notices.
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_alt_text_generation_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const content = select( editorStore ).getEditedPostContent();
@@ -120,7 +125,7 @@ export function AltTextControls( {
 			( dispatch( noticesStore ) as any ).createErrorNotice(
 				errorMessage,
 				{
-					id: 'ai_alt_text_generation_error',
+					id: NOTICE_ID,
 					isDismissible: true,
 				}
 			);

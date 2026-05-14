@@ -14,6 +14,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
 import type {
 	MetaDescriptionAbilityInput,
 	MetaDescriptionAbilityResponse,
@@ -68,6 +69,10 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	}, [] );
 
 	const generateDescription = useCallback( async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsGenerating( true );
 		setSuggestion( null );
 
