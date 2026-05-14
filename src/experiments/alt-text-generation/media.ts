@@ -12,6 +12,7 @@ import { __ } from '@wordpress/i18n';
  */
 import type { AltTextGenerationAbilityInput } from './types';
 import { runAbility } from '../../utils/run-ability';
+import { isProviderAvailable } from '../../utils/provider-status';
 
 type AbilityResponse = {
 	alt_text?: string;
@@ -145,6 +146,17 @@ class AltTextMediaControls {
 			! this.button ||
 			! this.spinner
 		) {
+			return;
+		}
+
+		if ( ! isProviderAvailable() ) {
+			this.setStatus(
+				__(
+					'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in Settings → Connectors.',
+					'ai'
+				),
+				true
+			);
 			return;
 		}
 
