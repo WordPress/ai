@@ -208,12 +208,12 @@ test.describe( 'AI Review Notes Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Does nothing when post has no reviewable blocks', async ( {
+	test( 'Disables Review Notes when post content is below the minimum length', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Create a post with no content blocks.
+		// Create a post with content below the minimum threshold.
 		await admin.createNewPost( { title: 'Empty Post Test' } );
 
 		// Ensure the sidebar is visible.
@@ -223,15 +223,14 @@ test.describe( 'AI Review Notes Experiment', () => {
 			name: 'Generate Review Notes',
 		} );
 		await expect( reviewButton ).toBeVisible();
+		await expect( reviewButton ).toBeDisabled();
 
-		await reviewButton.click();
-
-		// Button should remain enabled immediately (no blocks to process).
-		await expect( reviewButton ).toBeEnabled();
-
-		// "No new suggestions found" should appear.
+		// The descriptive text should explain when the button becomes available.
 		await expect(
-			page.locator( '.description', { hasText: 'No new suggestions' } )
+			page.locator( '.description', {
+				hasText:
+					'Review Notes will be available when the post content has at least 100 characters.',
+			} )
 		).toBeVisible();
 	} );
 
