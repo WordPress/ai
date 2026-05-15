@@ -139,7 +139,10 @@ export function DeveloperSettings( {
 			{ ! isLoading && ! fetchError && (
 				<>
 					{ hasStaleProvider && (
-						<Notice.Root className="ai-developer-mode-fields__notice" intent="warning">
+						<Notice.Root
+							className="ai-developer-mode-fields__notice"
+							intent="warning"
+						>
 							<Notice.Description>
 								{ __(
 									'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
