@@ -1,6 +1,6 @@
 <?php
 /**
- * AI Editorial Notes WordPress Ability implementation.
+ * Editorial Notes WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * AI Editorial Notes WordPress Ability.
+ * Editorial Notes WordPress Ability.
  *
  * Reviews a single block's content and returns suggestions for the specified
  * review types (Accessibility, Readability, Grammar, SEO, etc.).
@@ -259,22 +259,24 @@ class Editorial_Notes extends Abstract_Ability {
 	 */
 	protected function suggestions_schema(): array {
 		return array(
-			'type'       => 'object',
-			'properties' => array(
+			'type'                 => 'object',
+			'properties'           => array(
 				'suggestions' => array(
 					'type'  => 'array',
 					'items' => array(
-						'type'       => 'object',
-						'properties' => array(
+						'type'                 => 'object',
+						'properties'           => array(
 							'review_type' => array( 'type' => 'string' ),
 							'text'        => array( 'type' => 'string' ),
 							'priority'    => array( 'type' => 'integer' ),
 						),
-						'required'   => array( 'review_type', 'text', 'priority' ),
+						'required'             => array( 'review_type', 'text', 'priority' ),
+						'additionalProperties' => false,
 					),
 				),
 			),
-			'required'   => array( 'suggestions' ),
+			'required'             => array( 'suggestions' ),
+			'additionalProperties' => false,
 		);
 	}
 
