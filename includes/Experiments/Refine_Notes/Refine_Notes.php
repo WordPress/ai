@@ -81,7 +81,7 @@ class Refine_Notes extends Abstract_Feature {
 	 * @since 0.8.0
 	 */
 	public function enqueue_assets(): void {
-		Asset_Loader::enqueue_script( 'refine_notes', 'experiments/refine-notes', true );
+		Asset_Loader::enqueue_script( 'refine_notes', 'experiments/refine-notes', array( 'include_core_abilities' => true ) );
 
 		$post_type        = get_post_type();
 		$post_type_object = $post_type ? get_post_type_object( $post_type ) : null;

@@ -76,9 +76,9 @@ final class Asset_Loader {
 	 *
 	 * @param string $handle    The handle for the script.
 	 * @param string $file_name The script file name without the .js extension.
-	 * @param bool $include_core_abilities Whether to include the core abilities script.
+	 * @param array{ include_core_abilities?: bool } $extra_args Additional arguments.
 	 */
-	public static function enqueue_script( string $handle, string $file_name, bool $include_core_abilities = false ): void {
+	public static function enqueue_script( string $handle, string $file_name, array $extra_args = array() ): void {
 		$script_url = self::ASSET_URL . $file_name . '.js';
 		$asset_data = self::get_asset_file_data( $file_name );
 
@@ -92,7 +92,7 @@ final class Asset_Loader {
 			'strategy'  => 'defer',
 		);
 
-		if ( $include_core_abilities ) {
+		if ( $extra_args['include_core_abilities'] ?? false ) {
 			$args['module_dependencies'] = array(
 				'@wordpress/abilities',
 				'@wordpress/core-abilities',

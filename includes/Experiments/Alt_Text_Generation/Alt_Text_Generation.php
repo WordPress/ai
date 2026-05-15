@@ -97,7 +97,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @since 0.3.0
 	 */
 	public function enqueue_editor_assets(): void {
-		Asset_Loader::enqueue_script( 'alt_text_generation', 'experiments/alt-text-generation', true );
+		Asset_Loader::enqueue_script( 'alt_text_generation', 'experiments/alt-text-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'alt_text_generation',
 			'AltTextGenerationData',
@@ -155,7 +155,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'alt_text_generation_media', 'experiments/alt-text-generation-media', true );
+		Asset_Loader::enqueue_script( 'alt_text_generation_media', 'experiments/alt-text-generation-media', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'alt_text_generation_media',
 			'AltTextGenerationMediaData',
@@ -275,7 +275,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'alt_text_generation_bulk', 'experiments/alt-text-generation-bulk', true );
+		Asset_Loader::enqueue_script( 'alt_text_generation_bulk', 'experiments/alt-text-generation-bulk', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'alt_text_generation_bulk',
 			'AltTextGenerationBulkData',
