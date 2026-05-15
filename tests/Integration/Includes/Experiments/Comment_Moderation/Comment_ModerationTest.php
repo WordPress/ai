@@ -267,6 +267,28 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test moderate_comment() skips automatic analysis when credentials are missing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_moderate_comment_skips_analysis_when_credentials_are_missing() {
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
+
+		$comment_id = $this->create_comment_without_hooks();
+		$experiment = new Comment_Moderation();
+
+		$experiment->moderate_comment( $comment_id );
+
+		$this->assertSame(
+			'',
+			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true ),
+			'Automatic analysis should not mark comments as failed when no provider credentials are configured.'
+		);
+		$this->assertSame( '', get_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, true ) );
+		$this->assertSame( '', get_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, true ) );
+	}
+
+	/**
 	 * Filters the analysis result for tests.
 	 *
 	 * @since 0.9.0

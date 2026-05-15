@@ -33,6 +33,7 @@ interface UseMetaDescriptionReturn {
 	currentDescription: string;
 	metaKey: string;
 	hasSeoPlugin: boolean;
+	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
 	applyDescription: ( text: string ) => void;
 }
@@ -53,6 +54,11 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const [ isGenerating, setIsGenerating ] = useState( false );
 	const [ suggestion, setSuggestion ] =
 		useState< MetaDescriptionSuggestion | null >( null );
+
+	const ensureProviderAvailable = useCallback(
+		() => ensureProvider( NOTICE_ID ),
+		[]
+	);
 
 	const { postId, content, title, meta } = useSelect( ( select ) => {
 		const editor = select( editorStore );
@@ -133,6 +139,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		currentDescription: meta?.[ metaKey ] ?? '',
 		metaKey,
 		hasSeoPlugin,
+		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
 	};
