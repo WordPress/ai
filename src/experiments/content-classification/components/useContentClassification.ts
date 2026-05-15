@@ -18,6 +18,7 @@ import apiFetch from '@wordpress/api-fetch';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
 import type {
 	ContentClassificationAbilityInput,
 	ContentClassificationResponse,
@@ -150,6 +151,10 @@ export function useContentClassification( taxonomy: string ): {
 		wordCount( content || '', 'words' ) >= MINIMUM_WORD_COUNT;
 
 	const handleGenerate = useCallback( async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		const settings = getSettings();
 		setIsGenerating( true );
 		setSuggestions( [] );

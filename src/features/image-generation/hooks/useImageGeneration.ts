@@ -8,8 +8,11 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
 import { useImageHistory } from './useImageHistory';
 import type { GeneratedImageData, ImageGenerationAbilityInput } from '../types';
+
+const NOTICE_ID = 'ai_image_generation_error';
 
 export type ImageGenerationState =
 	| 'idle'
@@ -39,6 +42,10 @@ export function useImageGeneration() {
 		referenceImage?: string,
 		refHistoryIndex?: number
 	): Promise< void > {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setError( null );
 		setState( 'generating' );
 		setProgress( __( 'Generating…', 'ai' ) );

@@ -47,6 +47,29 @@ final class Asset_Loader {
 	private const HANDLE_PREFIX = 'ai_';
 
 	/**
+	 * Global data to be localized.
+	 *
+	 * @since x.x.x
+	 * @var array<string, array<string, mixed>>
+	 */
+	private static array $global_data = array();
+
+	/**
+	 * Registers data to be localized onto the first plugin script enqueued in the current request.
+	 *
+	 * Use this for plugin-wide data that any script may need but that should only be
+	 * output when at least one plugin script is present on the page.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string              $object_name The name of the JavaScript object (without the 'ai' prefix).
+	 * @param array<string,mixed> $data        The data to localize.
+	 */
+	public static function add_global_data( string $object_name, array $data ): void {
+		self::$global_data[ $object_name ] = $data;
+	}
+
+	/**
 	 * Enqueue a script using a script path and its asset metadata.
 	 *
 	 * @since 0.1.0
@@ -83,6 +106,16 @@ final class Asset_Loader {
 			$asset_data['version'],
 			$args
 		);
+
+		// Localize global data.
+		foreach ( self::$global_data as $object_name => $data ) {
+			wp_add_inline_script(
+				self::HANDLE_PREFIX . $handle,
+				sprintf( 'window.ai%s=%s;', $object_name, wp_json_encode( $data ) ),
+				'before'
+			);
+		}
+		self::$global_data = array();
 	}
 
 	/**

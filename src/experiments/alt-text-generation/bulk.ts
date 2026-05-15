@@ -11,11 +11,8 @@ import apiFetch from '@wordpress/api-fetch';
 /**
  * Internal dependencies
  */
-import { runAbility } from '../../utils/run-ability';
-
-type AbilityResponse = {
-	alt_text?: string;
-};
+import { generateAltText } from '../../utils/generate-alt-text';
+import { isProviderAvailable } from '../../utils/provider-status';
 
 type BulkData = {
 	attachmentIds: number[];
@@ -26,8 +23,6 @@ declare global {
 		aiAltTextGenerationBulkData?: BulkData;
 	}
 }
-
-const ABILITY_NAME = 'ai/alt-text-generation';
 
 /**
  * Creates and injects a dismissible admin notice into the page.
@@ -76,6 +71,16 @@ async function processBulkAltText(): Promise< void > {
 		return;
 	}
 
+	const noProviderMessage = __(
+		'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in Settings → Connectors.',
+		'ai'
+	);
+
+	if ( ! isProviderAvailable() ) {
+		createNotice( noProviderMessage );
+		return;
+	}
+
 	const { attachmentIds } = data;
 	const total = attachmentIds.length;
 	let processed = 0;
@@ -91,18 +96,8 @@ async function processBulkAltText(): Promise< void > {
 
 	for ( const id of attachmentIds ) {
 		try {
-			const response = await runAbility< AbilityResponse >(
-				ABILITY_NAME,
-				{
-					attachment_id: id,
-				}
-			);
-
-			const altText = response?.alt_text;
-
-			if ( ! altText ) {
-				throw new Error( __( 'Empty response received.', 'ai' ) );
-			}
+			const result = await generateAltText( id );
+			const altText = result.alt_text;
 
 			await apiFetch( {
 				path: `/wp/v2/media/${ id }`,

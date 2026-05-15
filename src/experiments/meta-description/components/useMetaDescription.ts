@@ -14,6 +14,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
 import type {
 	MetaDescriptionAbilityInput,
 	MetaDescriptionAbilityResponse,
@@ -32,6 +33,7 @@ interface UseMetaDescriptionReturn {
 	currentDescription: string;
 	metaKey: string;
 	hasSeoPlugin: boolean;
+	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
 	applyDescription: ( text: string ) => void;
 }
@@ -53,6 +55,11 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const [ suggestion, setSuggestion ] =
 		useState< MetaDescriptionSuggestion | null >( null );
 
+	const ensureProviderAvailable = useCallback(
+		() => ensureProvider( NOTICE_ID ),
+		[]
+	);
+
 	const { postId, content, title, meta } = useSelect( ( select ) => {
 		const editor = select( editorStore );
 		const currentMeta = editor.getEditedPostAttribute( 'meta' ) as
@@ -68,6 +75,10 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	}, [] );
 
 	const generateDescription = useCallback( async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsGenerating( true );
 		setSuggestion( null );
 
@@ -128,6 +139,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		currentDescription: meta?.[ metaKey ] ?? '',
 		metaKey,
 		hasSeoPlugin,
+		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
 	};
