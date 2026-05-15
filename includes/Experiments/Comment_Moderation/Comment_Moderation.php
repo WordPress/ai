@@ -292,6 +292,10 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @param int $comment_id Comment ID.
 	 */
 	public function moderate_comment( $comment_id ): void {
+		if ( ! has_ai_credentials() ) {
+			return;
+		}
+
 		$comment = get_comment( (int) $comment_id );
 		if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
 			return;

@@ -12,6 +12,8 @@ updates:
     groups:
       github-actions-updates:
         patterns: ['*']
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: composer
     directory: '/'
