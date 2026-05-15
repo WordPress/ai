@@ -26,47 +26,7 @@ When enabled, a "Generate Editorial Notes" button appears in the post status inf
 
 ### For Developers
 
-The experiment consists of:
-
-1. **Experiment Class** (`WordPress\AI\Experiments\Editorial_Notes\Editorial_Notes`): Registers the ability, enqueues the block editor asset, and wires server-side hooks for Note author override and block metadata cleanup
-2. **Ability Class** (`WordPress\AI\Abilities\Editorial_Notes\Editorial_Notes`): Receives a single block's content and returns structured JSON suggestions
-3. **React Plugin** (`src/experiments/editorial-notes/`): Drives the UI and orchestrates block traversal, Note creation, and thread management via WordPress data stores
-
 ## Architecture & Implementation
-
-### Key Hooks & Entry Points
-
-`WordPress\AI\Experiments\Editorial_Notes\Editorial_Notes::register()` wires everything once the experiment is enabled:
-
-- `wp_abilities_api_init` → registers the `ai/editorial-notes` ability
-- `enqueue_block_editor_assets` → enqueues the React bundle whenever the block editor loads
-- `rest_pre_insert_comment` (filter) → `maybe_set_ai_author()` — overrides the comment author to "WordPress AI" when `meta.ai_note` is `true`, so AI-generated Notes are not attributed to the authenticated user's account
-
-### Assets & Data Flow
-
-1. **PHP Side:**
-   - `enqueue_assets()` loads `experiments/editorial-notes` and localizes `window.aiEditorialNotesData`:
-     - `enabled`: Whether the experiment is currently enabled
-
-2. **React Side:**
-   - `index.tsx` registers the `ai-editorial-notes` plugin
-   - `EditorialNotesPlugin.tsx` renders the button inside `PluginPostStatusInfo`
-   - `useEditorialNotes.ts` hook manages all state and orchestration:
-     - Flattens the block tree to get all descendants
-     - Filters to reviewable block types with sufficient content (≥ 20 chars), capped at 25 blocks
-     - Fetches Notes in two parallel requests:
-       - `GET /wp/v2/comments?type=note&status=hold&post=<id>&per_page=100` — pending Notes used as context to avoid repeating suggestions
-       - `GET /wp/v2/comments?type=note&status=approve&post=<id>&per_page=100` — resolved Note IDs; blocks with a resolved Note are skipped entirely
-     - Processes blocks in parallel batches of 4, calling the ability for each
-     - Creates new Note threads via `POST /wp/v2/comments` (with `meta: { ai_note: true }` to trigger the AI author override) and updates block `metadata.noteId`
-     - Subsequent runs append replies to existing Note threads
-
-3. **Ability Execution:**
-   - Receives one block's content at a time (block type, plain text, post context, prior Notes, review types)
-   - Builds a structured prompt and sends it to the AI with the system instruction and a JSON schema for structured output
-   - Parses the JSON response, sanitizes each suggestion, and returns `{ suggestions: [...] }`
-   - Returns `{ suggestions: [] }` when the AI finds no issues
-   - Deduplicates against `existing_notes`: if a Note already contains a `[TYPE]` marker for a given review type, that type is skipped in the current run
 
 ### Block Types Reviewed
 
@@ -267,48 +227,6 @@ async function reviewBlock( blockType, blockContent, existingNotes = [] ) {
 | `post_not_found` | The post ID passed does not exist |
 | `insufficient_capabilities` | User lacks `edit_posts` (or `edit_post` for the specific post) |
 
-## Extending the Experiment
-
-### Customizing the System Instruction
-
-Edit `includes/Abilities/Editorial_Notes/system-instruction.php` to adjust:
-
-- Which review types apply to which block types
-- How strictly prior suggestions are de-duplicated
-
-### Filtering Preferred Models
-
-```php
-add_filter( 'wpai_preferred_text_models', function( $models ) {
-    return array(
-        array( 'openai', 'gpt-4o' ),
-        array( 'openai', 'gpt-4o-mini' ),
-    );
-} );
-```
-
-### Disabling the Experiment Programmatically
-
-```php
-add_filter( 'wpai_feature_editorial-notes_enabled', '__return_false' );
-```
-
-### Adding Custom Review Types
-
-The `review_types` input field accepts any string values. Pass additional type names from the JS side and update the system instruction to provide guidance for those types:
-
-```javascript
-// In your custom JS
-await runAbility( 'ai/editorial-notes', {
-  block_type: 'core/paragraph',
-  block_content: '...',
-  review_types: [ 'accessibility', 'readability', 'grammar', 'seo', 'tone' ],
-  existing_notes: [],
-} );
-```
-
-Then add guidance for the `tone` type to `system-instruction.php`.
-
 ## Testing
 
 ### Manual Testing Steps
@@ -348,53 +266,10 @@ Then add guidance for the `tone` type to `system-instruction.php`.
    - All blocks already have Notes → second run skips repeats
    - Disable experiment → button disappears from sidebar
 
-### Automated Testing
-
-**PHPUnit integration tests:**
-
-```bash
-npm run test:php
-```
-
-Test files:
-- `tests/Integration/Includes/Abilities/Editorial_NotesTest.php` — Ability class tests
-- `tests/Integration/Includes/Experiments/Editorial_Notes/Editorial_NotesTest.php` — Experiment class tests
-
-Covers:
-- Input/output schema structure
-- `suggestions_schema()` OpenAI wrapper structure (name, strict, schema keys; inner type must be object)
-- Empty content validation
-- Mock-based suggestion return and structure
-- Content sanitization
-- Permission callbacks: no post ID path (editor, subscriber, logged-out), and post-specific path (valid post, missing post, insufficient edit_post, non-REST post type)
-- `execute_callback` with missing post ID → WP_Error
-- `get_existing_review_types_from_notes()`: type extraction, case normalisation, multiple types per Note, Notes without brackets
-- Experiment hook registration (rest_pre_insert_comment)
-- `ai_note` comment meta registered with `show_in_rest`
-- `maybe_set_ai_author()`: overrides author when `ai_note` is true, passes through otherwise, handles WP_Error
-
-**Playwright E2E tests:**
-
-```bash
-npm run wp-env:test start # Start the test environment
-npm run test:e2e -- --grep "AI Editorial Notes"
-```
-
-Test file: `tests/e2e/editorial-notes.spec.ts`
-
-Covers:
-- Button visibility in editor sidebar
-- Button busy/disabled state during review
-- Suggestion count feedback after completion
-- Empty result handling
-- Button hidden when experiment is disabled
-- No-op when post has no reviewable blocks
-
 ## Notes & Considerations
 
 ### Requirements
 
-- WordPress 6.9+ (Notes feature required for block-level comment association)
 - Valid AI credentials configured in `Settings → Connectors`
 - User must have `edit_posts` capability (or `edit_post` for the specific post when a post ID is provided)
 - The block editor must be active (classic editor is not supported)
@@ -404,7 +279,6 @@ Covers:
 - Each block generates one API call; blocks are processed in parallel batches of 4
 - The review is capped at 25 blocks per run to control cost
 - Blocks with fewer than 20 characters of text are skipped
-- AI temperature is set to 0.7
 
 ### Note Storage
 
@@ -420,16 +294,3 @@ Covers:
 - Block metadata (`noteId`) is only persisted after the post is saved
 - The 25-block cap means very long posts will have only the first 25 reviewable blocks analyzed per run
 - Resolved blocks (approved Notes) are skipped in full; they will not receive new suggestions until the Note is un-resolved or deleted
-
-## Related Files
-
-- **Experiment:** `includes/Experiments/Editorial_Notes/Editorial_Notes.php`
-- **Ability:** `includes/Abilities/Editorial_Notes/Editorial_Notes.php`
-- **System Instruction:** `includes/Abilities/Editorial_Notes/system-instruction.php`
-- **React Entry:** `src/experiments/editorial-notes/index.tsx`
-- **React Plugin Component:** `src/experiments/editorial-notes/components/EditorialNotesPlugin.tsx`
-- **React Hook:** `src/experiments/editorial-notes/hooks/useEditorialNotes.ts`
-- **PHPUnit Tests (Ability):** `tests/Integration/Includes/Abilities/Editorial_NotesTest.php`
-- **PHPUnit Tests (Experiment):** `tests/Integration/Includes/Experiments/Editorial_Notes/Editorial_NotesTest.php`
-- **E2E Tests:** `tests/e2e/editorial-notes.spec.ts`
-- **Mock Fixtures:** `tests/e2e-request-mocking/responses/OpenAI/editorial-notes-suggestions.json`

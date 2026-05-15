@@ -24,45 +24,7 @@ When enabled, a "Editorial Updates" button appears in the post status info panel
 
 ### For Developers
 
-The experiment consists of:
-
-1. **Experiment Class** (`WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates`): Registers the ability and enqueues the block editor asset.
-2. **Ability Class** (`WordPress\AI\Abilities\Editorial_Updates\Editorial_Updates`): Receives a single block's content, surrounding context, and associated notes, parsing the resulting AI output back into plain string replacements.
-3. **React Plugin** (`src/experiments/editorial-updates/`): Drives the sidebar UI, discovers threaded Notes via WordPress data stores, processes block attributes iteratively, and manages Editor saving workflows.
-
 ## Architecture & Implementation
-
-### Key Hooks & Entry Points
-
-`WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates::register()` wires everything once the experiment is enabled:
-
-- `wp_abilities_api_init` → registers the `ai/editorial-updates` ability
-- `enqueue_block_editor_assets` → enqueues the React bundle whenever the block editor loads
-
-### Assets & Data Flow
-
-1. **PHP Side:**
-
-   - `enqueue_assets()` loads `experiments/editorial-updates` and localizes `window.aiEditorialUpdatesData`:
-     - `enabled`: Whether the experiment is currently enabled
-
-2. **React Side:**
-
-   - `index.tsx` registers the `ai-editorial-updates` plugin.
-   - `EditorialUpdatesPlugin.tsx` conditionally renders the button inside `PluginPostStatusInfo`.
-   - `useEditorialUpdates.ts` hook manages all state and orchestration:
-     - Flattens the active block tree.
-     - Fetches active pending Notes via `GET /wp/v2/comments?type=note&status=hold&post=<id>&per_page=100`.
-     - Maps notes and child threaded-replies directly to their parent `blockClientId`.
-     - Skips any blocks that do not have active pending notes attached.
-     - Processes qualifying blocks in parallel batches of 4.
-     - Dispatches an `updateBlockAttributes` directly to the `core/block-editor` store with the returned refactored content.
-     - Triggers `wp.data.dispatch( 'core/editor' ).savePost()` to persist changes and create a revision.
-
-3. **Ability Execution:**
-   - Receives target block type, current content, note texts, and optionally surrounding text context.
-   - Builds a standard prompt matching against the system instruction.
-   - Extracts plain string response from the AI and returns the direct replacement to the block content.
 
 ### Block Types Supported
 
@@ -158,16 +120,3 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/editoria
 | `notes_required`            | No valid notes were supplied in the array                      |
 | `post_not_found`            | The post ID passed does not exist                              |
 | `insufficient_capabilities` | User lacks `edit_posts` (or `edit_post` for the specific post) |
-
-## Related Files
-
-- **Experiment:** `includes/Experiments/Editorial_Updates/Editorial_Updates.php`
-- **Ability:** `includes/Abilities/Editorial_Updates/Editorial_Updates.php`
-- **System Instruction:** `includes/Abilities/Editorial_Updates/system-instruction.php`
-- **React Entry:** `src/experiments/editorial-updates/index.tsx`
-- **React Plugin Component:** `src/experiments/editorial-updates/components/EditorialUpdatesPlugin.tsx`
-- **React Hook:** `src/experiments/editorial-updates/hooks/useEditorialUpdates.ts`
-- **PHPUnit Tests (Ability):** `tests/Integration/Includes/Abilities/Editorial_UpdatesTest.php`
-- **PHPUnit Tests (Experiment):** `tests/Integration/Includes/Experiments/Editorial_Updates/Editorial_UpdatesTest.php`
-- **E2E Tests:** `tests/e2e/specs/experiments/editorial-updates.spec.js`
-- **Mock Fixtures:** `tests/e2e-request-mocking/responses/OpenAI/editorial-updates-completions.json` and `tests/e2e-request-mocking/responses/OpenAI/editorial-updates-responses.json`
