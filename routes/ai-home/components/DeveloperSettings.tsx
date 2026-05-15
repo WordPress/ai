@@ -6,6 +6,7 @@ import { DataForm } from '@wordpress/dataviews';
 import type { Field, Form } from '@wordpress/dataviews';
 import { useCallback, useMemo, useRef } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { Notice } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -78,7 +79,9 @@ export function DeveloperSettings( {
 				id: 'model',
 				type: 'text' as const,
 				label: __( 'Model', 'ai' ),
-				isVisible: ( data: DeveloperSelection ) => !! data.provider,
+				isVisible: ( data: DeveloperSelection ) =>
+					!! data.provider &&
+					!! providers.find( ( p ) => p.id === data.provider ),
 				getElements: getModelElements,
 				Edit: 'select',
 			},
@@ -103,6 +106,9 @@ export function DeveloperSettings( {
 	);
 
 	const hasSavedSelection = settings.provider !== '' || settings.model !== '';
+	const hasStaleProvider =
+		!! settings.provider &&
+		! providers.find( ( p ) => p.id === settings.provider );
 
 	if ( capability === 'none' ) {
 		return (
@@ -132,6 +138,19 @@ export function DeveloperSettings( {
 			) }
 			{ ! isLoading && ! fetchError && (
 				<>
+					{ hasStaleProvider && (
+						<Notice.Root
+							className="ai-developer-mode-fields__notice"
+							intent="warning"
+						>
+							<Notice.Description>
+								{ __(
+									'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
+									'ai'
+								) }
+							</Notice.Description>
+						</Notice.Root>
+					) }
 					<div ref={ formWrapperRef }>
 						<DataForm< DeveloperSelection >
 							data={ settings }
