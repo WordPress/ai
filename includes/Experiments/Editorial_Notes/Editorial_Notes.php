@@ -1,6 +1,6 @@
 <?php
 /**
- * AI Editorial Notes experiment implementation.
+ * Editorial Notes experiment implementation.
  *
  * @package WordPress\AI
  */
@@ -20,9 +20,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * AI Editorial Notes experiment.
+ * Editorial Notes experiment.
  *
- * Runs a block-by-block AI review pass on post content, creating WordPress Notes
+ * Runs a block-by-block review pass on post content, creating WordPress Notes
  * with actionable suggestions for Accessibility, Readability, Grammar, and SEO.
  *
  * @since 0.4.0

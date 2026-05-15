@@ -361,11 +361,11 @@ class Editorial_Notes extends Abstract_Ability {
 	}
 
 	/**
-	 * Gets a prompt builder for generating review notes.
+	 * Gets a prompt builder for generating editorial notes.
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param string $prompt The prompt to generate review notes from.
+	 * @param string $prompt The prompt to generate editorial notes from.
 	 * @param string $block_type The block type identifier.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
@@ -378,7 +378,7 @@ class Editorial_Notes extends Abstract_Ability {
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
-			esc_html__( 'Review notes generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+			esc_html__( 'Editorial notes generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
 		);
 	}
 

@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Editorial Updates experiment.
  *
- * Adds functionality to apply AI-generated refinements based on editorial
+ * Adds functionality to apply refinements based on editorial
  * feedback (Notes) left on individual blocks.
  *
  * @since 0.8.0

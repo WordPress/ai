@@ -1,5 +1,5 @@
 /**
- * Custom hook for AI Editorial Notes functionality.
+ * Custom hook for Editorial Notes functionality.
  */
 
 /**
@@ -156,7 +156,7 @@ async function reviewSingleBlock(
 }
 
 /**
- * Hook for AI Editorial Notes functionality.
+ * Hook for Editorial Notes functionality.
  *
  * @return Object with review state and the runReview handler.
  */
@@ -283,7 +283,7 @@ export function useEditorialNotes(): {
 }
 
 /**
- * Hook for reviewing a single block with AI.
+ * Hook for reviewing a single block.
  *
  * @return Object with reviewing state and the reviewBlock handler.
  */

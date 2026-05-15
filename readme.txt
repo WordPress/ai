@@ -32,7 +32,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **Refine Notes** - Automatically apply editorial notes to content.
-* **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
+* **Editorial Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
 * **Comment Moderation** - Automatic moderation of comments based on toxicity and sentiment analysis and bulk moderation features in the Comments admin screen.
 
@@ -128,7 +128,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 5. Post editor showing Generate Image flows.
 6. Media Library showing Generate Image flows.
 7. Image block settings showing Generate Alt Text button and the generated alt text.
-8. Post editor sidebar showing Generate Review Notes flows.
+8. Post editor sidebar showing Generate Editorial Notes flows.
 9. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
 10. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
 11. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.

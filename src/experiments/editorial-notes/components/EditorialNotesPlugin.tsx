@@ -1,5 +1,5 @@
 /**
- * AI Editorial Notes plugin component.
+ * Editorial Notes plugin component.
  */
 
 /**

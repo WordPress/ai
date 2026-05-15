@@ -1,5 +1,5 @@
 /**
- * AI Editorial Notes plugin registration.
+ * Editorial Notes plugin registration.
  */
 
 /**
