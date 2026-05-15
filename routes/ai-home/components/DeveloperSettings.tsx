@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Button, Spinner } from '@wordpress/components';
+import { Button, Notice, Spinner } from '@wordpress/components';
 import { DataForm } from '@wordpress/dataviews';
 import type { Field, Form } from '@wordpress/dataviews';
 import { useCallback, useMemo, useRef } from '@wordpress/element';
@@ -105,6 +105,9 @@ export function DeveloperSettings( {
 	);
 
 	const hasSavedSelection = settings.provider !== '' || settings.model !== '';
+	const hasStaleProvider =
+		!! settings.provider &&
+		! providers.find( ( p ) => p.id === settings.provider );
 
 	if ( capability === 'none' ) {
 		return (
@@ -134,6 +137,18 @@ export function DeveloperSettings( {
 			) }
 			{ ! isLoading && ! fetchError && (
 				<>
+					{ hasStaleProvider && (
+						<Notice
+							className="ai-developer-mode-fields__notice"
+							status="warning"
+							isDismissible={ false }
+						>
+							{ __(
+								'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
+								'ai'
+							) }
+						</Notice>
+					) }
 					<div ref={ formWrapperRef }>
 						<DataForm< DeveloperSelection >
 							data={ settings }
