@@ -56,8 +56,8 @@ class My_Experiment extends Abstract_Feature {
    */
   protected function load_metadata(): array {
     return array(
-    'label'       => __( 'My Experiment', 'ai' ),
-    'description' => __( 'Description of what my experiment does.', 'ai' ),
+      'label'       => __( 'My Experiment', 'ai' ),
+      'description' => __( 'Description of what my experiment does.', 'ai' ),
     );
   }
 
@@ -92,11 +92,11 @@ class My_Experiment extends Abstract_Feature {
   public function enqueue_assets( string $hook_suffix ): void {
     Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
     Asset_Loader::localize_script(
-    'my-experiment',
-    'MyExperimentData',
-    array(
-      'enabled' => $this->is_enabled(),
-    )
+      'my-experiment',
+      'MyExperimentData',
+      array(
+        'enabled' => $this->is_enabled(),
+      )
     );
   }
 
