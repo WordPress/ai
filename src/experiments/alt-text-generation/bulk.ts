@@ -30,11 +30,15 @@ declare global {
  * @since 0.7.0
  *
  * @param message The initial message to display in the notice.
+ * @param type    The admin notice type.
  * @return The paragraph element used to update the notice message.
  */
-function createNotice( message: string ): HTMLParagraphElement {
+function createNotice(
+	message: string,
+	type: 'info' | 'error' = 'info'
+): HTMLParagraphElement {
 	const notice = document.createElement( 'div' );
-	notice.className = 'notice notice-info is-dismissible';
+	notice.className = `notice notice-${ type } is-dismissible`;
 
 	const paragraph = document.createElement( 'p' );
 	paragraph.textContent = message;
@@ -77,7 +81,7 @@ async function processBulkAltText(): Promise< void > {
 	);
 
 	if ( ! isProviderAvailable() ) {
-		createNotice( noProviderMessage );
+		createNotice( noProviderMessage, 'error' );
 		return;
 	}
 
