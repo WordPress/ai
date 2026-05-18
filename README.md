@@ -36,6 +36,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
+* **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
@@ -55,7 +56,6 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 Overview of planned features:
 
-* **Comment Moderation** – AI-assisted moderation tools to help classify or manage user comments.
 * **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 * **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
 * **AI Playground** – Experiment with different AI models and providers.

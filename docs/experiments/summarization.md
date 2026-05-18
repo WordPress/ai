@@ -2,19 +2,18 @@
 
 ## Summary
 
-The Content Summarization experiment adds AI-powered content summarization to the WordPress post editor. It provides a "Generate AI Summary" button in the post status panel that uses AI to create concise summaries of post content. The generated summary is inserted as a paragraph block at the top of the post content. The experiment registers a WordPress Ability (`ai/summarization`) that can be used both through the admin UI and directly via REST API requests.
+The Content Summarization experiment adds AI-powered content summarization to the WordPress post editor. It provides a "Generate AI Summary" button in the post status panel that uses AI to create concise summaries of post content. The generated summary is inserted as a group variation block at the top of the post content. The experiment registers a WordPress Ability (`ai/summarization`) that can be used both through the admin UI and directly via REST API requests.
 
 ## Overview
 
 ### For End Users
 
-When enabled, the Content Summarization experiment adds a "Generate AI Summary" button to the post status panel in the WordPress post editor. Users can click this button to automatically generate a summary of the current post content. The generated summary is inserted as a paragraph block at the top of the post content and can be customized with different length options (short, medium, long). The summary is also saved to post meta for programmatic access.
+When enabled, the Content Summarization experiment adds a "Generate AI Summary" button to the post status panel in the WordPress post editor. Users can click this button to automatically generate a summary of the current post content. The generated summary is inserted as a group variation block at the top of the post content. The summary is also saved to post meta for programmatic access.
 
 **Key Features:**
 
 - One-click summary generation from post content
-- Automatically creates a paragraph block with the summary
-- Configurable summary length (short, medium, long)
+- Automatically creates a group variation block with the summary
 - Summary block can be regenerated from block toolbar
 - Summary is saved to post meta (`ai_generated_summary`)
 - Works with any post type that supports the editor
@@ -29,46 +28,6 @@ The experiment consists of two main components:
 The ability can be called directly via REST API, making it useful for automation, bulk processing, or custom integrations.
 
 ## Architecture & Implementation
-
-### Key Hooks & Entry Points
-
-- `WordPress\AI\Experiments\Summarization\Summarization::register()` wires everything once the experiment is enabled:
-  - `register_post_meta()` → registers `ai_generated_summary` post meta for the `post` post type
-  - `wp_abilities_api_init` → registers the `ai/summarization` ability (`includes/Abilities/Summarization/Summarization.php`)
-  - `admin_enqueue_scripts` → enqueues the React bundle on `post.php` and `post-new.php` screens
-
-### Assets & Data Flow
-
-1. **PHP Side:**
-   - `enqueue_assets()` loads `experiments/summarization` (`src/experiments/summarization/index.tsx`) and localizes `window.aiSummarizationData` with:
-     - `enabled`: Whether the experiment is enabled
-
-2. **React Side:**
-   - The React entry point (`index.tsx`) registers:
-     - A WordPress plugin (`SummarizationPlugin`) that adds a button to the post status panel
-     - A block variation for `core/paragraph` with `aiGeneratedSummary` attribute
-     - Block controls (`SummarizationBlockControls`) that add toolbar buttons to summary blocks
-     - A custom attribute (`aiGeneratedSummary`) added to `core/paragraph` blocks
-   - `SummarizationPlugin` component:
-     - Renders a button in the post status panel
-     - Uses `useSummaryGeneration()` hook to handle generation
-   - `useSummaryGeneration` hook:
-     - Gets current post ID and content from the editor store
-     - Checks for existing summary blocks
-     - Calls `generateSummary()` function when button is clicked
-     - Creates or replaces a paragraph block with the generated summary
-     - Saves summary to post meta
-     - Handles loading states and error notifications
-   - `SummarizationBlockControls` component:
-     - Adds toolbar controls to summary blocks
-     - Allows regenerating the summary from the block toolbar
-
-3. **Ability Execution:**
-   - Accepts `content` (string), `context` (string or post ID), and `length` (string: 'short', 'medium', 'long') as input
-   - If `context` is numeric, treats it as a post ID and fetches post content using `get_post_context()`
-   - Normalizes content using `normalize_content()` helper
-   - Sends content to AI client with system instruction for summarization (length-aware)
-   - Returns a plain text summary
 
 ### Input Schema
 
@@ -298,99 +257,6 @@ Example error response:
 }
 ```
 
-## Extending the Experiment
-
-### Customizing the System Instruction
-
-The system instruction that guides the AI can be customized by modifying:
-
-```php
-includes/Abilities/Summarization/system-instruction.php
-```
-
-This file returns a string that instructs the AI on how to generate summaries. The instruction is dynamically adjusted based on the `length` parameter. You can modify the requirements, tone, or other parameters.
-
-### Filtering Preferred Models
-
-You can filter which AI models are used for summarization using the `wpai_preferred_text_models` filter:
-
-```php
-add_filter( 'wpai_preferred_text_models', function( $models ) {
-    // Prefer specific models
-    return array(
-        array( 'openai', 'gpt-4' ),
-        array( 'openai', 'gpt-3.5-turbo' ),
-    );
-} );
-```
-
-### Customizing Content Normalization
-
-The `normalize_content()` helper function processes content before sending it to the AI. You can filter the normalized content:
-
-```php
-// Filter content before normalization
-add_filter( 'wpai_pre_normalize_content', function( $content ) {
-    // Custom preprocessing
-    return $content;
-} );
-
-// Filter content after normalization
-add_filter( 'wpai_normalize_content', function( $content ) {
-    // Custom post-processing
-    return $content;
-} );
-```
-
-### Customizing Post Context
-
-When a post ID is provided, the ability uses `get_post_context()` to gather post information. You can extend this function or filter its output to include additional context.
-
-### Adding Custom UI Elements
-
-You can extend the React components to add custom UI elements:
-
-1. **Modify the plugin component:**
-   - Edit `src/experiments/summarization/components/SummarizationPlugin.tsx`
-
-2. **Customize block controls:**
-   - Edit `src/experiments/summarization/components/SummarizationBlockControls.tsx`
-
-3. **Add custom hooks:**
-   - Create new hooks in `src/experiments/summarization/functions/`
-   - Import and use them in the components
-
-4. **Customize the block variation:**
-   - Modify the block variation registration in `src/experiments/summarization/index.tsx`
-   - Change the block type, attributes, or styling
-
-### Customizing Summary Length Options
-
-You can add custom length options by:
-
-1. **Extending the enum in the ability:**
-   - Modify the `length` property in `input_schema()` in `includes/Abilities/Summarization/Summarization.php`
-   - Add corresponding logic in `system-instruction.php` to handle the new length
-
-2. **Adding UI controls:**
-   - Add a dropdown or toggle in `SummarizationPlugin.tsx` to let users select length
-   - Pass the selected length to the `generateSummary()` function
-
-### Accessing Summary from Post Meta
-
-The summary is saved to post meta as `ai_generated_summary`. You can access it programmatically:
-
-```php
-$summary = get_post_meta( $post_id, 'ai_generated_summary', true );
-```
-
-Or via REST API:
-
-```bash
-GET /wp-json/wp/v2/posts/123?context=edit
-# Response includes: meta.ai_generated_summary
-```
-
 ## Testing
 
 ### Manual Testing
@@ -419,19 +285,6 @@ GET /wp-json/wp/v2/posts/123?context=edit
    - Test with different input combinations (content, context, length)
    - Verify error handling for invalid inputs
 
-### Automated Testing
-
-Unit tests are located in:
-
-- `tests/Integration/Includes/Abilities/SummarizationTest.php`
-- `tests/Integration/Includes/Experiments/Summarization/SummarizationTest.php`
-
-Run tests with:
-
-```bash
-npm run test:php
-```
-
 ## Notes & Considerations
 
 ### Requirements
@@ -439,13 +292,11 @@ npm run test:php
 - The experiment requires valid AI credentials to be configured
 - The experiment works with any post type that uses the block editor
 - Users must have `edit_posts` capability (or `read_post` for specific posts when using post ID context)
-- The experiment requires JavaScript to be enabled in the admin
 
 ### Performance
 
 - Summary generation is an AI operation and may take several seconds
 - The UI shows a loading state while generation is in progress
-- Consider implementing caching for frequently accessed posts if generating summaries in bulk
 
 ### Content Processing
 
@@ -473,9 +324,8 @@ The system instruction guides the AI to:
 
 ### Block Integration
 
-- The summary is inserted as a `core/paragraph` block with a custom attribute (`aiGeneratedSummary`)
+- The summary is inserted as a `core/group` block variation with a custom attribute (`aiGeneratedSummary`)
 - The block has a special class name (`ai-summarization-summary`) for styling
-- A block variation is registered to make it easy to insert summary blocks
 - Block controls allow regenerating the summary from the toolbar
 
 ### Post Meta Storage
@@ -490,17 +340,5 @@ The system instruction guides the AI to:
 - Summaries are generated in real-time and not cached
 - The ability does not support batch processing (one summary per request)
 - Generated summaries are suggestions and should be reviewed before publishing
-- The experiment requires JavaScript to be enabled in the admin
 - The summary block replaces any existing summary block when regenerated
 - Summary length is approximate; actual length may vary slightly
-
-## Related Files
-
-- **Experiment:** `includes/Experiments/Summarization/Summarization.php`
-- **Ability:** `includes/Abilities/Summarization/Summarization.php`
-- **System Instruction:** `includes/Abilities/Summarization/system-instruction.php`
-- **React Entry:** `src/experiments/summarization/index.tsx`
-- **React Components:** `src/experiments/summarization/components/`
-- **React Functions:** `src/experiments/summarization/functions/`
-- **Tests:** `tests/Integration/Includes/Abilities/SummarizationTest.php`
-- **Tests:** `tests/Integration/Includes/Experiments/Summarization/SummarizationTest.php`

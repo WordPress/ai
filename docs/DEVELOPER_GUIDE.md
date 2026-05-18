@@ -2,17 +2,6 @@
 
 Welcome to the AI plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered experiments.
 
-## Table of Contents
-
-- [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
-- [Creating a New Experiment](#creating-a-new-experiment)
-- [Custom Experiment Reference](experiments/custom-experiment-reference.md)
-- [Plugin API](#plugin-api)
-- [Development Workflow](#development-workflow)
-- [Additional Resources](#additional-resources)
-
----
-
 ## Creating a New Experiment
 
 Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct piece of functionality that may utilize AI capabilities.
@@ -67,8 +56,8 @@ class My_Experiment extends Abstract_Feature {
    */
   protected function load_metadata(): array {
     return array(
-    'label'       => __( 'My Experiment', 'ai' ),
-    'description' => __( 'Description of what my experiment does.', 'ai' ),
+      'label'       => __( 'My Experiment', 'ai' ),
+      'description' => __( 'Description of what my experiment does.', 'ai' ),
     );
   }
 
@@ -103,11 +92,11 @@ class My_Experiment extends Abstract_Feature {
   public function enqueue_assets( string $hook_suffix ): void {
     Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
     Asset_Loader::localize_script(
-    'my-experiment',
-    'MyExperimentData',
-    array(
-      'enabled' => $this->is_enabled(),
-    )
+      'my-experiment',
+      'MyExperimentData',
+      array(
+        'enabled' => $this->is_enabled(),
+      )
     );
   }
 
@@ -364,11 +353,21 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 
 ## Merge Strategy
 
+### Squash Merging
+
 This project makes use of squash merges from PR branches to the `develop` branch and as such we've disabled the "Allow merge commits" and "Allow rebase merging" in the repo so that anyone merging will be forced into the "Allow squash merging" approach.
 
-Note that not every commit message should be kept in the resulting squash merge commit message, feel free to strip out unhelpful commit messages to keep the resulting squash merge commit message as concise as possible (e.g. get ride of those "lets try this again" commit messages).
-
 An example of a squash merge from #359 can be seen in 4c9699f, while an example of the prior approach of a merge commit from #311 can be seen in e63d8c0.
+
+### Squash Merge Commit Title and Description
+
+As you squash merge a PR, where reasonable please update the title of the squash merge commit to be a good top-level summary of the change (removing extraneous `[WIP]`, `Fixes Issue ###`, and other non-helpful text).  The ideal format here would be like "New Experiment: Comment Moderation" so that reviewing the commit history on `develop` can quickly comprehend the changes happening.
+
+Remove any commit messages from the PR that end up in the commit description, replacing them with the Changelog entry(ies) in the PR description.  If there's no Changelog entry in the PR description, then please do your best to generate that changelog entry from your perspective in what's happening in the PR.
+
+With this approach, when we get into the [release process](RELEASE_INSTRUCTIONS.md) we can much more quickly build a release changelog by leveraging the squash merge commit titles.
+
+A minute of your time when merging a PR to appropriately set the squash merge commit title and description will save many others even more time when reviewing changes in `develop` and when building a release.  Thanks for helping others save time!
 
 ---
 

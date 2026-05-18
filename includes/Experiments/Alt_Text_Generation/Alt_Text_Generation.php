@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\Alt_Text_Generation;
 use WordPress\AI\Abilities\Image\Alt_Text_Generation as Alt_Text_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\CLI\Alt_Text_Command;
 use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -50,6 +51,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'label'       => __( 'Alt Text Generation', 'ai' ),
 			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'capability'  => 'vision',
 		);
 	}
 
@@ -65,6 +67,12 @@ class Alt_Text_Generation extends Abstract_Feature {
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
 		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
 		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
+
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+			return;
+		}
+
+		\WP_CLI::add_command( 'ai alt-text', Alt_Text_Command::class );
 	}
 
 	/**
@@ -195,7 +203,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	public function render_attachment_meta_box( \WP_Post $post ): void {
 		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
-		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 150px;">';
+		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px;">';
 		echo '<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
 		echo '</div>';
 	}

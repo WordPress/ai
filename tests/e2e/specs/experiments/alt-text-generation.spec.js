@@ -12,10 +12,12 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  * Internal dependencies
  */
 const {
+	clearCredentials,
 	disableExperiment,
 	disableExperiments,
 	enableExperiment,
 	enableExperiments,
+	seedCredentials,
 } = require( '../../utils/helpers' );
 
 // Path to a test image (1x1 PNG) used for media upload in E2E tests.
@@ -447,6 +449,52 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		// Verify query args have been stripped from the URL.
 		expect( page.url() ).not.toContain( 'wpai_bulk_alt_text' );
 		expect( page.url() ).not.toContain( 'wpai_attachment_ids' );
+	} );
+
+	test( 'Bulk action shows an error notice when no provider is configured', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		await clearCredentials( requestUtils );
+
+		try {
+			// Globally turn on Experiments.
+			await enableExperiments( admin, page );
+
+			// Enable the Alt Text Generation Experiment.
+			await enableExperiment( admin, page, 'Alt Text Generation' );
+
+			// Upload a test image.
+			await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+			// Navigate to Media Library in list mode.
+			await admin.visitAdminPage( 'upload.php', 'mode=list' );
+
+			// Select all items via the header checkbox.
+			await page.locator( '#cb-select-all-1' ).check();
+
+			// Choose the bulk action.
+			await page
+				.locator( '#bulk-action-selector-top' )
+				.selectOption( 'wpai_generate_alt_text' );
+
+			// Click Apply.
+			await page.locator( '#doaction' ).click();
+
+			await expect(
+				page.locator( '.notice-error p', {
+					hasText:
+						'This feature requires a valid AI Connector to function properly.',
+				} )
+			).toBeVisible( { timeout: 30000 } );
+
+			// Verify query args have been stripped from the URL.
+			expect( page.url() ).not.toContain( 'wpai_bulk_alt_text' );
+			expect( page.url() ).not.toContain( 'wpai_attachment_ids' );
+		} finally {
+			await seedCredentials( requestUtils );
+		}
 	} );
 
 	test( 'Query args are stripped from URL after generation completes', async ( {

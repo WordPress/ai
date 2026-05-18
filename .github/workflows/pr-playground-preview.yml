@@ -88,7 +88,7 @@ jobs:
             steps: [
               {
                 step: 'installPlugin',
-                pluginZipFile: {
+                pluginData: {
                   resource: 'url',
                   url,
                 },
