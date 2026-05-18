@@ -119,7 +119,7 @@ interface Feature {
 	/**
 	 * Gets the AI capability type required by this feature.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @return string The capability type (e.g. 'text_generation', 'image_generation', 'vision').
 	 */

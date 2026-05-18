@@ -94,15 +94,13 @@ test.describe( 'Image Editing Feature', () => {
 
 		// Add a prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-inline-modal__idle textarea' )
+			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiling face emoji' );
-		await page
-			.locator( '.ai-generate-image-inline-modal__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the Refine Image button is visible.
 		const refineButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Refine Image',
 			}
@@ -114,27 +112,27 @@ test.describe( 'Image Editing Feature', () => {
 
 		// Ensure the modal is in the refining state.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__refining' )
+			page.locator( '.ai-image-generation__refining' )
 		).toBeVisible();
 
 		// Ensure the refine prompt textarea is visible.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__refining textarea' )
+			page.locator( '.ai-image-generation__refining textarea' )
 		).toBeVisible();
 
 		// Add our refine prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-inline-modal__refining textarea' )
+			.locator( '.ai-image-generation__refining textarea' )
 			.fill( 'Add a red hat' );
 		await page
-			.locator( '.ai-generate-image-inline-modal__refining button' )
+			.locator( '.ai-image-generation__refining button' )
 			.filter( { hasText: 'Refine' } )
 			.first()
 			.click();
 
 		// Ensure the images are visible in the modal.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__preview-image' )
+			page.locator( '.ai-image-generation__preview-image' )
 		).toHaveCount( 2 );
 
 		// Click the previous image navigation arrow.
@@ -164,7 +162,7 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveText( '2 / 2' );
 
 		const useImageButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Use Image',
 			}
@@ -211,14 +209,12 @@ test.describe( 'Image Editing Feature', () => {
 
 		// Add a prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-standalone__idle textarea' )
+			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-generate-image-standalone__actions button' )
-			.click();
+		await page.locator( '.ai-image-generation__actions button' ).click();
 
 		const refineButton = page.locator(
-			'.ai-generate-image-standalone__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Refine Image',
 			}
@@ -230,27 +226,27 @@ test.describe( 'Image Editing Feature', () => {
 
 		// Ensure the modal is in the refining state.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__refining' )
+			page.locator( '.ai-image-generation__refining' )
 		).toBeVisible();
 
 		// Ensure the refine prompt textarea is visible.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__refining textarea' )
+			page.locator( '.ai-image-generation__refining textarea' )
 		).toBeVisible();
 
 		// Add our refine prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-standalone__refining textarea' )
+			.locator( '.ai-image-generation__refining textarea' )
 			.fill( 'Add a red hat' );
 		await page
-			.locator( '.ai-generate-image-standalone__refining button' )
+			.locator( '.ai-image-generation__refining button' )
 			.filter( { hasText: 'Refine' } )
 			.first()
 			.click();
 
 		// Ensure the images are visible in the modal.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__preview-image' )
+			page.locator( '.ai-image-generation__preview-image' )
 		).toHaveCount( 2 );
 
 		// Click the previous image navigation arrow.
@@ -280,7 +276,7 @@ test.describe( 'Image Editing Feature', () => {
 		).toHaveText( '2 / 2' );
 
 		const saveImageButton = page.locator(
-			'.ai-generate-image-standalone__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Save to Media Library',
 			}

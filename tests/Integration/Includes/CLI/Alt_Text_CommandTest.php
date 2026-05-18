@@ -17,7 +17,7 @@ require_once __DIR__ . '/wp-cli-stubs.php';
  *
  * @covers \WordPress\AI\CLI\Alt_Text_Command
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Alt_Text_CommandTest extends WP_UnitTestCase {
 

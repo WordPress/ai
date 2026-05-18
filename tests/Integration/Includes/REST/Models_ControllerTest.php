@@ -14,13 +14,13 @@ use WordPress\AI\REST\Models_Controller;
 /**
  * Models_Controller test case.
  *
- * @since x.x.x
+ * @since 0.9.0
  */
 class Models_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the providers REST route is registered.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_register_routes_registers_providers_route(): void {
 		$controller = new Models_Controller();
@@ -37,7 +37,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the providers route declares the expected capability argument schema.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_register_routes_declares_capability_argument_schema(): void {
 		$controller = new Models_Controller();
@@ -60,7 +60,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the providers endpoint allows users with manage_options.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_check_permission_allows_manage_options_users(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -74,7 +74,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the providers endpoint requires manage_options.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_providers_route_requires_manage_options(): void {
 		$controller = new Models_Controller();
@@ -96,7 +96,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the providers endpoint validates the capability argument.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_providers_route_rejects_invalid_capability(): void {
 		$controller = new Models_Controller();
@@ -119,7 +119,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the providers endpoint returns provider data for a valid request.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_providers_route_returns_provider_data_for_valid_capability(): void {
 		$controller = new Models_Controller();
@@ -152,7 +152,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	 *
 	 * @dataProvider data_valid_capabilities
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @param string $capability Capability slug.
 	 */
@@ -169,7 +169,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for valid capability values.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 *
 	 * @return array<string, array{string}>
 	 */
@@ -184,7 +184,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that unknown capabilities throw at the requirements boundary.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_build_requirements_rejects_unknown_capability(): void {
 		$controller = new Models_Controller();
