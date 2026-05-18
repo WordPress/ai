@@ -12,6 +12,7 @@ namespace WordPress\AI;
 use Throwable;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
+use WordPress\AiClient\AiClient;
 
 /**
  * Purposely using return instead of exit here.
@@ -371,39 +372,14 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
 /**
  * Determines if an API key is set for a given connector.
  *
- * Checks in order: environment variable, PHP constant, database.
- * Environment variable and constant are only checked when their
- * respective names are provided.
- *
  * @since 1.0.0
  *
- * @param array{setting_name?: string, env_var_name?: string, constant_name?: string} $auth Authentication configuration.
+ * @param string $connector_id
  * @return bool True if an API key is set by one of the configuration options, false otherwise.
  */
-function has_api_key_configured( array $auth ): bool {
-	$setting_name  = $auth['setting_name'] ?? '';
-	$env_var_name  = $auth['env_var_name'] ?? '';
-	$constant_name = $auth['constant_name'] ?? '';
-
-	// Check environment variable first.
-	if ( '' !== $env_var_name ) {
-		$env_value = getenv( $env_var_name );
-		if ( false !== $env_value && '' !== $env_value ) {
-			return true;
-		}
-	}
-
-	// Check PHP constant.
-	if ( '' !== $constant_name && defined( $constant_name ) ) {
-		$const_value = constant( $constant_name );
-		if ( is_string( $const_value ) && '' !== $const_value ) {
-			return true;
-		}
-	}
-
-	// Check database.
-	$db_value = get_option( $setting_name, '' );
-	return '' !== $db_value;
+function has_api_key_configured( string $connector_id ): bool {
+	$registry = AiClient::defaultRegistry();
+	return $registry->hasProvider( $connector_id ) && $registry->isProviderConfigured( $connector_id );
 }
 
 /**
@@ -417,13 +393,13 @@ function has_ai_credentials(): bool {
 	$connectors      = get_ai_connectors();
 	$has_credentials = false;
 
-	foreach ( $connectors as $connector_data ) {
+	foreach ( $connectors as $connector_id => $connector_data ) {
 		$auth = $connector_data['authentication'];
-		if ( 'api_key' !== $auth['method'] || empty( $auth['setting_name'] ) ) {
+		if ( 'api_key' !== $auth['method'] ) {
 			continue;
 		}
 
-		if ( ! has_api_key_configured( $auth ) ) {
+		if ( ! has_api_key_configured( $connector_id ) ) {
 			continue;
 		}
 

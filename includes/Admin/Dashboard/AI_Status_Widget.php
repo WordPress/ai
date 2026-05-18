@@ -210,7 +210,7 @@ class AI_Status_Widget {
 		foreach ( get_ai_connectors() as $slug => $connector_data ) {
 			$auth       = $connector_data['authentication'];
 			$configured = 'api_key' === $auth['method']
-				&& has_api_key_configured( $auth );
+				&& has_api_key_configured( $slug );
 
 			/**
 			 * Filters whether an AI connector is configured.
