@@ -139,24 +139,22 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Add a prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-inline-modal__idle textarea' )
+			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiling face emoji' );
-		await page
-			.locator( '.ai-generate-image-inline-modal__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__preview-image' )
+			page.locator( '.ai-image-generation__preview-image' )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__actions button' )
+			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
 		let useImageButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Use Image',
 			}
@@ -164,7 +162,7 @@ test.describe( 'Image Generation Feature', () => {
 		await expect( useImageButton ).toBeVisible();
 
 		const refineButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Refine Image',
 			}
@@ -172,7 +170,7 @@ test.describe( 'Image Generation Feature', () => {
 		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Generate Another Image',
 			}
@@ -180,7 +178,7 @@ test.describe( 'Image Generation Feature', () => {
 		await expect( generateAnotherButton ).toBeVisible();
 
 		const editPromptButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Edit Prompt',
 			}
@@ -192,43 +190,38 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Ensure the modal is in the idle state.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__idle' )
+			page.locator( '.ai-image-generation__idle' )
 		).toBeVisible();
 
 		// Ensure the prompt textarea is visible.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__idle textarea' )
+			page.locator( '.ai-image-generation__idle textarea' )
 		).toBeVisible();
 
 		// Ensure the prompt textarea has the correct value.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__idle textarea' )
+			page.locator( '.ai-image-generation__idle textarea' )
 		).toHaveValue( 'A smiling face emoji' );
 
 		// Add another prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-inline-modal__idle textarea' )
+			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiling face' );
-		await page
-			.locator( '.ai-generate-image-inline-modal__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__preview-image' )
+			page.locator( '.ai-image-generation__preview-image' )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__actions button' )
+			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
-		useImageButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
-			{
-				hasText: 'Use Image',
-			}
-		);
+		useImageButton = page.locator( '.ai-image-generation__actions button', {
+			hasText: 'Use Image',
+		} );
 		await expect( useImageButton ).toBeVisible();
 
 		useImageButton.click();
@@ -310,24 +303,22 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Add a prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-inline-modal__idle textarea' )
+			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-generate-image-inline-modal__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__preview-image' )
+			page.locator( '.ai-image-generation__preview-image' )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__actions button' )
+			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
 		let useImageButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Use Image',
 			}
@@ -335,7 +326,7 @@ test.describe( 'Image Generation Feature', () => {
 		await expect( useImageButton ).toBeVisible();
 
 		const refineButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Refine Image',
 			}
@@ -343,7 +334,7 @@ test.describe( 'Image Generation Feature', () => {
 		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Generate Another Image',
 			}
@@ -364,33 +355,31 @@ test.describe( 'Image Generation Feature', () => {
 			page.locator( '.ai-generate-image-inline-modal' )
 		).not.toBeVisible();
 
+		// Click the Add image toolbar button.
+		await addImageButton.click();
+
 		// Click the generate image toolbar button again to open the modal.
 		await generateImageButton.click();
 
 		// Add another prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-inline-modal__idle textarea' )
+			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-generate-image-inline-modal__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible in the modal.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__preview-image' )
+			page.locator( '.ai-image-generation__preview-image' )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
 		await expect(
-			page.locator( '.ai-generate-image-inline-modal__actions button' )
+			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 4 );
 
-		useImageButton = page.locator(
-			'.ai-generate-image-inline-modal__actions button',
-			{
-				hasText: 'Use Image',
-			}
-		);
+		useImageButton = page.locator( '.ai-image-generation__actions button', {
+			hasText: 'Use Image',
+		} );
 		await expect( useImageButton ).toBeVisible();
 
 		useImageButton.click();
@@ -452,24 +441,22 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Add a prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-standalone__idle textarea' )
+			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-generate-image-standalone__actions button' )
-			.click();
+		await page.locator( '.ai-image-generation__actions button' ).click();
 
 		// Ensure the image is visible.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__preview-image' )
+			page.locator( '.ai-image-generation__preview-image' )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__actions button' )
+			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 5 );
 
 		let saveImageButton = page.locator(
-			'.ai-generate-image-standalone__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Save to Media Library',
 			}
@@ -477,7 +464,7 @@ test.describe( 'Image Generation Feature', () => {
 		await expect( saveImageButton ).toBeVisible();
 
 		const refineButton = page.locator(
-			'.ai-generate-image-standalone__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Refine Image',
 			}
@@ -485,7 +472,7 @@ test.describe( 'Image Generation Feature', () => {
 		await expect( refineButton ).toBeVisible();
 
 		const generateAnotherButton = page.locator(
-			'.ai-generate-image-standalone__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Generate Another Image',
 			}
@@ -494,7 +481,7 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Ensure there's a cancel button.
 		const cancelButton = page.locator(
-			'.ai-generate-image-standalone__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Cancel',
 			}
@@ -506,24 +493,22 @@ test.describe( 'Image Generation Feature', () => {
 
 		// Add another prompt and generate the image.
 		await page
-			.locator( '.ai-generate-image-standalone__idle textarea' )
+			.locator( '.ai-image-generation__idle textarea' )
 			.fill( 'A smiley face' );
-		await page
-			.locator( '.ai-generate-image-standalone__idle button' )
-			.click();
+		await page.locator( '.ai-image-generation__idle button' ).click();
 
 		// Ensure the image is visible.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__preview-image' )
+			page.locator( '.ai-image-generation__preview-image' )
 		).toBeVisible();
 
 		// Ensure the buttons we want are there.
 		await expect(
-			page.locator( '.ai-generate-image-standalone__actions button' )
+			page.locator( '.ai-image-generation__actions button' )
 		).toHaveCount( 5 );
 
 		saveImageButton = page.locator(
-			'.ai-generate-image-standalone__actions button',
+			'.ai-image-generation__actions button',
 			{
 				hasText: 'Save to Media Library',
 			}

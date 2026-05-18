@@ -2,16 +2,6 @@
 
 Welcome to the AI plugin development guide. This document provides everything you need to know to contribute to the plugin or create your own AI-powered experiments.
 
-## Table of Contents
-
-- [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
-- [Creating a New Experiment](#creating-a-new-experiment)
-- [Plugin API](#plugin-api)
-- [Development Workflow](#development-workflow)
-- [Additional Resources](#additional-resources)
-
----
-
 ## Creating a New Experiment
 
 Experiments are the core building blocks of the AI plugin. Each experiment represents a distinct piece of functionality that may utilize AI capabilities.
@@ -66,8 +56,8 @@ class My_Experiment extends Abstract_Feature {
    */
   protected function load_metadata(): array {
     return array(
-    'label'       => __( 'My Experiment', 'ai' ),
-    'description' => __( 'Description of what my experiment does.', 'ai' ),
+      'label'       => __( 'My Experiment', 'ai' ),
+      'description' => __( 'Description of what my experiment does.', 'ai' ),
     );
   }
 
@@ -102,11 +92,11 @@ class My_Experiment extends Abstract_Feature {
   public function enqueue_assets( string $hook_suffix ): void {
     Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
     Asset_Loader::localize_script(
-    'my-experiment',
-    'MyExperimentData',
-    array(
-      'enabled' => $this->is_enabled(),
-    )
+      'my-experiment',
+      'MyExperimentData',
+      array(
+        'enabled' => $this->is_enabled(),
+      )
     );
   }
 
@@ -124,6 +114,8 @@ class My_Experiment extends Abstract_Feature {
   }
 }
 ```
+
+If you want a complete end-to-end reference instead of a starter snippet, see the [Custom Experiment Reference](experiments/custom-experiment-reference.md). It points to the in-repo `Example_Experiment` implementation and shows a minimal third-party plugin example using the same extension points.
 
 ### Step 3: Register the Experiment
 
@@ -177,8 +169,6 @@ class My_Experiment extends Abstract_Experiment {
   }
 }
 ```
-
----
 
 ## Plugin API
 
@@ -286,8 +276,6 @@ Asset_Loader::localize_script(
 );
 ```
 
----
-
 ## Development Workflow
 
 ### 1. Create a Feature Branch
@@ -337,32 +325,35 @@ Push your branch and create a pull request. Follow the contribution guidelines i
 - Pull request requirements
 - Code review process
 
+## Merge Strategy
+
+### Squash Merging
+
+This project makes use of squash merges from PR branches to the `develop` branch and as such we've disabled the "Allow merge commits" and "Allow rebase merging" in the repo so that anyone merging will be forced into the "Allow squash merging" approach.
+
+An example of a squash merge from #359 can be seen in 4c9699f, while an example of the prior approach of a merge commit from #311 can be seen in e63d8c0.
+
+### Squash Merge Commit Title and Description
+
+As you squash merge a PR, where reasonable please update the title of the squash merge commit to be a good top-level summary of the change (removing extraneous `[WIP]`, `Fixes Issue ###`, and other non-helpful text).  The ideal format here would be like "New Experiment: Comment Moderation" so that reviewing the commit history on `develop` can quickly comprehend the changes happening.
+
+Remove any commit messages from the PR that end up in the commit description, replacing them with the Changelog entry(ies) in the PR description.  If there's no Changelog entry in the PR description, then please do your best to generate that changelog entry from your perspective in what's happening in the PR.
+
+With this approach, when we get into the [release process](RELEASE_INSTRUCTIONS.md) we can much more quickly build a release changelog by leveraging the squash merge commit titles.
+
+A minute of your time when merging a PR to appropriately set the squash merge commit title and description will save many others even more time when reviewing changes in `develop` and when building a release.  Thanks for helping others save time!
+
 ---
 
 ## Additional Resources
 
-### Documentation
+For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
+- [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
+- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
-- [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
-- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
-- [WordPress AI Team](https://make.wordpress.org/ai/)
-
-### Getting Help
-
-- **GitHub Issues**: Report bugs or request features
-- **WordPress Slack**: Join the `#core-ai` channel in Slack, see the [WordPress Slack page](https://make.wordpress.org/chat/) for signup information; it is free to join.
-- **Make WordPress AI**: https://make.wordpress.org/ai/
-
----
-
-## License
-
-GPL-2.0-or-later
-
----
-
-<br/><br/><p align="center"><img src="https://s.w.org/style/images/codeispoetry.png?1" alt="Code is Poetry." /></p>
+- [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
+- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin

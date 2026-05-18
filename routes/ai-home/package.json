@@ -10,12 +10,16 @@
 	},
 	"dependencies": {
 		"@wordpress/admin-ui": "*",
+		"@wordpress/api-fetch": "*",
 		"@wordpress/components": "*",
 		"@wordpress/core-data": "*",
 		"@wordpress/data": "*",
 		"@wordpress/dataviews": "*",
 		"@wordpress/element": "*",
+		"@wordpress/icons": "*",
 		"@wordpress/i18n": "*",
-		"@wordpress/notices": "*"
+		"@wordpress/notices": "*",
+		"@wordpress/primitives": "*",
+		"@wordpress/ui": "*"
 	}
 }

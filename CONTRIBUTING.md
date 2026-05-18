@@ -20,7 +20,12 @@ cd ai
 
 2. **Install dependencies and build assets:**
 
+Before running `npm i`, ensure your Node.js and npm versions match the minimum requirements specified in the `package.json` file.
+
+If you use `nvm` for managing Node.js versions, run `nvm use` before `npm i` to automatically switch to the correct version.
+
 ```bash
+# If using nvm, run: nvm use
 composer install && npm i && npm run build
 ```
 
@@ -49,8 +54,6 @@ composer format && npm run lint:js:fix && npm run format
 # Run tests
 npm run wp-env:test start -- --xdebug=coverage && npm run test:e2e && npm run test:php && npm run wp-env:test stop
 ```
-
----
 
 ### Coding standards
 
@@ -144,14 +147,16 @@ echo 'Hello World';
 - As with all WordPress projects, we want to ensure a welcoming environment for everyone. With that in mind, all contributors are expected to follow our [Code of Conduct](https://make.wordpress.org/handbook/community-code-of-conduct/).
 - All WordPress projects are licensed under the GPLv2+, and all contributions to the AI plugin will be released under the GPLv2+ license. You maintain copyright over any contribution you make, and by submitting a pull request, you are agreeing to release that contribution under the GPLv2+ license.
 
+---
+
 ## Additional resources
 
 For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
 - [Developer Guide](docs/DEVELOPER_GUIDE.md) - Comprehensive guide to plugin development
 - [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
-- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
+- [Experiment Lifecycle](docs/EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [Testing Strategy](docs/TESTING.md) - Testing philosophy and guidelines
 - [Testing API Strategy](docs/TESTING_REST_API.md) - Testing philosophy and guidelines
-- [Experiment Lifecycle](docs/EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
-- [WordPress AI Team](https://make.wordpress.org/ai/) - Community and discussion
+- [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
+- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
