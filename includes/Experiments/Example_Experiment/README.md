@@ -35,7 +35,7 @@ Use the experiment-specific filter:
 add_filter( 'wpai_feature_example-experiment_enabled', '__return_false' );
 ```
 
-Or use the generic filter to disable all experiments:
+Or use the generic filter to disable all features and experiments:
 
 ```php
 add_filter( 'wpai_features_enabled', '__return_false' );
@@ -45,7 +45,7 @@ add_filter( 'wpai_features_enabled', '__return_false' );
 
 1. Duplicate this folder and rename the namespace/class.
 2. Extend `WordPress\AI\Abstracts\Abstract_Feature`.
-3. Set experiment properties (`$id`, `$label`, `$description`) in the constructor.
+3. Provide the experiment ID with `get_id()` and metadata with `load_metadata()`.
 4. Register hooks in the `register()` method.
 
 See `Example_Experiment.php` for a complete reference.
