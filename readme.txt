@@ -26,14 +26,14 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
-* **[Experiment Framework](https://github.com/WordPress/ai/blob/trunk/docs/experiments/experiment-framework.md)** - Opt-in system that lets you enable only the AI features you want to use.
+* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
-* **[Multi-Provider Support](https://github.com/WordPress/ai/blob/trunk/docs/experiments/multi-provider-support.md)** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
 * **Refine Notes** - Automatically apply editorial notes to content.
 * **Review Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
-* **[Title Generation](https://github.com/WordPress/ai/blob/trunk/docs/experiments/title-generation.md)** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
 
 **Coming Soon:**
 
