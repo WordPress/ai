@@ -35,6 +35,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,
 		\WordPress\AI\Experiments\Review_Notes\Review_Notes::class,
 		\WordPress\AI\Experiments\Refine_Notes\Refine_Notes::class,
+		\WordPress\AI\Experiments\Suggest_Image_Crops\Suggest_Image_Crops::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
