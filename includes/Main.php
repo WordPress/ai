@@ -127,8 +127,22 @@ final class Main {
 				( new Dashboard_Widgets( $registry ) )->init();
 			}
 
-			// Register our post-related WordPress Abilities.
-			( new Posts() )->register();
+			/**
+			 * Filters whether to enable AI features.
+			 *
+			 * @since 0.6.0
+			 *
+			 * @param bool $enabled Whether to enable AI features.
+			 */
+			$features_enabled = (bool) apply_filters( 'wpai_features_enabled', true );
+
+			// Read the admin UI database option (the 'Enable AI' setting).
+			$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+
+			// Register post-related Abilities only when AI is globally enabled and not disabled via filter.
+			if ( $features_enabled && $global_enabled ) {
+				( new Posts() )->register();
+			}
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,
