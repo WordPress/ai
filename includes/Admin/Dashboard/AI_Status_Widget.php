@@ -17,6 +17,7 @@ namespace WordPress\AI\Admin\Dashboard;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Registration;
 
+use function WordPress\AI\get_ai_connectors;
 use function WordPress\AI\has_ai_credentials;
 
 // Exit if accessed directly.
@@ -205,16 +206,28 @@ class AI_Status_Widget {
 	private function get_ai_connectors(): array {
 		$connectors = array();
 
-		foreach ( wp_get_connectors() as $slug => $connector_data ) {
-			if ( 'ai_provider' !== $connector_data['type'] ) {
-				continue;
-			}
-
+		foreach ( get_ai_connectors() as $slug => $connector_data ) {
 			$auth       = $connector_data['authentication'];
-			$configured = ( $this->is_connector_plugin_active( $connector_data )
-				&& 'api_key' === $auth['method']
+			$configured = 'api_key' === $auth['method']
 				&& ! empty( $auth['setting_name'] )
-				&& '' !== get_option( $auth['setting_name'], '' ) );
+				&& '' !== get_option( $auth['setting_name'], '' );
+
+			/**
+			 * Filters whether an AI connector is configured.
+			 *
+			 * Allows third-party plugins to declare credential availability for
+			 * connectors that do not rely on API key settings.
+			 *
+			 * The dynamic portion of the hook name, `$slug`, refers to the connector slug.
+			 * For example, if the connector slug is 'openai', the hook name
+			 * will be 'wpai_is_openai_connector_configured'.
+			 *
+			 * @since 0.9.0
+			 *
+			 * @param bool $configured Whether the connector is configured.
+			 * @param array<string, mixed> $connector_data The connector data.
+			 */
+			$configured = (bool) apply_filters( "wpai_is_{$slug}_connector_configured", $configured, $connector_data );
 
 			$connectors[] = array(
 				'name'       => $connector_data['name'] ?? $slug,
@@ -223,46 +236,6 @@ class AI_Status_Widget {
 		}
 
 		return $connectors;
-	}
-
-	/**
-	 * Checks whether the connector's related plugin is currently active.
-	 *
-	 * If plugin metadata is not provided for a connector, it is treated as active.
-	 *
-	 * @since 0.8.0
-	 *
-	 * @param array<string, mixed> $connector_data Connector metadata.
-	 * @return bool True if the connector plugin is active or unknown, false if known inactive.
-	 */
-	private function is_connector_plugin_active( array $connector_data ): bool {
-		if ( empty( $connector_data['plugin'] ) || ! is_array( $connector_data['plugin'] ) ) {
-			return true;
-		}
-
-		$plugin_file = '';
-
-		if ( ! empty( $connector_data['plugin']['file'] ) && is_string( $connector_data['plugin']['file'] ) ) {
-			$plugin_file = $connector_data['plugin']['file'];
-		} elseif ( ! empty( $connector_data['plugin']['plugin_file'] ) && is_string( $connector_data['plugin']['plugin_file'] ) ) {
-			$plugin_file = $connector_data['plugin']['plugin_file'];
-		} elseif ( ! empty( $connector_data['plugin']['pluginFile'] ) && is_string( $connector_data['plugin']['pluginFile'] ) ) {
-			$plugin_file = $connector_data['plugin']['pluginFile'];
-		}
-
-		if ( '' === $plugin_file ) {
-			return true;
-		}
-
-		if ( ! function_exists( 'is_plugin_active' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-
-		if ( is_plugin_active( $plugin_file ) ) {
-			return true;
-		}
-
-		return is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $plugin_file );
 	}
 
 	/**

@@ -279,9 +279,26 @@ class Import_Base64_Image extends Abstract_Ability {
 		// Determine file extension from MIME type.
 		$extension = wp_get_default_extension_for_mime_type( $args['mime_type'] );
 
+		/**
+		 * Filters the base filename (without extension) used when importing an
+		 * AI-generated image.
+		 *
+		 * The returned value is sanitized via `sanitize_file_name()` and the
+		 * extension is appended afterwards, so filter implementations cannot
+		 * accidentally bypass sanitization or change the file extension.
+		 *
+		 * @since 0.9.0
+		 *
+		 * @param string               $filename The base filename, without extension.
+		 * @param array<string, mixed> $args     The import arguments. Includes mime_type,
+		 *                                       title, description, filename, and alt_text.
+		 * @return string The filtered base filename, without extension.
+		 */
+		$filename = (string) apply_filters( 'wpai_generated_image_filename', $args['filename'], $args );
+
 		// Prepare file array for sideload.
 		$file_array = array(
-			'name'     => sanitize_file_name( $args['filename'] ) . '.' . $extension,
+			'name'     => sanitize_file_name( $filename ) . '.' . $extension,
 			'type'     => $args['mime_type'],
 			'tmp_name' => $temp_file,
 		);

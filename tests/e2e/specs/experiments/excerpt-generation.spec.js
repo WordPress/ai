@@ -11,6 +11,7 @@ const {
 	disableExperiments,
 	enableExperiment,
 	enableExperiments,
+	seedCredentials,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Excerpt Generation Experiment', () => {
@@ -124,6 +125,44 @@ test.describe( 'Excerpt Generation Experiment', () => {
 
 		// Save the post.
 		await editor.saveDraft();
+	} );
+
+	test( 'Shows a clean error notice when excerpt generation fails', async ( {
+		admin,
+		editor,
+		page,
+		requestUtils,
+	} ) => {
+		await seedCredentials( requestUtils );
+
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Excerpt Generation Experiment.
+		await enableExperiment( admin, page, 'Excerpt Generation' );
+
+		// Create a new post without content so excerpt generation returns an error.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Excerpt Generation Error Notice',
+		} );
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		const inlineButton = page.locator(
+			'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
+		);
+		await expect( inlineButton ).toBeVisible( { timeout: 5000 } );
+		await inlineButton.click();
+
+		const notice = page.locator( '.components-notice', {
+			hasText: 'Content is required to generate an excerpt suggestion.',
+		} );
+		await expect( notice ).toBeVisible( { timeout: 5000 } );
+		await expect( notice ).not.toContainText(
+			'Error: Content is required to generate an excerpt suggestion.'
+		);
 	} );
 
 	test( 'Ensure the Excerpt Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
