@@ -37,7 +37,7 @@ test.describe( 'Plugin settings', () => {
 		await seedCredentials( requestUtils );
 	} );
 
-	test( 'Can visit the settings page and see error message', async ( {
+	test( 'Can visit the settings page and see warning message', async ( {
 		admin,
 		page,
 		requestUtils,
@@ -58,7 +58,7 @@ test.describe( 'Plugin settings', () => {
 			)
 		).toBeVisible();
 
-		// Ensure the no AI Connectors error message is displayed.
+		// Ensure the no AI Connectors warning message is displayed.
 		await expect(
 			page
 				.locator( '#ai-wp-admin-app' )

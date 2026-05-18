@@ -1025,7 +1025,7 @@ function AISettingsPage() {
 			>
 				<Stack className="ai-settings-page" direction="column" gap="md">
 					{ ! PAGE_DATA.hasValidCredentials && (
-						<Notice.Root intent="error">
+						<Notice.Root intent="warning">
 							<Notice.Description>
 								{ ! PAGE_DATA.hasCredentials
 									? __(
