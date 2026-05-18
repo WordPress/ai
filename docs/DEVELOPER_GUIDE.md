@@ -381,7 +381,6 @@ For more detailed information on plugin architecture, creating experiments, and 
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
 - [Experiment Framework](experiments/experiment-framework.md) - How experiments are registered, toggled, and initialized
 - [Multi-Provider Support](experiments/multi-provider-support.md) - Provider detection, model preference, and fallback behavior
-- [Title Generation](experiments/title-generation.md) - Deep dive into the title generation experiment and ability
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
 - [Release Instructions](RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
