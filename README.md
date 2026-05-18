@@ -70,6 +70,7 @@ The AI plugin is meant to be studied, forked, and extended.  If you’re a host 
 If you’re a plugin developer, you’ll be able to:
 
 * Read the [Contributing Guide](CONTRIBUTING.md) for detailed development information.
+* Read the [Developer Guide](docs/DEVELOPER_GUIDE.md) to learn how to contribute to the plugin or create your own AI-powered experiments.
 * Study the [Custom Experiment Reference](docs/experiments/custom-experiment-reference.md) for an end-to-end extension example.
 * Register new AI abilities.
 * Override default behavior with custom filters.
