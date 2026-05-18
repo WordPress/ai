@@ -12,6 +12,7 @@
 		"@wordpress/admin-ui": "*",
 		"@wordpress/api-fetch": "*",
 		"@wordpress/components": "*",
+		"@wordpress/compose": "*",
 		"@wordpress/core-data": "*",
 		"@wordpress/data": "*",
 		"@wordpress/dataviews": "*",
