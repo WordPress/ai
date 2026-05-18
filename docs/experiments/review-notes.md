@@ -380,7 +380,7 @@ npm run wp-env:test start # Start the test environment
 npm run test:e2e -- --grep "AI Review Notes"
 ```
 
-Test file: `tests/e2e/review-notes.spec.ts`
+Test file: `tests/e2e/specs/experiments/review-notes.spec.js`
 
 Covers:
 - Button visibility in editor sidebar
@@ -394,7 +394,7 @@ Covers:
 
 ### Requirements
 
-- WordPress 6.9+ (Notes feature required for block-level comment association)
+- WordPress 7.0+ (the plugin minimum; Notes support is required for block-level comment association)
 - Valid AI credentials configured in `Settings → Connectors`
 - User must have `edit_posts` capability (or `edit_post` for the specific post when a post ID is provided)
 - The block editor must be active (classic editor is not supported)
@@ -431,5 +431,5 @@ Covers:
 - **React Hook:** `src/experiments/review-notes/hooks/useReviewNotes.ts`
 - **PHPUnit Tests (Ability):** `tests/Integration/Includes/Abilities/Review_NotesTest.php`
 - **PHPUnit Tests (Experiment):** `tests/Integration/Includes/Experiments/Review_Notes/Review_NotesTest.php`
-- **E2E Tests:** `tests/e2e/review-notes.spec.ts`
-- **Mock Fixtures:** `tests/e2e-request-mocking/responses/OpenAI/review-notes-suggestions.json`
+- **E2E Tests:** `tests/e2e/specs/experiments/review-notes.spec.js`
+- **Mock Fixtures:** `tests/e2e-request-mocking/responses/OpenAI/review-notes-completions.json` and `tests/e2e-request-mocking/responses/OpenAI/review-notes-responses.json`
