@@ -81,7 +81,7 @@ class Editorial_Updates extends Abstract_Feature {
 	 * @since 0.8.0
 	 */
 	public function enqueue_assets(): void {
-		Asset_Loader::enqueue_script( 'editorial_updates', 'experiments/editorial-updates' );
+		Asset_Loader::enqueue_script( 'editorial_updates', 'experiments/editorial-updates', array( 'include_core_abilities' => true ) );
 
 		$post_type        = get_post_type();
 		$post_type_object = $post_type ? get_post_type_object( $post_type ) : null;

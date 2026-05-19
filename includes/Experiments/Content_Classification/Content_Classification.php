@@ -145,7 +145,7 @@ class Content_Classification extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'content_classification', 'experiments/content-classification' );
+		Asset_Loader::enqueue_script( 'content_classification', 'experiments/content-classification', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'content_classification', 'experiments/content-classification' );
 		Asset_Loader::localize_script(
 			'content_classification',
