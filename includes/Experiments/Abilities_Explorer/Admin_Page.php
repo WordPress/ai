@@ -504,6 +504,8 @@ class Admin_Page {
 			)
 		);
 
+		$provider_tags = array( 'strong' => array() );
+
 		$screen->add_help_tab(
 			array(
 				'id'      => 'abilities-providers',
@@ -511,9 +513,9 @@ class Admin_Page {
 				'content' =>
 					'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
 					'<ul>' .
-						'<li><strong>' . esc_html__( 'Core', 'ai' ) . '</strong>: ' . esc_html__( 'Built into WordPress itself.', 'ai' ) . '</li>' .
-						'<li><strong>' . esc_html__( 'Plugin', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by an active plugin.', 'ai' ) . '</li>' .
-						'<li><strong>' . esc_html__( 'Theme', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by the active theme.', 'ai' ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Core</strong>: Built into WordPress itself.', 'ai' ), $provider_tags ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Plugin</strong>: Registered by an active plugin.', 'ai' ), $provider_tags ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Theme</strong>: Registered by the active theme.', 'ai' ), $provider_tags ) . '</li>' .
 					'</ul>',
 			)
 		);

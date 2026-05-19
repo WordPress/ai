@@ -3,6 +3,11 @@
  */
 
 /**
+ * WordPress dependencies
+ */
+import { __ } from '@wordpress/i18n';
+
+/**
  * Global dependencies
  */
 const { aiAbilityExplorer, navigator } = window;
@@ -241,7 +246,9 @@ import './index.scss';
 				'ability-input-schema'
 			);
 			if ( ! schemaElement ) {
-				this.showValidation( true, [ 'JSON syntax is valid' ] );
+				this.showValidation( true, [
+					__( 'JSON syntax is valid', 'ai' ),
+				] );
 				return;
 			}
 
@@ -251,7 +258,7 @@ import './index.scss';
 				schema = JSON.parse( schemaElement.textContent );
 			} catch {
 				this.showValidation( false, [
-					'Failed to parse input schema',
+					__( 'Failed to parse input schema', 'ai' ),
 				] );
 				return;
 			}
@@ -261,7 +268,7 @@ import './index.scss';
 
 			if ( errors.length === 0 ) {
 				this.showValidation( true, [
-					'Input is valid according to the schema',
+					__( 'Input is valid according to the schema', 'ai' ),
 				] );
 			} else {
 				this.showValidation( false, errors );
@@ -362,7 +369,9 @@ import './index.scss';
 			}
 
 			const iconHtml = isValid ? '✓' : '✗';
-			const titleText = isValid ? 'Valid' : 'Validation Errors';
+			const titleText = isValid
+				? __( 'Valid', 'ai' )
+				: __( 'Validation Errors', 'ai' );
 			const className = isValid
 				? 'validation-success'
 				: 'validation-error';
