@@ -81,12 +81,8 @@ export function GenerateImageStandalone() {
 				( prev ) => new Set( [ ...prev, historyIndex ] )
 			);
 			setState( 'preview' );
-		} catch ( err: unknown ) {
-			setError(
-				err instanceof Error
-					? err.message
-					: __( 'Failed to upload image.', 'ai' )
-			);
+		} catch ( err: any ) {
+			setError( err?.message || __( 'Failed to upload image.', 'ai' ) );
 			setState( 'preview' );
 		}
 	}
