@@ -138,6 +138,28 @@ class UpgradesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that do_upgrades() does not repair empty legacy global enabled options.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_do_upgrades_does_not_repair_empty_legacy_global_enabled_option() {
+		update_option( 'wpai_version', '99.0.0' );
+		update_option( 'ai_experiments_enabled', '' );
+
+		Upgrades::do_upgrades();
+
+		$this->assertNull(
+			get_option( 'wpai_features_enabled', null ),
+			'Current global features option should not be written for empty legacy values'
+		);
+		$this->assertEquals(
+			'',
+			get_option( 'ai_experiments_enabled' ),
+			'Empty legacy option should remain when repair is skipped'
+		);
+	}
+
+	/**
 	 * Tests that do_upgrades() migrates the legacy global experiments option.
 	 *
 	 * @since 0.6.0
