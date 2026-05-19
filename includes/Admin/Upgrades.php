@@ -72,8 +72,6 @@ final class Upgrades {
 	 * @since 0.6.0
 	 */
 	public static function do_upgrades(): void {
-		self::repair_global_enabled_option();
-
 		$db_version = get_option( self::VERSION_OPTION_KEY, '' );
 
 		foreach ( self::UPGRADE_CLASSES as $upgrade_class ) {
@@ -106,49 +104,6 @@ final class Upgrades {
 		// If all upgrades completed successfully, the plugin was successfully upgraded to the latest version.
 		delete_option( self::FAILED_UPGRADE_OPTION_KEY );
 		update_option( self::VERSION_OPTION_KEY, WPAI_VERSION );
-	}
-
-	/**
-	 * Repairs legacy and incorrect global enabled option names.
-	 *
-	 * @since 0.6.0
-	 */
-	private static function repair_global_enabled_option(): void {
-		$new_option = 'wpai_features_enabled';
-
-		foreach ( array( 'ai_experiments_enabled', 'ai_experiment_enabled', 'wpai_feature_enabled' ) as $old_option ) {
-			if ( ! self::option_exists( $old_option ) || self::option_exists( $new_option ) ) {
-				continue;
-			}
-
-			$old_value = get_option( $old_option, '' );
-			if ( '' === $old_value ) {
-				continue;
-			}
-
-			update_option( $new_option, $old_value );
-			delete_option( $old_option );
-		}
-	}
-
-	/**
-	 * Checks whether an option exists, regardless of its stored value.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @param string $option_name The option name to look up.
-	 * @return bool Whether the option exists.
-	 */
-	private static function option_exists( string $option_name ): bool {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		return null !== $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT option_id FROM {$wpdb->options} WHERE option_name = %s",
-				$option_name
-			)
-		);
 	}
 
 	/**

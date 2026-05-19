@@ -88,78 +88,6 @@ class UpgradesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that do_upgrades() repairs legacy global enabled options before version checks.
-	 *
-	 * @since 0.6.0
-	 */
-	public function test_do_upgrades_repairs_legacy_global_enabled_option_when_version_is_current() {
-		update_option( 'wpai_version', '99.0.0' );
-		update_option( 'ai_experiments_enabled', '1' );
-
-		Upgrades::do_upgrades();
-
-		$this->assertEquals(
-			'1',
-			get_option( 'wpai_features_enabled' ),
-			'Legacy global experiments option should be repaired even when no versioned upgrades run'
-		);
-		$this->assertNull(
-			get_option( 'ai_experiments_enabled', null ),
-			'Legacy global experiments option should be deleted after repair'
-		);
-		$this->assertEquals(
-			WPAI_VERSION,
-			get_option( 'wpai_version' ),
-			'Plugin version should be stored after upgrades complete'
-		);
-	}
-
-	/**
-	 * Tests that do_upgrades() does not overwrite the current global enabled option.
-	 *
-	 * @since 0.6.0
-	 */
-	public function test_do_upgrades_does_not_overwrite_current_global_enabled_option() {
-		update_option( 'wpai_version', '99.0.0' );
-		update_option( 'ai_experiments_enabled', '1' );
-		add_option( 'wpai_features_enabled', false );
-
-		Upgrades::do_upgrades();
-
-		$this->assertFalse(
-			get_option( 'wpai_features_enabled' ),
-			'Current global features option should not be overwritten by stale legacy values'
-		);
-		$this->assertEquals(
-			'1',
-			get_option( 'ai_experiments_enabled' ),
-			'Legacy option should remain when repair is skipped'
-		);
-	}
-
-	/**
-	 * Tests that do_upgrades() does not repair empty legacy global enabled options.
-	 *
-	 * @since 0.6.0
-	 */
-	public function test_do_upgrades_does_not_repair_empty_legacy_global_enabled_option() {
-		update_option( 'wpai_version', '99.0.0' );
-		update_option( 'ai_experiments_enabled', '' );
-
-		Upgrades::do_upgrades();
-
-		$this->assertNull(
-			get_option( 'wpai_features_enabled', null ),
-			'Current global features option should not be written for empty legacy values'
-		);
-		$this->assertEquals(
-			'',
-			get_option( 'ai_experiments_enabled' ),
-			'Empty legacy option should remain when repair is skipped'
-		);
-	}
-
-	/**
 	 * Tests that do_upgrades() migrates the legacy global experiments option.
 	 *
 	 * @since 0.6.0
@@ -181,7 +109,29 @@ class UpgradesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that do_upgrades() repairs the singular global feature option.
+	 * Tests that do_upgrades() repairs the legacy global experiments option when upgrading to 1.0.0.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_do_upgrades_repairs_legacy_global_experiments_option_from_0_9_0() {
+		update_option( 'wpai_version', '0.9.0' );
+		update_option( 'ai_experiments_enabled', '1' );
+
+		Upgrades::do_upgrades();
+
+		$this->assertEquals(
+			'1',
+			get_option( 'wpai_features_enabled' ),
+			'Legacy global experiments option should migrate to the current global features option'
+		);
+		$this->assertNull(
+			get_option( 'ai_experiments_enabled', null ),
+			'Legacy global experiments option should be deleted after migration'
+		);
+	}
+
+	/**
+	 * Tests that do_upgrades() migrates the singular global feature option.
 	 *
 	 * @since 0.6.0
 	 */
