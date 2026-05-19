@@ -76,10 +76,10 @@ All parameters, return values, and properties should use explicit type hints whe
 
 The following naming conventions must be followed for consistency and autoloading:
 
-- Interfaces are suffixed with `_Interface` (e.g., `Experiment_Interface`).
-- Traits are suffixed with `_Trait` (e.g., `Validation_Trait`).
+- Contracts live under `includes/Contracts/` and use descriptive names (e.g., `Feature`).
+- Traits, when introduced, should use descriptive names and follow the existing PSR-4 layout.
 - File names are the same as the class, trait, and interface name for PSR-4 autoloading.
-- Classes use WordPress naming conventions with underscores (e.g., `Experiment_Loader`).
+- Classes use WordPress naming conventions with underscores where useful for readability (e.g., `Settings_Registration`).
 - Namespaces follow the pattern `WordPress\AI\{Component}`.
 
 ### General rules
@@ -103,20 +103,20 @@ The following naming conventions must be followed for consistency and autoloadin
 
 ```php
 /**
- * Class for handling experiment registration.
+ * Class for handling feature registration.
  *
  * @since x.x.x
  */
-class Experiment_Registry {
+class Registry {
 	/**
-	 * Registers a new experiment with the plugin.
+	 * Registers a new feature with the plugin.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param Experiment $experiment The experiment instance to register.
+	 * @param Feature $feature The feature instance to register.
 	 * @return bool True if registered successfully, false otherwise.
 	 */
-	public function register_experiment( Experiment $experiment ): bool {
+	public function register_feature( Feature $feature ): bool {
 		// Implementation
 	}
 }
@@ -155,8 +155,10 @@ For more detailed information on plugin architecture, creating experiments, and 
 
 - [Developer Guide](docs/DEVELOPER_GUIDE.md) - Comprehensive guide to plugin development
 - [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
-- [Experiment Lifecycle](docs/EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
+- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
 - [Testing Strategy](docs/TESTING.md) - Testing philosophy and guidelines
 - [Testing API Strategy](docs/TESTING_REST_API.md) - Testing philosophy and guidelines
-- [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
-- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
+- [Example Experiment](includes/Experiments/Example_Experiment/README.md) - Reference implementation
+- [Custom Experiment Reference](docs/experiments/custom-experiment-reference.md) - Documented example for extending the plugin
+- [Feature and Experiment Lifecycle](docs/FEATURE_EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
+- [WordPress AI Team](https://make.wordpress.org/ai/) - Community and discussion

@@ -49,6 +49,11 @@
 		&:hover {
 			color: var(--wp-admin-theme-color, #007cba);
 		}
+
+		&:focus {
+			box-shadow: inset 0 0 0 var(--wp-admin-border-width-focus, 1.5px) var(--wp-admin-theme-color, #3858e9) !important;
+			outline: 2px solid transparent;
+		}
 	}
 
 	&__pill-parent {
@@ -78,6 +83,11 @@
 
 		&:hover {
 			color: #cc1818;
+		}
+
+		&:focus {
+			box-shadow: inset 0 0 0 var(--wp-admin-border-width-focus, 1.5px) var(--wp-admin-theme-color, #3858e9) !important;
+			outline: 2px solid transparent;
 		}
 	}
 

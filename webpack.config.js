@@ -63,14 +63,14 @@ module.exports = {
 			'src/experiments/meta-description',
 			'index.tsx'
 		),
-		'experiments/review-notes': path.resolve(
+		'experiments/editorial-notes': path.resolve(
 			process.cwd(),
-			'src/experiments/review-notes',
+			'src/experiments/editorial-notes',
 			'index.tsx'
 		),
-		'experiments/refine-notes': path.resolve(
+		'experiments/editorial-updates': path.resolve(
 			process.cwd(),
-			'src/experiments/refine-notes',
+			'src/experiments/editorial-updates',
 			'index.tsx'
 		),
 		'experiments/summarization': path.resolve(
@@ -97,6 +97,11 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/alt-text-generation',
 			'media.ts'
+		),
+		'experiments/alt-text-generation-media-editor': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'media-editor.tsx'
 		),
 		'experiments/alt-text-generation-bulk': path.resolve(
 			process.cwd(),

@@ -631,6 +631,8 @@ class Comment_Moderation extends Abstract_Feature {
 			$this->render_pending_badge( $comment_id );
 		} elseif ( self::STATUS_PROCESSING === $status ) {
 			$this->render_processing_badge( $comment_id );
+		} elseif ( self::STATUS_FAILED === $status ) {
+			$this->render_failed_badge();
 		} else {
 			// Empty or not analyzed - show dash.
 			echo '<span class="ai-badge ai-badge--empty">—</span>';
@@ -653,6 +655,8 @@ class Comment_Moderation extends Abstract_Feature {
 			$this->render_pending_badge( $comment_id );
 		} elseif ( self::STATUS_PROCESSING === $status ) {
 			$this->render_processing_badge( $comment_id );
+		} elseif ( self::STATUS_FAILED === $status ) {
+			$this->render_failed_badge();
 		} else {
 			// Empty or not analyzed - show dash.
 			echo '<span class="ai-badge ai-badge--empty">—</span>';
@@ -739,6 +743,18 @@ class Comment_Moderation extends Abstract_Feature {
 			'<span class="ai-badge ai-badge--processing" data-comment-id="%d" data-ai-status="processing">%s</span>',
 			absint( $comment_id ),
 			esc_html__( 'Analyzing…', 'ai' )
+		);
+	}
+
+	/**
+	 * Renders a failed analysis badge.
+	 *
+	 * @since x.x.x
+	 */
+	private function render_failed_badge(): void {
+		printf(
+			'<span class="ai-badge ai-badge--failed">%s</span>',
+			esc_html__( 'Failed', 'ai' )
 		);
 	}
 
