@@ -16,7 +16,7 @@ use WordPress\AI\Logging\REST\AI_Request_Log_Controller;
 /**
  * AI_Request_Log_Controller test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  *
  * @covers \WordPress\AI\Logging\REST\AI_Request_Log_Controller
  */
@@ -39,7 +39,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -67,7 +67,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -79,7 +79,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Inserts a sample log entry via the manager and returns its ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $overrides Optional field overrides.
 	 * @return string The log ID.
@@ -105,7 +105,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_logs returns items with pagination headers.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_logs_returns_items_with_headers(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -125,7 +125,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_logs returns cursor headers when items exist.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_logs_includes_cursor_headers(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -144,7 +144,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_logs applies filters from query parameters.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_logs_filters_by_provider(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -164,7 +164,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_log returns a single entry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_log_returns_entry(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -185,7 +185,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_log returns 404 for a nonexistent entry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_log_returns_404_for_nonexistent(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -201,7 +201,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_summary returns expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_summary_returns_stats(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -223,7 +223,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_filters returns filter options.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_filters_returns_options(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -248,7 +248,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	 * This test uses TRUNCATE internally via purge_all(), so it must
 	 * run last in the class to avoid breaking the transaction.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_purge_logs_returns_success(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -270,7 +270,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that subscribers cannot purge logs.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_purge_logs_requires_manage_options(): void {
 		$subscriber_id = $this->factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -285,7 +285,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_collection_params returns all expected parameter definitions.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_collection_params_returns_expected_keys(): void {
 		$params = $this->controller->get_collection_params();

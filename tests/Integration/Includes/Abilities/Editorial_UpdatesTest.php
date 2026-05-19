@@ -666,7 +666,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_prompt_builder() returns a WP_Error when no text generation model is available.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_prompt_builder_returns_error_without_valid_model() {
 		$reflection = new \ReflectionClass( $this->ability );

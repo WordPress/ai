@@ -13,7 +13,7 @@ use WordPress\AI\Logging\Log_Data_Extractor;
 /**
  * Log_Data_Extractor test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  *
  * @covers \WordPress\AI\Logging\Log_Data_Extractor
  */
@@ -29,7 +29,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -39,7 +39,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected function tearDown(): void {
 		remove_all_filters( 'wpai_request_log_providers' );
@@ -52,7 +52,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an OpenAI URL is detected via the connector slug.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_provider_openai(): void {
 		$this->assertSame( 'openai', $this->extractor->detect_provider( 'https://api.openai.com/v1/chat/completions' ) );
@@ -61,7 +61,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an Anthropic URL is detected via the connector slug.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_provider_anthropic(): void {
 		$this->assertSame( 'anthropic', $this->extractor->detect_provider( 'https://api.anthropic.com/v1/messages' ) );
@@ -70,7 +70,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the Google connector matches via the googleapis override.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_provider_google_uses_googleapis_override(): void {
 		$this->assertSame( 'google', $this->extractor->detect_provider( 'https://generativelanguage.googleapis.com/v1/models/gemini-pro' ) );
@@ -79,7 +79,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unknown URLs return null.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_provider_returns_null_for_unknown(): void {
 		$this->assertNull( $this->extractor->detect_provider( 'https://example.com/api/v1' ) );
@@ -88,7 +88,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that URLs without a host return null.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_provider_returns_null_for_empty_host(): void {
 		$this->assertNull( $this->extractor->detect_provider( '/relative/path' ) );
@@ -97,7 +97,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the wpai_request_log_providers filter can extend the map.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_provider_filter_can_add_patterns(): void {
 		add_filter(
@@ -116,7 +116,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a /v1/models endpoint is classified as metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_request_kind_classifies_models_endpoint_as_metadata(): void {
 		$this->assertSame(
@@ -128,7 +128,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that fal provider is always classified as image.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_request_kind_fal_is_image(): void {
 		$this->assertSame( 'image', $this->extractor->detect_request_kind( 'fal', '/fal-ai/flux', null ) );
@@ -137,7 +137,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an embeddings path is classified correctly.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_request_kind_embeddings(): void {
 		$this->assertSame( 'embeddings', $this->extractor->detect_request_kind( 'openai', '/v1/embeddings', null ) );
@@ -146,7 +146,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that image generation paths are classified as image.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_request_kind_image_generation_path(): void {
 		$this->assertSame( 'image', $this->extractor->detect_request_kind( 'openai', '/v1/images/generations', null ) );
@@ -155,7 +155,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that audio paths are classified as audio.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_request_kind_audio(): void {
 		$this->assertSame( 'audio', $this->extractor->detect_request_kind( 'openai', '/v1/audio/speech', null ) );
@@ -164,7 +164,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a generic chat path defaults to text.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_request_kind_defaults_to_text(): void {
 		$this->assertSame( 'text', $this->extractor->detect_request_kind( 'openai', '/v1/chat/completions', null ) );
@@ -173,7 +173,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that models with query parameters are classified as metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_request_kind_models_with_query_params(): void {
 		$this->assertSame( 'metadata', $this->extractor->detect_request_kind( 'openai', '/v1/models?limit=10', null ) );
@@ -182,7 +182,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a specific model path is classified as metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_detect_request_kind_specific_model_path(): void {
 		$this->assertSame( 'metadata', $this->extractor->detect_request_kind( 'openai', '/v1/models/gpt-4o', null ) );
@@ -191,7 +191,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that request data extracts model discovery requests as metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_request_data_marks_model_discovery_as_metadata(): void {
 		$log_data = $this->extractor->extract_request_data(
@@ -207,7 +207,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the model is extracted from the request body.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_request_data_extracts_model_from_body(): void {
 		$body     = wp_json_encode(
@@ -230,7 +230,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the operation includes the provider prefix.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_request_data_builds_operation_string(): void {
 		$log_data = $this->extractor->extract_request_data(
@@ -245,7 +245,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that input preview is included in context when a body is present.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_request_data_includes_input_preview(): void {
 		$body     = wp_json_encode(
@@ -272,7 +272,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that null response body returns log data unchanged.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_response_data_returns_unchanged_for_null_body(): void {
 		$log_data = array(
@@ -287,7 +287,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that non-JSON response body returns log data unchanged.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_response_data_returns_unchanged_for_invalid_json(): void {
 		$log_data = array(
@@ -302,7 +302,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that model is extracted from the response when not set.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_response_data_fills_model_from_response(): void {
 		$log_data = array(
@@ -319,7 +319,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that token usage is extracted from an OpenAI-format response.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_response_data_extracts_openai_tokens(): void {
 		$log_data = array(
@@ -344,7 +344,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests OpenAI token usage format with prompt_tokens / completion_tokens.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_token_usage_openai_format(): void {
 		$tokens = $this->extractor->extract_token_usage(
@@ -363,7 +363,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests Anthropic token usage format with input_tokens / output_tokens.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_token_usage_anthropic_format(): void {
 		$tokens = $this->extractor->extract_token_usage(
@@ -382,7 +382,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests Google token usage format with usageMetadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_token_usage_google_format(): void {
 		$tokens = $this->extractor->extract_token_usage(
@@ -401,7 +401,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that missing usage data returns nulls.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_token_usage_returns_null_when_no_usage(): void {
 		$tokens = $this->extractor->extract_token_usage( array( 'id' => 'chatcmpl-abc' ) );
@@ -413,7 +413,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests input preview extraction from OpenAI/Anthropic messages format.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_input_preview_messages_format(): void {
 		$preview = $this->extractor->extract_input_preview(
@@ -440,7 +440,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests input preview extraction from a prompt field.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_input_preview_prompt_field(): void {
 		$preview = $this->extractor->extract_input_preview(
@@ -454,7 +454,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that input preview returns null when no recognized fields exist.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_input_preview_returns_null_when_empty(): void {
 		$this->assertNull( $this->extractor->extract_input_preview( array( 'model' => 'gpt-4o' ) ) );
@@ -463,7 +463,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that messages with empty content are skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_input_preview_skips_empty_content(): void {
 		$preview = $this->extractor->extract_input_preview(
@@ -489,7 +489,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests output preview extraction from OpenAI choices format.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_output_preview_openai_choices(): void {
 		$preview = $this->extractor->extract_output_preview(
@@ -509,7 +509,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests output preview extraction from Anthropic content format.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_output_preview_anthropic_content(): void {
 		$preview = $this->extractor->extract_output_preview(
@@ -530,7 +530,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests output preview extraction from Google candidates format.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_output_preview_google_candidates(): void {
 		$preview = $this->extractor->extract_output_preview(
@@ -551,7 +551,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests output preview extraction from direct output field.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_output_preview_direct_output(): void {
 		$preview = $this->extractor->extract_output_preview(
@@ -565,7 +565,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that output preview returns null when no recognized format exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_output_preview_returns_null_when_empty(): void {
 		$this->assertNull( $this->extractor->extract_output_preview( array( 'id' => 'chatcmpl-abc' ) ) );
@@ -574,7 +574,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests media metadata extraction from OpenAI DALL-E URL format.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_media_metadata_dalle_url_format(): void {
 		$context = $this->extractor->extract_media_metadata(
@@ -595,7 +595,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests media metadata extraction from base64 format.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_media_metadata_base64_format(): void {
 		$context = $this->extractor->extract_media_metadata(
@@ -615,7 +615,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests media metadata extraction from alternative images array format.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_media_metadata_images_array(): void {
 		$context = $this->extractor->extract_media_metadata(
@@ -633,7 +633,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that media metadata returns empty array when no media is present.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_extract_media_metadata_returns_empty_when_no_media(): void {
 		$this->assertEmpty( $this->extractor->extract_media_metadata( array( 'id' => 'chatcmpl-abc' ) ) );
@@ -642,7 +642,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that strings are returned trimmed.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_stringify_content_string(): void {
 		$this->assertSame( 'hello', $this->extractor->stringify_content( '  hello  ' ) );
@@ -651,7 +651,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that array chunks with text keys are concatenated.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_stringify_content_array_with_text_chunks(): void {
 		$result = $this->extractor->stringify_content(
@@ -668,7 +668,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that base64 image arrays return a placeholder.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_stringify_content_base64_image(): void {
 		$this->assertSame(
@@ -680,7 +680,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that scalar values are cast to string.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_stringify_content_scalar(): void {
 		$this->assertSame( '42', $this->extractor->stringify_content( 42 ) );
@@ -689,7 +689,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that null/non-scalar returns empty string.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_stringify_content_null_returns_empty(): void {
 		$this->assertSame( '', $this->extractor->stringify_content( null ) );
@@ -698,7 +698,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that strings within the limit are returned unchanged.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_truncate_string_within_limit(): void {
 		$this->assertSame( 'short', $this->extractor->truncate_string( 'short', 100 ) );
@@ -707,7 +707,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that strings exceeding the limit are truncated with ellipsis.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_truncate_string_exceeds_limit(): void {
 		$result = $this->extractor->truncate_string( 'abcdef', 3 );
@@ -719,7 +719,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that empty strings are returned as-is.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_truncate_string_empty(): void {
 		$this->assertSame( '', $this->extractor->truncate_string( '' ) );

@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Renders the AI Request Logs screen under Tools.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class AI_Request_Log_Page {
 
@@ -125,7 +125,7 @@ class AI_Request_Log_Page {
 	/**
 	 * Builds the provider metadata payload sent to the React app.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */

@@ -104,7 +104,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_abilities() registers the ai/editorial-notes ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_register_abilities_registers_editorial_notes_ability() {
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
@@ -219,7 +219,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() runs without error and attempts to enqueue the script.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_enqueue_assets_runs_without_error() {
 		$this->experiment->enqueue_assets();
@@ -234,7 +234,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the ai_note meta auth_callback returns true for a user with edit_posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_ai_note_meta_auth_callback_returns_true_for_editor() {
 		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );

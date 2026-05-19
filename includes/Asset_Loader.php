@@ -49,7 +49,7 @@ final class Asset_Loader {
 	/**
 	 * Global data to be localized.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 * @var array<string, array<string, mixed>>
 	 */
 	private static array $global_data = array();
@@ -60,7 +60,7 @@ final class Asset_Loader {
 	 * Use this for plugin-wide data that any script may need but that should only be
 	 * output when at least one plugin script is present on the page.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string              $object_name The name of the JavaScript object (without the 'ai' prefix).
 	 * @param array<string,mixed> $data        The data to localize.

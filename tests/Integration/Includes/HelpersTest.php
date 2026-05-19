@@ -784,7 +784,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test get_provider_availability_data() returns expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_provider_availability_data_returns_expected_structure(): void {
 		$data = \WordPress\AI\get_provider_availability_data();
@@ -797,7 +797,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test get_provider_availability_data() reflects credential state via filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_provider_availability_data_reflects_credential_filter(): void {
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );

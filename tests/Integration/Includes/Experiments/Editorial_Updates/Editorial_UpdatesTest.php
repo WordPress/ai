@@ -110,7 +110,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_abilities() registers the ai/editorial-updates ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_register_abilities_registers_editorial_updates_ability() {
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
@@ -128,7 +128,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() runs without error and attempts to enqueue the script.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_enqueue_assets_runs_without_error() {
 		$this->experiment->enqueue_assets();

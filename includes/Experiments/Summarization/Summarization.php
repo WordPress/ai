@@ -105,7 +105,7 @@ class Summarization extends Abstract_Feature {
 		/**
 		 * Filters the minimum content length required to enable summarization.
 		 *
-		 * @since x.x.x
+		 * @since 1.0.0
 		 *
 		 * @param int $min_content_length The minimum number of characters required. Default 100.
 		 */

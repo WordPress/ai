@@ -15,7 +15,7 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
 /**
  * AI_Request_Log_Manager test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  *
  * @covers \WordPress\AI\Logging\AI_Request_Log_Manager
  */
@@ -31,7 +31,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -51,7 +51,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected function tearDown(): void {
 		delete_option( 'wpai_request_logs_schema_version' );
@@ -64,7 +64,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that log persists an entry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_log_persists_entry(): void {
 		$log_id = $this->manager->log(
@@ -105,7 +105,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that context source metadata is persisted and retrievable.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_log_persists_context_source_metadata(): void {
 		$log_id = $this->manager->log(
@@ -135,7 +135,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that search matches on request_preview content.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_logs_search_matches_request_preview(): void {
 		$matching_id = $this->manager->log(
@@ -174,7 +174,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that search falls back to LIKE for short terms.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_logs_search_falls_back_for_short_terms(): void {
 		$matching_id = $this->manager->log(
@@ -201,7 +201,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that start/end timer returns a non-negative millisecond duration.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_timer_returns_non_negative_duration(): void {
 		$timer    = $this->manager->start_timer();
@@ -214,7 +214,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_retention_days returns 0 (forever) by default.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_retention_days_defaults_to_forever(): void {
 		$this->assertSame( 0, $this->manager->get_retention_days() );
@@ -223,7 +223,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_retention_days can be overridden via the wpai_request_log_retention_days filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_retention_days_is_filterable(): void {
 		add_filter(
@@ -239,7 +239,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that cleanup_old_logs delegates to repository.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_cleanup_old_logs_returns_count(): void {
 		$this->manager->log(
@@ -261,7 +261,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * This test uses TRUNCATE internally, so it must run last
 	 * in the class to avoid breaking the transaction.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_purge_all_logs_returns_deleted_count(): void {
 			$this->manager->log(
@@ -280,7 +280,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_summary delegates to repository.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_summary_returns_expected_structure(): void {
 		$summary = $this->manager->get_summary( 'all' );
@@ -294,7 +294,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_filter_options returns expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_filter_options_returns_expected_structure(): void {
 		$options = $this->manager->get_filter_options();
@@ -308,7 +308,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that accessor methods return the correct instances.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_accessors_return_correct_instances(): void {
 		$this->assertInstanceOf( AI_Request_Log_Schema::class, $this->manager->get_schema() );
