@@ -16,10 +16,10 @@ import {
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { useState, useCallback, useMemo } from '@wordpress/element';
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { __, _n, _x, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
-import { count } from '@wordpress/wordcount';
+import { count as wordCount, type Strategy } from '@wordpress/wordcount';
 
 /**
  * Internal dependencies
@@ -30,7 +30,7 @@ import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
-const SHORTEN_MIN_WORDS = 5;
+const SHORTEN_MIN_WORDS_CHARACTERS = 5;
 const NOTICE_ID = 'ai_content_resizing_error';
 
 /**
@@ -73,6 +73,22 @@ export default function ContentResizingToolbar( {
 	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
 	const noticesDispatch = useDispatch( noticesStore ) as any;
 
+	/**
+	 * translators: If your word count is based on single characters (e.g. East Asian characters),
+	 * enter 'characters_excluding_spaces' or 'characters_including_spaces'. Otherwise, enter 'words'.
+	 * Do not translate into your own language.
+	 *
+	 * Uses the default (core) text domain so the word count type stays consistent
+	 * with WordPress core's behavior.
+	 *
+	 * See - https://github.com/WordPress/ai/pull/577#discussion_r3265155502
+	 */
+	// eslint-disable-next-line @wordpress/i18n-text-domain
+	const wordCountType = _x(
+		'words',
+		'Word count type. Do not translate!'
+	) as Strategy;
+
 	const handleAction = useCallback(
 		async ( action: ContentResizingAction ) => {
 			if ( ! ensureProvider( NOTICE_ID ) ) {
@@ -80,9 +96,13 @@ export default function ContentResizingToolbar( {
 			}
 
 			if ( action === 'shorten' ) {
-				const wordCount = count( blockContent, 'words', {} );
+				const hasEnoughWords = wordCount(
+					blockContent,
+					wordCountType,
+					{}
+				);
 				// We need at least 5 words to shorten the content.
-				if ( wordCount < SHORTEN_MIN_WORDS ) {
+				if ( hasEnoughWords < SHORTEN_MIN_WORDS_CHARACTERS ) {
 					noticesDispatch.createErrorNotice(
 						__( 'Text is too short to shorten further.', 'ai' ),
 						{
@@ -125,7 +145,7 @@ export default function ContentResizingToolbar( {
 				setIsLoading( false );
 			}
 		},
-		[ blockContent, noticesDispatch, postId ]
+		[ blockContent, noticesDispatch, postId, wordCountType ]
 	);
 
 	const handleAccept = useCallback( () => {
@@ -159,8 +179,8 @@ export default function ContentResizingToolbar( {
 		}
 
 		const delta =
-			count( suggestedContent, 'words', {} ) -
-			count( blockContent, 'words', {} );
+			wordCount( suggestedContent, wordCountType, {} ) -
+			wordCount( blockContent, wordCountType, {} );
 
 		if ( delta === 0 ) {
 			return {
@@ -201,7 +221,7 @@ export default function ContentResizingToolbar( {
 				magnitude
 			),
 		};
-	}, [ blockContent, suggestedContent ] );
+	}, [ blockContent, suggestedContent, wordCountType ] );
 
 	const controls: Array< {
 		title: string;
