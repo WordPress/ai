@@ -103,10 +103,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				setSuggestion( response.description );
 			} else {
 				createErrorNotice(
-					__(
-						'No meta description suggestion was generated.',
-						'ai'
-					),
+					__( 'No meta description suggestion was generated.', 'ai' ),
 					{ id: NOTICE_ID, isDismissible: true }
 				);
 			}
