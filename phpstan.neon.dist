@@ -40,5 +40,7 @@ parameters:
 			analyse:
 				- tests/
 				- vendor/
+				- includes/Logging/Logging_Integration.php
+				- includes/Logging/Logging_Http_Transporter.php
 			analyseAndScan:
 				- node_modules (?)

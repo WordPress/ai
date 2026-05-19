@@ -57,7 +57,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 Overview of planned features:
 
 * **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
-* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
+* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance metrics.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
