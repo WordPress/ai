@@ -10,6 +10,7 @@ import { __ } from '@wordpress/i18n';
  */
 import { uploadImage } from '../functions/upload-image';
 import { useImageGeneration } from '../hooks/useImageGeneration';
+import { isProviderAvailable } from '../../../utils/provider-status';
 import type { UploadedImage } from '../types';
 import {
 	GeneratingState,
@@ -90,6 +91,35 @@ export function GenerateImageStandalone() {
 		}
 	}
 
+	/**
+	 * Wraps generate() with an inline provider availability check.
+	 *
+	 * Outside the block editor the @wordpress/notices store has no renderer,
+	 * so ensureProvider()'s dispatched notice is invisible. This guard uses
+	 * isProviderAvailable() and sets component-level error state instead,
+	 * ensuring the user sees a Notice in the standalone UI.
+	 *
+	 * @param activePrompt    The prompt text to generate an image from.
+	 * @param referenceImage  Optional base64 data URI of a reference image for refinement.
+	 * @param refHistoryIndex Optional history index of the reference image entry.
+	 */
+	function safeGenerate(
+		activePrompt: string,
+		referenceImage?: string,
+		refHistoryIndex?: number
+	): void {
+		if ( ! isProviderAvailable() ) {
+			setError(
+				__(
+					'This feature requires an AI Connector to function properly. Please set up a provider in Settings → Connectors.',
+					'ai'
+				)
+			);
+			return;
+		}
+		generate( activePrompt, referenceImage, refHistoryIndex );
+	}
+
 	const lastSaved = savedUploads[ savedUploads.length - 1 ] ?? null;
 
 	return (
@@ -98,7 +128,7 @@ export function GenerateImageStandalone() {
 				<PromptForm
 					prompt={ prompt }
 					onPromptChange={ setPrompt }
-					onGenerate={ () => generate( prompt.trim() ) }
+					onGenerate={ () => safeGenerate( prompt.trim() ) }
 					error={ error }
 				/>
 			) }
@@ -146,7 +176,7 @@ export function GenerateImageStandalone() {
 						<Button
 							variant="secondary"
 							onClick={ () =>
-								generate(
+								safeGenerate(
 									activeEntry?.generatedData.prompt ??
 										prompt.trim(),
 									activeEntry?.referenceSrc,
@@ -217,7 +247,7 @@ export function GenerateImageStandalone() {
 					refinePrompt={ refinePrompt }
 					onRefinePromptChange={ setRefinePrompt }
 					onRefine={ () =>
-						generate(
+						safeGenerate(
 							refinePrompt.trim(),
 							previewSrc,
 							historyIndex
