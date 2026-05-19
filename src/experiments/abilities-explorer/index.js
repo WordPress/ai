@@ -369,7 +369,9 @@ import './index.scss';
 			}
 
 			const iconHtml = isValid ? '✓' : '✗';
-			const titleText = isValid ? 'Valid' : 'Validation Errors';
+			const titleText = isValid
+				? __( 'Valid', 'ai' )
+				: __( 'Validation Errors', 'ai' );
 			const className = isValid
 				? 'validation-success'
 				: 'validation-error';
