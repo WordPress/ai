@@ -123,7 +123,7 @@ class Editorial_Notes extends Abstract_Feature {
 	 * @since 0.4.0
 	 */
 	public function enqueue_assets(): void {
-		Asset_Loader::enqueue_script( 'editorial_notes', 'experiments/editorial-notes' );
+		Asset_Loader::enqueue_script( 'editorial_notes', 'experiments/editorial-notes', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'editorial_notes',
 			'EditorialNotesData',

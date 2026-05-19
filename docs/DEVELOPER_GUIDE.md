@@ -268,6 +268,7 @@ use WordPress\AI\Asset_Loader;
  *
  * First argument is the script handle.
  * The second argument is the script file name.
+ * The optional third argument is a boolean to include the core abilities script.
  * This script file name should be in the build-scripts/ directory.
  * The source script files should be in the src/ directory. If needed,
  * you can add the entry point to the webpack.config.js file.

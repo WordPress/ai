@@ -17,7 +17,7 @@ use WordPress\AI\Logging\AI_Request_Log_Manager;
 /**
  * AI_Request_Logging experiment test case.
  *
- * @since 0.6.0
+ * @since x.x.x
  */
 class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
@@ -30,7 +30,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -41,6 +41,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
 		$loader->init();
+		do_action( 'rest_api_init', rest_get_server() );
 
 		$experiment = $registry->get_feature( 'ai-request-logging' );
 		$this->assertInstanceOf( AI_Request_Logging::class, $experiment );
@@ -51,7 +52,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -65,7 +66,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment is registered correctly.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_experiment_registration() {
 		$this->assertSame( 'ai-request-logging', $this->experiment->get_id() );
@@ -77,7 +78,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the Tools submenu entry is registered.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_admin_menu_is_registered_under_tools() {
 		global $submenu;
@@ -96,7 +97,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the REST routes are registered.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_rest_routes_are_registered() {
 		$routes = rest_get_server()->get_routes();
@@ -109,7 +110,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the summary endpoint accepts short periods supported by the repository.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_summary_endpoint_accepts_minute_and_hour_periods() {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -127,7 +128,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
 	 * Tests that administrators can access the logs endpoint.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_logs_endpoint_is_accessible_for_administrators() {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -142,7 +143,7 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	/**
 	 * Tests that subscribers cannot access the logs endpoint.
 	 *
-	 * @since 0.6.0
+	 * @since x.x.x
 	 */
 	public function test_logs_endpoint_requires_manage_options() {
 		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );

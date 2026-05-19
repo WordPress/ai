@@ -76,8 +76,9 @@ final class Asset_Loader {
 	 *
 	 * @param string $handle    The handle for the script.
 	 * @param string $file_name The script file name without the .js extension.
+	 * @param array{ include_core_abilities?: bool } $extra_args Additional arguments.
 	 */
-	public static function enqueue_script( string $handle, string $file_name ): void {
+	public static function enqueue_script( string $handle, string $file_name, array $extra_args = array() ): void {
 		$script_url = self::ASSET_URL . $file_name . '.js';
 		$asset_data = self::get_asset_file_data( $file_name );
 
@@ -86,12 +87,24 @@ final class Asset_Loader {
 			return;
 		}
 
+		$args = array(
+			'in_footer' => true,
+			'strategy'  => 'defer',
+		);
+
+		if ( $extra_args['include_core_abilities'] ?? false ) {
+			$args['module_dependencies'] = array(
+				'@wordpress/abilities',
+				'@wordpress/core-abilities',
+			);
+		}
+
 		wp_enqueue_script(
 			self::HANDLE_PREFIX . $handle,
 			$script_url,
 			$asset_data['dependencies'],
 			$asset_data['version'],
-			array( 'strategy' => 'defer' )
+			$args
 		);
 
 		// Localize global data.

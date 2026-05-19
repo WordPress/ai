@@ -45,6 +45,7 @@ class AI_Request_Logging extends Abstract_Feature {
 			'label'       => __( 'AI Request Logging', 'ai' ),
 			'description' => __( 'Logs AI requests for observability and debugging. View detailed logs under Tools.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
+			'capability'  => 'none',
 		);
 	}
 

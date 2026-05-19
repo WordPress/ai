@@ -27,7 +27,9 @@ class V0_6_0Test extends WP_UnitTestCase {
 		parent::setUp();
 
 		delete_option( 'wpai_version' );
+		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_enabled' );
+		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_enabled' );
 		delete_option( 'ai_experiment_excerpt-generation_enabled' );
 		delete_option( 'wpai_feature_excerpt-generation_enabled' );
@@ -40,7 +42,9 @@ class V0_6_0Test extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wpai_version' );
+		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'ai_experiment_enabled' );
+		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_enabled' );
 		delete_option( 'ai_experiment_excerpt-generation_enabled' );
 		delete_option( 'wpai_feature_excerpt-generation_enabled' );
@@ -54,13 +58,13 @@ class V0_6_0Test extends WP_UnitTestCase {
 	 * @since 0.6.0
 	 */
 	public function test_run_migrates_global_enabled_option() {
-		update_option( 'ai_experiment_enabled', '1' );
+		update_option( 'ai_experiments_enabled', '1' );
 
 		( new V0_6_0( '' ) )->run();
 
-		$this->assertEquals( '1', get_option( 'wpai_feature_enabled' ) );
+		$this->assertEquals( '1', get_option( 'wpai_features_enabled' ) );
 		$this->assertNull(
-			$this->get_option_from_db( 'ai_experiment_enabled' ),
+			$this->get_option_from_db( 'ai_experiments_enabled' ),
 			'Old option should be deleted'
 		);
 	}
@@ -82,17 +86,17 @@ class V0_6_0Test extends WP_UnitTestCase {
 	 * @since 0.6.0
 	 */
 	public function test_run_skips_when_version_already_current() {
-		update_option( 'ai_experiment_enabled', '1' );
+		update_option( 'ai_experiments_enabled', '1' );
 
 		( new V0_6_0( '0.6.0' ) )->run();
 
 		$this->assertNull(
-			$this->get_option_from_db( 'wpai_feature_enabled' ),
+			$this->get_option_from_db( 'wpai_features_enabled' ),
 			'Should not write new option when version is current'
 		);
 		$this->assertEquals(
 			'1',
-			get_option( 'ai_experiment_enabled' ),
+			get_option( 'ai_experiments_enabled' ),
 			'Old option should remain when skipped'
 		);
 	}
@@ -106,8 +110,8 @@ class V0_6_0Test extends WP_UnitTestCase {
 		( new V0_6_0( '' ) )->run();
 
 		$this->assertNull(
-			$this->get_option_from_db( 'wpai_feature_enabled' ),
-			'wpai_feature_enabled should not be written on fresh install'
+			$this->get_option_from_db( 'wpai_features_enabled' ),
+			'wpai_features_enabled should not be written on fresh install'
 		);
 	}
 
@@ -117,15 +121,15 @@ class V0_6_0Test extends WP_UnitTestCase {
 	 * @since 0.6.0
 	 */
 	public function test_run_migrates_only_options_missing_new_value() {
-		update_option( 'wpai_feature_enabled', 'already-set' );
-		update_option( 'ai_experiment_enabled', '1' );
+		update_option( 'wpai_features_enabled', 'already-set' );
+		update_option( 'ai_experiments_enabled', '1' );
 		update_option( 'ai_experiment_excerpt-generation_enabled', '1' );
 
 		( new V0_6_0( '' ) )->run();
 
 		$this->assertEquals(
 			'already-set',
-			get_option( 'wpai_feature_enabled' ),
+			get_option( 'wpai_features_enabled' ),
 			'Global feature flag should not be overwritten'
 		);
 		$this->assertEquals(
@@ -139,7 +143,7 @@ class V0_6_0Test extends WP_UnitTestCase {
 		);
 		$this->assertEquals(
 			'1',
-			get_option( 'ai_experiment_enabled' ),
+			get_option( 'ai_experiments_enabled' ),
 			'Non-migrated old option should remain'
 		);
 	}
@@ -150,13 +154,30 @@ class V0_6_0Test extends WP_UnitTestCase {
 	 * @since 0.6.0
 	 */
 	public function test_run_skips_empty_old_values() {
-		update_option( 'ai_experiment_enabled', '' );
+		update_option( 'ai_experiments_enabled', '' );
 
 		( new V0_6_0( '' ) )->run();
 
 		$this->assertNull(
-			$this->get_option_from_db( 'wpai_feature_enabled' ),
+			$this->get_option_from_db( 'wpai_features_enabled' ),
 			'New option should not be set when old is empty string'
+		);
+	}
+
+	/**
+	 * Tests that run() migrates the singular global option typo when present.
+	 *
+	 * @since 0.6.0
+	 */
+	public function test_run_migrates_singular_global_enabled_option_typo() {
+		update_option( 'ai_experiment_enabled', '1' );
+
+		( new V0_6_0( '' ) )->run();
+
+		$this->assertEquals( '1', get_option( 'wpai_features_enabled' ) );
+		$this->assertNull(
+			$this->get_option_from_db( 'ai_experiment_enabled' ),
+			'Old option should be deleted'
 		);
 	}
 

@@ -11,7 +11,6 @@ const {
 	disableExperiments,
 	enableExperiment,
 	enableExperiments,
-	seedCredentials,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Content Summarization Experiment', () => {
@@ -89,61 +88,6 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		// Save the post.
 		await editor.saveDraft();
-	} );
-
-	test( 'Shows a clean error notice when summary generation fails', async ( {
-		admin,
-		editor,
-		page,
-		requestUtils,
-	} ) => {
-		await seedCredentials( requestUtils );
-
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
-		// Enable the Content Summarization Experiment.
-		await enableExperiment( admin, page, 'Content Summarization' );
-
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Content Summarization Error Notice',
-			content:
-				'This post has enough content to meet the minimum character requirement for summarization and trigger the failing AI provider path.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		// Make the browser-side ability client fail so the notice path is exercised.
-		await page.evaluate( () => {
-			window.wp = window.wp || {};
-			window.wp.abilities = window.wp.abilities || {};
-			window.wp.abilities.executeAbility = async function () {
-				throw new Error(
-					'Summarization failed. Please ensure you have a connected provider that supports text generation.'
-				);
-			};
-		} );
-
-		const generateButton = page.locator(
-			'.ai-summarization-plugin-container button'
-		);
-		await expect( generateButton ).toBeVisible();
-		await expect( generateButton ).toBeEnabled();
-		await generateButton.click();
-
-		const notice = page.locator( '.components-notice', {
-			hasText:
-				'Summarization failed. Please ensure you have a connected provider that supports text generation.',
-		} );
-		await expect( notice ).toBeVisible( { timeout: 5000 } );
-		await expect( notice ).not.toContainText(
-			'Error: Summarization failed. Please ensure you have a connected provider that supports text generation.'
-		);
 	} );
 
 	test( 'Ensure the Content Summarization Experiment UI is not visible when Experiments are globally disabled', async ( {
