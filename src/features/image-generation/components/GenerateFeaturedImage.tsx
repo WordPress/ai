@@ -56,11 +56,10 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 			editPost( {
 				featured_media: importedImage.id,
 			} );
-		} catch ( error: unknown ) {
+		} catch ( error: any ) {
 			const message =
-				error instanceof Error
-					? error.message
-					: __( 'An error occurred during image generation.', 'ai' );
+				error?.message ||
+				__( 'An error occurred during image generation.', 'ai' );
 			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
