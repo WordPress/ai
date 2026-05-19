@@ -8,7 +8,7 @@
 import { Button, Flex, FlexItem } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, isRTL, sprintf } from '@wordpress/i18n';
 import { close as closeIcon, update } from '@wordpress/icons';
 
 /**
@@ -113,7 +113,8 @@ export default function SuggestionPanel( {
 								>
 									{ suggestion.parent && (
 										<span className="ai-content-classification__pill-parent">
-											{ suggestion.parent + ' › ' }
+											{ suggestion.parent +
+												( isRTL() ? ' ‹ ' : ' › ' ) }
 										</span>
 									) }
 									{ suggestion.term }
