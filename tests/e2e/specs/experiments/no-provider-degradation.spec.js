@@ -140,6 +140,31 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await expectProviderNotice( page );
 	} );
 
+	test( 'Featured Image Generation shows notice when clicking Generate without a provider', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Featured Image No Provider',
+			content:
+				'Test content for featured image generation without a provider.',
+		} );
+		await editor.saveDraft();
+		await editor.openDocumentSettingsSidebar();
+
+		const generateButton = page.locator( '.ai-featured-image button', {
+			hasText: 'Generate featured image',
+		} );
+		await expect( generateButton ).toBeVisible( { timeout: 5000 } );
+		await generateButton.click();
+
+		await expectProviderNotice( page );
+	} );
+
 	test( 'Meta Description shows notice without opening the modal when no provider exists', async ( {
 		admin,
 		editor,
