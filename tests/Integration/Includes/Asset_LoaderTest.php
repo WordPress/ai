@@ -134,7 +134,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	/**
 	 * @since 0.8.0
 	 */
-	public function test_enqueue_script_falls_back_to_empty_deps_when_missing(): void {
+	public function test_enqueue_script_succeeds_when_asset_file_omits_dependencies(): void {
 		$this->create_asset_file(
 			'no-deps',
 			array( 'version' => '1.0.0' )
@@ -143,7 +143,8 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 		Asset_Loader::enqueue_script( 'no-deps', 'no-deps' );
 
 		$this->assertTrue( wp_script_is( 'ai_no-deps', 'enqueued' ) );
-		$this->assertSame( array(), wp_scripts()->registered['ai_no-deps']->deps );
+		// wp_set_script_translations() appends wp-i18n to the otherwise empty deps.
+		$this->assertSame( array( 'wp-i18n' ), wp_scripts()->registered['ai_no-deps']->deps );
 	}
 
 	/**
@@ -262,6 +263,79 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'aiMyObject', $extra['data'] );
 		$this->assertStringContainsString( '"key"', $extra['data'] );
 		$this->assertStringContainsString( '"value"', $extra['data'] );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_add_global_data_is_output_as_inline_script(): void {
+		$this->create_asset_file(
+			'test-global-data',
+			array(
+				'dependencies' => array(),
+				'version'      => '1.0.0',
+			)
+		);
+
+		Asset_Loader::add_global_data( 'ProviderData', array( 'hasProvider' => true, 'connectorsUrl' => 'https://example.com' ) );
+		Asset_Loader::enqueue_script( 'test-global-data', 'test-global-data' );
+
+		$registered = wp_scripts()->registered['ai_test-global-data'];
+		$before     = $registered->extra['before'] ?? array();
+
+		$inline = implode( "\n", $before );
+		$this->assertStringContainsString( 'window.aiProviderData=', $inline );
+		$this->assertStringContainsString( '"hasProvider":true', $inline );
+		$this->assertStringContainsString( 'connectorsUrl', $inline );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_global_data_is_flushed_after_first_enqueue(): void {
+		$this->create_asset_file(
+			'test-flush-first',
+			array(
+				'dependencies' => array(),
+				'version'      => '1.0.0',
+			)
+		);
+		$this->create_asset_file(
+			'test-flush-second',
+			array(
+				'dependencies' => array(),
+				'version'      => '1.0.0',
+			)
+		);
+
+		Asset_Loader::add_global_data( 'TestData', array( 'key' => 'value' ) );
+
+		Asset_Loader::enqueue_script( 'test-flush-first', 'test-flush-first' );
+		Asset_Loader::enqueue_script( 'test-flush-second', 'test-flush-second' );
+
+		$first_before  = wp_scripts()->registered['ai_test-flush-first']->extra['before'] ?? array();
+		$second_before = wp_scripts()->registered['ai_test-flush-second']->extra['before'] ?? array();
+
+		$this->assertStringContainsString( 'window.aiTestData=', implode( "\n", $first_before ) );
+		$this->assertEmpty( array_filter( $second_before ), 'Global data should not appear on the second script.' );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_enqueue_script_without_global_data_has_no_inline_script(): void {
+		$this->create_asset_file(
+			'test-no-global',
+			array(
+				'dependencies' => array(),
+				'version'      => '1.0.0',
+			)
+		);
+
+		Asset_Loader::enqueue_script( 'test-no-global', 'test-no-global' );
+
+		$before = wp_scripts()->registered['ai_test-no-global']->extra['before'] ?? array();
+		$this->assertEmpty( array_filter( $before ), 'No inline script should be added when no global data is set.' );
 	}
 
 	/**

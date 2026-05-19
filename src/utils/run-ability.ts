@@ -26,21 +26,30 @@ type RunAbilityOptions = {
 	method?: Method;
 };
 
-interface WindowWithAbilities extends Window {
-	wp?: Window[ 'wp' ] & {
-		abilities?: {
-			executeAbility?: (
-				ability: string,
-				input?: AbilityInput
-			) => Promise< unknown >;
-		};
-	};
-}
+type AbilitiesModule = {
+	executeAbility?: (
+		ability: string,
+		input?: AbilityInput
+	) => Promise< unknown >;
+};
 
 let hasShownFallbackNotice = false;
 
-const getAbilityClient = () =>
-	( window as WindowWithAbilities )?.wp?.abilities ?? null;
+const importAbilitiesModule = async (): Promise< AbilitiesModule | null > => {
+	try {
+		// Keep these as runtime imports so webpack does not emit a hard
+		// "wp-abilities" script dependency for classic enqueued bundles.
+		const { ready } = await import(
+			/* webpackIgnore: true */ '@wordpress/core-abilities'
+		);
+		await ready;
+		return ( await import(
+			/* webpackIgnore: true */ '@wordpress/abilities'
+		) ) as AbilitiesModule;
+	} catch {
+		return null;
+	}
+};
 
 const logFallbackWarning = () => {
 	if ( hasShownFallbackNotice ) {
@@ -49,12 +58,12 @@ const logFallbackWarning = () => {
 
 	// eslint-disable-next-line no-console
 	console.warn(
-		'[AI] wp.abilities.executeAbility is unavailable. Falling back to REST.'
+		'[AI] Client ability execution is unavailable. Falling back to REST.'
 	);
 	hasShownFallbackNotice = true;
 };
 
-const isAbilityNotFoundError = ( error: unknown ): boolean => {
+const shouldFallbackToRest = ( error: unknown ): boolean => {
 	if ( ! error || typeof error !== 'object' ) {
 		return false;
 	}
@@ -69,7 +78,15 @@ const isAbilityNotFoundError = ( error: unknown ): boolean => {
 			: '';
 
 	return (
-		code === 'ability_not_found' || message.includes( 'Ability not found' )
+		// Ability is not registered in the client store yet.
+		code === 'ability_not_found' ||
+		message.includes( 'Ability not found' ) ||
+		// Ability exists but has no callback in client store (server-only ability
+		// not yet bridged to a callback), so use REST instead.
+		message.includes( 'missing callback' ) ||
+		// Temporary compatibility fallback: some server schemas include fields not
+		// currently accepted by client-side schema validation.
+		code === 'ability_invalid_input'
 	);
 };
 
@@ -109,21 +126,24 @@ export async function runAbility< T = unknown >(
 	input?: AbilityInput,
 	options?: RunAbilityOptions
 ): Promise< T > {
-	const client = getAbilityClient();
-
-	if ( typeof client?.executeAbility === 'function' ) {
-		try {
-			return ( await client.executeAbility(
+	try {
+		const abilitiesModule = await importAbilitiesModule();
+		if ( typeof abilitiesModule?.executeAbility === 'function' ) {
+			return ( await abilitiesModule.executeAbility(
 				ability,
 				input ?? null
 			) ) as T;
-		} catch ( error ) {
-			if ( ! isAbilityNotFoundError( error ) ) {
-				throw error;
-			}
-			logFallbackWarning();
 		}
-	} else {
+
+		logFallbackWarning();
+	} catch ( error ) {
+		// eslint-disable-next-line no-console
+		console.error( error );
+
+		if ( ! shouldFallbackToRest( error ) ) {
+			throw error;
+		}
+
 		logFallbackWarning();
 	}
 

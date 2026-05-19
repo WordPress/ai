@@ -41,13 +41,13 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
-* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
+* **[Experiment Framework](docs/experiments/experiment-framework.md)** - Opt-in system that lets you enable only the AI features you want to use.
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
-* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
-* **[Refine Notes](docs/experiments/refine-notes.md)** - Automatically apply editorial notes to content.
-* **[Review Notes](docs/experiments/review-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
+* **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **[Editorial Updates](docs/experiments/editorial-updates.md)** - Automatically apply editorial notes to content.
+* **[Editorial Notes](docs/experiments/editorial-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
 
 ## Roadmap
@@ -57,7 +57,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 Overview of planned features:
 
 * **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
-* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
+* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance metrics.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
@@ -70,6 +70,7 @@ The AI plugin is meant to be studied, forked, and extended.  If you’re a host 
 If you’re a plugin developer, you’ll be able to:
 
 * Read the [Contributing Guide](CONTRIBUTING.md) for detailed development information.
+* Read the [Developer Guide](docs/DEVELOPER_GUIDE.md) to learn how to contribute to the plugin or create your own AI-powered experiments.
 * Study the [Custom Experiment Reference](docs/experiments/custom-experiment-reference.md) for an end-to-end extension example.
 * Register new AI abilities.
 * Override default behavior with custom filters.

@@ -109,12 +109,8 @@ export function GenerateImageInlineModal( {
 				insertIntoBlock( blockName, clientId, setAttributes, uploaded );
 			}
 			onClose();
-		} catch ( err: unknown ) {
-			setError(
-				err instanceof Error
-					? err.message
-					: __( 'Failed to upload image.', 'ai' )
-			);
+		} catch ( err: any ) {
+			setError( err?.message || __( 'Failed to upload image.', 'ai' ) );
 			setState( 'preview' );
 		}
 	}

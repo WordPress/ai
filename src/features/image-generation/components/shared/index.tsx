@@ -7,7 +7,7 @@ import {
 	Spinner,
 	TextareaControl,
 } from '@wordpress/components';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, isRTL, sprintf } from '@wordpress/i18n';
 import { chevronLeft, chevronRight } from '@wordpress/icons';
 
 /**
@@ -145,7 +145,7 @@ export function ImageHistoryNav( {
 			<div className="ai-image-history-nav">
 				<Button
 					className="ai-image-history-nav__arrow"
-					icon={ chevronLeft }
+					icon={ isRTL() ? chevronRight : chevronLeft }
 					disabled={ ! canGoBack }
 					onClick={ onGoBack }
 					label={ __( 'Previous version', 'ai' ) }
@@ -186,7 +186,7 @@ export function ImageHistoryNav( {
 				</div>
 				<Button
 					className="ai-image-history-nav__arrow"
-					icon={ chevronRight }
+					icon={ isRTL() ? chevronLeft : chevronRight }
 					disabled={ ! canGoForward }
 					onClick={ onGoForward }
 					label={ __( 'Next version', 'ai' ) }

@@ -1,34 +1,18 @@
 /**
  * WordPress dependencies
  */
-import apiFetch from '@wordpress/api-fetch';
 import { Button, Spinner } from '@wordpress/components';
 import { DataForm } from '@wordpress/dataviews';
 import type { Field, Form } from '@wordpress/dataviews';
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from '@wordpress/element';
+import { useCallback, useMemo, useRef } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { Notice } from '@wordpress/ui';
 
 /**
  * Internal dependencies
  */
 import { useDeveloperFeatureSettings } from '../hooks/use-developer-feature-settings';
-
-interface ModelData {
-	id: string;
-	name: string;
-}
-
-interface ProviderData {
-	id: string;
-	name: string;
-	models: ModelData[];
-}
+import { useProviders } from '../hooks/use-providers';
 
 interface DeveloperSettingsProps {
 	featureId: string;
@@ -55,41 +39,12 @@ export function DeveloperSettings( {
 	featureId,
 	capability,
 }: DeveloperSettingsProps ): React.JSX.Element {
-	const [ providers, setProviders ] = useState< ProviderData[] >( [] );
-	const [ isLoading, setIsLoading ] = useState( true );
-	const [ fetchError, setFetchError ] = useState< string | null >( null );
+	const { providers, isLoading, fetchError } = useProviders( capability );
 
 	const formWrapperRef = useRef< HTMLDivElement >( null );
 
 	const { settings, update, clear, isSaving } =
 		useDeveloperFeatureSettings( featureId );
-
-	useEffect( () => {
-		if ( capability === 'none' ) {
-			setProviders( [] );
-			setFetchError( null );
-			setIsLoading( false );
-			return;
-		}
-
-		setIsLoading( true );
-		setFetchError( null );
-
-		apiFetch< ProviderData[] >( {
-			path: `/ai/v1/providers?capability=${ encodeURIComponent(
-				capability
-			) }`,
-		} )
-			.then( ( data ) => {
-				setProviders( data );
-			} )
-			.catch( () => {
-				setFetchError( __( 'Failed to load providers.', 'ai' ) );
-			} )
-			.finally( () => {
-				setIsLoading( false );
-			} );
-	}, [ capability ] );
 
 	const getModelElements = useCallback( () => {
 		const provider = providers.find( ( p ) => p.id === settings.provider );
@@ -124,7 +79,9 @@ export function DeveloperSettings( {
 				id: 'model',
 				type: 'text' as const,
 				label: __( 'Model', 'ai' ),
-				isVisible: ( data: DeveloperSelection ) => !! data.provider,
+				isVisible: ( data: DeveloperSelection ) =>
+					!! data.provider &&
+					!! providers.find( ( p ) => p.id === data.provider ),
 				getElements: getModelElements,
 				Edit: 'select',
 			},
@@ -149,6 +106,9 @@ export function DeveloperSettings( {
 	);
 
 	const hasSavedSelection = settings.provider !== '' || settings.model !== '';
+	const hasStaleProvider =
+		!! settings.provider &&
+		! providers.find( ( p ) => p.id === settings.provider );
 
 	if ( capability === 'none' ) {
 		return (
@@ -178,6 +138,19 @@ export function DeveloperSettings( {
 			) }
 			{ ! isLoading && ! fetchError && (
 				<>
+					{ hasStaleProvider && (
+						<Notice.Root
+							className="ai-developer-mode-fields__notice"
+							intent="warning"
+						>
+							<Notice.Description>
+								{ __(
+									'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
+									'ai'
+								) }
+							</Notice.Description>
+						</Notice.Root>
+					) }
 					<div ref={ formWrapperRef }>
 						<DataForm< DeveloperSelection >
 							data={ settings }

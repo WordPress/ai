@@ -10,12 +10,11 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import type { AltTextGenerationAbilityInput } from './types';
-import { runAbility } from '../../utils/run-ability';
-
-type AbilityResponse = {
-	alt_text?: string;
-};
+import {
+	generateAltText,
+	type AltTextGenerationResult,
+} from '../../utils/generate-alt-text';
+import { isProviderAvailable } from '../../utils/provider-status';
 
 type FieldContext = {
 	getAttachmentId: () => number | null;
@@ -49,8 +48,6 @@ declare global {
 		};
 	}
 }
-
-const ABILITY_NAME = 'ai/alt-text-generation';
 
 class AltTextMediaControls {
 	private context: FieldContext;
@@ -135,8 +132,6 @@ class AltTextMediaControls {
 	 * Handles the generate button click.
 	 *
 	 * @since 0.3.0
-	 *
-	 * @return The generated alt text.
 	 */
 	private async handleGenerate(): Promise< void > {
 		if (
@@ -148,21 +143,40 @@ class AltTextMediaControls {
 			return;
 		}
 
+		if ( ! isProviderAvailable() ) {
+			this.setStatus(
+				__(
+					'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in Settings → Connectors.',
+					'ai'
+				),
+				true
+			);
+			return;
+		}
+
 		this.isGenerating = true;
 		this.button.disabled = true;
 		this.spinner.classList.add( 'is-active' );
 		this.setStatus( __( 'Generating alt text…', 'ai' ) );
 
 		try {
-			const generated = await requestAltText( this.context );
-			this.textarea.value = generated;
+			const result = await requestAltText( this.context );
+			this.textarea.value = result.alt_text;
 			this.textarea.dispatchEvent(
 				new Event( 'input', { bubbles: true } )
 			);
 			this.textarea.dispatchEvent(
 				new Event( 'change', { bubbles: true } )
 			);
-			this.setStatus( __( 'Alt text generated and applied.', 'ai' ) );
+
+			const message = result.is_decorative
+				? __(
+						'Image identified as decorative. Alt text cleared.',
+						'ai'
+				  )
+				: __( 'Alt text generated and applied.', 'ai' );
+
+			this.setStatus( message );
 		} catch ( error ) {
 			const message = getErrorMessage( error );
 			this.setStatus( message, true );
@@ -198,37 +212,18 @@ class AltTextMediaControls {
  * @since 0.3.0
  *
  * @param context The field context.
- * @return The generated alt text.
+ * @return The generated alt text result.
  */
-async function requestAltText( context: FieldContext ): Promise< string > {
-	const params: AltTextGenerationAbilityInput = {};
+async function requestAltText(
+	context: FieldContext
+): Promise< AltTextGenerationResult > {
 	const attachmentId = context.getAttachmentId();
+	const imageUrl = context.getImageUrl();
 
-	if ( attachmentId ) {
-		params.attachment_id = attachmentId;
-	} else {
-		const imageUrl = context.getImageUrl();
-		if ( imageUrl ) {
-			params.image_url = imageUrl;
-		}
-	}
-
-	if ( Object.keys( params ).length === 0 ) {
-		throw new Error(
-			__( 'Unable to determine which image to describe.', 'ai' )
-		);
-	}
-
-	const response = await runAbility< AbilityResponse >(
-		ABILITY_NAME,
-		params
+	return await generateAltText(
+		attachmentId ?? undefined,
+		imageUrl ?? undefined
 	);
-
-	if ( response?.alt_text ) {
-		return response.alt_text;
-	}
-
-	throw new Error( __( 'Failed to generate alt text.', 'ai' ) );
 }
 
 /**

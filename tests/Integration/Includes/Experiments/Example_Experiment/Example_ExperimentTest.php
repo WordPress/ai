@@ -48,7 +48,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		);
 
 		$loader->init();
-		do_action( 'rest_api_init' );
+		do_action( 'rest_api_init', rest_get_server() );
 
 		$experiment = $registry->get_feature( 'example-experiment' );
 		$this->assertInstanceOf( Example_Experiment::class, $experiment, 'Example experiment should be registered in the registry.' );
@@ -91,6 +91,11 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 	 */
 	public function test_add_footer_content_for_logged_in_users() {
 		$this->logInAsAdmin();
+
+		// WP 6.9.1 added a check that fires _doing_it_wrong() when a script has
+		// unregistered deps. wp-edit-post depends on postbox, which is not registered
+		// in the test environment, so register a stub to silence the notice.
+		wp_register_script( 'postbox', '' );
 
 		$this->setExpectedDeprecated( 'the_block_template_skip_link' );
 

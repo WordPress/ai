@@ -809,7 +809,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that connector plugin metadata is optional.
 	 *
-	 * @since x.x.x
+	 * @since 0.9.0
 	 */
 	public function test_is_connector_plugin_active_returns_true_without_plugin_metadata() {
 		$this->assertTrue(
@@ -981,6 +981,36 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$this->assertSame( '', $result['provider'] );
 		$this->assertSame( '', $result['model'] );
+	}
+
+	/**
+	 * Test get_provider_availability_data() returns expected structure.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_provider_availability_data_returns_expected_structure(): void {
+		$data = \WordPress\AI\get_provider_availability_data();
+
+		$this->assertArrayHasKey( 'hasProvider', $data );
+		$this->assertArrayHasKey( 'connectorsUrl', $data );
+		$this->assertIsBool( $data['hasProvider'] );
+	}
+
+	/**
+	 * Test get_provider_availability_data() reflects credential state via filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_provider_availability_data_reflects_credential_filter(): void {
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		$data = \WordPress\AI\get_provider_availability_data();
+		$this->assertTrue( $data['hasProvider'] );
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
+
+		add_filter( 'wpai_has_ai_credentials', '__return_false' );
+		$data = \WordPress\AI\get_provider_availability_data();
+		$this->assertFalse( $data['hasProvider'] );
+		remove_filter( 'wpai_has_ai_credentials', '__return_false' );
 	}
 
 	/**
