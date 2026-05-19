@@ -10,7 +10,7 @@
  * WordPress dependencies
  */
 import { useState, useRef, useEffect, useCallback } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, sprintf, isRTL } from '@wordpress/i18n';
 import {
 	Button,
 	TextareaControl,
@@ -536,7 +536,7 @@ export function MediaLibraryImageEditor( {
 					) }
 					<div className="ai-media-library-editor__spinner-row">
 						<Spinner />
-						<span>{ __( 'Generating image…', 'ai' ) }</span>
+						<span>{ __( 'Generating…', 'ai' ) }</span>
 					</div>
 				</div>
 			) }
@@ -590,7 +590,7 @@ export function MediaLibraryImageEditor( {
 					<div className="ai-image-history-nav">
 						<Button
 							className="ai-image-history-nav__arrow"
-							icon={ chevronLeft }
+							icon={ isRTL() ? chevronRight : chevronLeft }
 							disabled={ ! canGoBack }
 							onClick={ goBack }
 							label={ __( 'Previous version', 'ai' ) }
@@ -624,7 +624,7 @@ export function MediaLibraryImageEditor( {
 						</div>
 						<Button
 							className="ai-image-history-nav__arrow"
-							icon={ chevronRight }
+							icon={ isRTL() ? chevronLeft : chevronRight }
 							disabled={ ! canGoForward }
 							onClick={ goForward }
 							label={ __( 'Next version', 'ai' ) }

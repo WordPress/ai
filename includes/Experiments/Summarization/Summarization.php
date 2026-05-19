@@ -100,12 +100,23 @@ class Summarization extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization' );
+		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization', array( 'include_core_abilities' => true ) );
+
+		/**
+		 * Filters the minimum content length required to enable summarization.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param int $min_content_length The minimum number of characters required. Default 100.
+		 */
+		$min_content_length = (int) apply_filters( 'wpai_summarization_min_content_length', 100 );
+
 		Asset_Loader::localize_script(
 			'summarization',
 			'SummarizationData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => $min_content_length,
 			)
 		);
 	}

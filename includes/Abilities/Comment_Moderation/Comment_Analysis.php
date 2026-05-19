@@ -36,7 +36,6 @@ class Comment_Analysis extends Abstract_Ability {
 				'comment_id' => array(
 					'type'        => 'integer',
 					'description' => esc_html__( 'The ID of the comment to analyze.', 'ai' ),
-					'required'    => true,
 				),
 			),
 			'required'   => array( 'comment_id' ),
@@ -64,7 +63,7 @@ class Comment_Analysis extends Abstract_Ability {
 				),
 				'sentiment'      => array(
 					'type'        => 'string',
-					'enum'        => array( 'positive', 'negative', 'neutral' ),
+					'enum'        => array_keys( Comment_Moderation::get_sentiment_config() ),
 					'description' => esc_html__( 'The sentiment of the comment.', 'ai' ),
 				),
 			),
@@ -294,14 +293,15 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @return array{toxicity_score: float, sentiment: string} Sanitized analysis result.
 	 */
 	private function sanitize_analysis_result( array $result ): array {
+		// Validate and sanitize the response.
 		$toxicity_score = isset( $result['toxicity_score'] )
 			? max( 0, min( 1, (float) $result['toxicity_score'] ) )
 			: 0;
 
-		$valid_sentiments = array( 'positive', 'negative', 'neutral' );
+		$valid_sentiments = array_keys( Comment_Moderation::get_sentiment_config() );
 		$sentiment        = isset( $result['sentiment'] ) && in_array( $result['sentiment'], $valid_sentiments, true )
 			? $result['sentiment']
-			: 'neutral';
+			: Comment_Moderation::SENTIMENT_NEUTRAL;
 
 		return array(
 			'toxicity_score' => $toxicity_score,

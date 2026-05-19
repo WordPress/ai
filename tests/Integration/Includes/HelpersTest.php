@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes;
 
+use WP_Connector_Registry;
 use WP_UnitTestCase;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
@@ -21,6 +22,24 @@ class HelpersTest extends WP_UnitTestCase {
 	use Guidelines_CPT_Helpers;
 
 	/**
+	 * Registered test connector IDs.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @var list<string>
+	 */
+	private array $test_connector_ids = array();
+
+	/**
+	 * Active plugins option value before a test mutates it.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @var list<string>
+	 */
+	private array $active_plugins = array();
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since 0.1.0
@@ -32,6 +51,8 @@ class HelpersTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $user_id );
 		Guidelines::reset_cache();
+
+		$this->active_plugins = (array) get_option( 'active_plugins', array() );
 	}
 
 	/**
@@ -40,6 +61,16 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
+		$registry = WP_Connector_Registry::get_instance();
+		foreach ( $this->test_connector_ids as $connector_id ) {
+			if ( null === $registry || ! $registry->is_registered( $connector_id ) ) {
+				continue;
+			}
+
+			$registry->unregister( $connector_id );
+		}
+
+		update_option( 'active_plugins', $this->active_plugins );
 		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_feature_test-feature_field_developer' );
@@ -700,6 +731,150 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that get_ai_connectors() returns active AI provider connectors.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_get_ai_connectors_returns_active_ai_provider_connectors() {
+		$this->register_test_connector(
+			'wpai_test_active_provider',
+			array(
+				'name'           => 'Active Test Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+				'plugin'         => array(
+					'file' => 'active-test-provider/active-test-provider.php',
+				),
+			)
+		);
+		$this->register_test_connector(
+			'wpai_test_inactive_provider',
+			array(
+				'name'           => 'Inactive Test Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+				'plugin'         => array(
+					'file' => 'inactive-test-provider/inactive-test-provider.php',
+				),
+			)
+		);
+		$this->register_test_connector(
+			'wpai_test_non_ai_connector',
+			array(
+				'name'           => 'Non-AI Test Connector',
+				'type'           => 'other',
+				'authentication' => array(
+					'method' => 'none',
+				),
+			)
+		);
+		$this->activate_test_plugin( 'active-test-provider/active-test-provider.php' );
+
+		$connectors = \WordPress\AI\get_ai_connectors();
+
+		$this->assertArrayHasKey( 'wpai_test_active_provider', $connectors );
+		$this->assertArrayNotHasKey( 'wpai_test_inactive_provider', $connectors );
+		$this->assertArrayNotHasKey( 'wpai_test_non_ai_connector', $connectors );
+	}
+
+	/**
+	 * Test that get_ai_connectors() can return inactive AI provider connectors.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_get_ai_connectors_can_include_inactive_ai_provider_connectors() {
+		$this->register_test_connector(
+			'wpai_test_inactive_provider',
+			array(
+				'name'           => 'Inactive Test Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+				'plugin'         => array(
+					'file' => 'inactive-test-provider/inactive-test-provider.php',
+				),
+			)
+		);
+
+		$connectors = \WordPress\AI\get_ai_connectors( false );
+
+		$this->assertArrayHasKey( 'wpai_test_inactive_provider', $connectors );
+	}
+
+	/**
+	 * Test that connector plugin metadata is optional.
+	 *
+	 * @since 0.9.0
+	 */
+	public function test_is_connector_plugin_active_returns_true_without_plugin_metadata() {
+		$this->assertTrue(
+			\WordPress\AI\is_connector_plugin_active(
+				array(
+					'name' => 'Provider Without Plugin Metadata',
+					'type' => 'ai_provider',
+				)
+			)
+		);
+	}
+
+	/**
+	 * Test that an inactive connector plugin is detected.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_is_connector_plugin_active_returns_false_for_inactive_plugin() {
+		$this->assertFalse(
+			\WordPress\AI\is_connector_plugin_active(
+				array(
+					'name'   => 'Inactive Provider',
+					'type'   => 'ai_provider',
+					'plugin' => array(
+						'file' => 'inactive-test-provider/inactive-test-provider.php',
+					),
+				)
+			)
+		);
+	}
+
+	/**
+	 * Test that active connector plugins are detected for supported file keys.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_is_connector_plugin_active_supports_plugin_file_keys() {
+		$this->activate_test_plugin( 'plugin-file-provider/plugin-file-provider.php' );
+		$this->activate_test_plugin( 'plugin-file-camel-provider/plugin-file-camel-provider.php' );
+
+		$this->assertTrue(
+			\WordPress\AI\is_connector_plugin_active(
+				array(
+					'name'   => 'Plugin File Provider',
+					'type'   => 'ai_provider',
+					'plugin' => array(
+						'plugin_file' => 'plugin-file-provider/plugin-file-provider.php',
+					),
+				)
+			)
+		);
+		$this->assertTrue(
+			\WordPress\AI\is_connector_plugin_active(
+				array(
+					'name'   => 'Plugin File Camel Provider',
+					'type'   => 'ai_provider',
+					'plugin' => array(
+						'pluginFile' => 'plugin-file-camel-provider/plugin-file-camel-provider.php',
+					),
+				)
+			)
+		);
+	}
+
+	/**
 	 * Test that get_guidelines() returns guidelines filtered by category.
 	 *
 	 * @since 0.8.0
@@ -718,6 +893,43 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'Should return an array' );
 		$this->assertArrayHasKey( 'site', $result, 'Should have site key' );
 		$this->assertEquals( 'Use a professional tone.', $result['site'] );
+	}
+
+	/**
+	 * Registers a test connector.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string               $connector_id Connector ID.
+	 * @param array<string, mixed> $data         Connector data.
+	 */
+	private function register_test_connector( string $connector_id, array $data ): void {
+		$registry = WP_Connector_Registry::get_instance();
+		if ( null === $registry ) {
+			$this->markTestSkipped( 'WP_Connector_Registry is not available.' );
+		}
+
+		if ( $registry->is_registered( $connector_id ) ) {
+			$registry->unregister( $connector_id );
+		}
+
+		$registry->register( $connector_id, $data );
+
+		$this->test_connector_ids[] = $connector_id;
+	}
+
+	/**
+	 * Marks a plugin basename as active for the current test.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $plugin_file Plugin basename.
+	 */
+	private function activate_test_plugin( string $plugin_file ): void {
+		$active_plugins   = (array) get_option( 'active_plugins', array() );
+		$active_plugins[] = $plugin_file;
+
+		update_option( 'active_plugins', array_values( array_unique( $active_plugins ) ) );
 	}
 
 	/**
@@ -772,12 +984,33 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that connector plugin checks treat connectors without plugin metadata as active.
+	 * Test get_provider_availability_data() returns expected structure.
 	 *
-	 * @since 0.9.0
+	 * @since 1.0.0
 	 */
-	public function test_is_connector_plugin_active_returns_true_without_plugin_metadata(): void {
-		$this->assertTrue( \WordPress\AI\is_connector_plugin_active( array() ) );
+	public function test_get_provider_availability_data_returns_expected_structure(): void {
+		$data = \WordPress\AI\get_provider_availability_data();
+
+		$this->assertArrayHasKey( 'hasProvider', $data );
+		$this->assertArrayHasKey( 'connectorsUrl', $data );
+		$this->assertIsBool( $data['hasProvider'] );
+	}
+
+	/**
+	 * Test get_provider_availability_data() reflects credential state via filter.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_get_provider_availability_data_reflects_credential_filter(): void {
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		$data = \WordPress\AI\get_provider_availability_data();
+		$this->assertTrue( $data['hasProvider'] );
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
+
+		add_filter( 'wpai_has_ai_credentials', '__return_false' );
+		$data = \WordPress\AI\get_provider_availability_data();
+		$this->assertFalse( $data['hasProvider'] );
+		remove_filter( 'wpai_has_ai_credentials', '__return_false' );
 	}
 
 	/**

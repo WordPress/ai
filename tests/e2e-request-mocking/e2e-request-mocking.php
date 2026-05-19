@@ -12,8 +12,63 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Register a REST endpoint for setting up/tearing down credentials in E2E tests.
+add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
+
+/**
+ * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
+ *
+ * POST /ai-e2e/v1/credentials/seed  — sets a dummy provider API key.
+ * POST /ai-e2e/v1/credentials/clear — removes it.
+ */
+function ai_e2e_register_credentials_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/credentials/seed',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_seed_credentials',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/credentials/clear',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_clear_credentials',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+
+/**
+ * Seeds a dummy provider key so has_ai_credentials() returns true.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_seed_credentials() {
+	update_option( 'connectors_ai_openai_api_key', 'valid-api-key' );
+	return new WP_REST_Response( array( 'seeded' => true ) );
+}
+
+/**
+ * Removes the dummy provider key so has_ai_credentials() returns false.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_clear_credentials() {
+	delete_option( 'connectors_ai_openai_api_key' );
+	return new WP_REST_Response( array( 'cleared' => true ) );
+}
 
 /**
  * Mock the HTTP requests and provide known responses.
@@ -66,16 +121,26 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 	if ( str_contains( $url, 'https://api.openai.com/v1/responses' ) ) {
 		$body = $parsed_args['body'] ?? '';
 
-		// Route review-notes and refine-notes requests to their own fixture.
+		// Route editorial-notes and editorial-updates requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-responses.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-notes-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'You are an editorial assistant for WordPress. Your task is to update a single block' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/refine-notes-responses.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-updates-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
+
+			// Dynamically adjust response based on comment content for E2E variety.
+			// We look for specific phrases from the E2E test to avoid matching the system prompt.
+			if ( str_contains( $body, 'This is a positive comment' ) ) {
+				$response = str_replace( 'negative', 'positive', $response );
+				$response = str_replace( '0.95', '0.1', $response );
+			} elseif ( str_contains( $body, 'This is a neutral comment' ) ) {
+				$response = str_replace( 'negative', 'neutral', $response );
+				$response = str_replace( '0.95', '0.5', $response );
+			}
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );
 		}
@@ -85,11 +150,11 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 	if ( str_contains( $url, 'https://api.openai.com/v1/chat/completions' ) ) {
 		$body = $parsed_args['body'] ?? '';
 
-		// Route review-notes and refine-notes requests to their own fixture.
+		// Route editorial-notes and editorial-updates requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-completions.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-notes-completions.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'You are an editorial assistant for WordPress. Your task is to update a single block' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/refine-notes-completions.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-updates-completions.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-completions.json' );

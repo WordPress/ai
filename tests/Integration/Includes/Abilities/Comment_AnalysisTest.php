@@ -151,7 +151,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 		$this->assertSame( 0, $schema['properties']['toxicity_score']['minimum'] );
 		$this->assertSame( 1, $schema['properties']['toxicity_score']['maximum'] );
 		$this->assertSame(
-			array( 'positive', 'negative', 'neutral' ),
+			array( 'positive', 'neutral', 'negative' ),
 			$schema['properties']['sentiment']['enum']
 		);
 	}

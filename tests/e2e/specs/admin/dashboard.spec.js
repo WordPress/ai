@@ -12,6 +12,7 @@ const {
  */
 const {
 	clearConnectors,
+	seedCredentials,
 	disableExperiments,
 	visitAdminPage,
 } = require( '../../utils/helpers' );
@@ -19,6 +20,7 @@ const {
 test.describe( 'Dashboard widgets', () => {
 	test.afterAll( async ( { requestUtils } ) => {
 		await requestUtils.deleteAllUsers();
+		await seedCredentials( requestUtils );
 	} );
 
 	test( 'Admin can see AI dashboard widgets', async ( { admin, page } ) => {

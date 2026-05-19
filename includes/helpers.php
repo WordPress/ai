@@ -408,6 +408,20 @@ function has_ai_credentials(): bool {
 }
 
 /**
+ * Returns provider availability data for script localization.
+ *
+ * @since 1.0.0
+ *
+ * @return array{hasProvider: bool, connectorsUrl: string} Provider availability data.
+ */
+function get_provider_availability_data(): array {
+	return array(
+		'hasProvider'   => has_ai_credentials(),
+		'connectorsUrl' => admin_url( 'options-connectors.php' ),
+	);
+}
+
+/**
  * Checks if we have valid AI credentials.
  *
  * @since 0.1.0

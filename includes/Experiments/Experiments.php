@@ -28,13 +28,15 @@ final class Experiments {
 	 */
 	private const EXPERIMENT_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		\WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer::class,
+		\WordPress\AI\Experiments\Connector_Approval\Connector_Approval::class,
+		\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
 		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,
 		\WordPress\AI\Experiments\Content_Resizing\Content_Resizing::class,
 		\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
 		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,
-		\WordPress\AI\Experiments\Review_Notes\Review_Notes::class,
-		\WordPress\AI\Experiments\Refine_Notes\Refine_Notes::class,
+		\WordPress\AI\Experiments\Editorial_Notes\Editorial_Notes::class,
+		\WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,

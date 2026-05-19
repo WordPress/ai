@@ -56,8 +56,8 @@ class My_Experiment extends Abstract_Feature {
    */
   protected function load_metadata(): array {
     return array(
-    'label'       => __( 'My Experiment', 'ai' ),
-    'description' => __( 'Description of what my experiment does.', 'ai' ),
+      'label'       => __( 'My Experiment', 'ai' ),
+      'description' => __( 'Description of what my experiment does.', 'ai' ),
     );
   }
 
@@ -92,11 +92,11 @@ class My_Experiment extends Abstract_Feature {
   public function enqueue_assets( string $hook_suffix ): void {
     Asset_Loader::enqueue_script( 'my-experiment', 'experiments/my-experiment' );
     Asset_Loader::localize_script(
-    'my-experiment',
-    'MyExperimentData',
-    array(
-      'enabled' => $this->is_enabled(),
-    )
+      'my-experiment',
+      'MyExperimentData',
+      array(
+        'enabled' => $this->is_enabled(),
+      )
     );
   }
 
@@ -154,19 +154,18 @@ Any settings or filters available.
 
 ### Conditional Experiments
 
-If your experiment has requirements (PHP extensions, other plugins, etc.), implement validation in your constructor:
+If your experiment has requirements (PHP extensions, other plugins, etc.), check them before attaching runtime hooks. `Abstract_Feature` owns a final constructor, so experiment classes should not implement their own constructor for validation:
 
 ```php
-class My_Experiment extends Abstract_Experiment {
-	public function __construct() {
+class My_Experiment extends Abstract_Feature {
+	public function register(): void {
 		if ( ! extension_loaded( 'gd' ) ) {
-			throw new \RuntimeException(
-				__( 'This experiment requires the GD extension.', 'ai' )
-			);
+			// Optionally add an admin notice here.
+			return;
 		}
 
-    parent::__construct();
-  }
+		add_action( 'init', array( $this, 'initialize' ) );
+	}
 }
 ```
 
@@ -194,7 +193,7 @@ add_filter( 'wpai_default_feature_classes', function( $feature_classes ) {
   $feature_classes[ My_Custom_Experiment::get_id() ] = My_Custom_Experiment::class;
 
   // Remove a default experiment
-  unset( $feature_classes['example-experiment'] );
+  unset( $feature_classes['title-generation'] );
 
   return $feature_classes;
 } );
@@ -206,10 +205,10 @@ Experiments can be disabled using the `wpai_feature_{$feature_id}_enabled` filte
 
 ```php
 // Disable a specific experiment by its ID
-add_filter( 'wpai_feature_example-experiment_enabled', '__return_false' );
+add_filter( 'wpai_feature_title-generation_enabled', '__return_false' );
 
 // Or with a custom callback
-add_filter( 'wpai_feature_example-experiment_enabled', function( $enabled ) {
+add_filter( 'wpai_feature_title-generation_enabled', function( $enabled ) {
   // Your custom logic here
   return false;
 } );
@@ -228,7 +227,34 @@ add_filter( 'wpai_features_enabled', '__return_false' );
 The plugin also includes the following action hooks:
 
 - `wpai_register_features`: Fires after default features are registered, receives `$registry` parameter
-- `wpai_features_initialized`: Fires after all registered features have been initialized
+- `wpai_features_initialized`: Fires after all enabled features have run `register()`. It does not fire if the loader-level `wpai_features_enabled` filter returns false.
+
+### Editorial Guidelines
+
+When the `wp_guideline` post type is available, AI abilities can opt into site-wide editorial guidance for tone, copy, image, and other prompt constraints. The plugin consumes those guidelines; it does not manage the guidelines UI.
+
+Abilities opt in by returning the categories they support:
+
+```php
+protected function guideline_categories(): array {
+  return array( 'site', 'copy' );
+}
+```
+
+Supported categories are `site`, `copy`, `images`, and `additional`. Block-specific guidelines can also be included when a block name is supplied to the prompt formatter.
+
+For code that generates prompts outside an ability, use the helper functions:
+
+```php
+$xml = WordPress\AI\format_guidelines_for_prompt(
+  array( 'site', 'copy' ),
+  'core/paragraph'
+);
+
+$guidelines = WordPress\AI\get_guidelines();
+```
+
+The `wpai_use_guidelines` filter can disable guideline injection, and `wpai_max_guideline_length` controls the per-category character limit.
 
 ### Asset Loading
 
@@ -242,6 +268,7 @@ use WordPress\AI\Asset_Loader;
  *
  * First argument is the script handle.
  * The second argument is the script file name.
+ * The optional third argument is a boolean to include the core abilities script.
  * This script file name should be in the build-scripts/ directory.
  * The source script files should be in the src/ directory. If needed,
  * you can add the entry point to the webpack.config.js file.
@@ -350,10 +377,20 @@ A minute of your time when merging a PR to appropriately set the squash merge co
 For more detailed information on plugin architecture, creating experiments, and development workflows, see:
 
 - [Contributing Guidelines](../CONTRIBUTING.md) - Code standards and contribution process
-- [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
-- [Experiment Lifecycle](EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
+- [Architecture Overview](ARCHITECTURE_OVERVIEW.md) - Comprehensive guide to plugin architecture
 - [Testing Strategy](TESTING.md) – Testing philosophy and guidelines
 - [Testing REST API Strategy](TESTING_REST_API.md) – Guidelines specific to testing REST API integrations
+- [Experiment Framework](experiments/experiment-framework.md) - How experiments are registered, toggled, and initialized
+- [Multi-Provider Support](experiments/multi-provider-support.md) - Provider detection, model preference, and fallback behavior
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
-- [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
+- [Release Instructions](RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
+- [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
+- [Feature and Experiment Lifecycle](FEATURE_EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
+- [WordPress AI Team](https://make.wordpress.org/ai/)
+
+### Getting Help
+
+- **GitHub Issues**: Report bugs or request features
+- **WordPress Slack**: Join the `#core-ai` channel in Slack, see the [WordPress Slack page](https://make.wordpress.org/chat/) for signup information; it is free to join.
+- **Make WordPress AI**: https://make.wordpress.org/ai/
