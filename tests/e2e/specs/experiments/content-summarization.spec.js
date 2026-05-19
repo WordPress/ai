@@ -11,7 +11,6 @@ const {
 	disableExperiments,
 	enableExperiment,
 	enableExperiments,
-	seedCredentials,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Content Summarization Experiment', () => {
