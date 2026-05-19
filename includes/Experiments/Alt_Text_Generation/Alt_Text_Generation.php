@@ -228,7 +228,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @param \WP_Post $post The attachment post.
 	 */
 	public function render_attachment_meta_box( \WP_Post $post ): void {
-		$button_text =empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
+		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
 		printf(
 			'<div class="ai-alt-text-media-actions" style="margin-top: 16px;">' .
