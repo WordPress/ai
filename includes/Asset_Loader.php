@@ -78,8 +78,8 @@ final class Asset_Loader {
 	 * @param string $file_name The script file name without the .js extension.
 	 */
 	public static function enqueue_script( string $handle, string $file_name ): void {
-		$script_url    = self::ASSET_URL . $file_name . '.js';
-		$asset_data    = self::get_asset_file_data( $file_name );
+		$script_url = self::ASSET_URL . $file_name . '.js';
+		$asset_data = self::get_asset_file_data( $file_name );
 
 		// Bail if there's nothing to enqueue.
 		if ( ! $asset_data ) {
