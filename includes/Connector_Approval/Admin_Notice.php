@@ -124,6 +124,11 @@ final class Admin_Notice {
 			return;
 		}
 
+		$screen = get_current_screen();
+		if ( $screen && 'tools_page_ai-connector-approval' === $screen->id ) {
+			return;
+		}
+
 		$pending = $this->store->get_pending();
 		if ( empty( $pending ) ) {
 			return;
