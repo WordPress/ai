@@ -80,7 +80,6 @@ final class Asset_Loader {
 	public static function enqueue_script( string $handle, string $file_name ): void {
 		$script_url    = self::ASSET_URL . $file_name . '.js';
 		$asset_data    = self::get_asset_file_data( $file_name );
-		$script_handle = self::HANDLE_PREFIX . $handle;
 
 		// Bail if there's nothing to enqueue.
 		if ( ! $asset_data ) {
@@ -88,7 +87,7 @@ final class Asset_Loader {
 		}
 
 		wp_enqueue_script(
-			$script_handle,
+			self::HANDLE_PREFIX . $handle,
 			$script_url,
 			$asset_data['dependencies'],
 			$asset_data['version'],
@@ -98,17 +97,13 @@ final class Asset_Loader {
 		// Localize global data.
 		foreach ( self::$global_data as $object_name => $data ) {
 			wp_add_inline_script(
-				$script_handle,
+				self::HANDLE_PREFIX . $handle,
 				sprintf( 'window.ai%s=%s;', $object_name, wp_json_encode( $data ) ),
 				'before'
 			);
 		}
 		self::$global_data = array();
-
-		// Load translations for strings wrapped with @wordpress/i18n functions.
-		// No path is passed because translations are auto-distributed by
-		// WordPress.org to wp-content/languages/plugins/.
-		wp_set_script_translations( $script_handle, 'ai' );
+		wp_set_script_translations( self::HANDLE_PREFIX . $handle, 'ai' );
 	}
 
 	/**
