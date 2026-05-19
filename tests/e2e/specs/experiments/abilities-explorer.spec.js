@@ -46,6 +46,14 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		// Visit the Abilities Explorer page.
 		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
 
+		// Ensure the page heading matches the Abilities Explorer label.
+		await expect(
+			page.getByRole( 'heading', {
+				name: 'Abilities Explorer',
+				level: 1,
+			} )
+		).toBeVisible();
+
 		// Ensure the abilities stats section is visible.
 		await expect(
 			page.locator( '.ability-explorer-wrap .ability-explorer-stats' )

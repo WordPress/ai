@@ -72,7 +72,7 @@ class Admin_Page {
 		$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : 'list'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		echo '<div class="wrap ability-explorer-wrap">';
-		echo '<h1>' . esc_html__( 'Ability Explorer', 'ai' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'Abilities Explorer', 'ai' ) . '</h1>';
 
 		// Render appropriate view based on action.
 		switch ( $action ) {
