@@ -36,6 +36,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	private function create_comment_without_hooks(): int {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct insert avoids comment hooks for moderation tests.
 		$wpdb->insert(
 			$wpdb->comments,
 			array(
@@ -445,6 +446,32 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'data-ai-status="pending"', $output );
 		$this->assertStringContainsString( 'data-comment-id="' . $comment_id . '"', $output );
+	}
+
+	/**
+	 * Test render_column() outputs failed badge markup for failed status.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_outputs_failed_badge_for_failed_status() {
+		wp_set_current_user( $this->admin_user_id );
+		$comment_id = $this->create_comment_without_hooks();
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_FAILED );
+
+		$experiment = new Comment_Moderation();
+
+		ob_start();
+		$experiment->render_column( 'wpai_sentiment', $comment_id );
+		$sentiment_output = ob_get_clean();
+
+		ob_start();
+		$experiment->render_column( 'wpai_toxicity', $comment_id );
+		$toxicity_output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--failed', $sentiment_output );
+		$this->assertStringContainsString( 'Failed', $sentiment_output );
+		$this->assertStringContainsString( 'ai-badge--failed', $toxicity_output );
+		$this->assertStringContainsString( 'Failed', $toxicity_output );
 	}
 
 	/**

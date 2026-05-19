@@ -13,6 +13,7 @@ import type React from 'react';
  * WordPress dependencies
  */
 import { useEffect, useCallback, useRef } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -127,7 +128,7 @@ function updateBadges( comment: PendingComment, result: AnalysisResult ): void {
  */
 function markBadgeFailed( badge: HTMLElement ): void {
 	badge.className = 'ai-badge ai-badge--failed';
-	badge.textContent = 'Failed';
+	badge.textContent = __( 'Failed', 'ai' );
 	badge.setAttribute( 'data-ai-status', 'failed' );
 }
 
@@ -136,7 +137,7 @@ function markBadgeFailed( badge: HTMLElement ): void {
  */
 function markBadgeProcessing( badge: HTMLElement ): void {
 	badge.className = 'ai-badge ai-badge--processing';
-	badge.textContent = 'Analyzing…';
+	badge.textContent = __( 'Analyzing…', 'ai' );
 	badge.setAttribute( 'data-ai-status', 'processing' );
 }
 
