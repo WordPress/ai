@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Provides `/ai/v1/logs` routes for the AI Request Logs admin UI.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class AI_Request_Log_Controller extends WP_REST_Controller {
 

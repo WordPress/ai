@@ -15,13 +15,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Renders a dismissible admin notice when there are pending approval requests.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 final class Admin_Notice {
 	/**
 	 * User meta key tracking the last-dismissed pending signature.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -30,7 +30,7 @@ final class Admin_Notice {
 	/**
 	 * Query argument used to trigger dismissal.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -39,7 +39,7 @@ final class Admin_Notice {
 	/**
 	 * Nonce action for dismissal.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -48,7 +48,7 @@ final class Admin_Notice {
 	/**
 	 * Approvals store.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Approvals_Store
 	 */
@@ -57,7 +57,7 @@ final class Admin_Notice {
 	/**
 	 * Admin page URL builder.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var callable
 	 */
@@ -66,7 +66,7 @@ final class Admin_Notice {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param \WordPress\AI\Connector_Approval\Approvals_Store $store Approvals store.
 	 * @param callable $page_url_resolver Callable returning the admin page URL.
@@ -79,7 +79,7 @@ final class Admin_Notice {
 	/**
 	 * Hooks up notice rendering and dismissal handling.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function register(): void {
 		add_action( 'admin_init', array( $this, 'maybe_handle_dismiss' ) );
@@ -89,7 +89,7 @@ final class Admin_Notice {
 	/**
 	 * Handles the dismissal redirect when the user clicks the dismiss link.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function maybe_handle_dismiss(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce is verified below.
@@ -117,7 +117,7 @@ final class Admin_Notice {
 	/**
 	 * Renders the notice.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function render(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -174,7 +174,7 @@ final class Admin_Notice {
 	 * The signature changes whenever new requests are added, so a dismissal only
 	 * silences the notice until the queue meaningfully changes.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return string
 	 */

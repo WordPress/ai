@@ -21,13 +21,13 @@ defined( 'ABSPATH' ) || exit;
  * so callers can compare directly against the connector registry without further
  * normalization.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 final class Caller_Identifier {
 	/**
 	 * Caller type for regular plugins.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -36,7 +36,7 @@ final class Caller_Identifier {
 	/**
 	 * Caller type for must-use plugins.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -45,7 +45,7 @@ final class Caller_Identifier {
 	/**
 	 * Caller type for themes.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -54,7 +54,7 @@ final class Caller_Identifier {
 	/**
 	 * Caller type for WordPress core.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -63,7 +63,7 @@ final class Caller_Identifier {
 	/**
 	 * Per-request memoization of caller lookups keyed by a backtrace fingerprint.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var array<string, array{type: string, basename: string, name: string}|null>
 	 */
@@ -72,7 +72,7 @@ final class Caller_Identifier {
 	/**
 	 * Substrings that indicate a stack frame is part of the enforcement plumbing itself.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var list<string>
 	 */
@@ -81,7 +81,7 @@ final class Caller_Identifier {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function __construct() {
 		$this->skip_substrings = array(
@@ -105,7 +105,7 @@ final class Caller_Identifier {
 	/**
 	 * Identifies the current caller.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array{type: string, basename: string, name: string}|null
 	 *     `null` when no plugin, mu-plugin, or theme frame could be found.
@@ -128,7 +128,7 @@ final class Caller_Identifier {
 	/**
 	 * Builds a stable key for the cache from the backtrace file+line sequence.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<int, array<string, mixed>> $frames Raw backtrace frames.
 	 * @return string
@@ -147,7 +147,7 @@ final class Caller_Identifier {
 	/**
 	 * Finds the first stack frame that belongs to an extension and describes it.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<int, array<string, mixed>> $frames Raw backtrace frames.
 	 * @return array{type: string, basename: string, name: string}|null
@@ -175,7 +175,7 @@ final class Caller_Identifier {
 	/**
 	 * Checks whether a file path is part of the enforcement or core plumbing.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Absolute file path.
 	 * @return bool
@@ -194,7 +194,7 @@ final class Caller_Identifier {
 	/**
 	 * Attempts to map a file path to a plugin, mu-plugin, or theme.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Absolute file path.
 	 * @return array{type: string, basename: string, name: string}|null
@@ -240,7 +240,7 @@ final class Caller_Identifier {
 	 * (e.g. `ai` for `.../plugins/ai/includes/foo.php`). For a single file
 	 * placed directly in the base directory this is that filename.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file     Normalized absolute file path.
 	 * @param string $base_dir Normalized base directory.
@@ -277,7 +277,7 @@ final class Caller_Identifier {
 	 * When the caller is a single-file plugin the segment already is the
 	 * basename.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $segment       First path segment under `WP_PLUGIN_DIR`.
 	 * @param string $relative_path Path of the caller relative to `WP_PLUGIN_DIR` (e.g. `slug/includes/foo.php`).
@@ -312,7 +312,7 @@ final class Caller_Identifier {
 	 *
 	 * Falls back to the basename if `get_plugins()` has no metadata for it.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $basename Plugin basename.
 	 * @return string
@@ -329,7 +329,7 @@ final class Caller_Identifier {
 	/**
 	 * Loads the plugin registry, requiring WP's plugin admin bootstrap if needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -344,7 +344,7 @@ final class Caller_Identifier {
 	/**
 	 * Attempts to classify a file as belonging to a theme.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Normalized absolute file path.
 	 * @return array{type: string, basename: string, name: string}|null
@@ -377,7 +377,7 @@ final class Caller_Identifier {
 	/**
 	 * Clears the per-request cache. Primarily used in tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return void
 	 */

@@ -292,7 +292,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the media editor script is not enqueued when the Gutenberg plugin is inactive.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_maybe_enqueue_media_editor_script_skips_when_gutenberg_inactive(): void {
 		update_option( 'active_plugins', array() );
@@ -308,7 +308,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the media editor script is not enqueued when neither media-editor experiment key is set.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_maybe_enqueue_media_editor_script_skips_when_no_experiment_enabled(): void {
 		update_option( 'active_plugins', array( 'gutenberg/gutenberg.php' ) );
@@ -325,7 +325,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the media editor script enqueues when the route-based experiment is enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_maybe_enqueue_media_editor_script_enqueues_for_route_experiment(): void {
 		update_option( 'active_plugins', array( 'gutenberg/gutenberg.php' ) );
@@ -344,7 +344,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the media editor script enqueues when the Modal experiment is enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_maybe_enqueue_media_editor_script_enqueues_for_modal_experiment(): void {
 		update_option( 'active_plugins', array( 'gutenberg/gutenberg.php' ) );
@@ -363,7 +363,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Invokes the private `maybe_enqueue_media_editor_script` method via reflection.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param Alt_Text_Generation $experiment Experiment instance.
 	 */

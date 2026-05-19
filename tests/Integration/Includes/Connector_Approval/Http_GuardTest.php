@@ -24,13 +24,13 @@ use WordPress\AI\Connector_Approval\Http_Guard;
  * `Caller_Identifier` naturally resolves the calling plugin as `ai/...` for
  * the approved/unapproved cases.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test connector ID registered during setUp.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -39,7 +39,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Setting name holding the test connector's credential.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -48,7 +48,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Credential long enough to clear the index's minimum-length filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -57,7 +57,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Approvals store used by each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Approvals_Store
 	 */
@@ -66,7 +66,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Caller identifier used by each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Caller_Identifier
 	 */
@@ -75,7 +75,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Key index used by each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Connector_Key_Index
 	 */
@@ -84,7 +84,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -115,7 +115,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function tearDown(): void {
 		$registry = WP_Connector_Registry::get_instance();
@@ -133,7 +133,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Returns a guard wired with the current collaborators.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return \WordPress\AI\Connector_Approval\Http_Guard
 	 */
@@ -144,7 +144,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Returns the `ai` plugin basename as resolved by the real identifier.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return string
 	 */
@@ -166,7 +166,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	 * Adds the tests directory to the identifier's skip list so the
 	 * caller-identification step returns null for this test file.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function force_unidentifiable_caller(): void {
 		$property = new ReflectionProperty( Caller_Identifier::class, 'skip_substrings' );
@@ -180,7 +180,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that a non-false preempt value is returned unchanged.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_returns_preempt_when_already_short_circuited() {
 		$existing = array( 'response' => array( 'code' => 200 ) );
@@ -194,7 +194,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that requests without a matched credential are passed through.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_passes_through_when_no_connector_credential_matches() {
 		$this->assertFalse(
@@ -205,7 +205,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that requests without an identifiable caller are allowed through.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_passes_through_when_caller_cannot_be_identified() {
 		$this->force_unidentifiable_caller();
@@ -225,7 +225,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that an approved caller is allowed through without creating a pending entry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_allows_approved_caller_without_recording_pending() {
 		$basename = $this->ai_plugin_basename();
@@ -246,7 +246,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that an unapproved caller is blocked and a pending entry is recorded.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_blocks_unapproved_caller_and_records_pending() {
 		$basename = $this->ai_plugin_basename();

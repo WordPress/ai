@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Handles database table creation and schema migrations for AI request logs.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class AI_Request_Log_Schema {
 	// Schema management necessarily uses direct queries against the dedicated log table.
@@ -38,7 +38,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Ensures the request log table matches the current schema version.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function maybe_upgrade_table(): void {
 		if ( self::SCHEMA_VERSION === get_option( self::SCHEMA_VERSION_OPTION, '' ) ) {
@@ -57,7 +57,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Creates the database table if needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function maybe_create_table(): void {
 		if ( ! $this->table_exists() ) {
@@ -72,7 +72,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Returns the full table name with prefix.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return string The prefixed table name.
 	 */
@@ -84,7 +84,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Checks whether the request log table already exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return bool True when the table exists.
 	 */
@@ -105,7 +105,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Creates the logs database table.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function create_table(): void {
 		global $wpdb;
@@ -152,7 +152,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Adds missing columns to existing tables.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function maybe_add_columns(): void {
 		global $wpdb;
@@ -182,7 +182,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Adds missing indexes to existing tables.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function maybe_add_indexes(): void {
 		global $wpdb;
@@ -219,7 +219,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Adds FULLTEXT index for search if MySQL supports it.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, bool> $existing_indexes Map of existing index names.
 	 */
@@ -245,7 +245,7 @@ class AI_Request_Log_Schema {
 	/**
 	 * Checks if the FULLTEXT search index exists on the table.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return bool True if FULLTEXT index exists.
 	 */

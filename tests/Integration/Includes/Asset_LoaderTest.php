@@ -266,7 +266,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_add_global_data_is_output_as_inline_script(): void {
 		$this->create_asset_file(
@@ -290,7 +290,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_global_data_is_flushed_after_first_enqueue(): void {
 		$this->create_asset_file(
@@ -321,7 +321,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_enqueue_script_without_global_data_has_no_inline_script(): void {
 		$this->create_asset_file(

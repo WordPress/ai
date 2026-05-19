@@ -13,13 +13,13 @@ use WordPress\AI\Connector_Approval\Approvals_Store;
 /**
  * Approvals_Store test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class Approvals_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Store instance under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Approvals_Store
 	 */
@@ -28,7 +28,7 @@ class Approvals_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -38,7 +38,7 @@ class Approvals_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function tearDown(): void {
 		delete_option( Approvals_Store::OPTION_APPROVALS );
@@ -49,7 +49,7 @@ class Approvals_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Test setting and revoking approval state.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_set_and_revoke_approval() {
 		$this->store->set_approval( 'my-plugin/my-plugin.php', 'openai', true );
@@ -63,7 +63,7 @@ class Approvals_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Test that pending entries are recorded and attempt count is incremented.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_record_pending_tracks_attempts() {
 		$caller = array(
@@ -87,7 +87,7 @@ class Approvals_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Test removing pending entries.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_remove_pending() {
 		$caller = array(
@@ -107,7 +107,7 @@ class Approvals_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Test that pending queue respects the configured hard limit.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_pending_queue_hard_limit() {
 		for ( $i = 0; $i < Approvals_Store::PENDING_LIMIT; $i++ ) {
@@ -136,7 +136,7 @@ class Approvals_StoreTest extends WP_UnitTestCase {
 	/**
 	 * Test that bare plugin slugs are canonicalized where possible.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_approvals_canonicalizes_bare_plugin_slug() {
 		if ( ! function_exists( 'get_plugins' ) ) {

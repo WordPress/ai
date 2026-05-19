@@ -24,7 +24,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Registered test connector IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var list<string>
 	 */
@@ -33,7 +33,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Active plugins option value before a test mutates it.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var list<string>
 	 */
@@ -733,7 +733,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_ai_connectors() returns active AI provider connectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_ai_connectors_returns_active_ai_provider_connectors() {
 		$this->register_test_connector(
@@ -784,7 +784,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_ai_connectors() can return inactive AI provider connectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_ai_connectors_can_include_inactive_ai_provider_connectors() {
 		$this->register_test_connector(
@@ -825,7 +825,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that an inactive connector plugin is detected.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_is_connector_plugin_active_returns_false_for_inactive_plugin() {
 		$this->assertFalse(
@@ -844,7 +844,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that active connector plugins are detected for supported file keys.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_is_connector_plugin_active_supports_plugin_file_keys() {
 		$this->activate_test_plugin( 'plugin-file-provider/plugin-file-provider.php' );
@@ -898,7 +898,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Registers a test connector.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string               $connector_id Connector ID.
 	 * @param array<string, mixed> $data         Connector data.
@@ -921,7 +921,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Marks a plugin basename as active for the current test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $plugin_file Plugin basename.
 	 */
@@ -986,7 +986,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test get_provider_availability_data() returns expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_provider_availability_data_returns_expected_structure(): void {
 		$data = \WordPress\AI\get_provider_availability_data();
@@ -999,7 +999,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test get_provider_availability_data() reflects credential state via filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_provider_availability_data_reflects_credential_filter(): void {
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );

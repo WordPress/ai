@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Handles storage, retrieval, and aggregation of AI request logs.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class AI_Request_Log_Repository {
 	// Direct queries are intentional in this repository because it owns a dedicated log table.
@@ -50,7 +50,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Schema $schema The schema manager.
 	 */
@@ -61,7 +61,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Logs an AI request.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array{
 	 *     type: string,
@@ -123,7 +123,7 @@ class AI_Request_Log_Repository {
 		/**
 		 * Fires after an AI request is logged.
 		 *
-		 * @since x.x.x
+		 * @since 1.0.0
 		 *
 		 * @param string               $log_id The unique log identifier.
 		 * @param array<string, mixed> $data   The log data.
@@ -136,7 +136,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Retrieves a single log entry by ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $log_id The log identifier.
 	 * @return array<string, mixed>|null The log entry or null if not found.
@@ -164,7 +164,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Retrieves logs with filtering and pagination.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array{
 	 *     type?: string,
@@ -261,7 +261,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Gets aggregate statistics for the dashboard.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $period        Time period: 'day', 'week', 'month', or 'all'.
 	 * @param bool   $force_refresh Whether to bypass the cache.
@@ -315,7 +315,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Gets distinct values for filter dropdowns.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param bool $force_refresh Whether to bypass the cache.
 	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, user_ids: list<int>} Filter options.
@@ -356,7 +356,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Deletes logs older than the retention period.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param int $retention_days Number of days to retain logs.
 	 * @return int Number of logs deleted.
@@ -397,7 +397,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Purges all logs from the database.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return int Number of logs deleted.
 	 */
@@ -418,7 +418,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Invalidates all caches.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function invalidate_caches(): void {
 		$this->invalidate_filter_cache();
@@ -428,7 +428,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Invalidates the filter options cache.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function invalidate_filter_cache(): void {
 		delete_transient( self::CACHE_GROUP . '_filter_options' );
@@ -437,7 +437,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Invalidates the summary cache.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function invalidate_summary_cache(): void {
 		$periods = array( 'minute', 'hour', 'day', 'week', 'month', 'all' );
@@ -449,7 +449,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Builds WHERE clauses for the query.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $args   Query arguments.
 	 * @param list<string>         $where  WHERE clauses array (modified by reference).
@@ -510,7 +510,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Builds token filter clauses.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $args   Query arguments.
 	 * @param list<string>         $where  WHERE clauses array (modified by reference).
@@ -536,7 +536,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Builds the search clause for full-text or LIKE search.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string       $search Search term.
 	 * @param list<string> $where  WHERE clauses array (modified by reference).
@@ -571,7 +571,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Builds a boolean-mode FULLTEXT query string.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $search Raw search string.
 	 * @return string Boolean FULLTEXT query or empty string.
@@ -623,7 +623,7 @@ class AI_Request_Log_Repository {
 	 * In transactional test environments (e.g., WP_UnitTestCase), fulltext indexes
 	 * are not updated until commit, so prefer LIKE queries when autocommit is off.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return bool True if autocommit is enabled.
 	 */
@@ -642,7 +642,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Queries logs using cursor-based pagination.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string               $table_name   Table name.
 	 * @param string               $where_clause WHERE clause.
@@ -684,7 +684,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Queries logs using offset-based pagination.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string      $table_name   Table name.
 	 * @param string      $where_clause WHERE clause.
@@ -715,7 +715,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Gets the SQL date condition for a time period.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $period Time period.
 	 * @return string SQL condition.
@@ -740,7 +740,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Aggregates summary rows into statistics.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param list<array<string, mixed>> $rows Raw query rows.
 	 * @return array{total_requests: int, total_tokens: int, avg_duration_ms: float, success_rate: float, by_type: array<string, int>, by_provider: array<string, int>, by_status: array<string, int>} Aggregated statistics.
@@ -794,7 +794,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Aggregates filter option rows.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param list<array<string, mixed>> $rows Raw query rows.
 	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, user_ids: list<int>} Filter options.
@@ -840,7 +840,7 @@ class AI_Request_Log_Repository {
 	/**
 	 * Formats a raw database row into a structured log entry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $row Raw database row.
 	 * @return array<string, mixed> Formatted log entry.

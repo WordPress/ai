@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  * Extraction logic is delegated to Log_Data_Extractor for better separation of
  * concerns and extensibility via WordPress filter hooks.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class Logging_Http_Transporter implements HttpTransporterInterface {
 
@@ -147,7 +147,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Detects which plugin, theme, or core file initiated the request.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, string>|null Source metadata.
 	 */
@@ -178,7 +178,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Determine if a file is part of the infrastructure or the actual request originator.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Normalized absolute file path.
 	 * @return bool
@@ -202,7 +202,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Directory prefixes treated as infrastructure for source attribution.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return list<string>
 	 */
@@ -237,7 +237,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	 * The connector registry canonicalizes plugin metadata to `['file' => 'slug/main.php']`
 	 * (see WP_Connector_Registry::register()), so we just take the first path segment.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $connector_data Connector definition.
 	 * @return string Plugin slug, or empty string when none can be derived.
@@ -255,7 +255,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Matches a file path to a WordPress source type.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Normalized absolute file path.
 	 * @return array<string, string>|null Source metadata.
@@ -285,7 +285,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Matches plugin file paths.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Normalized absolute file path.
 	 * @return array<string, string>|null Source metadata.
@@ -316,7 +316,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Matches mu-plugin file paths.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Normalized absolute file path.
 	 * @return array<string, string>|null Source metadata.
@@ -353,7 +353,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Matches theme file paths.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Normalized absolute file path.
 	 * @return array<string, string>|null Source metadata.
@@ -386,7 +386,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Matches core WordPress file paths.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $file Normalized absolute file path.
 	 * @return array<string, string>|null Source metadata.

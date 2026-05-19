@@ -14,14 +14,14 @@ use WordPress\AI\Admin\Upgrades\V1_0_0;
  * V1_0_0 test case.
  *
  * @covers \WordPress\AI\Admin\Upgrades\V1_0_0
- * @since x.x.x
+ * @since 1.0.0
  */
 class V1_0_0Test extends WP_UnitTestCase {
 
 	/**
 	 * Removes options before each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -40,7 +40,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Cleans up options after each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function tearDown(): void {
 		delete_option( 'wpai_version' );
@@ -59,7 +59,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() migrates review-notes option to editorial-notes.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_run_migrates_review_notes_to_editorial_notes() {
 		update_option( 'wpai_feature_review-notes_enabled', '1' );
@@ -76,7 +76,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() migrates refine-notes option to editorial-updates.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_run_migrates_refine_notes_to_editorial_updates() {
 		update_option( 'wpai_feature_refine-notes_enabled', '1' );
@@ -93,7 +93,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() migrates both options in a single pass.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_run_migrates_both_options() {
 		update_option( 'wpai_feature_review-notes_enabled', '1' );
@@ -195,7 +195,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() returns true on success.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_run_returns_success_after_migration() {
 		$result = ( new V1_0_0( '' ) )->run();
@@ -206,7 +206,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() skips when version is already at target.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_run_skips_when_version_already_current() {
 		update_option( 'wpai_feature_review-notes_enabled', '1' );
@@ -227,7 +227,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() does nothing on fresh install with no old options.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_run_does_nothing_on_fresh_install() {
 		( new V1_0_0( '' ) )->run();
@@ -245,7 +245,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() skips migration when new option already has a value.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_run_skips_when_new_option_already_set() {
 		update_option( 'wpai_feature_review-notes_enabled', '1' );
@@ -268,7 +268,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() skips migration when old option is an empty string.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_run_skips_empty_old_values() {
 		update_option( 'wpai_feature_review-notes_enabled', '' );
@@ -286,7 +286,7 @@ class V1_0_0Test extends WP_UnitTestCase {
 	 *
 	 * Returns null if the option row does not exist.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $option_name The option name to look up.
 	 * @return string|null The raw value, or null if the row is absent.

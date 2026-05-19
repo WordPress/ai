@@ -173,7 +173,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * Requires the Gutenberg media editor experiment or media modal experiment to be enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function maybe_enqueue_media_editor_script(): void {
 		if ( ! is_plugin_active( 'gutenberg/gutenberg.php' ) ) {

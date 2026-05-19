@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * Coordinates schema management and repository operations while providing
  * a simple public API for logging AI requests.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class AI_Request_Log_Manager {
 
@@ -50,7 +50,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Schema|null     $schema     Optional schema manager.
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Repository|null $repository Optional repository.
@@ -66,7 +66,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Initializes the log manager.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function init(): void {
 		if ( $this->initialized ) {
@@ -95,7 +95,7 @@ class AI_Request_Log_Manager {
 	 *
 	 * Logs are retained indefinitely by default.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return int Number of days to retain logs, or 0 to retain forever.
 	 */
@@ -106,7 +106,7 @@ class AI_Request_Log_Manager {
 		 * Return a positive integer to enable time-based cleanup (e.g. 30 to
 		 * keep the last 30 days). Return 0 to retain logs indefinitely.
 		 *
-		 * @since x.x.x
+		 * @since 1.0.0
 		 *
 		 * @param int $retention_days Number of days to retain logs (0 = forever).
 		 */
@@ -116,7 +116,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Starts a timer for measuring request duration.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array{start: int} Timer data.
 	 */
@@ -129,7 +129,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Ends a timer and returns duration in milliseconds.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array{start: int} $timer Timer data from start_timer().
 	 * @return int Duration in milliseconds.
@@ -142,7 +142,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Logs an AI request.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array{
 	 *     type: string,
@@ -166,7 +166,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Retrieves a single log entry by ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $log_id The log identifier.
 	 * @return array<string, mixed>|null The log entry or null if not found.
@@ -178,7 +178,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Retrieves logs with filtering and pagination.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $args Query arguments.
 	 * @return array{items: list<array<string, mixed>>, total: int, pages: int, next_cursor?: array{id: int, timestamp: string}} Results.
@@ -190,7 +190,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Gets aggregate statistics for the dashboard.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $period        Time period: 'day', 'week', 'month', or 'all'.
 	 * @param bool   $force_refresh Whether to bypass the cache.
@@ -203,7 +203,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Gets distinct values for filter dropdowns.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param bool $force_refresh Whether to bypass the cache.
 	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, users: list<array{value: string, label: string}>} Filter options.
@@ -220,7 +220,7 @@ class AI_Request_Log_Manager {
 	 * Display names are looked up via WordPress; absent users fall back to a
 	 * "User #N" label so the chip stays informative if a user has been deleted.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, user_ids: list<int>} $options Filter options from the repository.
 	 * @return array{types: list<string>, providers: list<string>, statuses: list<string>, operations: list<string>, users: list<array{value: string, label: string}>}
@@ -259,7 +259,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Deletes logs older than the retention period.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return int Number of logs deleted.
 	 */
@@ -276,7 +276,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Runs cleanup when invoked by the scheduled action.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function handle_cleanup_old_logs(): void {
 		$this->cleanup_old_logs();
@@ -285,7 +285,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Purges all logs from the database.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return int Number of logs deleted.
 	 */
@@ -296,7 +296,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Invalidates the filter options cache.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function invalidate_filter_cache(): void {
 		$this->repository->invalidate_filter_cache();
@@ -305,7 +305,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Invalidates the summary cache.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function invalidate_summary_cache(): void {
 		$this->repository->invalidate_summary_cache();
@@ -314,7 +314,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Invalidates all caches.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function invalidate_caches(): void {
 		$this->repository->invalidate_caches();
@@ -323,7 +323,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Returns the schema manager for direct access if needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return \WordPress\AI\Logging\AI_Request_Log_Schema The schema manager.
 	 */
@@ -334,7 +334,7 @@ class AI_Request_Log_Manager {
 	/**
 	 * Returns the repository for direct access if needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return \WordPress\AI\Logging\AI_Request_Log_Repository The repository.
 	 */

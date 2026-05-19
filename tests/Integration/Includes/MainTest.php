@@ -93,7 +93,7 @@ class MainTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_register_provider_data_adds_global_data() {
 		$main = Main::get_instance();
@@ -111,7 +111,7 @@ class MainTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_load_registers_provider_data_action() {
 		$main = Main::get_instance();

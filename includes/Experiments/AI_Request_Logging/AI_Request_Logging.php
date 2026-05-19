@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Provides AI request logging for observability and debugging.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class AI_Request_Logging extends Abstract_Feature {
 

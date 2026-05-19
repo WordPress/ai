@@ -14,7 +14,7 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
 /**
  * AI_Request_Log_Repository test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  *
  * @covers \WordPress\AI\Logging\AI_Request_Log_Repository
  */
@@ -37,7 +37,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -58,7 +58,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected function tearDown(): void {
 		$this->repository->invalidate_caches();
@@ -68,7 +68,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Inserts a sample log entry and returns its ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $overrides Optional field overrides.
 	 * @return string The log ID.
@@ -99,7 +99,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that insert returns a UUID string.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_insert_returns_uuid_string(): void {
 		$log_id = $this->insert_log();
@@ -113,7 +113,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that insert calculates token totals.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_insert_calculates_tokens_total(): void {
 		$log_id = $this->insert_log(
@@ -131,7 +131,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that insert stores request and response previews from context.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_insert_stores_previews_from_context(): void {
 		$log_id = $this->insert_log(
@@ -160,7 +160,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the wpai_request_logged action fires after insert.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_insert_fires_action_hook(): void {
 		$hook_fired = false;
@@ -182,7 +182,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that find returns a formatted log entry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_find_returns_formatted_log_entry(): void {
 		$log_id = $this->insert_log();
@@ -200,7 +200,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that find returns null for a nonexistent ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_find_returns_null_for_nonexistent_id(): void {
 		$this->assertNull( $this->repository->find( '00000000-0000-0000-0000-000000000000' ) );
@@ -209,7 +209,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that find calculates tokens_per_second correctly.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_find_calculates_tokens_per_second(): void {
 		$log_id = $this->insert_log(
@@ -230,7 +230,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that query returns all logs when no filters are applied.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_returns_all_logs(): void {
 		$this->insert_log();
@@ -245,7 +245,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by type.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_type(): void {
 		$this->insert_log( array( 'type' => 'ai_client' ) );
@@ -260,7 +260,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by status.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_status(): void {
 		$this->insert_log( array( 'status' => 'success' ) );
@@ -275,7 +275,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_provider(): void {
 		$this->insert_log( array( 'provider' => 'openai' ) );
@@ -290,7 +290,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by a single operation.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_operation(): void {
 		$this->insert_log( array( 'operation' => 'openai:completions' ) );
@@ -304,7 +304,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by multiple comma-separated operations.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_multiple_operations(): void {
 		$this->insert_log( array( 'operation' => 'openai:completions' ) );
@@ -319,7 +319,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by user_id.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_user_id(): void {
 		$user_id = $this->factory()->user->create( array( 'role' => 'editor' ) );
@@ -335,7 +335,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by tokens_filter 'none' for entries without tokens.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_tokens_filter_none(): void {
 		$this->insert_log( array( 'tokens_input' => 100, 'tokens_output' => 50 ) );
@@ -349,7 +349,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by tokens_filter 'gt:N' format.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_tokens_filter_gt_prefix(): void {
 		$this->insert_log( array( 'tokens_input' => 50, 'tokens_output' => 50 ) );    // total=100
@@ -363,7 +363,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests filtering by date range.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_date_range(): void {
 		$this->insert_log();
@@ -381,7 +381,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests LIKE-based search fallback (fulltext is disabled in transactions).
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_search_matches_operation(): void {
 		$this->insert_log( array( 'operation' => 'openai:completions' ) );
@@ -395,7 +395,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests offset-based pagination.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_paginates_with_offset(): void {
 		for ( $i = 0; $i < 5; $i++ ) {
@@ -417,7 +417,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that ordering by a column works.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_orders_by_duration(): void {
 		$this->insert_log( array( 'duration_ms' => 50 ) );
@@ -438,7 +438,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the result includes a next_cursor when rows exist.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_includes_next_cursor(): void {
 		$this->insert_log();
@@ -453,7 +453,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an invalid orderby column falls back to timestamp.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_query_invalid_orderby_falls_back_to_timestamp(): void {
 		$this->insert_log();
@@ -466,7 +466,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_summary returns aggregated statistics.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_summary_returns_aggregated_stats(): void {
 		$this->insert_log(
@@ -501,7 +501,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_summary caches results in transients.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_summary_caches_result(): void {
 		$this->insert_log();
@@ -523,7 +523,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_summary returns zeroes for an empty table.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_summary_empty_table(): void {
 		$summary = $this->repository->get_summary( 'all', true );
@@ -535,7 +535,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_filter_options returns distinct values from logs.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_filter_options_returns_distinct_values(): void {
 		$this->insert_log( array( 'provider' => 'openai', 'status' => 'success' ) );
@@ -552,7 +552,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that filter options are sorted alphabetically.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_filter_options_sorted_alphabetically(): void {
 		$this->insert_log( array( 'provider' => 'openai' ) );
@@ -567,7 +567,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that cleanup_by_retention deletes old logs.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_cleanup_by_retention_deletes_old_logs(): void {
 		$this->insert_log();
@@ -602,7 +602,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	 * This test must run last in the class because purge_all() uses
 	 * TRUNCATE TABLE which auto-commits the transaction.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_purge_all_returns_count(): void {
 		$this->insert_log();
@@ -617,7 +617,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that invalidate_summary_cache clears cached summaries.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_invalidate_summary_cache_clears_transients(): void {
 		$this->insert_log();
@@ -632,7 +632,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that invalidate_filter_cache clears the filter options transient.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_invalidate_filter_cache_clears_transient(): void {
 		$this->insert_log();

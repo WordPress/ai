@@ -30,7 +30,7 @@ defined( 'ABSPATH' ) || exit;
  * themselves have read them — this class does not introduce new exposure and
  * never persists or logs key material.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 final class Connector_Key_Index {
 	/**
@@ -39,7 +39,7 @@ final class Connector_Key_Index {
 	 * Short strings would produce false positives when scanning unrelated
 	 * headers; real provider keys are consistently longer than this bound.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var int
 	 */
@@ -50,7 +50,7 @@ final class Connector_Key_Index {
 	 *
 	 * Lazily populated on first lookup.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var array<string, string>|null
 	 */
@@ -62,7 +62,7 @@ final class Connector_Key_Index {
 	 * Built from each registered AI provider class's base URL. Lazily populated
 	 * on first lookup alongside the credential map.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var array<string, string>|null
 	 */
@@ -78,7 +78,7 @@ final class Connector_Key_Index {
 	 * provider's base URL, which lets keyless providers such as Ollama be
 	 * attributed. Returns `null` when neither strategy matches.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $args Request arguments passed to `pre_http_request`.
 	 * @param string $url The fully-qualified request URL.
@@ -115,7 +115,7 @@ final class Connector_Key_Index {
 	 * the same request (tests, long-running CLI scripts). Production requests
 	 * get a fresh index anyway.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function invalidate(): void {
 		$this->key_to_connector  = null;
@@ -125,7 +125,7 @@ final class Connector_Key_Index {
 	/**
 	 * Returns the credential → connector_id map, building both indices on first access.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, string>
 	 */
@@ -138,7 +138,7 @@ final class Connector_Key_Index {
 	/**
 	 * Returns the host → connector_id map, building both indices on first access.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, string>
 	 */
@@ -159,7 +159,7 @@ final class Connector_Key_Index {
 	 * `AbstractApiProvider`, which is the only contract that guarantees a
 	 * static `url()` method.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function build_indices(): void {
 		if ( null !== $this->key_to_connector && null !== $this->host_to_connector ) {
@@ -204,7 +204,7 @@ final class Connector_Key_Index {
 	 * don't require a credential (e.g. Ollama) where the key-scan path cannot
 	 * match.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $url Request URL.
 	 * @return string|null Connector ID, or null if no provider URL matched.
@@ -234,7 +234,7 @@ final class Connector_Key_Index {
 	 * avoids false positives like `https://api.openai.com.evil.example/foo`
 	 * matching a provider whose base URL is `https://api.openai.com/v1`.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $url URL to normalize.
 	 * @return string|null Lowercased `host[:port]`, or null if no host is parseable.
@@ -259,7 +259,7 @@ final class Connector_Key_Index {
 	 * Checks the DB-stored option, a declared environment variable, and a
 	 * declared PHP constant. A connector may populate any one of the three.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $auth Authentication metadata from a connector registration.
 	 * @return list<string>
@@ -297,7 +297,7 @@ final class Connector_Key_Index {
 	/**
 	 * Returns the list of strings that might carry a credential for a given request.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, mixed> $args Request args.
 	 * @param string $url Request URL.

@@ -39,13 +39,13 @@ defined( 'ABSPATH' ) || exit;
  *   encryption) would not be caught because the raw key isn't present in the
  *   request.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 final class Http_Guard {
 	/**
 	 * Caller identifier.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Caller_Identifier
 	 */
@@ -54,7 +54,7 @@ final class Http_Guard {
 	/**
 	 * Approvals store.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Approvals_Store
 	 */
@@ -63,7 +63,7 @@ final class Http_Guard {
 	/**
 	 * Connector credential index.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Connector_Key_Index
 	 */
@@ -72,7 +72,7 @@ final class Http_Guard {
 	/**
 	 * Guard against re-entrant filter calls made by our own pending bookkeeping.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var bool
 	 */
@@ -81,7 +81,7 @@ final class Http_Guard {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param \WordPress\AI\Connector_Approval\Caller_Identifier $identifier Caller identifier.
 	 * @param \WordPress\AI\Connector_Approval\Approvals_Store $store Approvals store.
@@ -100,7 +100,7 @@ final class Http_Guard {
 	/**
 	 * Registers the HTTP pre-request filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function register(): void {
 		add_filter( 'pre_http_request', array( $this, 'maybe_block_request' ), 5, 3 );
@@ -110,7 +110,7 @@ final class Http_Guard {
 	 * Blocks the outbound request when the caller isn't approved for the
 	 * connector whose credential the request is carrying.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param mixed $preempt Current short-circuit value from earlier filter callbacks.
 	 * @param array<string, mixed> $args Parsed request arguments.

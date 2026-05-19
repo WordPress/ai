@@ -15,7 +15,7 @@ use WordPress\AI\Logging\Logging_Http_Transporter;
 /**
  * Logging_Http_Transporter source attribution test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  *
  * @covers \WordPress\AI\Logging\Logging_Http_Transporter
  */
@@ -55,7 +55,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that frames inside the logging directory are skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_skips_logging_dir(): void {
 		$file = wp_normalize_path( WP_PLUGIN_DIR . '/ai/includes/Logging/Logging_Http_Transporter.php' );
@@ -66,7 +66,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that any /vendor/ frame is skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_skips_vendor(): void {
 		$file = wp_normalize_path( WP_PLUGIN_DIR . '/some-plugin/vendor/whatever/Library.php' );
@@ -77,7 +77,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that frames inside the AI Client SDK shipped with core are skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_skips_php_ai_client_sdk(): void {
 		$file = wp_normalize_path( ABSPATH . 'wp-includes/php-ai-client/src/Providers/Anthropic.php' );
@@ -88,7 +88,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that frames inside core's WP_AI_Client_* wrapper are skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_skips_core_ai_client_wrapper(): void {
 		$file = wp_normalize_path( ABSPATH . 'wp-includes/ai-client/class-wp-ai-client-prompt-builder.php' );
@@ -103,7 +103,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	 * attributed to the provider plugin since its class sits between the
 	 * caller and the transporter on the call stack.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_skips_registered_ai_provider_plugin(): void {
 		$registered_slug = $this->first_ai_provider_plugin_slug();
@@ -120,7 +120,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that frames in the AI plugin (the originator) are not skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_does_not_skip_ai_plugin_originator(): void {
 		$file = wp_normalize_path( WP_PLUGIN_DIR . '/ai/includes/Abilities/Title_Generation/Title_Generation.php' );
@@ -131,7 +131,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that frames in arbitrary plugins are not skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_does_not_skip_arbitrary_plugin(): void {
 		$file = wp_normalize_path( WP_PLUGIN_DIR . '/my-custom-plugin/src/Caller.php' );
