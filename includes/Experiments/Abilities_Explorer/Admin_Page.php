@@ -180,7 +180,7 @@ class Admin_Page {
 		?>
 		<div class="ability-explorer-detail">
 			<div class="ability-detail-header">
-				<a href="<?php echo esc_url( $back_url ); ?>" class="button">&larr; <?php esc_html_e( 'Back to List', 'ai' ); ?></a>
+				<a href="<?php echo esc_url( $back_url ); ?>" class="button"><?php echo wp_kses_post( __( '&larr; Back to List', 'ai' ) ); ?></a>
 				<a href="<?php echo esc_url( $test_url ); ?>" class="button button-primary"><?php esc_html_e( 'Test Ability', 'ai' ); ?></a>
 			</div>
 
@@ -271,7 +271,7 @@ class Admin_Page {
 		?>
 		<div class="ability-explorer-test-runner">
 			<div class="ability-detail-header">
-				<a href="<?php echo esc_url( $back_url ); ?>" class="button">&larr; <?php esc_html_e( 'Back to List', 'ai' ); ?></a>
+				<a href="<?php echo esc_url( $back_url ); ?>" class="button"><?php echo wp_kses_post( __( '&larr; Back to List', 'ai' ) ); ?></a>
 				<a href="<?php echo esc_url( $detail_url ); ?>" class="button"><?php esc_html_e( 'View Details', 'ai' ); ?></a>
 			</div>
 

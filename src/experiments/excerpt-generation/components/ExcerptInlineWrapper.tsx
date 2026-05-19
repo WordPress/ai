@@ -106,7 +106,7 @@ export default function ExcerptInlineWrapper(): React.JSX.Element {
 			// Create a container for our button.
 			container = document.createElement( 'span' );
 			container.className = 'ai-excerpt-inline-wrapper';
-			container.style.cssText = 'float: right;';
+			container.style.cssText = 'float: inline-end;';
 
 			// Insert the container right after the button.
 			excerptDropdown.parentElement?.insertBefore(
