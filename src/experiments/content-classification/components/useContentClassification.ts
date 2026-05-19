@@ -130,6 +130,11 @@ export function useContentClassification( taxonomy: string ): {
 	 * translators: If your word count is based on single characters (e.g. East Asian characters),
 	 * enter 'characters_excluding_spaces' or 'characters_including_spaces'. Otherwise, enter 'words'.
 	 * Do not translate into your own language.
+	 *
+	 * Uses the default (core) text domain so the word count type stays consistent
+	 * with WordPress core's behavior.
+	 *
+	 * See - https://github.com/WordPress/ai/pull/577#discussion_r3265155502
 	 */
 	// eslint-disable-next-line @wordpress/i18n-text-domain
 	const wordCountType = _x(
