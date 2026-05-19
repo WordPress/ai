@@ -292,7 +292,7 @@ abstract class Abstract_Feature implements Feature {
 	public function get_settings_fields_metadata(): array {
 		$fields = $this->get_settings_fields();
 		foreach ( $fields as &$field ) {
-			$field['id'] = $this->get_field_option_name( $field['id'] );
+			$field['id'] = static::get_field_option_name( $field['id'] );
 		}
 		unset( $field );
 		return $fields;
@@ -310,8 +310,8 @@ abstract class Abstract_Feature implements Feature {
 	 * @param string $option_name The base option name (e.g., 'api_key', 'temperature').
 	 * @return string The fully namespaced option name.
 	 */
-	final protected function get_field_option_name( string $option_name ): string {
-		return "wpai_feature_{$this->id}_field_{$option_name}";
+	final public static function get_field_option_name( string $option_name ): string {
+		return 'wpai_feature_' . static::get_id() . '_field_' . $option_name;
 	}
 
 	/**
