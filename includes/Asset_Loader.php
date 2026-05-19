@@ -103,6 +103,7 @@ final class Asset_Loader {
 			);
 		}
 		self::$global_data = array();
+		wp_set_script_translations( self::HANDLE_PREFIX . $handle, 'ai' );
 	}
 
 	/**
