@@ -343,7 +343,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'input'        => 'html',
 			'show_in_edit' => false,
 			'html'         => sprintf(
-				'<div class="">' .
+				'<div class="ai-alt-text-media-actions">' .
 					'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
 					'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
 					'<p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p>' .
