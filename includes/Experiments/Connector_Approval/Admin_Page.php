@@ -17,13 +17,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Registers and renders the Connector Approval admin page.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 final class Admin_Page {
 	/**
 	 * Menu slug used by the admin page.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -32,7 +32,7 @@ final class Admin_Page {
 	/**
 	 * Parent menu used to anchor this page.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -41,7 +41,7 @@ final class Admin_Page {
 	/**
 	 * Expected `load-*` hook suffix for this page.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -50,7 +50,7 @@ final class Admin_Page {
 	/**
 	 * Registers the admin menu entry and asset enqueueing.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'add_submenu' ) );
@@ -60,7 +60,7 @@ final class Admin_Page {
 	/**
 	 * Returns the absolute admin URL for this page.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return string
 	 */
@@ -71,7 +71,7 @@ final class Admin_Page {
 	/**
 	 * Adds the submenu under Settings.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function add_submenu(): void {
 		add_submenu_page(
@@ -87,7 +87,7 @@ final class Admin_Page {
 	/**
 	 * Enqueues the admin page's script and styles.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
@@ -113,7 +113,7 @@ final class Admin_Page {
 	 *
 	 * The actual UI is rendered by the React app mounted into the container.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function render(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {

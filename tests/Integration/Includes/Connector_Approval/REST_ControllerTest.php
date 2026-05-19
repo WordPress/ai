@@ -15,13 +15,13 @@ use WordPress\AI\Connector_Approval\REST_Controller;
 /**
  * REST_Controller test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Store instance under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Approvals_Store
 	 */
@@ -30,7 +30,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * REST controller under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\REST_Controller
 	 */
@@ -39,7 +39,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Administrator user ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var int
 	 */
@@ -48,7 +48,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Subscriber user ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var int
 	 */
@@ -57,7 +57,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -75,7 +75,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -88,7 +88,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that admin can read connector approval state.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_state_as_admin() {
 		wp_set_current_user( $this->admin_id );
@@ -118,7 +118,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that connector approval state includes the active theme.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_get_state_includes_active_theme() {
 		wp_set_current_user( $this->admin_id );
@@ -143,7 +143,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that non-admin users cannot access endpoints.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_permission_denied_for_non_admin() {
 		wp_set_current_user( $this->subscriber_id );
@@ -157,7 +157,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that approval updates persist and clear matching pending requests.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_update_approval_approves_and_clears_pending() {
 		wp_set_current_user( $this->admin_id );
@@ -191,7 +191,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that update approval validates required fields.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_update_approval_requires_fields() {
 		wp_set_current_user( $this->admin_id );
@@ -214,7 +214,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test deleting a pending request entry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_delete_pending_entry() {
 		wp_set_current_user( $this->admin_id );

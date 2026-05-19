@@ -14,13 +14,13 @@ use WordPress\AI\Connector_Approval\Approvals_Store;
 /**
  * Admin_Notice test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Store instance under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Approvals_Store
 	 */
@@ -29,7 +29,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -40,7 +40,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -52,7 +52,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the notice is not rendered on the Connector Approvals screen.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_render_skips_connector_approvals_screen(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );

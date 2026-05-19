@@ -27,13 +27,13 @@ defined( 'ABSPATH' ) || exit;
  * - POST /connector-approvals                        sets or revokes approval for a plugin/connector pair
  * - DELETE /connector-approvals/pending/(?P<key>...) dismisses a pending entry without approving
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 final class REST_Controller {
 	/**
 	 * REST namespace shared across the plugin.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -42,7 +42,7 @@ final class REST_Controller {
 	/**
 	 * Approvals store.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Approvals_Store
 	 */
@@ -51,7 +51,7 @@ final class REST_Controller {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param \WordPress\AI\Connector_Approval\Approvals_Store $store Approvals store.
 	 */
@@ -62,7 +62,7 @@ final class REST_Controller {
 	/**
 	 * Registers the REST routes. Call during `rest_api_init`.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return void
 	 */
@@ -118,7 +118,7 @@ final class REST_Controller {
 	/**
 	 * Permission callback; restricts the endpoints to administrators.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return bool
 	 */
@@ -129,7 +129,7 @@ final class REST_Controller {
 	/**
 	 * Returns the full state snapshot used by the UI.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return \WP_REST_Response
 	 */
@@ -157,7 +157,7 @@ final class REST_Controller {
 	/**
 	 * Sets or revokes approval for a single plugin/connector pair.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response|\WP_Error
@@ -189,7 +189,7 @@ final class REST_Controller {
 	/**
 	 * Removes a pending entry without approving it.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response|\WP_Error
@@ -211,7 +211,7 @@ final class REST_Controller {
 	/**
 	 * Returns the AI provider connectors the UI should render.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return list<array{id: string, name: string}>
 	 */
@@ -238,7 +238,7 @@ final class REST_Controller {
 	/**
 	 * Returns the list of active plugins for the UI.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return list<array{basename: string, name: string}>
 	 */
@@ -279,7 +279,7 @@ final class REST_Controller {
 	/**
 	 * Returns the active theme for the UI.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return list<array{basename: string, name: string}>
 	 */

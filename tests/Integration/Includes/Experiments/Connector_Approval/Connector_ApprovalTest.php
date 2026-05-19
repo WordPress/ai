@@ -16,13 +16,13 @@ use WordPress\AI\Features\Registry;
 /**
  * Connector_Approval experiment test case.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class Connector_ApprovalTest extends WP_UnitTestCase {
 	/**
 	 * Experiment instance under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Experiments\Connector_Approval\Connector_Approval
 	 */
@@ -31,7 +31,7 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -58,7 +58,7 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -72,7 +72,7 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment metadata is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_experiment_registration() {
 		$this->assertSame( 'connector-approval', $this->experiment->get_id() );
@@ -84,7 +84,7 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment can be disabled via feature filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_experiment_can_be_disabled_via_filter() {
 		add_filter( 'wpai_feature_connector-approval_enabled', '__return_false' );
@@ -98,7 +98,7 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	/**
 	 * Test that registering the experiment exposes REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_register_exposes_connector_approval_rest_routes() {
 		$this->experiment->register();

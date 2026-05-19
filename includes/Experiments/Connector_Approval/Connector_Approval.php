@@ -38,13 +38,13 @@ defined( 'ABSPATH' ) || exit;
  * - Plugins that read a credential option directly and make their own HTTP
  *   calls are also covered, not just plugins using `wp_ai_client_prompt()`.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class Connector_Approval extends Abstract_Feature {
 	/**
 	 * Admin page instance, created during register().
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Experiments\Connector_Approval\Admin_Page|null
 	 */

@@ -27,7 +27,7 @@ use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
  * abstract methods are satisfied with throwing stubs so the class is
  * instantiable but those code paths fail loudly if reached.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 final class Stub_Api_Provider extends AbstractApiProvider {
@@ -36,7 +36,7 @@ final class Stub_Api_Provider extends AbstractApiProvider {
 	 *
 	 * Settable per test so multiple URL scenarios can share the same class.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -45,7 +45,7 @@ final class Stub_Api_Provider extends AbstractApiProvider {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected static function baseUrl(): string {
 		return self::$stub_base_url;
@@ -54,7 +54,7 @@ final class Stub_Api_Provider extends AbstractApiProvider {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected static function createModel( ModelMetadata $model_metadata, ProviderMetadata $provider_metadata ): ModelInterface {
 		throw new BadMethodCallException( 'Stub_Api_Provider::createModel() should not be called in these tests.' );
@@ -63,7 +63,7 @@ final class Stub_Api_Provider extends AbstractApiProvider {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected static function createProviderMetadata(): ProviderMetadata {
 		throw new BadMethodCallException( 'Stub_Api_Provider::createProviderMetadata() should not be called in these tests.' );
@@ -72,7 +72,7 @@ final class Stub_Api_Provider extends AbstractApiProvider {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected static function createProviderAvailability(): ProviderAvailabilityInterface {
 		throw new BadMethodCallException( 'Stub_Api_Provider::createProviderAvailability() should not be called in these tests.' );
@@ -81,7 +81,7 @@ final class Stub_Api_Provider extends AbstractApiProvider {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	protected static function createModelMetadataDirectory(): ModelMetadataDirectoryInterface {
 		throw new BadMethodCallException( 'Stub_Api_Provider::createModelMetadataDirectory() should not be called in these tests.' );
@@ -98,13 +98,13 @@ final class Stub_Api_Provider extends AbstractApiProvider {
  * reflection, since `Connector_Key_Index` only consults `hasProvider()` and
  * `getProviderClassName()` during index construction.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Test connector ID used by URL-fallback tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -113,7 +113,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Index under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var \WordPress\AI\Connector_Approval\Connector_Key_Index
 	 */
@@ -122,7 +122,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -133,7 +133,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function tearDown(): void {
 		$this->unregister_stub_provider();
@@ -147,7 +147,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Test that an empty URL with no headers returns null.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_returns_null_for_empty_inputs() {
 		$this->assertNull( $this->index->lookup( array(), '' ) );
@@ -156,7 +156,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Test that a request to an unrelated host is not attributed to any connector.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_returns_null_for_unrelated_host() {
 		$this->assertNull(
@@ -168,7 +168,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	 * Test that a keyless request to a registered provider's base URL is
 	 * attributed via the URL-fallback path.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_url_fallback_attributes_keyless_request() {
 		Stub_Api_Provider::$stub_base_url = 'https://stub-ai.example/v1';
@@ -185,7 +185,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	 * Test that a non-standard port is honored so Ollama-style local providers
 	 * don't false-match against other local services.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_url_fallback_matches_host_with_port() {
 		Stub_Api_Provider::$stub_base_url = 'http://localhost:11434';
@@ -206,7 +206,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Test that a lookalike domain does not false-positive via URL fallback.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_url_fallback_rejects_lookalike_host() {
 		Stub_Api_Provider::$stub_base_url = 'https://api.stub.example/v1';
@@ -222,7 +222,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	 * Registers the stub connector in the WP connector registry with no
 	 * authentication metadata, so only the URL-fallback path can attribute it.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function register_stub_connector(): void {
 		$registry = WP_Connector_Registry::get_instance();
@@ -246,7 +246,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Removes the stub connector from the WP connector registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function unregister_stub_connector(): void {
 		$registry = WP_Connector_Registry::get_instance();
@@ -265,7 +265,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	 * authentication scaffolding that these tests don't exercise, so we
 	 * manipulate the map directly via reflection.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function register_stub_provider(): void {
 		$registry = AiClient::defaultRegistry();
@@ -280,7 +280,7 @@ class Connector_Key_IndexTest extends WP_UnitTestCase {
 	/**
 	 * Removes the stub provider from the AiClient registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function unregister_stub_provider(): void {
 		$registry = AiClient::defaultRegistry();

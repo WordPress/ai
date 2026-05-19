@@ -15,13 +15,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Reads and writes the per-plugin/per-connector approval matrix and pending-requests queue.
  *
- * @since x.x.x
+ * @since 1.0.0
  */
 final class Approvals_Store {
 	/**
 	 * Option key for the approval matrix.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -30,7 +30,7 @@ final class Approvals_Store {
 	/**
 	 * Option key for the pending approval requests queue.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var string
 	 */
@@ -39,7 +39,7 @@ final class Approvals_Store {
 	/**
 	 * Hard cap on the number of pending entries tracked at once.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @var int
 	 */
@@ -48,7 +48,7 @@ final class Approvals_Store {
 	/**
 	 * Returns whether a caller is approved for a connector.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $caller_basename Caller basename (plugin basename, mu-plugin filename, or theme slug).
 	 * @param string $connector_id    Connector ID.
@@ -62,7 +62,7 @@ final class Approvals_Store {
 	/**
 	 * Sets (or revokes) approval for a caller/connector pair.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $caller_basename Caller basename.
 	 * @param string $connector_id    Connector ID.
@@ -89,7 +89,7 @@ final class Approvals_Store {
 	/**
 	 * Returns the full approval matrix.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, array<string, bool>>
 	 */
@@ -132,7 +132,7 @@ final class Approvals_Store {
 	 * already-canonical basenames, themes, and unknown values unchanged so
 	 * stale option data can't produce duplicate rows in the admin UI.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $caller_basename Caller basename as stored in options.
 	 * @return string
@@ -163,7 +163,7 @@ final class Approvals_Store {
 	/**
 	 * Records a denied attempt so the admin can review it later.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array{type: string, basename: string, name: string} $caller Caller identifier.
 	 * @param string $connector_id Connector ID.
@@ -198,7 +198,7 @@ final class Approvals_Store {
 	/**
 	 * Removes a pending entry by key.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $key Pending entry key.
 	 * @return bool True if an entry was removed.
@@ -218,7 +218,7 @@ final class Approvals_Store {
 	/**
 	 * Returns the pending-approvals queue.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, array{
 	 *   caller_type: string,
@@ -264,7 +264,7 @@ final class Approvals_Store {
 	/**
 	 * Computes the stable key used for a pending-approval entry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string $caller_basename Caller basename.
 	 * @param string $connector_id    Connector ID.
