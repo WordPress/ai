@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { dispatch, select } from '@wordpress/data';
+import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
@@ -118,8 +118,14 @@ export function useContentClassification( taxonomy: string ): {
 	handleDismiss: ( suggestion: TagSuggestion ) => void;
 	handleDismissAll: () => void;
 } {
-	const postId = select( editorStore ).getCurrentPostId() as number;
-	const content = select( editorStore ).getEditedPostContent();
+	const { postId, content } = useSelect( ( selectFn ) => {
+		const editor = selectFn( editorStore );
+
+		return {
+			postId: editor.getCurrentPostId() as number,
+			content: editor.getEditedPostContent(),
+		};
+	}, [] );
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore ) as any;
@@ -141,10 +147,12 @@ export function useContentClassification( taxonomy: string ): {
 		removeNotice( NOTICE_ID );
 
 		try {
+			const latestContent = select( editorStore ).getEditedPostContent();
+
 			// Generate suggestions.
 			const result = await generateSuggestions(
 				postId,
-				content,
+				latestContent,
 				taxonomy,
 				settings.strategy,
 				settings.maxSuggestions
@@ -167,7 +175,7 @@ export function useContentClassification( taxonomy: string ): {
 		} finally {
 			setIsGenerating( false );
 		}
-	}, [ postId, content, taxonomy, removeNotice, createErrorNotice ] );
+	}, [ postId, taxonomy, removeNotice, createErrorNotice ] );
 
 	// Remove a suggestion from the list.
 	const removeSuggestionFromList = ( suggestion: TagSuggestion ) => {

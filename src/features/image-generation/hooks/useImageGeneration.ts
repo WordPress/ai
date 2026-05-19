@@ -86,11 +86,10 @@ export function useImageGeneration() {
 				refHistoryIndex
 			);
 			setState( 'preview' );
-		} catch ( err: unknown ) {
+		} catch ( err: any ) {
 			const message =
-				err instanceof Error
-					? err.message
-					: __( 'An error occurred during image generation.', 'ai' );
+				err?.message ||
+				__( 'An error occurred during image generation.', 'ai' );
 			setError( message );
 			setState( referenceImage ? 'refining' : 'idle' );
 		}
