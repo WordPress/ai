@@ -228,7 +228,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @param \WP_Post $post The attachment post.
 	 */
 	public function render_attachment_meta_box( \WP_Post $post ): void {
-		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
+		$button_text =empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
 		printf(
 			'<div class="ai-alt-text-media-actions" style="margin-top: 16px;">' .
@@ -342,7 +342,15 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'label'        => __( 'Alt Text', 'ai' ),
 			'input'        => 'html',
 			'show_in_edit' => false,
-			'html'         => '<div class="ai-alt-text-media-actions"><button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-inline-start: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p></div>',
+			'html'         => sprintf(
+				'<div class="">' .
+					'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
+					'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
+					'<p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p>' .
+				'</div>',
+				absint( $post->ID ),
+				esc_html( $button_text )
+			),
 		);
 
 		return $fields;
