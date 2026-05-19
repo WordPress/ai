@@ -63,7 +63,7 @@ class Connector_Approval extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Connector Approval', 'ai' ),
-			'description' => __( 'Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.', 'ai' ),
+			'description' => __( 'Require explicit administrator approval before plugins or themes can use AI connectors configured on this site. Note this is an experimental, proof-of-concept feature and as such, issues may be encountered. Feedback welcome and desired to help shape the feature.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);

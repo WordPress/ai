@@ -41,14 +41,12 @@ test.describe( 'Connector Approval Experiment', () => {
 		// Ensure there's a page under Settings.
 		await expect(
 			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'AI Connector Approvals',
+				hasText: 'Connector Approvals',
 			} )
 		).toBeVisible();
 
 		// Visit the Connector Approval page.
-		await admin.visitAdminPage(
-			'options-general.php?page=ai-connector-approval'
-		);
+		await admin.visitAdminPage( 'tools.php?page=ai-connector-approval' );
 
 		// Ensure the Connector Approval page is visible.
 		await expect(
@@ -96,11 +94,9 @@ test.describe( 'Connector Approval Experiment', () => {
 			.filter( { hasText: 'OpenAI' } );
 
 		if ( ( await pendingRow.count() ) === 0 ) {
+			await admin.visitAdminPage( 'tools.php?page=ai-wp-admin' );
 			await admin.visitAdminPage(
-				'options-general.php?page=ai-wp-admin'
-			);
-			await admin.visitAdminPage(
-				'options-general.php?page=ai-connector-approval'
+				'tools.php?page=ai-connector-approval'
 			);
 		}
 
@@ -148,7 +144,7 @@ test.describe( 'Connector Approval Experiment', () => {
 		// Ensure there's not a page under Settings.
 		await expect(
 			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'AI Connector Approvals',
+				hasText: 'Connector Approvals',
 			} )
 		).not.toBeVisible();
 	} );
@@ -169,7 +165,7 @@ test.describe( 'Connector Approval Experiment', () => {
 		// Ensure there's not a page under Settings.
 		await expect(
 			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'AI Connector Approvals',
+				hasText: 'Connector Approvals',
 			} )
 		).not.toBeVisible();
 	} );

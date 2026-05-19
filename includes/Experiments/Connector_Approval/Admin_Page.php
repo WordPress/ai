@@ -36,7 +36,7 @@ final class Admin_Page {
 	 *
 	 * @var string
 	 */
-	private const PARENT_SLUG = 'options-general.php';
+	private const PARENT_SLUG = 'tools.php';
 
 	/**
 	 * Expected `load-*` hook suffix for this page.
@@ -45,7 +45,7 @@ final class Admin_Page {
 	 *
 	 * @var string
 	 */
-	private const HOOK_SUFFIX = 'settings_page_ai-connector-approval';
+	private const HOOK_SUFFIX = 'tools_page_ai-connector-approval';
 
 	/**
 	 * Registers the admin menu entry and asset enqueueing.
@@ -65,7 +65,7 @@ final class Admin_Page {
 	 * @return string
 	 */
 	public static function url(): string {
-		return admin_url( 'options-general.php?page=' . self::PAGE_SLUG );
+		return admin_url( 'tools.php?page=' . self::PAGE_SLUG );
 	}
 
 	/**
@@ -76,12 +76,11 @@ final class Admin_Page {
 	public function add_submenu(): void {
 		add_submenu_page(
 			self::PARENT_SLUG,
-			__( 'AI Connector Approvals', 'ai' ),
-			__( 'AI Connector Approvals', 'ai' ),
+			__( 'Connector Approvals', 'ai' ),
+			__( 'Connector Approvals', 'ai' ),
 			'manage_options',
 			self::PAGE_SLUG,
-			array( $this, 'render' ),
-			2
+			array( $this, 'render' )
 		);
 	}
 
@@ -122,7 +121,7 @@ final class Admin_Page {
 		}
 
 		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__( 'AI Connector Approvals', 'ai' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'Connector Approvals', 'ai' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Control which plugins and themes are allowed to use each AI connector on this site. Prompts from unapproved callers are prevented and listed below for review.', 'ai' ) . '</p>';
 		echo '<div id="ai-connector-approval-root"></div>';
 		echo '</div>';

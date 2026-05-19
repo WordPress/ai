@@ -8,7 +8,7 @@ The Connector Approval experiment adds an administrator-controlled permission la
 
 ### For End Users
 
-When enabled, a new admin page appears under `Settings > AI Connector Approvals`. The page provides:
+When enabled, a new admin page appears under `Tools > Connector Approvals`. The page provides:
 
 - A **Pending requests** table showing plugins/themes that attempted to use a connector without approval
 - An **Approval matrix** showing caller-by-connector approvals for active plugins and the active theme
@@ -97,7 +97,7 @@ All endpoints require `current_user_can( 'manage_options' )`.
    - Verify an admin notice appears with a link to review requests
 
 3. **Approve access:**
-   - Open `Settings > AI Connector Approvals`
+   - Open `Tools > Connector Approvals`
    - In **Pending requests**, click **Approve**
    - Re-run the same plugin action and verify the request now succeeds
 
