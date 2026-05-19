@@ -35,10 +35,9 @@ test.describe( 'Connector Approval Experiment', () => {
 		// Enable the Connector Approval Experiment.
 		await enableExperiment( admin, page, 'Connector Approval' );
 
-		// Refresh the page.
-		await page.reload();
+		await admin.visitAdminPage( 'tools.php' );
 
-		// Ensure there's a page under Settings.
+		// Ensure there's a page under Tools.
 		await expect(
 			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
 				hasText: 'Connector Approvals',
@@ -100,11 +99,15 @@ test.describe( 'Connector Approval Experiment', () => {
 			);
 		}
 
+		await admin.visitAdminPage( 'tools.php' );
+
 		// Ensure the admin notice is visible and has the correct text.
 		await expect( page.locator( '.notice-warning' ) ).toBeVisible();
 		await expect( page.locator( '.notice-warning p' ) ).toHaveText(
 			/1 plugin or theme is requesting access to an AI connector./
 		);
+
+		await admin.visitAdminPage( 'tools.php?page=ai-connector-approval' );
 
 		// Ensure we can approve the pending request.
 		await expect( pendingRow ).toHaveCount( 1 );
@@ -138,10 +141,9 @@ test.describe( 'Connector Approval Experiment', () => {
 		// Globally turn off Experiments.
 		await disableExperiments( admin, page );
 
-		// Refresh the page.
-		await page.reload();
+		await admin.visitAdminPage( 'tools.php' );
 
-		// Ensure there's not a page under Settings.
+		// Ensure there's not a page under Tools.
 		await expect(
 			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
 				hasText: 'Connector Approvals',
@@ -159,10 +161,9 @@ test.describe( 'Connector Approval Experiment', () => {
 		// Disable the Connector Approval Experiment.
 		await disableExperiment( admin, page, 'Connector Approval' );
 
-		// Refresh the page.
-		await page.reload();
+		await admin.visitAdminPage( 'tools.php' );
 
-		// Ensure there's not a page under Settings.
+		// Ensure there's not a page under Tools.
 		await expect(
 			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
 				hasText: 'Connector Approvals',
