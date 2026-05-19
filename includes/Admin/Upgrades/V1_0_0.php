@@ -36,8 +36,20 @@ class V1_0_0 extends Abstract_Upgrade {
 	 * @since 1.0.0
 	 */
 	protected function upgrade(): void {
+		$this->migrate_global_enabled_option();
 		$this->migrate_option( 'wpai_feature_review-notes_enabled', 'wpai_feature_editorial-notes_enabled' );
 		$this->migrate_option( 'wpai_feature_refine-notes_enabled', 'wpai_feature_editorial-updates_enabled' );
+	}
+
+	/**
+	 * Repairs legacy and incorrect global enabled option names.
+	 *
+	 * @since 1.0.0
+	 */
+	private function migrate_global_enabled_option(): void {
+		foreach ( array( 'ai_experiments_enabled', 'ai_experiment_enabled', 'wpai_feature_enabled' ) as $old_option ) {
+			$this->migrate_option( $old_option, 'wpai_features_enabled' );
+		}
 	}
 
 	/**

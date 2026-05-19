@@ -27,6 +27,10 @@ class V1_0_0Test extends WP_UnitTestCase {
 		parent::setUp();
 
 		delete_option( 'wpai_version' );
+		delete_option( 'ai_experiments_enabled' );
+		delete_option( 'ai_experiment_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_enabled' );
 		delete_option( 'wpai_feature_review-notes_enabled' );
 		delete_option( 'wpai_feature_editorial-notes_enabled' );
 		delete_option( 'wpai_feature_refine-notes_enabled' );
@@ -40,6 +44,10 @@ class V1_0_0Test extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( 'wpai_version' );
+		delete_option( 'ai_experiments_enabled' );
+		delete_option( 'ai_experiment_enabled' );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_enabled' );
 		delete_option( 'wpai_feature_review-notes_enabled' );
 		delete_option( 'wpai_feature_editorial-notes_enabled' );
 		delete_option( 'wpai_feature_refine-notes_enabled' );
@@ -97,6 +105,91 @@ class V1_0_0Test extends WP_UnitTestCase {
 		$this->assertEquals( '1', get_option( 'wpai_feature_editorial-updates_enabled' ) );
 		$this->assertNull( $this->get_option_from_db( 'wpai_feature_review-notes_enabled' ) );
 		$this->assertNull( $this->get_option_from_db( 'wpai_feature_refine-notes_enabled' ) );
+	}
+
+	/**
+	 * Tests that run() repairs the legacy global experiments option.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_run_repairs_legacy_global_experiments_option() {
+		update_option( 'ai_experiments_enabled', '1' );
+
+		( new V1_0_0( '0.9.0' ) )->run();
+
+		$this->assertEquals(
+			'1',
+			get_option( 'wpai_features_enabled' ),
+			'Legacy global experiments option should migrate to the current global features option'
+		);
+		$this->assertNull(
+			$this->get_option_from_db( 'ai_experiments_enabled' ),
+			'Legacy global experiments option should be deleted after migration'
+		);
+	}
+
+	/**
+	 * Tests that run() repairs the singular global feature option.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_run_repairs_singular_global_feature_option() {
+		update_option( 'wpai_feature_enabled', '1' );
+
+		( new V1_0_0( '0.9.0' ) )->run();
+
+		$this->assertEquals(
+			'1',
+			get_option( 'wpai_features_enabled' ),
+			'Singular global feature option should migrate to the current global features option'
+		);
+		$this->assertNull(
+			$this->get_option_from_db( 'wpai_feature_enabled' ),
+			'Singular global feature option should be deleted after migration'
+		);
+	}
+
+	/**
+	 * Tests that run() does not overwrite the current global enabled option.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_run_does_not_overwrite_current_global_enabled_option() {
+		update_option( 'ai_experiments_enabled', '1' );
+		add_option( 'wpai_features_enabled', false );
+
+		( new V1_0_0( '0.9.0' ) )->run();
+
+		$this->assertFalse(
+			get_option( 'wpai_features_enabled' ),
+			'Current global features option should not be overwritten by stale legacy values'
+		);
+		$this->assertEquals(
+			'1',
+			get_option( 'ai_experiments_enabled' ),
+			'Legacy option should remain when migration is skipped'
+		);
+	}
+
+	/**
+	 * Tests that run() does not repair empty legacy global enabled options.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_run_does_not_repair_empty_legacy_global_enabled_option() {
+		update_option( 'ai_experiments_enabled', '' );
+
+		( new V1_0_0( '0.9.0' ) )->run();
+
+		$this->assertNull(
+			$this->get_option_from_db( 'wpai_features_enabled' ),
+			'Current global features option should not be written for empty legacy values'
+		);
+		$this->assertEquals(
+			'',
+			get_option( 'ai_experiments_enabled' ),
+			'Empty legacy option should remain when migration is skipped'
+		);
 	}
 
 	/**
