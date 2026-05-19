@@ -131,10 +131,10 @@ export function useContentClassification( taxonomy: string ): {
 	 * enter 'characters_excluding_spaces' or 'characters_including_spaces'. Otherwise, enter 'words'.
 	 * Do not translate into your own language.
 	 */
+	// eslint-disable-next-line @wordpress/i18n-text-domain
 	const wordCountType = _x(
 		'words',
-		'Word count type. Do not translate!',
-		'ai'
+		'Word count type. Do not translate!'
 	) as Strategy;
 
 	// Check if content has enough words or characters.
