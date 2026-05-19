@@ -19,20 +19,22 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 **Current Features:**
 
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
+* **AI Request Logging** – Logs AI requests for observability and debugging.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
-* **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis.
+* **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
+* **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Resizing** - Shorten, expand, or rephrase selected block content.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
+* **Editorial Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
+* **Editorial Updates** - Automatically apply editorial notes to content.
 * **Excerpt Generation** - Automatically create concise summaries for your posts.
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
-* **Refine Notes** - Automatically apply editorial notes to content.
-* **Editorial Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
 
 **Coming Soon:**
@@ -40,7 +42,6 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 We're actively developing new features to enhance your WordPress workflow:
 
 * **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
-* **AI Request Logging & Observability Dashboard** – Track AI requests and visualize performance and cost metrics.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
