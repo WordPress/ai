@@ -5,12 +5,13 @@
 /**
  * WordPress dependencies
  */
+import { _x } from '@wordpress/i18n';
 import { dispatch, select } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
-import { count as wordCount } from '@wordpress/wordcount';
+import { count as wordCount, type Strategy } from '@wordpress/wordcount';
 import { addQueryArgs } from '@wordpress/url';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -26,7 +27,7 @@ import type {
 	ContentClassificationData,
 } from '../types';
 
-const MINIMUM_WORD_COUNT = 150;
+const MINIMUM_WORD_CHARACTER_COUNT = 150;
 const NOTICE_ID = 'ai_content_classification_error';
 
 const getSettings = (): ContentClassificationData =>
@@ -117,6 +118,7 @@ export function useContentClassification( taxonomy: string ): {
 	handleAccept: ( suggestion: TagSuggestion ) => void;
 	handleDismiss: ( suggestion: TagSuggestion ) => void;
 	handleDismissAll: () => void;
+	wordCountType: Strategy;
 } {
 	const postId = select( editorStore ).getCurrentPostId() as number;
 	const content = select( editorStore ).getEditedPostContent();
@@ -124,9 +126,21 @@ export function useContentClassification( taxonomy: string ): {
 	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore ) as any;
 
-	// Check if content has enough words.
+	/**
+	 * translators: If your word count is based on single characters (e.g. East Asian characters),
+	 * enter 'characters_excluding_spaces' or 'characters_including_spaces'. Otherwise, enter 'words'.
+	 * Do not translate into your own language.
+	 */
+	const wordCountType = _x(
+		'words',
+		'Word count type. Do not translate!',
+		'ai'
+	) as Strategy;
+
+	// Check if content has enough words or characters.
 	const hasEnoughContent =
-		wordCount( content || '', 'words' ) >= MINIMUM_WORD_COUNT;
+		wordCount( content || '', wordCountType ) >=
+		MINIMUM_WORD_CHARACTER_COUNT;
 
 	const handleGenerate = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
@@ -203,6 +217,7 @@ export function useContentClassification( taxonomy: string ): {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
+		wordCountType,
 	};
 }
 

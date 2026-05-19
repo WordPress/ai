@@ -42,6 +42,7 @@ export default function SuggestionPanel( {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
+		wordCountType,
 	} = useContentClassification( taxonomy );
 
 	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
@@ -73,10 +74,15 @@ export default function SuggestionPanel( {
 
 			{ ! hasEnoughContent && ! hasSuggestions && (
 				<p className="ai-content-classification__hint components-base-control__help">
-					{ __(
-						'Add more content to enable AI suggestions (approximately 150 words).',
-						'ai'
-					) }
+					{ wordCountType === 'words'
+						? __(
+								'Add more content to enable AI suggestions (approximately 150 words).',
+								'ai'
+						  )
+						: __(
+								'Add more content to enable AI suggestions (approximately 150 characters).',
+								'ai'
+						  ) }
 				</p>
 			) }
 
