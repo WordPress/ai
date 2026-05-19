@@ -37,7 +37,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
 * **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis.
-* **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
+* **[Connector Approvals](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
