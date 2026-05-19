@@ -203,7 +203,7 @@ export function GenerateImageStandalone() {
 								setState( 'idle' );
 								setError( null );
 							} }
-							style={ { marginLeft: 'auto' } }
+							style={ { marginInlineStart: 'auto' } }
 						>
 							{ __( 'Cancel', 'ai' ) }
 						</Button>
