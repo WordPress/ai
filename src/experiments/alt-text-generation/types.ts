@@ -32,3 +32,15 @@ export interface ImageBlockAttributes {
 	sizeSlug?: string;
 	align?: string;
 }
+
+/**
+ * Minimal shape of an attachment entity record as exposed to the
+ * Gutenberg Media Editor's DataForm.
+ */
+export interface MediaEditorAttachment {
+	id?: number;
+	alt_text?: string;
+	source_url?: string;
+	mime_type?: string;
+	media_type?: string;
+}

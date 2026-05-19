@@ -19,7 +19,6 @@ ai/
 │   ├── Abilities/                    # AI Ability implementations (Excerpt, Image, etc.)
 │   ├── Abstracts/                    # Base implementations (Abstract_Ability, Abstract_Feature)
 │   ├── Contracts/                    # Interfaces (Feature contract)
-│   ├── Exception/                    # Custom exceptions
 │   ├── Experiments/                  # Experiment implementations (Abilities_Explorer, etc.)
 │   ├── Features/                     # Feature registration and loading (Loader.php, Registry.php, Feature_Category.php)
 │   ├── Services/                     # External services (AI_Service)

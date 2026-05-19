@@ -38,7 +38,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
         with:
           php-version: '8.3'
           coverage: none
@@ -59,7 +59,7 @@ jobs:
         run: npm run build
 
       - name: Run plugin check
-        uses: wordpress/plugin-check-action@6f5a57e173c065a394b78688f75df543e4011902 # v1.1.5
+        uses: wordpress/plugin-check-action@18573eb38f13543484a1f095672dae3849a4fbb0 # v1.1.6
         with:
           wp-version: 'trunk'
           # Exclude file_type because of the dev files present in the repository.

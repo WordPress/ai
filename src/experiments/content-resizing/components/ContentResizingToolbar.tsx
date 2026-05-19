@@ -27,9 +27,11 @@ import { count } from '@wordpress/wordcount';
 import { runAbility } from '../../../utils/run-ability';
 import type { ContentResizingAction } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
+import { ensureProvider } from '../../../utils/provider-status';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
 const SHORTEN_MIN_WORDS = 5;
+const NOTICE_ID = 'ai_content_resizing_error';
 
 /**
  * Content resizing toolbar component.
@@ -73,6 +75,10 @@ export default function ContentResizingToolbar( {
 
 	const handleAction = useCallback(
 		async ( action: ContentResizingAction ) => {
+			if ( ! ensureProvider( NOTICE_ID ) ) {
+				return;
+			}
+
 			if ( action === 'shorten' ) {
 				const wordCount = count( blockContent, 'words', {} );
 				// We need at least 5 words to shorten the content.
@@ -80,7 +86,7 @@ export default function ContentResizingToolbar( {
 					noticesDispatch.createErrorNotice(
 						__( 'Text is too short to shorten further.', 'ai' ),
 						{
-							id: 'ai_content_resizing_error',
+							id: NOTICE_ID,
 							isDismissible: true,
 						}
 					);
@@ -94,7 +100,7 @@ export default function ContentResizingToolbar( {
 			setIsModalOpen( true );
 
 			// Remove any previous error notices.
-			noticesDispatch.removeNotice( 'ai_content_resizing_error' );
+			noticesDispatch.removeNotice( NOTICE_ID );
 
 			try {
 				const result = await runAbility< string >(
@@ -111,7 +117,7 @@ export default function ContentResizingToolbar( {
 								'ai'
 						  );
 				noticesDispatch.createErrorNotice( message, {
-					id: 'ai_content_resizing_error',
+					id: NOTICE_ID,
 					isDismissible: true,
 				} );
 				setIsModalOpen( false );

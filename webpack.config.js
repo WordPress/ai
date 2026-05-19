@@ -105,6 +105,11 @@ module.exports = {
 			'src/experiments/alt-text-generation',
 			'media.ts'
 		),
+		'experiments/alt-text-generation-media-editor': path.resolve(
+			process.cwd(),
+			'src/experiments/alt-text-generation',
+			'media-editor.tsx'
+		),
 		'experiments/alt-text-generation-bulk': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',

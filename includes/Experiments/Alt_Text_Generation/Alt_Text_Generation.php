@@ -107,6 +107,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 		);
 
 		$this->maybe_enqueue_media_script();
+		$this->maybe_enqueue_media_editor_script();
 	}
 
 	/**
@@ -168,6 +169,32 @@ class Alt_Text_Generation extends Abstract_Feature {
 	}
 
 	/**
+	 * Conditionally enqueues assets for the experimental Gutenberg media editor.
+	 *
+	 * Requires the Gutenberg media editor experiment or media modal experiment to be enabled.
+	 *
+	 * @since x.x.x
+	 */
+	private function maybe_enqueue_media_editor_script(): void {
+		if ( ! is_plugin_active( 'gutenberg/gutenberg.php' ) ) {
+			return;
+		}
+
+		$experiments = get_option( 'gutenberg-experiments' );
+		if (
+			! isset( $experiments['gutenberg-media-editor'] ) &&
+			! isset( $experiments['gutenberg-media-editor-modal'] )
+		) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script(
+			'alt_text_generation_media_editor',
+			'experiments/alt-text-generation-media-editor'
+		);
+	}
+
+	/**
 	 * Sets up the attachment meta box.
 	 *
 	 * Adds a meta box to the attachment edit screen that contains
@@ -203,7 +230,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	public function render_attachment_meta_box( \WP_Post $post ): void {
 		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
-		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 150px;">';
+		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px;">';
 		echo '<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
 		echo '</div>';
 	}
@@ -231,9 +258,9 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param string        $redirect_url The current redirect URL.
-	 * @param string        $doaction     The bulk action being performed.
-	 * @param list<int>     $post_ids     The list of post IDs to process.
+	 * @param string    $redirect_url The current redirect URL.
+	 * @param string    $doaction     The bulk action being performed.
+	 * @param list<int> $post_ids     The list of post IDs to process.
 	 * @return string The redirect URL, possibly with bulk alt text query args appended.
 	 */
 	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
@@ -291,7 +318,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @since 0.3.0
 	 *
 	 * @param array<string, mixed> $fields The attachment fields.
-	 * @param \WP_Post|null $post The attachment post.
+	 * @param \WP_Post|null        $post The attachment post.
 	 * @return array<string, mixed> The attachment fields with the button added.
 	 */
 	public function add_button_to_media_modal( array $fields, ?\WP_Post $post ): array {
