@@ -12,6 +12,7 @@ namespace WordPress\AI\Admin;
 
 use WordPress\AI\Admin\Upgrades\V0_5_0;
 use WordPress\AI\Admin\Upgrades\V0_6_0;
+use WordPress\AI\Admin\Upgrades\V1_0_0;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -50,6 +51,7 @@ final class Upgrades {
 	private const UPGRADE_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as a single const.
 		V0_5_0::class,
 		V0_6_0::class,
+		V1_0_0::class,
 	);
 
 	/**
