@@ -35,7 +35,7 @@ class Guidelines {
 	/**
 	 * Taxonomy slug used by Gutenberg 23.1+ to split guideline posts by purpose.
 	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -44,7 +44,7 @@ class Guidelines {
 	/**
 	 * Term slug for the site-wide content guideline singleton.
 	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */

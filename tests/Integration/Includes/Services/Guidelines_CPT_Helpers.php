@@ -61,7 +61,7 @@ trait Guidelines_CPT_Helpers {
 	 * Mirrors Gutenberg 23.1+'s taxonomy registration so the service can
 	 * filter by the `content` term.
 	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 *
 	 * @return void
 	 */
