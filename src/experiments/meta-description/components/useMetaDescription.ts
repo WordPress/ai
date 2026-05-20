@@ -8,6 +8,7 @@
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -33,6 +34,7 @@ interface UseMetaDescriptionReturn {
 	currentDescription: string;
 	metaKey: string;
 	hasSeoPlugin: boolean;
+	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
 	applyDescription: ( text: string ) => void;
 }
@@ -53,6 +55,11 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const [ isGenerating, setIsGenerating ] = useState( false );
 	const [ suggestion, setSuggestion ] =
 		useState< MetaDescriptionSuggestion | null >( null );
+
+	const ensureProviderAvailable = useCallback(
+		() => ensureProvider( NOTICE_ID ),
+		[]
+	);
 
 	const { postId, content, title, meta } = useSelect( ( select ) => {
 		const editor = select( editorStore );
@@ -96,7 +103,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				setSuggestion( response.description );
 			} else {
 				createErrorNotice(
-					'No meta description suggestion was generated.',
+					__( 'No meta description suggestion was generated.', 'ai' ),
 					{ id: NOTICE_ID, isDismissible: true }
 				);
 			}
@@ -104,7 +111,8 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 			const message =
 				typeof error === 'string'
 					? error
-					: error?.message ?? 'Failed to generate meta description.';
+					: error?.message ??
+					  __( 'Failed to generate meta description.', 'ai' );
 
 			createErrorNotice( message, {
 				id: NOTICE_ID,
@@ -133,6 +141,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		currentDescription: meta?.[ metaKey ] ?? '',
 		metaKey,
 		hasSeoPlugin,
+		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
 	};

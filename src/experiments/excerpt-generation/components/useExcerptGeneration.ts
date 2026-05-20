@@ -8,6 +8,7 @@
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -115,7 +116,12 @@ export function useExcerptGeneration(): {
 				excerptInput.dispatchEvent( changeEvent );
 			}
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
+			const message =
+				typeof error === 'string'
+					? error
+					: error?.message ??
+					  __( 'Failed to generate excerpt.', 'ai' );
+			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );

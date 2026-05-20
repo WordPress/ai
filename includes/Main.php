@@ -174,7 +174,7 @@ final class Main {
 	/**
 	 * Registers provider availability data for frontend scripts.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function register_provider_data(): void {
 		Asset_Loader::add_global_data( 'ProviderData', get_provider_availability_data() );

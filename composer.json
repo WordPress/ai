@@ -9,7 +9,7 @@
 	},
 	"require-dev": {
 		"automattic/vipwpcs": "^3.0",
-		"dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.2.1",
 		"php-stubs/wp-cli-stubs": "^2.12",
 		"phpcompatibility/phpcompatibility-wp": "^3.0.0-alpha",
 		"phpstan/extension-installer": "^1.3",

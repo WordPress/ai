@@ -140,7 +140,32 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await expectProviderNotice( page );
 	} );
 
-	test( 'Meta Description shows notice when clicking Generate without a provider', async ( {
+	test( 'Featured Image Generation shows notice when clicking Generate without a provider', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Featured Image No Provider',
+			content:
+				'Test content for featured image generation without a provider.',
+		} );
+		await editor.saveDraft();
+		await editor.openDocumentSettingsSidebar();
+
+		const generateButton = page.locator( '.ai-featured-image button', {
+			hasText: 'Generate featured image',
+		} );
+		await expect( generateButton ).toBeVisible( { timeout: 5000 } );
+		await generateButton.click();
+
+		await expectProviderNotice( page );
+	} );
+
+	test( 'Meta Description shows notice without opening the modal when no provider exists', async ( {
 		admin,
 		editor,
 		page,
@@ -166,24 +191,22 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await expect( generateButton ).toBeVisible( { timeout: 5000 } );
 		await generateButton.click();
 
-		// The modal opens and generateDescription() fires — close it first.
-		const cancelButton = page.getByRole( 'button', { name: 'Cancel' } );
-		if ( ( await cancelButton.count() ) > 0 ) {
-			await cancelButton.click();
-		}
+		await expect(
+			page.locator( '.ai-meta-description-modal' )
+		).not.toBeVisible();
 
 		await expectProviderNotice( page );
 	} );
 
-	test( 'Review Notes shows notice when clicking Generate Review Notes without a provider', async ( {
+	test( 'Editorial Notes shows notice when clicking Generate Editorial Notes without a provider', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		await enableExperiment( admin, page, 'Review Notes' );
+		await enableExperiment( admin, page, 'Editorial Notes' );
 
 		await admin.createNewPost( {
-			title: 'Test Review Notes No Provider',
+			title: 'Test Editorial Notes No Provider',
 		} );
 
 		await editor.insertBlock( {
@@ -195,7 +218,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		} );
 
 		// After inserting a block, the sidebar switches to Block tab.
-		// Switch back to Post tab where the Generate Review Notes button lives.
+		// Switch back to Post tab where the Generate Editorial Notes button lives.
 		await editor.openDocumentSettingsSidebar();
 		const postTab = page.getByRole( 'tab', { name: 'Post' } );
 		if ( ( await postTab.count() ) > 0 ) {
@@ -203,7 +226,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		}
 
 		const reviewButton = page.getByRole( 'button', {
-			name: 'Generate Review Notes',
+			name: 'Generate Editorial Notes',
 		} );
 		await expect( reviewButton ).toBeVisible( { timeout: 5000 } );
 		await reviewButton.click();

@@ -11,12 +11,8 @@ import apiFetch from '@wordpress/api-fetch';
 /**
  * Internal dependencies
  */
-import { runAbility } from '../../utils/run-ability';
+import { generateAltText } from '../../utils/generate-alt-text';
 import { isProviderAvailable } from '../../utils/provider-status';
-
-type AbilityResponse = {
-	alt_text?: string;
-};
 
 type BulkData = {
 	attachmentIds: number[];
@@ -28,19 +24,21 @@ declare global {
 	}
 }
 
-const ABILITY_NAME = 'ai/alt-text-generation';
-
 /**
  * Creates and injects a dismissible admin notice into the page.
  *
  * @since 0.7.0
  *
  * @param message The initial message to display in the notice.
+ * @param type    The admin notice type.
  * @return The paragraph element used to update the notice message.
  */
-function createNotice( message: string ): HTMLParagraphElement {
+function createNotice(
+	message: string,
+	type: 'info' | 'error' = 'info'
+): HTMLParagraphElement {
 	const notice = document.createElement( 'div' );
-	notice.className = 'notice notice-info is-dismissible';
+	notice.className = `notice notice-${ type } is-dismissible`;
 
 	const paragraph = document.createElement( 'p' );
 	paragraph.textContent = message;
@@ -83,7 +81,7 @@ async function processBulkAltText(): Promise< void > {
 	);
 
 	if ( ! isProviderAvailable() ) {
-		createNotice( noProviderMessage );
+		createNotice( noProviderMessage, 'error' );
 		return;
 	}
 
@@ -102,18 +100,8 @@ async function processBulkAltText(): Promise< void > {
 
 	for ( const id of attachmentIds ) {
 		try {
-			const response = await runAbility< AbilityResponse >(
-				ABILITY_NAME,
-				{
-					attachment_id: id,
-				}
-			);
-
-			const altText = response?.alt_text;
-
-			if ( ! altText ) {
-				throw new Error( __( 'Empty response received.', 'ai' ) );
-			}
+			const result = await generateAltText( id );
+			const altText = result.alt_text;
 
 			await apiFetch( {
 				path: `/wp/v2/media/${ id }`,

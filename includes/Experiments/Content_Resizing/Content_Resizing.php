@@ -81,7 +81,7 @@ class Content_Resizing extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'content_resizing', 'experiments/content-resizing' );
+		Asset_Loader::enqueue_script( 'content_resizing', 'experiments/content-resizing', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'content_resizing', 'experiments/content-resizing' );
 		Asset_Loader::localize_script(
 			'content_resizing',

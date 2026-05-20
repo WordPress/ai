@@ -6,9 +6,9 @@
  * WordPress dependencies
  */
 import { Button, Flex, FlexItem } from '@wordpress/components';
-import { select } from '@wordpress/data';
+import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, isRTL, sprintf } from '@wordpress/i18n';
 import { close as closeIcon, update } from '@wordpress/icons';
 
 /**
@@ -44,7 +44,10 @@ export default function SuggestionPanel( {
 		handleDismissAll,
 	} = useContentClassification( taxonomy );
 
-	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
+	const taxonomyObject: any = useSelect(
+		( selectFn ) => selectFn( coreStore ).getTaxonomy( taxonomy ),
+		[ taxonomy ]
+	);
 	const taxonomyLabel: string = taxonomyObject?.name ?? taxonomy;
 
 	const hasSuggestions = suggestions.length > 0;
@@ -110,7 +113,8 @@ export default function SuggestionPanel( {
 								>
 									{ suggestion.parent && (
 										<span className="ai-content-classification__pill-parent">
-											{ suggestion.parent + ' › ' }
+											{ suggestion.parent +
+												( isRTL() ? ' ‹ ' : ' › ' ) }
 										</span>
 									) }
 									{ suggestion.term }

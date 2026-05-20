@@ -28,6 +28,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		isGenerating,
 		suggestion,
 		currentDescription,
+		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
 	} = useMetaDescription();
@@ -40,12 +41,18 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 
 	const handleOpenModal = async () => {
 		setEditableText( currentDescription );
-		setIsModalOpen( true );
 
 		// Auto-generate on first open if no existing description.
 		if ( ! hasDescription ) {
+			if ( ! ensureProviderAvailable() ) {
+				return;
+			}
+			setIsModalOpen( true );
 			await generateDescription();
+			return;
 		}
+
+		setIsModalOpen( true );
 	};
 
 	const handleOpenEditModal = () => {
@@ -55,6 +62,9 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 
 	const handleRegenerate = async () => {
 		setEditableText( currentDescription );
+		if ( ! ensureProviderAvailable() ) {
+			return;
+		}
 		setIsModalOpen( true );
 		await generateDescription();
 	};

@@ -410,7 +410,7 @@ function has_ai_credentials(): bool {
 /**
  * Returns provider availability data for script localization.
  *
- * @since x.x.x
+ * @since 1.0.0
  *
  * @return array{hasProvider: bool, connectorsUrl: string} Provider availability data.
  */
