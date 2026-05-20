@@ -40,20 +40,20 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Disables Review Notes until the post content reaches the minimum length', async ( {
+	test( 'Disables Editorial Notes until the post content reaches the minimum length', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
 		await admin.createNewPost( {
-			title: 'Short Review Notes Test',
+			title: 'Short Editorial Notes Test',
 			content: 'Too short.',
 		} );
 
 		await editor.openDocumentSettingsSidebar();
 
 		const reviewButton = page.getByRole( 'button', {
-			name: 'Generate Review Notes',
+			name: 'Generate Editorial Notes',
 		} );
 		await expect( reviewButton ).toBeVisible();
 		await expect( reviewButton ).toBeDisabled();
@@ -61,26 +61,26 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect(
 			page.locator( '.description', {
 				hasText:
-					'Review Notes will be available when the post content has at least 100 characters.',
+					'Editorial Notes will be available when the post content has at least 100 characters.',
 			} )
 		).toBeVisible();
 	} );
 
-	test( 'Enables Review Notes once the post content meets the minimum length', async ( {
+	test( 'Enables Editorial Notes once the post content meets the minimum length', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
 		await admin.createNewPost( {
-			title: 'Long Review Notes Test',
+			title: 'Long Editorial Notes Test',
 			content:
-				'This paragraph contains enough content for the Review Notes feature to become available and analyze the post block-by-block.',
+				'This paragraph contains enough content for the Editorial Notes feature to become available and analyze the post block-by-block.',
 		} );
 
 		await editor.openDocumentSettingsSidebar();
 
 		const reviewButton = page.getByRole( 'button', {
-			name: 'Generate Review Notes',
+			name: 'Generate Editorial Notes',
 		} );
 		await expect( reviewButton ).toBeVisible();
 		await expect( reviewButton ).toBeEnabled();
@@ -92,7 +92,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		).toHaveCount( 0 );
 	} );
 
-	test( 'Shows the "Review with AI" button in the block toolbar', async ( {
+	test( 'Shows the "Generate Editorial Note" button in the block toolbar', async ( {
 		admin,
 		editor,
 		page,
@@ -119,7 +119,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Disables single-block Review Notes when the post content is shorter than the minimum length', async ( {
+	test( 'Disables single-block Editorial Notes when the post content is shorter than the minimum length', async ( {
 		admin,
 		editor,
 		page,
@@ -138,7 +138,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await editor.clickBlockToolbarButton( 'Options' );
 
 		await expect(
-			page.getByRole( 'menuitem', { name: 'Generate Review Note' } )
+			page.getByRole( 'menuitem', { name: 'Generate Editorial Note' } )
 		).toBeDisabled();
 	} );
 
@@ -208,7 +208,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Disables Review Notes when post content is below the minimum length', async ( {
+	test( 'Disables Editorial Notes when post content is below the minimum length', async ( {
 		admin,
 		editor,
 		page,
@@ -229,7 +229,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect(
 			page.locator( '.description', {
 				hasText:
-					'Review Notes will be available when the post content has at least 100 characters.',
+					'Editorial Notes will be available when the post content has at least 100 characters.',
 			} )
 		).toBeVisible();
 	} );
