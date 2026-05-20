@@ -2,12 +2,19 @@
  * PostCSS config for wp-scripts legacy builds (`build-scripts/`).
  * Prepends design-system token fallbacks, matching the wp-build routes pipeline.
  */
+
+/**
+ * WordPress dependencies
+ */
 const postcssPluginsPreset = require( '@wordpress/postcss-plugins-preset' );
-const dsTokenFallbacksModule = require(
-	'@wordpress/theme/postcss-plugins/postcss-ds-token-fallbacks'
-);
+const dsTokenFallbacksModule = require( '@wordpress/theme/postcss-plugins/postcss-ds-token-fallbacks' );
 const dsTokenFallbacks =
 	dsTokenFallbacksModule.default || dsTokenFallbacksModule;
+
+/**
+ * External dependencies
+ */
+const cssnano = require( 'cssnano' );
 
 /** @type {import('postcss-load-config').ConfigFn} */
 module.exports = ( ctx ) => {
@@ -15,7 +22,7 @@ module.exports = ( ctx ) => {
 
 	if ( ctx.env === 'production' ) {
 		plugins.push(
-			require( 'cssnano' )( {
+			cssnano( {
 				preset: [
 					'default',
 					{

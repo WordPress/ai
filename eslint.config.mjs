@@ -60,6 +60,7 @@ export default [
 					devDependencies: [
 						'**/*.@(spec|test).@(j|t)s?(x)',
 						'**/@(webpack|jest).config.@(j|t)s',
+						'**/postcss.config.cjs',
 						'**/scripts/**',
 						'**/tests/**',
 						'.prettierrc.js',
