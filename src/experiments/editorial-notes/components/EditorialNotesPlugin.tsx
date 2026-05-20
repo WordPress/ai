@@ -72,13 +72,13 @@ export default function EditorialNotesPlugin() {
 		? sprintf(
 				/* translators: %d: minimum number of characters required. */
 				__(
-					'Review Notes will be available when the post content has at least %d characters.',
+					'Editorial Notes will be available when the post content has at least %d characters.',
 					'ai'
 				),
 				minContentLength
 		  )
 		: __(
-			'This analyzes the content of this post block-by-block and adds editorial Notes with suggestions on each block.',
+				'This analyzes the content of this post block-by-block and adds editorial Notes with suggestions on each block.',
 				'ai'
 		  );
 

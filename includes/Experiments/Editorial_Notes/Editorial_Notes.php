@@ -126,13 +126,13 @@ class Editorial_Notes extends Abstract_Feature {
 		Asset_Loader::enqueue_script( 'editorial_notes', 'experiments/editorial-notes', array( 'include_core_abilities' => true ) );
 
 		/**
-		 * Filters the minimum content length required to enable review notes.
+		 * Filters the minimum content length required to enable Editorial notes.
 		 *
 		 * @since x.x.x
 		 *
 		 * @param int $min_content_length The minimum number of characters required. Default 100.
 		 */
-		$min_content_length = (int) apply_filters( 'wpai_review_notes_min_content_length', 100 );
+		$min_content_length = (int) apply_filters( 'wpai_editorial_notes_min_content_length', 100 );
 
 		Asset_Loader::localize_script(
 			'editorial_notes',
