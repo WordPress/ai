@@ -214,7 +214,7 @@ class Ability_Table extends \WP_List_Table {
 			'<strong><a href="%s">%s</a></strong><small>%s</small>',
 			esc_url( $detail_url ),
 			esc_html( $item['name'] ),
-			esc_html( wp_trim_words( $item['description'], 20 ) )
+			esc_html( $item['description'] )
 		);
 	}
 
