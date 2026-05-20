@@ -98,7 +98,6 @@ final class Caller_Identifier {
 			'/wp-includes/class-requests.php',
 			'/wp-includes/ai-client/',
 			'/wp-includes/php-ai-client/',
-			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Admin' . DIRECTORY_SEPARATOR,
 			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Connector_Approval' . DIRECTORY_SEPARATOR,
 			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Logging' . DIRECTORY_SEPARATOR,
 			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Settings' . DIRECTORY_SEPARATOR,
