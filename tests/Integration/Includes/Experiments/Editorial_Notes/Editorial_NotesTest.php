@@ -136,10 +136,10 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 
 		$this->experiment->enqueue_assets();
 
-		$this->assertTrue( wp_script_is( 'ai_review_notes', 'enqueued' ) );
+		$this->assertTrue( wp_script_is( 'ai_editorial_notes', 'enqueued' ) );
 		$this->assertStringContainsString(
 			'"minContentLength":"100"',
-			(string) wp_scripts()->get_data( 'ai_review_notes', 'data' )
+			(string) wp_scripts()->get_data( 'ai_editorial_notes', 'data' )
 		);
 	}
 
@@ -153,16 +153,16 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 			return 250;
 		};
 
-		add_filter( 'wpai_review_notes_min_content_length', $filter );
+		add_filter( 'wpai_editorial_notes_min_content_length', $filter );
 		$GLOBALS['wp_scripts'] = new \WP_Scripts();
 
 		$this->experiment->enqueue_assets();
 
-		remove_filter( 'wpai_review_notes_min_content_length', $filter );
+		remove_filter( 'wpai_editorial_notes_min_content_length', $filter );
 
 		$this->assertStringContainsString(
 			'"minContentLength":"250"',
-			(string) wp_scripts()->get_data( 'ai_review_notes', 'data' )
+			(string) wp_scripts()->get_data( 'ai_editorial_notes', 'data' )
 		);
 	}
 
