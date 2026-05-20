@@ -70,7 +70,7 @@ final class Caller_Identifier {
 	private array $cache = array();
 
 	/**
-	 * Substrings that indicate a stack frame is part of the enforcement plumbing itself.
+	 * Substrings that indicate a stack frame is infrastructure rather than a request origin.
 	 *
 	 * @since 1.0.0
 	 *
@@ -98,7 +98,11 @@ final class Caller_Identifier {
 			'/wp-includes/class-requests.php',
 			'/wp-includes/ai-client/',
 			'/wp-includes/php-ai-client/',
+			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Admin' . DIRECTORY_SEPARATOR,
 			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Connector_Approval' . DIRECTORY_SEPARATOR,
+			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Logging' . DIRECTORY_SEPARATOR,
+			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Settings' . DIRECTORY_SEPARATOR,
+			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'helpers.php',
 		);
 	}
 
@@ -145,7 +149,7 @@ final class Caller_Identifier {
 	}
 
 	/**
-	 * Finds the first stack frame that belongs to an extension and describes it.
+	 * Finds the deepest stack frame that belongs to an extension and describes it.
 	 *
 	 * @since 1.0.0
 	 *
@@ -153,6 +157,8 @@ final class Caller_Identifier {
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
 	private function resolve( array $frames ): ?array {
+		$origin = null;
+
 		foreach ( $frames as $frame ) {
 			$file = isset( $frame['file'] ) && is_string( $frame['file'] ) ? $frame['file'] : '';
 			if ( '' === $file ) {
@@ -164,12 +170,14 @@ final class Caller_Identifier {
 			}
 
 			$extension = $this->classify_file( $file );
-			if ( null !== $extension ) {
-				return $extension;
+			if ( null === $extension ) {
+				continue;
 			}
+
+			$origin = $extension;
 		}
 
-		return null;
+		return $origin;
 	}
 
 	/**
