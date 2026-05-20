@@ -370,14 +370,14 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
 }
 
 /**
- * Determines if an API key is set for a given connector.
+ * Determines if a connector is configured.
  *
- * @since 1.0.0
+ * @since x.x.x
  *
- * @param string $connector_id
- * @return bool True if an API key is set by one of the configuration options, false otherwise.
+ * @param string $connector_id The connector ID.
+ * @return bool True if the connector is configured, false otherwise.
  */
-function has_api_key_configured( string $connector_id ): bool {
+function is_connector_configured( string $connector_id ): bool {
 	$registry = AiClient::defaultRegistry();
 	return $registry->hasProvider( $connector_id ) && $registry->isProviderConfigured( $connector_id );
 }
@@ -399,7 +399,7 @@ function has_ai_credentials(): bool {
 			continue;
 		}
 
-		if ( ! has_api_key_configured( $connector_id ) ) {
+		if ( ! is_connector_configured( $connector_id ) ) {
 			continue;
 		}
 
