@@ -7,10 +7,91 @@
 
 namespace WordPress\AI\Tests\Integration\Includes;
 
+use BadMethodCallException;
+use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_UnitTestCase;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
+use WordPress\AiClient\AiClient;
+use WordPress\AiClient\Providers\Contracts\ModelMetadataDirectoryInterface;
+use WordPress\AiClient\Providers\Contracts\ProviderAvailabilityInterface;
+use WordPress\AiClient\Providers\Contracts\ProviderInterface;
+use WordPress\AiClient\Providers\DTO\ProviderMetadata;
+use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
+use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
+
+/**
+ * Stub provider availability used by helper tests.
+ *
+ * @since x.x.x
+ */
+final class Helper_Test_Provider_Availability implements ProviderAvailabilityInterface {
+
+	/**
+	 * Whether the stub provider is configured.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	public static bool $is_configured = false;
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function isConfigured(): bool {
+		return self::$is_configured;
+	}
+}
+
+/**
+ * Stub provider used by helper tests.
+ *
+ * @since x.x.x
+ */
+final class Helper_Test_Provider implements ProviderInterface {
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public static function metadata(): ProviderMetadata {
+		throw new BadMethodCallException( 'Helper_Test_Provider::metadata() should not be called in these tests.' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 *
+	 * @throws \WordPress\AiClient\Common\Exception\InvalidArgumentException If model creation is attempted.
+	 */
+	public static function model( string $model_id, ?ModelConfig $model_config = null ): ModelInterface {
+		throw new \WordPress\AiClient\Common\Exception\InvalidArgumentException( 'Helper_Test_Provider::model() should not be called in these tests.' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public static function availability(): ProviderAvailabilityInterface {
+		return new Helper_Test_Provider_Availability();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public static function modelMetadataDirectory(): ModelMetadataDirectoryInterface {
+		throw new BadMethodCallException( 'Helper_Test_Provider::modelMetadataDirectory() should not be called in these tests.' );
+	}
+}
 
 /**
  * Helper functions test case.
@@ -20,6 +101,15 @@ use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 class HelpersTest extends WP_UnitTestCase {
 
 	use Guidelines_CPT_Helpers;
+
+	/**
+	 * Stub provider ID used for API key helper tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const TEST_AI_PROVIDER_ID = 'wpai_helper_test_provider';
 
 	/**
 	 * Registered test connector IDs.
@@ -74,6 +164,8 @@ class HelpersTest extends WP_UnitTestCase {
 		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_feature_test-feature_field_developer' );
+		Helper_Test_Provider_Availability::$is_configured = false;
+		$this->unregister_test_ai_provider();
 		parent::tearDown();
 	}
 
@@ -807,6 +899,87 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that is_connector_configured() returns false for unknown connectors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_connector_configured_returns_false_for_unknown_connector(): void {
+		$this->assertFalse( \WordPress\AI\is_connector_configured( 'wpai_unknown_provider' ) );
+	}
+
+	/**
+	 * Test that is_connector_configured() returns false when the provider is not configured.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_connector_configured_returns_false_when_unconfigured(): void {
+		$this->register_test_ai_provider();
+		Helper_Test_Provider_Availability::$is_configured = false;
+
+		$this->assertFalse( \WordPress\AI\is_connector_configured( self::TEST_AI_PROVIDER_ID ) );
+	}
+
+	/**
+	 * Test that is_connector_configured() returns true when the provider is configured.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_connector_configured_returns_true_when_configured(): void {
+		$this->register_test_ai_provider();
+		Helper_Test_Provider_Availability::$is_configured = true;
+
+		$this->assertTrue( \WordPress\AI\is_connector_configured( self::TEST_AI_PROVIDER_ID ) );
+	}
+
+	/**
+	 * Test that has_ai_credentials() detects API-key connector credentials.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_ai_credentials_detects_configured_api_key_connector(): void {
+		$this->register_test_ai_provider();
+		$this->register_test_connector(
+			self::TEST_AI_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		Helper_Test_Provider_Availability::$is_configured = true;
+
+		$this->assertTrue( \WordPress\AI\has_ai_credentials() );
+	}
+
+	/**
+	 * Test that has_ai_credentials() returns false when no API-key connector is configured.
+	 *
+	 * Exercises the loop's continue path: a registered api_key connector whose provider
+	 * is not configured (no option, env var, or constant set) must not be treated as
+	 * credentialed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_ai_credentials_returns_false_when_no_connector_is_configured(): void {
+		$this->register_test_ai_provider();
+		$this->register_test_connector(
+			self::TEST_AI_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		Helper_Test_Provider_Availability::$is_configured = false;
+
+		$this->assertFalse( \WordPress\AI\has_ai_credentials() );
+	}
+
+	/**
 	 * Test that connector plugin metadata is optional.
 	 *
 	 * @since 0.9.0
@@ -916,6 +1089,53 @@ class HelpersTest extends WP_UnitTestCase {
 		$registry->register( $connector_id, $data );
 
 		$this->test_connector_ids[] = $connector_id;
+	}
+
+	/**
+	 * Registers the stub provider in the AI client registry.
+	 *
+	 * Mutates both internal maps so that lookups by ID and by class name resolve.
+	 * Bypasses the registry's public registerProvider() because that requires a
+	 * fully-formed ProviderMetadata, an HTTP transporter, and default auth — all
+	 * unnecessary for these tests.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_test_ai_provider(): void {
+		$registry = AiClient::defaultRegistry();
+
+		$ids_to_classes = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map                              = (array) $ids_to_classes->getValue( $registry );
+		$id_map[ self::TEST_AI_PROVIDER_ID ] = Helper_Test_Provider::class;
+		$ids_to_classes->setValue( $registry, $id_map );
+
+		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
+		$classes_to_ids->setAccessible( true );
+		$class_map                                = (array) $classes_to_ids->getValue( $registry );
+		$class_map[ Helper_Test_Provider::class ] = self::TEST_AI_PROVIDER_ID;
+		$classes_to_ids->setValue( $registry, $class_map );
+	}
+
+	/**
+	 * Unregisters the stub provider from the AI client registry.
+	 *
+	 * @since x.x.x
+	 */
+	private function unregister_test_ai_provider(): void {
+		$registry = AiClient::defaultRegistry();
+
+		$ids_to_classes = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map = (array) $ids_to_classes->getValue( $registry );
+		unset( $id_map[ self::TEST_AI_PROVIDER_ID ] );
+		$ids_to_classes->setValue( $registry, $id_map );
+
+		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
+		$classes_to_ids->setAccessible( true );
+		$class_map = (array) $classes_to_ids->getValue( $registry );
+		unset( $class_map[ Helper_Test_Provider::class ] );
+		$classes_to_ids->setValue( $registry, $class_map );
 	}
 
 	/**
