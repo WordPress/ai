@@ -269,6 +269,7 @@ jobs:
   # - Sets up Node.js.
   # - Installs NPM dependencies.
   # - Runs JavaScript linting.
+  # - Runs SCSS/CSS linting.
   # - Runs TS Typechecking.
   jslint:
     name: Run JavaScript code quality checks
@@ -295,6 +296,9 @@ jobs:
 
       - name: Run JavaScript linting
         run: npm run lint:js
+
+      - name: Run CSS linting
+        run: npm run lint:css
 
       - name: Run TypeScript typechecking
         run: npm run typecheck
