@@ -94,6 +94,9 @@ final class Main {
 		// Defer feature initialization to the 'init' action.
 		add_action( 'init', array( $this, 'initialize_features' ), 15 );
 
+		// Register provider data globally so it is available to any plugin script.
+		add_action( 'init', array( $this, 'register_provider_data' ), 20 );
+
 		// Register the default ability category.
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_ability_category' ) );
 	}
@@ -166,6 +169,15 @@ final class Main {
 		array_unshift( $links, $connectors_link, $settings_link );
 
 		return $links;
+	}
+
+	/**
+	 * Registers provider availability data for frontend scripts.
+	 *
+	 * @since 1.0.0
+	 */
+	public function register_provider_data(): void {
+		Asset_Loader::add_global_data( 'ProviderData', get_provider_availability_data() );
 	}
 
 	/**

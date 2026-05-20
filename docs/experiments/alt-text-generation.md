@@ -305,8 +305,7 @@ Unit and integration tests are located in:
 
 E2E tests are located in:
 
-- `tests/e2e/specs/experiments/alt-text-generation.spec.js` (single image generation)
-- `tests/e2e/specs/experiments/alt-text-generation-bulk.spec.js` (bulk action)
+- `tests/e2e/specs/experiments/alt-text-generation.spec.js` (single image generation and bulk action coverage)
 
 Run tests with:
 
@@ -321,7 +320,7 @@ npm run test:e2e
 
 - The experiment requires valid AI credentials and vision-capable models (configured via `get_preferred_vision_models()`).
 - Users need `edit_post` for the specific attachment when using `attachment_id`, or `upload_files` when using only `image_url`.
-- The experiment is only active when both the global experiments flag (`wpai_features_enabled`) and the experiment option (`wpai_features_alt-text-generation_enabled`) are enabled. Use the filter `wpai_features_alt-text-generation_enabled` to override.
+- The experiment is only active when both the global Enable AI option (`wpai_features_enabled`) and the experiment option (`wpai_feature_alt-text-generation_enabled`) are enabled. Use the filter `wpai_feature_alt-text-generation_enabled` to override.
 
 ### Performance
 

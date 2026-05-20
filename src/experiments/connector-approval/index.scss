@@ -1,0 +1,23 @@
+.ai-connector-approval {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	max-width: 1100px;
+
+	table {
+		th,
+		td {
+			vertical-align: middle;
+		}
+
+		code {
+			font-size: 0.85em;
+		}
+	}
+
+	&__matrix {
+		table td:first-child {
+			width: 30%;
+		}
+	}
+}

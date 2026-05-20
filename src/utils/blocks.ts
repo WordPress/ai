@@ -30,6 +30,32 @@ interface BlockWithClientId extends BlockWithContent {
 }
 
 /**
+ * Normalizes block attribute values into plain text.
+ *
+ * Newer editor versions may store RichText values as objects
+ * (`{ text, formats, replacements }`) instead of raw strings.
+ *
+ * @param {unknown} value Attribute value.
+ * @return {string} Plain text representation.
+ */
+function toPlainText( value: unknown ): string {
+	if ( typeof value === 'string' ) {
+		return value;
+	}
+
+	if (
+		value &&
+		typeof value === 'object' &&
+		'text' in value &&
+		typeof ( value as { text?: unknown } ).text === 'string'
+	) {
+		return ( value as { text: string } ).text;
+	}
+
+	return '';
+}
+
+/**
  * Extracts plain text content from a block's attributes.
  *
  * @param {BlockWithContent} block The block to extract text from.
@@ -51,7 +77,7 @@ export function getBlockText( block: BlockWithContent ): string {
 
 		default:
 			// Most text blocks use `content` or `value`.
-			return ( attrs.content ?? attrs.value ?? '' ) as string;
+			return toPlainText( attrs.content ?? attrs.value ?? '' );
 	}
 }
 

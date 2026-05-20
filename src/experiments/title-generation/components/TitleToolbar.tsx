@@ -14,7 +14,7 @@ import {
 	ToolbarGroup,
 	ToolbarButton,
 } from '@wordpress/components';
-import { dispatch, select, useDispatch } from '@wordpress/data';
+import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
@@ -25,9 +25,11 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
 import type { TitleGenerationAbilityInput, GeneratedTitleData } from '../types';
 
 const { aiTitleGenerationData } = window as any;
+const NOTICE_ID = 'ai_title_generation_error';
 
 /**
  * Generates a title for the given post ID and content.
@@ -78,8 +80,14 @@ interface TitleToolbarProps {
 export default function TitleToolbar( {
 	isStandalone = false,
 }: TitleToolbarProps ): React.JSX.Element | null {
-	const postId = select( editorStore ).getCurrentPostId();
-	const title = select( editorStore ).getEditedPostAttribute( 'title' );
+	const { postId, title } = useSelect( ( selectFn ) => {
+		const editor = selectFn( editorStore );
+
+		return {
+			postId: editor.getCurrentPostId(),
+			title: editor.getEditedPostAttribute( 'title' ) as string,
+		};
+	}, [] );
 
 	const { editPost } = useDispatch( editorStore );
 
@@ -112,11 +120,13 @@ export default function TitleToolbar( {
 			return;
 		}
 
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		const content = select( editorStore ).getEditedPostContent();
 		setIsGenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_title_generation_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const result = await generateTitle( postId as number, content );
@@ -128,7 +138,7 @@ export default function TitleToolbar( {
 					? error
 					: error?.message ?? __( 'Failed to generate title.', 'ai' );
 			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
-				id: 'ai_title_generation_error',
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
@@ -143,9 +153,7 @@ export default function TitleToolbar( {
 	const handleRegenerate = async () => {
 		const content = select( editorStore ).getEditedPostContent();
 		setIsRegenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_title_generation_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const result = await generateTitle( postId as number, content );
@@ -156,7 +164,7 @@ export default function TitleToolbar( {
 					? error
 					: error?.message ?? __( 'Failed to generate title.', 'ai' );
 			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
-				id: 'ai_title_generation_error',
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
