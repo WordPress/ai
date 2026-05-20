@@ -16,10 +16,10 @@
 
 /* Force AI admin screens to use white page backgrounds */
 $ai-admin-white-pages: (
-	'settings_page_ai-request-logs',
-	'settings_page_wp-ai-client',
-	'settings_page_ai-experiments',
-	'toplevel_page_ai-mcp'
+	"settings_page_ai-request-logs",
+	"settings_page_wp-ai-client",
+	"settings_page_ai-experiments",
+	"toplevel_page_ai-mcp"
 );
 
 @each $page-class in $ai-admin-white-pages {
@@ -35,20 +35,20 @@ $ai-admin-white-pages: (
 /* Full-width page header (privacy-style) */
 .ai-admin-header {
 	background: #fff;
-	border-bottom: 1px solid #dcdcde;
+	border-block-end: 1px solid #dcdcde;
 	margin: 0 0 1.5rem;
 	padding: 16px 20px;
 
 	// Extend to full width by pulling out of .wrap padding
 	.wrap > & {
-		margin-left: -20px;
-		margin-right: -20px;
+		margin-inline-start: -20px;
+		margin-inline-end: -20px;
 
 		@media screen and (max-width: 782px) {
-			margin-left: -10px;
-			margin-right: -10px;
-			padding-left: 10px;
-			padding-right: 10px;
+			margin-inline-start: -10px;
+			margin-inline-end: -10px;
+			padding-inline-start: 10px;
+			padding-inline-end: 10px;
 		}
 	}
 }
@@ -56,6 +56,7 @@ $ai-admin-white-pages: (
 /* Card border-radius standardization (4px) */
 .ai-mcp-server,
 .ai-request-logs {
+
 	.components-card {
 		border-radius: 4px;
 	}
@@ -111,6 +112,7 @@ $ai-admin-white-pages: (
 }
 
 .ai-admin-header__title {
+
 	h1 {
 		margin: 0;
 		padding: 0;

@@ -51,7 +51,7 @@
 
 .ability-explorer-wrap td.column-primary strong {
 	display: block;
-	margin-bottom: .2em;
+	margin-bottom: 0.2em;
 	font-size: 14px;
 }
 
@@ -119,7 +119,7 @@
 	margin-top: 0;
 	margin-bottom: 12px;
 	padding-bottom: 8px;
-	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	border-block-end: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
 	color: var(--wp--preset--color--foreground, #1d2327);
 	font-size: 16px;
 }
@@ -133,7 +133,7 @@
 .ability-detail-table td {
 	padding: 12px;
 	text-align: left;
-	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #f0f0f1);
+	border-block-end: 1px solid var(--wp-admin-border-color-lighter, #f0f0f1);
 }
 
 .ability-detail-table th {
@@ -144,7 +144,7 @@
 
 .ability-detail-table tr:last-child th,
 .ability-detail-table tr:last-child td {
-	border-bottom: none;
+	border-block-end: none;
 }
 
 /* Schema Display */
@@ -153,14 +153,16 @@
 	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
 	border-radius: 3px;
 	padding: 12px;
-	overflow-x: auto;
+	overflow-inline: auto;
 	font-size: 13px;
 	line-height: 1.6;
 	color: var(--wp--preset--color--foreground, #1d2327);
 	max-height: 500px;
-	overflow-y: auto;
+	overflow-block: auto;
 	position: relative;
+
 	/* JSON output is always LTR regardless of language. */
+
 	/*rtl:ignore*/
 	direction: ltr;
 }
@@ -172,7 +174,7 @@
 .ability-copy-btn {
 	position: absolute;
 	top: 8px;
-	right: 8px;
+	inset-inline-end: 8px;
 	z-index: 1;
 	display: inline-flex;
 	align-items: center;
@@ -187,7 +189,7 @@
 
 .wp-core-ui .button.ability-copy-btn .dashicons {
 	vertical-align: middle;
-	line-height: .95;
+	line-height: 0.95;
 }
 
 /* Test Runner */
@@ -212,7 +214,7 @@
 
 .ability-test-editor textarea {
 	width: 100%;
-	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+	font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
 	font-size: 13px;
 	line-height: 1.6;
 	padding: 12px;
@@ -248,7 +250,7 @@
 	margin-top: 12px;
 	padding: 12px;
 	border-radius: 3px;
-	border-left: 4px solid;
+	border-inline-start: 4px solid;
 }
 
 .ability-test-validation.validation-success {
@@ -270,7 +272,7 @@
 
 .ability-test-validation ul {
 	margin: 0;
-	padding-left: 20px;
+	padding-inline-start: 20px;
 }
 
 .ability-test-validation li {
@@ -291,8 +293,37 @@
 	margin-top: 0;
 	margin-bottom: 12px;
 	padding-bottom: 8px;
-	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	border-block-end: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
 	color: var(--wp--preset--color--foreground, #1d2327);
+}
+
+/* Test Schema Reference */
+.ability-test-schema {
+	background: var(--wp--preset--color--white, #fff);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
+	border-radius: 4px;
+	padding: 16px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ability-test-schema h3 {
+	margin-top: 0;
+	margin-bottom: 12px;
+	padding-bottom: 8px;
+	border-block-end: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	color: var(--wp--preset--color--foreground, #1d2327);
+}
+
+.ability-test-schema pre {
+	background: var(--wp--preset--color--background, #f6f7f7);
+	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	border-radius: 3px;
+	padding: 12px;
+	overflow-inline: auto;
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--wp--preset--color--foreground, #1d2327);
+	margin: 0;
 }
 
 #ability-test-result {
@@ -314,11 +345,11 @@
 }
 
 .ability-test-result-success {
-	border-left: 4px solid #00a32a;
+	border-inline-start: 4px solid #00a32a;
 }
 
 .ability-test-result-error {
-	border-left: 4px solid #d63638;
+	border-inline-start: 4px solid #d63638;
 }
 
 .ability-test-result-success h4 {
@@ -331,55 +362,33 @@
 	margin: 0 0 8px;
 }
 
-/* Test Schema Reference */
-.ability-test-schema {
-	background: var(--wp--preset--color--white, #fff);
-	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
-	border-radius: 4px;
-	padding: 16px;
-	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-}
-
-.ability-test-schema h3 {
-	margin-top: 0;
-	margin-bottom: 12px;
-	padding-bottom: 8px;
-	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
-	color: var(--wp--preset--color--foreground, #1d2327);
-}
-
-.ability-test-schema pre {
-	background: var(--wp--preset--color--background, #f6f7f7);
-	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
-	border-radius: 3px;
-	padding: 12px;
-	overflow-x: auto;
-	font-size: 13px;
-	line-height: 1.6;
-	color: var(--wp--preset--color--foreground, #1d2327);
-	margin: 0;
-}
-
 /* Loading State */
 .ability-loading {
 	display: inline-block;
 	width: 16px;
 	height: 16px;
 	border: 2px solid var(--wp-admin-border-color-lighter, #f3f4f5);
-	border-top: 2px solid var(--wp-admin-theme-color, #2271b1);
+	border-block-start: 2px solid var(--wp-admin-theme-color, #2271b1);
 	border-radius: 50%;
 	animation: spin 0.8s linear infinite;
-	margin-left: 8px;
+	margin-inline-start: 8px;
 	vertical-align: middle;
 }
 
 @keyframes spin {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
+
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
 }
 
 /* Responsive */
 @media (max-width: 782px) {
+
 	.ability-explorer-stats {
 		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 		gap: 12px;
