@@ -12,8 +12,11 @@ import {
 	MenuItem,
 	Spinner,
 } from '@wordpress/components';
-import { BlockSettingsMenuControls } from '@wordpress/block-editor';
-import { useDispatch } from '@wordpress/data';
+import {
+	BlockSettingsMenuControls,
+	store as blockEditorStore,
+} from '@wordpress/block-editor';
+import { useDispatch, useSelect } from '@wordpress/data';
 import { store as editPostStore } from '@wordpress/edit-post';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { createInterpolateElement } from '@wordpress/element';
@@ -43,6 +46,11 @@ export default function EditorialNotesPlugin() {
 	const { openGeneralSidebar } = useDispatch( editPostStore );
 	const openNotesPanel = () =>
 		openGeneralSidebar?.( 'edit-post/collab-sidebar' );
+
+	const isPreviewMode = useSelect( ( select ) => {
+		return ( select( blockEditorStore ) as any ).getSettings()
+			.isPreviewMode;
+	}, [] );
 
 	if ( ! ( window as any ).aiEditorialNotesData?.enabled ) {
 		return null;
@@ -127,7 +135,8 @@ export default function EditorialNotesPlugin() {
 					if (
 						! selectedBlocks.every( ( name ) =>
 							REVIEWABLE_BLOCK_TYPES.includes( name )
-						)
+						) ||
+						isPreviewMode
 					) {
 						return null;
 					}
