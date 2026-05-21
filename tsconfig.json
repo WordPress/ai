@@ -59,7 +59,13 @@
 			"@/*": [ "./*" ]
 		}
 	},
-	"include": [ "**/*.cjs", "**/*.mjs", "**/*.ts", "**/*.tsx" ],
+	"include": [
+		"**/*.cjs",
+		"**/*.mjs",
+		"**/*.ts",
+		"**/*.tsx",
+		"types/**/*.d.ts"
+	],
 	"exclude": [
 		"**/build/*",
 		"**/build-scripts/*",
