@@ -84,8 +84,13 @@ final class Caller_Identifier {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$core   = wp_normalize_path( ABSPATH . WPINC ) . '/';
-		$plugin = wp_normalize_path( WPAI_PLUGIN_DIR ) . 'includes/';
+		$wp_includes = defined( 'WPINC' ) ? constant( 'WPINC' ) : 'wp-includes';
+		if ( ! is_string( $wp_includes ) ) {
+			$wp_includes = 'wp-includes';
+		}
+
+		$core   = wp_normalize_path( ABSPATH . $wp_includes ) . '/';
+		$plugin = wp_normalize_path( dirname( __DIR__ ) ) . '/';
 
 		$this->skip_prefixes = array(
 			$core . 'option.php',
@@ -105,7 +110,6 @@ final class Caller_Identifier {
 			$plugin . 'Logging/',
 			$plugin . 'Settings/',
 			$plugin . 'helpers.php',
-			$plugin . 'Main.php',
 		);
 	}
 
