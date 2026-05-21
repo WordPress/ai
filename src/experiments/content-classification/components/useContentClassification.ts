@@ -10,7 +10,6 @@ import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
-import { count as wordCount } from '@wordpress/wordcount';
 import { addQueryArgs } from '@wordpress/url';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -19,6 +18,7 @@ import apiFetch from '@wordpress/api-fetch';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
+import { hasMinimumContent } from '../../../utils/word-count';
 import type {
 	ContentClassificationAbilityInput,
 	ContentClassificationResponse,
@@ -26,7 +26,7 @@ import type {
 	ContentClassificationData,
 } from '../types';
 
-const MINIMUM_WORD_COUNT = 150;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 150;
 const NOTICE_ID = 'ai_content_classification_error';
 const DEFAULT_MAX_SUGGESTIONS = 5;
 const MIN_SUGGESTIONS = 1;
@@ -55,6 +55,8 @@ const getSettings = (): ContentClassificationData => {
 		enabled: settings.enabled ?? false,
 		strategy: settings.strategy ?? 'existing_only',
 		maxSuggestions: normalizeMaxSuggestions( settings.maxSuggestions ),
+		minContentLength:
+			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
 	};
 };
 
@@ -153,8 +155,10 @@ export function useContentClassification( taxonomy: string ): {
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore ) as any;
 
 	// Check if content has enough words.
-	const hasEnoughContent =
-		wordCount( content || '', 'words' ) >= MINIMUM_WORD_COUNT;
+	const hasEnoughContent = hasMinimumContent(
+		content || '',
+		getSettings().minContentLength
+	);
 
 	const handleGenerate = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {

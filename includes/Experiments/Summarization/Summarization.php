@@ -14,6 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -106,10 +108,11 @@ class Summarization extends Abstract_Feature {
 		 * Filters the minimum content length required to enable summarization.
 		 *
 		 * @since 1.0.0
+		 * @deprecated x.x.x Use {@see 'wpai_min_content_length'} instead.
 		 *
 		 * @param int $min_content_length The minimum number of characters required. Default 100.
 		 */
-		$min_content_length = (int) apply_filters( 'wpai_summarization_min_content_length', 100 );
+		$min_content_length = (int) apply_filters( 'wpai_summarization_min_content_length', get_min_content_length( 'summarization', 100 ) );
 
 		Asset_Loader::localize_script(
 			'summarization',

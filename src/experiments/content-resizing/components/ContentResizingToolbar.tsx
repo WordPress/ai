@@ -16,23 +16,33 @@ import {
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { useState, useCallback, useMemo } from '@wordpress/element';
-import { __, _n, _x, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
-import { count as wordCount, type Strategy } from '@wordpress/wordcount';
 
 /**
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
 import { getBlockText } from '../../../utils/blocks';
-import type { ContentResizingAction } from '../types';
+import type { ContentResizingAction, ContentResizingData } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
+import { getContentCount } from '../../../utils/word-count';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
-const SHORTEN_MIN_WORDS_CHARACTERS = 5;
+const SHORTEN_MIN_CONTENT_LENGTH = 5;
 const NOTICE_ID = 'ai_content_resizing_error';
+
+const getSettings = (): ContentResizingData => {
+	const settings = ( window as any ).aiContentResizingData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		minContentLength:
+			settings.minContentLength ?? SHORTEN_MIN_CONTENT_LENGTH,
+	};
+};
 
 /**
  * Content resizing toolbar component.
@@ -73,22 +83,6 @@ export default function ContentResizingToolbar( {
 	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
 	const noticesDispatch = useDispatch( noticesStore ) as any;
 
-	/**
-	 * translators: If your word count is based on single characters (e.g. East Asian characters),
-	 * enter 'characters_excluding_spaces' or 'characters_including_spaces'. Otherwise, enter 'words'.
-	 * Do not translate into your own language.
-	 *
-	 * Uses the default (core) text domain so the word count type stays consistent
-	 * with WordPress core's behavior.
-	 *
-	 * See - https://github.com/WordPress/ai/pull/577#discussion_r3265155502
-	 */
-	// eslint-disable-next-line @wordpress/i18n-text-domain
-	const wordCountType = _x(
-		'words',
-		'Word count type. Do not translate!'
-	) as Strategy;
-
 	const handleAction = useCallback(
 		async ( action: ContentResizingAction ) => {
 			if ( ! ensureProvider( NOTICE_ID ) ) {
@@ -96,13 +90,9 @@ export default function ContentResizingToolbar( {
 			}
 
 			if ( action === 'shorten' ) {
-				const hasEnoughWords = wordCount(
-					blockContent,
-					wordCountType,
-					{}
-				);
-				// We need at least 5 words to shorten the content.
-				if ( hasEnoughWords < SHORTEN_MIN_WORDS_CHARACTERS ) {
+				const contentCount = getContentCount( blockContent );
+				// We need at least the minimum content length to shorten.
+				if ( contentCount < getSettings().minContentLength ) {
 					noticesDispatch.createErrorNotice(
 						__( 'Text is too short to shorten further.', 'ai' ),
 						{
@@ -145,7 +135,7 @@ export default function ContentResizingToolbar( {
 				setIsLoading( false );
 			}
 		},
-		[ blockContent, noticesDispatch, postId, wordCountType ]
+		[ blockContent, noticesDispatch, postId ]
 	);
 
 	const handleAccept = useCallback( () => {
@@ -179,8 +169,8 @@ export default function ContentResizingToolbar( {
 		}
 
 		const delta =
-			wordCount( suggestedContent, wordCountType, {} ) -
-			wordCount( blockContent, wordCountType, {} );
+			getContentCount( suggestedContent ) -
+			getContentCount( blockContent );
 
 		if ( delta === 0 ) {
 			return {
@@ -221,7 +211,7 @@ export default function ContentResizingToolbar( {
 				magnitude
 			),
 		};
-	}, [ blockContent, suggestedContent, wordCountType ] );
+	}, [ blockContent, suggestedContent ] );
 
 	const controls: Array< {
 		title: string;
