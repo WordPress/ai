@@ -546,18 +546,18 @@ function is_connector_plugin_active( array $connector_data ): bool {
  *
  * @since x.x.x
  *
- * @param string $feature_id The feature identifier (e.g. 'content-resizing', 'content-classification', 'summarization').
- * @param int    $default    The default minimum content length.
+ * @param string $feature_id     The feature identifier (e.g. 'content-resizing', 'content-classification', 'summarization').
+ * @param int    $content_length The default minimum content length.
  * @return int The minimum content length.
  */
-function get_min_content_length( string $feature_id, int $default = 100 ): int {
+function get_min_content_length( string $feature_id, int $content_length = 100 ): int {
 	/**
 	 * Filters the minimum content length required for a feature.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param int    $min_content_length The minimum content length. Default 100.
-	 * @param string $feature_id         The feature identifier.
+	 * @param int    $content_length The minimum content length. Default 100.
+	 * @param string $feature_id     The feature identifier.
 	 */
-	return (int) apply_filters( 'wpai_min_content_length', $default, $feature_id );
+	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
 }
