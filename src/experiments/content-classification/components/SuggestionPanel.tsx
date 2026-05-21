@@ -15,6 +15,7 @@ import { close as closeIcon, update } from '@wordpress/icons';
  * Internal dependencies
  */
 import { useContentClassification } from './useContentClassification';
+import { getWordCountType } from '../../../utils/word-count';
 import type { TagSuggestion } from '../types';
 
 interface SuggestionPanelProps {
@@ -42,6 +43,7 @@ export default function SuggestionPanel( {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
+		minContentLength,
 	} = useContentClassification( taxonomy );
 
 	const taxonomyObject: any = useSelect(
@@ -76,10 +78,23 @@ export default function SuggestionPanel( {
 
 			{ ! hasEnoughContent && ! hasSuggestions && (
 				<p className="ai-content-classification__hint components-base-control__help">
-					{ __(
-						'Add more content to enable AI suggestions (approximately 150 words).',
-						'ai'
-					) }
+					{ getWordCountType() !== 'words'
+						? sprintf(
+								/* translators: %d: Minimum content length. */
+								__(
+									'Add more content to enable AI suggestions (approximately %d characters).',
+									'ai'
+								),
+								minContentLength
+						  )
+						: sprintf(
+								/* translators: %d: Minimum content length. */
+								__(
+									'Add more content to enable AI suggestions (approximately %d words).',
+									'ai'
+								),
+								minContentLength
+						  ) }
 				</p>
 			) }
 

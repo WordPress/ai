@@ -141,6 +141,7 @@ export function useContentClassification( taxonomy: string ): {
 	handleAccept: ( suggestion: TagSuggestion ) => void;
 	handleDismiss: ( suggestion: TagSuggestion ) => void;
 	handleDismissAll: () => void;
+	minContentLength: number;
 } {
 	const { postId, content } = useSelect( ( selectFn ) => {
 		const editor = selectFn( editorStore );
@@ -237,6 +238,7 @@ export function useContentClassification( taxonomy: string ): {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
+		minContentLength: getSettings().minContentLength,
 	};
 }
 
