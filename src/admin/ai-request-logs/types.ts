@@ -82,6 +82,12 @@ export interface LogsQuery {
 	order: 'asc' | 'desc';
 }
 
+export interface ConnectorApprovalNotice {
+	count: number;
+	reviewUrl: string;
+	dismissUrl: string;
+}
+
 export interface LocalizedSettings {
 	rest: {
 		nonce: string;
@@ -98,6 +104,7 @@ export interface LocalizedSettings {
 	};
 	connectorsUrl: string;
 	providerMetadata: ProviderMetadataMap;
+	connectorApprovalNotice: ConnectorApprovalNotice | null;
 }
 
 declare global {

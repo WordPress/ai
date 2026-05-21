@@ -10,7 +10,7 @@ import { Page } from '@wordpress/admin-ui';
 import apiFetch from '@wordpress/api-fetch';
 import { Notice } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
-import { __ } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import {
 	createRoot,
@@ -35,6 +35,7 @@ import {
 import SettingsPanel from './components/SettingsPanel';
 import SummaryCards from './components/SummaryCards';
 import type {
+	ConnectorApprovalNotice,
 	FilterOptions,
 	LocalizedSettings,
 	LogEntry,
@@ -327,6 +328,30 @@ const App: React.FC = () => {
 			}
 		>
 			<div className="ai-request-logs__app">
+				{ settings.connectorApprovalNotice && (
+					<Notice
+						status="warning"
+						isDismissible={ false }
+					>
+						{ sprintf(
+							/* translators: %d: number of pending approval requests. */
+							_n(
+								'%d plugin or theme is requesting access to an AI connector.',
+								'%d plugins or themes are requesting access to AI connectors.',
+								settings.connectorApprovalNotice.count,
+								'ai'
+							),
+							settings.connectorApprovalNotice.count
+						) }{ ' ' }
+						<a href={ settings.connectorApprovalNotice.reviewUrl }>
+							{ __( 'Review requests', 'ai' ) }
+						</a>{ ' · ' }
+						<a href={ settings.connectorApprovalNotice.dismissUrl }>
+							{ __( 'Dismiss', 'ai' ) }
+						</a>
+					</Notice>
+				) }
+
 				{ error && (
 					<Notice status="error" onRemove={ () => setError( null ) }>
 						{ error }

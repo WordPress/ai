@@ -104,6 +104,7 @@ class AI_Request_Log_Page {
 				),
 				'connectorsUrl'    => admin_url( 'options-connectors.php' ),
 				'providerMetadata' => $this->get_provider_metadata(),
+				'connectorApprovalNotice' => $this->get_connector_approval_notice_data(),
 			)
 		);
 	}
@@ -120,6 +121,50 @@ class AI_Request_Log_Page {
 			<div id="ai-request-logs-root"></div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Returns connector approval pending-notice data for the React app.
+	 *
+	 * Returns null when the Connector Approval experiment is not active,
+	 * there are no pending requests, or the notice has already been dismissed
+	 * for the current pending set, so the React app only renders the notice
+	 * when it is actually needed.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return array{count: int, reviewUrl: string, dismissUrl: string}|null
+	 */
+	private function get_connector_approval_notice_data(): ?array {
+		if ( ! class_exists( \WordPress\AI\Connector_Approval\Approvals_Store::class ) ) {
+			return null;
+		}
+
+		$store   = new \WordPress\AI\Connector_Approval\Approvals_Store();
+		$pending = $store->get_pending();
+
+		if ( empty( $pending ) ) {
+			return null;
+		}
+
+		// Honour the same dismissal state that Admin_Notice uses.
+		$keys = array_keys( $pending );
+		sort( $keys );
+		$signature = md5( implode( '|', $keys ) );
+		$dismissed = (string) get_user_meta( get_current_user_id(), 'wpai_connector_approval_notice_dismissed', true );
+
+		if ( $signature === $dismissed ) {
+			return null;
+		}
+
+		return array(
+			'count'      => count( $pending ),
+			'reviewUrl'  => \WordPress\AI\Experiments\Connector_Approval\Admin_Page::url(),
+			'dismissUrl' => wp_nonce_url(
+				add_query_arg( 'wpai_ca_notice_dismiss', '1' ),
+				'wpai_ca_notice'
+			),
+		);
 	}
 
 	/**

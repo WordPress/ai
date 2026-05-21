@@ -125,7 +125,7 @@ final class Admin_Notice {
 		}
 
 		$screen = get_current_screen();
-		if ( $screen && 'tools_page_ai-connector-approval' === $screen->id ) {
+		if ( $screen && in_array( $screen->id, array( 'tools_page_ai-connector-approval', 'tools_page_ai-request-logs' ), true ) ) {
 			return;
 		}
 
