@@ -3,7 +3,7 @@
  */
 import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { useState } from '@wordpress/element';
+import { useRef, useState } from '@wordpress/element';
 
 interface SettingsPanelProps {
 	onPurgeLogs: () => void;
@@ -15,12 +15,30 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 	purging,
 } ) => {
 	const [ showPurgeConfirm, setShowPurgeConfirm ] = useState( false );
+	const focusPurgeButtonRef = useRef< boolean >( false );
+	const focusCancelButtonRef = useRef< boolean >( false );
+
+	function focusPurgeButtonOnMount( node: HTMLButtonElement | null ) {
+		if ( focusPurgeButtonRef.current && node ) {
+			node.focus();
+			focusPurgeButtonRef.current = false;
+		}
+	}
+
+	function focusCancelButtonOnMount( node: HTMLButtonElement | null ) {
+		if ( focusCancelButtonRef.current && node ) {
+			node.focus();
+			focusCancelButtonRef.current = false;
+		}
+	}
 
 	const handlePurge = () => {
 		if ( showPurgeConfirm ) {
 			onPurgeLogs();
 			setShowPurgeConfirm( false );
+			focusPurgeButtonRef.current = true;
 		} else {
+			focusCancelButtonRef.current = true;
 			setShowPurgeConfirm( true );
 		}
 	};
@@ -48,13 +66,19 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 								onClick={ handlePurge }
 								disabled={ purging }
 								isBusy={ purging }
+								accessibleWhenDisabled
 							>
 								{ __( 'Yes, Purge All', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
-								onClick={ () => setShowPurgeConfirm( false ) }
+								ref={ focusCancelButtonOnMount }
+								onClick={ () => {
+									setShowPurgeConfirm( false );
+									focusPurgeButtonRef.current = true;
+								} }
 								disabled={ purging }
+								accessibleWhenDisabled
 							>
 								{ __( 'Cancel', 'ai' ) }
 							</Button>
@@ -63,8 +87,10 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 						<Button
 							variant="secondary"
 							isDestructive
+							ref={ focusPurgeButtonOnMount }
 							onClick={ handlePurge }
 							disabled={ purging }
+							accessibleWhenDisabled
 						>
 							{ __( 'Purge All Logs', 'ai' ) }
 						</Button>
