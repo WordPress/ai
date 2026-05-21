@@ -948,17 +948,21 @@ class HelpersTest extends WP_UnitTestCase {
 				),
 			)
 		);
-		Helper_Test_Provider_Availability::$is_configured = true;
+		$setting_name = 'connectors_ai_provider_' . self::TEST_AI_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
 
-		$this->assertTrue( \WordPress\AI\has_ai_credentials() );
+		try {
+			$this->assertTrue( \WordPress\AI\has_ai_credentials() );
+		} finally {
+			delete_option( $setting_name );
+		}
 	}
 
 	/**
-	 * Test that has_ai_credentials() returns false when no API-key connector is configured.
+	 * Test that has_ai_credentials() returns false when no API-key connector has authentication.
 	 *
-	 * Exercises the loop's continue path: a registered api_key connector whose provider
-	 * is not configured (no option, env var, or constant set) must not be treated as
-	 * credentialed.
+	 * Exercises the loop's continue path: a registered api_key connector with no option,
+	 * env var, or constant set must not be treated as credentialed.
 	 *
 	 * @since x.x.x
 	 */
@@ -974,9 +978,72 @@ class HelpersTest extends WP_UnitTestCase {
 				),
 			)
 		);
-		Helper_Test_Provider_Availability::$is_configured = false;
 
 		$this->assertFalse( \WordPress\AI\has_ai_credentials() );
+	}
+
+	/**
+	 * Test that has_connector_authentication() returns false for unknown connectors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_connector_authentication_returns_false_for_unknown_connector(): void {
+		$this->assertFalse( \WordPress\AI\has_connector_authentication( 'wpai_unknown_provider' ) );
+	}
+
+	/**
+	 * Test that has_connector_authentication() detects option-based API key auth.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_connector_authentication_detects_database_option(): void {
+		$connector_id  = 'wpai_test_auth_provider';
+		$setting_name  = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
+		$connector_data = array(
+			'name'           => 'Auth Test Provider',
+			'type'           => 'ai_provider',
+			'authentication' => array(
+				'method' => 'api_key',
+			),
+		);
+
+		$this->register_test_connector( $connector_id, $connector_data );
+		update_option( $setting_name, 'test-api-key' );
+
+		try {
+			$this->assertTrue( \WordPress\AI\has_connector_authentication( $connector_id ) );
+		} finally {
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
+	 * Test that has_connector_authentication() detects env var API key auth.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_connector_authentication_detects_environment_variable(): void {
+		$connector_id = 'wpai_env_auth_provider';
+		$this->register_test_connector(
+			$connector_id,
+			array(
+				'name'           => 'Env Auth Test Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method'       => 'api_key',
+					'env_var_name' => 'WPAI_ENV_AUTH_PROVIDER_API_KEY',
+				),
+			)
+		);
+
+		$env_var_name = 'WPAI_ENV_AUTH_PROVIDER_API_KEY';
+		putenv( "{$env_var_name}=test-env-key" );
+
+		try {
+			$this->assertTrue( \WordPress\AI\has_connector_authentication( $connector_id ) );
+		} finally {
+			putenv( $env_var_name );
+		}
 	}
 
 	/**
