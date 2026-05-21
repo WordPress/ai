@@ -92,4 +92,24 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 		$this->assertSame( Caller_Identifier::TYPE_PLUGIN, $result['type'] );
 		$this->assertSame( 'consumer-plugin', $result['basename'] );
 	}
+
+	/**
+	 * Test that another plugin's matching internal directory is not skipped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_does_not_skip_matching_directory_names_in_other_plugins(): void {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WP_PLUGIN_DIR . '/another-plugin/includes/Settings/Options.php',
+					'line' => 21,
+				),
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( Caller_Identifier::TYPE_PLUGIN, $result['type'] );
+		$this->assertSame( 'another-plugin', $result['basename'] );
+	}
 }
