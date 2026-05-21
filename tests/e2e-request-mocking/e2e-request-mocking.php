@@ -121,11 +121,11 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 	if ( str_contains( $url, 'https://api.openai.com/v1/responses' ) ) {
 		$body = $parsed_args['body'] ?? '';
 
-		// Route review-notes and refine-notes requests to their own fixture.
+		// Route editorial-notes and editorial-updates requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-responses.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-notes-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'You are an editorial assistant for WordPress. Your task is to update a single block' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/refine-notes-responses.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-updates-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-responses.json' );
@@ -150,11 +150,11 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 	if ( str_contains( $url, 'https://api.openai.com/v1/chat/completions' ) ) {
 		$body = $parsed_args['body'] ?? '';
 
-		// Route review-notes and refine-notes requests to their own fixture.
+		// Route editorial-notes and editorial-updates requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/review-notes-completions.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-notes-completions.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'You are an editorial assistant for WordPress. Your task is to update a single block' ) ) {
-			$response = file_get_contents( __DIR__ . '/responses/OpenAI/refine-notes-completions.json' );
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/editorial-updates-completions.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-completions.json' );

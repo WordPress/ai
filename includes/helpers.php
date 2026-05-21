@@ -12,6 +12,7 @@ namespace WordPress\AI;
 use Throwable;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
+use WordPress\AiClient\AiClient;
 
 /**
  * Purposely using return instead of exit here.
@@ -369,6 +370,19 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
 }
 
 /**
+ * Determines if a connector is configured.
+ *
+ * @since x.x.x
+ *
+ * @param string $connector_id The connector ID.
+ * @return bool True if the connector is configured, false otherwise.
+ */
+function is_connector_configured( string $connector_id ): bool {
+	$registry = AiClient::defaultRegistry();
+	return $registry->hasProvider( $connector_id ) && $registry->isProviderConfigured( $connector_id );
+}
+
+/**
  * Checks if we have AI credentials set.
  *
  * @since 0.1.0
@@ -379,13 +393,13 @@ function has_ai_credentials(): bool {
 	$connectors      = get_ai_connectors();
 	$has_credentials = false;
 
-	foreach ( $connectors as $connector_data ) {
+	foreach ( $connectors as $connector_id => $connector_data ) {
 		$auth = $connector_data['authentication'];
-		if ( 'api_key' !== $auth['method'] || empty( $auth['setting_name'] ) ) {
+		if ( 'api_key' !== $auth['method'] ) {
 			continue;
 		}
 
-		if ( '' === get_option( $auth['setting_name'], '' ) ) {
+		if ( ! is_connector_configured( $connector_id ) ) {
 			continue;
 		}
 
@@ -410,7 +424,7 @@ function has_ai_credentials(): bool {
 /**
  * Returns provider availability data for script localization.
  *
- * @since x.x.x
+ * @since 1.0.0
  *
  * @return array{hasProvider: bool, connectorsUrl: string} Provider availability data.
  */

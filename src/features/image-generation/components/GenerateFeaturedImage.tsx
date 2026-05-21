@@ -13,6 +13,9 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateImage } from '../functions/generate-image';
 import { uploadImage } from '../functions/upload-image';
+import { ensureProvider } from '../../../utils/provider-status';
+
+const NOTICE_ID = 'ai_image_generation_error';
 
 /**
  * GenerateFeaturedImage component.
@@ -35,11 +38,13 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 	 * Handles the generate button click.
 	 */
 	const handleGenerate = async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsGenerating( true );
 		setProgress( '' );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_image_generation_error'
-		);
+		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedImageData = await generateImage( content, {
@@ -51,13 +56,12 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 			editPost( {
 				featured_media: importedImage.id,
 			} );
-		} catch ( error: unknown ) {
+		} catch ( error: any ) {
 			const message =
-				error instanceof Error
-					? error.message
-					: __( 'An error occurred during image generation.', 'ai' );
+				error?.message ||
+				__( 'An error occurred during image generation.', 'ai' );
 			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
-				id: 'ai_image_generation_error',
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {

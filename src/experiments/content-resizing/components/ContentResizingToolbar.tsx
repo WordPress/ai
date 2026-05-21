@@ -25,6 +25,7 @@ import { count as wordCount, type Strategy } from '@wordpress/wordcount';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { getBlockText } from '../../../utils/blocks';
 import type { ContentResizingAction } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
@@ -59,8 +60,7 @@ export default function ContentResizingToolbar( {
 			/* eslint-disable dot-notation */
 			const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
 			return {
-				blockContent:
-					( block?.attributes[ 'content' ] as string ) ?? '',
+				blockContent: block ? getBlockText( block ) : '',
 				isResized:
 					( block?.attributes[ 'aiResized' ] as boolean ) ?? false,
 				postId: select( editorStore )[ 'getCurrentPostId' ]() as number,

@@ -49,7 +49,7 @@ final class Asset_Loader {
 	/**
 	 * Global data to be localized.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 * @var array<string, array<string, mixed>>
 	 */
 	private static array $global_data = array();
@@ -60,7 +60,7 @@ final class Asset_Loader {
 	 * Use this for plugin-wide data that any script may need but that should only be
 	 * output when at least one plugin script is present on the page.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string              $object_name The name of the JavaScript object (without the 'ai' prefix).
 	 * @param array<string,mixed> $data        The data to localize.
@@ -76,8 +76,9 @@ final class Asset_Loader {
 	 *
 	 * @param string $handle    The handle for the script.
 	 * @param string $file_name The script file name without the .js extension.
+	 * @param array{ include_core_abilities?: bool } $extra_args Additional arguments.
 	 */
-	public static function enqueue_script( string $handle, string $file_name ): void {
+	public static function enqueue_script( string $handle, string $file_name, array $extra_args = array() ): void {
 		$script_url = self::ASSET_URL . $file_name . '.js';
 		$asset_data = self::get_asset_file_data( $file_name );
 
@@ -86,12 +87,24 @@ final class Asset_Loader {
 			return;
 		}
 
+		$args = array(
+			'in_footer' => true,
+			'strategy'  => 'defer',
+		);
+
+		if ( $extra_args['include_core_abilities'] ?? false ) {
+			$args['module_dependencies'] = array(
+				'@wordpress/abilities',
+				'@wordpress/core-abilities',
+			);
+		}
+
 		wp_enqueue_script(
 			self::HANDLE_PREFIX . $handle,
 			$script_url,
 			$asset_data['dependencies'],
 			$asset_data['version'],
-			array( 'strategy' => 'defer' )
+			$args
 		);
 
 		// Localize global data.
@@ -103,6 +116,7 @@ final class Asset_Loader {
 			);
 		}
 		self::$global_data = array();
+		wp_set_script_translations( self::HANDLE_PREFIX . $handle, 'ai' );
 	}
 
 	/**

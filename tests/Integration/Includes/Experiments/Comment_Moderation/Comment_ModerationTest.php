@@ -270,7 +270,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test moderate_comment() skips automatic analysis when credentials are missing.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_moderate_comment_skips_analysis_when_credentials_are_missing() {
 		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
@@ -351,7 +351,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test handle_bulk_action() redirects with no_provider arg when credentials are missing.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_handle_bulk_action_redirects_with_no_provider_when_credentials_missing() {
 		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
@@ -369,7 +369,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test show_bulk_action_notice() renders provider notice when no_provider query arg is set.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_show_bulk_action_notice_renders_provider_notice_when_no_provider() {
 		$experiment               = new Comment_Moderation();
@@ -387,7 +387,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test show_bulk_action_notice() renders notice with connectors link.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_show_bulk_action_notice_renders_connectors_link_when_no_provider() {
 		$experiment               = new Comment_Moderation();
@@ -410,7 +410,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	 * Since handle_inline_action() calls wp_safe_redirect() and exit, we test
 	 * the underlying handle_bulk_action() path it uses.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_handle_bulk_action_from_inline_returns_no_provider_redirect() {
 		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
@@ -451,7 +451,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test render_column() outputs failed badge markup for failed status.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_render_column_outputs_failed_badge_for_failed_status() {
 		wp_set_current_user( $this->admin_user_id );
@@ -477,7 +477,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test filtering logic via handle_sorting_and_filtering.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_comment_filtering_integration() {
 		set_current_screen( 'edit-comments' );
@@ -520,7 +520,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that sorting keeps comments without moderation metadata visible.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_comment_sorting_includes_comments_without_analysis_meta() {
 		set_current_screen( 'edit-comments' );
@@ -586,7 +586,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that add_dashboard_pills appends HTML only on the dashboard screen.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_add_dashboard_pills() {
 		$experiment = new Comment_Moderation();

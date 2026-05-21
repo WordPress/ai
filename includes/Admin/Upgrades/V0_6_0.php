@@ -39,7 +39,8 @@ class V0_6_0 extends Abstract_Upgrade {
 	 */
 	protected function upgrade(): void {
 		// Update the global options first.
-		$this->migrate_option( 'ai_experiment_enabled', 'wpai_feature_enabled' );
+		$this->migrate_option( 'ai_experiments_enabled', 'wpai_features_enabled' );
+		$this->migrate_option( 'ai_experiment_enabled', 'wpai_features_enabled' );
 
 		// Loop through the features and migrate them.
 		// We don't use the classes to protect for future compatibility.

@@ -72,7 +72,7 @@ class Admin_Page {
 		$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : 'list'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		echo '<div class="wrap ability-explorer-wrap">';
-		echo '<h1>' . esc_html__( 'Ability Explorer', 'ai' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'Abilities Explorer', 'ai' ) . '</h1>';
 
 		// Render appropriate view based on action.
 		switch ( $action ) {
@@ -180,7 +180,7 @@ class Admin_Page {
 		?>
 		<div class="ability-explorer-detail">
 			<div class="ability-detail-header">
-				<a href="<?php echo esc_url( $back_url ); ?>" class="button">&larr; <?php esc_html_e( 'Back to List', 'ai' ); ?></a>
+				<a href="<?php echo esc_url( $back_url ); ?>" class="button"><?php echo wp_kses_post( __( '&larr; Back to List', 'ai' ) ); ?></a>
 				<a href="<?php echo esc_url( $test_url ); ?>" class="button button-primary"><?php esc_html_e( 'Test Ability', 'ai' ); ?></a>
 			</div>
 
@@ -271,7 +271,7 @@ class Admin_Page {
 		?>
 		<div class="ability-explorer-test-runner">
 			<div class="ability-detail-header">
-				<a href="<?php echo esc_url( $back_url ); ?>" class="button">&larr; <?php esc_html_e( 'Back to List', 'ai' ); ?></a>
+				<a href="<?php echo esc_url( $back_url ); ?>" class="button"><?php echo wp_kses_post( __( '&larr; Back to List', 'ai' ) ); ?></a>
 				<a href="<?php echo esc_url( $detail_url ); ?>" class="button"><?php esc_html_e( 'View Details', 'ai' ); ?></a>
 			</div>
 
@@ -504,6 +504,8 @@ class Admin_Page {
 			)
 		);
 
+		$provider_tags = array( 'strong' => array() );
+
 		$screen->add_help_tab(
 			array(
 				'id'      => 'abilities-providers',
@@ -511,9 +513,9 @@ class Admin_Page {
 				'content' =>
 					'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
 					'<ul>' .
-						'<li><strong>' . esc_html__( 'Core', 'ai' ) . '</strong>: ' . esc_html__( 'Built into WordPress itself.', 'ai' ) . '</li>' .
-						'<li><strong>' . esc_html__( 'Plugin', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by an active plugin.', 'ai' ) . '</li>' .
-						'<li><strong>' . esc_html__( 'Theme', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by the active theme.', 'ai' ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Core</strong>: Built into WordPress itself.', 'ai' ), $provider_tags ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Plugin</strong>: Registered by an active plugin.', 'ai' ), $provider_tags ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Theme</strong>: Registered by the active theme.', 'ai' ), $provider_tags ) . '</li>' .
 					'</ul>',
 			)
 		);
