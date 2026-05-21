@@ -6,11 +6,13 @@ import { __ } from '@wordpress/i18n';
 import { useRef, useState } from '@wordpress/element';
 
 interface SettingsPanelProps {
+	hasLogs: boolean;
 	onPurgeLogs: () => void;
 	purging: boolean;
 }
 
 const SettingsPanel: React.FC< SettingsPanelProps > = ( {
+	hasLogs,
 	onPurgeLogs,
 	purging,
 } ) => {
@@ -89,7 +91,7 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 							isDestructive
 							ref={ focusPurgeButtonOnMount }
 							onClick={ handlePurge }
-							disabled={ purging }
+							disabled={ purging || ! hasLogs }
 							accessibleWhenDisabled
 						>
 							{ __( 'Purge All Logs', 'ai' ) }
