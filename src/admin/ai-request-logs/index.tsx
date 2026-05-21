@@ -35,7 +35,6 @@ import {
 import SettingsPanel from './components/SettingsPanel';
 import SummaryCards from './components/SummaryCards';
 import type {
-	ConnectorApprovalNotice,
 	FilterOptions,
 	LocalizedSettings,
 	LogEntry,
@@ -329,10 +328,7 @@ const App: React.FC = () => {
 		>
 			<div className="ai-request-logs__app">
 				{ settings.connectorApprovalNotice && (
-					<Notice
-						status="warning"
-						isDismissible={ false }
-					>
+					<Notice status="warning" isDismissible={ false }>
 						{ sprintf(
 							/* translators: %d: number of pending approval requests. */
 							_n(
@@ -345,7 +341,8 @@ const App: React.FC = () => {
 						) }{ ' ' }
 						<a href={ settings.connectorApprovalNotice.reviewUrl }>
 							{ __( 'Review requests', 'ai' ) }
-						</a>{ ' · ' }
+						</a>
+						{ ' · ' }
 						<a href={ settings.connectorApprovalNotice.dismissUrl }>
 							{ __( 'Dismiss', 'ai' ) }
 						</a>

@@ -89,7 +89,7 @@ class AI_Request_Log_Page {
 			'ai_request_logs',
 			'RequestLogsSettings',
 			array(
-				'rest'             => array(
+				'rest'                    => array(
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
 					'routes' => array(
@@ -98,12 +98,12 @@ class AI_Request_Log_Page {
 						'filters' => 'ai/v1/logs/filters',
 					),
 				),
-				'initialState'     => array(
+				'initialState'            => array(
 					'summary' => $this->manager->get_summary( 'day' ),
 					'filters' => $this->manager->get_filter_options(),
 				),
-				'connectorsUrl'    => admin_url( 'options-connectors.php' ),
-				'providerMetadata' => $this->get_provider_metadata(),
+				'connectorsUrl'           => admin_url( 'options-connectors.php' ),
+				'providerMetadata'        => $this->get_provider_metadata(),
 				'connectorApprovalNotice' => $this->get_connector_approval_notice_data(),
 			)
 		);
