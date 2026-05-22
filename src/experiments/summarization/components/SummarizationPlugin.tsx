@@ -29,19 +29,19 @@ export default function SummarizationPlugin() {
 		minContentLength,
 	} = useSummaryGeneration();
 
-	let buttonLabel: string = __('Generate Summary', 'ai');
+	let buttonLabel: string = __( 'Generate Summary', 'ai' );
 
-	if (isSummarizing) {
-		buttonLabel = __('Generating…', 'ai');
-	} else if (hasSummary) {
-		buttonLabel = __('Regenerate Summary', 'ai');
+	if ( isSummarizing ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasSummary ) {
+		buttonLabel = __( 'Regenerate Summary', 'ai' );
 	}
 
 	const isDisabled = isSummarizing || isContentTooShort;
 
 	let buttonDescription: string;
 
-	if (isContentTooShort) {
+	if ( isContentTooShort ) {
 		buttonDescription = sprintf(
 			/* translators: %d: minimum number of characters required */
 			__(
@@ -50,7 +50,7 @@ export default function SummarizationPlugin() {
 			),
 			minContentLength
 		);
-	} else if (hasSummary) {
+	} else if ( hasSummary ) {
 		buttonDescription = __(
 			'This will update the generated summary block with a new summary of the content of this post.',
 			'ai'
@@ -63,7 +63,7 @@ export default function SummarizationPlugin() {
 	}
 
 	// Don't render if disabled.
-	if (!aiSummarizationData?.enabled) {
+	if ( ! aiSummarizationData?.enabled ) {
 		return null;
 	}
 
@@ -72,25 +72,25 @@ export default function SummarizationPlugin() {
 			<Flex
 				direction="column"
 				className="ai-summarization-plugin-container"
-				gap={2}
+				gap={ 2 }
 			>
 				<FlexItem>
 					<Button
 						className="ai-summarization-plugin-button"
 						variant="secondary"
-						label={buttonLabel}
-						icon={update}
-						onClick={handleSummarize}
-						disabled={isDisabled}
+						label={ buttonLabel }
+						icon={ update }
+						onClick={ handleSummarize }
+						disabled={ isDisabled }
 						accessibleWhenDisabled
-						isBusy={isSummarizing}
+						isBusy={ isSummarizing }
 						__next40pxDefaultSize
 					>
-						{buttonLabel}
+						{ buttonLabel }
 					</Button>
 				</FlexItem>
 				<FlexItem>
-					<span className="description">{buttonDescription}</span>
+					<span className="description">{ buttonDescription }</span>
 				</FlexItem>
 			</Flex>
 		</PluginPostStatusInfo>
