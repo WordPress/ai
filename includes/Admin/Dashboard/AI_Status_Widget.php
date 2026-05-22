@@ -62,14 +62,14 @@ class AI_Status_Widget {
 	 * @since 0.8.0
 	 */
 	public function render(): void {
-		$has_credentials = has_ai_credentials();
-		$global_enabled  = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
-		$any_feature_on  = $this->has_any_enabled_feature();
+		$has_credentials         = has_ai_credentials();
+		$global_enabled          = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		$feature_setting_enabled = $this->has_any_enabled_feature_setting();
 
-		if ( $has_credentials && $global_enabled && $any_feature_on ) {
+		if ( $has_credentials && $global_enabled && $feature_setting_enabled ) {
 			$this->render_status();
 		} else {
-			$this->render_getting_started( $has_credentials, $global_enabled, $any_feature_on );
+			$this->render_getting_started( $has_credentials, $global_enabled, $feature_setting_enabled );
 		}
 	}
 
@@ -78,11 +78,11 @@ class AI_Status_Widget {
 	 *
 	 * @since 0.8.0
 	 *
-	 * @param bool $has_credentials   Whether any AI provider credentials are configured.
-	 * @param bool $global_enabled    Whether the global features toggle is on.
-	 * @param bool $any_feature_on Whether at least one feature is enabled.
+	 * @param bool $has_credentials         Whether any AI provider credentials are configured.
+	 * @param bool $global_enabled          Whether the global features toggle is on.
+	 * @param bool $feature_setting_enabled Whether at least one feature setting is enabled.
 	 */
-	private function render_getting_started( bool $has_credentials, bool $global_enabled, bool $any_feature_on ): void {
+	private function render_getting_started( bool $has_credentials, bool $global_enabled, bool $feature_setting_enabled ): void {
 		$steps = array(
 			array(
 				'done'  => $has_credentials,
@@ -95,7 +95,7 @@ class AI_Status_Widget {
 				'url'   => admin_url( 'options-general.php?page=ai-wp-admin' ),
 			),
 			array(
-				'done'  => $any_feature_on,
+				'done'  => $feature_setting_enabled,
 				'label' => __( 'Enable a feature or experiment', 'ai' ),
 				'url'   => admin_url( 'options-general.php?page=ai-wp-admin' ),
 			),
@@ -239,15 +239,16 @@ class AI_Status_Widget {
 	}
 
 	/**
-	 * Checks whether any registered feature is individually enabled.
+	 * Checks whether any registered feature has its individual setting enabled.
 	 *
 	 * @since 0.8.0
 	 *
-	 * @return bool True if at least one feature is enabled.
+	 * @return bool True if at least one feature setting is enabled.
 	 */
-	private function has_any_enabled_feature(): bool {
+	private function has_any_enabled_feature_setting(): bool {
 		foreach ( $this->registry->get_all_features() as $feature ) {
-			if ( $feature->is_enabled() ) {
+			$option_name = 'wpai_feature_' . $feature::get_id() . '_enabled';
+			if ( (bool) get_option( $option_name, false ) ) {
 				return true;
 			}
 		}

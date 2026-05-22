@@ -206,6 +206,33 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the feature step uses the individual feature setting.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_getting_started_shows_success_for_enabled_feature_when_global_ai_is_disabled() {
+		update_option( Settings_Registration::GLOBAL_OPTION, false );
+		update_option( 'wpai_feature_test-feature-a_enabled', true );
+
+		$registry = new Registry();
+		$registry->register_feature( new Status_Test_Feature_A() );
+
+		$widget = new AI_Status_Widget( $registry );
+
+		ob_start();
+		$widget->render();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-dashboard-status__checklist', $output );
+
+		$this->assertMatchesRegularExpression(
+			'/dashicons-yes-alt.*Enable a feature or experiment/s',
+			$output,
+			'Should show the feature step as complete when its individual setting is enabled'
+		);
+	}
+
+	/**
 	 * Tests that the checklist links to the correct admin pages.
 	 *
 	 * @since 0.8.0
