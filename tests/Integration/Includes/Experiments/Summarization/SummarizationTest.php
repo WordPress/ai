@@ -72,4 +72,31 @@ class SummarizationTest extends WP_UnitTestCase {
 		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
+
+	/**
+	 * Tests that the editor assets are registered with the block editor assets hook.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_register_uses_block_editor_assets_hook() {
+		$experiment = new Summarization();
+
+		try {
+			$experiment->register();
+
+			$this->assertNotFalse(
+				has_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_assets' ) ),
+				'Summarization editor assets should load with other block editor controls.'
+			);
+			$this->assertFalse(
+				has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ),
+				'Summarization editor assets should not load through the general admin assets hook.'
+			);
+		} finally {
+			remove_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_assets' ) );
+			remove_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) );
+			remove_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) );
+			remove_action( 'enqueue_block_assets', array( $experiment, 'enqueue_block_assets' ) );
+		}
+	}
 }
