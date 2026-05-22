@@ -293,22 +293,51 @@ class Ability_Handler {
 			}
 		}
 
-		// Type validation for properties.
+		// Type and constraint validation for properties.
 		if ( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
 			foreach ( $schema['properties'] as $prop_name => $prop_schema ) {
-				if ( ! isset( $input[ $prop_name ] ) || ! isset( $prop_schema['type'] ) ) {
+				if ( ! isset( $input[ $prop_name ] ) || ! is_array( $prop_schema ) ) {
 					continue;
 				}
 
-				$valid = self::validate_type( $input[ $prop_name ], $prop_schema['type'] );
-				if ( $valid ) {
+				$value = $input[ $prop_name ];
+
+				if ( isset( $prop_schema['type'] ) ) {
+					$valid = self::validate_type( $value, $prop_schema['type'] );
+					if ( ! $valid ) {
+						$errors[] = sprintf(
+							'Field "%s" should be of type "%s"',
+							$prop_name,
+							$prop_schema['type']
+						);
+						continue;
+					}
+				}
+
+				if ( isset( $prop_schema['enum'] ) && is_array( $prop_schema['enum'] ) && ! in_array( $value, $prop_schema['enum'], true ) ) {
+					$errors[] = sprintf(
+						'Field "%s" must be one of: %s',
+						$prop_name,
+						implode( ', ', $prop_schema['enum'] )
+					);
+				}
+
+				if ( is_numeric( $value ) && isset( $prop_schema['minimum'] ) && $value < $prop_schema['minimum'] ) {
+					$errors[] = sprintf(
+						'Field "%s" must be at least %s',
+						$prop_name,
+						$prop_schema['minimum']
+					);
+				}
+
+				if ( ! is_numeric( $value ) || ! isset( $prop_schema['maximum'] ) || $value <= $prop_schema['maximum'] ) {
 					continue;
 				}
 
 				$errors[] = sprintf(
-					'Field "%s" should be of type "%s"',
+					'Field "%s" must be at most %s',
 					$prop_name,
-					$prop_schema['type']
+					$prop_schema['maximum']
 				);
 			}
 		}
@@ -333,8 +362,9 @@ class Ability_Handler {
 			case 'string':
 				return is_string( $value );
 			case 'number':
+				return is_int( $value ) || is_float( $value );
 			case 'integer':
-				return is_numeric( $value );
+				return is_int( $value ) || ( is_float( $value ) && floor( $value ) === $value );
 			case 'boolean':
 				return is_bool( $value );
 			case 'array':

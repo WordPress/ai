@@ -156,9 +156,9 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 		$result = Ability_Handler::validate_input( $schema, array( 'age' => 25 ) );
 		$this->assertTrue( $result['valid'] );
 
-		// Valid numeric string (is_numeric returns true).
+		// Invalid: numeric strings are still strings.
 		$result = Ability_Handler::validate_input( $schema, array( 'age' => '25' ) );
-		$this->assertTrue( $result['valid'] );
+		$this->assertFalse( $result['valid'] );
 
 		// Invalid: non-numeric string.
 		$result = Ability_Handler::validate_input( $schema, array( 'age' => 'twenty-five' ) );
@@ -233,6 +233,79 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 		// Invalid: string instead of object.
 		$result = Ability_Handler::validate_input( $schema, array( 'data' => 'not an object' ) );
 		$this->assertFalse( $result['valid'] );
+	}
+
+	/**
+	 * Test validate_input validates integer type.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_validate_input_validates_integer_type() {
+		$schema = array(
+			'properties' => array(
+				'count' => array( 'type' => 'integer' ),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $schema, array( 'count' => 5 ) );
+		$this->assertTrue( $result['valid'] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'count' => 1.5 ) );
+		$this->assertFalse( $result['valid'] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'count' => '5' ) );
+		$this->assertFalse( $result['valid'] );
+	}
+
+	/**
+	 * Test validate_input validates numeric minimum and maximum constraints.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_validate_input_validates_numeric_constraints() {
+		$schema = array(
+			'properties' => array(
+				'count' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+					'maximum' => 10,
+				),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $schema, array( 'count' => 5 ) );
+		$this->assertTrue( $result['valid'] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'count' => 0 ) );
+		$this->assertFalse( $result['valid'] );
+		$this->assertStringContainsString( 'at least 1', $result['errors'][0] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'count' => 11 ) );
+		$this->assertFalse( $result['valid'] );
+		$this->assertStringContainsString( 'at most 10', $result['errors'][0] );
+	}
+
+	/**
+	 * Test validate_input validates enum constraints.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_validate_input_validates_enum_constraints() {
+		$schema = array(
+			'properties' => array(
+				'strategy' => array(
+					'type' => 'string',
+					'enum' => array( 'existing_only', 'allow_new' ),
+				),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $schema, array( 'strategy' => 'existing_only' ) );
+		$this->assertTrue( $result['valid'] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'strategy' => 'invalid' ) );
+		$this->assertFalse( $result['valid'] );
+		$this->assertStringContainsString( 'must be one of', $result['errors'][0] );
 	}
 
 	/**
