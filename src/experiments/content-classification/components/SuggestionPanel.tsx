@@ -56,6 +56,7 @@ export default function SuggestionPanel( {
 		<div className="ai-content-classification">
 			{ ! hasSuggestions && (
 				<Button
+					accessibleWhenDisabled
 					icon={ update }
 					variant="secondary"
 					onClick={ handleGenerate }
@@ -146,6 +147,7 @@ export default function SuggestionPanel( {
 					>
 						<FlexItem>
 							<Button
+								accessibleWhenDisabled
 								variant="link"
 								onClick={ handleGenerate }
 								disabled={ isGenerating }
