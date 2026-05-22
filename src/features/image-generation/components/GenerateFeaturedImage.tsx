@@ -82,6 +82,7 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 					className="ai-generate-featured-image editor-post-featured-image__toggle"
 					onClick={ handleGenerate }
 					disabled={ isGenerating }
+					accessibleWhenDisabled
 					isBusy={ isGenerating }
 				>
 					{ isGenerating
