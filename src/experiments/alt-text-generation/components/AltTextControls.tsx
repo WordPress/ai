@@ -188,7 +188,6 @@ export function AltTextControls( {
 							value={ generatedAlt || '' }
 							onChange={ ( value ) => setGeneratedAlt( value ) }
 							rows={ 3 }
-							__nextHasNoMarginBottom
 						/>
 						<div
 							style={ {
