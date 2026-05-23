@@ -228,8 +228,9 @@ class REST_ControllerTest extends WP_UnitTestCase {
 			'openai'
 		);
 
-		$key      = $this->store->pending_key( 'example/example.php', 'openai' );
-		$request  = new WP_REST_Request( 'DELETE', '/ai/v1/connector-approvals/pending/' . rawurlencode( $key ) );
+		$key     = $this->store->pending_key( 'example/example.php', 'openai' );
+		$request = new WP_REST_Request( 'DELETE', '/ai/v1/connector-approvals/pending' );
+		$request->set_query_params( array( 'key' => $key ) );
 		$response = rest_get_server()->dispatch( $request );
 
 		$this->assertSame( 200, $response->get_status() );
