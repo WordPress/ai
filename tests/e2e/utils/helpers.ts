@@ -175,11 +175,7 @@ export const getSectionMasterToggle = ( page: Page, groupName: string ) => {
  * @param page  The page object.
  */
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
-	await disableAllExperimentsInGroup(
-		admin,
-		page,
-		'Editor Experiments'
-	);
+	await disableAllExperimentsInGroup( admin, page, 'Editor Experiments' );
 	await disableAllExperimentsInGroup( admin, page, 'Admin Experiments' );
 };
 
@@ -190,11 +186,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
  * @param page  The page object.
  */
 export const enableExperiments = async ( admin: Admin, page: Page ) => {
-	await enableAllExperimentsInGroup(
-		admin,
-		page,
-		'Editor Experiments'
-	);
+	await enableAllExperimentsInGroup( admin, page, 'Editor Experiments' );
 };
 
 /**

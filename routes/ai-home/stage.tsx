@@ -725,7 +725,10 @@ function AISettingsPage() {
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
 			editEntityRecord( 'root', 'site', undefined, syncedEdits );
 
-			const message = buildToggleMessage( syncedEdits, featureDefinitions );
+			const message = buildToggleMessage(
+				syncedEdits,
+				featureDefinitions
+			);
 
 			try {
 				await saveSpecifiedEdits( 'root', 'site', undefined, keys, {

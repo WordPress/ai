@@ -18,7 +18,13 @@ interface SectionMasterToggleProps {
 /**
  * Section-level master toggle with off, indeterminate, and on states.
  *
- * @param props The component props.
+ * @param {SectionMasterToggleProps} props                    The component props.
+ * @param {string}                   props.groupId            The feature group ID.
+ * @param {string}                   props.groupLabel         The feature group label.
+ * @param {string[]}                 props.experimentSettings Feature setting names in the group.
+ * @param {AISettings}               props.data               Current settings values.
+ * @param {Function}                 props.onBulkChange       Bulk settings change handler.
+ * @return {React.JSX.Element} The component.
  */
 export function SectionMasterToggle( {
 	groupId,

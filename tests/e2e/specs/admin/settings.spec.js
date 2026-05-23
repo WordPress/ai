@@ -112,9 +112,7 @@ test.describe( 'Plugin settings', () => {
 		await expect( editorMasterToggle ).not.toBeChecked();
 
 		// Ensure feature toggles remain interactive when the section is disabled.
-		await expect(
-			page.getByLabel( 'Title Generation' )
-		).toBeEnabled();
+		await expect( page.getByLabel( 'Title Generation' ) ).toBeEnabled();
 
 		// Globally turn on experiments via the section master toggle.
 		await enableExperiments( admin, page );
