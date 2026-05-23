@@ -2,16 +2,7 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import {
-	Button,
-	Card,
-	Icon,
-	Link,
-	Notice,
-	Popover,
-	Stack,
-	VisuallyHidden,
-} from '@wordpress/ui';
+import { Button, Card, Link, Notice, Stack } from '@wordpress/ui';
 import {
 	DropdownMenu,
 	MenuGroup,
@@ -27,7 +18,6 @@ import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
-	info as infoIcon,
 	moreVertical as moreVerticalIcon,
 } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
@@ -38,6 +28,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import { SectionMasterToggle } from './components/SectionMasterToggle';
 import {
 	DeveloperModeContext,
 	useDeveloperMode,
@@ -84,7 +75,6 @@ interface PageData {
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 const GLOBAL_FIELD_ID = 'wpai_features_enabled';
-const noop = () => {};
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;
@@ -254,39 +244,24 @@ const STABLE_FEATURE_DEFINITIONS: FeatureData[] = ( () => {
 	return unique;
 } )();
 
-interface InfoTipProps {
-	content: string;
-}
-
-function InfoTip( { content }: InfoTipProps ) {
-	const title = __( 'More information', 'ai' );
-
-	return (
-		<Popover.Root>
-			<Popover.Trigger
-				openOnHover
-				delay={ 200 }
-				closeDelay={ 200 }
-				aria-label={ title }
-				className="ai-settings-page__infotip-trigger"
-			>
-				<Icon icon={ infoIcon } size={ 20 } />
-			</Popover.Trigger>
-			<Popover.Popup
-				side="bottom"
-				align="end"
-				className="ai-settings-page__infotip-popover"
-			>
-				<Popover.Arrow />
-				<VisuallyHidden render={ <Popover.Title /> }>
-					{ title }
-				</VisuallyHidden>
-				<Popover.Description className="ai-settings-page__infotip-description">
-					{ content }
-				</Popover.Description>
-			</Popover.Popup>
-		</Popover.Root>
+function appendGlobalSyncEdits(
+	edits: Record< string, boolean >,
+	currentData: AISettings,
+	featureSettingNames: string[]
+): Record< string, boolean > {
+	const merged: AISettings = { ...currentData, ...edits };
+	const anyFeatureEnabled = featureSettingNames.some(
+		( settingName ) => merged[ settingName ]
 	);
+
+	if ( merged[ GLOBAL_FIELD_ID ] === anyFeatureEnabled ) {
+		return edits;
+	}
+
+	return {
+		...edits,
+		[ GLOBAL_FIELD_ID ]: anyFeatureEnabled,
+	};
 }
 
 function buildToggleMessage(
@@ -363,29 +338,14 @@ function buildToggleMessage(
 		  sprintf( __( '%s disabled.', 'ai' ), label );
 }
 
-function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
-	return (
-		<ToggleControl
-			label={ field.label }
-			help={ field.description }
-			checked={ !! field.getValue( { item: data } ) }
-			// No-op handler required to satisfy React's controlled-component warning; the toggle is disabled.
-			onChange={ noop }
-			disabled
-		/>
-	);
-}
-
 interface SectionActionsProps extends DataFormControlProps< AISettings > {
 	experimentSettings: string[];
-	globalEnabled: boolean;
 	onBulkChange: ( edits: Record< string, boolean > ) => void;
 }
 
 function SectionActions( {
 	experimentSettings,
 	data,
-	globalEnabled,
 	onBulkChange,
 }: SectionActionsProps ) {
 	const allEnabled = useMemo( () => {
@@ -438,7 +398,7 @@ function SectionActions( {
 				variant="outline"
 				size="compact"
 				onClick={ handleEnableAll }
-				disabled={ ! globalEnabled || allEnabled }
+				disabled={ allEnabled }
 			>
 				{ __( 'Enable all', 'ai' ) }
 			</Button>
@@ -446,7 +406,7 @@ function SectionActions( {
 				variant="outline"
 				size="compact"
 				onClick={ handleDisableAll }
-				disabled={ ! globalEnabled || allDisabled }
+				disabled={ allDisabled }
 			>
 				{ __( 'Disable all', 'ai' ) }
 			</Button>
@@ -631,16 +591,11 @@ function VisualCardToggle( {
 	onChange,
 }: DataFormControlProps< AISettings > ) {
 	const feature = VISUAL_CARD_FEATURES.get( field.id );
-	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
 
 	return (
-		<Card.Root
-			className={ `${
-				! globalEnabled ? ' ai-showcase-card--disabled' : ''
-			}` }
-		>
+		<Card.Root>
 			{ feature?.image && (
 				<img alt="" loading="lazy" src={ feature.image } />
 			) }
@@ -651,7 +606,6 @@ function VisualCardToggle( {
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
 					}
-					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
 				{ checked && isDeveloperMode && feature && (
@@ -747,21 +701,31 @@ function AISettingsPage() {
 		return aiSettings;
 	}, [ aiSettingKeys, editedRecord ] );
 
-	const globalEnabled = Boolean( data[ GLOBAL_FIELD_ID ] );
-	const globalToggleDescription = __(
-		'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-		'ai'
+	const featureSettingNames = useMemo(
+		() => featureDefinitions.map( ( feature ) => feature.settingName ),
+		[ featureDefinitions ]
 	);
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
-			const keys = Object.keys( edits );
+			const booleanEdits = Object.fromEntries(
+				Object.entries( edits ).filter(
+					( entry ): entry is [ string, boolean ] =>
+						typeof entry[ 1 ] === 'boolean'
+				)
+			);
+			const syncedEdits = appendGlobalSyncEdits(
+				booleanEdits,
+				data,
+				featureSettingNames
+			);
+			const keys = Object.keys( syncedEdits );
 
 			// Optimistic update — the UI reflects the new value immediately.
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
-			editEntityRecord( 'root', 'site', undefined, edits );
+			editEntityRecord( 'root', 'site', undefined, syncedEdits );
 
-			const message = buildToggleMessage( edits, featureDefinitions );
+			const message = buildToggleMessage( syncedEdits, featureDefinitions );
 
 			try {
 				await saveSpecifiedEdits( 'root', 'site', undefined, keys, {
@@ -792,12 +756,15 @@ function AISettingsPage() {
 			createSuccessNotice,
 			createErrorNotice,
 			featureDefinitions,
+			featureSettingNames,
+			data,
 			registry,
 		]
 	);
 
 	const fields = useMemo< Field< AISettings >[] >( () => {
 		const sectionActionsFields: Field< AISettings >[] = [];
+		const sectionMasterFields: Field< AISettings >[] = [];
 		const groupedFields = new Map< string, string[] >();
 
 		// Group features by category
@@ -808,14 +775,56 @@ function AISettingsPage() {
 			groupedFields.set( category, categoryFields );
 		}
 
-		// Create section action fields for each group
+		const showcaseSettings = featureDefinitions
+			.filter( ( feature ) =>
+				VISUAL_CARD_FEATURES.has( feature.settingName )
+			)
+			.map( ( feature ) => feature.settingName );
+
+		const groupLabels = new Map< string, string >();
 		for ( const group of featureGroups ) {
-			const experimentSettings = groupedFields.get( group.id ) ?? [];
+			groupLabels.set( group.id, group.label );
+		}
+		for ( const category of groupedFields.keys() ) {
+			if ( groupLabels.has( category ) ) {
+				continue;
+			}
+			groupLabels.set(
+				category,
+				category === 'other'
+					? __( 'Other Features', 'ai' )
+					: getDefaultLabel( category )
+			);
+		}
+
+		// Create section action and master toggle fields for each group.
+		for ( const [ groupId, experimentSettings ] of groupedFields ) {
+			if ( experimentSettings.length === 0 ) {
+				continue;
+			}
+
+			const groupLabel = groupLabels.get( groupId ) ?? groupId;
+			const masterFieldId = `section-master-${ groupId }`;
+			sectionMasterFields.push( {
+				id: masterFieldId,
+				label: '',
+				type: 'text',
+				Edit: ( props ) => (
+					<SectionMasterToggle
+						{ ...props }
+						groupId={ groupId }
+						groupLabel={ groupLabel }
+						experimentSettings={ experimentSettings }
+						onBulkChange={ handleChange }
+					/>
+				),
+			} );
+
 			if ( experimentSettings.length <= 1 ) {
 				continue;
 			}
 
-			const actionFieldId = `section-actions-${ group.id }`;
+			const actionFieldId = `section-actions-${ groupId }`;
 			sectionActionsFields.push( {
 				id: actionFieldId,
 				label: '',
@@ -824,7 +833,24 @@ function AISettingsPage() {
 					<SectionActions
 						{ ...props }
 						experimentSettings={ experimentSettings }
-						globalEnabled={ globalEnabled }
+						onBulkChange={ handleChange }
+					/>
+				),
+			} );
+		}
+
+		if ( showcaseSettings.length > 0 ) {
+			const masterFieldId = 'section-master-showcase';
+			sectionMasterFields.push( {
+				id: masterFieldId,
+				label: '',
+				type: 'text',
+				Edit: ( props ) => (
+					<SectionMasterToggle
+						{ ...props }
+						groupId="showcase"
+						groupLabel={ __( 'Featured Experiments', 'ai' ) }
+						experimentSettings={ showcaseSettings }
 						onBulkChange={ handleChange }
 					/>
 				),
@@ -842,8 +868,6 @@ function AISettingsPage() {
 
 			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
 				baseField.Edit = VisualCardToggle;
-			} else if ( ! globalEnabled ) {
-				baseField.Edit = DisabledToggle;
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
 			} else {
@@ -861,8 +885,12 @@ function AISettingsPage() {
 			return baseField;
 		} );
 
-		return [ ...sectionActionsFields, ...featureFields ];
-	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
+		return [
+			...sectionMasterFields,
+			...sectionActionsFields,
+			...featureFields,
+		];
+	}, [ featureDefinitions, featureGroups, handleChange ] );
 
 	const form = useMemo< Form >( () => {
 		const showcaseChildren: string[] = [];
@@ -897,7 +925,10 @@ function AISettingsPage() {
 					type: 'regular',
 					labelPosition: 'none',
 				},
-				children: rows,
+				children:
+					showcaseChildren.length > 0
+						? [ 'section-master-showcase', ...rows ]
+						: rows,
 			} );
 		}
 
@@ -911,7 +942,12 @@ function AISettingsPage() {
 			}
 
 			seenCategories.add( group.id );
+			const masterFieldId = `section-master-${ group.id }`;
 			const actionFieldId = `section-actions-${ group.id }`;
+			const sectionChildren = [ masterFieldId, ...children ];
+			if ( children.length > 1 ) {
+				sectionChildren.push( actionFieldId );
+			}
 			sectionFields.push( {
 				id: getSectionId( group.id ),
 				label: group.label,
@@ -922,10 +958,7 @@ function AISettingsPage() {
 					isOpened: true,
 					isCollapsible: true,
 				},
-				children:
-					children.length > 1
-						? [ ...children, actionFieldId ]
-						: children,
+				children: sectionChildren,
 			} );
 		}
 
@@ -934,7 +967,12 @@ function AISettingsPage() {
 				continue;
 			}
 
+			const masterFieldId = `section-master-${ category }`;
 			const actionFieldId = `section-actions-${ category }`;
+			const sectionChildren = [ masterFieldId, ...children ];
+			if ( children.length > 1 ) {
+				sectionChildren.push( actionFieldId );
+			}
 			sectionFields.push( {
 				id: getSectionId( category ),
 				label: getDefaultLabel( category ),
@@ -945,10 +983,7 @@ function AISettingsPage() {
 					isOpened: true,
 					isCollapsible: true,
 				},
-				children:
-					children.length > 1
-						? [ ...children, actionFieldId ]
-						: children,
+				children: sectionChildren,
 			} );
 		}
 
@@ -968,19 +1003,6 @@ function AISettingsPage() {
 				) }
 				actions={
 					<>
-						<Stack align="center" gap="xs">
-							<ToggleControl
-								label={ __( 'Enable AI', 'ai' ) }
-								checked={ globalEnabled }
-								onChange={ ( checked ) => {
-									void handleChange( {
-										[ GLOBAL_FIELD_ID ]: checked,
-									} );
-								} }
-								disabled={ isLoading }
-							/>
-							<InfoTip content={ globalToggleDescription } />
-						</Stack>
 						<Link
 							href="https://github.com/WordPress/ai/tree/develop/docs"
 							openInNewTab

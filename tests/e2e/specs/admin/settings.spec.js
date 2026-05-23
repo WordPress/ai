@@ -20,6 +20,7 @@ const {
 	getExperimentTogglesInGroup,
 	getEnableAllButton,
 	getDisableAllButton,
+	getSectionMasterToggle,
 } = require( '../../utils/helpers' );
 
 const EXPERIMENT_GROUPS = {
@@ -101,23 +102,24 @@ test.describe( 'Plugin settings', () => {
 		// Globally disable experiments.
 		await disableExperiments( admin, page );
 
-		// Ensure global AI setting is disabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
+		const editorMasterToggle = getSectionMasterToggle(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
 
-		// Ensure feature toggles are disabled when AI is disabled.
+		// Ensure section master toggles are visible and off when all features are disabled.
+		await expect( editorMasterToggle ).toBeVisible();
+		await expect( editorMasterToggle ).not.toBeChecked();
+
+		// Ensure feature toggles remain interactive when the section is disabled.
 		await expect(
-			page
-				.locator(
-					'#ai-wp-admin-app .components-form-toggle.is-disabled'
-				)
-				.first()
-		).toBeVisible();
+			page.getByLabel( 'Title Generation' )
+		).toBeEnabled();
 
-		// Globally turn on experiments.
+		// Globally turn on experiments via the section master toggle.
 		await enableExperiments( admin, page );
 
-		// Ensure global AI setting is enabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked();
+		await expect( editorMasterToggle ).toBeChecked();
 
 		// Ensure we see the editor experiments section.
 		await expect(
@@ -272,14 +274,61 @@ test.describe( 'Plugin settings', () => {
 		}
 	} );
 
-	test( 'Cannot bulk manage experiments when global AI is disabled', async ( {
+	test( 'Section master toggle reflects mixed experiment state', async ( {
 		admin,
 		page,
 	} ) => {
-		// Disable global AI.
-		await disableExperiments( admin, page );
+		await enableExperiments( admin, page );
 
-		// Verify both buttons are disabled.
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		const experimentToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		if ( experimentToggles.length > 1 ) {
+			await experimentToggles[ 0 ].check();
+		}
+
+		const editorMasterToggle = getSectionMasterToggle(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		await expect( editorMasterToggle ).toBeVisible();
+		await expect( editorMasterToggle ).not.toBeChecked();
+		await expect( editorMasterToggle ).toHaveJSProperty(
+			'indeterminate',
+			true
+		);
+	} );
+
+	test( 'Bulk action buttons stay available when a section is partially enabled', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiments( admin, page );
+
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		const experimentToggles = await getExperimentTogglesInGroup(
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+
+		if ( experimentToggles.length > 0 ) {
+			await experimentToggles[ 0 ].check();
+		}
+
 		const enableAllButton = getEnableAllButton(
 			page,
 			EXPERIMENT_GROUPS.editor
@@ -290,8 +339,8 @@ test.describe( 'Plugin settings', () => {
 			EXPERIMENT_GROUPS.editor
 		);
 
-		await expect( enableAllButton ).toBeDisabled();
-		await expect( disableAllButton ).toBeDisabled();
+		await expect( enableAllButton ).toBeEnabled();
+		await expect( disableAllButton ).toBeEnabled();
 	} );
 
 	test( 'Each experiment group has its own bulk action buttons', async ( {

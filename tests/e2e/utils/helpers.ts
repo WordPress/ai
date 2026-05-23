@@ -155,29 +155,32 @@ export const clearConnector = async (
 };
 
 /**
+ * Gets the section master toggle for a specific experiment group.
+ *
+ * @param page      The page object.
+ * @param groupName The name of the experiment group (e.g., 'Editor Experiments').
+ * @return The section master toggle locator.
+ */
+export const getSectionMasterToggle = ( page: Page, groupName: string ) => {
+	return page.getByRole( 'checkbox', {
+		name: `Enable ${ groupName }`,
+		exact: true,
+	} );
+};
+
+/**
  * Globally disables experiments.
  *
  * @param admin The admin fixture from the test context.
  * @param page  The page object.
  */
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
-
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
-
-	// Nothing to do if experiments are already disabled.
-	if ( ! ( await globalToggle.isChecked() ) ) {
-		return;
-	}
-	await globalToggle.uncheck();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI disabled.',
-		} )
-	).toBeVisible();
+	await disableAllExperimentsInGroup(
+		admin,
+		page,
+		'Editor Experiments'
+	);
+	await disableAllExperimentsInGroup( admin, page, 'Admin Experiments' );
 };
 
 /**
@@ -187,23 +190,11 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
  * @param page  The page object.
  */
 export const enableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
-
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
-
-	// Nothing to do if experiments are already enabled.
-	if ( await globalToggle.isChecked() ) {
-		return;
-	}
-	await globalToggle.check();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI enabled.',
-		} )
-	).toBeVisible();
+	await enableAllExperimentsInGroup(
+		admin,
+		page,
+		'Editor Experiments'
+	);
 };
 
 /**
