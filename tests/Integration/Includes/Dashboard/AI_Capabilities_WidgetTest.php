@@ -16,6 +16,7 @@ use WordPress\AI\Features\Registry;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Enums\ProviderTypeEnum;
+use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 /**
  * Stub feature for capabilities widget tests.
@@ -78,6 +79,82 @@ final class Capabilities_Unavailable_Test_Provider {
 	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client provider API.
 	public static function modelMetadataDirectory(): void {
 		throw new BadMethodCallException( 'Model metadata unavailable.' );
+	}
+}
+
+/**
+ * Stub provider with available model metadata for capabilities widget tests.
+ *
+ * @since n.e.x.t
+ */
+final class Capabilities_Available_Test_Provider {
+
+	/**
+	 * Returns stub provider metadata.
+	 *
+	 * @since n.e.x.t
+	 */
+	public static function metadata(): ProviderMetadata {
+		return new ProviderMetadata(
+			'test-provider',
+			'Test Provider',
+			ProviderTypeEnum::cloud(),
+			'https://example.com'
+		);
+	}
+
+	/**
+	 * Returns stub model metadata directory.
+	 *
+	 * @since n.e.x.t
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client provider API.
+	public static function modelMetadataDirectory(): Capabilities_Test_Model_Metadata_Directory {
+		return new Capabilities_Test_Model_Metadata_Directory();
+	}
+}
+
+/**
+ * Stub model metadata directory for capabilities widget tests.
+ *
+ * @since n.e.x.t
+ */
+final class Capabilities_Test_Model_Metadata_Directory {
+
+	/**
+	 * Lists stub model metadata.
+	 *
+	 * @since n.e.x.t
+	 *
+	 * @return array<int, \WordPress\AI\Tests\Integration\Dashboard\Capabilities_Test_Model_Metadata>
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client model metadata directory API.
+	public function listModelMetadata(): array {
+		return array( new Capabilities_Test_Model_Metadata() );
+	}
+}
+
+/**
+ * Stub model metadata for capabilities widget tests.
+ *
+ * @since n.e.x.t
+ */
+final class Capabilities_Test_Model_Metadata {
+
+	/**
+	 * Gets supported capabilities.
+	 *
+	 * @since n.e.x.t
+	 *
+	 * @return array<int, object{value:string}>
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client model metadata API.
+	public function getSupportedCapabilities(): array {
+		return array(
+			(object) array(
+				'value' => CapabilityEnum::TEXT_GENERATION,
+			),
+		);
 	}
 }
 
@@ -231,12 +308,11 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'AiClient not available.' );
 		}
 
-		$registry     = AiClient::defaultRegistry();
-		$provider_ids = $registry->getRegisteredProviderIds();
-
-		if ( empty( $provider_ids ) ) {
-			$this->markTestSkipped( 'No AI providers registered.' );
-		}
+		$this->replace_registered_providers(
+			array(
+				self::TEST_PROVIDER_ID => Capabilities_Available_Test_Provider::class,
+			)
+		);
 
 		$exp_registry = new Registry();
 		$widget       = new AI_Capabilities_Widget( $exp_registry );
