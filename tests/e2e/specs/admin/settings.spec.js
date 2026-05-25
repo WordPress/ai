@@ -8,6 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	clearConnectors,
+	clearCredentials,
 	seedCredentials,
 	disableExperiments,
 	disableExperiment,
@@ -75,6 +76,7 @@ test.describe( 'Plugin settings', () => {
 	} ) => {
 		// Activate the request mocking plugin.
 		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await clearCredentials( requestUtils );
 
 		await visitConnectorsPage( admin );
 
