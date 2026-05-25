@@ -266,6 +266,45 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that lookalike upload URLs do not map to local files.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_maybe_map_url_to_local_path_rejects_lookalike_upload_url() {
+		$uploads = wp_get_upload_dir();
+		if ( empty( $uploads['baseurl'] ) || empty( $uploads['basedir'] ) ) {
+			$this->markTestSkipped( 'Uploads directory is not available.' );
+			return;
+		}
+
+		$normalized_baseurl = $this->invoke_normalize_upload_url( $uploads['baseurl'] );
+		$relative_path      = substr( $normalized_baseurl, -3 ) . '/ai-test-image.jpg';
+		$file_path          = trailingslashit( $uploads['basedir'] ) . $relative_path;
+
+		wp_mkdir_p( dirname( $file_path ) );
+		$bytes_written = file_put_contents( $file_path, 'test image' ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
+		if ( false === $bytes_written ) {
+			$this->markTestSkipped( 'Could not create upload fixture.' );
+			return;
+		}
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'maybe_map_url_to_local_path' );
+		$method->setAccessible( true );
+
+		$lookalike_url = 'https://bad' . $normalized_baseurl . '/ai-test-image.jpg';
+
+		try {
+			$this->assertNull(
+				$method->invoke( $this->ability, $lookalike_url ),
+				'Lookalike upload URLs must not resolve to local upload files.'
+			);
+		} finally {
+			wp_delete_file( $file_path );
+		}
+	}
+
+	/**
 	 * Test that permission_callback() returns true for user with upload_files when using image_url only.
 	 *
 	 * @since 0.3.0
@@ -281,6 +320,22 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $this->ability, array( 'image_url' => 'https://example.com/image.jpg' ) );
 
 		$this->assertTrue( $result, 'Permission should be granted for user with upload_files when using image_url' );
+	}
+
+	/**
+	 * Invokes normalize_upload_url() for test setup.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url URL to normalize.
+	 * @return string Normalized URL.
+	 */
+	private function invoke_normalize_upload_url( string $url ): string {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'normalize_upload_url' );
+		$method->setAccessible( true );
+
+		return $method->invoke( $this->ability, $url );
 	}
 
 	/**
