@@ -39,7 +39,7 @@ wp plugin activate ai
 
 ### Quality checks
 
-Before submitting a pull request, run the following commands:
+Before submitting a pull request, please run the following commands:
 
 ```bash
 # Check coding standards
