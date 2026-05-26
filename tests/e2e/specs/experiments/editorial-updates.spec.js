@@ -222,6 +222,105 @@ test.describe( 'Editorial Updates Experiment', () => {
 		expect( blockContent ).toContain( 'refined block content' );
 	} );
 
+	test( 'Keeps Editorial Notes and Updates grouped above Content Summarization', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Editorial Notes' );
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		await admin.createNewPost( {
+			title: 'Grouped Editorial Controls Test',
+			content:
+				'This post has enough content to meet the minimum character requirement for the summarization feature and show the editor sidebar controls.',
+		} );
+		await editor.saveDraft();
+
+		const noteId = await page.evaluate( async () => {
+			const postId = window.wp.data
+				.select( 'core/editor' )
+				.getCurrentPostId();
+
+			await window.wp.apiFetch( {
+				path: `/wp/v2/posts/${ postId }`,
+				method: 'POST',
+				data: { comment_status: 'open' },
+			} );
+
+			const note = await window.wp.apiFetch( {
+				path: '/wp/v2/comments',
+				method: 'POST',
+				data: {
+					post: postId,
+					content: 'Make this clearer.',
+					type: 'note',
+					status: 'hold',
+					meta: {
+						ai_note: true,
+					},
+				},
+			} );
+
+			return note.id;
+		} );
+
+		const mockNote = {
+			id: noteId,
+			parent: 0,
+			content: { rendered: '<p>Make this clearer.</p>' },
+			meta: { ai_note: true },
+		};
+
+		await page.route( /\/wp\/v2\/comments/, async ( route ) => {
+			const url = route.request().url();
+			const hasTypeNote =
+				url.includes( 'type=note' ) || url.includes( 'type%3Dnote' );
+
+			if ( hasTypeNote ) {
+				await route.fulfill( {
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify( [ mockNote ] ),
+					headers: {
+						'X-WP-Total': '1',
+						'X-WP-TotalPages': '1',
+					},
+				} );
+				return;
+			}
+
+			await route.continue();
+		} );
+
+		await page.reload();
+		await editor.openDocumentSettingsSidebar();
+
+		const notesButton = page.getByRole( 'button', {
+			name: 'Generate Editorial Notes',
+		} );
+		const updatesButton = page.getByRole( 'button', {
+			name: 'Apply Editorial Updates',
+		} );
+		const summaryButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+		} );
+
+		await expect( notesButton ).toBeVisible();
+		await expect( updatesButton ).toBeVisible( { timeout: 10000 } );
+		await expect( summaryButton ).toBeVisible();
+
+		const notesBox = await notesButton.boundingBox();
+		const updatesBox = await updatesButton.boundingBox();
+		const summaryBox = await summaryButton.boundingBox();
+
+		expect( notesBox ).not.toBeNull();
+		expect( updatesBox ).not.toBeNull();
+		expect( summaryBox ).not.toBeNull();
+		expect( notesBox.y ).toBeLessThan( updatesBox.y );
+		expect( updatesBox.y ).toBeLessThan( summaryBox.y );
+	} );
+
 	test( 'Button is hidden when experiments are globally disabled', async ( {
 		admin,
 		editor,

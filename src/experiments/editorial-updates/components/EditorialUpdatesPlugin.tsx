@@ -24,10 +24,7 @@ import { useEditorialUpdates } from '../hooks/useEditorialUpdates';
 export default function EditorialUpdatesPlugin() {
 	const { isRefining, progress, total, hasPendingNotes, runRefinement } =
 		useEditorialUpdates();
-
-	if ( ! hasPendingNotes && ! isRefining ) {
-		return null;
-	}
+	const shouldShowControl = hasPendingNotes || isRefining;
 
 	const buttonLabel = isRefining
 		? sprintf(
@@ -42,37 +39,45 @@ export default function EditorialUpdatesPlugin() {
 		'Automatically applies pending editorial Notes to update your content.',
 		'ai'
 	);
+	const postStatusInfoProps = shouldShowControl
+		? {}
+		: { className: 'editor-post-editorial-updates--hidden' };
 
 	return (
-		<PluginPostStatusInfo>
-			<Flex
-				direction="column"
-				align="stretch"
-				justify="flex-start"
-				className="editor-post-editorial-updates"
-				gap={ 2 }
-			>
-				<FlexItem>
-					<Button
-						variant="secondary"
-						icon={ commentContent }
-						isBusy={ isRefining }
-						disabled={ isRefining }
-						onClick={ () => void runRefinement() }
-						style={ { width: '100%', justifyContent: 'center' } }
-					>
-						{ buttonLabel }
-					</Button>
-				</FlexItem>
-				<FlexItem>
-					<span
-						className="description"
-						style={ { color: '#757575' } }
-					>
-						{ buttonDescription }
-					</span>
-				</FlexItem>
-			</Flex>
+		<PluginPostStatusInfo { ...postStatusInfoProps }>
+			{ shouldShowControl && (
+				<Flex
+					direction="column"
+					align="stretch"
+					justify="flex-start"
+					className="editor-post-editorial-updates"
+					gap={ 2 }
+				>
+					<FlexItem>
+						<Button
+							variant="secondary"
+							icon={ commentContent }
+							isBusy={ isRefining }
+							disabled={ isRefining }
+							onClick={ () => void runRefinement() }
+							style={ {
+								width: '100%',
+								justifyContent: 'center',
+							} }
+						>
+							{ buttonLabel }
+						</Button>
+					</FlexItem>
+					<FlexItem>
+						<span
+							className="description"
+							style={ { color: '#757575' } }
+						>
+							{ buttonDescription }
+						</span>
+					</FlexItem>
+				</Flex>
+			) }
 		</PluginPostStatusInfo>
 	);
 }

@@ -88,12 +88,12 @@ class Summarization extends Abstract_Feature {
 	}
 
 	/**
-	 * Enqueues and localizes the admin script.
+	 * Enqueues and localizes the block editor script.
 	 *
 	 * @since 0.3.0
 	 */
 	public function enqueue_assets(): void {
-		$screen = get_current_screen();
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		if ( ! $screen || 'post' !== $screen->base ) {
 			return;
 		}
