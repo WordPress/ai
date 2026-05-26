@@ -234,7 +234,6 @@ export default function TitleToolbar( {
 						value={ generatedTitle }
 						onChange={ setGeneratedTitle }
 						disabled={ isRegenerating }
-						__nextHasNoMarginBottom
 					/>
 					<Flex
 						justify="flex-end"
