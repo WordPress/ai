@@ -70,13 +70,13 @@ final class Caller_Identifier {
 	private array $cache = array();
 
 	/**
-	 * Substrings that indicate a stack frame is part of the enforcement plumbing itself.
+	 * Path prefixes that indicate a stack frame is infrastructure rather than a request origin.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @var list<string>
 	 */
-	private array $skip_substrings;
+	private array $skip_prefixes;
 
 	/**
 	 * Constructor.
@@ -84,21 +84,32 @@ final class Caller_Identifier {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		$this->skip_substrings = array(
-			'/wp-includes/option.php',
-			'/wp-includes/class-wp-hook.php',
-			'/wp-includes/plugin.php',
-			'/wp-includes/connectors.php',
-			'/wp-includes/class-wp-connector-registry.php',
-			'/wp-includes/http.php',
-			'/wp-includes/class-wp-http.php',
-			'/wp-includes/class-http.php',
-			'/wp-includes/class-wp-http-requests-hooks.php',
-			'/wp-includes/Requests/',
-			'/wp-includes/class-requests.php',
-			'/wp-includes/ai-client/',
-			'/wp-includes/php-ai-client/',
-			DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'Connector_Approval' . DIRECTORY_SEPARATOR,
+		$wp_includes = defined( 'WPINC' ) ? constant( 'WPINC' ) : 'wp-includes';
+		if ( ! is_string( $wp_includes ) ) {
+			$wp_includes = 'wp-includes';
+		}
+
+		$core   = wp_normalize_path( ABSPATH . $wp_includes ) . '/';
+		$plugin = wp_normalize_path( dirname( __DIR__ ) ) . '/';
+
+		$this->skip_prefixes = array(
+			$core . 'option.php',
+			$core . 'class-wp-hook.php',
+			$core . 'plugin.php',
+			$core . 'connectors.php',
+			$core . 'class-wp-connector-registry.php',
+			$core . 'http.php',
+			$core . 'class-wp-http.php',
+			$core . 'class-http.php',
+			$core . 'class-wp-http-requests-hooks.php',
+			$core . 'Requests/',
+			$core . 'class-requests.php',
+			$core . 'ai-client/',
+			$core . 'php-ai-client/',
+			$plugin . 'Connector_Approval/',
+			$plugin . 'Logging/',
+			$plugin . 'Settings/',
+			$plugin . 'helpers.php',
 		);
 	}
 
@@ -145,7 +156,7 @@ final class Caller_Identifier {
 	}
 
 	/**
-	 * Finds the first stack frame that belongs to an extension and describes it.
+	 * Finds the deepest stack frame that belongs to an extension and describes it.
 	 *
 	 * @since 1.0.0
 	 *
@@ -153,6 +164,8 @@ final class Caller_Identifier {
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
 	private function resolve( array $frames ): ?array {
+		$origin = null;
+
 		foreach ( $frames as $frame ) {
 			$file = isset( $frame['file'] ) && is_string( $frame['file'] ) ? $frame['file'] : '';
 			if ( '' === $file ) {
@@ -164,12 +177,14 @@ final class Caller_Identifier {
 			}
 
 			$extension = $this->classify_file( $file );
-			if ( null !== $extension ) {
-				return $extension;
+			if ( null === $extension ) {
+				continue;
 			}
+
+			$origin = $extension;
 		}
 
-		return null;
+		return $origin;
 	}
 
 	/**
@@ -182,8 +197,8 @@ final class Caller_Identifier {
 	 */
 	private function should_skip( string $file ): bool {
 		$normalized = wp_normalize_path( $file );
-		foreach ( $this->skip_substrings as $needle ) {
-			if ( str_contains( $normalized, wp_normalize_path( $needle ) ) ) {
+		foreach ( $this->skip_prefixes as $prefix ) {
+			if ( str_starts_with( $normalized, wp_normalize_path( $prefix ) ) ) {
 				return true;
 			}
 		}
