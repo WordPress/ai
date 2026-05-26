@@ -99,7 +99,6 @@ export function MediaEditorAltTextControl( {
 				value={ currentAlt || '' }
 				onChange={ ( value ) => onChange( { alt_text: value } ) }
 				rows={ 2 }
-				__nextHasNoMarginBottom
 			/>
 
 			{ /* Decorative image notice. */ }

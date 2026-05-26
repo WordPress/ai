@@ -88,7 +88,6 @@ export function PromptForm( {
 				onChange={ onPromptChange }
 				rows={ 4 }
 				hideLabelFromVision
-				__nextHasNoMarginBottom
 			/>
 			<div className="ai-image-generation__actions">
 				<Button
@@ -247,7 +246,6 @@ export function RefinePromptForm( {
 				value={ refinePrompt }
 				onChange={ onRefinePromptChange }
 				rows={ 3 }
-				__nextHasNoMarginBottom
 			/>
 			<div className="ai-image-generation__actions">
 				<Button
