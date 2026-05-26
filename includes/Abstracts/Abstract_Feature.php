@@ -167,24 +167,15 @@ abstract class Abstract_Feature implements Feature {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * Features require both the global toggle and individual feature toggle to be enabled.
-	 * Results are cached per instance to avoid redundant option lookups and filter calls.
 	 */
-	final public function is_enabled(): bool {
-		// Return cached result if available.
-		if ( null !== $this->enabled_cache ) {
-			return $this->enabled_cache;
-		}
+	final public function is_globally_enabled(): bool {
+		return (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+	}
 
-		// Check global features toggle first.
-		$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
-		if ( ! $global_enabled ) {
-			$this->enabled_cache = false;
-			return false;
-		}
-
-		// Check feature-specific option.
+	/**
+	 * {@inheritDoc}
+	 */
+	final public function is_individually_enabled(): bool {
 		$feature_enabled = (bool) get_option( "wpai_feature_{$this->id}_enabled", false );
 
 		// @todo remove in v1.0
@@ -205,12 +196,26 @@ abstract class Abstract_Feature implements Feature {
 		 *
 		 * @param bool $feature_enabled Whether the feature is enabled.
 		 */
-		$is_enabled = (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $is_enabled );
+		return (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $is_enabled );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Features require both the global toggle and individual
+	 * feature toggle to be enabled. Results are cached per
+	 * instance to avoid redundant option lookups and filter calls.
+	 */
+	final public function is_enabled(): bool {
+		// Return cached result if available.
+		if ( null !== $this->enabled_cache ) {
+			return $this->enabled_cache;
+		}
 
 		// Cache the result.
-		$this->enabled_cache = $is_enabled;
+		$this->enabled_cache = $this->is_globally_enabled() && $this->is_individually_enabled();
 
-		return $is_enabled;
+		return $this->enabled_cache;
 	}
 
 	/**
