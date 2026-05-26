@@ -239,6 +239,7 @@ export function AltTextControls( {
 						variant="secondary"
 						onClick={ handleGenerate }
 						disabled={ isGenerating }
+						accessibleWhenDisabled
 						style={ { width: '100%', justifyContent: 'center' } }
 						isBusy={ isGenerating }
 						icon={ update }

@@ -45,6 +45,7 @@ export default function ExcerptGeneration(): React.JSX.Element | null {
 			variant="secondary"
 			onClick={ handleGenerate }
 			disabled={ isGenerating }
+			accessibleWhenDisabled
 			isBusy={ isGenerating }
 		>
 			{ buttonLabel }
