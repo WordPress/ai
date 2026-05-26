@@ -96,7 +96,6 @@ const ApprovalMatrixCard = ( {
 										return (
 											<td key={ connector.id }>
 												<ToggleControl
-													__nextHasNoMarginBottom
 													checked={ approved }
 													disabled={ isSaving }
 													label=""
