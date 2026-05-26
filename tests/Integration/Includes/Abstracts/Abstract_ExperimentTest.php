@@ -254,6 +254,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_test-categorized_enabled' );
 		delete_option( 'wpai_feature_test-uncategorized_enabled' );
 		delete_option( 'wpai_feature_test-empty-category_enabled' );
+		remove_all_filters( 'wpai_feature_test-categorized_enabled' );
 		parent::tearDown();
 	}
 
@@ -343,6 +344,50 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	public function test_get_stability_custom() {
 		$experiment = new Mock_Custom_Stability_Experiment();
 		$this->assertEquals( 'stable', $experiment->get_stability(), 'Custom stability should be returned from metadata' );
+	}
+
+	/**
+	 * Tests that is_globally_enabled() returns the global enabled state.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_globally_enabled_returns_global_enabled_state(): void {
+		$experiment = new Test_Categorized_Experiment();
+
+		update_option( 'wpai_features_enabled', false );
+		$this->assertFalse( $experiment->is_globally_enabled() );
+
+		update_option( 'wpai_features_enabled', true );
+		$this->assertTrue( $experiment->is_globally_enabled() );
+	}
+
+	/**
+	 * Tests that is_individually_enabled() applies the feature enabled filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_individually_enabled_applies_feature_filter(): void {
+		update_option( 'wpai_feature_test-categorized_enabled', false );
+		add_filter( 'wpai_feature_test-categorized_enabled', '__return_true' );
+
+		$experiment = new Test_Categorized_Experiment();
+
+		$this->assertTrue( $experiment->is_individually_enabled() );
+	}
+
+	/**
+	 * Tests that is_enabled() still requires the global enabled state.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_enabled_still_requires_global_enabled_state(): void {
+		update_option( 'wpai_features_enabled', false );
+		update_option( 'wpai_feature_test-categorized_enabled', true );
+
+		$experiment = new Test_Categorized_Experiment();
+
+		$this->assertTrue( $experiment->is_individually_enabled() );
+		$this->assertFalse( $experiment->is_enabled() );
 	}
 
 	/**

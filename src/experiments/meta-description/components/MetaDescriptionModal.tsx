@@ -125,7 +125,6 @@ export default function MetaDescriptionModal( {
 							'Aim for 140–160 characters for optimal display in search results.',
 							'ai'
 						) }
-						__nextHasNoMarginBottom
 					/>
 					<CharacterCount count={ editableText.length } />
 				</div>

@@ -137,51 +137,60 @@ class AI_Capabilities_Widget {
 			return;
 		}
 
+		$providers = array();
+
+		foreach ( $provider_ids as $provider_id ) {
+			try {
+				$provider_class = $registry->getProviderClassName( $provider_id );
+
+				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+				$metadata     = $provider_class::metadata();
+				$model_dir    = $provider_class::modelMetadataDirectory();
+				$models       = $model_dir->listModelMetadata();
+				$capabilities = array();
+
+				foreach ( $models as $model ) {
+					foreach ( $model->getSupportedCapabilities() as $capability ) {
+						$capabilities[ $capability->value ] = true;
+					}
+				}
+
+				if ( empty( $capabilities ) ) {
+					continue;
+				}
+
+				$providers[] = array(
+					'name'         => $metadata->getName(),
+					'capabilities' => $capabilities,
+				);
+			} catch ( \Throwable $e ) {
+				continue;
+			}
+		}
+
+		if ( empty( $providers ) ) {
+			return;
+		}
+
 		?>
 		<h4 class="ai-dashboard-capabilities__section-title">
 			<?php esc_html_e( 'Provider Capabilities', 'ai' ); ?>
 		</h4>
 		<div class="ai-dashboard-capabilities__providers">
-			<?php
-			foreach ( $provider_ids as $provider_id ) {
-				try {
-					$provider_class = $registry->getProviderClassName( $provider_id );
-
-					/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-					$metadata     = $provider_class::metadata();
-					$model_dir    = $provider_class::modelMetadataDirectory();
-					$models       = $model_dir->listModelMetadata();
-					$capabilities = array();
-
-					foreach ( $models as $model ) {
-						foreach ( $model->getSupportedCapabilities() as $capability ) {
-							$capabilities[ $capability->value ] = true;
-						}
-					}
-
-					if ( empty( $capabilities ) ) {
-						continue;
-					}
-
-					?>
+			<?php foreach ( $providers as $provider ) : ?>
 					<div class="ai-dashboard-capabilities__provider">
 						<span class="ai-dashboard-capabilities__provider-name">
-							<?php echo esc_html( $metadata->getName() ); ?>
+							<?php echo esc_html( $provider['name'] ); ?>
 						</span>
 						<span class="ai-dashboard-capabilities__provider-caps">
-							<?php foreach ( $capabilities as $cap_value => $unused ) : ?>
+							<?php foreach ( $provider['capabilities'] as $cap_value => $unused ) : ?>
 								<span class="ai-dashboard-capabilities__cap-tag">
 									<?php echo esc_html( $this->get_capability_label( (string) $cap_value ) ); ?>
 								</span>
 							<?php endforeach; ?>
 						</span>
 					</div>
-					<?php
-				} catch ( \Throwable $e ) {
-					continue;
-				}
-			}
-			?>
+			<?php endforeach; ?>
 		</div>
 		<?php
 	}

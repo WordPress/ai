@@ -93,7 +93,7 @@ test.describe( 'Connector Approval Experiment', () => {
 			.filter( { hasText: 'OpenAI' } );
 
 		if ( ( await pendingRow.count() ) === 0 ) {
-			await admin.visitAdminPage( 'tools.php?page=ai-wp-admin' );
+			await admin.visitAdminPage( 'index.php' );
 			await admin.visitAdminPage(
 				'tools.php?page=ai-connector-approval'
 			);

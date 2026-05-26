@@ -81,6 +81,24 @@ interface Feature {
 	public function register(): void;
 
 	/**
+	 * Checks if features are globally enabled.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if globally enabled, false otherwise.
+	 */
+	public function is_globally_enabled(): bool;
+
+	/**
+	 * Checks if the feature is individually enabled.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if individually enabled, false otherwise.
+	 */
+	public function is_individually_enabled(): bool;
+
+	/**
 	 * Checks if the feature is currently enabled.
 	 *
 	 * @since 0.6.0

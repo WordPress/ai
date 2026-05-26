@@ -423,7 +423,6 @@ export function MediaLibraryImageEditor( {
 								value={ prompt }
 								onChange={ setPrompt }
 								rows={ 3 }
-								__nextHasNoMarginBottom
 							/>
 							<div className="ai-media-library-editor__actions">
 								<Button
@@ -454,7 +453,6 @@ export function MediaLibraryImageEditor( {
 					/>
 					<div className="ai-media-library-editor__masking-sidebar">
 						<RangeControl
-							__nextHasNoMarginBottom
 							label={ __( 'Brush size', 'ai' ) }
 							value={ brushSize }
 							onChange={ ( value ) =>
@@ -487,7 +485,6 @@ export function MediaLibraryImageEditor( {
 								value={ replacePrompt }
 								onChange={ setReplacePrompt }
 								rows={ 2 }
-								__nextHasNoMarginBottom
 							/>
 						) }
 						<div className="ai-media-library-editor__masking-sidebar-actions">
@@ -726,7 +723,6 @@ export function MediaLibraryImageEditor( {
 						value={ refinePrompt }
 						onChange={ setRefinePrompt }
 						rows={ 3 }
-						__nextHasNoMarginBottom
 					/>
 					<div className="ai-media-library-editor__actions">
 						<Button
