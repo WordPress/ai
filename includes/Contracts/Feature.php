@@ -81,9 +81,9 @@ interface Feature {
 	public function register(): void;
 
 	/**
-	 * Checks if AI features are globally enabled.
+	 * Checks if features are globally enabled.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @return bool True if globally enabled, false otherwise.
 	 */
@@ -92,7 +92,7 @@ interface Feature {
 	/**
 	 * Checks if the feature is individually enabled.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @return bool True if individually enabled, false otherwise.
 	 */

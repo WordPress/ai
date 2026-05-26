@@ -202,8 +202,9 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Features require both the global toggle and individual feature toggle to be enabled.
-	 * Results are cached per instance to avoid redundant option lookups and filter calls.
+	 * Features require both the global toggle and individual
+	 * feature toggle to be enabled. Results are cached per
+	 * instance to avoid redundant option lookups and filter calls.
 	 */
 	final public function is_enabled(): bool {
 		// Return cached result if available.
