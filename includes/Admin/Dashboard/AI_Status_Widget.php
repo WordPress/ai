@@ -19,7 +19,7 @@ use WordPress\AI\Settings\Settings_Registration;
 
 use function WordPress\AI\get_ai_connectors;
 use function WordPress\AI\has_ai_credentials;
-use function WordPress\AI\has_connector_authentication;
+use function WordPress\AI\is_connector_configured;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -210,7 +210,7 @@ class AI_Status_Widget {
 		foreach ( get_ai_connectors() as $slug => $connector_data ) {
 			$auth       = $connector_data['authentication'];
 			$configured = 'api_key' === $auth['method']
-				&& has_connector_authentication( $slug );
+				&& is_connector_configured( $slug );
 
 			/**
 			 * Filters whether an AI connector is configured.
