@@ -247,8 +247,7 @@ class AI_Status_Widget {
 	 */
 	private function has_any_enabled_feature_setting(): bool {
 		foreach ( $this->registry->get_all_features() as $feature ) {
-			$option_name = 'wpai_feature_' . $feature::get_id() . '_enabled';
-			if ( (bool) get_option( $option_name, false ) ) {
+			if ( $feature->is_individually_enabled() ) {
 				return true;
 			}
 		}
