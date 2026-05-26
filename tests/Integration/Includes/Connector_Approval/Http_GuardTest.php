@@ -169,7 +169,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	 * @since 1.0.0
 	 */
 	private function force_unidentifiable_caller(): void {
-		$property = new ReflectionProperty( Caller_Identifier::class, 'skip_substrings' );
+		$property = new ReflectionProperty( Caller_Identifier::class, 'skip_prefixes' );
 		$property->setAccessible( true );
 
 		$current   = (array) $property->getValue( $this->identifier );
