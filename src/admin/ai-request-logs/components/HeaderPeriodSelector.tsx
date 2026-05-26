@@ -34,7 +34,6 @@ const HeaderPeriodSelector: React.FC< HeaderPeriodSelectorProps > = ( {
 		] }
 		onChange={ ( value ) => onPeriodChange( value as SummaryPeriod ) }
 		disabled={ loading }
-		__nextHasNoMarginBottom
 		__next40pxDefaultSize
 	/>
 );

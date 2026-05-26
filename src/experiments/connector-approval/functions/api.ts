@@ -6,6 +6,7 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
+import { addQueryArgs } from '@wordpress/url';
 
 /**
  * Internal dependencies
@@ -60,7 +61,7 @@ export function postApproval(
 export function deletePending( key: string ): Promise< ApprovalState > {
 	ensureNonceMiddleware();
 	return apiFetch< ApprovalState >( {
-		path: `${ REST_ROOT }/pending/${ encodeURIComponent( key ) }`,
+		path: addQueryArgs( `${ REST_ROOT }/pending`, { key } ),
 		method: 'DELETE',
 	} );
 }
