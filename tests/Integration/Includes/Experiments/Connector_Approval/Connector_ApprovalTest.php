@@ -106,7 +106,7 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 
 		$routes = rest_get_server()->get_routes();
 		$this->assertArrayHasKey( '/ai/v1/connector-approvals', $routes );
-		$this->assertArrayHasKey( '/ai/v1/connector-approvals/pending/(?P<key>[^/]+)', $routes );
+		$this->assertArrayHasKey( '/ai/v1/connector-approvals/pending', $routes );
 
 		$collection_methods = array();
 		foreach ( $routes['/ai/v1/connector-approvals'] as $handler ) {
@@ -121,7 +121,7 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		$this->assertContains( 'POST', $collection_methods );
 
 		$pending_methods = array();
-		foreach ( $routes['/ai/v1/connector-approvals/pending/(?P<key>[^/]+)'] as $handler ) {
+		foreach ( $routes['/ai/v1/connector-approvals/pending'] as $handler ) {
 			$methods = $handler['methods'] ?? array();
 			if ( is_array( $methods ) ) {
 				$pending_methods = array_merge( $pending_methods, array_keys( $methods ) );
