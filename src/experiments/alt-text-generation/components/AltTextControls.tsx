@@ -188,7 +188,6 @@ export function AltTextControls( {
 							value={ generatedAlt || '' }
 							onChange={ ( value ) => setGeneratedAlt( value ) }
 							rows={ 3 }
-							__nextHasNoMarginBottom
 						/>
 						<div
 							style={ {
@@ -240,6 +239,7 @@ export function AltTextControls( {
 						variant="secondary"
 						onClick={ handleGenerate }
 						disabled={ isGenerating }
+						accessibleWhenDisabled
 						style={ { width: '100%', justifyContent: 'center' } }
 						isBusy={ isGenerating }
 						icon={ update }
