@@ -238,7 +238,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates integer type.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function test_validate_input_validates_integer_type() {
 		$schema = array(
@@ -260,7 +260,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates numeric minimum and maximum constraints.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function test_validate_input_validates_numeric_constraints() {
 		$schema = array(
@@ -288,7 +288,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates enum constraints.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function test_validate_input_validates_enum_constraints() {
 		$schema = array(

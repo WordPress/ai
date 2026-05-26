@@ -300,44 +300,9 @@ class Ability_Handler {
 					continue;
 				}
 
-				$value = $input[ $prop_name ];
-
-				if ( isset( $prop_schema['type'] ) ) {
-					$valid = self::validate_type( $value, $prop_schema['type'] );
-					if ( ! $valid ) {
-						$errors[] = sprintf(
-							'Field "%s" should be of type "%s"',
-							$prop_name,
-							$prop_schema['type']
-						);
-						continue;
-					}
-				}
-
-				if ( isset( $prop_schema['enum'] ) && is_array( $prop_schema['enum'] ) && ! in_array( $value, $prop_schema['enum'], true ) ) {
-					$errors[] = sprintf(
-						'Field "%s" must be one of: %s',
-						$prop_name,
-						implode( ', ', $prop_schema['enum'] )
-					);
-				}
-
-				if ( is_numeric( $value ) && isset( $prop_schema['minimum'] ) && $value < $prop_schema['minimum'] ) {
-					$errors[] = sprintf(
-						'Field "%s" must be at least %s',
-						$prop_name,
-						$prop_schema['minimum']
-					);
-				}
-
-				if ( ! is_numeric( $value ) || ! isset( $prop_schema['maximum'] ) || $value <= $prop_schema['maximum'] ) {
-					continue;
-				}
-
-				$errors[] = sprintf(
-					'Field "%s" must be at most %s',
-					$prop_name,
-					$prop_schema['maximum']
+				$errors = array_merge(
+					$errors,
+					self::validate_property( (string) $prop_name, $input[ $prop_name ], $prop_schema )
 				);
 			}
 		}
@@ -346,6 +311,59 @@ class Ability_Handler {
 			'valid'  => empty( $errors ),
 			'errors' => $errors,
 		);
+	}
+
+	/**
+	 * Validate a property value against a schema.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string              $prop_name   Property name.
+	 * @param mixed               $value       Property value.
+	 * @param array<string,mixed> $prop_schema Property schema.
+	 * @return array<string> Validation errors.
+	 */
+	private static function validate_property( string $prop_name, $value, array $prop_schema ): array {
+		$errors = array();
+
+		if ( isset( $prop_schema['type'] ) ) {
+			$valid = self::validate_type( $value, $prop_schema['type'] );
+			if ( ! $valid ) {
+				return array(
+					sprintf(
+						'Field "%s" should be of type "%s"',
+						$prop_name,
+						$prop_schema['type']
+					),
+				);
+			}
+		}
+
+		if ( isset( $prop_schema['enum'] ) && is_array( $prop_schema['enum'] ) && ! in_array( $value, $prop_schema['enum'], true ) ) {
+			$errors[] = sprintf(
+				'Field "%s" must be one of: %s',
+				$prop_name,
+				implode( ', ', $prop_schema['enum'] )
+			);
+		}
+
+		if ( is_numeric( $value ) && isset( $prop_schema['minimum'] ) && $value < $prop_schema['minimum'] ) {
+			$errors[] = sprintf(
+				'Field "%s" must be at least %s',
+				$prop_name,
+				$prop_schema['minimum']
+			);
+		}
+
+		if ( is_numeric( $value ) && isset( $prop_schema['maximum'] ) && $value > $prop_schema['maximum'] ) {
+			$errors[] = sprintf(
+				'Field "%s" must be at most %s',
+				$prop_name,
+				$prop_schema['maximum']
+			);
+		}
+
+		return $errors;
 	}
 
 	/**
