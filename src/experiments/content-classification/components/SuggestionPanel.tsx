@@ -146,12 +146,7 @@ export default function SuggestionPanel( {
 						className="ai-content-classification__actions"
 					>
 						<FlexItem>
-							<Button
-								accessibleWhenDisabled
-								variant="link"
-								onClick={ handleGenerate }
-								disabled={ isGenerating }
-							>
+							<Button variant="link" onClick={ handleGenerate }>
 								{ __( 'Suggest again', 'ai' ) }
 							</Button>
 						</FlexItem>
