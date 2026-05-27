@@ -114,7 +114,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 		$notice->render();
 		$output = ob_get_clean();
 
-		$this->assertStringContainsString( 'class="notice notice-warning"', $output );
+		$this->assertStringContainsString( 'class="notice notice-warning ai-connector-approval-notice"', $output );
 		$this->assertStringNotContainsString( 'inline', $output );
 	}
 
@@ -149,6 +149,6 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 		$notice->render();
 		$output = ob_get_clean();
 
-		$this->assertStringContainsString( 'class="notice notice-warning inline"', $output );
+		$this->assertStringContainsString( 'class="notice notice-warning ai-connector-approval-notice inline"', $output );
 	}
 }
