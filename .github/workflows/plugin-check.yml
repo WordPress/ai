@@ -61,7 +61,7 @@ jobs:
       - name: Run plugin check
         uses: wordpress/plugin-check-action@18573eb38f13543484a1f095672dae3849a4fbb0 # v1.1.6
         with:
-          wp-version: 'trunk'
+          wp-version: 'latest'
           # Exclude file_type because of the dev files present in the repository.
           exclude-checks: |
             file_type

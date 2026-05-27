@@ -3,7 +3,7 @@
 	"landingPage": "/wp-admin/options-general.php?page=ai-wp-admin",
 	"preferredVersions": {
 		"php": "7.4",
-		"wp": "beta"
+		"wp": "latest"
 	},
 	"features": {
 		"networking": true
