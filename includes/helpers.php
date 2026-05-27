@@ -383,6 +383,79 @@ function is_connector_configured( string $connector_id ): bool {
 }
 
 /**
+ * Determines if a connector has authentication in place.
+ *
+ * This checks for API-key credentials by source only (environment variable,
+ * PHP constant, or stored option) and does not make external API requests.
+ *
+ * @since x.x.x
+ *
+ * @param string $connector_id The connector ID.
+ * @return bool True if connector authentication is present, false otherwise.
+ */
+function has_connector_authentication( string $connector_id ): bool {
+	if ( ! wp_is_connector_registered( $connector_id ) ) {
+		return false;
+	}
+
+	$connector = wp_get_connector( $connector_id );
+	if ( ! is_array( $connector ) ) {
+		return false;
+	}
+
+	$auth = $connector['authentication'] ?? null;
+	if ( ! is_array( $auth ) || ( $auth['method'] ?? '' ) !== 'api_key' ) {
+		return false;
+	}
+
+	$setting_name = $auth['setting_name'] ?? '';
+	if ( ! is_string( $setting_name ) || '' === $setting_name ) {
+		return false;
+	}
+
+	return 'none' !== get_connector_api_key_source(
+		$setting_name,
+		$auth['env_var_name'] ?? '',
+		$auth['constant_name'] ?? ''
+	);
+}
+
+/**
+ * Determines the source of a connector API key.
+ *
+ * Checks in order: environment variable, PHP constant, database option.
+ *
+ * @since x.x.x
+ *
+ * @param string $setting_name  The option name for the API key.
+ * @param string $env_var_name  Optional environment variable name.
+ * @param string $constant_name Optional PHP constant name.
+ * @return string The key source: 'env', 'constant', 'database', or 'none'.
+ */
+function get_connector_api_key_source( string $setting_name, string $env_var_name = '', string $constant_name = '' ): string {
+	if ( '' !== $env_var_name ) {
+		$env_value = getenv( $env_var_name );
+		if ( false !== $env_value && '' !== $env_value ) {
+			return 'env';
+		}
+	}
+
+	if ( '' !== $constant_name && defined( $constant_name ) ) {
+		$const_value = constant( $constant_name );
+		if ( is_string( $const_value ) && '' !== $const_value ) {
+			return 'constant';
+		}
+	}
+
+	$db_value = get_option( $setting_name, '' );
+	if ( '' !== $db_value ) {
+		return 'database';
+	}
+
+	return 'none';
+}
+
+/**
  * Checks if we have AI credentials set.
  *
  * @since 0.1.0
@@ -399,7 +472,7 @@ function has_ai_credentials(): bool {
 			continue;
 		}
 
-		if ( ! is_connector_configured( $connector_id ) ) {
+		if ( ! has_connector_authentication( $connector_id ) ) {
 			continue;
 		}
 
