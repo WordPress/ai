@@ -234,7 +234,6 @@ export default function TitleToolbar( {
 						value={ generatedTitle }
 						onChange={ setGeneratedTitle }
 						disabled={ isRegenerating }
-						__nextHasNoMarginBottom
 					/>
 					<Flex
 						justify="flex-end"
@@ -243,6 +242,7 @@ export default function TitleToolbar( {
 					>
 						<FlexItem>
 							<Button
+								accessibleWhenDisabled
 								variant="secondary"
 								onClick={ handleRegenerate }
 								disabled={ isRegenerating }

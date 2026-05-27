@@ -350,6 +350,7 @@ const App: React.FC = () => {
 					/>
 
 					<SettingsPanel
+						hasLogs={ total > 0 }
 						onPurgeLogs={ handlePurge }
 						purging={ purging }
 					/>

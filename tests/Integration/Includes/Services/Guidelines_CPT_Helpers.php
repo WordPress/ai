@@ -56,15 +56,43 @@ trait Guidelines_CPT_Helpers {
 	}
 
 	/**
+	 * Registers the wp_guideline_type taxonomy for testing.
+	 *
+	 * Mirrors Gutenberg 23.1+'s taxonomy registration so the service can
+	 * filter by the `content` term.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return void
+	 */
+	private function register_guidelines_taxonomy(): void {
+		$this->register_guidelines_cpt();
+
+		if ( taxonomy_exists( Guidelines::TAXONOMY ) ) {
+			return;
+		}
+
+		register_taxonomy(
+			Guidelines::TAXONOMY,
+			Guidelines::POST_TYPE,
+			array(
+				'public'       => false,
+				'hierarchical' => true,
+			)
+		);
+	}
+
+	/**
 	 * Creates a guidelines post with the given category meta values.
 	 *
 	 * @since 0.8.0
 	 *
 	 * @param array<string, string> $categories  Keyed array of category => guideline text.
 	 * @param string                $post_status Optional. The post status. Defaults to 'publish'.
+	 * @param string|null           $type        Optional. wp_guideline_type term slug to assign. Defaults to null (no assignment).
 	 * @return int The created post ID.
 	 */
-	private function create_guidelines_post( array $categories, string $post_status = 'publish' ): int {
+	private function create_guidelines_post( array $categories, string $post_status = 'publish', ?string $type = null ): int {
 		$post_id = self::factory()->post->create(
 			array(
 				'post_type'   => Guidelines::POST_TYPE,
@@ -79,6 +107,10 @@ trait Guidelines_CPT_Helpers {
 			}
 
 			update_post_meta( $post_id, self::$guideline_category_meta_keys[ $category ], $value );
+		}
+
+		if ( null !== $type && taxonomy_exists( Guidelines::TAXONOMY ) ) {
+			wp_set_object_terms( $post_id, $type, Guidelines::TAXONOMY );
 		}
 
 		// Reset cache so the service picks up the new post.
