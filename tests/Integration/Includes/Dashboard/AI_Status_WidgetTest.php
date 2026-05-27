@@ -209,7 +209,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the feature step uses the individual feature setting.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_getting_started_shows_success_for_enabled_feature_when_global_ai_is_disabled() {
 		update_option( Settings_Registration::GLOBAL_OPTION, false );
@@ -236,7 +236,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the feature step respects the individual feature enabled filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_getting_started_shows_success_for_filtered_enabled_feature() {
 		update_option( Settings_Registration::GLOBAL_OPTION, false );

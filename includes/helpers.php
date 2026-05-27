@@ -372,7 +372,7 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
 /**
  * Determines if a connector is configured.
  *
- * @since x.x.x
+ * @since 1.0.1
  *
  * @param string $connector_id The connector ID.
  * @return bool True if the connector is configured, false otherwise.
@@ -388,7 +388,7 @@ function is_connector_configured( string $connector_id ): bool {
  * This checks for API-key credentials by source only (environment variable,
  * PHP constant, or stored option) and does not make external API requests.
  *
- * @since x.x.x
+ * @since 1.0.1
  *
  * @param string $connector_id The connector ID.
  * @return bool True if connector authentication is present, false otherwise.
@@ -425,7 +425,7 @@ function has_connector_authentication( string $connector_id ): bool {
  *
  * Checks in order: environment variable, PHP constant, database option.
  *
- * @since x.x.x
+ * @since 1.0.1
  *
  * @param string $setting_name  The option name for the API key.
  * @param string $env_var_name  Optional environment variable name.

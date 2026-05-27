@@ -14,13 +14,13 @@ use WordPress\AI\Connector_Approval\Caller_Identifier;
 /**
  * Caller_Identifier test case.
  *
- * @since x.x.x
+ * @since 1.0.1
  */
 class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Resolves a synthetic stack with the private Caller_Identifier resolver.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @param array<int, array<string, mixed>> $frames Synthetic stack frames.
 	 * @return array{type: string, basename: string, name: string}|null
@@ -38,7 +38,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Test that request logging frames are treated as infrastructure.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_skips_request_logging_frames_when_identifying_origin(): void {
 		$result = $this->resolve_frames(
@@ -64,7 +64,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Test that the deepest extension frame is treated as the origin.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_identifies_deepest_extension_frame_as_origin(): void {
 		$result = $this->resolve_frames(
@@ -96,7 +96,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Test that another plugin's matching internal directory is not skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_does_not_skip_matching_directory_names_in_other_plugins(): void {
 		$result = $this->resolve_frames(
