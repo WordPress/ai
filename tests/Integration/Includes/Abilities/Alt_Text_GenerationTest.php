@@ -268,7 +268,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that lookalike upload URLs do not map to local files.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	public function test_maybe_map_url_to_local_path_rejects_lookalike_upload_url() {
 		$uploads = wp_get_upload_dir();
