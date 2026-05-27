@@ -147,7 +147,7 @@ final class Admin_Notice {
 			self::DISMISS_NONCE
 		);
 
-		$class = 'notice notice-warning';
+		$class = 'notice notice-warning ai-connector-approval-notice';
 		if ( $screen && 'tools_page_ai-request-logs' === $screen->id ) {
 			$class .= ' inline';
 		}
