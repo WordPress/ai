@@ -1,5 +1,11 @@
 @use '../common';
 
+.tools_page_ai-request-logs {
+	.ai-connector-approval-notice {
+		margin: 10px 15px 15px 0;
+	}
+}
+
 .ai-request-logs__app {
 	max-width: 1400px;
 
