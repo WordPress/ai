@@ -325,7 +325,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Invokes normalize_upload_url() for test setup.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 *
 	 * @param string $url URL to normalize.
 	 * @return string Normalized URL.
