@@ -148,7 +148,7 @@ final class Admin_Notice {
 		);
 
 		printf(
-			'<div class="notice notice-warning"><p>%s <a href="%s">%s</a> &middot; <a href="%s">%s</a></p></div>',
+			'<div class="notice notice-warning inline"><p>%s <a href="%s">%s</a> &middot; <a href="%s">%s</a></p></div>',
 			esc_html(
 				sprintf(
 					/* translators: %d: number of pending approval requests. */
