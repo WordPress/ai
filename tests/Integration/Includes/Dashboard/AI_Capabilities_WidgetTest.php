@@ -51,14 +51,14 @@ class Capabilities_Test_Feature extends Abstract_Feature {
 /**
  * Stub provider with unavailable model metadata for capabilities widget tests.
  *
- * @since x.x.x
+ * @since 1.0.1
  */
 final class Capabilities_Unavailable_Test_Provider {
 
 	/**
 	 * Returns stub provider metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public static function metadata(): ProviderMetadata {
 		return new ProviderMetadata(
@@ -72,7 +72,7 @@ final class Capabilities_Unavailable_Test_Provider {
 	/**
 	 * Simulates a provider whose model metadata is unavailable.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @throws \BadMethodCallException Always thrown for this stub.
 	 */
@@ -85,14 +85,14 @@ final class Capabilities_Unavailable_Test_Provider {
 /**
  * Stub provider with available model metadata for capabilities widget tests.
  *
- * @since x.x.x
+ * @since 1.0.1
  */
 final class Capabilities_Available_Test_Provider {
 
 	/**
 	 * Returns stub provider metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public static function metadata(): ProviderMetadata {
 		return new ProviderMetadata(
@@ -106,7 +106,7 @@ final class Capabilities_Available_Test_Provider {
 	/**
 	 * Returns stub model metadata directory.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client provider API.
 	public static function modelMetadataDirectory(): Capabilities_Test_Model_Metadata_Directory {
@@ -117,14 +117,14 @@ final class Capabilities_Available_Test_Provider {
 /**
  * Stub model metadata directory for capabilities widget tests.
  *
- * @since x.x.x
+ * @since 1.0.1
  */
 final class Capabilities_Test_Model_Metadata_Directory {
 
 	/**
 	 * Lists stub model metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @return array<int, \WordPress\AI\Tests\Integration\Dashboard\Capabilities_Test_Model_Metadata>
 	 */
@@ -137,14 +137,14 @@ final class Capabilities_Test_Model_Metadata_Directory {
 /**
  * Stub model metadata for capabilities widget tests.
  *
- * @since x.x.x
+ * @since 1.0.1
  */
 final class Capabilities_Test_Model_Metadata {
 
 	/**
 	 * Gets supported capabilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @return array<int, object{value:string}>
 	 */
@@ -168,7 +168,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Stub provider ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @var string
 	 */
@@ -177,7 +177,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Original AI client provider registry map.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @var array<string, string>|null
 	 */
@@ -336,7 +336,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that provider capabilities section is hidden when no provider row can render.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_provider_capabilities_section_hidden_when_no_provider_rows_render() {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -403,7 +403,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Replaces registered providers in the AI client registry for a test.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @param array<string, string> $providers Registered provider IDs to class names.
 	 */
@@ -420,7 +420,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Restores registered providers in the AI client registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	private function restore_registered_providers(): void {
 		if ( null === $this->original_registered_providers || ! class_exists( AiClient::class ) ) {
@@ -437,7 +437,7 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Returns the registered providers registry property.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	private function get_registered_providers_property(): ReflectionProperty {
 		$property = new ReflectionProperty( AiClient::defaultRegistry(), 'registeredIdsToClassNames' );

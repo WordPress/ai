@@ -349,7 +349,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that is_globally_enabled() returns the global enabled state.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_is_globally_enabled_returns_global_enabled_state(): void {
 		$experiment = new Test_Categorized_Experiment();
@@ -364,7 +364,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that is_individually_enabled() applies the feature enabled filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_is_individually_enabled_applies_feature_filter(): void {
 		update_option( 'wpai_feature_test-categorized_enabled', false );
@@ -378,7 +378,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that is_enabled() still requires the global enabled state.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_is_enabled_still_requires_global_enabled_state(): void {
 		update_option( 'wpai_features_enabled', false );

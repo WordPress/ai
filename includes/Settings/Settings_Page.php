@@ -114,7 +114,7 @@ class Settings_Page {
 	 * strings in those modules requires `wp_set_script_module_translations()`
 	 * rather than `wp_set_script_translations()`.
 	 *
-	 * @since X.X.X
+	 * @since 1.0.1
 	 *
 	 * @return void
 	 */

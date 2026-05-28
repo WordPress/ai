@@ -83,7 +83,7 @@ interface Feature {
 	/**
 	 * Checks if features are globally enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @return bool True if globally enabled, false otherwise.
 	 */
@@ -92,7 +92,7 @@ interface Feature {
 	/**
 	 * Checks if the feature is individually enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 *
 	 * @return bool True if individually enabled, false otherwise.
 	 */

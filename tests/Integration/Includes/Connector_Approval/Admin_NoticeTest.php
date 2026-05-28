@@ -86,7 +86,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the notice does not include the inline class on other pages.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_render_does_not_use_inline_class_by_default(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -121,7 +121,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the notice includes the inline class on the Request Logs screen.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_render_uses_inline_class_on_request_logs_screen(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
