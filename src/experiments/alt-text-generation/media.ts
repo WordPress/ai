@@ -298,14 +298,14 @@ window.jQuery?.( document ).ready( function () {
 		if ( ! isEditAttachmentRefreshBound ) {
 			initAltTextMediaControls();
 
-			isEditAttachmentRefreshBound = true;
-
 			// Fired when the edit modal refreshes for next/previous navigation,
 			// and when the same edit frame is reused after reopening the modal.
 			wpMedia.media?.frames?.edit?.on(
 				'refresh',
 				initAltTextMediaControls
 			);
+
+			isEditAttachmentRefreshBound = true;
 		}
 	} );
 
