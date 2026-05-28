@@ -304,7 +304,6 @@ window.jQuery?.( document ).ready( function () {
 				'refresh',
 				initAltTextMediaControls
 			);
-
 			isEditAttachmentRefreshBound = true;
 		}
 	} );
