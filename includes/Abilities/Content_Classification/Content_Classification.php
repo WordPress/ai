@@ -331,6 +331,37 @@ class Content_Classification extends Abstract_Ability {
 			$available_terms = $this->get_top_terms( $taxonomy );
 		}
 
+		/**
+		 * Filters the candidate pool of existing terms surfaced to the model as
+		 * `<available-terms>`.
+		 *
+		 * Default behaviour: the top 100 terms ordered by usage count when the
+		 * `existing_only` strategy is in use; an empty array otherwise. The
+		 * system instruction treats this pool as candidates ("use only when
+		 * they genuinely fit; relevance outweighs popularity") rather than as
+		 * required choices, so the popularity ordering is not load-bearing for
+		 * relevance — it's just the default. Sites can return a relevance-
+		 * ranked pool (e.g. via embeddings) here without touching prompt code.
+		 *
+		 * Returning an empty array suppresses the `<available-terms>` block
+		 * entirely, which lets the model rely purely on content + assigned
+		 * terms.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<string> $available_terms The default candidate pool (term names).
+		 * @param string        $taxonomy        The taxonomy slug being suggested for.
+		 * @param string        $strategy        The suggestion strategy
+		 *                                       (`existing_only` or `allow_new`).
+		 * @return array<string> The filtered candidate pool.
+		 */
+		$available_terms = (array) apply_filters(
+			'wpai_content_classification_available_terms',
+			$available_terms,
+			$taxonomy,
+			$strategy
+		);
+
 		// Piece together the various prompt parts.
 		$prompt_parts = array();
 
