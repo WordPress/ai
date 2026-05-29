@@ -93,6 +93,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		remove_all_filters( 'wpai_content_classification_content' );
 		remove_all_filters( 'wpai_content_classification_suggestions' );
+		remove_all_filters( 'wpai_content_classification_min_confidence' );
 		parent::tearDown();
 	}
 
@@ -303,6 +304,9 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
+		// Disable the relevance floor for this test so it focuses on sort order.
+		add_filter( 'wpai_content_classification_min_confidence', static fn() => 0.0 );
+
 		$response = '{"suggestions": [
 			{"term": "low", "confidence": 0.3, "is_new": true},
 			{"term": "high", "confidence": 0.95, "is_new": true},
@@ -325,6 +329,9 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
+
+		// Disable the floor so the lower-clamp branch survives parsing.
+		add_filter( 'wpai_content_classification_min_confidence', static fn() => 0.0 );
 
 		$response = '{"suggestions": [
 			{"term": "over", "confidence": 1.5, "is_new": true},
@@ -435,9 +442,16 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$response = '{"suggestions": [{"term": "test", "is_new": true}]}';
 
+		// With floor disabled, the 0.5 default surfaces and we can assert it.
+		add_filter( 'wpai_content_classification_min_confidence', static fn() => 0.0 );
 		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
-
 		$this->assertEquals( 0.5, $result[0]['confidence'], 'Missing confidence should default to 0.5' );
+
+		// With the default floor active, the 0.5 default is below the floor (0.6) and the
+		// suggestion is dropped — confirming missing confidence is treated as below-relevant.
+		remove_all_filters( 'wpai_content_classification_min_confidence' );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+		$this->assertSame( array(), $result, 'A suggestion with missing confidence should be dropped at the default floor.' );
 	}
 
 	/**
