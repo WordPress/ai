@@ -11,7 +11,7 @@ import {
 	CardHeader,
 	ToggleControl,
 } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -98,7 +98,14 @@ const ApprovalMatrixCard = ( {
 												<ToggleControl
 													checked={ approved }
 													disabled={ isSaving }
-													label=""
+													label={ sprintf(
+														__(
+															'Allow %1$s to use %2$s',
+															'ai'
+														),
+														caller.name,
+														connector.name
+													) }
 													onChange={ (
 														value: boolean
 													) =>
