@@ -242,6 +242,7 @@ export default function TitleToolbar( {
 					>
 						<FlexItem>
 							<Button
+								accessibleWhenDisabled
 								variant="secondary"
 								onClick={ handleRegenerate }
 								disabled={ isRegenerating }

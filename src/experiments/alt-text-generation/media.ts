@@ -35,6 +35,9 @@ type WordPressMedia = {
 			};
 		};
 		frame?: { on: ( event: string, cb: unknown ) => void };
+		frames?: {
+			edit?: { on: ( event: string, cb: unknown ) => void };
+		};
 	};
 	Uploader?: { queue?: { on: ( event: string, cb: unknown ) => void } };
 };
@@ -286,8 +289,25 @@ window.jQuery?.( document ).ready( function () {
 		);
 	} );
 
-	// When editing an attachment in the media library.
-	wpMedia.media?.frame?.on( 'edit:attachment', initAltTextMediaControls );
+	// The edit attachment frame is created lazily when the modal opens.
+	let isEditAttachmentRefreshBound = false;
+
+	// Initialize controls the first time the attachment edit modal opens, then
+	// bind the edit frame refresh event once for later attachment changes.
+	wpMedia.media?.frame?.on( 'edit:attachment', () => {
+		if ( ! isEditAttachmentRefreshBound ) {
+			initAltTextMediaControls();
+
+			// Fired when the edit modal refreshes for next/previous navigation,
+			// and when the same edit frame is reused after reopening the modal.
+			wpMedia.media?.frames?.edit?.on(
+				'refresh',
+				initAltTextMediaControls
+			);
+
+			isEditAttachmentRefreshBound = true;
+		}
+	} );
 
 	// For newly uploaded media.
 	wpMedia.Uploader?.queue?.on( 'reset', initAltTextMediaControls );

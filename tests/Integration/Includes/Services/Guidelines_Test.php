@@ -395,7 +395,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 * taxonomy allows artifact guidelines to coexist with the content singleton,
 	 * and the service used to pick whichever was most recent.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_get_guidelines_prefers_content_type_over_newer_artifact(): void {
 		$this->register_guidelines_taxonomy();
@@ -433,7 +433,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that get_guidelines() returns null when only artifact-typed
 	 * guidelines exist, since artifacts are not site-wide content guidelines.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_get_guidelines_returns_null_when_only_artifact_exists(): void {
 		$this->register_guidelines_taxonomy();
@@ -453,7 +453,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 * Tests that on older Gutenberg builds where the taxonomy is not registered,
 	 * the service still returns the most recent guideline post.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.1
 	 */
 	public function test_get_guidelines_falls_back_to_latest_when_taxonomy_unavailable(): void {
 		$this->register_guidelines_cpt();
