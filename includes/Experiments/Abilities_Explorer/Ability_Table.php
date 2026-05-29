@@ -291,6 +291,7 @@ class Ability_Table extends \WP_List_Table {
 
 		?>
 		<div class="alignleft actions">
+			<label for="filter-by-provider" class="screen-reader-text"><?php esc_html_e( 'Filter by provider', 'ai' ); ?></label>
 			<select name="provider" id="filter-by-provider">
 				<option value="all" <?php selected( $provider_filter, 'all' ); ?>><?php esc_html_e( 'All Providers', 'ai' ); ?></option>
 				<option value="Core" <?php selected( $provider_filter, 'Core' ); ?>><?php esc_html_e( 'Core', 'ai' ); ?></option>
@@ -298,6 +299,7 @@ class Ability_Table extends \WP_List_Table {
 				<option value="Theme" <?php selected( $provider_filter, 'Theme' ); ?>><?php esc_html_e( 'Theme', 'ai' ); ?></option>
 			</select>
 
+			<label for="filter-by-category" class="screen-reader-text"><?php esc_html_e( 'Filter by category', 'ai' ); ?></label>
 			<select name="category" id="filter-by-category">
 				<option value="all" <?php selected( $category_filter, 'all' ); ?>><?php esc_html_e( 'All Categories', 'ai' ); ?></option>
 				<?php foreach ( $this->get_unique_categories() as $category ) : ?>
