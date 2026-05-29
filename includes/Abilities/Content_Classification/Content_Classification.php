@@ -28,6 +28,22 @@ use function WordPress\AI\normalize_content;
 class Content_Classification extends Abstract_Ability {
 
 	/**
+	 * Default minimum confidence below which a suggestion is dropped.
+	 *
+	 * The system prompt instructs the model to use 0.5 = "somewhat
+	 * relevant" / 1.0 = "perfect match". In practice true positives
+	 * cluster at ≥0.85 and generic / popularity-driven false positives
+	 * sit in the 0.5–0.78 range, so filtering at 0.6 removes most
+	 * noise without meaningfully impacting recall. Filterable via
+	 * `wpai_content_classification_min_confidence`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var float
+	 */
+	public const MIN_CONFIDENCE = 0.6;
+
+	/**
 	 * {@inheritDoc}
 	 *
 	 * @since 0.8.0
@@ -401,7 +417,7 @@ class Content_Classification extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.5 )
+			->using_temperature( 0.2 )
 			->as_json_response( $this->suggestions_schema() );
 
 		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Content_Classification_Experiment::class );
@@ -478,6 +494,27 @@ class Content_Classification extends Abstract_Ability {
 			$existing_terms = array_combine( array_map( 'strtolower', $existing_terms ), $existing_terms );
 		}
 
+		/**
+		 * Filters the minimum confidence threshold for a suggestion to be
+		 * returned. Suggestions with confidence below this value are dropped
+		 * before sorting and limiting to `max_suggestions`.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param float  $min_confidence The minimum confidence (0.0–1.0).
+		 * @param string $taxonomy       The taxonomy slug being suggested for.
+		 * @param string $strategy       The suggestion strategy.
+		 * @return float The filtered minimum confidence.
+		 */
+		$min_confidence = (float) apply_filters(
+			'wpai_content_classification_min_confidence',
+			self::MIN_CONFIDENCE,
+			$taxonomy,
+			$strategy
+		);
+		// Clamp to the valid range so a stray filter return can't disable the floor entirely.
+		$min_confidence = max( 0.0, min( 1.0, $min_confidence ) );
+
 		// Build a lowercase set of assigned terms for filtering.
 		$assigned_terms = array_map( 'strtolower', $assigned_terms );
 		$suggestions    = array();
@@ -490,6 +527,14 @@ class Content_Classification extends Abstract_Ability {
 			$term_lower = strtolower( $term );
 			$is_new     = ! isset( $existing_terms[ $term_lower ] );
 			$confidence = isset( $item['confidence'] ) ? (float) $item['confidence'] : 0.5;
+			// Clamp first so the floor compares against the effective confidence
+			// rather than malformed model output.
+			$confidence = max( 0.0, min( 1.0, $confidence ) );
+
+			// Drop suggestions below the relevance floor.
+			if ( $confidence < $min_confidence ) {
+				continue;
+			}
 
 			// Skip terms already assigned to the post.
 			// The agent should avoid suggesting these, but just in case we'll check here as well.
@@ -509,7 +554,7 @@ class Content_Classification extends Abstract_Ability {
 
 			$suggestion = array(
 				'term'       => $term,
-				'confidence' => max( 0.0, min( 1.0, $confidence ) ),
+				'confidence' => $confidence,
 				'is_new'     => $is_new,
 			);
 
