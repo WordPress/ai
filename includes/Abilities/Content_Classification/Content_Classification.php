@@ -334,7 +334,7 @@ class Content_Classification extends Abstract_Ability {
 		// Piece together the various prompt parts.
 		$prompt_parts = array();
 
-		$prompt_parts[] = '<taxonomy>' . $taxonomy . '</taxonomy>';
+		$prompt_parts[] = $this->build_taxonomy_descriptor( $taxonomy );
 		$prompt_parts[] = '<content>' . $context . '</content>';
 
 		// If we have currently assigned terms, add them to the prompt to avoid redundant suggestions.
@@ -404,6 +404,55 @@ class Content_Classification extends Abstract_Ability {
 		 * @param string                                                                       $strategy       The suggestion strategy ('existing_only' or 'allow_new').
 		 */
 		return (array) apply_filters( 'wpai_content_classification_suggestions', $suggestions, $taxonomy, $strategy );
+	}
+
+	/**
+	 * Builds the `<taxonomy …/>` descriptor block sent to the model.
+	 *
+	 * Surfaces the human label, the description, whether the taxonomy is
+	 * hierarchical, and a coarse `kind` (`category` vs `tag`) so the
+	 * model can reason about intent (broad/thematic vs specific) rather
+	 * than guessing from the raw slug. The system instruction branches
+	 * on `kind`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy slug.
+	 * @return string The descriptor block, e.g.
+	 *                `<taxonomy name="category" label="Categories" kind="category" hierarchical="true">…description…</taxonomy>`.
+	 */
+	private function build_taxonomy_descriptor( string $taxonomy ): string {
+		$tax_object = get_taxonomy( $taxonomy );
+		$is_hier    = is_taxonomy_hierarchical( $taxonomy );
+		$kind       = $is_hier ? 'category' : 'tag';
+
+		$label = $taxonomy;
+		if ( $tax_object && isset( $tax_object->labels->name ) && '' !== $tax_object->labels->name ) {
+			$label = (string) $tax_object->labels->name;
+		}
+
+		$description = '';
+		if ( $tax_object ) {
+			$description = trim( (string) $tax_object->description );
+		}
+
+		// Attribute values may contain quotes (rare but possible); escape just
+		// the double-quote since the model treats this as loose XML, not HTML.
+		$attr_escape = static fn ( string $v ): string => str_replace( '"', '&quot;', $v );
+
+		$open = sprintf(
+			'<taxonomy name="%s" label="%s" kind="%s" hierarchical="%s">',
+			$attr_escape( $taxonomy ),
+			$attr_escape( $label ),
+			$kind,
+			$is_hier ? 'true' : 'false'
+		);
+
+		if ( '' === $description ) {
+			return $open . '</taxonomy>';
+		}
+
+		return $open . $description . '</taxonomy>';
 	}
 
 	/**
