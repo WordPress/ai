@@ -12,7 +12,6 @@ import { registerPlugin } from '@wordpress/plugins';
  * Internal dependencies
  */
 import EditorialUpdatesPlugin from './components/EditorialUpdatesPlugin';
-import './index.scss';
 
 if ( ( window as any ).aiEditorialUpdatesData?.enabled ) {
 	registerPlugin( 'ai-editorial-updates', {

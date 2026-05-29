@@ -50,7 +50,7 @@ class Summarization extends Abstract_Feature {
 	public function register(): void {
 		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 	}
 
@@ -93,7 +93,7 @@ class Summarization extends Abstract_Feature {
 	 * @since 0.3.0
 	 */
 	public function enqueue_assets(): void {
-		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		$screen = get_current_screen();
 		if ( ! $screen || 'post' !== $screen->base ) {
 			return;
 		}

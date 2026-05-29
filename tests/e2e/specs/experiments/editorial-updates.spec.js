@@ -222,7 +222,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 		expect( blockContent ).toContain( 'refined block content' );
 	} );
 
-	test( 'Keeps Editorial Notes and Updates grouped above Content Summarization', async ( {
+	test( 'Keeps Editorial Notes and Updates grouped with Content Summarization enabled', async ( {
 		admin,
 		editor,
 		page,
@@ -317,8 +317,8 @@ test.describe( 'Editorial Updates Experiment', () => {
 		expect( notesBox ).not.toBeNull();
 		expect( updatesBox ).not.toBeNull();
 		expect( summaryBox ).not.toBeNull();
+		expect( summaryBox.y ).toBeLessThan( notesBox.y );
 		expect( notesBox.y ).toBeLessThan( updatesBox.y );
-		expect( updatesBox.y ).toBeLessThan( summaryBox.y );
 	} );
 
 	test( 'Button is hidden when experiments are globally disabled', async ( {
