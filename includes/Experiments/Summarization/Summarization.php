@@ -50,7 +50,7 @@ class Summarization extends Abstract_Feature {
 	public function register(): void {
 		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 	}
 
@@ -88,15 +88,13 @@ class Summarization extends Abstract_Feature {
 	}
 
 	/**
-	 * Enqueues and localizes the admin script.
+	 * Enqueues and localizes the block editor script.
 	 *
 	 * @since 0.3.0
-	 *
-	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
-	public function enqueue_assets( string $hook_suffix ): void {
-		// Load asset in new post and edit post screens only.
-		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
+	public function enqueue_assets(): void {
+		$screen = get_current_screen();
+		if ( ! $screen || 'post' !== $screen->base ) {
 			return;
 		}
 
