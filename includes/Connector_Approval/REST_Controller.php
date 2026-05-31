@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
  * Endpoints (namespace `ai/v1`):
  * - GET  /connector-approvals                        returns connectors, approvals, pending, active plugins, and active theme
  * - POST /connector-approvals                        sets or revokes approval for a plugin/connector pair
- * - DELETE /connector-approvals/pending/(?P<key>...) dismisses a pending entry without approving
+ * - DELETE /connector-approvals/pending?key=...      dismisses a pending entry without approving
  *
  * @since 1.0.0
  */
@@ -100,7 +100,7 @@ final class REST_Controller {
 
 		register_rest_route(
 			self::REST_NAMESPACE,
-			'/connector-approvals/pending/(?P<key>[^/]+)',
+			'/connector-approvals/pending',
 			array(
 				'methods'             => WP_REST_Server::DELETABLE,
 				'callback'            => array( $this, 'delete_pending' ),
@@ -195,7 +195,7 @@ final class REST_Controller {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function delete_pending( WP_REST_Request $request ) {
-		$key = rawurldecode( (string) $request->get_param( 'key' ) );
+		$key = (string) $request->get_param( 'key' );
 
 		if ( ! $this->store->remove_pending( $key ) ) {
 			return new WP_Error(
