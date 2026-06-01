@@ -418,25 +418,23 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that an unknown taxonomy falls back to its slug for `label`,
-	 * defaults `kind`/`hierarchical` to the non-hierarchical (tag) branch,
-	 * and omits the description gracefully.
+	 * Test that an unknown taxonomy yields an empty descriptor.
+	 *
+	 * `execute_callback()` already rejects nonexistent taxonomies with a
+	 * WP_Error before the descriptor is built, so this guards the helper
+	 * against being misused directly: it returns an empty string rather
+	 * than emitting a meaningless `<taxonomy>` block for a slug that does
+	 * not resolve to a registered taxonomy.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_taxonomy_descriptor_unknown_taxonomy_falls_back(): void {
+	public function test_taxonomy_descriptor_unknown_taxonomy_returns_empty(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'build_taxonomy_descriptor' );
 		$method->setAccessible( true );
 
-		$descriptor = (string) $method->invoke( $this->ability, 'made_up_tax_xyz' );
-
-		$this->assertStringContainsString( 'name="made_up_tax_xyz"', $descriptor );
-		$this->assertStringContainsString( 'label="made_up_tax_xyz"', $descriptor );
-		$this->assertStringContainsString( 'kind="tag"', $descriptor );
-		$this->assertStringContainsString( 'hierarchical="false"', $descriptor );
-		// Empty description should produce a clean empty block, no <description> noise.
-		$this->assertStringEndsWith( '></taxonomy>', $descriptor );
+		$this->assertSame( '', (string) $method->invoke( $this->ability, 'made_up_tax_xyz' ) );
+		$this->assertSame( '', (string) $method->invoke( $this->ability, '' ) );
 	}
 
 	/**
