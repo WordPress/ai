@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Content_Classification;
 use WP_Error;
 use WP_Post;
 use WP_Post_Type;
+use WP_Taxonomy;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Content_Classification\Content_Classification as Content_Classification_Experiment;
 
@@ -449,41 +450,49 @@ class Content_Classification extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string $taxonomy The taxonomy slug.
-	 * @return string The descriptor block, e.g.
-	 *                `<taxonomy name="category" label="Categories" kind="category" hierarchical="true">…description…</taxonomy>`.
+	 * @return string The descriptor block (e.g.
+	 *                `<taxonomy name="category" label="Categories" kind="category" hierarchical="true">…description…</taxonomy>`),
+	 *                or an empty string when the taxonomy does not exist.
 	 */
 	private function build_taxonomy_descriptor( string $taxonomy ): string {
+		$taxonomy = sanitize_key( $taxonomy );
+
+		if ( '' === $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return '';
+		}
+
 		$tax_object = get_taxonomy( $taxonomy );
-		$is_hier    = is_taxonomy_hierarchical( $taxonomy );
-		$kind       = $is_hier ? 'category' : 'tag';
 
-		$label = $taxonomy;
-		if ( $tax_object && isset( $tax_object->labels->name ) && '' !== $tax_object->labels->name ) {
-			$label = (string) $tax_object->labels->name;
+		if ( ! $tax_object instanceof WP_Taxonomy ) {
+			return '';
 		}
 
-		$description = '';
-		if ( $tax_object ) {
-			$description = trim( (string) $tax_object->description );
-		}
+		$is_hierarchical = is_taxonomy_hierarchical( $taxonomy );
+		$kind            = $is_hierarchical ? 'category' : 'tag';
 
-		// Attribute values may contain quotes (rare but possible); escape just
-		// the double-quote since the model treats this as loose XML, not HTML.
-		$attr_escape = static fn ( string $v ): string => str_replace( '"', '&quot;', $v );
+		$label = ! empty( $tax_object->labels->name )
+			? wp_strip_all_tags( (string) $tax_object->labels->name )
+			: $taxonomy;
 
-		$open = sprintf(
-			'<taxonomy name="%s" label="%s" kind="%s" hierarchical="%s">',
-			$attr_escape( $taxonomy ),
-			$attr_escape( $label ),
-			$kind,
-			$is_hier ? 'true' : 'false'
+		$description = trim( wp_strip_all_tags( (string) $tax_object->description ) );
+
+		// Use esc_attr() for the attribute values so labels containing
+		// quotes or angle brackets can't break the pseudo-XML the model reads.
+		$open_tag = sprintf(
+			'<taxonomy name="%1$s" label="%2$s" kind="%3$s" hierarchical="%4$s">',
+			esc_attr( $taxonomy ),
+			esc_attr( $label ),
+			esc_attr( $kind ),
+			$is_hierarchical ? 'true' : 'false'
 		);
 
 		if ( '' === $description ) {
-			return $open . '</taxonomy>';
+			return $open_tag . '</taxonomy>';
 		}
 
-		return $open . $description . '</taxonomy>';
+		// The description is plain text (tags already stripped) and is read by
+		// the model as content, so it is injected as-is rather than entity-encoded.
+		return $open_tag . $description . '</taxonomy>';
 	}
 
 	/**
