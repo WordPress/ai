@@ -44,6 +44,10 @@
 		justify-content: center;
 		gap: 10px;
 		padding: 20px 0;
+
+		svg {
+			margin: 0;
+		}
 	}
 
 	&__spinner-label {

@@ -4,6 +4,7 @@
 import { Button, Modal, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { image } from '@wordpress/icons';
+import { useFocusOnMount } from '@wordpress/compose';
 
 /**
  * Internal dependencies
@@ -73,6 +74,8 @@ export function GenerateImageInlineModal( {
 		comparisonLeftLabel,
 		comparisonRightLabel,
 	} = useImageGeneration();
+
+	const focusOnMountRef = useFocusOnMount( 'firstElement' );
 
 	async function handleUseImage(): Promise< void > {
 		if ( ! activeEntry ) {
@@ -155,7 +158,10 @@ export function GenerateImageInlineModal( {
 						comparisonLeftLabel={ comparisonLeftLabel }
 						comparisonRightLabel={ comparisonRightLabel }
 					/>
-					<div className="ai-image-generation__actions">
+					<div
+						className="ai-image-generation__actions"
+						ref={ focusOnMountRef }
+					>
 						<Button variant="primary" onClick={ handleUseImage }>
 							{ __( 'Use Image', 'ai' ) }
 						</Button>
