@@ -96,8 +96,6 @@ export default function TitleToolbar( {
 	const [ isOpen, setOpen ] = useState< boolean >( false );
 	const [ generatedTitle, setGeneratedTitle ] = useState< string >( '' );
 
-	// Reference to the Generate/Regenerate toolbar button so focus can be
-	// returned to it after the modal closes.
 	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
 
 	// Tracks the pending focus-restore timeout so it can be cancelled on unmount.
@@ -116,30 +114,18 @@ export default function TitleToolbar( {
 	const openModal = () => setOpen( true );
 
 	/**
-	 * Returns focus to the Generate/Regenerate button after the modal closes.
-	 *
-	 * While the modal is open, the wrapper hides the toolbar on blur, so the
-	 * button lives in a `display: none` container and cannot receive focus.
-	 * We make the toolbar visible again, then focus the button on the next
-	 * tick (after the modal has unmounted and released focus).
+	 * Returns focus to the title input after the modal closes.
 	 */
 	const restoreFocus = () => {
 		focusTimeoutRef.current = setTimeout( () => {
 			focusTimeoutRef.current = null;
 
-			const button = generateButtonRef.current;
-			if ( ! button ) {
-				return;
-			}
+			const titleInput =
+				generateButtonRef.current?.ownerDocument.querySelector(
+					'.editor-post-title__input'
+				) as HTMLElement | null;
 
-			const container = button.closest(
-				'.ai-title-toolbar-container'
-			) as HTMLElement | null;
-			if ( container ) {
-				container.style.display = 'flex';
-			}
-
-			button.focus();
+			titleInput?.focus();
 		}, 0 );
 	};
 
