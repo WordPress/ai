@@ -48,17 +48,14 @@ const ApprovalMatrixCard = ( {
 }: ApprovalMatrixCardProps ): JSX.Element => {
 	const matrixCallers = buildMatrixCallerList( plugins, themes, approvals );
 
-	const tableRef = useRef< HTMLTableElement | null >( null );
+	const lastToggledRef = useRef< HTMLElement | null >( null );
 	const wasSavingRef = useRef< boolean >( false );
-	const lastToggledKeyRef = useRef< string | null >( null );
+	const tableRef = useRef< HTMLTableElement | null >( null );
 
 	useEffect( () => {
-		if ( wasSavingRef.current && ! isSaving && lastToggledKeyRef.current ) {
-			const input = tableRef.current?.querySelector< HTMLElement >(
-				`[data-toggle-key="${ lastToggledKeyRef.current }"] input`
-			);
-			input?.focus();
-			lastToggledKeyRef.current = null;
+		if ( wasSavingRef.current && ! isSaving ) {
+			lastToggledRef.current?.focus();
+			lastToggledRef.current = null;
 		}
 
 		wasSavingRef.current = isSaving;
@@ -110,13 +107,8 @@ const ApprovalMatrixCard = ( {
 											]
 										);
 
-										const toggleKey = `${ caller.basename }__${ connector.id }`;
-
 										return (
-											<td
-												key={ connector.id }
-												data-toggle-key={ toggleKey }
-											>
+											<td key={ connector.id }>
 												<ToggleControl
 													checked={ approved }
 													disabled={ isSaving }
@@ -124,8 +116,10 @@ const ApprovalMatrixCard = ( {
 													onChange={ (
 														value: boolean
 													) => {
-														lastToggledKeyRef.current =
-															toggleKey;
+														lastToggledRef.current =
+															tableRef.current
+																?.ownerDocument
+																.activeElement as HTMLElement;
 														onToggle(
 															caller.basename,
 															connector.id,
