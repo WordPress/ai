@@ -11,6 +11,7 @@ import {
 	CardHeader,
 	ToggleControl,
 } from '@wordpress/components';
+import { useEffect, useRef } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -47,6 +48,27 @@ const ApprovalMatrixCard = ( {
 }: ApprovalMatrixCardProps ): JSX.Element => {
 	const matrixCallers = buildMatrixCallerList( plugins, themes, approvals );
 
+	// The matrix table, used to locate a toggle's input for focus restoration.
+	const tableRef = useRef< HTMLTableElement | null >( null );
+	// Tracks the previous saving state so we can detect the save->idle edge.
+	const wasSavingRef = useRef< boolean >( false );
+	// The key of the toggle that was last changed, so focus can be returned to
+	// it once saving completes and the control is re-enabled. The ToggleControl
+	// does not support `accessibleWhenDisabled`, so it loses focus while disabled.
+	const lastToggledKeyRef = useRef< string | null >( null );
+
+	useEffect( () => {
+		if ( wasSavingRef.current && ! isSaving && lastToggledKeyRef.current ) {
+			const input = tableRef.current?.querySelector< HTMLElement >(
+				`[data-toggle-key="${ lastToggledKeyRef.current }"] input`
+			);
+			input?.focus();
+			lastToggledKeyRef.current = null;
+		}
+
+		wasSavingRef.current = isSaving;
+	}, [ isSaving ] );
+
 	return (
 		<Card className="ai-connector-approval__matrix">
 			<CardHeader>
@@ -61,7 +83,7 @@ const ApprovalMatrixCard = ( {
 						) }
 					</p>
 				) : (
-					<table className="widefat striped">
+					<table className="widefat striped" ref={ tableRef }>
 						<thead>
 							<tr>
 								<th>{ __( 'Caller', 'ai' ) }</th>
@@ -93,21 +115,28 @@ const ApprovalMatrixCard = ( {
 											]
 										);
 
+										const toggleKey = `${ caller.basename }__${ connector.id }`;
+
 										return (
-											<td key={ connector.id }>
+											<td
+												key={ connector.id }
+												data-toggle-key={ toggleKey }
+											>
 												<ToggleControl
 													checked={ approved }
 													disabled={ isSaving }
 													label=""
 													onChange={ (
 														value: boolean
-													) =>
+													) => {
+														lastToggledKeyRef.current =
+															toggleKey;
 														onToggle(
 															caller.basename,
 															connector.id,
 															value
-														)
-													}
+														);
+													} }
 												/>
 											</td>
 										);
