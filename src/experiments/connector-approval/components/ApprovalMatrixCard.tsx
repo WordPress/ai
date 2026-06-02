@@ -48,13 +48,8 @@ const ApprovalMatrixCard = ( {
 }: ApprovalMatrixCardProps ): JSX.Element => {
 	const matrixCallers = buildMatrixCallerList( plugins, themes, approvals );
 
-	// The matrix table, used to locate a toggle's input for focus restoration.
 	const tableRef = useRef< HTMLTableElement | null >( null );
-	// Tracks the previous saving state so we can detect the save->idle edge.
 	const wasSavingRef = useRef< boolean >( false );
-	// The key of the toggle that was last changed, so focus can be returned to
-	// it once saving completes and the control is re-enabled. The ToggleControl
-	// does not support `accessibleWhenDisabled`, so it loses focus while disabled.
 	const lastToggledKeyRef = useRef< string | null >( null );
 
 	useEffect( () => {
