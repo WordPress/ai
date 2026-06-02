@@ -16,7 +16,7 @@ import {
 } from '@wordpress/components';
 import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
-import { useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
@@ -96,10 +96,57 @@ export default function TitleToolbar( {
 	const [ isOpen, setOpen ] = useState< boolean >( false );
 	const [ generatedTitle, setGeneratedTitle ] = useState< string >( '' );
 
+	// Reference to the Generate/Regenerate toolbar button so focus can be
+	// returned to it after the modal closes.
+	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
+
+	// Tracks the pending focus-restore timeout so it can be cancelled on unmount.
+	const focusTimeoutRef = useRef< ReturnType< typeof setTimeout > | null >(
+		null
+	);
+
+	useEffect( () => {
+		return () => {
+			if ( focusTimeoutRef.current ) {
+				clearTimeout( focusTimeoutRef.current );
+			}
+		};
+	}, [] );
+
 	const openModal = () => setOpen( true );
+
+	/**
+	 * Returns focus to the Generate/Regenerate button after the modal closes.
+	 *
+	 * While the modal is open, the wrapper hides the toolbar on blur, so the
+	 * button lives in a `display: none` container and cannot receive focus.
+	 * We make the toolbar visible again, then focus the button on the next
+	 * tick (after the modal has unmounted and released focus).
+	 */
+	const restoreFocus = () => {
+		focusTimeoutRef.current = setTimeout( () => {
+			focusTimeoutRef.current = null;
+
+			const button = generateButtonRef.current;
+			if ( ! button ) {
+				return;
+			}
+
+			const container = button.closest(
+				'.ai-title-toolbar-container'
+			) as HTMLElement | null;
+			if ( container ) {
+				container.style.display = 'flex';
+			}
+
+			button.focus();
+		}, 0 );
+	};
+
 	const closeModal = () => {
 		setOpen( false );
 		setGeneratedTitle( '' );
+		restoreFocus();
 	};
 
 	const hasTitle = title.trim().length > 0;
@@ -189,6 +236,7 @@ export default function TitleToolbar( {
 		<PostTypeSupportCheck supportKeys="title">
 			{ isStandalone ? (
 				<Button
+					ref={ generateButtonRef }
 					icon={ update }
 					variant="secondary"
 					label={ buttonLabel }
@@ -203,6 +251,7 @@ export default function TitleToolbar( {
 			) : (
 				<ToolbarGroup>
 					<ToolbarButton
+						ref={ generateButtonRef }
 						icon={ update }
 						label={ buttonLabel }
 						onClick={ handleGenerate }
