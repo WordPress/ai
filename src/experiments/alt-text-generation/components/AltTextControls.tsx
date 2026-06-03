@@ -8,7 +8,7 @@
 import { Button, TextareaControl, Notice } from '@wordpress/components';
 import { update } from '@wordpress/icons';
 import { InspectorControls } from '@wordpress/block-editor';
-import { useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { dispatch, select } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
@@ -89,13 +89,34 @@ export function AltTextControls( {
 	const [ generatedAlt, setGeneratedAlt ] = useState< string | null >( null );
 	const [ isDecorative, setIsDecorative ] = useState< boolean >( false );
 
+	const hasGeneratedAlt = generatedAlt !== null;
+
+	// Refs used to manage keyboard focus as the suggestion UI appears/disappears.
+	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
+	const applyButtonRef = useRef< HTMLButtonElement | null >( null );
+
+	// Set when Apply/Dismiss is clicked so focus returns to the generate button.
+	const shouldFocusGenerateRef = useRef< boolean >( false );
+
+	// Move focus when the suggestion UI appears (after generation) or
+	// disappears (after Apply/Dismiss).
+	useEffect( () => {
+		if ( hasGeneratedAlt || isDecorative ) {
+			// Generation complete: move focus to the Apply button.
+			applyButtonRef.current?.focus();
+		} else if ( shouldFocusGenerateRef.current ) {
+			// After Apply/Dismiss: return focus to the Generate/Regenerate button.
+			shouldFocusGenerateRef.current = false;
+			generateButtonRef.current?.focus();
+		}
+	}, [ hasGeneratedAlt, isDecorative ] );
+
 	// Don't show controls if there's no image.
 	if ( ! attachmentId && ! imageUrl ) {
 		return null;
 	}
 
 	const hasExistingAlt = alt && alt.trim().length > 0;
-	const hasGeneratedAlt = generatedAlt !== null;
 
 	/**
 	 * Handles the generate button click.
@@ -161,6 +182,7 @@ export function AltTextControls( {
 		} else if ( generatedAlt ) {
 			setAttributes( { alt: generatedAlt } );
 		}
+		shouldFocusGenerateRef.current = true;
 		setGeneratedAlt( null );
 		setIsDecorative( false );
 	};
@@ -169,6 +191,7 @@ export function AltTextControls( {
 	 * Dismisses the generated alt text suggestion.
 	 */
 	const handleDismiss = () => {
+		shouldFocusGenerateRef.current = true;
 		setGeneratedAlt( null );
 		setIsDecorative( false );
 	};
@@ -196,7 +219,11 @@ export function AltTextControls( {
 								marginTop: '8px',
 							} }
 						>
-							<Button variant="primary" onClick={ handleApply }>
+							<Button
+								ref={ applyButtonRef }
+								variant="primary"
+								onClick={ handleApply }
+							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
 							<Button
@@ -220,7 +247,11 @@ export function AltTextControls( {
 								marginTop: '8px',
 							} }
 						>
-							<Button variant="primary" onClick={ handleApply }>
+							<Button
+								ref={ applyButtonRef }
+								variant="primary"
+								onClick={ handleApply }
+							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
 							<Button
@@ -236,6 +267,7 @@ export function AltTextControls( {
 				{ /* Generate button */ }
 				{ ! hasGeneratedAlt && ! isDecorative && (
 					<Button
+						ref={ generateButtonRef }
 						variant="secondary"
 						onClick={ handleGenerate }
 						disabled={ isGenerating }
