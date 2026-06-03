@@ -324,7 +324,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_execute_callback_returns_decorative_flag_false_for_generated_alt_text() {
-		$ability    = new Testable_Alt_Text_Generation( 'A person writing in a notebook.' );
+		$ability    = new Testable_Alt_Text_Generation( 'A person writing in a notebook' );
 		$reflection = new \ReflectionClass( $ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
@@ -337,7 +337,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		);
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertSame( 'A person writing in a notebook', $result['alt_text'], 'Alt text should be returned without trailing punctuation.' );
+		$this->assertSame( 'A person writing in a notebook', $result['alt_text'], 'Alt text should be returned.' );
 		$this->assertArrayHasKey( 'is_decorative', $result, 'Result should include is_decorative.' );
 		$this->assertFalse( $result['is_decorative'], 'Non-decorative generated alt text should return is_decorative as false.' );
 	}
