@@ -233,6 +233,29 @@ class Import_Base64_Image extends Abstract_Ability {
 	}
 
 	/**
+	 * Creates a temporary file path for the imported image.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string|false Temporary file path, or false on failure.
+	 */
+	protected function create_temp_file() {
+		return wp_tempnam( 'ai-image' );
+	}
+
+	/**
+	 * Gets the default file extension for a MIME type.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $mime_type The MIME type.
+	 * @return string|false File extension, or false when unknown.
+	 */
+	protected function get_default_extension_for_mime_type( string $mime_type ) {
+		return wp_get_default_extension_for_mime_type( $mime_type );
+	}
+
+	/**
 	 * Imports an image from a base64 encoded string into the media library.
 	 *
 	 * @since 0.2.0
@@ -263,7 +286,7 @@ class Import_Base64_Image extends Abstract_Ability {
 		}
 
 		// Create a temporary file.
-		$temp_file = wp_tempnam( 'ai-image' );
+		$temp_file = $this->create_temp_file();
 
 		if ( ! $temp_file ) {
 			return new WP_Error(
@@ -284,7 +307,7 @@ class Import_Base64_Image extends Abstract_Ability {
 		}
 
 		// Determine file extension from MIME type.
-		$extension = wp_get_default_extension_for_mime_type( $args['mime_type'] );
+		$extension = $this->get_default_extension_for_mime_type( $args['mime_type'] );
 
 		if ( ! $extension ) {
 			wp_delete_file( $temp_file );
