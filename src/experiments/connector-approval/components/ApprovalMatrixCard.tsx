@@ -11,8 +11,8 @@ import {
 	CardHeader,
 	ToggleControl,
 } from '@wordpress/components';
+import { __, sprintf } from '@wordpress/i18n';
 import { useEffect, useRef } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -112,6 +112,15 @@ const ApprovalMatrixCard = ( {
 												<ToggleControl
 													checked={ approved }
 													disabled={ isSaving }
+													aria-label={ sprintf(
+														/* translators: %1$s: caller name (plugin or theme), %2$s: connector name */
+														__(
+															'Allow %1$s to use %2$s',
+															'ai'
+														),
+														caller.name,
+														connector.name
+													) }
 													label=""
 													onChange={ (
 														value: boolean
