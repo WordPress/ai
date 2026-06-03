@@ -33,7 +33,7 @@ async function generateExcerpt(
 ): Promise< string > {
 	const params: ExcerptGenerationAbilityInput = {
 		content,
-		post_id: postId,
+		context: postId.toString(),
 	};
 
 	return runAbility< string >( 'ai/excerpt-generation', params )
