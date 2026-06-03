@@ -310,6 +310,7 @@ class Admin_Page {
 					</div>
 				<?php endif; ?>
 
+				<label for="ability-test-payload" class="screen-reader-text"><?php esc_html_e( 'Ability test input (JSON)', 'ai' ); ?></label>
 				<textarea id="ability-test-payload" rows="12"><?php echo esc_textarea( (string) wp_json_encode( $example_input, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></textarea>
 
 				<div class="ability-test-actions">
