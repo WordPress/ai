@@ -265,6 +265,13 @@ class Import_Base64_Image extends Abstract_Ability {
 		// Create a temporary file.
 		$temp_file = wp_tempnam( 'ai-image' );
 
+		if ( ! $temp_file ) {
+			return new WP_Error(
+				'temp_file_failed',
+				esc_html__( 'Failed to create a temporary image file.', 'ai' )
+			);
+		}
+
 		// Write the decoded data to the temporary file.
 		$bytes_written = file_put_contents( $temp_file, $decoded_data ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
 
@@ -278,6 +285,14 @@ class Import_Base64_Image extends Abstract_Ability {
 
 		// Determine file extension from MIME type.
 		$extension = wp_get_default_extension_for_mime_type( $args['mime_type'] );
+
+		if ( ! $extension ) {
+			wp_delete_file( $temp_file );
+			return new WP_Error(
+				'invalid_mime_type',
+				esc_html__( 'Could not determine the image file extension from the MIME type.', 'ai' )
+			);
+		}
 
 		/**
 		 * Filters the base filename (without extension) used when importing an
