@@ -52,6 +52,20 @@ class Summarization extends Abstract_Feature {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
+
+		/**
+		 * Filters the post types that support the bulk "Generate AI Summary" action.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string[] $post_types Post type slugs.
+		 */
+		$bulk_post_types = (array) apply_filters( 'wpai_summarization_bulk_post_types', array( 'post', 'page' ) );
+		foreach ( $bulk_post_types as $post_type ) {
+			add_filter( "bulk_actions-edit-{$post_type}", array( $this, 'register_bulk_action' ) );
+			add_filter( "handle_bulk_actions-edit-{$post_type}", array( $this, 'handle_bulk_action' ), 10, 3 );
+		}
+		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_bulk_assets' ) );
 	}
 
 	/**
@@ -115,6 +129,103 @@ class Summarization extends Abstract_Feature {
 			array(
 				'enabled'          => $this->is_enabled(),
 				'minContentLength' => $min_content_length,
+			)
+		);
+	}
+
+	/**
+	 * Adds the "Generate AI Summary" option to the posts list bulk actions menu.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $actions The existing bulk actions.
+	 * @return array<string, string> The modified bulk actions.
+	 */
+	public function register_bulk_action( array $actions ): array {
+		if ( ! $this->is_enabled() ) {
+			return $actions;
+		}
+
+		$actions['wpai_generate_summary'] = __( 'Generate AI Summary', 'ai' );
+
+		return $actions;
+	}
+
+	/**
+	 * Handles the "Generate AI Summary" bulk action by redirecting with selected post IDs.
+	 *
+	 * The actual generation is performed client-side after the redirect so that slow
+	 * AI API calls do not risk hitting PHP's execution time limit.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string    $redirect_url The current redirect URL.
+	 * @param string    $doaction     The bulk action being performed.
+	 * @param list<int> $post_ids     The list of post IDs to process.
+	 * @return string The redirect URL, possibly with bulk summary query args appended.
+	 */
+	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
+		if ( 'wpai_generate_summary' !== $doaction || ! current_user_can( 'edit_posts' ) ) {
+			return $redirect_url;
+		}
+
+		// Only keep posts the current user is allowed to edit.
+		$editable_ids = array_values(
+			array_filter(
+				$post_ids,
+				static function ( $id ) {
+					return current_user_can( 'edit_post', (int) $id );
+				}
+			)
+		);
+
+		if ( empty( $editable_ids ) ) {
+			return $redirect_url;
+		}
+
+		return add_query_arg(
+			array(
+				'wpai_bulk_summary' => 1,
+				'wpai_post_ids'     => implode( ',', array_map( 'absint', $editable_ids ) ),
+			),
+			$redirect_url
+		);
+	}
+
+	/**
+	 * Enqueues the bulk summarization script when a bulk action redirect is detected.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 */
+	public function maybe_enqueue_bulk_assets( string $hook_suffix ): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended Reading query param for script enqueue only.
+		if ( 'edit.php' !== $hook_suffix || ! isset( $_GET['wpai_bulk_summary'] ) || ! current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended Reading query param for script enqueue only.
+		$raw_ids = isset( $_GET['wpai_post_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_post_ids'] ) ) : '';
+		$ids     = array_values( array_filter( array_map( 'absint', explode( ',', $raw_ids ) ) ) );
+
+		if ( empty( $ids ) ) {
+			return;
+		}
+
+		// Resolve the REST base once all posts in a list table share the same post type.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended Reading post_type query param for script enqueue only.
+		$post_type     = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post';
+		$post_type_obj = get_post_type_object( $post_type );
+		$rest_base     = ( $post_type_obj && $post_type_obj->rest_base ) ? (string) $post_type_obj->rest_base : 'posts';
+
+		Asset_Loader::enqueue_script( 'summarization_bulk', 'experiments/summarization-bulk', array( 'include_core_abilities' => true ) );
+		Asset_Loader::localize_script(
+			'summarization_bulk',
+			'SummarizationBulkData',
+			array(
+				'postIds'  => $ids,
+				'restBase' => $rest_base,
 			)
 		);
 	}
