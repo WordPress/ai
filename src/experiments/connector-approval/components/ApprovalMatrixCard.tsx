@@ -98,7 +98,7 @@ const ApprovalMatrixCard = ( {
 												<ToggleControl
 													checked={ approved }
 													disabled={ isSaving }
-													label={ sprintf(
+													aria-label={ sprintf(
 														/* translators: %1$s: caller name (plugin or theme), %2$s: connector name */
 														__(
 															'Allow %1$s to use %2$s',
@@ -107,6 +107,7 @@ const ApprovalMatrixCard = ( {
 														caller.name,
 														connector.name
 													) }
+													label=""
 													onChange={ (
 														value: boolean
 													) =>
