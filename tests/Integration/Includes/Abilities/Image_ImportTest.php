@@ -46,6 +46,84 @@ class Test_Image_Import_Experiment extends Abstract_Feature {
 }
 
 /**
+ * Testable image import ability.
+ *
+ * @since x.x.x
+ */
+class Testable_Image_Import extends Import {
+	/**
+	 * Temporary file path to return.
+	 *
+	 * @var string|false|null
+	 */
+	private $temp_file = null;
+
+	/**
+	 * Extension to return.
+	 *
+	 * @var string|false|null
+	 */
+	private $extension = null;
+
+	/**
+	 * Sets the temporary file path to return.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string|false $temp_file Temporary file path, or false.
+	 */
+	public function set_temp_file( $temp_file ): void {
+		$this->temp_file = $temp_file;
+	}
+
+	/**
+	 * Sets the extension to return.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string|false $extension Extension, or false.
+	 */
+	public function set_extension( $extension ): void {
+		$this->extension = $extension;
+	}
+
+	/**
+	 * Calls the protected image import method.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $data Base64 image data.
+	 * @param array<string, mixed> $args Import arguments.
+	 * @return array<string, mixed>|\WP_Error Attachment data, or error.
+	 */
+	public function call_import_image( string $data, array $args = array() ) {
+		return $this->import_image( $data, $args );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function create_temp_file() {
+		if ( null !== $this->temp_file ) {
+			return $this->temp_file;
+		}
+
+		return parent::create_temp_file();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function get_default_extension_for_mime_type( string $mime_type ) {
+		if ( null !== $this->extension ) {
+			return $this->extension;
+		}
+
+		return parent::get_default_extension_for_mime_type( $mime_type );
+	}
+}
+
+/**
  * Image_Import Ability test case.
  *
  * @since 0.2.0
@@ -223,6 +301,66 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertIsInt( $result['image']['id'], 'Image ID should be an integer' );
 		$this->assertIsString( $result['image']['url'], 'Image URL should be a string' );
 		$this->assertNotEmpty( $result['image']['url'], 'Image URL should not be empty' );
+	}
+
+	/**
+	 * Test that import_image() returns an error when a temp file cannot be created.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_image_returns_error_when_temp_file_creation_fails() {
+		$ability = new Testable_Image_Import(
+			'ai/image-import',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+		$ability->set_temp_file( false );
+
+		$result = $ability->call_import_image(
+			$this->valid_base64_image,
+			array(
+				'filename'    => 'test-image',
+				'title'       => 'Test Image',
+				'description' => '',
+				'alt_text'    => '',
+				'mime_type'   => 'image/png',
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'temp_file_failed', $result->get_error_code(), 'Error code should be temp_file_failed' );
+	}
+
+	/**
+	 * Test that import_image() returns an error when MIME extension cannot be determined.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_image_returns_error_when_mime_extension_is_unknown() {
+		$ability = new Testable_Image_Import(
+			'ai/image-import',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+		$ability->set_extension( false );
+
+		$result = $ability->call_import_image(
+			$this->valid_base64_image,
+			array(
+				'filename'    => 'test-image',
+				'title'       => 'Test Image',
+				'description' => '',
+				'alt_text'    => '',
+				'mime_type'   => 'image/png',
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'invalid_mime_type', $result->get_error_code(), 'Error code should be invalid_mime_type' );
 	}
 
 	/**
