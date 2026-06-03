@@ -284,7 +284,7 @@ class Meta_Description extends Abstract_Ability {
 
 		return array(
 			'text'            => $text,
-			'character_count' => mb_strlen( $text ),
+			'character_count' => mb_strlen( $text, 'UTF-8' ),
 		);
 	}
 
