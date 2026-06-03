@@ -31,10 +31,14 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
+		clearSuggestion,
 	} = useMetaDescription();
 
 	const [ isModalOpen, setIsModalOpen ] = useState( false );
 	const [ editableText, setEditableText ] = useState( '' );
+	const [ modalMode, setModalMode ] = useState< 'edit' | 'generate' >(
+		'generate'
+	);
 
 	const hasDescription =
 		currentDescription && currentDescription.trim().length > 0;
@@ -47,6 +51,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 			if ( ! ensureProviderAvailable() ) {
 				return;
 			}
+			setModalMode( 'generate' );
 			setIsModalOpen( true );
 			await generateDescription();
 			return;
@@ -56,6 +61,8 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 	};
 
 	const handleOpenEditModal = () => {
+		clearSuggestion();
+		setModalMode( 'edit' );
 		setEditableText( currentDescription );
 		setIsModalOpen( true );
 	};
@@ -65,7 +72,13 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		if ( ! ensureProviderAvailable() ) {
 			return;
 		}
+		setModalMode( 'generate' );
 		setIsModalOpen( true );
+		await generateDescription();
+	};
+
+	const handleGenerate = async () => {
+		setModalMode( 'generate' );
 		await generateDescription();
 	};
 
@@ -112,12 +125,16 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 			{ isModalOpen && (
 				<MetaDescriptionModal
 					isGenerating={ isGenerating }
-					suggestion={ suggestion }
+					suggestion={ 'generate' === modalMode ? suggestion : null }
 					editableText={ editableText }
 					onEditableTextChange={ setEditableText }
-					onGenerate={ generateDescription }
+					onGenerate={ handleGenerate }
 					onApply={ applyDescription }
-					onClose={ () => setIsModalOpen( false ) }
+					onClose={ () => {
+						clearSuggestion();
+						setModalMode( 'generate' );
+						setIsModalOpen( false );
+					} }
 				/>
 			) }
 		</div>
