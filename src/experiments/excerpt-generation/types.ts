@@ -7,6 +7,6 @@
  */
 export interface ExcerptGenerationAbilityInput {
 	content: string;
-	post_id: number;
-	[ key: string ]: string | number | undefined;
+	context: string;
+	[ key: string ]: string | undefined;
 }
