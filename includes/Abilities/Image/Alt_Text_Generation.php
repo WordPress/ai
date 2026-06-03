@@ -333,7 +333,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$normalized_url     = $this->normalize_upload_url( $url );
 		$normalized_baseurl = $this->normalize_upload_url( $uploads['baseurl'] );
 
-		if ( ! str_contains( $normalized_url, $normalized_baseurl ) ) {
+		if (
+			$normalized_url !== $normalized_baseurl &&
+			! str_starts_with( $normalized_url, $normalized_baseurl . '/' )
+		) {
 			return null;
 		}
 
