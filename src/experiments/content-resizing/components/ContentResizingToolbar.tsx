@@ -147,10 +147,10 @@ export default function ContentResizingToolbar( {
 	}, [] );
 
 	const handleRetry = useCallback( () => {
-		if ( lastAction ) {
+		if ( lastAction && ! isLoading ) {
 			handleAction( lastAction );
 		}
-	}, [ handleAction, lastAction ] );
+	}, [ handleAction, isLoading, lastAction ] );
 
 	// Calculate the word difference between the original and suggested content.
 	const wordDiff = useMemo( () => {
@@ -248,69 +248,90 @@ export default function ContentResizingToolbar( {
 					size="medium"
 					className="ai-content-resizing-modal"
 				>
-					{ isLoading ? (
-						<div className="ai-content-resizing-modal__loading">
-							<Spinner />
-							<p>{ __( 'Generating…', 'ai' ) }</p>
+					<section
+						className="ai-content-resizing-modal__panel"
+						aria-label={ __( 'Original content', 'ai' ) }
+					>
+						<div className="ai-content-resizing-modal__label">
+							<span>{ __( 'Original', 'ai' ) }</span>
 						</div>
-					) : (
-						<>
-							<section
-								className="ai-content-resizing-modal__panel"
-								aria-label={ __( 'Original content', 'ai' ) }
+						<div
+							className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
+							dangerouslySetInnerHTML={ {
+								__html: blockContent,
+							} }
+						/>
+					</section>
+					<section
+						className="ai-content-resizing-modal__panel"
+						aria-label={ __( 'Suggested content', 'ai' ) }
+					>
+						<div className="ai-content-resizing-modal__label">
+							<span>{ __( 'Suggested', 'ai' ) }</span>
+							{ ! isLoading && wordDiff && (
+								<span
+									className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
+									aria-label={ wordDiff.ariaLabel }
+								>
+									{ wordDiff.label }
+								</span>
+							) }
+						</div>
+						{ isLoading ? (
+							<div
+								className="ai-content-resizing-modal__text ai-content-resizing-modal__loading"
+								role="status"
+								aria-live="polite"
 							>
-								<div className="ai-content-resizing-modal__label">
-									<span>{ __( 'Original', 'ai' ) }</span>
+								<div className="ai-content-resizing-modal__loading-status">
+									<Spinner />
+									<span>{ __( 'Generating…', 'ai' ) }</span>
 								</div>
 								<div
-									className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
-									dangerouslySetInnerHTML={ {
-										__html: blockContent,
-									} }
-								/>
-							</section>
-							<section
-								className="ai-content-resizing-modal__panel"
-								aria-label={ __( 'Suggested content', 'ai' ) }
-							>
-								<div className="ai-content-resizing-modal__label">
-									<span>{ __( 'Suggested', 'ai' ) }</span>
-									{ wordDiff && (
-										<span
-											className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
-											aria-label={ wordDiff.ariaLabel }
-										>
-											{ wordDiff.label }
-										</span>
+									className="ai-content-resizing-modal__loading-skeleton"
+									aria-hidden="true"
+								>
+									{ Array.from( { length: 3 } ).map(
+										( _, index ) => (
+											<span
+												key={ index }
+												className="ai-content-resizing-modal__loading-skeleton-line"
+											/>
+										)
 									) }
 								</div>
-								<div
-									className="ai-content-resizing-modal__text"
-									dangerouslySetInnerHTML={ {
-										__html: suggestedContent ?? '',
-									} }
-								/>
-							</section>
-							<Flex
-								justify="flex-start"
-								gap={ 2 }
-								className="ai-content-resizing-modal__actions"
-							>
-								<Button
-									variant="primary"
-									onClick={ handleAccept }
-								>
-									{ __( 'Accept', 'ai' ) }
-								</Button>
-								<Button
-									variant="secondary"
-									onClick={ handleRetry }
-								>
-									{ __( 'Regenerate', 'ai' ) }
-								</Button>
-							</Flex>
-						</>
-					) }
+							</div>
+						) : (
+							<div
+								className="ai-content-resizing-modal__text"
+								dangerouslySetInnerHTML={ {
+									__html: suggestedContent ?? '',
+								} }
+							/>
+						) }
+					</section>
+					<Flex
+						justify="flex-start"
+						gap={ 2 }
+						className="ai-content-resizing-modal__actions"
+					>
+						<Button
+							variant="primary"
+							onClick={ handleAccept }
+							disabled={ isLoading || suggestedContent === null }
+						>
+							{ __( 'Accept', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={ handleRetry }
+							disabled={ isLoading || lastAction === null }
+							isBusy={ isLoading }
+							accessibleWhenDisabled
+						>
+							{ __( 'Regenerate', 'ai' ) }
+						</Button>
+					</Flex>
 				</Modal>
 			) }
 		</>
