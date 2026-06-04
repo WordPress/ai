@@ -236,7 +236,7 @@ class Settings_Page {
 		$categories_in_use = array();
 		$features          = array();
 
-		$connectors = \WordPress\AI\get_ai_connectors( false );
+		$connectors = \WordPress\AI\get_ai_connectors( true );
 		if ( ! empty( $connectors ) ) {
 			$categories_in_use['connectors'] = true;
 			foreach ( $connectors as $connector_id => $connector_data ) {

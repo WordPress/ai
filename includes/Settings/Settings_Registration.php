@@ -94,7 +94,7 @@ class Settings_Registration {
 		);
 
 		// Register a setting for each AI connector's enabled status.
-		foreach ( \WordPress\AI\get_ai_connectors( false ) as $connector_id => $data ) {
+		foreach ( \WordPress\AI\get_ai_connectors( true ) as $connector_id => $data ) {
 			register_setting(
 				self::OPTION_GROUP,
 				"wpai_connector_{$connector_id}_enabled",
