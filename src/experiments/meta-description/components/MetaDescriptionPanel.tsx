@@ -31,6 +31,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
+		clearSuggestion,
 	} = useMetaDescription();
 
 	const [ isModalOpen, setIsModalOpen ] = useState( false );
@@ -56,6 +57,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 	};
 
 	const handleOpenEditModal = () => {
+		clearSuggestion();
 		setEditableText( currentDescription );
 		setIsModalOpen( true );
 	};
@@ -117,7 +119,10 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					onEditableTextChange={ setEditableText }
 					onGenerate={ generateDescription }
 					onApply={ applyDescription }
-					onClose={ () => setIsModalOpen( false ) }
+					onClose={ () => {
+						clearSuggestion();
+						setIsModalOpen( false );
+					} }
 				/>
 			) }
 		</div>
