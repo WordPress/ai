@@ -164,6 +164,11 @@ class Settings_Page {
 	 */
 	private static function get_settings_feature_groups(): array {
 		$default_groups = array(
+			'connectors'                => array(
+				'label'       => __( 'AI Connectors', 'ai' ),
+				'description' => __( 'Configure and activate/deactivate your registered AI connectors.', 'ai' ),
+				'order'       => 5,
+			),
 			Experiment_Category::EDITOR => array(
 				'label'       => __( 'Editor Experiments', 'ai' ),
 				'description' => __( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
@@ -230,6 +235,28 @@ class Settings_Page {
 		$group_definitions = self::get_settings_feature_groups();
 		$categories_in_use = array();
 		$features          = array();
+
+		$connectors = \WordPress\AI\get_ai_connectors( false );
+		if ( ! empty( $connectors ) ) {
+			$categories_in_use['connectors'] = true;
+			foreach ( $connectors as $connector_id => $connector_data ) {
+				$features[] = array(
+					'id'             => "connector-{$connector_id}",
+					'settingName'    => "wpai_connector_{$connector_id}_enabled",
+					'label'          => $connector_data['name'] ?? $connector_id,
+					'description'    => sprintf(
+						/* translators: %s: Connector name */
+						__( 'Toggle to activate/deactivate the %s connector.', 'ai' ),
+						$connector_data['name'] ?? $connector_id
+					),
+					'category'       => 'connectors',
+					'settingsFields' => array(),
+					'stability'      => 'stable',
+					'image'          => '',
+					'capability'     => '',
+				);
+			}
+		}
 
 		foreach ( $registry->get_all_features() as $feature ) {
 			$feature_id = $feature::get_id();

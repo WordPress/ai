@@ -93,6 +93,20 @@ class Settings_Registration {
 			)
 		);
 
+		// Register a setting for each AI connector's enabled status.
+		foreach ( \WordPress\AI\get_ai_connectors( false ) as $connector_id => $data ) {
+			register_setting(
+				self::OPTION_GROUP,
+				"wpai_connector_{$connector_id}_enabled",
+				array(
+					'type'              => 'boolean',
+					'default'           => true,
+					'sanitize_callback' => 'rest_sanitize_boolean',
+					'show_in_rest'      => true,
+				)
+			);
+		}
+
 		// Register settings for each experiment.
 		foreach ( $this->registry->get_all_features() as $feature ) {
 			$feature_id = $feature::get_id();

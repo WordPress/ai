@@ -899,6 +899,53 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that helper functions respect the connector enabled option status.
+	 *
+	 * @since 1.0.2
+	 */
+	public function test_connector_helpers_respect_enabled_toggle_option(): void {
+		$connector_id = 'wpai_test_toggle_provider';
+		$this->register_test_connector(
+			$connector_id,
+			array(
+				'name'           => 'Toggle Test Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+				'plugin'         => array(
+					'file' => 'toggle-test-provider/toggle-test-provider.php',
+				),
+			)
+		);
+		$this->activate_test_plugin( 'toggle-test-provider/toggle-test-provider.php' );
+
+		$setting_name = 'connectors_ai_provider_' . $connector_id . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		try {
+			// By default, should be active and enabled
+			$this->assertTrue( \WordPress\AI\has_connector_authentication( $connector_id ) );
+			$this->assertArrayHasKey( $connector_id, \WordPress\AI\get_ai_connectors() );
+
+			// Deactivate the connector
+			update_option( "wpai_connector_{$connector_id}_enabled", false );
+
+			// Now it should return false/be excluded
+			$this->assertFalse( \WordPress\AI\has_connector_authentication( $connector_id ) );
+			$this->assertArrayNotHasKey( $connector_id, \WordPress\AI\get_ai_connectors() );
+
+			// Re-enable the connector
+			update_option( "wpai_connector_{$connector_id}_enabled", true );
+			$this->assertTrue( \WordPress\AI\has_connector_authentication( $connector_id ) );
+			$this->assertArrayHasKey( $connector_id, \WordPress\AI\get_ai_connectors() );
+		} finally {
+			delete_option( $setting_name );
+			delete_option( "wpai_connector_{$connector_id}_enabled" );
+		}
+	}
+
+	/**
 	 * Test that is_connector_configured() returns false for unknown connectors.
 	 *
 	 * @since 1.0.1

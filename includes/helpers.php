@@ -378,6 +378,9 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
  * @return bool True if the connector is configured, false otherwise.
  */
 function is_connector_configured( string $connector_id ): bool {
+	if ( ! get_option( "wpai_connector_{$connector_id}_enabled", true ) ) {
+		return false;
+	}
 	$registry = AiClient::defaultRegistry();
 	return $registry->hasProvider( $connector_id ) && $registry->isProviderConfigured( $connector_id );
 }
@@ -395,6 +398,10 @@ function is_connector_configured( string $connector_id ): bool {
  */
 function has_connector_authentication( string $connector_id ): bool {
 	if ( ! wp_is_connector_registered( $connector_id ) ) {
+		return false;
+	}
+
+	if ( ! get_option( "wpai_connector_{$connector_id}_enabled", true ) ) {
 		return false;
 	}
 
@@ -565,6 +572,10 @@ function get_ai_connectors( bool $active_only = true ): array {
 		}
 
 		if ( $active_only && ! is_connector_plugin_active( $data ) ) {
+			continue;
+		}
+
+		if ( $active_only && ! get_option( "wpai_connector_{$connector_id}_enabled", true ) ) {
 			continue;
 		}
 
