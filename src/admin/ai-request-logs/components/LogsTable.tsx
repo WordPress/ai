@@ -51,17 +51,6 @@ const DEFAULT_VIEW_FIELDS = [
 	'status',
 ];
 
-const FIELD_ORDER = new Map(
-	DEFAULT_VIEW_FIELDS.map( ( id, index ) => [ id, index ] )
-);
-
-const sortFieldsByCanonicalOrder = ( ids: string[] ): string[] =>
-	[ ...ids ].sort( ( a, b ) => {
-		const ai = FIELD_ORDER.get( a ) ?? Infinity;
-		const bi = FIELD_ORDER.get( b ) ?? Infinity;
-		return ai - bi;
-	} );
-
 const formatTimestamp = ( timestamp: string ): string => {
 	const { formats } = getSettings();
 	return dateI18n( `${ formats.date } ${ formats.time }`, timestamp + 'Z' );
@@ -437,9 +426,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 
 			setViewConfig( {
 				filters: nextView.filters ?? [],
-				fields: sortFieldsByCanonicalOrder(
-					nextView.fields ?? [ ...DEFAULT_VIEW_FIELDS ]
-				),
+				fields: nextView.fields ?? [ ...DEFAULT_VIEW_FIELDS ],
 				layout: nextLayout,
 			} );
 
