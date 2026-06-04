@@ -105,6 +105,8 @@ class Http_GuardTest extends WP_UnitTestCase {
 			);
 		}
 
+		$this->register_stub_provider();
+
 		update_option( self::TEST_SETTING, self::TEST_CREDENTIAL );
 
 		$this->store      = new Approvals_Store();
@@ -123,11 +125,43 @@ class Http_GuardTest extends WP_UnitTestCase {
 			$registry->unregister( self::TEST_CONNECTOR_ID );
 		}
 
+		$this->unregister_stub_provider();
+
 		delete_option( self::TEST_SETTING );
 		delete_option( Approvals_Store::OPTION_APPROVALS );
 		delete_option( Approvals_Store::OPTION_PENDING );
 
 		parent::tearDown();
+	}
+
+	/**
+	 * Registers the stub provider in the AI client registry.
+	 *
+	 * @since 1.0.2
+	 */
+	private function register_stub_provider(): void {
+		$registry = \WordPress\AiClient\AiClient::defaultRegistry();
+		$property = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$property->setAccessible( true );
+
+		$map                            = (array) $property->getValue( $registry );
+		$map[ self::TEST_CONNECTOR_ID ] = \WordPress\AI\Tests\Integration\Includes\Helper_Test_Provider::class;
+		$property->setValue( $registry, $map );
+	}
+
+	/**
+	 * Removes the stub provider from the AI client registry.
+	 *
+	 * @since 1.0.2
+	 */
+	private function unregister_stub_provider(): void {
+		$registry = \WordPress\AiClient\AiClient::defaultRegistry();
+		$property = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$property->setAccessible( true );
+
+		$map = (array) $property->getValue( $registry );
+		unset( $map[ self::TEST_CONNECTOR_ID ] );
+		$property->setValue( $registry, $map );
 	}
 
 	/**

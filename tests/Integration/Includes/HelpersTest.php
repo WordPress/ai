@@ -935,7 +935,7 @@ class HelpersTest extends WP_UnitTestCase {
 			$this->assertArrayHasKey( $connector_id, \WordPress\AI\get_ai_connectors() );
 
 			// Deactivate the connector
-			update_option( "wpai_connector_{$connector_id}_enabled", false );
+			update_option( "wpai_connector_{$connector_id}_enabled", '0' );
 
 			// Now it should return false/be excluded
 			$this->assertFalse( \WordPress\AI\has_connector_authentication( $connector_id ) );
