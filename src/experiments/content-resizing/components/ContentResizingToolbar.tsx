@@ -15,7 +15,13 @@ import {
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { useState, useCallback, useMemo } from '@wordpress/element';
+import {
+	useState,
+	useCallback,
+	useMemo,
+	useEffect,
+	useRef,
+} from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
@@ -54,6 +60,21 @@ export default function ContentResizingToolbar( {
 	);
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
+
+	const loadingRef = useRef< HTMLDivElement | null >( null );
+	const acceptButtonRef = useRef< HTMLButtonElement | null >( null );
+
+	useEffect( () => {
+		if ( ! isModalOpen ) {
+			return;
+		}
+
+		if ( isLoading ) {
+			loadingRef.current?.focus();
+		} else if ( suggestedContent !== null ) {
+			acceptButtonRef.current?.focus();
+		}
+	}, [ isModalOpen, isLoading, suggestedContent ] );
 
 	const { blockContent, isResized, postId } = useSelect(
 		( select ) => {
@@ -249,7 +270,11 @@ export default function ContentResizingToolbar( {
 					className="ai-content-resizing-modal"
 				>
 					{ isLoading ? (
-						<div className="ai-content-resizing-modal__loading">
+						<div
+							ref={ loadingRef }
+							className="ai-content-resizing-modal__loading"
+							tabIndex={ -1 }
+						>
 							<Spinner />
 							<p>{ __( 'Generating…', 'ai' ) }</p>
 						</div>
@@ -297,6 +322,7 @@ export default function ContentResizingToolbar( {
 								className="ai-content-resizing-modal__actions"
 							>
 								<Button
+									ref={ acceptButtonRef }
 									variant="primary"
 									onClick={ handleAccept }
 								>
