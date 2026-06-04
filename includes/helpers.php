@@ -575,6 +575,10 @@ function get_ai_connectors( bool $active_only = true ): array {
 			continue;
 		}
 
+		if ( $active_only && ! \WordPress\AiClient\AiClient::defaultRegistry()->hasProvider( $connector_id ) ) {
+			continue;
+		}
+
 		if ( $active_only && ! get_option( "wpai_connector_{$connector_id}_enabled", true ) ) {
 			continue;
 		}

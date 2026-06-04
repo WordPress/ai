@@ -865,12 +865,17 @@ class HelpersTest extends WP_UnitTestCase {
 			)
 		);
 		$this->activate_test_plugin( 'active-test-provider/active-test-provider.php' );
+		$this->register_custom_ai_provider( 'wpai_test_active_provider' );
 
-		$connectors = \WordPress\AI\get_ai_connectors();
+		try {
+			$connectors = \WordPress\AI\get_ai_connectors();
 
-		$this->assertArrayHasKey( 'wpai_test_active_provider', $connectors );
-		$this->assertArrayNotHasKey( 'wpai_test_inactive_provider', $connectors );
-		$this->assertArrayNotHasKey( 'wpai_test_non_ai_connector', $connectors );
+			$this->assertArrayHasKey( 'wpai_test_active_provider', $connectors );
+			$this->assertArrayNotHasKey( 'wpai_test_inactive_provider', $connectors );
+			$this->assertArrayNotHasKey( 'wpai_test_non_ai_connector', $connectors );
+		} finally {
+			$this->unregister_custom_ai_provider( 'wpai_test_active_provider' );
+		}
 	}
 
 	/**
@@ -919,6 +924,7 @@ class HelpersTest extends WP_UnitTestCase {
 			)
 		);
 		$this->activate_test_plugin( 'toggle-test-provider/toggle-test-provider.php' );
+		$this->register_custom_ai_provider( $connector_id );
 
 		$setting_name = 'connectors_ai_provider_' . $connector_id . '_api_key';
 		update_option( $setting_name, 'test-api-key' );
@@ -942,6 +948,7 @@ class HelpersTest extends WP_UnitTestCase {
 		} finally {
 			delete_option( $setting_name );
 			delete_option( "wpai_connector_{$connector_id}_enabled" );
+			$this->unregister_custom_ai_provider( $connector_id );
 		}
 	}
 
@@ -1243,6 +1250,48 @@ class HelpersTest extends WP_UnitTestCase {
 		$ids_to_classes->setAccessible( true );
 		$id_map = (array) $ids_to_classes->getValue( $registry );
 		unset( $id_map[ self::TEST_AI_PROVIDER_ID ] );
+		$ids_to_classes->setValue( $registry, $id_map );
+
+		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
+		$classes_to_ids->setAccessible( true );
+		$class_map = (array) $classes_to_ids->getValue( $registry );
+		unset( $class_map[ Helper_Test_Provider::class ] );
+		$classes_to_ids->setValue( $registry, $class_map );
+	}
+
+	/**
+	 * Registers a custom provider in the AI client registry.
+	 *
+	 * @since 1.0.2
+	 */
+	private function register_custom_ai_provider( string $connector_id ): void {
+		$registry = AiClient::defaultRegistry();
+
+		$ids_to_classes = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map                  = (array) $ids_to_classes->getValue( $registry );
+		$id_map[ $connector_id ] = Helper_Test_Provider::class;
+		$ids_to_classes->setValue( $registry, $id_map );
+
+		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
+		$classes_to_ids->setAccessible( true );
+		$class_map                                = (array) $classes_to_ids->getValue( $registry );
+		$class_map[ Helper_Test_Provider::class ] = $connector_id;
+		$classes_to_ids->setValue( $registry, $class_map );
+	}
+
+	/**
+	 * Unregisters a custom provider from the AI client registry.
+	 *
+	 * @since 1.0.2
+	 */
+	private function unregister_custom_ai_provider( string $connector_id ): void {
+		$registry = AiClient::defaultRegistry();
+
+		$ids_to_classes = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map = (array) $ids_to_classes->getValue( $registry );
+		unset( $id_map[ $connector_id ] );
 		$ids_to_classes->setValue( $registry, $id_map );
 
 		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
