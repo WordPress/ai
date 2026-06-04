@@ -568,4 +568,76 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$this->assertSame( admin_url( 'options-general.php?page=ai-wp-admin' ), $captured_location );
 		$this->assertSame( 301, $captured_status );
 	}
+
+	/**
+	 * Tests that active connectors are exposed as pseudo-features.
+	 *
+	 * @since 1.0.2
+	 */
+	public function test_active_connectors_are_exposed_in_metadata(): void {
+		// Mock/register a connector
+		$connector_id = 'wpai_settings_page_test_connector';
+		$registry_wp = \WP_Connector_Registry::get_instance();
+		if ( null !== $registry_wp ) {
+			$registry_wp->register(
+				$connector_id,
+				array(
+					'name'           => 'Settings Page Test Connector',
+					'type'           => 'ai_provider',
+					'authentication' => array(
+						'method' => 'none',
+					),
+				)
+			);
+		}
+
+		// Mock/register in AiClient registry
+		$registry_ai = \WordPress\AiClient\AiClient::defaultRegistry();
+		$ids_to_classes = new \ReflectionProperty( $registry_ai, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map                  = (array) $ids_to_classes->getValue( $registry_ai );
+		$id_map[ $connector_id ] = \WordPress\AI\Tests\Integration\Includes\Helper_Test_Provider::class;
+		$ids_to_classes->setValue( $registry_ai, $id_map );
+
+		try {
+			$result = $this->get_settings_feature_metadata( $this->registry );
+
+			// Verify connectors group
+			$group_ids = array_column( $result['groups'], 'id' );
+			$this->assertContains( 'connectors', $group_ids );
+
+			$connectors_group = null;
+			foreach ( $result['groups'] as $group ) {
+				if ( 'connectors' === $group['id'] ) {
+					$connectors_group = $group;
+					break;
+				}
+			}
+			$this->assertNotNull( $connectors_group );
+			$this->assertSame( 'AI Connectors', $connectors_group['label'] );
+
+			// Verify connectors pseudo-feature
+			$feature_ids = array_column( $result['features'], 'id' );
+			$this->assertContains( "connector-{$connector_id}", $feature_ids );
+
+			$connector_feature = null;
+			foreach ( $result['features'] as $feature ) {
+				if ( "connector-{$connector_id}" === $feature['id'] ) {
+					$connector_feature = $feature;
+					break;
+				}
+			}
+			$this->assertNotNull( $connector_feature );
+			$this->assertSame( "wpai_connector_{$connector_id}_enabled", $connector_feature['settingName'] );
+			$this->assertSame( 'Settings Page Test Connector', $connector_feature['label'] );
+			$this->assertSame( 'connectors', $connector_feature['category'] );
+		} finally {
+			if ( null !== $registry_wp ) {
+				$registry_wp->unregister( $connector_id );
+			}
+			$id_map = (array) $ids_to_classes->getValue( $registry_ai );
+			unset( $id_map[ $connector_id ] );
+			$ids_to_classes->setValue( $registry_ai, $id_map );
+		}
+	}
 }
