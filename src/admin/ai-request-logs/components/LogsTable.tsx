@@ -17,6 +17,7 @@ import { useCallback, useMemo, useState } from '@wordpress/element';
  * Internal dependencies
  */
 import type { ProviderMetadata } from '../../types/providers';
+import { DEFAULT_VIEW_FIELDS } from '../query';
 import type { FilterOptions, LogEntry, LogsQuery } from '../types';
 
 interface LogsTableProps {
@@ -41,15 +42,6 @@ interface ViewConfig {
 	fields: string[];
 	layout: NonNullable< ViewTable[ 'layout' ] >;
 }
-
-const DEFAULT_VIEW_FIELDS = [
-	'timestamp',
-	'operation',
-	'provider',
-	'tokens_total',
-	'duration_ms',
-	'status',
-];
 
 const formatTimestamp = ( timestamp: string ): string => {
 	const { formats } = getSettings();
@@ -241,6 +233,7 @@ const viewToQuery = ( view: View ): LogsQuery => {
 		userId: extractStringFilter( filters, 'user_id' ),
 		orderby: typeof sortField === 'string' ? sortField : 'timestamp',
 		order: sortDir,
+		fields: view.fields ?? [ ...DEFAULT_VIEW_FIELDS ],
 	};
 };
 
@@ -262,7 +255,7 @@ const queryToView = ( query: LogsQuery, viewConfig: ViewConfig ): View => {
 			field: query.orderby,
 			direction: query.order,
 		},
-		fields: viewConfig.fields,
+		fields: query.fields,
 		layout: viewConfig.layout,
 	};
 };
