@@ -88,4 +88,8 @@ Anyone contributing to the AI plugin is expected to conduct themselves in accord
 * **Design:** [Share feedback](https://github.com/WordPress/ai/issues) on UX flows and accessibility.
 * **Test:** Try features as they're [released](https://github.com/WordPress/ai/releases) and [report feedback](https://github.com/WordPress/ai/issues).
 
-View the [Credits](CREDITS.md) file for maintainers, contributors, and libraries for the AI plugin.
+### Maintainers
+
+Maintainers for this repo are [Darin Kotter (@dkotter)](https://github.com/dkotter) and [Jeff Paul (@jeffpaul)](https://github.com/jeffpaul); all can  be reached using the [@WordPress/ai-maintainers](https://github.com/orgs/WordPress/teams/ai-maintainers) team.
+
+View the [Credits](CREDITS.md) file for a full list of maintainers, contributors, and libraries for the AI plugin.
