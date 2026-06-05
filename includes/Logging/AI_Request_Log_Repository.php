@@ -375,7 +375,7 @@ class AI_Request_Log_Repository {
 		do {
 			$deleted = $wpdb->query(
 				$wpdb->prepare(
-					"DELETE FROM {$table_name} WHERE timestamp < DATE_SUB(NOW(), INTERVAL %d DAY) LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"DELETE FROM {$table_name} WHERE timestamp < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY) LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					$retention_days,
 					self::DELETE_BATCH_SIZE
 				)
