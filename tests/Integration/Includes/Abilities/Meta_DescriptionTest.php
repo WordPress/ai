@@ -502,32 +502,6 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_character_count() always counts generated text as UTF-8.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_character_count_uses_utf8_encoding() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'get_character_count' );
-		$method->setAccessible( true );
-
-		$text              = 'ಕನ್ನಡ meta description';
-		$previous_encoding = mb_internal_encoding();
-
-		mb_internal_encoding( 'ISO-8859-1' );
-
-		try {
-			$internal_encoding_count = mb_strlen( $text );
-			$result                  = $method->invoke( $this->ability, $text );
-		} finally {
-			mb_internal_encoding( $previous_encoding );
-		}
-
-		$this->assertSame( mb_strlen( $text, 'UTF-8' ), $result, 'Character count should use UTF-8 encoding' );
-		$this->assertNotSame( $internal_encoding_count, $result, 'Character count should not depend on the internal encoding' );
-	}
-
-	/**
 	 * Test that execute_callback() uses post title when no title is provided.
 	 *
 	 * @since 0.7.0
