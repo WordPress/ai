@@ -3,7 +3,7 @@
 	--ai-summary-background-color: rgba(29, 35, 39, 0.04);
 
 	background-color: var(--ai-summary-background-color);
-	border-left: 4px solid var(--ai-summary-border-color);
+	border-inline-start: 4px solid var(--ai-summary-border-color);
 	padding: 1em 1.25em;
 
 	> :last-child {
@@ -12,6 +12,7 @@
 }
 
 .ai-summarization-plugin-container {
+
 	.components-button.ai-summarization-plugin-button {
 		width: 100%;
 		justify-content: center;
@@ -23,6 +24,7 @@
 }
 
 .block-editor-block-popover {
+
 	.ai-summarization-block-controls-button {
 		margin-top: 1px;
 		height: 46px;

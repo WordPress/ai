@@ -1,16 +1,31 @@
 // ─── Shared image generation components ──────────────────────────────────────
 
 @keyframes ai-skeleton-pulse {
-	0%, 100% { opacity: 1; }
-	50%       { opacity: 0.4; }
+
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.4;
+	}
 }
 
 @keyframes ai-image-dim-pulse {
-	0%, 100% { opacity: 0.4; }
-	50%       { opacity: 0.25; }
+
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+
+	50% {
+		opacity: 0.25;
+	}
 }
 
 .ai-image-generation {
+
 	&__preview-image {
 		max-width: 100%;
 		height: auto;
@@ -52,6 +67,7 @@
 	}
 
 	&__idle {
+
 		.description {
 			margin-bottom: 10px;
 		}
@@ -65,6 +81,7 @@
 	}
 
 	&__refining {
+
 		img {
 			margin-bottom: 15px;
 		}
@@ -82,7 +99,7 @@
 	}
 }
 
-// ─── Shared history navigation wrapper — three-column grid: arrow | content | arrow ─
+// ─── Shared history navigation: three-column grid (arrow | content | arrow) ─
 
 .ai-image-history-nav {
 	display: grid;
@@ -136,8 +153,9 @@
 .ai-media-library-editor-btn-slot {
 
 	.ai-media-library-editor__toggle-btn {
-		&:before {
-			content: '\f327';
+
+		&::before {
+			content: "\f327";
 		}
 
 		&.active {
@@ -199,12 +217,14 @@
 	}
 
 	&__generating {
+
 		.ai-media-library-editor__preview-image {
 			opacity: 0.5;
 		}
 	}
 
 	&__refining {
+
 		.ai-media-library-editor__presets {
 			margin-top: 12px;
 		}
@@ -259,6 +279,7 @@
 }
 
 .ai-generate-image-inline-modal {
+
 	.components-notice {
 		margin-top: 15px;
 	}

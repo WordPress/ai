@@ -1,13 +1,3 @@
-/**
- * This file is bundled into JS via wp-build, so it does not go through the
- * RTLCSS auto-flip and no -rtl version is generated. Use CSS logical
- * properties in the source to support RTL. For example:
- *
- * - `padding-left`   -> `padding-inline-start`
- * - `left`           -> `inset-inline-start`
- * - `text-align: right` -> `text-align: end`
- */
-
 .ai-settings-page {
 	box-sizing: border-box;
 	width: 100%;
@@ -52,7 +42,7 @@
 }
 
 .ai-section-actions {
-	border-top: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	border-block-start: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
 	margin-top: var(--wpds-dimension-padding-md);
 	padding-top: var(--wpds-dimension-padding-sm);
 }
@@ -66,7 +56,7 @@
 }
 
 .ai-developer-mode-fields {
-	margin-top: var(--wpds-dimension-gap-lg, 16px);
+	margin-top: var(--wpds-dimension-gap-lg);
 
 	.ai-developer-mode-fields__loading-provider {
 		display: flex;
@@ -81,10 +71,10 @@
 	}
 
 	.ai-developer-mode-fields__notice {
-		margin-bottom: var(--wpds-dimension-gap-lg, 12px);
+		margin-bottom: var(--wpds-dimension-gap-lg);
 	}
 
 	.ai-developer-mode-fields__reset-button {
-		margin-top: var(--wpds-dimension-gap-lg, 12px);
+		margin-top: var(--wpds-dimension-gap-lg);
 	}
 }

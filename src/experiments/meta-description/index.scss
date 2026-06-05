@@ -4,6 +4,7 @@
 
 // Panel display.
 .ai-meta-description-panel {
+
 	&__text {
 		margin: 0 0 8px;
 		font-size: 13px;
@@ -27,16 +28,17 @@
 	line-height: 1;
 
 	&--in-range {
-		color: var(--wp-components-color-success, #00a32a);
+		color: var(--wpds-color-fg-content-success-weak);
 	}
 
 	&--out-of-range {
-		color: var(--wp-components-color-warning, #dba617);
+		color: var(--wpds-color-fg-content-warning-weak);
 	}
 }
 
 // Modal layout.
 .ai-meta-description-modal {
+
 	&__content {
 		display: flex;
 		flex-direction: column;
@@ -50,6 +52,7 @@
 	}
 
 	&__editor {
+
 		.ai-meta-description__char-count {
 			margin-top: 4px;
 		}
@@ -60,6 +63,6 @@
 		align-items: center;
 		gap: 8px;
 		padding-top: 8px;
-		border-top: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+		border-block-start: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
 	}
 }

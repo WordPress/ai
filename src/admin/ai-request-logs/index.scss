@@ -1,4 +1,4 @@
-@use '../common';
+@use "../common";
 
 .tools_page_ai-request-logs {
 	.ai-connector-approval-notice {
@@ -128,9 +128,19 @@
 	color: #50575e;
 }
 
+.ai-provider-logo {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	object-fit: contain;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
 .ai-request-logs__provider-cell {
 	position: relative;
-	cursor: pointer;
+	cursor: var(--wpds-cursor-control);
 }
 
 .ai-request-logs__provider-row {
@@ -162,7 +172,7 @@
 	font-size: 11px;
 	color: #757575;
 	margin-top: 2px;
-	padding-left: 22px;
+	padding-inline-start: 22px;
 }
 
 .ai-request-logs__cell-muted {
@@ -182,6 +192,7 @@
 }
 
 .ai-request-logs__provider-popover {
+
 	.components-popover__content {
 		background: #fff;
 		border: 1px solid #e0e0e0;
@@ -215,16 +226,6 @@
 	}
 }
 
-.ai-provider-logo {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 50%;
-	object-fit: contain;
-	overflow: hidden;
-	flex-shrink: 0;
-}
-
 .ai-provider-logo--initial {
 	background: #f0f0f0;
 	color: #1e1e1e;
@@ -253,7 +254,7 @@
 	font-size: 12px;
 	color: #757575;
 	padding: 8px 0;
-	border-bottom: 1px solid #f0f0f0;
+	border-block-end: 1px solid #f0f0f0;
 	margin-bottom: 8px;
 }
 
@@ -347,10 +348,11 @@
 .ai-request-logs__image-grid figcaption {
 	margin-top: 4px;
 	font-size: 11px;
-	color: var(--wp-components-color-foreground-muted, #5c5f62);
+	color: var(--wpds-color-fg-content-neutral-weak);
 }
 
 .ai-request-logs__settings {
+
 	.components-toggle-control {
 		margin-bottom: 24px;
 	}
@@ -384,6 +386,7 @@
 }
 
 .ai-request-logs__modal {
+
 	.components-modal__content {
 		width: 100%;
 		max-width: none;
@@ -400,7 +403,7 @@
 	align-items: center;
 	margin-bottom: 20px;
 	padding-bottom: 16px;
-	border-bottom: 1px solid #e0e0e0;
+	border-block-end: 1px solid #e0e0e0;
 }
 
 .ai-request-logs__detail-operation {
@@ -422,6 +425,7 @@
 }
 
 .ai-request-logs__detail-section--error {
+
 	h3 {
 		color: #d63638;
 	}
@@ -433,7 +437,7 @@
 	th,
 	td {
 		padding: 8px 0;
-		border-bottom: 1px solid #f0f0f0;
+		border-block-end: 1px solid #f0f0f0;
 	}
 
 	th {
@@ -453,7 +457,7 @@
 	background: #f6f7f7;
 	padding: 12px;
 	border-radius: 4px;
-	overflow-x: auto;
+	overflow-inline: auto;
 	font-size: 12px;
 	font-family: monospace;
 	white-space: pre-wrap;
@@ -472,7 +476,7 @@
 	align-items: center;
 	margin-top: 20px;
 	padding-top: 16px;
-	border-top: 1px solid #e0e0e0;
+	border-block-start: 1px solid #e0e0e0;
 }
 
 .ai-request-logs__detail-id {

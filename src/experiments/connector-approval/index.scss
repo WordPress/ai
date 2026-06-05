@@ -5,6 +5,7 @@
 	max-width: 1100px;
 
 	table {
+
 		th,
 		td {
 			vertical-align: middle;
@@ -16,6 +17,7 @@
 	}
 
 	&__matrix {
+
 		table td:first-child {
 			width: 30%;
 		}

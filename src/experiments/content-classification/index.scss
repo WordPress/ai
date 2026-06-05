@@ -1,7 +1,7 @@
 .ai-content-classification {
 	margin-top: 12px;
 	padding-top: 12px;
-	border-top: 1px solid var(--wp-admin-border-color, #c3c4c7);
+	border-block-start: 1px solid var(--wp-admin-border-color, #c3c4c7);
 
 	&__generate-button {
 		width: 100%;
@@ -44,7 +44,7 @@
 		font-size: 12px !important;
 		border: none !important;
 		background: transparent !important;
-		cursor: pointer;
+		cursor: var(--wpds-cursor-control);
 
 		&:hover {
 			color: var(--wp-admin-theme-color, #007cba);
@@ -62,7 +62,7 @@
 
 	&__pill-badge {
 		display: inline-block;
-		margin-left: 4px;
+		margin-inline-start: 4px;
 		padding: 1px 5px;
 		border-radius: 2px;
 		background: var(--wp-admin-theme-color, #007cba);
@@ -78,7 +78,7 @@
 		padding: 0 4px !important;
 		border: none !important;
 		background: transparent !important;
-		border-left: 1px solid var(--wp-admin-theme-color, #007cba) !important;
+		border-inline-start: 1px solid var(--wp-admin-theme-color, #007cba) !important;
 		border-radius: 0 !important;
 
 		&:hover {
