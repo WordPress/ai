@@ -284,20 +284,8 @@ class Meta_Description extends Abstract_Ability {
 
 		return array(
 			'text'            => $text,
-			'character_count' => $this->get_character_count( $text ),
+			'character_count' => mb_strlen( $text, 'UTF-8' ),
 		);
-	}
-
-	/**
-	 * Gets the UTF-8 character count for generated text.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $text The generated text.
-	 * @return int UTF-8 character count.
-	 */
-	protected function get_character_count( string $text ): int {
-		return mb_strlen( $text, 'UTF-8' );
 	}
 
 	/**
