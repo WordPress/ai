@@ -61,11 +61,18 @@ const normalizeOperationSelection = (
 };
 
 const normalizeFields = ( raw: unknown ): string[] => {
+	// When no field order is stored yet, fall back to the default order.
+	if ( undefined === raw || null === raw ) {
+		return [ ...DEFAULT_VIEW_FIELDS ];
+	}
+
 	const sanitized = sanitizeStringArray( raw ).filter( ( field ) =>
 		DEFAULT_VIEW_FIELDS.includes( field )
 	);
 
-	if ( sanitized.length !== DEFAULT_VIEW_FIELDS.length ) {
+	// If nothing valid was stored, fall back to the default order.
+	// A shorter list is valid: the user may have hidden some columns.
+	if ( 0 === sanitized.length ) {
 		return [ ...DEFAULT_VIEW_FIELDS ];
 	}
 
