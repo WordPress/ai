@@ -50,6 +50,59 @@ class Test_Alt_Text_Generation_Experiment extends Abstract_Feature {
 }
 
 /**
+ * Testable alt text generation ability.
+ *
+ * @since x.x.x
+ */
+class Testable_Alt_Text_Generation extends Alt_Text_Generation {
+	/**
+	 * Mock generated alt text.
+	 *
+	 * @var string
+	 */
+	private string $generated_alt_text;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param string $generated_alt_text Mock generated alt text.
+	 */
+	public function __construct( string $generated_alt_text ) {
+		$this->generated_alt_text = $generated_alt_text;
+
+		parent::__construct(
+			'ai/alt-text-generation',
+			array(
+				'label'       => 'Alt Text Generation',
+				'description' => 'Generates accessible alternative text for images using AI vision models.',
+			)
+		);
+	}
+
+	/**
+	 * Returns a mock image reference.
+	 *
+	 * @param array<string, mixed> $args The input arguments.
+	 * @return array{reference: string} Mock image reference.
+	 */
+	protected function get_image_reference( array $args ) {
+		return array( 'reference' => 'data:image/png;base64,dGVzdA==' );
+	}
+
+	/**
+	 * Returns mock generated alt text.
+	 *
+	 * @param array{reference: string} $image_reference Prepared image reference.
+	 * @param string                   $context         Optional context.
+	 * @param string                   $image_meta      Optional image metadata.
+	 * @return string Mock generated alt text.
+	 */
+	protected function generate_alt_text( array $image_reference, string $context = '', string $image_meta = '' ) {
+		return $this->generated_alt_text;
+	}
+}
+
+/**
  * Alt_Text_Generation Ability test case.
  *
  * @since 0.3.0
@@ -263,6 +316,30 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'not_an_image', $result->get_error_code(), 'Error code should be not_an_image' );
+	}
+
+	/**
+	 * Test that execute_callback() returns false for non-decorative generated alt text.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_returns_decorative_flag_false_for_generated_alt_text() {
+		$ability    = new Testable_Alt_Text_Generation( 'A person writing in a notebook' );
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$ability,
+			array(
+				'image_url' => 'https://example.com/image.png',
+			)
+		);
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertSame( 'A person writing in a notebook', $result['alt_text'], 'Alt text should be returned.' );
+		$this->assertArrayHasKey( 'is_decorative', $result, 'Result should include is_decorative.' );
+		$this->assertFalse( $result['is_decorative'], 'Non-decorative generated alt text should return is_decorative as false.' );
 	}
 
 	/**

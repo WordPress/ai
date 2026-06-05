@@ -300,6 +300,91 @@ test.describe( 'Meta Description Experiment', () => {
 		await editor.saveDraft();
 	} );
 
+	test( 'Editing after canceling a regenerated suggestion shows the saved description', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		const savedDescription =
+			'A custom saved description that should remain editable.';
+
+		await admin.createNewPost( {
+			title: 'Meta Description Cancel Regenerate Test',
+			content:
+				'This is some test content for the Meta Description Experiment.',
+		} );
+
+		await editor.saveDraft();
+		await page.reload();
+
+		// Open the Meta Description panel.
+		await openMetaDescriptionPanel( editor, page );
+
+		// Generate and apply the initial description so the edit actions appear.
+		await page
+			.locator( '.ai-meta-description-panel button', {
+				hasText: 'Generate Meta Description',
+			} )
+			.click();
+
+		await expect(
+			page.locator( '.ai-meta-description-modal textarea' )
+		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
+			timeout: 10000,
+		} );
+
+		await page
+			.locator( '.ai-meta-description-modal' )
+			.getByRole( 'button', { name: 'Apply' } )
+			.click();
+
+		// Replace it with a custom saved value that differs from the mock.
+		await page
+			.locator( '.ai-meta-description-panel__actions' )
+			.getByRole( 'button', { name: 'Edit description' } )
+			.click();
+
+		await page
+			.locator( '.ai-meta-description-modal textarea' )
+			.fill( savedDescription );
+
+		await page
+			.locator( '.ai-meta-description-modal' )
+			.getByRole( 'button', { name: 'Apply' } )
+			.click();
+
+		await expect(
+			page.locator( '.ai-meta-description-panel__text' )
+		).toHaveText( savedDescription );
+
+		// Generate a new suggestion, but cancel without applying it.
+		await page
+			.locator( '.ai-meta-description-panel__actions' )
+			.getByRole( 'button', { name: 'Regenerate meta description' } )
+			.click();
+
+		await expect(
+			page.locator( '.ai-meta-description-modal textarea' )
+		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
+			timeout: 10000,
+		} );
+
+		await page
+			.locator( '.ai-meta-description-modal' )
+			.getByRole( 'button', { name: 'Cancel' } )
+			.click();
+
+		// Opening Edit should show the saved value, not the canceled suggestion.
+		await page
+			.locator( '.ai-meta-description-panel__actions' )
+			.getByRole( 'button', { name: 'Edit description' } )
+			.click();
+
+		await expect(
+			page.locator( '.ai-meta-description-modal textarea' )
+		).toHaveValue( savedDescription );
+	} );
+
 	test( 'Shows Copy to clipboard button in the modal', async ( {
 		admin,
 		editor,
