@@ -4,7 +4,9 @@
 import { Button, Modal, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { image } from '@wordpress/icons';
+import { useEffect, useRef } from '@wordpress/element';
 import { useFocusOnMount } from '@wordpress/compose';
+import { focus } from '@wordpress/dom';
 
 /**
  * Internal dependencies
@@ -76,6 +78,18 @@ export function GenerateImageInlineModal( {
 	} = useImageGeneration();
 
 	const focusOnMountRef = useFocusOnMount( 'firstElement' );
+	const containerRef = useRef( null );
+
+	useEffect( () => {
+		// Entering the generating state can unmount the currently focused element;
+		// keep focus inside the modal by moving it to the first available focusable element.
+		if ( containerRef.current && state === 'generating' ) {
+			const [ firstFocusable ] = focus.focusable.find(
+				containerRef.current
+			);
+			firstFocusable?.focus();
+		}
+	}, [ state ] );
 
 	async function handleUseImage(): Promise< void > {
 		if ( ! activeEntry ) {
@@ -125,6 +139,7 @@ export function GenerateImageInlineModal( {
 			icon={ image }
 			size="large"
 			className="ai-generate-image-inline-modal"
+			ref={ containerRef }
 		>
 			{ state === 'idle' && (
 				<PromptForm
