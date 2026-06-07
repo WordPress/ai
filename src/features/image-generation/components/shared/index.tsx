@@ -13,6 +13,7 @@ import { chevronLeft, chevronRight } from '@wordpress/icons';
 /**
  * Internal dependencies
  */
+import { getProviderData } from '../../../../utils/provider-status';
 import type { HistoryEntry } from '../../types';
 
 // ─── GeneratingState ─────────────────────────────────────────────────────────
@@ -66,6 +67,7 @@ interface PromptFormProps {
 	onPromptChange: ( value: string ) => void;
 	onGenerate: () => void;
 	error?: string | null;
+	hasImageGenerationSupport?: boolean;
 }
 
 /**
@@ -76,32 +78,55 @@ export function PromptForm( {
 	onPromptChange,
 	onGenerate,
 	error,
+	hasImageGenerationSupport = true,
 }: PromptFormProps ) {
+	const { connectorsUrl } = getProviderData();
+
 	return (
 		<div className="ai-image-generation__idle">
-			<p className="description">
-				{ __( 'Describe the image you want to generate.', 'ai' ) }
-			</p>
-			<TextareaControl
-				label={ __( 'Prompt', 'ai' ) }
-				value={ prompt }
-				onChange={ onPromptChange }
-				rows={ 4 }
-				hideLabelFromVision
-			/>
-			<div className="ai-image-generation__actions">
-				<Button
-					variant="primary"
-					disabled={ ! prompt.trim() }
-					onClick={ onGenerate }
-				>
-					{ __( 'Generate', 'ai' ) }
-				</Button>
-			</div>
-			{ error && (
-				<Notice status="error" isDismissible={ false }>
-					{ error }
+			{ ! hasImageGenerationSupport ? (
+				<Notice status="warning" isDismissible={ false }   actions={[
+    {
+      label: __( 'Manage Connectors', 'ai' ),
+      url: connectorsUrl,
+      variant: 'link'
+    }
+  ]}>
+					{ __(
+						'No connected provider supports image generation. Connect a provider with image generation to use this feature.',
+						'ai'
+					) }
 				</Notice>
+			) : (
+				<>
+					<p className="description">
+						{ __(
+							'Describe the image you want to generate.',
+							'ai'
+						) }
+					</p>
+					<TextareaControl
+						label={ __( 'Prompt', 'ai' ) }
+						value={ prompt }
+						onChange={ onPromptChange }
+						rows={ 4 }
+						hideLabelFromVision
+					/>
+					<div className="ai-image-generation__actions">
+						<Button
+							variant="primary"
+							disabled={ ! prompt.trim() }
+							onClick={ onGenerate }
+						>
+							{ __( 'Generate', 'ai' ) }
+						</Button>
+					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
+				</>
 			) }
 		</div>
 	);

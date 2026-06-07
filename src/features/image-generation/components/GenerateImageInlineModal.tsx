@@ -129,6 +129,9 @@ export function GenerateImageInlineModal( {
 					onPromptChange={ setPrompt }
 					onGenerate={ () => generate( prompt.trim() ) }
 					error={ error }
+					hasImageGenerationSupport={ Boolean(
+						aiImageGenerationData?.hasImageGenerationSupport
+					) }
 				/>
 			) }
 
