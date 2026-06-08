@@ -66,10 +66,10 @@ class RAG_Command {
 	public function status( $args, $assoc_args ): void {
 		unset( $args, $assoc_args );
 
-		$available = $this->availability->is_available();
+		$available  = $this->availability->is_available();
 		$storage_ok = $available && $this->index_manager->ensure_index_storage();
-		$counts    = $this->index_manager->get_status_counts();
-		$scheduled = $this->index_manager->get_next_scheduled_indexing();
+		$counts     = $this->index_manager->get_status_counts();
+		$scheduled  = $this->index_manager->get_next_scheduled_indexing();
 
 		WP_CLI::log( 'RAG search status:' );
 		WP_CLI::log( sprintf( '  Available: %s', $available ? 'yes' : 'no' ) );

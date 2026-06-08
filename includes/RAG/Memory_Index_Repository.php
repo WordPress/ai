@@ -121,7 +121,7 @@ class Memory_Index_Repository implements Index_Repository_Interface {
 	public function search( array $embedding, array $args = array() ): array {
 		$this->validate_embedding( $embedding );
 
-		$defaults = array(
+		$defaults   = array(
 			'limit'       => 20,
 			'model'       => 'text-embedding-3-small',
 			'post_type'   => array(),
@@ -219,19 +219,25 @@ class Memory_Index_Repository implements Index_Repository_Interface {
 					continue;
 				}
 
-				if ( is_numeric( $post ) ) {
-					$post_ids[] = absint( $post );
+				if ( ! is_numeric( $post ) ) {
+					continue;
 				}
+
+				$post_ids[] = absint( $post );
 			}
 
+			$post_ids_count = count( $post_ids );
+
 			foreach ( $post_ids as $post_id ) {
-				if ( $post_id > 0 ) {
-					yield $post_id;
+				if ( $post_id <= 0 ) {
+					continue;
 				}
+
+				yield $post_id;
 			}
 
 			++$page;
-		} while ( count( $post_ids ) === $batch_size );
+		} while ( $post_ids_count === $batch_size );
 	}
 
 	/**
@@ -331,15 +337,19 @@ class Memory_Index_Repository implements Index_Repository_Interface {
 
 		foreach ( $best as $index => $candidate ) {
 			$distance = (float) $candidate['distance'];
-			if ( $distance > $worst_distance ) {
-				$worst_distance = $distance;
-				$worst_index    = (int) $index;
+			if ( $distance <= $worst_distance ) {
+				continue;
 			}
+
+			$worst_distance = $distance;
+			$worst_index    = (int) $index;
 		}
 
-		if ( (float) $row['distance'] < $worst_distance ) {
-			$best[ $worst_index ] = $row;
+		if ( (float) $row['distance'] >= $worst_distance ) {
+			return;
 		}
+
+		$best[ $worst_index ] = $row;
 	}
 
 	/**
