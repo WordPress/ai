@@ -65,6 +65,15 @@ interface ReviewResult {
 	suggestions: Suggestion[];
 }
 
+interface ReviewSingleBlockResult {
+	suggestionCount: number;
+	didLinkNoteId: boolean;
+}
+
+interface CreateNoteResult {
+	didLinkNoteId: boolean;
+}
+
 interface NoteRecord {
 	id: number;
 	[ key: string ]: unknown;
@@ -79,7 +88,7 @@ interface NoteRecord {
  * @param resolvedNoteIds Set of Note IDs that have been resolved (approved).
  * @param noteContentById Map of Note ID → rendered Note content (pending only).
  * @param pendingNotes    All pending Notes for the post (for reply lookup).
- * @return The number of suggestions created, or 0 if the block was skipped.
+ * @return The suggestion count and whether a new Note thread was linked.
  */
 async function reviewSingleBlock(
 	block: Block,
@@ -88,19 +97,19 @@ async function reviewSingleBlock(
 	resolvedNoteIds: Set< number >,
 	noteContentById: Map< number, string >,
 	pendingNotes: ExistingNote[]
-): Promise< number > {
+): Promise< ReviewSingleBlockResult > {
 	// Look up any existing Note thread on this block.
 	const existingNoteId = block.attributes.metadata?.noteId ?? null;
 
 	// Skip blocks whose Note thread has been resolved.
 	if ( existingNoteId && resolvedNoteIds.has( existingNoteId ) ) {
-		return 0;
+		return { suggestionCount: 0, didLinkNoteId: false };
 	}
 
 	const blockText = getBlockText( block );
 
 	if ( blockText.length === 0 ) {
-		return 0;
+		return { suggestionCount: 0, didLinkNoteId: false };
 	}
 
 	// Collect pending Note texts for this block's thread as context.
@@ -148,11 +157,20 @@ async function reviewSingleBlock(
 	} );
 
 	if ( result?.suggestions && result.suggestions.length > 0 ) {
-		await createNote( block, postId, result.suggestions, existingNoteId );
-		return result.suggestions.length;
+		const { didLinkNoteId } = await createNote(
+			block,
+			postId,
+			result.suggestions,
+			existingNoteId
+		);
+
+		return {
+			suggestionCount: result.suggestions.length,
+			didLinkNoteId,
+		};
 	}
 
-	return 0;
+	return { suggestionCount: 0, didLinkNoteId: false };
 }
 
 /**
@@ -228,6 +246,7 @@ export function useEditorialNotes(): {
 			}
 
 			let totalSuggestions = 0;
+			let didLinkAnyNoteId = false;
 
 			// Process blocks in batches.
 			for (
@@ -252,7 +271,11 @@ export function useEditorialNotes(): {
 						)
 					)
 				);
-				totalSuggestions += results.reduce( ( sum, n ) => sum + n, 0 );
+
+				for ( const result of results ) {
+					totalSuggestions += result.suggestionCount;
+					didLinkAnyNoteId ||= result.didLinkNoteId;
+				}
 
 				setProgress(
 					Math.min( batchStart + BATCH_SIZE, reviewableBlocks.length )
@@ -262,6 +285,12 @@ export function useEditorialNotes(): {
 			setLastRunCount( totalSuggestions );
 
 			if ( totalSuggestions > 0 ) {
+				if ( didLinkAnyNoteId ) {
+					// Save once so newly linked noteIds survive reloads and later
+					// review/refinement passes.
+					await ( dispatch( editorStore ) as any ).savePost();
+				}
+
 				(
 					dispatch( coreStore ) as any
 				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
@@ -330,7 +359,7 @@ export function useEditorialBlock(): {
 				noteContentById.set( note.id, note.content?.rendered ?? '' );
 			}
 
-			const suggestionCount = await reviewSingleBlock(
+			const { suggestionCount, didLinkNoteId } = await reviewSingleBlock(
 				block,
 				postId,
 				content,
@@ -340,6 +369,12 @@ export function useEditorialBlock(): {
 			);
 
 			if ( suggestionCount > 0 ) {
+				if ( didLinkNoteId ) {
+					// Save once so newly linked noteIds survive reloads and later
+					// review/refinement passes.
+					await ( dispatch( editorStore ) as any ).savePost();
+				}
+
 				(
 					dispatch( coreStore ) as any
 				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
@@ -393,13 +428,14 @@ export function useEditorialBlock(): {
  * @param postId         The current post ID.
  * @param suggestions    The suggestions to include in the Note.
  * @param existingNoteId The ID of an existing Note thread, or null for a new thread.
+ * @return Whether a new Note thread was linked to the block.
  */
 async function createNote(
 	block: Block,
 	postId: number,
 	suggestions: Suggestion[],
 	existingNoteId: number | null
-): Promise< void > {
+): Promise< CreateNoteResult > {
 	const noteContent = suggestions
 		.map( ( s ) => `[${ s.review_type.toUpperCase() }] ${ s.text }` )
 		.join( '\n\n' );
@@ -430,5 +466,9 @@ async function createNote(
 				metadata: { ...existingMeta, noteId: note.id },
 			}
 		);
+
+		return { didLinkNoteId: true };
 	}
+
+	return { didLinkNoteId: false };
 }
