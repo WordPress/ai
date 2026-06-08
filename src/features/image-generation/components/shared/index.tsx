@@ -85,13 +85,17 @@ export function PromptForm( {
 	return (
 		<div className="ai-image-generation__idle">
 			{ ! hasImageGenerationSupport ? (
-				<Notice status="warning" isDismissible={ false }   actions={[
-    {
-      label: __( 'Manage Connectors', 'ai' ),
-      url: connectorsUrl,
-      variant: 'link'
-    }
-  ]}>
+				<Notice
+					status="warning"
+					isDismissible={ false }
+					actions={ [
+						{
+							label: __( 'Manage Connectors', 'ai' ),
+							url: connectorsUrl,
+							variant: 'link',
+						},
+					] }
+				>
 					{ __(
 						'No connected provider supports image generation. Connect a provider with image generation to use this feature.',
 						'ai'
