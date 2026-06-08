@@ -239,7 +239,7 @@ class Log_Data_Extractor {
 		if ( isset( $response['usageMetadata'] ) && is_array( $response['usageMetadata'] ) ) {
 			$usage  = $response['usageMetadata'];
 			$input  = $usage['promptTokenCount'] ?? null;
-			$output = $usage['candidatesTokenCount'] ?? null;
+			$output = ($usage['candidatesTokenCount'] ?? 0) + ($usage['thoughtsTokenCount'] ?? 0);
 		}
 
 		/**
