@@ -77,6 +77,7 @@ class RAG_SearchTest extends WP_UnitTestCase {
 		$this->assertSame( 'Optimal search method backed by MariaDB', $fields[0]['elements'][0]['label'] );
 		$this->assertSame( Availability::BACKEND_MEMORY, $fields[0]['elements'][1]['value'] );
 		$this->assertSame( 'Fallback in-memory search backed by PHP', $fields[0]['elements'][1]['label'] );
+		$this->assertSame( 'wpai_feature_rag-search_field_augment_search', $fields[1]['id'] );
 	}
 
 	/**

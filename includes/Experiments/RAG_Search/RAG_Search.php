@@ -10,11 +10,13 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\RAG_Search;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Asset_Loader;
 use WordPress\AI\CLI\RAG_Command;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\RAG\Availability;
 use WordPress\AI\RAG\Index_Manager;
 use WordPress\AI\RAG\REST\RAG_Search_Controller;
+use WordPress\AI\RAG\Related_Posts;
 use WordPress\AI\RAG\Search_Augmenter;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -69,6 +71,9 @@ class RAG_Search extends Abstract_Feature {
 		$index_manager->init();
 
 		( new RAG_Search_Controller( $availability ) )->init();
+		( new Related_Posts() )->init();
+
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
 
 		if ( ! $this->is_search_augmentation_enabled() ) {
 			return;
@@ -172,6 +177,15 @@ class RAG_Search extends Abstract_Feature {
 	 */
 	public function is_search_augmentation_enabled(): bool {
 		return (bool) get_option( static::get_field_option_name( 'augment_search' ), self::DEFAULT_AUGMENT_SEARCH );
+	}
+
+	/**
+	 * Enqueues the Related Posts Query Loop variation in block editors.
+	 *
+	 * @since 1.1.0
+	 */
+	public function enqueue_editor_assets(): void {
+		Asset_Loader::enqueue_script( 'rag_search', 'experiments/rag-search' );
 	}
 
 	/**
