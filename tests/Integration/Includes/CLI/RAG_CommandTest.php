@@ -78,7 +78,7 @@ class RAG_CommandTest extends WP_UnitTestCase {
 		$messages = implode( "\n", $this->get_cli_messages() );
 
 		$this->assertStringContainsString( 'Available: yes', $messages );
-		$this->assertStringContainsString( 'Backend: MariaDB vector index', $messages );
+		$this->assertStringContainsString( 'Backend: Optimal search method backed by MariaDB', $messages );
 		$this->assertStringContainsString( 'Index storage: ready', $messages );
 		$this->assertStringContainsString( 'Dirty: 2', $messages );
 		$this->assertStringContainsString( 'Clean: 5', $messages );
@@ -225,7 +225,7 @@ class RAG_CommandTest extends WP_UnitTestCase {
 			 * {@inheritDoc}
 			 */
 			public function get_index_backend_label(): string {
-				return 'MariaDB vector index';
+				return 'Optimal search method backed by MariaDB';
 			}
 		};
 	}

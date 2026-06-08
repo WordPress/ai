@@ -120,7 +120,7 @@ class RAG_Search extends Abstract_Feature {
 		$fields = array(
 			array(
 				'id'      => 'augment_search',
-				'label'   => __( 'Augment WordPress search results', 'ai' ),
+				'label'   => __( 'Augment WordPress search page results with semantic search', 'ai' ),
 				'type'    => 'boolean',
 				'default' => self::DEFAULT_AUGMENT_SEARCH,
 			),
@@ -224,8 +224,8 @@ class RAG_Search extends Abstract_Feature {
 	 */
 	private function get_backend_field_elements( array $backends ): array {
 		$labels = array(
-			Availability::BACKEND_MARIADB => __( 'MariaDB vector index', 'ai' ),
-			Availability::BACKEND_MEMORY  => __( 'Memory exact scan', 'ai' ),
+			Availability::BACKEND_MARIADB => __( 'Optimal search method backed by MariaDB', 'ai' ),
+			Availability::BACKEND_MEMORY  => __( 'Fallback in-memory search backed by PHP', 'ai' ),
 		);
 
 		$elements = array();

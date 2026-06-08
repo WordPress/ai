@@ -191,10 +191,10 @@ class Availability {
 	 */
 	public function get_index_backend_label(): string {
 		if ( self::BACKEND_MEMORY === $this->get_index_backend() ) {
-			return __( 'compact in-memory exact scan', 'ai' );
+			return __( 'Fallback in-memory search backed by PHP', 'ai' );
 		}
 
-		return __( 'MariaDB vector index', 'ai' );
+		return __( 'Optimal search method backed by MariaDB', 'ai' );
 	}
 
 	/**
