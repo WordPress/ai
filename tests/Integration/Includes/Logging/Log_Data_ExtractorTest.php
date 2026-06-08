@@ -390,6 +390,25 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 				'usageMetadata' => array(
 					'promptTokenCount'     => 300,
 					'candidatesTokenCount' => 150,
+				),
+			)
+		);
+
+		$this->assertSame( 300, $tokens['input'] );
+		$this->assertSame( 150, $tokens['output'] );
+	}
+
+	/**
+	 * Tests Google token usage sums candidatesTokenCount and thoughtsTokenCount.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_extract_token_usage_google_format_with_thoughts(): void {
+		$tokens = $this->extractor->extract_token_usage(
+			array(
+				'usageMetadata' => array(
+					'promptTokenCount'     => 300,
+					'candidatesTokenCount' => 150,
 					'thoughtsTokenCount'   => 20,
 				),
 			)
@@ -397,6 +416,24 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 
 		$this->assertSame( 300, $tokens['input'] );
 		$this->assertSame( 170, $tokens['output'] );
+	}
+
+	/**
+	 * Tests Google token usage returns null output when no output fields exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_extract_token_usage_google_format_without_output_fields(): void {
+		$tokens = $this->extractor->extract_token_usage(
+			array(
+				'usageMetadata' => array(
+					'promptTokenCount' => 300,
+				),
+			)
+		);
+
+		$this->assertSame( 300, $tokens['input'] );
+		$this->assertNull( $tokens['output'] );
 	}
 
 	/**
