@@ -66,6 +66,12 @@ class Comment_Analysis extends Abstract_Ability {
 					'enum'        => array_keys( Comment_Moderation::get_sentiment_config() ),
 					'description' => esc_html__( 'The sentiment of the comment.', 'ai' ),
 				),
+				'value_score'    => array(
+					'type'        => [ 'number', 'null' ],
+					'minimum'     => 0,
+					'maximum'     => 1,
+					'description' => esc_html__( 'Value score from 0 (low value) to 1 (high value), or null if relevance cannot be assessed.', 'ai' ),
+				),
 			),
 		);
 	}
@@ -129,7 +135,7 @@ class Comment_Analysis extends Abstract_Ability {
 		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_PROCESSING );
 
 		// Analyze the comment.
-		$result = $this->analyze_comment( $comment->comment_content, $comment->comment_author );
+		$result = $this->analyze_comment( $comment->comment_content, $comment->comment_author, $comment->comment_post_ID );
 
 		if ( is_wp_error( $result ) ) {
 			// Mark as failed.
@@ -140,6 +146,7 @@ class Comment_Analysis extends Abstract_Ability {
 		// Store the results.
 		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, $result['toxicity_score'] );
 		update_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, $result['sentiment'] );
+		update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, $result['value_score'] );
 		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
 		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYZED_AT, time() );
 
@@ -147,6 +154,7 @@ class Comment_Analysis extends Abstract_Ability {
 			'comment_id'     => $comment_id,
 			'toxicity_score' => $result['toxicity_score'],
 			'sentiment'      => $result['sentiment'],
+			'value_score'    => $result['value_score'],
 		);
 	}
 
@@ -190,8 +198,9 @@ class Comment_Analysis extends Abstract_Ability {
 			'properties'           => array(
 				'toxicity_score' => array( 'type' => 'number' ),
 				'sentiment'      => array( 'type' => 'string' ),
+				'value_score'    => array( 'type' => 'number' ),
 			),
-			'required'             => array( 'toxicity_score', 'sentiment' ),
+			'required'             => array( 'toxicity_score', 'sentiment', 'value_score' ),
 			'additionalProperties' => false,
 		);
 
@@ -206,15 +215,49 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
+	 * Function to return context from the post for comment analysis.
+	 * @param int $post_id The ID of the post.
+	 * @return string The content of the post.
+	 */
+	private function get_post_context( int $post_id ): ?string {
+		$post = get_post( $post_id );
+
+		// 1. Use excerpt if available (human-written, most reliable)
+		$excerpt = trim( $post->post_excerpt );
+		if ( ! empty( $excerpt ) ) {
+			return $excerpt;
+		}
+
+		// 2. Fall back to AI-generated summary if available
+		$ai_summary = trim( get_post_meta( $post_id, '_ai_post_summary', true ) );
+		if ( ! empty( $ai_summary ) ) {
+			return $ai_summary;
+		}
+
+		// 3. Fall back to trimmed post content (strip tags, normalize whitespace)
+		$content = wp_strip_all_tags( $post->post_content );
+		$content = preg_replace( '/\s+/', ' ', $content );
+		$content = trim( $content );
+
+		if ( empty( $content ) ) {
+			return null;
+		}
+
+		return mb_substr( $content, 0, 650 );
+	}
+
+	/**
 	 * Analyzes a comment for toxicity and sentiment.
 	 *
 	 * @since 0.9.0
 	 *
 	 * @param string $content The comment content.
 	 * @param string $author  The comment author name.
-	 * @return array{toxicity_score: float, sentiment: string}|\WP_Error The analysis result.
+	 * @param string $post_id The ID of the post.
+	 * @return array{toxicity_score: float, sentiment: string, value_score: float|null}|\WP_Error The analysis result.
 	 */
-	private function analyze_comment( string $content, string $author ) {
+	private function analyze_comment( string $content, string $author, string $post_id ) {
+
 		/**
 		 * Filters the comment analysis result before calling the AI provider.
 		 *
@@ -223,20 +266,24 @@ class Comment_Analysis extends Abstract_Ability {
 		 *
 		 * @since 0.9.0
 		 *
-		 * @param array{toxicity_score: float, sentiment: string}|null $result  Precomputed analysis result.
-		 * @param string                                              $content Comment content.
-		 * @param string                                              $author  Comment author name.
+		 * @param array{toxicity_score: float, sentiment: string, value_score: float|null}|null $result  Precomputed analysis result.
+		 * @param string                            $content Comment content.
+		 * @param string                            $author  Comment author name.
+		 * @param string                            $post_id The ID of the post.
 		 */
-		$pre_result = apply_filters( 'wpai_comment_analysis_result', null, $content, $author );
+		$pre_result = apply_filters( 'wpai_comment_analysis_result', null, $content, $author, $post_id );
 
 		if ( is_array( $pre_result ) ) {
 			return $this->sanitize_analysis_result( $pre_result );
 		}
 
+		$post_context = $this->get_post_context( absint( $post_id ) );
+
 		$prompt = sprintf(
-			"Comment by %s:\n\"\"\"%s\"\"\"",
+			"Comment by %s:\n\"\"\"%s\"\"\"\nContext:\n\"\"\"%s\"\"\"",
 			$author,
-			$content
+			$content,
+			$post_context
 		);
 
 		$prompt_builder = $this->get_prompt_builder( $prompt );
@@ -290,7 +337,7 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @since 0.9.0
 	 *
 	 * @param array<string, mixed> $result Raw analysis result.
-	 * @return array{toxicity_score: float, sentiment: string} Sanitized analysis result.
+	 * @return array{toxicity_score: float, sentiment: string, value_score: float|null} Sanitized analysis result.
 	 */
 	private function sanitize_analysis_result( array $result ): array {
 		// Validate and sanitize the response.
@@ -302,10 +349,16 @@ class Comment_Analysis extends Abstract_Ability {
 		$sentiment        = isset( $result['sentiment'] ) && in_array( $result['sentiment'], $valid_sentiments, true )
 			? $result['sentiment']
 			: Comment_Moderation::SENTIMENT_NEUTRAL;
+		
+		$value_score = null;
+		if ( isset( $result['value_score'] ) ) {
+			$value_score = max( 0, min( 1, (float) $result['value_score'] ) );
+		}
 
 		return array(
 			'toxicity_score' => $toxicity_score,
 			'sentiment'      => $sentiment,
+			'value_score'    => $value_score,
 		);
 	}
 }
