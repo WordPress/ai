@@ -390,12 +390,13 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 				'usageMetadata' => array(
 					'promptTokenCount'     => 300,
 					'candidatesTokenCount' => 150,
+					'thoughtsTokenCount'   => 20,
 				),
 			)
 		);
 
 		$this->assertSame( 300, $tokens['input'] );
-		$this->assertSame( 150, $tokens['output'] );
+		$this->assertSame( 170, $tokens['output'] );
 	}
 
 	/**
