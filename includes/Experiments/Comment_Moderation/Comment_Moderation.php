@@ -165,7 +165,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 */
 	public static function get_value_score_config(): array {
 		return array(
-			self::VALUE_SCORE_LOW => array(
+			self::VALUE_SCORE_LOW    => array(
 				'label'       => __( 'Low', 'ai' ),
 				'filterLabel' => __( 'Low Value Score (<40%)', 'ai' ),
 				'class'       => 'ai-badge--low-value',
@@ -173,7 +173,7 @@ class Comment_Moderation extends Abstract_Feature {
 				'min'         => 0.0,
 				'max'         => 0.4,
 			),
-			self::VALUE_SCORE_MEDIUM  => array(
+			self::VALUE_SCORE_MEDIUM => array(
 				'label'       => __( 'Medium', 'ai' ),
 				'filterLabel' => __( 'Medium Value Score (40%-69%)', 'ai' ),
 				'class'       => 'ai-badge--medium-value',
@@ -181,7 +181,7 @@ class Comment_Moderation extends Abstract_Feature {
 				'min'         => 0.4,
 				'max'         => 0.7,
 			),
-			self::VALUE_SCORE_HIGH => array(
+			self::VALUE_SCORE_HIGH   => array(
 				'label'       => __( 'High', 'ai' ),
 				'filterLabel' => __( 'High Value Score (>=70%)', 'ai' ),
 				'class'       => 'ai-badge--high-value',
@@ -436,9 +436,9 @@ class Comment_Moderation extends Abstract_Feature {
 				continue;
 			}
 
-			$new_columns['wpai_sentiment']    = __( 'Sentiment', 'ai' );
-			$new_columns['wpai_toxicity']     = __( 'Toxicity', 'ai' );
-			$new_columns['wpai_value_score']  = __( 'Value', 'ai' );
+			$new_columns['wpai_sentiment']   = __( 'Sentiment', 'ai' );
+			$new_columns['wpai_toxicity']    = __( 'Toxicity', 'ai' );
+			$new_columns['wpai_value_score'] = __( 'Value', 'ai' );
 		}
 
 		return $new_columns;
@@ -575,8 +575,8 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @return array<string, string> The modified sortable columns.
 	 */
 	public function add_sortable_columns( $columns ): array {
-		$columns['wpai_sentiment'] = 'wpai_sentiment';
-		$columns['wpai_toxicity']  = 'wpai_toxicity';
+		$columns['wpai_sentiment']   = 'wpai_sentiment';
+		$columns['wpai_toxicity']    = 'wpai_toxicity';
 		$columns['wpai_value_score'] = 'wpai_value_score';
 
 		return $columns;
@@ -605,9 +605,9 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		// Handle filtering.
-		$sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$value     = isset( $_GET['wpai_value_score'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_value_score'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$sentiment  = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$toxicity   = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$value      = isset( $_GET['wpai_value_score'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_value_score'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$sentiments = self::get_sentiment_config();
 		if ( ! empty( $sentiment ) && array_key_exists( $sentiment, $sentiments ) ) {
 			$meta_query[] = array(
@@ -674,7 +674,7 @@ class Comment_Moderation extends Abstract_Feature {
 			$query->query_vars['orderby'] = 'wpai_toxicity_sort';
 		} elseif ( 'wpai_value_score' === $orderby ) {
 			$meta_query[] = array(
-				'relation'             => 'OR',
+				'relation'               => 'OR',
 				'wpai_value_score_sort'  => array(
 					'key'     => self::META_VALUE_SCORE,
 					'compare' => 'EXISTS',
@@ -1119,8 +1119,8 @@ class Comment_Moderation extends Abstract_Feature {
 			array(
 				'enabled' => $this->is_enabled(),
 				'labels'  => array(
-					'sentiment' => self::get_sentiment_config(),
-					'toxicity'  => self::get_toxicity_config(),
+					'sentiment'   => self::get_sentiment_config(),
+					'toxicity'    => self::get_toxicity_config(),
 					'value_score' => self::get_value_score_config(),
 				),
 			)

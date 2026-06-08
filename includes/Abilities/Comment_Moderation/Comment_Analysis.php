@@ -67,7 +67,7 @@ class Comment_Analysis extends Abstract_Ability {
 					'description' => esc_html__( 'The sentiment of the comment.', 'ai' ),
 				),
 				'value_score'    => array(
-					'type'        => [ 'number', 'null' ],
+					'type'        => array( 'number', 'null' ),
 					'minimum'     => 0,
 					'maximum'     => 1,
 					'description' => esc_html__( 'Value score from 0 (low value) to 1 (high value), or null if relevance cannot be assessed.', 'ai' ),
@@ -349,7 +349,7 @@ class Comment_Analysis extends Abstract_Ability {
 		$sentiment        = isset( $result['sentiment'] ) && in_array( $result['sentiment'], $valid_sentiments, true )
 			? $result['sentiment']
 			: Comment_Moderation::SENTIMENT_NEUTRAL;
-		
+
 		$value_score = null;
 		if ( isset( $result['value_score'] ) ) {
 			$value_score = max( 0, min( 1, (float) $result['value_score'] ) );
