@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since 1.1.0
  */
-class Index_Repository {
+class Index_Repository implements Index_Repository_Interface {
 	// Direct queries are intentional because this repository owns a dedicated vector table.
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 

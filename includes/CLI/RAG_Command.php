@@ -19,7 +19,7 @@ use WordPress\AI\RAG\Index_Manager;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Manages MariaDB vector RAG indexing utilities.
+ * Manages RAG indexing utilities.
  *
  * @since 1.1.0
  */
@@ -67,18 +67,19 @@ class RAG_Command {
 		unset( $args, $assoc_args );
 
 		$available = $this->availability->is_available();
-		$table_ok  = $available && $this->index_manager->ensure_index_table();
+		$storage_ok = $available && $this->index_manager->ensure_index_storage();
 		$counts    = $this->index_manager->get_status_counts();
 		$scheduled = $this->index_manager->get_next_scheduled_indexing();
 
 		WP_CLI::log( 'RAG search status:' );
 		WP_CLI::log( sprintf( '  Available: %s', $available ? 'yes' : 'no' ) );
+		WP_CLI::log( sprintf( '  Backend: %s', $this->availability->get_index_backend_label() ) );
 
 		if ( ! $available ) {
 			WP_CLI::log( sprintf( '  Reason: %s', $this->availability->get_unavailable_reason() ) );
 		}
 
-		WP_CLI::log( sprintf( '  Index table: %s', $table_ok ? 'present' : 'missing' ) );
+		WP_CLI::log( sprintf( '  Index storage: %s', $storage_ok ? 'ready' : 'missing' ) );
 		WP_CLI::log( sprintf( '  Dirty: %d', $counts[ Index_Manager::STATUS_DIRTY ] ?? 0 ) );
 		WP_CLI::log( sprintf( '  Processing: %d', $counts[ Index_Manager::STATUS_PROCESSING ] ?? 0 ) );
 		WP_CLI::log( sprintf( '  Clean: %d', $counts[ Index_Manager::STATUS_CLEAN ] ?? 0 ) );
@@ -266,11 +267,11 @@ class RAG_Command {
 			return;
 		}
 
-		if ( $this->index_manager->ensure_index_table() ) {
+		if ( $this->index_manager->ensure_index_storage() ) {
 			return;
 		}
 
-		WP_CLI::error( 'The RAG index table could not be created.' );
+		WP_CLI::error( 'The RAG index storage could not be prepared.' );
 	}
 
 	/**

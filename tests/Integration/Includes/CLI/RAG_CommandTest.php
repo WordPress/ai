@@ -78,7 +78,8 @@ class RAG_CommandTest extends WP_UnitTestCase {
 		$messages = implode( "\n", $this->get_cli_messages() );
 
 		$this->assertStringContainsString( 'Available: yes', $messages );
-		$this->assertStringContainsString( 'Index table: present', $messages );
+		$this->assertStringContainsString( 'Backend: MariaDB vector index', $messages );
+		$this->assertStringContainsString( 'Index storage: ready', $messages );
 		$this->assertStringContainsString( 'Dirty: 2', $messages );
 		$this->assertStringContainsString( 'Clean: 5', $messages );
 		$this->assertStringContainsString( 'Error: 1', $messages );
@@ -212,6 +213,20 @@ class RAG_CommandTest extends WP_UnitTestCase {
 			public function get_unavailable_reason(): string {
 				return 'Unavailable for tests.';
 			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function get_index_backend(): string {
+				return Availability::BACKEND_MARIADB;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function get_index_backend_label(): string {
+				return 'MariaDB vector index';
+			}
 		};
 	}
 
@@ -270,7 +285,7 @@ class RAG_CommandTest extends WP_UnitTestCase {
 			/**
 			 * {@inheritDoc}
 			 */
-			public function ensure_index_table(): bool {
+			public function ensure_index_storage(): bool {
 				return true;
 			}
 

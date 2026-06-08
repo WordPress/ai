@@ -26,6 +26,21 @@ class Availability {
 	public const OPENAI_CONNECTOR_ID = 'openai';
 
 	/**
+	 * MariaDB vector index backend.
+	 */
+	public const BACKEND_MARIADB = 'mariadb';
+
+	/**
+	 * Compact in-memory exact-scan backend.
+	 */
+	public const BACKEND_MEMORY = 'memory';
+
+	/**
+	 * Option key storing the preferred backend.
+	 */
+	public const BACKEND_OPTION = 'wpai_feature_rag-search_field_backend';
+
+	/**
 	 * Required MariaDB version for VECTOR INDEX support.
 	 */
 	private const MINIMUM_MARIADB_VERSION = '11.8.0';
@@ -61,8 +76,8 @@ class Availability {
 			return $this->available;
 		}
 
-		if ( ! $this->is_mariadb_vector_index_supported() ) {
-			$this->unavailable_reason = __( 'MariaDB 11.8 or newer is required for native vector indexes.', 'ai' );
+		if ( empty( $this->get_available_index_backends() ) ) {
+			$this->unavailable_reason = __( 'MariaDB 11.8 or newer is required when the compact memory fallback is disabled.', 'ai' );
 			$this->available          = false;
 			return false;
 		}
@@ -109,6 +124,77 @@ class Availability {
 		$version = $this->get_database_version();
 
 		return $this->is_supported_mariadb_version( $version );
+	}
+
+	/**
+	 * Returns the active index backend.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return string Backend identifier.
+	 */
+	public function get_index_backend(): string {
+		$available = $this->get_available_index_backends();
+		$preferred = $this->get_preferred_index_backend();
+
+		if ( in_array( $preferred, $available, true ) ) {
+			return $preferred;
+		}
+
+		return $this->get_default_index_backend();
+	}
+
+	/**
+	 * Returns available concrete index backends.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return list<string> Backend identifiers.
+	 */
+	public function get_available_index_backends(): array {
+		$backends = array();
+
+		if ( $this->is_mariadb_vector_index_supported() ) {
+			$backends[] = self::BACKEND_MARIADB;
+		}
+
+		if ( $this->is_memory_fallback_enabled() ) {
+			$backends[] = self::BACKEND_MEMORY;
+		}
+
+		return $backends;
+	}
+
+	/**
+	 * Returns the default concrete index backend for this environment.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return string Backend identifier.
+	 */
+	public function get_default_index_backend(): string {
+		$available = $this->get_available_index_backends();
+
+		if ( in_array( self::BACKEND_MARIADB, $available, true ) ) {
+			return self::BACKEND_MARIADB;
+		}
+
+		return $available[0] ?? self::BACKEND_MARIADB;
+	}
+
+	/**
+	 * Returns a human-readable backend label.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return string Backend label.
+	 */
+	public function get_index_backend_label(): string {
+		if ( self::BACKEND_MEMORY === $this->get_index_backend() ) {
+			return __( 'compact in-memory exact scan', 'ai' );
+		}
+
+		return __( 'MariaDB vector index', 'ai' );
 	}
 
 	/**
@@ -205,5 +291,43 @@ class Availability {
 	 */
 	private function supports_openai_embeddings(): bool {
 		return self::EMBEDDING_MODEL === $this->get_embedding_model();
+	}
+
+	/**
+	 * Returns the preferred backend setting.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return string Preferred backend.
+	 */
+	private function get_preferred_index_backend(): string {
+		$preferred = get_option( self::BACKEND_OPTION, $this->get_default_index_backend() );
+		if ( ! is_string( $preferred ) ) {
+			return $this->get_default_index_backend();
+		}
+
+		if ( in_array( $preferred, array( self::BACKEND_MARIADB, self::BACKEND_MEMORY ), true ) ) {
+			return $preferred;
+		}
+
+		return $this->get_default_index_backend();
+	}
+
+	/**
+	 * Checks whether the compact memory fallback is enabled.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return bool True when enabled.
+	 */
+	private function is_memory_fallback_enabled(): bool {
+		/**
+		 * Filters whether RAG should use compact in-memory exact scan when MariaDB vector indexes are unavailable.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param bool $enabled Whether the fallback backend is enabled.
+		 */
+		return (bool) apply_filters( 'wpai_rag_memory_fallback_enabled', true );
 	}
 }

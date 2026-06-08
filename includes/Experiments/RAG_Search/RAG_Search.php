@@ -21,7 +21,7 @@ use WordPress\AI\Settings\Settings_Registration;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Adds semantic RAG search backed by MariaDB vector indexes.
+ * Adds semantic RAG search backed by MariaDB vector indexes or compact exact scan.
  *
  * @since 1.1.0
  */
@@ -44,7 +44,7 @@ class RAG_Search extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'RAG Search', 'ai' ),
-			'description' => __( 'Semantic search using OpenAI embeddings and native MariaDB 11.8+ vector indexes.', 'ai' ),
+			'description' => __( 'Semantic search using OpenAI embeddings with native MariaDB vector indexes or a compact exact-scan fallback.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'embedding_generation',
 		);
@@ -54,7 +54,7 @@ class RAG_Search extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		$availability = new Availability();
+		$availability = $this->create_availability();
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			\WP_CLI::add_command( 'ai rag', RAG_Command::class );
@@ -83,6 +83,24 @@ class RAG_Search extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public function register_settings(): void {
+		$availability = $this->create_availability();
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			Availability::BACKEND_OPTION,
+			array(
+				'type'              => 'string',
+				'default'           => $availability->get_default_index_backend(),
+				'sanitize_callback' => array( $this, 'sanitize_backend' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'string',
+						'enum' => array( Availability::BACKEND_MARIADB, Availability::BACKEND_MEMORY ),
+					),
+				),
+			)
+		);
+
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
 			static::get_field_option_name( 'augment_search' ),
@@ -99,7 +117,7 @@ class RAG_Search extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function get_settings_fields(): array {
-		return array(
+		$fields = array(
 			array(
 				'id'      => 'augment_search',
 				'label'   => __( 'Augment WordPress search results', 'ai' ),
@@ -107,6 +125,42 @@ class RAG_Search extends Abstract_Feature {
 				'default' => self::DEFAULT_AUGMENT_SEARCH,
 			),
 		);
+
+		$availability = $this->create_availability();
+		$backends     = $availability->get_available_index_backends();
+		if ( count( $backends ) > 1 ) {
+			array_unshift(
+				$fields,
+				array(
+					'id'       => 'backend',
+					'label'    => __( 'RAG backend', 'ai' ),
+					'type'     => 'text',
+					'default'  => $availability->get_default_index_backend(),
+					'elements' => $this->get_backend_field_elements( $backends ),
+				)
+			);
+		}
+
+		return $fields;
+	}
+
+	/**
+	 * Sanitizes the backend setting.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param mixed $value Raw backend value.
+	 * @return string Sanitized backend.
+	 */
+	public function sanitize_backend( $value ): string {
+		$value        = is_string( $value ) ? $value : '';
+		$availability = $this->create_availability();
+
+		if ( in_array( $value, $availability->get_available_index_backends(), true ) ) {
+			return $value;
+		}
+
+		return $availability->get_default_index_backend();
 	}
 
 	/**
@@ -130,7 +184,7 @@ class RAG_Search extends Abstract_Feature {
 			return;
 		}
 
-		$availability = new Availability();
+		$availability = $this->create_availability();
 		$message      = $availability->get_unavailable_reason();
 
 		if ( '' === $message ) {
@@ -147,5 +201,45 @@ class RAG_Search extends Abstract_Feature {
 				)
 			)
 		);
+	}
+
+	/**
+	 * Creates the availability service.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return \WordPress\AI\RAG\Availability Availability service.
+	 */
+	protected function create_availability(): Availability {
+		return new Availability();
+	}
+
+	/**
+	 * Returns backend selector elements.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param list<string> $backends Available backends.
+	 * @return list<array{value: string, label: string}> Backend field elements.
+	 */
+	private function get_backend_field_elements( array $backends ): array {
+		$labels = array(
+			Availability::BACKEND_MARIADB => __( 'MariaDB vector index', 'ai' ),
+			Availability::BACKEND_MEMORY  => __( 'Memory exact scan', 'ai' ),
+		);
+
+		$elements = array();
+		foreach ( $backends as $backend ) {
+			if ( ! isset( $labels[ $backend ] ) ) {
+				continue;
+			}
+
+			$elements[] = array(
+				'value' => $backend,
+				'label' => $labels[ $backend ],
+			);
+		}
+
+		return $elements;
 	}
 }

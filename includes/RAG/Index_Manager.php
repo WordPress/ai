@@ -88,9 +88,9 @@ class Index_Manager {
 	/**
 	 * Repository.
 	 *
-	 * @var \WordPress\AI\RAG\Index_Repository
+	 * @var \WordPress\AI\RAG\Index_Repository_Interface
 	 */
-	private Index_Repository $repository;
+	private Index_Repository_Interface $repository;
 
 	/**
 	 * Chunker.
@@ -113,20 +113,20 @@ class Index_Manager {
 	 *
 	 * @param \WordPress\AI\RAG\Availability|null             $availability     Availability service.
 	 * @param \WordPress\AI\RAG\Index_Schema|null            $schema           Schema manager.
-	 * @param \WordPress\AI\RAG\Index_Repository|null        $repository       Repository.
+	 * @param \WordPress\AI\RAG\Index_Repository_Interface|null $repository       Repository.
 	 * @param \WordPress\AI\RAG\Post_Chunker|null            $chunker          Chunker.
 	 * @param \WordPress\AI\RAG\OpenAI_Embedding_Client|null $embedding_client Embedding client.
 	 */
 	public function __construct(
 		?Availability $availability = null,
 		?Index_Schema $schema = null,
-		?Index_Repository $repository = null,
+		?Index_Repository_Interface $repository = null,
 		?Post_Chunker $chunker = null,
 		?OpenAI_Embedding_Client $embedding_client = null
 	) {
 		$this->availability     = $availability ?? new Availability();
 		$this->schema           = $schema ?? new Index_Schema();
-		$this->repository       = $repository ?? new Index_Repository( $this->schema, $this->availability->get_embedding_dimensions() );
+		$this->repository       = $repository ?? $this->create_repository();
 		$this->chunker          = $chunker ?? new Post_Chunker();
 		$this->embedding_client = $embedding_client ?? new OpenAI_Embedding_Client( $this->availability );
 	}
@@ -137,9 +137,7 @@ class Index_Manager {
 	 * @since 1.1.0
 	 */
 	public function init(): void {
-		$this->schema->maybe_upgrade_table();
-
-		if ( ! $this->schema->table_exists() ) {
+		if ( ! $this->ensure_index_storage() ) {
 			return;
 		}
 
@@ -150,16 +148,35 @@ class Index_Manager {
 	}
 
 	/**
-	 * Ensures the RAG index table exists.
+	 * Ensures the RAG index storage exists.
 	 *
 	 * @since 1.1.0
 	 *
-	 * @return bool True when the table exists.
+	 * @return bool True when index storage is ready.
 	 */
-	public function ensure_index_table(): bool {
+	public function ensure_index_storage(): bool {
+		if ( Availability::BACKEND_MEMORY === $this->availability->get_index_backend() ) {
+			return true;
+		}
+
 		$this->schema->maybe_upgrade_table();
 
 		return $this->schema->table_exists();
+	}
+
+	/**
+	 * Returns the active repository.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return \WordPress\AI\RAG\Index_Repository_Interface Repository.
+	 */
+	private function create_repository(): Index_Repository_Interface {
+		if ( Availability::BACKEND_MEMORY === $this->availability->get_index_backend() ) {
+			return new Memory_Index_Repository( $this->availability->get_embedding_dimensions() );
+		}
+
+		return new Index_Repository( $this->schema, $this->availability->get_embedding_dimensions() );
 	}
 
 	/**
