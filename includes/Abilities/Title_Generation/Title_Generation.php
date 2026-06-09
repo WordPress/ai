@@ -293,7 +293,7 @@ class Title_Generation extends Abstract_Ability {
 
 		foreach ( $pending as $entry ) {
 			if ( $entry['caller_basename'] === $caller['basename'] ) {
-				$error_message = esc_html__( 'Title generation failed. The AI connector is currently pending authorization. Please approve the request under Tools > Connector Approvals.', 'ai' );
+				$error_message = __( 'Title generation failed. The AI connector is currently pending authorization. Please approve the request under Tools > Connector Approvals.', 'ai' );
 				break;
 			}
 		}
