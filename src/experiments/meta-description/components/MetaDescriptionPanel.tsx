@@ -28,6 +28,8 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		isGenerating,
 		suggestion,
 		currentDescription,
+		isContentTooShort,
+		tooShortLabel,
 		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
@@ -89,9 +91,14 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 						</Button>
 						<Button
 							icon={ update }
-							label={ __( 'Regenerate meta description', 'ai' ) }
+							label={
+								isContentTooShort
+									? tooShortLabel
+									: __( 'Regenerate meta description', 'ai' )
+							}
+							showTooltip
 							onClick={ handleRegenerate }
-							disabled={ isGenerating }
+							disabled={ isGenerating || isContentTooShort }
 							size="compact"
 							accessibleWhenDisabled
 						/>
@@ -100,8 +107,14 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 			) : (
 				<Button
 					variant="secondary"
+					label={
+						isContentTooShort
+							? tooShortLabel
+							: __( 'Generate Meta Description', 'ai' )
+					}
+					showTooltip
 					onClick={ handleOpenModal }
-					disabled={ isGenerating }
+					disabled={ isGenerating || isContentTooShort }
 					isBusy={ isGenerating }
 					accessibleWhenDisabled
 				>
@@ -116,6 +129,8 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					isGenerating={ isGenerating }
 					suggestion={ suggestion }
 					editableText={ editableText }
+					isContentTooShort={ isContentTooShort }
+					tooShortLabel={ tooShortLabel }
 					onEditableTextChange={ setEditableText }
 					onGenerate={ generateDescription }
 					onApply={ applyDescription }

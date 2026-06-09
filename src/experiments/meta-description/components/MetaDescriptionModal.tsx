@@ -21,6 +21,8 @@ interface MetaDescriptionModalProps {
 	isGenerating: boolean;
 	suggestion: MetaDescriptionSuggestion | null;
 	editableText: string;
+	isContentTooShort: boolean;
+	tooShortLabel: string;
 	onEditableTextChange: ( text: string ) => void;
 	onGenerate: () => Promise< void >;
 	onApply: ( text: string ) => void;
@@ -76,6 +78,8 @@ function CopyButton( {
  * @param props.isGenerating         Whether generation is in progress.
  * @param props.suggestion           The generated suggestion.
  * @param props.editableText         The current editable text value.
+ * @param props.isContentTooShort    Whether the content is too short to generate a suggestion.
+ * @param props.tooShortLabel        Label to show when content is too short.
  * @param props.onEditableTextChange Callback to update the editable text.
  * @param props.onGenerate           Callback to trigger generation.
  * @param props.onApply              Callback to apply the description.
@@ -85,6 +89,8 @@ export default function MetaDescriptionModal( {
 	isGenerating,
 	suggestion,
 	editableText,
+	isContentTooShort,
+	tooShortLabel,
 	onEditableTextChange,
 	onGenerate,
 	onApply,
@@ -144,8 +150,14 @@ export default function MetaDescriptionModal( {
 					</Button>
 					<Button
 						variant="secondary"
+						label={
+							isContentTooShort
+								? tooShortLabel
+								: generateButtonLabel
+						}
+						showTooltip
 						onClick={ onGenerate }
-						disabled={ isGenerating }
+						disabled={ isGenerating || isContentTooShort }
 						isBusy={ isGenerating }
 						accessibleWhenDisabled
 					>
