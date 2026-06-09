@@ -325,4 +325,46 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$this->assertNotEmpty( $registered[ $strategy_key ]['show_in_rest'], 'Strategy should have show_in_rest' );
 		$this->assertNotEmpty( $registered[ $max_suggestions_key ]['show_in_rest'], 'Max suggestions should have show_in_rest' );
 	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the default minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_default_min_content_length() {
+		$GLOBALS['wp_scripts'] = new \WP_Scripts();
+
+		$experiment = new Content_Classification();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_content_classification', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"150"',
+			(string) wp_scripts()->get_data( 'ai_content_classification', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+		$GLOBALS['wp_scripts'] = new \WP_Scripts();
+
+		$experiment = new Content_Classification();
+		$experiment->enqueue_assets( 'post.php' );
+
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_content_classification', 'data' )
+		);
+	}
 }
