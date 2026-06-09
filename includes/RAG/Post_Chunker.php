@@ -40,10 +40,11 @@ class Post_Chunker {
 	 * @since 1.1.0
 	 *
 	 * @param \WP_Post $post Post object.
-	 * @return list<array{chunk_id:string, chunk_index:int, chunk_offset:int, anchor:string|null, title:string, permalink:string, content:string}> Chunk records.
+	 * @return list<array{chunk_id:string, chunk_index:int, chunk_offset:int, content:string, embedding_text:string}> Chunk records.
 	 */
 	public function chunk_post( WP_Post $post ): array {
-		$text = $this->get_indexable_text( $post );
+		$text       = $this->get_indexable_text( $post );
+		$post_title = trim( wp_strip_all_tags( get_the_title( $post ) ) );
 
 		if ( '' === $text ) {
 			return array();
@@ -52,13 +53,10 @@ class Post_Chunker {
 		$window = $this->get_window_chars();
 		$step   = $this->get_step_chars( $window );
 
-		$chunks     = array();
-		$text_len   = strlen( $text );
-		$offset     = 0;
-		$chunk_idx  = 0;
-		$permalink  = get_permalink( $post );
-		$permalink  = is_string( $permalink ) ? $permalink : '';
-		$post_title = get_the_title( $post );
+		$chunks    = array();
+		$text_len  = strlen( $text );
+		$offset    = 0;
+		$chunk_idx = 0;
 
 		while ( $offset < $text_len ) {
 			$length  = min( $window, $text_len - $offset );
@@ -71,13 +69,11 @@ class Post_Chunker {
 			$segment = trim( (string) $segment );
 			if ( strlen( $segment ) >= self::MIN_CHUNK_CHARS || 0 === $chunk_idx ) {
 				$chunks[] = array(
-					'chunk_id'     => $this->build_chunk_id( (int) $post->ID, $offset ),
-					'chunk_index'  => $chunk_idx,
-					'chunk_offset' => $offset,
-					'anchor'       => null,
-					'title'        => $post_title,
-					'permalink'    => $permalink,
-					'content'      => $segment,
+					'chunk_id'       => $this->build_chunk_id( (int) $post->ID, $offset ),
+					'chunk_index'    => $chunk_idx,
+					'chunk_offset'   => $offset,
+					'content'        => $segment,
+					'embedding_text' => $this->build_embedding_text( $post_title, $segment ),
 				);
 				++$chunk_idx;
 			}
@@ -112,7 +108,7 @@ class Post_Chunker {
 		$content = $this->html_to_plain_text( (string) $content );
 
 		$title = trim( wp_strip_all_tags( get_the_title( $post ) ) );
-		$text  = trim( $title . "\n\n" . $content );
+		$text  = '' === trim( $content ) ? $title : $content;
 
 		/**
 		 * Filters the normalized post text before RAG chunking.
@@ -125,6 +121,23 @@ class Post_Chunker {
 		$text = (string) apply_filters( 'wpai_rag_indexable_post_text', $text, $post );
 
 		return trim( preg_replace( '/\s+/u', ' ', $text ) ?? $text );
+	}
+
+	/**
+	 * Builds embedding text with post title context.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $title   Post title.
+	 * @param string $content Chunk content.
+	 * @return string Embedding text.
+	 */
+	private function build_embedding_text( string $title, string $content ): string {
+		if ( '' === $title ) {
+			return $content;
+		}
+
+		return trim( $title . "\n\n" . $content );
 	}
 
 	/**

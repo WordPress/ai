@@ -59,6 +59,10 @@ class Memory_Index_RepositoryTest extends WP_UnitTestCase {
 		$stored = get_post_meta( $post_one, Memory_Index_Repository::META_CHUNKS, true );
 
 		$this->assertIsArray( $stored );
+		$this->assertArrayNotHasKey( 'title', $stored[0] );
+		$this->assertArrayNotHasKey( 'permalink', $stored[0] );
+		$this->assertArrayNotHasKey( 'anchor', $stored[0] );
+		$this->assertArrayNotHasKey( 'embedding_dimensions', $stored[0] );
 		$this->assertSame( 16, strlen( $stored[0]['embedding'] ) );
 		$this->assertSame( 12, strlen( base64_decode( $stored[0]['embedding'], true ) ) );
 
@@ -142,13 +146,11 @@ class Memory_Index_RepositoryTest extends WP_UnitTestCase {
 	 */
 	private function create_chunk( string $id, string $content ): array {
 		return array(
-			'chunk_id'     => $id,
-			'chunk_index'  => 0,
-			'chunk_offset' => 0,
-			'anchor'       => null,
-			'title'        => 'Test title',
-			'permalink'    => 'https://example.com/test',
-			'content'      => $content,
+			'chunk_id'       => $id,
+			'chunk_index'    => 0,
+			'chunk_offset'   => 0,
+			'content'        => $content,
+			'embedding_text' => 'Test title ' . $content,
 		);
 	}
 }

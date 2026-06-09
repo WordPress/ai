@@ -15,6 +15,7 @@ use WordPress\AI\CLI\RAG_Command;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\RAG\Availability;
 use WordPress\AI\RAG\Index_Manager;
+use WordPress\AI\RAG\REST\RAG_Maintenance_Controller;
 use WordPress\AI\RAG\REST\RAG_Search_Controller;
 use WordPress\AI\RAG\Related_Posts;
 use WordPress\AI\RAG\Search_Augmenter;
@@ -32,6 +33,11 @@ class RAG_Search extends Abstract_Feature {
 	 * Default search augmentation setting.
 	 */
 	private const DEFAULT_AUGMENT_SEARCH = false;
+
+	/**
+	 * Tracks WP-CLI command registration.
+	 */
+	private static bool $cli_registered = false;
 
 	/**
 	 * {@inheritDoc}
@@ -58,9 +64,7 @@ class RAG_Search extends Abstract_Feature {
 	public function register(): void {
 		$availability = $this->create_availability();
 
-		if ( defined( 'WP_CLI' ) && WP_CLI ) {
-			\WP_CLI::add_command( 'ai rag', RAG_Command::class );
-		}
+		$this->register_cli_command();
 
 		if ( ! $availability->is_available() ) {
 			add_action( 'admin_notices', array( $this, 'render_unavailable_notice' ) );
@@ -89,6 +93,9 @@ class RAG_Search extends Abstract_Feature {
 	 */
 	public function register_settings(): void {
 		$availability = $this->create_availability();
+
+		$this->register_cli_command();
+		( new RAG_Maintenance_Controller( $availability ) )->init();
 
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
@@ -141,7 +148,7 @@ class RAG_Search extends Abstract_Feature {
 					'label'    => __( 'RAG backend', 'ai' ),
 					'type'     => 'text',
 					'default'  => $availability->get_default_index_backend(),
-					'elements' => $this->get_backend_field_elements( $backends ),
+					'elements' => $this->get_backend_field_elements( $availability, $backends ),
 				)
 			);
 		}
@@ -233,16 +240,14 @@ class RAG_Search extends Abstract_Feature {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param list<string> $backends Available backends.
+	 * @param \WordPress\AI\RAG\Availability $availability Availability service.
+	 * @param list<string>                    $backends     Available backends.
 	 * @return list<array{value: string, label: string}> Backend field elements.
 	 */
-	private function get_backend_field_elements( array $backends ): array {
-		$labels = array(
-			Availability::BACKEND_MARIADB => __( 'Optimal search method backed by MariaDB', 'ai' ),
-			Availability::BACKEND_MEMORY  => __( 'Fallback in-memory search backed by PHP', 'ai' ),
-		);
-
+	private function get_backend_field_elements( Availability $availability, array $backends ): array {
+		$labels   = $availability->get_index_backend_labels();
 		$elements = array();
+
 		foreach ( $backends as $backend ) {
 			if ( ! isset( $labels[ $backend ] ) ) {
 				continue;
@@ -255,5 +260,19 @@ class RAG_Search extends Abstract_Feature {
 		}
 
 		return $elements;
+	}
+
+	/**
+	 * Registers the WP-CLI command once.
+	 *
+	 * @since 1.1.0
+	 */
+	private function register_cli_command(): void {
+		if ( self::$cli_registered || ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+			return;
+		}
+
+		\WP_CLI::add_command( 'ai rag', RAG_Command::class );
+		self::$cli_registered = true;
 	}
 }

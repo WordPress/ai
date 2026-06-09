@@ -12,11 +12,11 @@ namespace WordPress\AI\RAG;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Handles database schema management for the RAG index table.
+ * Handles database schema management for the MariaDB RAG index table.
  *
  * @since 1.1.0
  */
-class Index_Schema {
+class MariaDB_Index_Schema {
 	// Schema management necessarily uses direct queries against the dedicated RAG table.
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 
@@ -33,7 +33,7 @@ class Index_Schema {
 	/**
 	 * Current schema version.
 	 */
-	private const SCHEMA_VERSION = '1';
+	private const SCHEMA_VERSION = '2';
 
 	/**
 	 * Ensures the table exists and has the required indexes.
@@ -106,6 +106,41 @@ class Index_Schema {
 	}
 
 	/**
+	 * Checks whether the table has stored rows.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return bool True when storage exists.
+	 */
+	public function has_index_data(): bool {
+		$has_schema_option = '' !== get_option( self::SCHEMA_VERSION_OPTION, '' );
+
+		global $wpdb;
+
+		$table_name = $this->get_table_name();
+		if ( ! $this->table_exists() ) {
+			return $has_schema_option;
+		}
+
+		$row = $wpdb->get_var( "SELECT id FROM {$table_name} LIMIT 1" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		return null !== $row || $has_schema_option;
+	}
+
+	/**
+	 * Drops the table and schema option.
+	 *
+	 * @since 1.1.0
+	 */
+	public function cleanup(): void {
+		global $wpdb;
+
+		$table_name = $this->get_table_name();
+		$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		delete_option( self::SCHEMA_VERSION_OPTION );
+	}
+
+	/**
 	 * Creates the RAG index table.
 	 *
 	 * @since 1.1.0
@@ -124,14 +159,10 @@ class Index_Schema {
 			chunk_id CHAR(36) NOT NULL,
 			chunk_index INT UNSIGNED NOT NULL,
 			chunk_offset INT UNSIGNED NOT NULL DEFAULT 0,
-			anchor VARCHAR(191) DEFAULT NULL,
-			title TEXT DEFAULT NULL,
-			permalink TEXT DEFAULT NULL,
 			content MEDIUMTEXT NOT NULL,
 			content_hash CHAR(64) NOT NULL,
 			embedding VECTOR(1536) NOT NULL,
 			embedding_model VARCHAR(64) NOT NULL,
-			embedding_dimensions SMALLINT UNSIGNED NOT NULL DEFAULT 1536,
 			indexed_at DATETIME NOT NULL,
 			UNIQUE KEY uniq_post_chunk (post_id, chunk_id),
 			INDEX idx_post_id (post_id),

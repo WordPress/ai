@@ -177,6 +177,21 @@ class RAG_CommandTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests cleanup command.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_cleanup_deletes_index_data_with_yes_flag(): void {
+		$manager = $this->create_manager();
+		$command = new RAG_Command( $this->create_availability( true ), $manager );
+
+		$command->cleanup( array(), array( 'yes' => true ) );
+
+		$this->assertTrue( $manager->cleaned_up );
+		$this->assertStringContainsString( 'Deleted RAG index data.', implode( "\n", $this->get_cli_messages( 'success' ) ) );
+	}
+
+	/**
 	 * Creates a fake availability service.
 	 *
 	 * @param bool $available Whether RAG is available.
@@ -267,6 +282,13 @@ class RAG_CommandTest extends WP_UnitTestCase {
 			public array $schedule_tail_values = array();
 
 			/**
+			 * Whether cleanup was called.
+			 *
+			 * @var bool
+			 */
+			public bool $cleaned_up = false;
+
+			/**
 			 * Fake behavior config.
 			 *
 			 * @var array<string, mixed>
@@ -352,6 +374,13 @@ class RAG_CommandTest extends WP_UnitTestCase {
 			 */
 			public function schedule_indexing( int $delay = 1 ): void {
 				$this->scheduled_delay = $delay;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function cleanup_index_data(): void {
+				$this->cleaned_up = true;
 			}
 		};
 	}

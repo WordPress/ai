@@ -10,9 +10,9 @@ namespace WordPress\AI\Tests\Integration\Includes\RAG;
 use WP_UnitTestCase;
 use WordPress\AI\RAG\Availability;
 use WordPress\AI\RAG\Index_Manager;
-use WordPress\AI\RAG\Index_Repository;
 use WordPress\AI\RAG\Index_Repository_Interface;
-use WordPress\AI\RAG\Index_Schema;
+use WordPress\AI\RAG\MariaDB_Index_Repository;
+use WordPress\AI\RAG\MariaDB_Index_Schema;
 use WordPress\AI\RAG\Memory_Index_Repository;
 use WordPress\AI\RAG\OpenAI_Embedding_Client;
 use WordPress\AI\RAG\Search_Service;
@@ -150,6 +150,13 @@ class Backend_Search_Test_Availability extends Availability {
 	public function get_embedding_dimensions(): int {
 		return $this->dimensions;
 	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function ensure_index_storage(): bool {
+		return true;
+	}
 }
 
 /**
@@ -281,7 +288,7 @@ class Backend_SearchTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'MariaDB VECTOR indexes are not available in this test environment.' );
 		}
 
-		return new Index_Repository( new Index_Schema(), $dimensions );
+		return new MariaDB_Index_Repository( new MariaDB_Index_Schema(), $dimensions );
 	}
 
 	/**

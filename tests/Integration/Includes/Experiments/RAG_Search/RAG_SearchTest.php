@@ -198,6 +198,16 @@ class RAG_SearchTest extends WP_UnitTestCase {
 					public function get_default_index_backend(): string {
 						return $this->default_backend;
 					}
+
+					/**
+					 * {@inheritDoc}
+					 */
+					public function get_index_backend_labels(): array {
+						return array(
+							Availability::BACKEND_MARIADB => 'Optimal search method backed by MariaDB',
+							Availability::BACKEND_MEMORY  => 'Fallback in-memory search backed by PHP',
+						);
+					}
 				};
 			}
 		};

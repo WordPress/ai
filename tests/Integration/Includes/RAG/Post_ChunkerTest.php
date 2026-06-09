@@ -40,7 +40,8 @@ class Post_ChunkerTest extends WP_UnitTestCase {
 		$this->assertSame( $first, $second );
 		$this->assertSame( 0, $first[0]['chunk_index'] );
 		$this->assertSame( 0, $first[0]['chunk_offset'] );
-		$this->assertStringContainsString( 'Semantic Search', $first[0]['content'] );
+		$this->assertStringNotContainsString( 'Semantic Search', $first[0]['content'] );
+		$this->assertStringContainsString( 'Semantic Search', $first[0]['embedding_text'] );
 		$this->assertStringContainsString( 'first paragraph', $first[0]['content'] );
 	}
 

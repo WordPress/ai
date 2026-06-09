@@ -24,8 +24,8 @@ interface Index_Repository_Interface {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param \WP_Post $post       Post object.
-	 * @param list<array{chunk_id:string, chunk_index:int, chunk_offset:int, anchor?:string|null, title:string, permalink:string, content:string}> $chunks Chunk data.
+	 * @param \WP_Post $post Post object.
+	 * @param list<array{chunk_id:string, chunk_index:int, chunk_offset:int, content:string, embedding_text?:string}> $chunks Chunk data.
 	 * @param list<list<int|float>> $embeddings Embedding vectors in chunk order.
 	 * @param string $model Embedding model.
 	 * @param string $hash Content hash.

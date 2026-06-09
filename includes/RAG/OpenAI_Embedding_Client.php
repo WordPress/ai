@@ -12,6 +12,7 @@ namespace WordPress\AI\RAG;
 use Throwable;
 use WP_Error;
 use WordPress\AiClient\AiClient;
+use function WordPress\AI\has_connector_authentication;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,27 +23,24 @@ defined( 'ABSPATH' ) || exit;
  */
 class OpenAI_Embedding_Client {
 	/**
+	 * OpenAI connector identifier.
+	 */
+	public const CONNECTOR_ID = 'openai';
+
+	/**
+	 * Default supported embedding model.
+	 */
+	public const DEFAULT_MODEL = 'text-embedding-3-small';
+
+	/**
 	 * OpenAI embeddings endpoint.
 	 */
 	private const ENDPOINT = 'https://api.openai.com/v1/embeddings';
 
 	/**
-	 * Availability service.
-	 *
-	 * @var \WordPress\AI\RAG\Availability
+	 * Embedding dimensions for the supported model.
 	 */
-	private Availability $availability;
-
-	/**
-	 * Constructor.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param \WordPress\AI\RAG\Availability $availability Availability service.
-	 */
-	public function __construct( Availability $availability ) {
-		$this->availability = $availability;
-	}
+	private const DIMENSIONS = 1536;
 
 	/**
 	 * Embeds text inputs.
@@ -83,6 +81,67 @@ class OpenAI_Embedding_Client {
 		}
 
 		return $vectors;
+	}
+
+	/**
+	 * Checks whether OpenAI embeddings can be generated.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return bool True when supported and authenticated.
+	 */
+	public function is_available(): bool {
+		return $this->has_connector_authentication() && $this->supports_configured_model();
+	}
+
+	/**
+	 * Returns the unavailable reason.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return string Reason.
+	 */
+	public function get_unavailable_reason(): string {
+		if ( ! $this->has_connector_authentication() ) {
+			return __( 'The OpenAI connector must be active and authenticated to generate embeddings.', 'ai' );
+		}
+
+		if ( ! $this->supports_configured_model() ) {
+			return __( 'RAG Search currently supports OpenAI text-embedding-3-small embeddings only.', 'ai' );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Returns the configured embedding model.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return string Embedding model ID.
+	 */
+	public function get_model(): string {
+		/**
+		 * Filters the OpenAI embedding model used for RAG indexing.
+		 *
+		 * The table schema in this release is fixed to 1536 dimensions.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string $model OpenAI embedding model.
+		 */
+		return (string) apply_filters( 'wpai_rag_embedding_model', self::DEFAULT_MODEL );
+	}
+
+	/**
+	 * Returns the embedding vector dimension count.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return int Dimension count.
+	 */
+	public function get_dimensions(): int {
+		return self::DIMENSIONS;
 	}
 
 	/**
@@ -135,7 +194,7 @@ class OpenAI_Embedding_Client {
 	 */
 	private function request_batch( array $texts, string $api_key ) {
 		$body = array(
-			'model' => $this->availability->get_embedding_model(),
+			'model' => $this->get_model(),
 			'input' => $texts,
 		);
 		$json = wp_json_encode( $body );
@@ -144,6 +203,7 @@ class OpenAI_Embedding_Client {
 			return new WP_Error( 'wpai_rag_embedding_invalid_request', __( 'Failed to encode the embeddings request.', 'ai' ), array( 'status' => 0 ) );
 		}
 
+		// TODO: Replace this direct OpenAI request once AI Client exposes embedding execution.
 		$response = wp_remote_post(
 			self::ENDPOINT,
 			array(
@@ -187,7 +247,7 @@ class OpenAI_Embedding_Client {
 			}
 
 			$embedding = array_values( array_map( 'floatval', $item['embedding'] ) );
-			if ( count( $embedding ) !== $this->availability->get_embedding_dimensions() ) {
+			if ( count( $embedding ) !== $this->get_dimensions() ) {
 				return new WP_Error( 'wpai_rag_embedding_dimensions_mismatch', __( 'OpenAI returned an embedding with unexpected dimensions.', 'ai' ), array( 'status' => $status_code ) );
 			}
 
@@ -223,7 +283,7 @@ class OpenAI_Embedding_Client {
 
 		if ( class_exists( AiClient::class ) ) {
 			try {
-				$auth = AiClient::defaultRegistry()->getProviderRequestAuthentication( Availability::OPENAI_CONNECTOR_ID );
+				$auth = AiClient::defaultRegistry()->getProviderRequestAuthentication( self::CONNECTOR_ID );
 				if ( is_object( $auth ) && method_exists( $auth, 'getApiKey' ) ) {
 					$key = $auth->getApiKey();
 					if ( is_string( $key ) && '' !== $key ) {
@@ -240,7 +300,7 @@ class OpenAI_Embedding_Client {
 			return '';
 		}
 
-		$connector = wp_get_connector( Availability::OPENAI_CONNECTOR_ID );
+		$connector = wp_get_connector( self::CONNECTOR_ID );
 		if ( ! is_array( $connector ) || empty( $connector['authentication'] ) || ! is_array( $connector['authentication'] ) ) {
 			return '';
 		}
@@ -290,5 +350,33 @@ class OpenAI_Embedding_Client {
 		}
 
 		return __( 'OpenAI embeddings request failed.', 'ai' );
+	}
+
+	/**
+	 * Checks that the OpenAI connector is active and has credentials.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return bool True when OpenAI can be authenticated.
+	 */
+	private function has_connector_authentication(): bool {
+		try {
+			return function_exists( 'wp_is_connector_registered' )
+				&& wp_is_connector_registered( self::CONNECTOR_ID )
+				&& has_connector_authentication( self::CONNECTOR_ID );
+		} catch ( Throwable $e ) {
+			return false;
+		}
+	}
+
+	/**
+	 * Checks whether the configured model matches the fixed schema.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return bool True when supported.
+	 */
+	private function supports_configured_model(): bool {
+		return self::DEFAULT_MODEL === $this->get_model();
 	}
 }

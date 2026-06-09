@@ -50,8 +50,8 @@ class Memory_Index_Repository implements Index_Repository_Interface {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param \WP_Post $post       Post object.
-	 * @param list<array{chunk_id:string, chunk_index:int, chunk_offset:int, anchor?:string|null, title:string, permalink:string, content:string}> $chunks Chunk data.
+	 * @param \WP_Post $post Post object.
+	 * @param list<array{chunk_id:string, chunk_index:int, chunk_offset:int, content:string, embedding_text?:string}> $chunks Chunk data.
 	 * @param list<list<int|float>> $embeddings Embedding vectors in chunk order.
 	 * @param string $model Embedding model.
 	 * @param string $hash Content hash.
@@ -68,22 +68,18 @@ class Memory_Index_Repository implements Index_Repository_Interface {
 			$this->validate_embedding( $embedding );
 
 			$records[] = array(
-				'post_id'              => (int) $post->ID,
-				'post_type'            => (string) $post->post_type,
-				'post_status'          => (string) $post->post_status,
-				'chunk_id'             => (string) $chunk['chunk_id'],
-				'chunk_index'          => (int) $chunk['chunk_index'],
-				'chunk_offset'         => (int) $chunk['chunk_offset'],
-				'anchor'               => isset( $chunk['anchor'] ) ? (string) $chunk['anchor'] : null,
-				'title'                => (string) $chunk['title'],
-				'permalink'            => (string) $chunk['permalink'],
-				'content'              => (string) $chunk['content'],
-				'content_hash'         => $hash,
-				'embedding'            => base64_encode( $this->pack_embedding( $embedding ) ),
-				'embedding_norm'       => $this->calculate_norm( $embedding ),
-				'embedding_model'      => $model,
-				'embedding_dimensions' => $this->dimensions,
-				'indexed_at'           => current_time( 'mysql', true ),
+				'post_id'         => (int) $post->ID,
+				'post_type'       => (string) $post->post_type,
+				'post_status'     => (string) $post->post_status,
+				'chunk_id'        => (string) $chunk['chunk_id'],
+				'chunk_index'     => (int) $chunk['chunk_index'],
+				'chunk_offset'    => (int) $chunk['chunk_offset'],
+				'content'         => (string) $chunk['content'],
+				'content_hash'    => $hash,
+				'embedding'       => base64_encode( $this->pack_embedding( $embedding ) ),
+				'embedding_norm'  => $this->calculate_norm( $embedding ),
+				'embedding_model' => $model,
+				'indexed_at'      => current_time( 'mysql', true ),
 			);
 		}
 
@@ -123,7 +119,7 @@ class Memory_Index_Repository implements Index_Repository_Interface {
 
 		$defaults   = array(
 			'limit'       => 20,
-			'model'       => 'text-embedding-3-small',
+			'model'       => OpenAI_Embedding_Client::DEFAULT_MODEL,
 			'post_type'   => array(),
 			'post_status' => array(),
 		);
@@ -250,10 +246,9 @@ class Memory_Index_Repository implements Index_Repository_Interface {
 	 * @return bool True when the record can be scanned.
 	 */
 	private function record_matches( array $record, string $model ): bool {
-		return isset( $record['embedding'], $record['embedding_model'], $record['embedding_dimensions'] )
+		return isset( $record['embedding'], $record['embedding_model'] )
 			&& is_string( $record['embedding'] )
-			&& $model === (string) $record['embedding_model']
-			&& $this->dimensions === (int) $record['embedding_dimensions'];
+			&& $model === (string) $record['embedding_model'];
 	}
 
 	/**
@@ -310,9 +305,6 @@ class Memory_Index_Repository implements Index_Repository_Interface {
 			'chunk_id'     => (string) $record['chunk_id'],
 			'chunk_index'  => (int) $record['chunk_index'],
 			'chunk_offset' => (int) $record['chunk_offset'],
-			'anchor'       => isset( $record['anchor'] ) ? (string) $record['anchor'] : null,
-			'title'        => (string) $record['title'],
-			'permalink'    => (string) $record['permalink'],
 			'content'      => (string) $record['content'],
 		);
 	}

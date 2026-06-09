@@ -257,6 +257,35 @@ class RAG_Command {
 	}
 
 	/**
+	 * Deletes RAG index data.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--yes]
+	 * : Confirm deletion without prompting.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     $ wp ai rag cleanup --yes
+	 *
+	 * @when after_wp_load
+	 *
+	 * @param array<int, string>   $args       Positional arguments.
+	 * @param array<string, mixed> $assoc_args Associative arguments.
+	 */
+	public function cleanup( $args, $assoc_args ): void {
+		unset( $args );
+
+		if ( ! (bool) Utils\get_flag_value( $assoc_args, 'yes', false ) ) {
+			WP_CLI::confirm( 'Delete all RAG index data and scheduled indexing work?' );
+		}
+
+		$this->index_manager->cleanup_index_data();
+
+		WP_CLI::success( 'Deleted RAG index data.' );
+	}
+
+	/**
 	 * Ensures RAG indexing can run.
 	 *
 	 * @since 1.1.0

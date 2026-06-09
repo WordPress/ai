@@ -81,9 +81,9 @@ class Index_Manager {
 	/**
 	 * Schema manager.
 	 *
-	 * @var \WordPress\AI\RAG\Index_Schema
+	 * @var \WordPress\AI\RAG\MariaDB_Index_Schema|null
 	 */
-	private Index_Schema $schema;
+	private ?MariaDB_Index_Schema $schema;
 
 	/**
 	 * Repository.
@@ -112,23 +112,23 @@ class Index_Manager {
 	 * @since 1.1.0
 	 *
 	 * @param \WordPress\AI\RAG\Availability|null             $availability     Availability service.
-	 * @param \WordPress\AI\RAG\Index_Schema|null            $schema           Schema manager.
+	 * @param \WordPress\AI\RAG\MariaDB_Index_Schema|null    $schema           Schema manager.
 	 * @param \WordPress\AI\RAG\Index_Repository_Interface|null $repository       Repository.
 	 * @param \WordPress\AI\RAG\Post_Chunker|null            $chunker          Chunker.
 	 * @param \WordPress\AI\RAG\OpenAI_Embedding_Client|null $embedding_client Embedding client.
 	 */
 	public function __construct(
 		?Availability $availability = null,
-		?Index_Schema $schema = null,
+		?MariaDB_Index_Schema $schema = null,
 		?Index_Repository_Interface $repository = null,
 		?Post_Chunker $chunker = null,
 		?OpenAI_Embedding_Client $embedding_client = null
 	) {
 		$this->availability     = $availability ?? new Availability();
-		$this->schema           = $schema ?? new Index_Schema();
+		$this->schema           = $schema;
 		$this->repository       = $repository ?? $this->create_repository();
 		$this->chunker          = $chunker ?? new Post_Chunker();
-		$this->embedding_client = $embedding_client ?? new OpenAI_Embedding_Client( $this->availability );
+		$this->embedding_client = $embedding_client ?? new OpenAI_Embedding_Client();
 	}
 
 	/**
@@ -155,13 +155,13 @@ class Index_Manager {
 	 * @return bool True when index storage is ready.
 	 */
 	public function ensure_index_storage(): bool {
-		if ( Availability::BACKEND_MEMORY === $this->availability->get_index_backend() ) {
-			return true;
+		if ( $this->schema instanceof MariaDB_Index_Schema && Availability::BACKEND_MARIADB === $this->availability->get_index_backend() ) {
+			$this->schema->maybe_upgrade_table();
+
+			return $this->schema->table_exists();
 		}
 
-		$this->schema->maybe_upgrade_table();
-
-		return $this->schema->table_exists();
+		return $this->availability->ensure_index_storage();
 	}
 
 	/**
@@ -172,11 +172,11 @@ class Index_Manager {
 	 * @return \WordPress\AI\RAG\Index_Repository_Interface Repository.
 	 */
 	private function create_repository(): Index_Repository_Interface {
-		if ( Availability::BACKEND_MEMORY === $this->availability->get_index_backend() ) {
-			return new Memory_Index_Repository( $this->availability->get_embedding_dimensions() );
+		if ( $this->schema instanceof MariaDB_Index_Schema && Availability::BACKEND_MARIADB === $this->availability->get_index_backend() ) {
+			return new MariaDB_Index_Repository( $this->schema, $this->availability->get_embedding_dimensions() );
 		}
 
-		return new Index_Repository( $this->schema, $this->availability->get_embedding_dimensions() );
+		return $this->availability->create_index_repository();
 	}
 
 	/**
@@ -263,7 +263,7 @@ class Index_Manager {
 			$stats['remaining'] = $this->count_dirty_posts();
 
 			if ( $schedule_tail && $stats['remaining'] > 0 ) {
-				$this->schedule_immediate();
+				$this->schedule_indexing();
 			}
 		} finally {
 			delete_transient( self::LOCK_TRANSIENT );
@@ -280,7 +280,11 @@ class Index_Manager {
 	 * @param int $delay Delay in seconds.
 	 */
 	public function schedule_indexing( int $delay = 1 ): void {
-		$this->schedule_immediate( $delay );
+		if ( wp_next_scheduled( self::CRON_HOOK ) ) {
+			return;
+		}
+
+		wp_schedule_single_event( time() + max( 1, $delay ), self::CRON_HOOK );
 	}
 
 	/**
@@ -379,6 +383,33 @@ class Index_Manager {
 	}
 
 	/**
+	 * Checks whether RAG index data or scheduled work exists.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return bool True when RAG data exists.
+	 */
+	public function has_index_data(): bool {
+		$counts = $this->get_status_counts();
+
+		return $this->availability->has_index_data()
+			|| array_sum( $counts ) > 0
+			|| null !== $this->get_next_scheduled_indexing();
+	}
+
+	/**
+	 * Deletes all RAG index data and scheduled work.
+	 *
+	 * @since 1.1.0
+	 */
+	public function cleanup_index_data(): void {
+		$this->availability->cleanup_index_backends();
+		$this->delete_common_index_meta();
+		wp_clear_scheduled_hook( self::CRON_HOOK );
+		delete_option( Availability::BACKEND_OPTION );
+	}
+
+	/**
 	 * Handles post saves.
 	 *
 	 * @since 1.1.0
@@ -442,7 +473,7 @@ class Index_Manager {
 	 */
 	public function handle_cron(): void {
 		if ( get_transient( self::LOCK_TRANSIENT ) ) {
-			$this->schedule_immediate( 5 * MINUTE_IN_SECONDS );
+			$this->schedule_indexing( 5 * MINUTE_IN_SECONDS );
 			return;
 		}
 
@@ -457,7 +488,7 @@ class Index_Manager {
 			}
 
 			if ( $this->has_dirty_posts() ) {
-				$this->schedule_immediate();
+				$this->schedule_indexing();
 			}
 		} finally {
 			delete_transient( self::LOCK_TRANSIENT );
@@ -550,7 +581,7 @@ class Index_Manager {
 	private function mark_post_dirty( int $post_id ): void {
 		update_post_meta( $post_id, self::META_STATUS, self::STATUS_DIRTY );
 		delete_post_meta( $post_id, self::META_ERROR );
-		$this->schedule_delayed();
+		$this->schedule_indexing( HOUR_IN_SECONDS );
 	}
 
 	/**
@@ -597,7 +628,7 @@ class Index_Manager {
 
 			$texts = array();
 			foreach ( $chunks as $chunk ) {
-				$texts[] = (string) $chunk['content'];
+				$texts[] = isset( $chunk['embedding_text'] ) ? (string) $chunk['embedding_text'] : (string) $chunk['content'];
 			}
 
 			$embeddings = $this->embedding_client->embed( $texts );
@@ -795,34 +826,6 @@ class Index_Manager {
 	}
 
 	/**
-	 * Schedules delayed indexing after content changes.
-	 *
-	 * @since 1.1.0
-	 */
-	private function schedule_delayed(): void {
-		if ( wp_next_scheduled( self::CRON_HOOK ) ) {
-			return;
-		}
-
-		wp_schedule_single_event( time() + HOUR_IN_SECONDS, self::CRON_HOOK );
-	}
-
-	/**
-	 * Schedules the next indexing run.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param int $delay Delay in seconds.
-	 */
-	private function schedule_immediate( int $delay = 1 ): void {
-		if ( wp_next_scheduled( self::CRON_HOOK ) ) {
-			return;
-		}
-
-		wp_schedule_single_event( time() + max( 1, $delay ), self::CRON_HOOK );
-	}
-
-	/**
 	 * Returns batch size.
 	 *
 	 * @since 1.1.0
@@ -850,13 +853,12 @@ class Index_Manager {
 	 */
 	private function build_content_hash( WP_Post $post ): string {
 		$data = array(
-			'post_id'           => (int) $post->ID,
-			'post_title'        => (string) $post->post_title,
-			'post_content'      => (string) $post->post_content,
-			'post_excerpt'      => (string) $post->post_excerpt,
-			'post_modified_gmt' => (string) $post->post_modified_gmt,
-			'model'             => $this->availability->get_embedding_model(),
-			'dimensions'        => $this->availability->get_embedding_dimensions(),
+			'post_id'      => (int) $post->ID,
+			'post_title'   => (string) $post->post_title,
+			'post_content' => (string) $post->post_content,
+			'post_excerpt' => (string) $post->post_excerpt,
+			'model'        => $this->availability->get_embedding_model(),
+			'dimensions'   => $this->availability->get_embedding_dimensions(),
 		);
 
 		return hash( 'sha256', (string) wp_json_encode( $data ) );
@@ -876,5 +878,31 @@ class Index_Manager {
 		}
 
 		return defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE;
+	}
+
+	/**
+	 * Deletes common RAG post meta.
+	 *
+	 * @since 1.1.0
+	 */
+	private function delete_common_index_meta(): void {
+		global $wpdb;
+
+		$meta_keys = array(
+			self::META_STATUS,
+			self::META_ERROR,
+			self::META_INDEXED_AT,
+			self::META_CONTENT_HASH,
+		);
+
+		$placeholders = implode( ', ', array_fill( 0, count( $meta_keys ), '%s' ) );
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Explicit cleanup removes RAG-owned post meta in one query.
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				...$meta_keys
+			)
+		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 }

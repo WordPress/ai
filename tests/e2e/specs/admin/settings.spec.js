@@ -26,6 +26,74 @@ const EXPERIMENT_GROUPS = {
 	editor: 'Editor Experiments',
 	admin: 'Admin Experiments',
 };
+const RAG_STATUS_ROUTE = /\/wp-json\/ai\/v1\/rag\/status(?:\?.*)?$/;
+const RAG_REINDEX_ROUTE = /\/wp-json\/ai\/v1\/rag\/reindex(?:\?.*)?$/;
+const RAG_DELETE_ROUTE = /\/wp-json\/ai\/v1\/rag\/index(?:\?.*)?$/;
+
+const createRagStatus = ( overrides = {} ) => ( {
+	available: true,
+	unavailable_reason: '',
+	backend: 'memory',
+	backend_label: 'Fallback in-memory search backed by PHP',
+	available_backends: [ 'memory' ],
+	backend_labels: {
+		memory: 'Fallback in-memory search backed by PHP',
+	},
+	storage_ready: true,
+	has_index_data: true,
+	counts: {
+		dirty: 1,
+		processing: 0,
+		clean: 2,
+		error: 0,
+	},
+	next_scheduled_run: null,
+	embedding_model: 'text-embedding-3-small',
+	embedding_dimensions: 1536,
+	...overrides,
+} );
+
+const mockRagMaintenanceRoutes = async ( page, initialStatus ) => {
+	let status = initialStatus;
+
+	await page.route( RAG_STATUS_ROUTE, async ( route ) => {
+		await route.fulfill( {
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify( status ),
+		} );
+	} );
+	await page.route( RAG_REINDEX_ROUTE, async ( route ) => {
+		status = {
+			...status,
+			counts: {
+				...status.counts,
+				dirty: 3,
+			},
+		};
+		await route.fulfill( {
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify( status ),
+		} );
+	} );
+	await page.route( RAG_DELETE_ROUTE, async ( route ) => {
+		status = createRagStatus( {
+			has_index_data: false,
+			counts: {
+				dirty: 0,
+				processing: 0,
+				clean: 0,
+				error: 0,
+			},
+		} );
+		await route.fulfill( {
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify( status ),
+		} );
+	} );
+};
 
 test.describe( 'Plugin settings', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
@@ -176,6 +244,82 @@ test.describe( 'Plugin settings', () => {
 		// Assert: inline settings must still show the pending edit (not reset).
 		await expect( strategySelect ).toHaveValue( newValue );
 		await expect( saveButton ).toBeVisible();
+	} );
+
+	test( 'RAG settings show status and schedule reindexing', async ( {
+		admin,
+		page,
+	} ) => {
+		await mockRagMaintenanceRoutes( page, createRagStatus() );
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'RAG Search' );
+
+		await expect(
+			page.getByText( 'Fallback in-memory search backed by PHP' )
+		).toBeVisible();
+		await expect( page.getByText( '1 dirty' ) ).toBeVisible();
+		await expect( page.getByText( '2 clean' ) ).toBeVisible();
+
+		await page.getByRole( 'button', { name: 'Reindex' } ).click();
+
+		await expect(
+			page.locator( '.components-snackbar__content', {
+				hasText: 'RAG indexing scheduled.',
+			} )
+		).toBeVisible();
+		await expect( page.getByText( '3 dirty' ) ).toBeVisible();
+	} );
+
+	test( 'RAG cleanup remains available when disabled and data exists', async ( {
+		admin,
+		page,
+	} ) => {
+		await mockRagMaintenanceRoutes( page, createRagStatus() );
+		await enableExperiments( admin, page );
+		await disableExperiment( admin, page, 'RAG Search' );
+
+		await expect(
+			page.getByText( 'RAG index data exists.' )
+		).toBeVisible();
+
+		page.once( 'dialog', async ( dialog ) => {
+			expect( dialog.message() ).toContain( 'Delete all RAG index data' );
+			await dialog.accept();
+		} );
+		await page.getByRole( 'button', { name: 'Delete index data' } ).click();
+
+		await expect(
+			page.locator( '.components-snackbar__content', {
+				hasText: 'RAG index data deleted.',
+			} )
+		).toBeVisible();
+		await expect(
+			page.getByText( 'RAG index data exists.' )
+		).not.toBeVisible();
+	} );
+
+	test( 'RAG cleanup is hidden when disabled and no data exists', async ( {
+		admin,
+		page,
+	} ) => {
+		await mockRagMaintenanceRoutes(
+			page,
+			createRagStatus( {
+				has_index_data: false,
+				counts: {
+					dirty: 0,
+					processing: 0,
+					clean: 0,
+					error: 0,
+				},
+			} )
+		);
+		await enableExperiments( admin, page );
+		await disableExperiment( admin, page, 'RAG Search' );
+
+		await expect(
+			page.getByText( 'RAG index data exists.' )
+		).not.toBeVisible();
 	} );
 
 	test( 'Can turn on all experiments in a group', async ( {

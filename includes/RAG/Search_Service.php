@@ -56,9 +56,8 @@ class Search_Service {
 		?OpenAI_Embedding_Client $embedding_client = null
 	) {
 		$this->availability     = $availability ?? new Availability();
-		$schema                 = new Index_Schema();
-		$this->repository       = $repository ?? $this->create_repository( $schema );
-		$this->embedding_client = $embedding_client ?? new OpenAI_Embedding_Client( $this->availability );
+		$this->repository       = $repository ?? $this->availability->create_index_repository();
+		$this->embedding_client = $embedding_client ?? new OpenAI_Embedding_Client();
 	}
 
 	/**
@@ -183,8 +182,8 @@ class Search_Service {
 					'chunk_id'    => (string) $row['chunk_id'],
 					'chunk_index' => (int) $row['chunk_index'],
 					'excerpt'     => wp_html_excerpt( (string) $row['content'], 280, '...' ),
-					'anchor'      => isset( $row['anchor'] ) ? (string) $row['anchor'] : '',
-					'permalink'   => (string) $row['permalink'],
+					'anchor'      => '',
+					'permalink'   => (string) $grouped[ $post_id ]['permalink'],
 					'distance'    => $distance,
 				);
 			}
@@ -216,22 +215,6 @@ class Search_Service {
 		$prefix = (string) apply_filters( 'wpai_rag_query_embedding_input_prefix', '' );
 
 		return $prefix . $query;
-	}
-
-	/**
-	 * Creates the active repository.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param \WordPress\AI\RAG\Index_Schema $schema Schema manager.
-	 * @return \WordPress\AI\RAG\Index_Repository_Interface Repository.
-	 */
-	private function create_repository( Index_Schema $schema ): Index_Repository_Interface {
-		if ( Availability::BACKEND_MEMORY === $this->availability->get_index_backend() ) {
-			return new Memory_Index_Repository( $this->availability->get_embedding_dimensions() );
-		}
-
-		return new Index_Repository( $schema, $this->availability->get_embedding_dimensions() );
 	}
 
 	/**

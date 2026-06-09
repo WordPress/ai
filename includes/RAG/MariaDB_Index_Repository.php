@@ -16,20 +16,20 @@ use WP_Post;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Stores and queries RAG chunks.
+ * Stores and queries RAG chunks in a MariaDB vector table.
  *
  * @since 1.1.0
  */
-class Index_Repository implements Index_Repository_Interface {
+class MariaDB_Index_Repository implements Index_Repository_Interface {
 	// Direct queries are intentional because this repository owns a dedicated vector table.
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 	/**
 	 * Schema manager.
 	 *
-	 * @var \WordPress\AI\RAG\Index_Schema
+	 * @var \WordPress\AI\RAG\MariaDB_Index_Schema
 	 */
-	private Index_Schema $schema;
+	private MariaDB_Index_Schema $schema;
 
 	/**
 	 * Vector dimensions.
@@ -43,10 +43,10 @@ class Index_Repository implements Index_Repository_Interface {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param \WordPress\AI\RAG\Index_Schema $schema     Schema manager.
-	 * @param int                            $dimensions Vector dimensions.
+	 * @param \WordPress\AI\RAG\MariaDB_Index_Schema $schema     Schema manager.
+	 * @param int                                    $dimensions Vector dimensions.
 	 */
-	public function __construct( Index_Schema $schema, int $dimensions = 1536 ) {
+	public function __construct( MariaDB_Index_Schema $schema, int $dimensions = 1536 ) {
 		$this->schema     = $schema;
 		$this->dimensions = $dimensions;
 	}
@@ -56,8 +56,8 @@ class Index_Repository implements Index_Repository_Interface {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param \WP_Post $post       Post object.
-	 * @param list<array{chunk_id:string, chunk_index:int, chunk_offset:int, anchor?:string|null, title:string, permalink:string, content:string}> $chunks Chunk data.
+	 * @param \WP_Post $post Post object.
+	 * @param list<array{chunk_id:string, chunk_index:int, chunk_offset:int, content:string, embedding_text?:string}> $chunks Chunk data.
 	 * @param list<list<int|float>> $embeddings Embedding vectors in chunk order.
 	 * @param string $model Embedding model.
 	 * @param string $hash Content hash.
@@ -126,7 +126,7 @@ class Index_Repository implements Index_Repository_Interface {
 
 		$defaults = array(
 			'limit'       => 20,
-			'model'       => 'text-embedding-3-small',
+			'model'       => OpenAI_Embedding_Client::DEFAULT_MODEL,
 			'post_type'   => array(),
 			'post_status' => array(),
 		);
@@ -163,7 +163,7 @@ class Index_Repository implements Index_Repository_Interface {
 
 		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Dynamic clauses are sanitized and target the owned vector index table.
 		$sql = $wpdb->prepare(
-			"SELECT id, post_id, post_type, post_status, chunk_id, chunk_index, chunk_offset, anchor, title, permalink, content,
+			"SELECT id, post_id, post_type, post_status, chunk_id, chunk_index, chunk_offset, content,
 				VEC_DISTANCE_COSINE(embedding, VEC_FromText(%s)) AS distance
 			FROM {$table_name}
 			WHERE {$where_clause}
@@ -184,7 +184,7 @@ class Index_Repository implements Index_Repository_Interface {
 	 * @since 1.1.0
 	 *
 	 * @param \WP_Post $post Post object.
-	 * @param array{chunk_id:string, chunk_index:int, chunk_offset:int, anchor?:string|null, title:string, permalink:string, content:string} $chunk Chunk data.
+	 * @param array{chunk_id:string, chunk_index:int, chunk_offset:int, content:string, embedding_text?:string} $chunk Chunk data.
 	 * @param list<int|float> $embedding Embedding vector.
 	 * @param string $model Embedding model.
 	 * @param string $hash Content hash.
@@ -202,23 +202,19 @@ class Index_Repository implements Index_Repository_Interface {
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Dynamic table name targets the owned vector index table.
 		$sql = $wpdb->prepare(
 			"INSERT INTO {$table_name}
-				(post_id, post_type, post_status, chunk_id, chunk_index, chunk_offset, anchor, title, permalink, content, content_hash, embedding, embedding_model, embedding_dimensions, indexed_at)
+				(post_id, post_type, post_status, chunk_id, chunk_index, chunk_offset, content, content_hash, embedding, embedding_model, indexed_at)
 			VALUES
-				(%d, %s, %s, %s, %d, %d, %s, %s, %s, %s, %s, VEC_FromText(%s), %s, %d, %s)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				(%d, %s, %s, %s, %d, %d, %s, %s, VEC_FromText(%s), %s, %s)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			(int) $post->ID,
 			(string) $post->post_type,
 			(string) $post->post_status,
 			(string) $chunk['chunk_id'],
 			(int) $chunk['chunk_index'],
 			(int) $chunk['chunk_offset'],
-			isset( $chunk['anchor'] ) ? (string) $chunk['anchor'] : null,
-			(string) $chunk['title'],
-			(string) $chunk['permalink'],
 			(string) $chunk['content'],
 			$hash,
 			$vector_text,
 			$model,
-			$this->dimensions,
 			current_time( 'mysql', true )
 		);
 		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared

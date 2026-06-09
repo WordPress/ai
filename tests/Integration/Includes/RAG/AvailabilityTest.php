@@ -9,6 +9,12 @@ namespace WordPress\AI\Tests\Integration\Includes\RAG;
 
 use WP_UnitTestCase;
 use WordPress\AI\RAG\Availability;
+use WordPress\AI\RAG\Index_Backend_Interface;
+use WordPress\AI\RAG\Index_Repository_Interface;
+use WordPress\AI\RAG\MariaDB_Index_Backend;
+use WordPress\AI\RAG\Memory_Index_Backend;
+use WordPress\AI\RAG\Memory_Index_Repository;
+use WordPress\AI\RAG\OpenAI_Embedding_Client;
 
 /**
  * Availability test case.
@@ -122,6 +128,61 @@ class AvailabilityTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests availability delegates backend checks.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_is_available_delegates_to_registered_backends(): void {
+		$availability = new Availability(
+			array(
+				$this->create_backend( Availability::BACKEND_MARIADB, false, 'MariaDB unavailable.' ),
+				$this->create_backend( Availability::BACKEND_MEMORY, true, 'Memory unavailable.' ),
+			),
+			$this->create_embedding_client( true )
+		);
+
+		$this->assertTrue( $availability->is_available() );
+		$this->assertSame( Availability::BACKEND_MEMORY, $availability->get_index_backend() );
+	}
+
+	/**
+	 * Tests unavailable backend reasons are reported when no backend can run.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_is_available_reports_backend_reason_when_no_backend_is_available(): void {
+		$availability = new Availability(
+			array(
+				$this->create_backend( Availability::BACKEND_MARIADB, false, 'MariaDB unavailable.' ),
+				$this->create_backend( Availability::BACKEND_MEMORY, false, 'Memory unavailable.' ),
+			),
+			$this->create_embedding_client( true )
+		);
+
+		$this->assertFalse( $availability->is_available() );
+		$this->assertStringContainsString( 'MariaDB unavailable.', $availability->get_unavailable_reason() );
+		$this->assertStringContainsString( 'Memory unavailable.', $availability->get_unavailable_reason() );
+	}
+
+	/**
+	 * Tests embedding client availability is part of RAG availability.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_is_available_reports_embedding_client_reason(): void {
+		$availability = new Availability(
+			array(
+				$this->create_backend( Availability::BACKEND_MARIADB, false, 'MariaDB unavailable.' ),
+				$this->create_backend( Availability::BACKEND_MEMORY, true, 'Memory unavailable.' ),
+			),
+			$this->create_embedding_client( false, 'Embedding unavailable.' )
+		);
+
+		$this->assertFalse( $availability->is_available() );
+		$this->assertSame( 'Embedding unavailable.', $availability->get_unavailable_reason() );
+	}
+
+	/**
 	 * Creates an availability service with a fixed database version.
 	 *
 	 * @since 1.1.0
@@ -130,28 +191,190 @@ class AvailabilityTest extends WP_UnitTestCase {
 	 * @return \WordPress\AI\RAG\Availability Availability service.
 	 */
 	private function create_availability_for_database_version( string $version ): Availability {
-		return new class( $version ) extends Availability {
+		return new Availability(
+			array(
+				new class( $version ) extends MariaDB_Index_Backend {
+					/**
+					 * Database version.
+					 *
+					 * @var string
+					 */
+					private string $version;
+
+					/**
+					 * Constructor.
+					 *
+					 * @param string $version Database version.
+					 */
+					public function __construct( string $version ) {
+						parent::__construct();
+
+						$this->version = $version;
+					}
+
+					/**
+					 * {@inheritDoc}
+					 */
+					protected function get_database_version(): string {
+						return $this->version;
+					}
+				},
+				new Memory_Index_Backend(),
+			),
+			$this->create_embedding_client( true )
+		);
+	}
+
+	/**
+	 * Creates a test backend.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $id        Backend ID.
+	 * @param bool   $available Whether the backend is available.
+	 * @param string $reason    Unavailable reason.
+	 * @return \WordPress\AI\RAG\Index_Backend_Interface Backend.
+	 */
+	private function create_backend( string $id, bool $available, string $reason ): Index_Backend_Interface {
+		return new class( $id, $available, $reason ) implements Index_Backend_Interface {
 			/**
-			 * Database version.
+			 * Backend ID.
 			 *
 			 * @var string
 			 */
-			private string $version;
+			private string $id;
+
+			/**
+			 * Availability.
+			 *
+			 * @var bool
+			 */
+			private bool $available;
+
+			/**
+			 * Unavailable reason.
+			 *
+			 * @var string
+			 */
+			private string $reason;
 
 			/**
 			 * Constructor.
 			 *
-			 * @param string $version Database version.
+			 * @param string $id        Backend ID.
+			 * @param bool   $available Whether the backend is available.
+			 * @param string $reason    Unavailable reason.
 			 */
-			public function __construct( string $version ) {
-				$this->version = $version;
+			public function __construct( string $id, bool $available, string $reason ) {
+				$this->id        = $id;
+				$this->available = $available;
+				$this->reason    = $reason;
 			}
 
 			/**
 			 * {@inheritDoc}
 			 */
-			protected function get_database_version(): string {
-				return $this->version;
+			public function get_id(): string {
+				return $this->id;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function get_label(): string {
+				return $this->id;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function is_available(): bool {
+				return $this->available;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function get_unavailable_reason(): string {
+				return $this->reason;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function create_repository( int $dimensions ): Index_Repository_Interface {
+				return new Memory_Index_Repository( $dimensions );
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function ensure_storage(): bool {
+				return $this->available;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function has_index_data(): bool {
+				return false;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function cleanup(): void {}
+		};
+	}
+
+	/**
+	 * Creates a test embedding client.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param bool   $available Whether embeddings are available.
+	 * @param string $reason    Unavailable reason.
+	 * @return \WordPress\AI\RAG\OpenAI_Embedding_Client Embedding client.
+	 */
+	private function create_embedding_client( bool $available, string $reason = '' ): OpenAI_Embedding_Client {
+		return new class( $available, $reason ) extends OpenAI_Embedding_Client {
+			/**
+			 * Availability.
+			 *
+			 * @var bool
+			 */
+			private bool $available;
+
+			/**
+			 * Unavailable reason.
+			 *
+			 * @var string
+			 */
+			private string $reason;
+
+			/**
+			 * Constructor.
+			 *
+			 * @param bool   $available Whether embeddings are available.
+			 * @param string $reason    Unavailable reason.
+			 */
+			public function __construct( bool $available, string $reason ) {
+				$this->available = $available;
+				$this->reason    = $reason;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function is_available(): bool {
+				return $this->available;
+			}
+
+			/**
+			 * {@inheritDoc}
+			 */
+			public function get_unavailable_reason(): string {
+				return $this->reason;
 			}
 		};
 	}
