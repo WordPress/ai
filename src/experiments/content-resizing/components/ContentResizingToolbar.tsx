@@ -15,7 +15,13 @@ import {
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { useState, useCallback, useMemo } from '@wordpress/element';
+import {
+	useState,
+	useCallback,
+	useMemo,
+	useRef,
+	useLayoutEffect,
+} from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
@@ -54,6 +60,20 @@ export default function ContentResizingToolbar( {
 	);
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
+
+	const acceptButtonRef = useRef< HTMLDivElement | null >( null );
+
+	// Keep the modal scrolled to the action buttons when it opens or updates.
+	useLayoutEffect( () => {
+		if ( ! isModalOpen ) {
+			return;
+		}
+
+		acceptButtonRef.current?.scrollIntoView( {
+			block: 'start',
+			behavior: 'auto',
+		} );
+	}, [ isModalOpen, suggestedContent ] );
 
 	const { blockContent, isResized, postId } = useSelect(
 		( select ) => {
@@ -321,6 +341,7 @@ export default function ContentResizingToolbar( {
 							onClick={ handleAccept }
 							disabled={ isLoading || suggestedContent === null }
 							accessibleWhenDisabled
+							ref={ acceptButtonRef }
 						>
 							{ __( 'Accept', 'ai' ) }
 						</Button>
@@ -331,7 +352,9 @@ export default function ContentResizingToolbar( {
 							isBusy={ isLoading }
 							accessibleWhenDisabled
 						>
-							{ __( 'Regenerate', 'ai' ) }
+							{ isLoading
+								? __( 'Generating…', 'ai' )
+								: __( 'Regenerate', 'ai' ) }
 						</Button>
 					</Flex>
 				</Modal>
