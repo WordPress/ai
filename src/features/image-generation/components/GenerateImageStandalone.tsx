@@ -4,6 +4,7 @@
 import { Button, Notice } from '@wordpress/components';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { useFocusOnMount } from '@wordpress/compose';
 
 /**
  * Internal dependencies
@@ -58,6 +59,8 @@ export function GenerateImageStandalone() {
 		comparisonLeftLabel,
 		comparisonRightLabel,
 	} = useImageGeneration();
+
+	const focusOnMountRef = useFocusOnMount( 'firstElement' );
 
 	async function handleSaveImage(): Promise< void > {
 		if ( ! activeEntry ) {
@@ -155,11 +158,15 @@ export function GenerateImageStandalone() {
 						comparisonLeftLabel={ comparisonLeftLabel }
 						comparisonRightLabel={ comparisonRightLabel }
 					/>
-					<div className="ai-image-generation__actions">
+					<div
+						className="ai-image-generation__actions"
+						ref={ focusOnMountRef }
+					>
 						<Button
 							variant="primary"
 							onClick={ handleSaveImage }
 							disabled={ savedHistoryIndices.has( historyIndex ) }
+							accessibleWhenDisabled
 						>
 							{ __( 'Save to Media Library', 'ai' ) }
 						</Button>
