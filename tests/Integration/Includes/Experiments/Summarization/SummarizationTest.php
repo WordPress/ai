@@ -134,6 +134,8 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length() {
+		set_current_screen( 'post' );
+
 		$experiment = new Summarization();
 		$experiment->enqueue_assets();
 
@@ -150,6 +152,8 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		set_current_screen( 'post' );
+
 		$filter = static function () {
 			return 250;
 		};

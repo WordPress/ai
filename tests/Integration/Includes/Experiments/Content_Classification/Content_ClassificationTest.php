@@ -332,6 +332,12 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length() {
+		set_current_screen( 'post' );
+
+		// Set up an admin user to ensure assets are enqueued.
+		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $user_id );
+
 		$experiment = new Content_Classification();
 		$experiment->enqueue_assets( 'post.php' );
 
@@ -348,6 +354,12 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		set_current_screen( 'post' );
+
+		// Set up an admin user to ensure assets are enqueued.
+		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $user_id );
+
 		$filter = static function () {
 			return 250;
 		};

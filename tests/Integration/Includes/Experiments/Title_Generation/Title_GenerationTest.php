@@ -131,6 +131,8 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length() {
+		set_current_screen( 'post' );
+
 		$experiment = new Title_Generation();
 		$experiment->enqueue_assets( 'post.php' );
 
@@ -147,6 +149,8 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		set_current_screen( 'post' );
+
 		$filter = static function () {
 			return 250;
 		};
