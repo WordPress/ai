@@ -146,7 +146,14 @@ function get_post_context( int $post_id ): array {
 			$grouped_terms = array();
 
 			foreach ( $terms as $term ) {
-				$grouped_terms[ $term->taxonomy ][] = $term->name;
+				$taxonomy = $term['taxonomy'] ?? '';
+				$name     = $term['name'] ?? '';
+
+				if ( '' === $taxonomy || '' === $name ) {
+					continue;
+				}
+
+				$grouped_terms[ $taxonomy ][] = $name;
 			}
 
 			$context = array_merge(
