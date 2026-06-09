@@ -270,8 +270,7 @@ class Title_Generation extends Abstract_Ability {
 		// Ensure the Connector_Approval experiment is active.
 		if (
 			! class_exists( '\WordPress\AI\Connector_Approval\Approvals_Store' ) ||
-			! class_exists( '\WordPress\AI\Connector_Approval\Caller_Identifier' ) ||
-			! class_exists( '\WordPress\AI\Experiments\Connector_Approval\Admin_Page' )
+			! class_exists( '\WordPress\AI\Connector_Approval\Caller_Identifier' )
 		) {
 			return $this->ensure_text_generation_supported(
 				$prompt_builder,
