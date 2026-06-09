@@ -24,7 +24,13 @@ const { aiExcerptGenerationData } = window as any;
  * @return {React.JSX.Element | null} The excerpt generation component.
  */
 export default function ExcerptGeneration(): React.JSX.Element | null {
-	const { isGenerating, hasExcerpt, handleGenerate } = useExcerptGeneration();
+	const {
+		isGenerating,
+		hasExcerpt,
+		isContentTooShort,
+		tooShortLabel,
+		handleGenerate,
+	} = useExcerptGeneration();
 
 	// Don't render if disabled.
 	if ( ! aiExcerptGenerationData?.enabled ) {
@@ -43,8 +49,10 @@ export default function ExcerptGeneration(): React.JSX.Element | null {
 		<Button
 			icon={ update }
 			variant="secondary"
+			label={ isContentTooShort ? tooShortLabel : buttonLabel }
+			showTooltip
 			onClick={ handleGenerate }
-			disabled={ isGenerating }
+			disabled={ isGenerating || isContentTooShort }
 			accessibleWhenDisabled
 			isBusy={ isGenerating }
 		>
