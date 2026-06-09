@@ -147,8 +147,14 @@ final class Admin_Notice {
 			self::DISMISS_NONCE
 		);
 
+		$class = 'notice notice-warning ai-connector-approval-notice';
+		if ( $screen && 'tools_page_ai-request-logs' === $screen->id ) {
+			$class .= ' inline';
+		}
+
 		printf(
-			'<div class="notice notice-warning"><p>%s <a href="%s">%s</a> &middot; <a href="%s">%s</a></p></div>',
+			'<div class="%s"><p>%s <a href="%s">%s</a> &middot; <a href="%s">%s</a></p></div>',
+			esc_attr( $class ),
 			esc_html(
 				sprintf(
 					/* translators: %d: number of pending approval requests. */

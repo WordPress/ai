@@ -9,6 +9,7 @@ import {
 } from '@wordpress/components';
 import { __, isRTL, sprintf } from '@wordpress/i18n';
 import { chevronLeft, chevronRight } from '@wordpress/icons';
+import { useFocusOnMount } from '@wordpress/compose';
 
 /**
  * Internal dependencies
@@ -77,8 +78,10 @@ export function PromptForm( {
 	onGenerate,
 	error,
 }: PromptFormProps ) {
+	const focusOnMountRef = useFocusOnMount( 'firstInputElement' );
+
 	return (
-		<div className="ai-image-generation__idle">
+		<div className="ai-image-generation__idle" ref={ focusOnMountRef }>
 			<p className="description">
 				{ __( 'Describe the image you want to generate.', 'ai' ) }
 			</p>
@@ -88,7 +91,6 @@ export function PromptForm( {
 				onChange={ onPromptChange }
 				rows={ 4 }
 				hideLabelFromVision
-				__nextHasNoMarginBottom
 			/>
 			<div className="ai-image-generation__actions">
 				<Button
@@ -149,6 +151,7 @@ export function ImageHistoryNav( {
 					disabled={ ! canGoBack }
 					onClick={ onGoBack }
 					label={ __( 'Previous version', 'ai' ) }
+					accessibleWhenDisabled
 				/>
 				<div className="ai-image-history-nav__content">
 					{ showComparison ? (
@@ -190,6 +193,7 @@ export function ImageHistoryNav( {
 					disabled={ ! canGoForward }
 					onClick={ onGoForward }
 					label={ __( 'Next version', 'ai' ) }
+					accessibleWhenDisabled
 				/>
 			</div>
 			{ historyLength > 1 && (
@@ -232,8 +236,10 @@ export function RefinePromptForm( {
 	cancelIsDestructive = false,
 	error,
 }: RefinePromptFormProps ) {
+	const focusOnMountRef = useFocusOnMount( 'firstInputElement' );
+
 	return (
-		<div className="ai-image-generation__refining">
+		<div className="ai-image-generation__refining" ref={ focusOnMountRef }>
 			<img
 				src={ previewSrc }
 				alt={ previewAlt }
@@ -247,7 +253,6 @@ export function RefinePromptForm( {
 				value={ refinePrompt }
 				onChange={ onRefinePromptChange }
 				rows={ 3 }
-				__nextHasNoMarginBottom
 			/>
 			<div className="ai-image-generation__actions">
 				<Button

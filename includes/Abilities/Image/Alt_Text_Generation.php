@@ -150,7 +150,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		// Return the alt text in the format the Ability expects.
 		return array(
-			'alt_text' => sanitize_text_field( $result ),
+			'alt_text'      => sanitize_text_field( $result ),
+			'is_decorative' => false,
 		);
 	}
 

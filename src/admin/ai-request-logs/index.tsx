@@ -312,6 +312,7 @@ const App: React.FC = () => {
 
 	return (
 		<Page
+			className="ai-request-logs__page"
 			visual={ <AiIcon /> }
 			title={ __( 'AI Request Logs', 'ai' ) }
 			subTitle={ __(
@@ -350,6 +351,7 @@ const App: React.FC = () => {
 					/>
 
 					<SettingsPanel
+						hasLogs={ total > 0 }
 						onPurgeLogs={ handlePurge }
 						purging={ purging }
 					/>

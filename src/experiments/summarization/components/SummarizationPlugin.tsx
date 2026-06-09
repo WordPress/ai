@@ -87,6 +87,7 @@ export default function SummarizationPlugin() {
 			>
 				<FlexItem>
 					<Button
+						accessibleWhenDisabled
 						className="ai-summarization-plugin-button"
 						variant="secondary"
 						label={ buttonLabel }

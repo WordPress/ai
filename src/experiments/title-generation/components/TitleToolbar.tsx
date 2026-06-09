@@ -16,7 +16,7 @@ import {
 } from '@wordpress/components';
 import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
-import { useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
@@ -96,10 +96,43 @@ export default function TitleToolbar( {
 	const [ isOpen, setOpen ] = useState< boolean >( false );
 	const [ generatedTitle, setGeneratedTitle ] = useState< string >( '' );
 
+	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
+
+	// Tracks the pending focus-restore timeout so it can be cancelled on unmount.
+	const focusTimeoutRef = useRef< ReturnType< typeof setTimeout > | null >(
+		null
+	);
+
+	useEffect( () => {
+		return () => {
+			if ( focusTimeoutRef.current ) {
+				clearTimeout( focusTimeoutRef.current );
+			}
+		};
+	}, [] );
+
 	const openModal = () => setOpen( true );
+
+	/**
+	 * Returns focus to the title input after the modal closes.
+	 */
+	const restoreFocus = () => {
+		focusTimeoutRef.current = setTimeout( () => {
+			focusTimeoutRef.current = null;
+
+			const titleInput =
+				generateButtonRef.current?.ownerDocument.querySelector(
+					'.editor-post-title__input'
+				) as HTMLElement | null;
+
+			titleInput?.focus();
+		}, 0 );
+	};
+
 	const closeModal = () => {
 		setOpen( false );
 		setGeneratedTitle( '' );
+		restoreFocus();
 	};
 
 	const hasTitle = title.trim().length > 0;
@@ -189,6 +222,7 @@ export default function TitleToolbar( {
 		<PostTypeSupportCheck supportKeys="title">
 			{ isStandalone ? (
 				<Button
+					ref={ generateButtonRef }
 					icon={ update }
 					variant="secondary"
 					label={ buttonLabel }
@@ -203,6 +237,7 @@ export default function TitleToolbar( {
 			) : (
 				<ToolbarGroup>
 					<ToolbarButton
+						ref={ generateButtonRef }
 						icon={ update }
 						label={ buttonLabel }
 						onClick={ handleGenerate }
@@ -234,7 +269,6 @@ export default function TitleToolbar( {
 						value={ generatedTitle }
 						onChange={ setGeneratedTitle }
 						disabled={ isRegenerating }
-						__nextHasNoMarginBottom
 					/>
 					<Flex
 						justify="flex-end"
@@ -243,6 +277,7 @@ export default function TitleToolbar( {
 					>
 						<FlexItem>
 							<Button
+								accessibleWhenDisabled
 								variant="secondary"
 								onClick={ handleRegenerate }
 								disabled={ isRegenerating }
