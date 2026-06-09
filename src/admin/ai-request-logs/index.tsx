@@ -348,6 +348,10 @@ const App: React.FC = () => {
 						setQuery={ setLogsQuery }
 						providerMetadata={ providerMetadata }
 						connectorsUrl={ connectorsUrl }
+						onRefresh={ () => {
+							fetchLogs();
+							fetchSummary( summaryPeriod );
+						} }
 					/>
 
 					<SettingsPanel
