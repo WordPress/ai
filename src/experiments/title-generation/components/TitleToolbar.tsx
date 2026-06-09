@@ -18,7 +18,7 @@ import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -26,10 +26,25 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
-import type { TitleGenerationAbilityInput, GeneratedTitleData } from '../types';
+import { getWordCountType, hasMinimumContent } from '../../../utils/word-count';
+import type {
+	TitleGenerationAbilityInput,
+	GeneratedTitleData,
+	TitleGenerationData,
+} from '../types';
 
-const { aiTitleGenerationData } = window as any;
 const NOTICE_ID = 'ai_title_generation_error';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+
+const getSettings = (): TitleGenerationData => {
+	const settings = ( window as any ).aiTitleGenerationData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		minContentLength:
+			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
+	};
+};
 
 /**
  * Generates a title for the given post ID and content.
@@ -80,12 +95,13 @@ interface TitleToolbarProps {
 export default function TitleToolbar( {
 	isStandalone = false,
 }: TitleToolbarProps ): React.JSX.Element | null {
-	const { postId, title } = useSelect( ( selectFn ) => {
+	const { postId, title, content } = useSelect( ( selectFn ) => {
 		const editor = selectFn( editorStore );
 
 		return {
 			postId: editor.getCurrentPostId(),
 			title: editor.getEditedPostAttribute( 'title' ) as string,
+			content: editor.getEditedPostContent() as string,
 		};
 	}, [] );
 
@@ -137,6 +153,9 @@ export default function TitleToolbar( {
 
 	const hasTitle = title.trim().length > 0;
 
+	const { minContentLength } = getSettings();
+	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
+
 	let buttonLabel: string = __( 'Generate', 'ai' );
 
 	if ( isGenerating || isRegenerating ) {
@@ -144,6 +163,30 @@ export default function TitleToolbar( {
 	} else if ( hasTitle ) {
 		buttonLabel = __( 'Regenerate', 'ai' );
 	}
+
+	// When the post content is too short, disable the button and surface the
+	// minimum-length requirement as its accessible tooltip.
+	const isCharacterType = getWordCountType() !== 'words';
+	const tooShortLabel = isCharacterType
+		? sprintf(
+				/* translators: %d: minimum number of characters required */
+				__(
+					'Title generation will be available when the post content has at least %d characters.',
+					'ai'
+				),
+				minContentLength
+		  )
+		: sprintf(
+				/* translators: %d: minimum number of words required */
+				__(
+					'Title generation will be available when the post content has at least %d words.',
+					'ai'
+				),
+				minContentLength
+		  );
+
+	const buttonTooltip = isContentTooShort ? tooShortLabel : buttonLabel;
+	const isDisabled = isGenerating || isContentTooShort;
 
 	/**
 	 * Handles the toolbar Generate/Regenerate button click.
@@ -157,7 +200,6 @@ export default function TitleToolbar( {
 			return;
 		}
 
-		const content = select( editorStore ).getEditedPostContent();
 		setIsGenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
@@ -184,7 +226,6 @@ export default function TitleToolbar( {
 	 * Fetches a new suggestion without closing the modal.
 	 */
 	const handleRegenerate = async () => {
-		const content = select( editorStore ).getEditedPostContent();
 		setIsRegenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
@@ -214,7 +255,7 @@ export default function TitleToolbar( {
 	};
 
 	// Don't render if disabled.
-	if ( ! aiTitleGenerationData?.enabled ) {
+	if ( ! getSettings().enabled ) {
 		return null;
 	}
 
@@ -225,9 +266,10 @@ export default function TitleToolbar( {
 					ref={ generateButtonRef }
 					icon={ update }
 					variant="secondary"
-					label={ buttonLabel }
+					label={ buttonTooltip }
+					showTooltip
 					onClick={ handleGenerate }
-					disabled={ isGenerating }
+					disabled={ isDisabled }
 					isBusy={ isGenerating }
 					accessibleWhenDisabled
 					__next40pxDefaultSize
@@ -239,9 +281,10 @@ export default function TitleToolbar( {
 					<ToolbarButton
 						ref={ generateButtonRef }
 						icon={ update }
-						label={ buttonLabel }
+						label={ buttonTooltip }
+						showTooltip
 						onClick={ handleGenerate }
-						disabled={ isGenerating }
+						disabled={ isDisabled }
 						isBusy={ isGenerating }
 					>
 						{ buttonLabel }
