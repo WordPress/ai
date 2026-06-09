@@ -132,8 +132,6 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length() {
-		$GLOBALS['wp_scripts'] = new \WP_Scripts();
-
 		$this->experiment->enqueue_assets();
 
 		$this->assertTrue( wp_script_is( 'ai_editorial_notes', 'enqueued' ) );
@@ -154,7 +152,6 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		};
 
 		add_filter( 'wpai_min_content_length', $filter );
-		$GLOBALS['wp_scripts'] = new \WP_Scripts();
 
 		$this->experiment->enqueue_assets();
 
