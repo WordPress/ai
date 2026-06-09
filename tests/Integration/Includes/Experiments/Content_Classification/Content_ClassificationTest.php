@@ -332,8 +332,6 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length() {
-		$GLOBALS['wp_scripts'] = new \WP_Scripts();
-
 		$experiment = new Content_Classification();
 		$experiment->enqueue_assets( 'post.php' );
 
@@ -355,7 +353,6 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		};
 
 		add_filter( 'wpai_min_content_length', $filter );
-		$GLOBALS['wp_scripts'] = new \WP_Scripts();
 
 		$experiment = new Content_Classification();
 		$experiment->enqueue_assets( 'post.php' );
