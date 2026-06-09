@@ -14,7 +14,7 @@ import {
 	ToolbarGroup,
 	ToolbarButton,
 } from '@wordpress/components';
-import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
+import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
@@ -95,8 +95,8 @@ interface TitleToolbarProps {
 export default function TitleToolbar( {
 	isStandalone = false,
 }: TitleToolbarProps ): React.JSX.Element | null {
-	const { postId, title, content } = useSelect( ( selectFn ) => {
-		const editor = selectFn( editorStore );
+	const { postId, title, content } = useSelect( ( select ) => {
+		const editor = select( editorStore );
 
 		return {
 			postId: editor.getCurrentPostId(),
