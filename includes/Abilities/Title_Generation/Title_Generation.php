@@ -265,9 +265,43 @@ class Title_Generation extends Abstract_Ability {
 
 		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Title_Generation_Experiment::class );
 
+		$error_message = esc_html__( 'Title generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' );
+
+		// Ensure the Connector_Approval experiment is active.
+		if (
+			! class_exists( '\WordPress\AI\Connector_Approval\Approvals_Store' ) ||
+			! class_exists( '\WordPress\AI\Connector_Approval\Caller_Identifier' ) ||
+			! class_exists( '\WordPress\AI\Experiments\Connector_Approval\Admin_Page' )
+		) {
+			return $this->ensure_text_generation_supported(
+				$prompt_builder,
+				$error_message
+			);
+		}
+
+		$identifier = new \WordPress\AI\Connector_Approval\Caller_Identifier();
+		$caller     = $identifier->identify();
+
+		if ( ! $caller ) {
+			return $this->ensure_text_generation_supported(
+				$prompt_builder,
+				$error_message
+			);
+		}
+
+		$store   = new \WordPress\AI\Connector_Approval\Approvals_Store();
+		$pending = $store->get_pending();
+
+		foreach ( $pending as $entry ) {
+			if ( $entry['caller_basename'] === $caller['basename'] ) {
+				$error_message = esc_html__( 'Title generation failed. The AI connector is currently pending authorization. Please approve the request under Tools > Connector Approvals.', 'ai' );
+				break;
+			}
+		}
+
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
-			esc_html__( 'Title generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
+			$error_message
 		);
 	}
 }
