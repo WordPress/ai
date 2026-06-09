@@ -10,7 +10,6 @@ namespace WordPress\AI\Tests\Integration\Includes\RAG;
 use WP_UnitTestCase;
 use WordPress\AI\RAG\Availability;
 use WordPress\AI\RAG\Index_Manager;
-use WordPress\AI\RAG\Index_Repository_Interface;
 use WordPress\AI\RAG\MariaDB_Index_Repository;
 use WordPress\AI\RAG\MariaDB_Index_Schema;
 use WordPress\AI\RAG\Memory_Index_Repository;
@@ -215,10 +214,11 @@ class Backend_SearchTest extends WP_UnitTestCase {
 	 * @param int    $dimensions Vector dimensions.
 	 */
 	public function test_seed_many_posts_and_search_across_backends( string $backend, int $dimensions ): void {
-		$repository   = $this->create_repository( $backend, $dimensions );
+		$context      = $this->create_backend_context( $backend, $dimensions );
+		$repository   = $context['repository'];
 		$availability = new Backend_Search_Test_Availability( $backend, $dimensions, self::MODEL );
 		$client       = new Backend_Search_Test_Embedding_Client( $dimensions );
-		$manager      = new Index_Manager( $availability, null, $repository, null, $client );
+		$manager      = new Index_Manager( $availability, $context['schema'], $repository, null, $client );
 
 		$this->assertTrue( $manager->ensure_index_storage() );
 
@@ -270,17 +270,20 @@ class Backend_SearchTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Creates the repository under test.
+	 * Creates the backend context under test.
 	 *
 	 * @since 1.1.0
 	 *
 	 * @param string $backend    Backend identifier.
 	 * @param int    $dimensions Vector dimensions.
-	 * @return \WordPress\AI\RAG\Index_Repository_Interface Repository.
+	 * @return array{repository: \WordPress\AI\RAG\Index_Repository_Interface, schema: \WordPress\AI\RAG\MariaDB_Index_Schema|null} Backend context.
 	 */
-	private function create_repository( string $backend, int $dimensions ): Index_Repository_Interface {
+	private function create_backend_context( string $backend, int $dimensions ): array {
 		if ( Availability::BACKEND_MEMORY === $backend ) {
-			return new Memory_Index_Repository( $dimensions );
+			return array(
+				'repository' => new Memory_Index_Repository( $dimensions ),
+				'schema'     => null,
+			);
 		}
 
 		$availability = new Availability();
@@ -288,7 +291,12 @@ class Backend_SearchTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'MariaDB VECTOR indexes are not available in this test environment.' );
 		}
 
-		return new MariaDB_Index_Repository( new MariaDB_Index_Schema(), $dimensions );
+		$schema = new MariaDB_Index_Schema();
+
+		return array(
+			'repository' => new MariaDB_Index_Repository( $schema, $dimensions ),
+			'schema'     => $schema,
+		);
 	}
 
 	/**

@@ -255,7 +255,9 @@ test.describe( 'Plugin settings', () => {
 		await enableExperiment( admin, page, 'RAG Search' );
 
 		await expect(
-			page.getByText( 'Fallback in-memory search backed by PHP' )
+			page
+				.locator( '.ai-rag-status' )
+				.getByText( 'Fallback in-memory search backed by PHP' )
 		).toBeVisible();
 		await expect( page.getByText( '1 dirty' ) ).toBeVisible();
 		await expect( page.getByText( '2 clean' ) ).toBeVisible();
