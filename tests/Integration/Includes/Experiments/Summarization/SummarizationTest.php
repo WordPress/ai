@@ -127,4 +127,43 @@ class SummarizationTest extends WP_UnitTestCase {
 			set_current_screen( 'front' );
 		}
 	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the default minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_default_min_content_length() {
+		$experiment = new Summarization();
+		$experiment->enqueue_assets();
+
+		$this->assertTrue( wp_script_is( 'ai_summarization', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"100"',
+			(string) wp_scripts()->get_data( 'ai_summarization', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+
+		$experiment = new Summarization();
+		$experiment->enqueue_assets();
+
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_summarization', 'data' )
+		);
+	}
 }
