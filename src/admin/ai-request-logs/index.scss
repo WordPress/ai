@@ -85,6 +85,10 @@
 	border-radius: 4px;
 	background: #fff;
 	overflow: hidden;
+
+	.ai-request-logs__refresh-button.components-button {
+		order: -1;
+	}
 }
 
 .ai-request-logs__cell--time {
