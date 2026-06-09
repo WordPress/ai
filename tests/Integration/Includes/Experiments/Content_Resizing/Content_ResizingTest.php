@@ -157,7 +157,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_content_resizing', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"5"',
+			'"minContentLength":"100"',
 			(string) wp_scripts()->get_data( 'ai_content_resizing', 'data' )
 		);
 	}
@@ -169,7 +169,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	 */
 	public function test_enqueue_assets_localizes_filtered_min_content_length() {
 		$filter = static function () {
-			return 10;
+			return 250;
 		};
 
 		add_filter( 'wpai_min_content_length', $filter );
@@ -180,7 +180,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_min_content_length', $filter );
 
 		$this->assertStringContainsString(
-			'"minContentLength":"10"',
+			'"minContentLength":"250"',
 			(string) wp_scripts()->get_data( 'ai_content_resizing', 'data' )
 		);
 	}
