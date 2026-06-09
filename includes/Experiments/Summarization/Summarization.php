@@ -108,9 +108,14 @@ class Summarization extends Abstract_Feature {
 		 * @since 1.0.0
 		 * @deprecated x.x.x Use {@see 'wpai_min_content_length'} instead.
 		 *
-		 * @param int $min_content_length The minimum number of characters required. Default 100.
+		 * @param int $min_content_length The minimum number of words or characters required. Default 100.
 		 */
-		$min_content_length = (int) apply_filters( 'wpai_summarization_min_content_length', get_min_content_length( 'summarization', 100 ) );
+		$min_content_length = (int) apply_filters_deprecated(
+			'wpai_summarization_min_content_length',
+			array( get_min_content_length( 'summarization', 100 ) ),
+			'x.x.x',
+			'wpai_min_content_length'
+		);
 
 		Asset_Loader::localize_script(
 			'summarization',

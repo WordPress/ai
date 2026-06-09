@@ -209,9 +209,9 @@ export default function ContentResizingToolbar( {
 
 		const label = isCharacterType
 			? /* translators: %d: Number of characters removed. */
-			  _n( '-%d character', '-%d characters', magnitude, 'ai' )
+			  _n( '−%d character', '−%d characters', magnitude, 'ai' )
 			: /* translators: %d: Number of words removed. */
-			  _n( '-%d word', '-%d words', magnitude, 'ai' );
+			  _n( '−%d word', '−%d words', magnitude, 'ai' );
 		const ariaLabel = isCharacterType
 			? /* translators: %d: Number of characters removed. */
 			  _n(
