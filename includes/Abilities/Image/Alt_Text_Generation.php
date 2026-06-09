@@ -121,7 +121,9 @@ class Alt_Text_Generation extends Abstract_Ability {
 			),
 		);
 
-		$args['image_url'] = $this->sanitize_image_reference_input( $args['image_url'] );
+		if ( isset( $args['image_url'] ) ) {
+			$args['image_url'] = $this->sanitize_image_reference_input( $args['image_url'] );
+		}
 
 		// Get the image reference.
 		$image_reference = $this->get_image_reference( $args );
