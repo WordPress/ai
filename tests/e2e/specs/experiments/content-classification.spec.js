@@ -188,6 +188,54 @@ test.describe( 'Content Classification Experiment', () => {
 		).toBeDisabled();
 	} );
 
+	test( 'Enables suggestions once content reaches the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Content Classification Minimum Length Test',
+		} );
+
+		// Start with content well under the 150-word minimum.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: 'This is a short paragraph.' },
+		} );
+
+		// Open the Tags panel.
+		await openTaxonomyPanel( editor, page, 'Tags' );
+
+		// The hint surfaces the configured minimum content length, and the
+		// suggest button is disabled.
+		await expect(
+			page.locator( '.ai-content-classification__hint' ).first()
+		).toHaveText(
+			'Add more content to enable AI suggestions (approximately 150 words).'
+		);
+		await expect(
+			page
+				.locator( '.ai-content-classification__generate-button' )
+				.first()
+		).toBeDisabled();
+
+		// Add enough content to cross the minimum threshold.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: LONG_CONTENT },
+		} );
+
+		// The hint disappears and the suggest button becomes enabled.
+		await expect(
+			page.locator( '.ai-content-classification__hint' )
+		).toHaveCount( 0 );
+		await expect(
+			page
+				.locator( '.ai-content-classification__generate-button' )
+				.first()
+		).toBeEnabled();
+	} );
+
 	test( 'Generates and displays suggestion pills', async ( {
 		admin,
 		editor,
