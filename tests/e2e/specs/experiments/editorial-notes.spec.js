@@ -40,6 +40,58 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Disables Editorial Notes until the post content reaches the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Short Editorial Notes Test',
+			content: 'Too short.',
+		} );
+
+		await editor.openDocumentSettingsSidebar();
+
+		const reviewButton = page.getByRole( 'button', {
+			name: 'Generate Editorial Notes',
+		} );
+		await expect( reviewButton ).toBeVisible();
+		await expect( reviewButton ).toBeDisabled();
+
+		await expect(
+			page.locator( '.description', {
+				hasText:
+					'Editorial Notes will be available when the post content has at least 100 words.',
+			} )
+		).toBeVisible();
+	} );
+
+	test( 'Enables Editorial Notes once the post content meets the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Long Editorial Notes Test',
+			content:
+				'This paragraph contains enough content for the Editorial Notes feature to become available and analyze the post block-by-block.',
+		} );
+
+		await editor.openDocumentSettingsSidebar();
+
+		const reviewButton = page.getByRole( 'button', {
+			name: 'Generate Editorial Notes',
+		} );
+		await expect( reviewButton ).toBeVisible();
+		await expect( reviewButton ).toBeEnabled();
+
+		await expect(
+			page.locator( '.description', {
+				hasText: 'at least 100 words.',
+			} )
+		).toHaveCount( 0 );
+	} );
+
 	test( 'Shows the "Review with AI" button in the block toolbar', async ( {
 		admin,
 		editor,
@@ -65,6 +117,29 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 				hasText: 'Generate Editorial Note',
 			} )
 		).toBeVisible();
+	} );
+
+	test( 'Disables single-block Editorial Notes when the post content is shorter than the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Short Single Block Review Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content: 'Tiny text.',
+			},
+		} );
+
+		await editor.clickBlockToolbarButton( 'Options' );
+
+		await expect(
+			page.getByRole( 'menuitem', { name: 'Generate Editorial Note' } )
+		).toBeDisabled();
 	} );
 
 	test( 'Shows suggestion count after a successful review', async ( {
@@ -133,12 +208,12 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Does nothing when post has no reviewable blocks', async ( {
+	test( 'Disables Editorial Notes when post content is below the minimum length', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Create a post with no content blocks.
+		// Create a post with content below the minimum threshold.
 		await admin.createNewPost( { title: 'Empty Post Test' } );
 
 		// Ensure the sidebar is visible.
@@ -147,16 +222,14 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		const reviewButton = page.getByRole( 'button', {
 			name: 'Generate Editorial Notes',
 		} );
-		await expect( reviewButton ).toBeVisible();
+		await expect( reviewButton ).toBeDisabled();
 
-		await reviewButton.click();
-
-		// Button should remain enabled immediately (no blocks to process).
-		await expect( reviewButton ).toBeEnabled();
-
-		// "No new suggestions found" should appear.
+		// The descriptive text should explain when the button becomes available.
 		await expect(
-			page.locator( '.description', { hasText: 'No new suggestions' } )
+			page.locator( '.description', {
+				hasText:
+					'Editorial Notes will be available when the post content has at least 100 words.',
+			} )
 		).toBeVisible();
 	} );
 

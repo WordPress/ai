@@ -126,6 +126,46 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		$this->assertTrue( $registered['ai_note']['show_in_rest'], 'ai_note meta should have show_in_rest enabled' );
 	}
 
+	/**
+	 * Tests that enqueue_assets() localizes the default minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_default_min_content_length() {
+		$GLOBALS['wp_scripts'] = new \WP_Scripts();
+
+		$this->experiment->enqueue_assets();
+
+		$this->assertTrue( wp_script_is( 'ai_editorial_notes', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"100"',
+			(string) wp_scripts()->get_data( 'ai_editorial_notes', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+		$GLOBALS['wp_scripts'] = new \WP_Scripts();
+
+		$this->experiment->enqueue_assets();
+
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_editorial_notes', 'data' )
+		);
+	}
+
 	// -------------------------------------------------------------------------
 	// maybe_set_ai_author()
 	// -------------------------------------------------------------------------
