@@ -34,8 +34,14 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
-* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **Multi-Provider Support** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+
+**Provider Setup:**
+
+The AI plugin does not include provider credentials or provider implementations by itself. To use AI-powered features, install and activate at least one AI Connector plugin, then configure its credentials in `Settings -> Connectors`. Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
+
+Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
 
 **Coming Soon:**
 
@@ -57,7 +63,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 1. Upload the plugin files to the `/wp-content/plugins/ai` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Go to `Settings -> Connectors` and set up at least one AI connector.
+3. Install and activate at least one AI Connector plugin, then go to `Settings -> Connectors` and configure its credentials.
 4. Go to `Settings -> AI` and globally enable functionality and then enable the individual features or experiments you want to test.
 5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Regenerate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
 
@@ -68,7 +74,7 @@ The AI plugin is designed to be studied, extended, and built upon. Whether you'r
 **Extend the Plugin:**
 
 * **Build Custom Experiments** - Use the `Abstract_Feature` base class to create your own AI-powered features.
-* **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys.
+* **Pre-configure Providers** - Hosts and agencies can set up AI Connector plugins so users don't need their own API keys.
 * **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled).
 * **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities.
 * **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements.
@@ -101,15 +107,15 @@ This is an experimental plugin, so we recommend testing in a staging environment
 
 = Which AI providers are supported? =
 
-The plugin supports OpenAI, Google AI (Gemini), and Anthropic (Claude). You can configure one or multiple providers in Settings -> Connectors.
+The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`.
 
 = Do I need an API key to use the features? =
 
-Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic).
+Yes, currently you need to provide your own API key for the configured AI Connector plugin, such as OpenAI, Google AI, or Anthropic.
 
 = How much does it cost? =
 
-The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started.
+The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started. There are some local, open source, and free providers (like [Ollama](https://wordpress.org/plugins/ai-provider-for-ollama/)) that can be used as well.
 
 = Can I use this without coding knowledge? =
 

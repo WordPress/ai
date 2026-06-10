@@ -49,8 +49,14 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
-* **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
+
+## Provider Setup
+
+The AI plugin does not include provider credentials or provider implementations by itself. To use AI-powered features, install and activate at least one AI Connector plugin, then configure its credentials in `Settings -> Connectors`. Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
+
+Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
 
 ## Roadmap
 
@@ -66,7 +72,7 @@ Overview of planned features:
 
 ## Developer Experience
 
-The AI plugin is meant to be studied, forked, and extended.  If you’re a host or agency, you can configure AI providers on behalf of your users so they don’t need to bring their own API keys.
+The AI plugin is meant to be studied, forked, and extended.  If you’re a host or agency, you can install and configure AI Connector plugins on behalf of your users so they don’t need to bring their own API keys.
 
 If you’re a plugin developer, you’ll be able to:
 
