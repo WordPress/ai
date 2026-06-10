@@ -34,18 +34,30 @@ function CopyButton( {
 	text: string;
 	disabled: boolean;
 } ): JSX.Element {
-	const [ showCopyConfirmation, setShowCopyConfirmation ] = useState( false );
+	const [ copiedText, setCopiedText ] = useState< string | null >( null );
+	const showCopyConfirmation = copiedText === text && text.length > 0;
+
 	const timeoutIdRef = useRef< ReturnType< typeof setTimeout > >();
-	const ref = useCopyToClipboard< HTMLButtonElement >( text, () => {
-		speak( __( 'Meta description copied to clipboard.', 'ai' ) );
-		setShowCopyConfirmation( true );
-		if ( timeoutIdRef.current ) {
-			clearTimeout( timeoutIdRef.current );
+	const pendingCopyTextRef = useRef< string | null >( null );
+
+	const ref = useCopyToClipboard< HTMLButtonElement >(
+		() => {
+			pendingCopyTextRef.current = text;
+			return text;
+		},
+		() => {
+			speak( __( 'Meta description copied to clipboard.', 'ai' ) );
+			setCopiedText( pendingCopyTextRef.current );
+
+			if ( timeoutIdRef.current ) {
+				clearTimeout( timeoutIdRef.current );
+			}
+
+			timeoutIdRef.current = setTimeout( () => {
+				setCopiedText( null );
+			}, 4000 );
 		}
-		timeoutIdRef.current = setTimeout( () => {
-			setShowCopyConfirmation( false );
-		}, 4000 );
-	} );
+	);
 
 	useEffect( () => {
 		return () => {
@@ -57,9 +69,9 @@ function CopyButton( {
 
 	return (
 		<Button
-			ref={ ref }
+			ref={ disabled ? undefined : ref }
 			variant="tertiary"
-			disabled={ disabled }
+			disabled={ disabled || showCopyConfirmation }
 			accessibleWhenDisabled
 		>
 			{ showCopyConfirmation
@@ -111,6 +123,7 @@ export default function MetaDescriptionModal( {
 			onRequestClose={ onClose }
 			className="ai-meta-description-modal"
 			size="medium"
+			focusOnMount="firstContentElement"
 		>
 			<div className="ai-meta-description-modal__content">
 				{ /* Editable textarea */ }
@@ -125,6 +138,7 @@ export default function MetaDescriptionModal( {
 							'Aim for 140–160 characters for optimal display in search results.',
 							'ai'
 						) }
+						disabled={ isGenerating }
 					/>
 					<CharacterCount count={ editableText.length } />
 				</div>
@@ -153,9 +167,16 @@ export default function MetaDescriptionModal( {
 					</Button>
 					<CopyButton
 						text={ editableText }
-						disabled={ editableText.trim().length === 0 }
+						disabled={
+							editableText.trim().length === 0 || isGenerating
+						}
 					/>
-					<Button variant="tertiary" onClick={ onClose }>
+					<Button
+						variant="tertiary"
+						isDestructive
+						onClick={ onClose }
+						className="ai-meta-description-modal__cancel"
+					>
 						{ __( 'Cancel', 'ai' ) }
 					</Button>
 				</div>

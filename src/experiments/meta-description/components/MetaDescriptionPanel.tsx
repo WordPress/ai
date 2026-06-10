@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { useState } from '@wordpress/element';
+import { useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Button } from '@wordpress/components';
 import { update } from '@wordpress/icons';
@@ -37,6 +37,15 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 	const [ isModalOpen, setIsModalOpen ] = useState( false );
 	const [ editableText, setEditableText ] = useState( '' );
 
+	const shouldFocusEditButton = useRef( false );
+
+	const focusEditButtonOnFirstMount = ( node: HTMLButtonElement | null ) => {
+		if ( shouldFocusEditButton.current && node ) {
+			node.focus();
+			shouldFocusEditButton.current = false;
+		}
+	};
+
 	const hasDescription =
 		currentDescription && currentDescription.trim().length > 0;
 
@@ -50,6 +59,8 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 			}
 			setIsModalOpen( true );
 			await generateDescription();
+
+			shouldFocusEditButton.current = true;
 			return;
 		}
 
@@ -82,8 +93,9 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					<div className="ai-meta-description-panel__actions">
 						<Button
 							variant="link"
-							onClick={ handleOpenEditModal }
 							size="compact"
+							onClick={ handleOpenEditModal }
+							ref={ focusEditButtonOnFirstMount }
 						>
 							{ __( 'Edit description', 'ai' ) }
 						</Button>
