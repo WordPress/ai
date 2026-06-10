@@ -863,7 +863,6 @@ function AISettingsPage() {
 			return baseField;
 		} );
 
-
 		const dataRemovalField: Field< AISettings > = {
 			id: DATA_REMOVAL_FIELD_ID,
 			label: '',

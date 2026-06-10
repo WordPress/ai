@@ -56,7 +56,7 @@ final class Uninstall {
 	 *
 	 * @return void
 	 */
-	public static function uninstall(): void {
+	public static function run(): void {
 		if ( is_multisite() ) {
 			$site_ids = get_sites(
 				array(
@@ -66,7 +66,7 @@ final class Uninstall {
 			);
 
 			foreach ( $site_ids as $site_id ) {
-				switch_to_blog( (int) $site_id );
+				switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
 				self::maybe_clean_current_site();
 				restore_current_blog();
 			}

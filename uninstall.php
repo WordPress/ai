@@ -20,4 +20,4 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 // is not bootstrapped during uninstall, so we avoid loading ai.php.
 require_once __DIR__ . '/includes/autoload.php';
 
-Uninstall::uninstall();
+Uninstall::run();

@@ -89,7 +89,7 @@ class UninstallTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $this->table_exists(), 'Table should exist before uninstall.' );
 
-		Uninstall::uninstall();
+		Uninstall::run();
 
 		// Direct SQL deletes bypass the in-request options cache.
 		wp_cache_flush();
@@ -115,7 +115,7 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->seed_data();
 		update_option( Uninstall::OPTION_REMOVE_DATA, false );
 
-		Uninstall::uninstall();
+		Uninstall::run();
 
 		wp_cache_flush();
 
