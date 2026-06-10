@@ -153,7 +153,9 @@ export default function MetaDescriptionModal( {
 							onClose();
 						} }
 						accessibleWhenDisabled
-						disabled={ editableText.trim().length === 0 }
+						disabled={
+							isGenerating || editableText.trim().length === 0
+						}
 					>
 						{ __( 'Apply', 'ai' ) }
 					</Button>
@@ -169,7 +171,7 @@ export default function MetaDescriptionModal( {
 					<CopyButton
 						text={ editableText }
 						disabled={
-							editableText.trim().length === 0 || isGenerating
+							isGenerating || editableText.trim().length === 0
 						}
 					/>
 					<Button
