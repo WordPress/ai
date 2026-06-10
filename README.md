@@ -56,11 +56,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 
 The AI plugin does not include provider credentials or provider implementations by itself. To use AI-powered features, install and activate at least one AI Connector plugin, then configure its credentials in `Settings -> Connectors`. Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
 
-Provider connector plugins include:
-
-* [AI Provider for OpenAI](https://github.com/WordPress/ai-provider-for-openai)
-* [AI Provider for Google](https://github.com/WordPress/ai-provider-for-google)
-* [AI Provider for Anthropic](https://github.com/WordPress/ai-provider-for-anthropic)
+Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
 
 ## Roadmap
 
