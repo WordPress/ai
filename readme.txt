@@ -107,7 +107,7 @@ This is an experimental plugin, so we recommend testing in a staging environment
 
 = Which AI providers are supported? =
 
-The plugin can work with provider connector plugins for OpenAI, Google AI (Gemini), and Anthropic (Claude). Install and activate the relevant connector plugin, then configure it in Settings -> Connectors.
+The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`.
 
 = Do I need an API key to use the features? =
 
@@ -115,7 +115,7 @@ Yes, currently you need to provide your own API key for the configured AI Connec
 
 = How much does it cost? =
 
-The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started.
+The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started. There are some local, open source, and free providers (like [Ollama](https://wordpress.org/plugins/ai-provider-for-ollama/)) that can be used as well.
 
 = Can I use this without coding knowledge? =
 
