@@ -36,6 +36,7 @@ function CopyButton( {
 } ): JSX.Element {
 	const [ copiedText, setCopiedText ] = useState< string | null >( null );
 	const showCopyConfirmation = copiedText === text && text.length > 0;
+	const isCopyDisabled = disabled || showCopyConfirmation;
 
 	const timeoutIdRef = useRef< ReturnType< typeof setTimeout > >();
 	const pendingCopyTextRef = useRef< string | null >( null );
@@ -69,9 +70,9 @@ function CopyButton( {
 
 	return (
 		<Button
-			ref={ disabled ? undefined : ref }
+			ref={ isCopyDisabled ? undefined : ref }
 			variant="tertiary"
-			disabled={ disabled || showCopyConfirmation }
+			disabled={ isCopyDisabled }
 			accessibleWhenDisabled
 		>
 			{ showCopyConfirmation
