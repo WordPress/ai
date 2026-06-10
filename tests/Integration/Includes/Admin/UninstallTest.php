@@ -42,7 +42,7 @@ class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Seeds the table, options, and a scheduled event.
+	 * Seeds the table, options, a transient, and a scheduled event.
 	 *
 	 * @return void
 	 */
@@ -52,6 +52,8 @@ class UninstallTest extends WP_UnitTestCase {
 		add_option( 'wpai_features_enabled', true );
 		add_option( 'wpai_test_foo', 'bar' );
 		add_option( 'not_a_wpai_option', 'keep-me' );
+
+		set_transient( 'wpai_test_transient', 'value', HOUR_IN_SECONDS );
 
 		if ( ! wp_next_scheduled( self::CLEANUP_HOOK ) ) {
 			wp_schedule_event( time(), 'daily', self::CLEANUP_HOOK );
@@ -73,6 +75,7 @@ class UninstallTest extends WP_UnitTestCase {
 		delete_option( 'wpai_test_foo' );
 		delete_option( 'not_a_wpai_option' );
 		delete_option( Uninstall::OPTION_REMOVE_DATA );
+		delete_transient( 'wpai_test_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
 
 		parent::tearDown();
@@ -97,6 +100,7 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertFalse( $this->table_exists(), 'Table should be dropped.' );
 		$this->assertFalse( get_option( 'wpai_features_enabled' ), 'wpai_ options should be deleted.' );
 		$this->assertFalse( get_option( 'wpai_test_foo' ), 'wpai_ options should be deleted.' );
+		$this->assertFalse( get_transient( 'wpai_test_transient' ), 'wpai_ transients should be deleted.' );
 		$this->assertFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be cleared.' );
 
 		$this->assertSame(
@@ -121,6 +125,7 @@ class UninstallTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $this->table_exists(), 'Table should be preserved when not opted in.' );
 		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'Options should be preserved when not opted in.' );
+		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when not opted in.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when not opted in.' );
 	}
 }

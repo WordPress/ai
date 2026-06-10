@@ -91,6 +91,7 @@ final class Uninstall {
 
 		self::drop_request_logs_table();
 		self::delete_options();
+		self::delete_transients();
 		self::clear_scheduled_events();
 	}
 
@@ -127,6 +128,33 @@ final class Uninstall {
 				$like
 			)
 		);
+	}
+
+	/**
+	 * Deletes the plugin's transients (regular and site transients).
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	private static function delete_transients(): void {
+		global $wpdb;
+
+		$patterns = array(
+			$wpdb->esc_like( '_transient_wpai_' ) . '%',
+			$wpdb->esc_like( '_transient_timeout_wpai_' ) . '%',
+			$wpdb->esc_like( '_site_transient_wpai_' ) . '%',
+			$wpdb->esc_like( '_site_transient_timeout_wpai_' ) . '%',
+		);
+
+		foreach ( $patterns as $like ) {
+			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+					$like
+				)
+			);
+		}
 	}
 
 	/**
