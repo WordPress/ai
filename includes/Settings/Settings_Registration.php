@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace WordPress\AI\Settings;
 
+use WordPress\AI\Admin\Uninstall;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\REST\Models_Controller;
 
@@ -85,6 +86,17 @@ class Settings_Registration {
 		register_setting(
 			self::OPTION_GROUP,
 			self::GLOBAL_OPTION,
+			array(
+				'type'              => 'boolean',
+				'default'           => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => true,
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			Uninstall::OPTION_REMOVE_DATA,
 			array(
 				'type'              => 'boolean',
 				'default'           => false,

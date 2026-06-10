@@ -36,6 +36,7 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import AIIcon from './ai-icon';
+import { DataRemovalSetting } from './components/DataRemovalSetting';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
 import {
@@ -84,6 +85,7 @@ interface PageData {
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 const GLOBAL_FIELD_ID = 'wpai_features_enabled';
+const DATA_REMOVAL_FIELD_ID = 'wpai_remove_data_on_uninstall';
 const noop = () => {};
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
@@ -861,7 +863,15 @@ function AISettingsPage() {
 			return baseField;
 		} );
 
-		return [ ...sectionActionsFields, ...featureFields ];
+
+		const dataRemovalField: Field< AISettings > = {
+			id: DATA_REMOVAL_FIELD_ID,
+			label: '',
+			type: 'text',
+			Edit: () => <DataRemovalSetting />,
+		};
+
+		return [ ...sectionActionsFields, ...featureFields, dataRemovalField ];
 	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
 
 	const form = useMemo< Form >( () => {
@@ -951,6 +961,18 @@ function AISettingsPage() {
 						: children,
 			} );
 		}
+
+		sectionFields.push( {
+			id: getSectionId( 'data' ),
+			label: __( 'Data', 'ai' ),
+			layout: {
+				type: 'card',
+				withHeader: true,
+				isOpened: true,
+				isCollapsible: true,
+			},
+			children: [ DATA_REMOVAL_FIELD_ID ],
+		} );
 
 		return {
 			fields: sectionFields,
