@@ -53,7 +53,6 @@ function CopyButton( {
 			if ( timeoutIdRef.current ) {
 				clearTimeout( timeoutIdRef.current );
 			}
-
 			timeoutIdRef.current = setTimeout( () => {
 				setCopiedText( null );
 			}, 4000 );
