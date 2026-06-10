@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Abilities Explorer Experiment
  *
@@ -9,7 +10,7 @@
  * @since 0.2.0
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
@@ -30,6 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.2.0
  */
 class Abilities_Explorer extends Abstract_Feature {
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -79,17 +81,26 @@ class Abilities_Explorer extends Abstract_Feature {
 			'abilities_explorer',
 			'AbilityExplorer',
 			array(
-				'enabled' => $this->is_enabled(),
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'ai_ability_explorer_invoke' ),
-				'strings' => array(
-					'invoking'      => esc_html__( 'Invoking ability...', 'ai' ),
-					'success'       => esc_html__( 'Success!', 'ai' ),
-					'error'         => esc_html__( 'Error', 'ai' ),
-					'invalidJson'   => esc_html__( 'Invalid JSON input', 'ai' ),
-					'confirmInvoke' => esc_html__( 'Are you sure you want to invoke this ability?', 'ai' ),
-					'copySuccess'   => esc_html__( 'Copied!', 'ai' ),
-					'copyError'     => esc_html__( 'Failed to copy', 'ai' ),
+				'enabled'       => $this->is_enabled(),
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'nonce'         => wp_create_nonce( 'ai_ability_explorer_invoke' ),
+				'generateNonce' => wp_create_nonce( 'ai_ability_explorer_generate_payload' ),
+				'strings'       => array(
+					'invoking'                  => esc_html__( 'Invoking ability...', 'ai' ),
+					'success'                   => esc_html__( 'Success!', 'ai' ),
+					'error'                     => esc_html__( 'Error', 'ai' ),
+					'invalidJson'               => esc_html__( 'Invalid JSON input', 'ai' ),
+					'confirmInvoke'             => esc_html__( 'Are you sure you want to invoke this ability?', 'ai' ),
+					'copySuccess'               => esc_html__( 'Copied!', 'ai' ),
+					'copyError'                 => esc_html__( 'Failed to copy', 'ai' ),
+					'generating'                => esc_html__( 'Generating...', 'ai' ),
+					'generateModalTitle'        => esc_html__( 'Generate Payload with AI', 'ai' ),
+					'generateModalLabel'        => esc_html__( 'Describe what you want to test in natural language:', 'ai' ),
+					'generateModalPlaceholder'  => esc_html__( 'e.g. Query only the site URL information', 'ai' ),
+					'generateBtn'               => esc_html__( 'Generate', 'ai' ),
+					'cancelBtn'                 => esc_html__( 'Cancel', 'ai' ),
+					'generateEmptyCommandError' => esc_html__( 'Please enter a command.', 'ai' ),
+					'generateError'             => esc_html__( 'An error occurred while generating the payload. Please try again.', 'ai' ),
 				),
 			)
 		);
