@@ -127,6 +127,8 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					isBusy={ isGenerating }
 					ref={ focusGenerateButtonOnEmptyState }
 					accessibleWhenDisabled
+					__next40pxDefaultSize
+					className="ai-meta-description-panel__generate-button"
 				>
 					{ isGenerating
 						? __( 'Generating…', 'ai' )
