@@ -39,25 +39,18 @@ function CopyButton( {
 	const isCopyDisabled = disabled || showCopyConfirmation;
 
 	const timeoutIdRef = useRef< ReturnType< typeof setTimeout > >();
-	const pendingCopyTextRef = useRef< string | null >( null );
 
-	const ref = useCopyToClipboard< HTMLButtonElement >(
-		() => {
-			pendingCopyTextRef.current = text;
-			return text;
-		},
-		() => {
-			speak( __( 'Meta description copied to clipboard.', 'ai' ) );
-			setCopiedText( pendingCopyTextRef.current );
+	const ref = useCopyToClipboard< HTMLButtonElement >( text, () => {
+		speak( __( 'Meta description copied to clipboard.', 'ai' ) );
+		setCopiedText( text );
 
-			if ( timeoutIdRef.current ) {
-				clearTimeout( timeoutIdRef.current );
-			}
-			timeoutIdRef.current = setTimeout( () => {
-				setCopiedText( null );
-			}, 4000 );
+		if ( timeoutIdRef.current ) {
+			clearTimeout( timeoutIdRef.current );
 		}
-	);
+		timeoutIdRef.current = setTimeout( () => {
+			setCopiedText( null );
+		}, 4000 );
+	} );
 
 	useEffect( () => {
 		return () => {
