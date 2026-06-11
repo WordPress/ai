@@ -103,7 +103,7 @@ export function PromptForm( {
 					}
 				>
 					{ __(
-						'No connected provider supports image generation. Connect a provider with image generation to use this feature.',
+						'This feature requires an AI Connector that supports image generation. Review your Connectors to ensure you have a valid AI Connector configured.',
 						'ai'
 					) }
 				</Notice>
