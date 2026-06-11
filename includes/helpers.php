@@ -498,7 +498,7 @@ function has_ai_credentials(): bool {
 /**
  * Checks whether any configured connector exposes an image-generation-capable model.
  *
- * @since X.X.X
+ * @since x.x.x
  *
  * @return bool True if at least one configured connector has an image-generation-capable model.
  */
