@@ -503,8 +503,15 @@ function has_ai_credentials(): bool {
  * @return bool True if at least one configured connector has an image-generation-capable model.
  */
 function has_image_generation_support(): bool {
+	static $result = null;
+
+	if ( null !== $result ) {
+		return $result;
+	}
+
 	if ( ! class_exists( AiClient::class ) ) {
-		return false;
+		$result = false;
+		return $result;
 	}
 
 	$registry   = AiClient::defaultRegistry();
@@ -524,7 +531,8 @@ function has_image_generation_support(): bool {
 			foreach ( $models as $model ) {
 				foreach ( $model->getSupportedCapabilities() as $capability ) {
 					if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
-						return true;
+						$result = true;
+						return $result;
 					}
 				}
 			}
@@ -533,7 +541,8 @@ function has_image_generation_support(): bool {
 		}
 	}
 
-	return false;
+	$result = false;
+	return $result;
 }
 
 /**
