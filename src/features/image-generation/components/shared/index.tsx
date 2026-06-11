@@ -90,13 +90,17 @@ export function PromptForm( {
 				<Notice
 					status="warning"
 					isDismissible={ false }
-					actions={ [
-						{
-							label: __( 'Manage Connectors', 'ai' ),
-							url: connectorsUrl,
-							variant: 'link',
-						},
-					] }
+					actions={
+						connectorsUrl
+							? [
+									{
+										label: __( 'Manage Connectors', 'ai' ),
+										url: connectorsUrl,
+										variant: 'link',
+									},
+							  ]
+							: []
+					}
 				>
 					{ __(
 						'No connected provider supports image generation. Connect a provider with image generation to use this feature.',
