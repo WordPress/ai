@@ -1320,6 +1320,64 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the candidate-pool-size filter receives the default limit and
+	 * taxonomy, and that its return bounds how many terms are fetched.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_candidate_pool_size_filter_limits_top_terms(): void {
+		// Seed three tags so a limit of 1 is observable.
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolAlpha' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolBeta' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolGamma' ) );
+
+		$captured = array();
+		add_filter(
+			'wpai_content_classification_candidate_pool_size',
+			static function ( $limit, $taxonomy ) use ( &$captured ) {
+				$captured = compact( 'limit', 'taxonomy' );
+				return 1;
+			},
+			10,
+			2
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_top_terms' );
+		$method->setAccessible( true );
+
+		$terms = $method->invoke( $this->ability, 'post_tag' );
+
+		$this->assertSame( 100, $captured['limit'], 'Filter should receive the default limit of 100.' );
+		$this->assertSame( 'post_tag', $captured['taxonomy'] );
+		$this->assertCount( 1, $terms, 'Returned pool should honor the filtered limit.' );
+	}
+
+	/**
+	 * Test that a non-positive filtered pool size falls back to the default
+	 * rather than fetching the entire taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_candidate_pool_size_filter_non_positive_falls_back(): void {
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'FallbackAlpha' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'FallbackBeta' ) );
+
+		add_filter( 'wpai_content_classification_candidate_pool_size', static fn () => 0 );
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_top_terms' );
+		$method->setAccessible( true );
+
+		$terms = $method->invoke( $this->ability, 'post_tag' );
+
+		// Both terms returned: a 0 limit fell back to the bounded default
+		// rather than being passed to get_terms() (where 0 means "no limit").
+		$this->assertContains( 'FallbackAlpha', $terms );
+		$this->assertContains( 'FallbackBeta', $terms );
+	}
+
+	/**
 	 * Test that generate_suggestions() includes available terms for existing_only strategy.
 	 *
 	 * @since 0.7.0
