@@ -46,7 +46,7 @@ const NOTICE_ID = 'ai_content_resizing_error';
  * Used to detect content that uses character-based rather than word-based
  * counting (Japanese, Chinese, Korean).
  */
-const CJK_REGEX = /[　-鿿가-퟿！-｠]/;
+const CJK_REGEX = /[\u3000-\u9FFF\uAC00-\uD7FF\uFF01-\uFF60]/;
 
 /**
  * Content resizing toolbar component.
