@@ -80,12 +80,13 @@ interface TitleToolbarProps {
 export default function TitleToolbar( {
 	isStandalone = false,
 }: TitleToolbarProps ): React.JSX.Element | null {
-	const { postId, title } = useSelect( ( selectFn ) => {
+	const { postId, title, content } = useSelect( ( selectFn ) => {
 		const editor = selectFn( editorStore );
 
 		return {
 			postId: editor.getCurrentPostId(),
 			title: editor.getEditedPostAttribute( 'title' ) as string,
+			content: editor.getEditedPostContent(),
 		};
 	}, [] );
 
@@ -136,12 +137,13 @@ export default function TitleToolbar( {
 	};
 
 	const hasTitle = title.trim().length > 0;
+	const hasContent = ( content || '' ).trim().length > 0;
 
 	let buttonLabel: string = __( 'Generate', 'ai' );
 
 	if ( isGenerating || isRegenerating ) {
 		buttonLabel = __( 'Generating…', 'ai' );
-	} else if ( hasTitle ) {
+	} else if ( hasTitle && hasContent ) {
 		buttonLabel = __( 'Regenerate', 'ai' );
 	}
 
@@ -157,12 +159,12 @@ export default function TitleToolbar( {
 			return;
 		}
 
-		const content = select( editorStore ).getEditedPostContent();
+		const postContent = select( editorStore ).getEditedPostContent();
 		setIsGenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
-			const result = await generateTitle( postId as number, content );
+			const result = await generateTitle( postId as number, postContent );
 			setGeneratedTitle( result );
 			openModal();
 		} catch ( error: any ) {
@@ -184,12 +186,12 @@ export default function TitleToolbar( {
 	 * Fetches a new suggestion without closing the modal.
 	 */
 	const handleRegenerate = async () => {
-		const content = select( editorStore ).getEditedPostContent();
+		const postContent = select( editorStore ).getEditedPostContent();
 		setIsRegenerating( true );
 		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
 
 		try {
-			const result = await generateTitle( postId as number, content );
+			const result = await generateTitle( postId as number, postContent );
 			setGeneratedTitle( result );
 		} catch ( error: any ) {
 			const message =
