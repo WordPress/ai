@@ -18,7 +18,7 @@ Input structure:
 - <taxonomy …>…</taxonomy> describes the target taxonomy. The `kind` attribute is either `category` (broad, thematic, often hierarchical) or `tag` (specific, descriptive). Use this to decide what kind of terms to suggest.
 - <content>…</content> is the post content to classify.
 - <assigned-terms>…</assigned-terms> (optional) lists terms already applied to this post. Never propose these.
-- <available-terms>…</available-terms> (optional) is a *candidate pool* of existing terms on the site, listed in arbitrary order. Use these only when they genuinely fit the content. Relevance always outweighs popularity. If nothing in the pool fits, return only the truly relevant suggestions you would propose anyway — do not force a match.
+- <available-terms>…</available-terms> (optional) is a *candidate pool* of existing terms on the site, listed in arbitrary order. Use these only when they genuinely fit the content. Relevance always outweighs popularity, frequency of use, or availability in the candidate pool. If nothing in the pool fits, return only the truly relevant suggestions you would propose anyway — do not force a match.
 
 When `kind="category"`:
 - Categories are broad, thematic groupings. Pick the few categories that best describe the overall subject of the post, not every related angle.
