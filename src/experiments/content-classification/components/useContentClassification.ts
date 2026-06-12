@@ -32,6 +32,13 @@ const DEFAULT_MAX_SUGGESTIONS = 5;
 const MIN_SUGGESTIONS = 1;
 const MAX_SUGGESTIONS = 10;
 
+/**
+ * Matches CJK Unified Ideographs, Hangul, and fullwidth punctuation.
+ * Used to detect content that uses character-based rather than word-based
+ * counting (Japanese, Chinese, Korean).
+ */
+const CJK_REGEX = /[　-鿿가-퟿！-｠]/;
+
 const normalizeMaxSuggestions = ( value: unknown ): number => {
 	const parsedValue = Number.parseInt(
 		String( value ?? DEFAULT_MAX_SUGGESTIONS ),
@@ -152,9 +159,15 @@ export function useContentClassification( taxonomy: string ): {
 	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore ) as any;
 
-	// Check if content has enough words.
+	// Check if content has enough words (or characters for CJK languages).
+	const text = content || '';
+	const hasCJKContent = CJK_REGEX.test( text );
+	const countType = hasCJKContent ? 'characters_excluding_spaces' : 'words';
 	const hasEnoughContent =
-		wordCount( content || '', 'words' ) >= MINIMUM_WORD_COUNT;
+		wordCount(
+			text,
+			countType as 'words' | 'characters_excluding_spaces'
+		) >= MINIMUM_WORD_COUNT;
 
 	const handleGenerate = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
