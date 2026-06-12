@@ -10,6 +10,10 @@
 	.ai-request-logs__page {
 		background-color: #f0f0f1;
 	}
+
+	.ai-request-logs__page > div:first-child {
+		z-index: 2 !important;
+	}
 }
 
 
