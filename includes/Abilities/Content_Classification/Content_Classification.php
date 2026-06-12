@@ -476,23 +476,16 @@ class Content_Classification extends Abstract_Ability {
 
 		$description = trim( wp_strip_all_tags( (string) $tax_object->description ) );
 
-		// Use esc_attr() for the attribute values so labels containing
-		// quotes or angle brackets can't break the pseudo-XML the model reads.
-		$open_tag = sprintf(
-			'<taxonomy name="%1$s" label="%2$s" kind="%3$s" hierarchical="%4$s">',
+		// esc_attr() guards the attribute values so a label containing quotes or
+		// angle brackets can't break the pseudo-XML the model reads.
+		return sprintf(
+			'<taxonomy name="%1$s" label="%2$s" kind="%3$s" hierarchical="%4$s">%5$s</taxonomy>',
 			esc_attr( $taxonomy ),
 			esc_attr( $label ),
 			esc_attr( $kind ),
-			$is_hierarchical ? 'true' : 'false'
+			$is_hierarchical ? 'true' : 'false',
+			$description
 		);
-
-		if ( '' === $description ) {
-			return $open_tag . '</taxonomy>';
-		}
-
-		// The description is plain text (tags already stripped) and is read by
-		// the model as content, so it is injected as-is rather than entity-encoded.
-		return $open_tag . $description . '</taxonomy>';
 	}
 
 	/**
