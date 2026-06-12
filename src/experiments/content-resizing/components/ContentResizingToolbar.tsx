@@ -38,7 +38,15 @@ import { ensureProvider } from '../../../utils/provider-status';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
 const SHORTEN_MIN_WORDS = 5;
+const SHORTEN_MIN_CHARS = 10;
 const NOTICE_ID = 'ai_content_resizing_error';
+
+/**
+ * Matches CJK Unified Ideographs, Hangul, and fullwidth punctuation.
+ * Used to detect content that uses character-based rather than word-based
+ * counting (Japanese, Chinese, Korean).
+ */
+const CJK_REGEX = /[　-鿿가-퟿！-｠]/;
 
 /**
  * Content resizing toolbar component.
@@ -100,9 +108,19 @@ export default function ContentResizingToolbar( {
 			}
 
 			if ( action === 'shorten' ) {
-				const wordCount = count( blockContent, 'words', {} );
-				// We need at least 5 words to shorten the content.
-				if ( wordCount < SHORTEN_MIN_WORDS ) {
+				const hasCJKContent = CJK_REGEX.test( blockContent );
+				const countType = hasCJKContent
+					? 'characters_excluding_spaces'
+					: 'words';
+				const effectiveCount = count(
+					blockContent,
+					countType as 'words' | 'characters_excluding_spaces',
+					{}
+				);
+				const minimumCount = hasCJKContent
+					? SHORTEN_MIN_CHARS
+					: SHORTEN_MIN_WORDS;
+				if ( effectiveCount < minimumCount ) {
 					noticesDispatch.createErrorNotice(
 						__( 'Text is too short to shorten further.', 'ai' ),
 						{
@@ -172,15 +190,30 @@ export default function ContentResizingToolbar( {
 		}
 	}, [ handleAction, isLoading, lastAction ] );
 
-	// Calculate the word difference between the original and suggested content.
+	// Calculate the word/character difference between the original and suggested content.
 	const wordDiff = useMemo( () => {
 		if ( suggestedContent === null ) {
 			return null;
 		}
 
+		const hasCJKContent =
+			CJK_REGEX.test( blockContent ) ||
+			CJK_REGEX.test( suggestedContent );
+		const countType = hasCJKContent
+			? 'characters_excluding_spaces'
+			: 'words';
+
 		const delta =
-			count( suggestedContent, 'words', {} ) -
-			count( blockContent, 'words', {} );
+			count(
+				suggestedContent,
+				countType as 'words' | 'characters_excluding_spaces',
+				{}
+			) -
+			count(
+				blockContent,
+				countType as 'words' | 'characters_excluding_spaces',
+				{}
+			);
 
 		if ( delta === 0 ) {
 			return {
