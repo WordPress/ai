@@ -95,6 +95,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		remove_all_filters( 'wpai_content_classification_suggestions' );
 		remove_all_filters( 'wpai_content_classification_min_confidence' );
 		remove_all_filters( 'wpai_content_classification_available_terms' );
+		remove_all_filters( 'wpai_content_classification_candidate_pool_size' );
 		remove_all_filters( 'wpai_content_classification_prompt' );
 		parent::tearDown();
 	}

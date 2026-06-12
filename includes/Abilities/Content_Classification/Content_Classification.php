@@ -702,6 +702,29 @@ class Content_Classification extends Abstract_Ability {
 	 * @return array<string> List of term names ordered by count descending.
 	 */
 	private function get_top_terms( string $taxonomy, int $limit = 100 ): array {
+		/**
+		 * Filters the maximum number of existing terms fetched for the
+		 * candidate pool surfaced to the model under the `existing_only`
+		 * strategy.
+		 *
+		 * The default of 100 suits most sites; large taxonomies may benefit
+		 * from a higher cap, while smaller sites can lower it to reduce the
+		 * prompt token count.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int    $limit    The maximum number of terms to fetch.
+		 * @param string $taxonomy The taxonomy slug being suggested for.
+		 * @return int The filtered limit.
+		 */
+		$limit = (int) apply_filters( 'wpai_content_classification_candidate_pool_size', $limit, $taxonomy );
+
+		// A non-positive limit would make get_terms() return everything;
+		// fall back to the default so the pool stays bounded.
+		if ( $limit < 1 ) {
+			$limit = 100;
+		}
+
 		$terms = get_terms(
 			array(
 				'taxonomy'   => $taxonomy,
