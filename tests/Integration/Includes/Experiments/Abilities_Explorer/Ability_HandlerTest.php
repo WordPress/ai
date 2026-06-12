@@ -64,6 +64,94 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test formatted abilities expose meta at the top level.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_ability_includes_meta_at_top_level() {
+		$this->register_fake_ability();
+
+		try {
+			$ability = Ability_Handler::get_ability( 'ai/fake-meta-ability' );
+
+			$this->assertIsArray( $ability );
+			$this->assertArrayHasKey( 'meta', $ability );
+			$this->assertIsArray( $ability['meta'] );
+			$this->assertTrue( $ability['meta']['supports_mcp'] );
+			// The meta key inside raw_data is kept for backwards compatibility.
+			$this->assertSame( $ability['raw_data']['meta'], $ability['meta'] );
+		} finally {
+			$this->unregister_fake_ability();
+		}
+	}
+
+	/**
+	 * Registers a fake ability with meta for testing.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_fake_ability(): void {
+		global $wp_current_filter;
+
+		// Ensure the registry singleton is initialized so its own init action
+		// fires before we fake the filter state.
+		$registry = \WP_Abilities_Registry::get_instance();
+
+		if ( null !== $registry && $registry->is_registered( 'ai/fake-meta-ability' ) ) {
+			wp_unregister_ability( 'ai/fake-meta-ability' );
+		}
+
+		$previous_filter     = $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init';
+
+		try {
+			wp_register_ability(
+				'ai/fake-meta-ability',
+				array(
+					'label'               => 'Fake Meta Ability',
+					'description'         => 'Fake ability for testing meta output.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'input_schema'        => array(
+						'type'       => 'object',
+						'properties' => array(
+							'value' => array( 'type' => 'string' ),
+						),
+					),
+					'output_schema'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'value' => array( 'type' => 'string' ),
+						),
+					),
+					'meta'                => array(
+						'supports_mcp' => true,
+					),
+					'execute_callback'    => '__return_empty_array',
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			$wp_current_filter = $previous_filter;
+		}
+	}
+
+	/**
+	 * Unregisters the fake ability.
+	 *
+	 * @since x.x.x
+	 */
+	private function unregister_fake_ability(): void {
+		if ( ! function_exists( 'wp_unregister_ability' ) ) {
+			return;
+		}
+
+		$registry = \WP_Abilities_Registry::get_instance();
+		if ( null !== $registry && $registry->is_registered( 'ai/fake-meta-ability' ) ) {
+			wp_unregister_ability( 'ai/fake-meta-ability' );
+		}
+	}
+
+	/**
 	 * Test validate_input returns valid for empty schema.
 	 *
 	 * @since 0.2.0
