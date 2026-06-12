@@ -100,6 +100,11 @@ module.exports = {
 			'src/experiments/comment-moderation',
 			'index.tsx'
 		),
+		'experiments/suggest-reply': path.resolve(
+			process.cwd(),
+			'src/experiments/suggest-reply',
+			'index.tsx'
+		),
 		'experiments/alt-text-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',

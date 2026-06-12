@@ -40,6 +40,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
+		\WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply::class,
 	);
 
 	/**
