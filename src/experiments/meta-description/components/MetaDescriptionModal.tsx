@@ -146,7 +146,9 @@ export default function MetaDescriptionModal( {
 						} }
 						accessibleWhenDisabled
 						disabled={
-							isGenerating || editableText.trim().length === 0
+							isGenerating ||
+							( !! editableText &&
+								editableText.trim().length === 0 )
 						}
 					>
 						{ __( 'Apply', 'ai' ) }
