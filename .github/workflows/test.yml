@@ -33,6 +33,7 @@ jobs:
   phpcs:
     name: Run PHPCS coding standards checks
     runs-on: ubuntu-24.04
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     permissions:
       contents: read
     timeout-minutes: 20
@@ -89,6 +90,7 @@ jobs:
   phpstan:
     name: Run PHP static analysis
     runs-on: ubuntu-24.04
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     permissions:
       contents: read
     timeout-minutes: 20
@@ -167,6 +169,7 @@ jobs:
   phpunit:
     name: Test PHP ${{ matrix.php }} WP ${{ matrix.wp }}${{ matrix.coverage && ' with coverage' || '' }}
     runs-on: ubuntu-24.04
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     strategy:
       fail-fast: false
       matrix:
@@ -272,6 +275,7 @@ jobs:
   jslint:
     name: Run JavaScript code quality checks
     runs-on: ubuntu-24.04
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     permissions:
       contents: read
     timeout-minutes: 20
