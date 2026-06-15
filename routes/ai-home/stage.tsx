@@ -864,7 +864,13 @@ function AISettingsPage() {
 		} );
 
 		return [ ...sectionActionsFields, ...featureFields ];
-	}, [ featureDefinitions, featureGroups, globalEnabled, credentialsOk, handleChange ] );
+	}, [
+		featureDefinitions,
+		featureGroups,
+		globalEnabled,
+		credentialsOk,
+		handleChange,
+	] );
 
 	const form = useMemo< Form >( () => {
 		const showcaseChildren: string[] = [];
