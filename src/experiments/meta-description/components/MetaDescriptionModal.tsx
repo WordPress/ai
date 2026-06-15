@@ -5,16 +5,15 @@
 /**
  * WordPress dependencies
  */
-import { speak } from '@wordpress/a11y';
-import { useEffect, useRef, useState } from '@wordpress/element';
+import { useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Modal, Button, TextareaControl } from '@wordpress/components';
-import { useCopyToClipboard } from '@wordpress/compose';
 
 /**
  * Internal dependencies
  */
 import CharacterCount from './CharacterCount';
+import { useCopyToClipboardFeedback } from '../../../hooks/use-copy-to-clipboard-feedback';
 import type { MetaDescriptionSuggestion } from '../types';
 
 interface MetaDescriptionModalProps {
@@ -34,31 +33,14 @@ function CopyButton( {
 	text: string;
 	disabled: boolean;
 } ): JSX.Element {
-	const [ copiedText, setCopiedText ] = useState< string | null >( null );
-	const showCopyConfirmation = copiedText === text && text.length > 0;
-	const isCopyDisabled = disabled || showCopyConfirmation;
-
-	const timeoutIdRef = useRef< ReturnType< typeof setTimeout > >();
-
-	const ref = useCopyToClipboard< HTMLButtonElement >( text, () => {
-		speak( __( 'Meta description copied to clipboard.', 'ai' ) );
-		setCopiedText( text );
-
-		if ( timeoutIdRef.current ) {
-			clearTimeout( timeoutIdRef.current );
+	const { ref, hasCopied } = useCopyToClipboardFeedback< HTMLButtonElement >(
+		{
+			text,
+			announcement: __( 'Meta description copied to clipboard.', 'ai' ),
 		}
-		timeoutIdRef.current = setTimeout( () => {
-			setCopiedText( null );
-		}, 4000 );
-	} );
+	);
 
-	useEffect( () => {
-		return () => {
-			if ( timeoutIdRef.current ) {
-				clearTimeout( timeoutIdRef.current );
-			}
-		};
-	}, [] );
+	const isCopyDisabled = disabled || hasCopied;
 
 	return (
 		<Button
@@ -67,7 +49,7 @@ function CopyButton( {
 			disabled={ isCopyDisabled }
 			accessibleWhenDisabled
 		>
-			{ showCopyConfirmation
+			{ hasCopied
 				? __( 'Copied!', 'ai' )
 				: __( 'Copy to clipboard', 'ai' ) }
 		</Button>
