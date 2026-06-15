@@ -4,37 +4,41 @@
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 /**
- * Runs the `core/settings` ability through the client-side Abilities API
- * (`@wordpress/abilities`), exactly as a consumer would in the browser.
+ * Internal dependencies
+ */
+const {
+	enableExperiment,
+	enableExperiments,
+} = require( '../../utils/helpers' );
+
+/**
+ * Runs the `core/settings` ability through the client-side Abilities API, exactly
+ * as a consumer would in the browser.
  *
- * Mirrors the plugin's own import sequence: wait for `@wordpress/core-abilities`
- * to be ready, then call `executeAbility` from `@wordpress/abilities`. When the
- * client modules are not enqueued (e.g. a WordPress build without the client-side
- * Abilities API), returns `{ unavailable: true }` so the test can skip.
+ * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
+ * `@wordpress/core-abilities` initializes the client store (WordPress core's build
+ * runs `initialize()` on load and exports the resulting `ready` promise), so we
+ * await `ready` before calling `executeAbility` from `@wordpress/abilities`.
+ *
+ * The client modules are only present in the page's import map once an AI experiment
+ * is enabled in the block editor (it declares them as `module_dependencies`), which is
+ * set up in `beforeEach`.
  *
  * @param {import('@playwright/test').Page} page  The Playwright page.
  * @param {Object}                          input The ability input.
- * @return {Promise<Object>} `{ unavailable }`, `{ ok: true, result }`, or `{ ok: false, code }`.
+ * @return {Promise<Object>} `{ ok: true, result }` or `{ ok: false, code }`.
  */
 async function runCoreSettings( page, input ) {
 	return page.evaluate( async ( abilityInput ) => {
-		let api;
-		try {
-			const core = await import( '@wordpress/core-abilities' );
-			if ( core && core.ready ) {
-				await core.ready;
-			}
-			api = await import( '@wordpress/abilities' );
-		} catch {
-			api = window.wp && window.wp.abilities;
+		const { ready } = await import( '@wordpress/core-abilities' );
+		if ( ready ) {
+			await ready;
 		}
 
-		if ( ! api || typeof api.executeAbility !== 'function' ) {
-			return { unavailable: true };
-		}
+		const { executeAbility } = await import( '@wordpress/abilities' );
 
 		try {
-			const result = await api.executeAbility(
+			const result = await executeAbility(
 				'core/settings',
 				abilityInput
 			);
@@ -45,20 +49,25 @@ async function runCoreSettings( page, input ) {
 	}, input );
 }
 
-const SKIP_REASON =
-	'The @wordpress/abilities client is not enqueued in this environment.';
-
 test.describe( 'core/settings ability (client-side Abilities API)', () => {
-	test.beforeEach( async ( { admin } ) => {
-		// Load wp-admin so the Abilities API client modules and REST nonce are available.
-		await admin.visitAdminPage( 'index.php' );
+	test.beforeEach( async ( { admin, page } ) => {
+		// Enabling an experiment loads its block-editor script, which declares the
+		// `@wordpress/abilities` + `@wordpress/core-abilities` modules as dependencies
+		// and so adds them to the editor's import map.
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Excerpt Generation' );
+
+		// Run from the block editor, where the abilities client modules are available.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'core/settings ability test',
+		} );
 	} );
 
 	test( 'returns a flat, correctly typed map of settings', async ( {
 		page,
 	} ) => {
 		const outcome = await runCoreSettings( page, {} );
-		test.skip( outcome.unavailable === true, SKIP_REASON );
 
 		expect( outcome.ok ).toBe( true );
 		// Flat map keyed by setting name (not grouped/nested).
@@ -69,11 +78,10 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 
 	test( 'filters by group', async ( { page } ) => {
 		const outcome = await runCoreSettings( page, { group: 'reading' } );
-		test.skip( outcome.unavailable === true, SKIP_REASON );
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result ).toHaveProperty( 'posts_per_page' );
-		// Settings from other groups (and schema defaults) must not leak in.
+		// Settings from other groups must not leak in.
 		expect( outcome.result ).not.toHaveProperty( 'blogname' );
 		expect( outcome.result ).not.toHaveProperty( 'use_smilies' );
 	} );
@@ -82,7 +90,6 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 		const outcome = await runCoreSettings( page, {
 			slugs: [ 'blogname', 'posts_per_page' ],
 		} );
-		test.skip( outcome.unavailable === true, SKIP_REASON );
 
 		expect( outcome.ok ).toBe( true );
 		expect( Object.keys( outcome.result ).sort() ).toEqual( [
@@ -98,7 +105,6 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 			group: 'reading',
 			slugs: [ 'blogname' ],
 		} );
-		test.skip( outcome.unavailable === true, SKIP_REASON );
 
 		expect( outcome.ok ).toBe( false );
 		expect( outcome.code ).toBe( 'ability_invalid_input' );
