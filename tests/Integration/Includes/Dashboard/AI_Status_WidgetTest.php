@@ -308,7 +308,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	 * Enables credentials (via filter), the global toggle, and the
 	 * individual setting for feature A, leaving feature B disabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 *
 	 * @return string The rendered widget output.
 	 */
@@ -333,7 +333,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the status view renders the three-column layout.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_status_view_renders_columns() {
 		$output = $this->render_status_view();
@@ -348,7 +348,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an enabled experiment shows a success icon.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_status_view_shows_success_icon_for_enabled_experiment() {
 		$output = $this->render_status_view();
@@ -366,7 +366,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	 * Disabled experiments are an expected state, not a problem, so they
 	 * should not be rendered with the red error cross.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_status_view_shows_neutral_icon_for_disabled_experiment() {
 		$output = $this->render_status_view();
@@ -396,7 +396,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that feature state is exposed to screen readers in the status view.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_status_view_exposes_state_to_screen_readers() {
 		$output = $this->render_status_view();
