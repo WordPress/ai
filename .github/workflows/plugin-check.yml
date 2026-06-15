@@ -28,6 +28,7 @@ jobs:
     runs-on: 'ubuntu-24.04'
     permissions:
       contents: read
+      pull-requests: write
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -58,7 +59,7 @@ jobs:
         run: npm run build
 
       - name: Run plugin check
-        uses: wordpress/plugin-check-action@18573eb38f13543484a1f095672dae3849a4fbb0 # v1.1.6
+        uses: wordpress/plugin-check-action@98a1788320d0add90df2d8183934ecccbc4e05d2 # v1.1.7
         with:
           wp-version: 'latest'
           # Exclude file_type because of the dev files present in the repository.
