@@ -66,6 +66,7 @@ function CopyButton( {
 			variant="tertiary"
 			disabled={ isCopyDisabled }
 			accessibleWhenDisabled
+			__next40pxDefaultSize
 		>
 			{ showCopyConfirmation
 				? __( 'Copied!', 'ai' )
@@ -150,6 +151,7 @@ export default function MetaDescriptionModal( {
 							( !! editableText &&
 								editableText.trim().length === 0 )
 						}
+						__next40pxDefaultSize
 					>
 						{ __( 'Apply', 'ai' ) }
 					</Button>
@@ -159,6 +161,7 @@ export default function MetaDescriptionModal( {
 						disabled={ isGenerating }
 						isBusy={ isGenerating }
 						accessibleWhenDisabled
+						__next40pxDefaultSize
 					>
 						{ generateButtonLabel }
 					</Button>
@@ -173,6 +176,7 @@ export default function MetaDescriptionModal( {
 						isDestructive
 						onClick={ onClose }
 						className="ai-meta-description-modal__cancel"
+						__next40pxDefaultSize
 					>
 						{ __( 'Cancel', 'ai' ) }
 					</Button>

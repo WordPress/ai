@@ -127,6 +127,7 @@ export function PromptForm( {
 							variant="primary"
 							disabled={ ! prompt.trim() }
 							onClick={ onGenerate }
+							__next40pxDefaultSize
 						>
 							{ __( 'Generate', 'ai' ) }
 						</Button>
@@ -291,6 +292,7 @@ export function RefinePromptForm( {
 					variant="primary"
 					disabled={ ! refinePrompt.trim() }
 					onClick={ onRefine }
+					__next40pxDefaultSize
 				>
 					{ __( 'Refine', 'ai' ) }
 				</Button>
@@ -298,6 +300,7 @@ export function RefinePromptForm( {
 					variant="tertiary"
 					isDestructive={ cancelIsDestructive }
 					onClick={ onCancel }
+					__next40pxDefaultSize
 				>
 					{ __( 'Cancel Refinement', 'ai' ) }
 				</Button>

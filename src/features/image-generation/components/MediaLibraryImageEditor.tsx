@@ -386,6 +386,7 @@ export function MediaLibraryImageEditor( {
 							onClick={ () =>
 								setShowPrompt( ( show ) => ! show )
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
@@ -408,6 +409,7 @@ export function MediaLibraryImageEditor( {
 										: undefined;
 									handleGenerate( preset.prompt, reference );
 								} }
+								__next40pxDefaultSize
 							>
 								{ preset.label }
 							</Button>
@@ -429,6 +431,7 @@ export function MediaLibraryImageEditor( {
 									variant="primary"
 									disabled={ ! prompt.trim() }
 									onClick={ () => handleGenerate() }
+									__next40pxDefaultSize
 								>
 									{ __( 'Generate', 'ai' ) }
 								</Button>
@@ -466,12 +469,14 @@ export function MediaLibraryImageEditor( {
 							<Button
 								variant="secondary"
 								onClick={ () => maskCanvasRef.current?.undo() }
+								__next40pxDefaultSize
 							>
 								{ __( 'Undo', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								onClick={ () => maskCanvasRef.current?.clear() }
+								__next40pxDefaultSize
 							>
 								{ __( 'Clear', 'ai' ) }
 							</Button>
@@ -496,6 +501,7 @@ export function MediaLibraryImageEditor( {
 										! replacePrompt.trim() )
 								}
 								onClick={ handleMaskApply }
+								__next40pxDefaultSize
 							>
 								{ maskMode === 'remove'
 									? __( 'Remove', 'ai' )
@@ -509,6 +515,7 @@ export function MediaLibraryImageEditor( {
 									setMaskMode( null );
 									setMaskingSource( null );
 								} }
+								__next40pxDefaultSize
 							>
 								{ __( 'Cancel', 'ai' ) }
 							</Button>
@@ -568,6 +575,7 @@ export function MediaLibraryImageEditor( {
 										historyIndex
 									);
 								} }
+								__next40pxDefaultSize
 							>
 								{ preset.label }
 							</Button>
@@ -638,7 +646,11 @@ export function MediaLibraryImageEditor( {
 						</p>
 					) }
 					<div className="ai-media-library-editor__actions">
-						<Button variant="primary" onClick={ handleSave }>
+						<Button
+							variant="primary"
+							onClick={ handleSave }
+							__next40pxDefaultSize
+						>
 							{ __( 'Save to Media Library', 'ai' ) }
 						</Button>
 						<Button
@@ -648,6 +660,7 @@ export function MediaLibraryImageEditor( {
 								setError( null );
 								setState( 'refining' );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
@@ -661,6 +674,7 @@ export function MediaLibraryImageEditor( {
 									activeEntry?.referenceHistoryIndex
 								)
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
 						</Button>
@@ -668,6 +682,7 @@ export function MediaLibraryImageEditor( {
 							variant="tertiary"
 							isDestructive
 							onClick={ handleReset }
+							__next40pxDefaultSize
 						>
 							{ __( 'Start over', 'ai' ) }
 						</Button>
@@ -710,6 +725,7 @@ export function MediaLibraryImageEditor( {
 										historyIndex
 									);
 								} }
+								__next40pxDefaultSize
 							>
 								{ preset.label }
 							</Button>
@@ -736,6 +752,7 @@ export function MediaLibraryImageEditor( {
 									historyIndex
 								)
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Apply', 'ai' ) }
 						</Button>
@@ -745,6 +762,7 @@ export function MediaLibraryImageEditor( {
 								setError( null );
 								setState( 'preview' );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Cancel', 'ai' ) }
 						</Button>

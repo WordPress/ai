@@ -121,6 +121,7 @@ export function MediaEditorAltTextControl( {
 					} }
 					isBusy={ isGenerating }
 					icon={ update }
+					__next40pxDefaultSize
 				>
 					{ getButtonLabel( hasExistingAlt, isGenerating ) }
 				</Button>
