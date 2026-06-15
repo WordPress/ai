@@ -27,7 +27,12 @@ class Reply_Suggestion extends Abstract_Ability {
 					'enum'        => array( 'professional', 'friendly', 'casual' ),
 					'default'     => 'friendly',
 					'description' => esc_html__( 'The tone for the reply.', 'ai' ),
-				)
+				),
+				'guidelines' => array(
+					'type'        => 'string',
+					'default'     => '',
+					'description' => esc_html__( 'Optional free-text editorial guidelines to apply when writing the reply.', 'ai' ),
+				),
 			),
 			'required'   => array( 'comment_id' ),
 		);
@@ -55,6 +60,7 @@ class Reply_Suggestion extends Abstract_Ability {
 			array(
 				'comment_id' => 0,
 				'tone'       => 'friendly',
+				'guidelines' => '',
 			)
 		);
 
@@ -90,9 +96,10 @@ class Reply_Suggestion extends Abstract_Ability {
 		$tone       = in_array( $input['tone'], array( 'professional', 'friendly', 'casual' ), true )
 			? $input['tone']
 			: 'friendly';
+		$guidelines = sanitize_textarea_field( (string) $input['guidelines'] );
 
 		// Build the prompt context.
-		$context = $this->build_context( $comment, $post_title, $post_excerpt, $tone);
+		$context = $this->build_context( $comment, $post_title, $post_excerpt, $tone, $guidelines );
 
 		// Generate the reply.
 		$reply = $this->generate_reply( $context );
@@ -128,7 +135,8 @@ class Reply_Suggestion extends Abstract_Ability {
 		\WP_Comment $comment,
 		string $post_title,
 		string $post_excerpt,
-		string $tone
+		string $tone,
+		string $guidelines = ''
 	): string {
 		$parts = array();
 
@@ -143,6 +151,10 @@ class Reply_Suggestion extends Abstract_Ability {
 		$parts[] = sprintf( 'Comment Author: %s', $comment->comment_author );
 		$parts[] = sprintf( 'Comment: """%s"""', $comment->comment_content );
 		$parts[] = sprintf( 'Requested Tone: %s', $tone );
+
+		if ( '' !== $guidelines ) {
+			$parts[] = sprintf( 'Editorial Guidelines: %s', $guidelines );
+		}
 
 		return implode( "\n", $parts );
 	}

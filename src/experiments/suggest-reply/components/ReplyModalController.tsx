@@ -12,7 +12,6 @@ import { useEffect, useState, useCallback, useRef } from '@wordpress/element';
  * Internal dependencies
  */
 import { ReplyModal } from './ReplyModal';
-import type { CachedReply } from './ReplyModal';
 
 type ModalState = {
 	isOpen: boolean;
@@ -25,10 +24,7 @@ export function ReplyModalController(): React.ReactElement {
 		commentId: null,
 	} );
 
-	const repliesCache = useRef< Map< number, CachedReply > >( new Map() );
-
 	const populateTimeoutRef = useRef< number | null >( null );
-
 	const openModal = useCallback( ( commentId: number ) => {
 		setModalState( { isOpen: true, commentId } );
 	}, [] );
@@ -36,19 +32,6 @@ export function ReplyModalController(): React.ReactElement {
 	const closeModal = useCallback( () => {
 		setModalState( ( prev ) => ( { ...prev, isOpen: false } ) );
 	}, [] );
-
-	const getCachedReply = useCallback(
-		( commentId: number ): CachedReply | undefined =>
-			repliesCache.current.get( commentId ),
-		[]
-	);
-
-	const setCachedReply = useCallback(
-		( commentId: number, data: CachedReply ) => {
-			repliesCache.current.set( commentId, data );
-		},
-		[]
-	);
 
 	const populateReplyTextarea = useCallback( ( reply: string ) => {
 		const textarea = document.querySelector< HTMLTextAreaElement >(
@@ -173,12 +156,6 @@ export function ReplyModalController(): React.ReactElement {
 					commentId={ modalState.commentId }
 					onClose={ closeModal }
 					onSelectReply={ handleSelectReply }
-					initialReply={ getCachedReply( modalState.commentId ) }
-					onReplyChange={ ( data ) => {
-						if ( modalState.commentId !== null ) {
-							setCachedReply( modalState.commentId, data );
-						}
-					} }
 				/>
 			) }
 		</>

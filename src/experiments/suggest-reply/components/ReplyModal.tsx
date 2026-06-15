@@ -16,7 +16,7 @@ import {
 	Spinner,
 	TextareaControl,
 } from '@wordpress/components';
-import { useState, useEffect, useCallback } from '@wordpress/element';
+import { useState, useCallback } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -31,186 +31,150 @@ type ReplySuggestionResult = {
 	reply: string;
 };
 
-export type CachedReply = {
-	reply: string;
-	tone: Tone;
-};
-
 export type ReplyModalProps = {
 	commentId: number;
 	onClose: () => void;
-	onSelectReply: ( reply: string, commentId: number ) => void;
-	initialReply?: CachedReply | undefined;
-	onReplyChange?: ( ( data: CachedReply ) => void ) | undefined;
+	onSelectReply: (reply: string, commentId: number) => void;
 };
 
-export function ReplyModal( {
+export function ReplyModal({
 	commentId,
 	onClose,
 	onSelectReply,
-	initialReply,
-	onReplyChange,
-}: ReplyModalProps ): React.ReactElement {
-	const [ isLoading, setIsLoading ] = useState( false );
-	const [ reply, setReply ] = useState< string >( initialReply?.reply ?? '' );
-	const [ tone, setTone ] = useState< Tone >(
-		initialReply?.tone ?? 'friendly'
-	);
+}: ReplyModalProps): React.ReactElement {
+	const [isLoading, setIsLoading] = useState(false);
+	const [reply, setReply] = useState<string>('');
+	const [tone, setTone] = useState<Tone>('friendly');
+	const [guidelines, setGuidelines] = useState<string>('');
+	const [error, setError] = useState<string | null>(null);
 
-	const [ error, setError ] = useState< string | null >( null );
-	const [ hasGenerated, setHasGenerated ] = useState(
-		!! initialReply?.reply
-	);
-
-	const generateReply = useCallback( async () => {
-		setIsLoading( true );
-		setError( null );
+	const generateReply = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
 
 		try {
-			const result = await runAbility< ReplySuggestionResult >(
+			const result = await runAbility<ReplySuggestionResult>(
 				'ai/reply-suggestion',
 				{
 					comment_id: commentId,
 					tone,
+					guidelines,
 				}
 			);
 
-			const freshReply = result.reply ?? '';
-			setReply( freshReply );
-			setHasGenerated( true );
-			onReplyChange?.( { reply: freshReply, tone } );
-		} catch ( err ) {
+			setReply(result.reply ?? '');
+		} catch (err) {
 			setError(
 				err instanceof Error
 					? err.message
-					: __( 'Failed to generate reply suggestion.', 'ai' )
+					: __('Failed to generate reply suggestion.', 'ai')
 			);
 		} finally {
-			setIsLoading( false );
+			setIsLoading(false);
 		}
-	}, [ commentId, tone, onReplyChange ] );
+	}, [commentId, tone, guidelines]);
 
-	const handleSelect = useCallback( () => {
-		onSelectReply( reply, commentId );
-	}, [ reply, commentId, onSelectReply ] );
 
-	const handleReplyChange = useCallback(
-		( value: string ) => {
-			setReply( value );
-			onReplyChange?.( { reply: value, tone } );
-		},
-		[ tone, onReplyChange ]
-	);
-
-	useEffect( () => {
-		if ( ! initialReply?.reply ) {
-			generateReply();
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [] );
+	const handleSelect = useCallback(() => {
+		onSelectReply(reply, commentId);
+	}, [reply, commentId, onSelectReply]);
 
 	const toneOptions = [
-		{ label: __( 'Friendly', 'ai' ), value: 'friendly' },
-		{ label: __( 'Professional', 'ai' ), value: 'professional' },
-		{ label: __( 'Casual', 'ai' ), value: 'casual' },
+		{ label: __('Friendly', 'ai'), value: 'friendly' },
+		{ label: __('Professional', 'ai'), value: 'professional' },
+		{ label: __('Casual', 'ai'), value: 'casual' },
 	];
 
 	return (
 		<Modal
-			title={ __( 'Suggest Reply', 'ai' ) }
-			onRequestClose={ onClose }
+			title={__('Suggest Reply', 'ai')}
+			onRequestClose={onClose}
 			size="large"
 			className="wpai-reply-modal"
 		>
-			{ /* Controls row: tone selector + generate button */ }
-			<div style={ { marginBottom: '8px' } }>
-				<Flex gap={ 4 } align="flex-end" wrap>
-					<FlexItem>
-						<SelectControl
-							label={ __( 'Tone', 'ai' ) }
-							value={ tone }
-							options={ toneOptions }
-							onChange={ ( value ) => setTone( value as Tone ) }
-							__nextHasNoMarginBottom
-						/>
-					</FlexItem>
-				</Flex>
-			</div>
+			<Flex direction="column" gap={4} align="stretch">
+				<FlexItem>
+					<SelectControl
+						label={__('Tone', 'ai')}
+						value={tone}
+						options={toneOptions}
+						onChange={(value) => setTone(value as Tone)}
+					/>
+				</FlexItem>
 
-			{ /* Content area */ }
-			<div className="wpai-reply-modal__content">
-				{ isLoading && (
-					<Flex align="center" justify="flex-start" gap={ 1 }>
+				{ /* Guidelines */}
+				<FlexItem>
+					<TextareaControl
+						label={__('Guidelines (optional)', 'ai')}
+						placeholder={__(
+							'e.g. Always mention our support email, keep it under 3 sentences…',
+							'ai'
+						)}
+						rows={2}
+						value={guidelines}
+						onChange={setGuidelines}
+					/>
+				</FlexItem>
+
+				{ /* Loading spinner */}
+				{isLoading && (
+					<Flex align="center" justify="flex-start" gap={1}>
 						<Spinner />
 						<span>
-							{ __( 'Generating reply suggestion…', 'ai' ) }
+							{__('Generating reply suggestion…', 'ai')}
 						</span>
 					</Flex>
-				) }
+				)}
 
-				{ ! isLoading && error && (
-					<Flex direction="column" gap={ 3 } align="flex-start">
-						<Notice status="error" isDismissible={ false }>
-							{ error ||
-								__(
-									'An error occurred while generating the reply suggestion.',
-									'ai'
-								) }
+				{ /* Error notice */}
+				{!isLoading && error && (
+					<Flex direction="column" gap={3} align="flex-start">
+						<Notice status="error" isDismissible={false}>
+							{error}
 						</Notice>
-						<Button variant="secondary" onClick={ generateReply }>
-							{ __( 'Try again', 'ai' ) }
+					</Flex>
+				)}
+
+				{ /* Generated reply */}
+				{!isLoading && !error && reply && (
+					<FlexItem>
+						<p style={{
+							background: '#f6f7f7',
+							borderLeft: '3px solid #007cba',
+							padding: '12px 16px',
+							whiteSpace: 'pre-wrap',
+							fontSize: '14px',
+							lineHeight: '1.6',
+							color: '#1e1e1e',
+						}}>
+							{reply}
+						</p>
+					</FlexItem>
+				)}
+
+				{ /* Action buttons */}
+				<Flex direction="row" gap={2} justify="flex-start">
+					{reply && (
+						<Button
+							variant="primary"
+							onClick={handleSelect}
+							disabled={isLoading}
+						>
+							{__('Use this reply', 'ai')}
 						</Button>
-					</Flex>
-				) }
-
-				{ ! isLoading && ! error && reply && (
-					<Flex direction="column" gap={ 4 }>
-						<FlexItem style={ { width: '100%' } }>
-							<TextareaControl
-								rows={ 6 }
-								label={ __( 'Suggested reply', 'ai' ) }
-								hideLabelFromVision
-								disabled
-								value={ reply }
-								onChange={ handleReplyChange }
-								__nextHasNoMarginBottom
-							/>
-							<Flex
-								justify="flex-start"
-								gap={ 2 }
-								style={ { marginTop: '8px' } }
-							>
-								<Button
-									variant="secondary"
-									onClick={ generateReply }
-									disabled={ isLoading }
-									isBusy={ isLoading }
-								>
-									{ hasGenerated
-										? __( 'Regenerate', 'ai' )
-										: __( 'Generate', 'ai' ) }
-								</Button>
-								<Button
-									variant="primary"
-									onClick={ handleSelect }
-									disabled={ isLoading }
-								>
-									{ __( 'Use this reply', 'ai' ) }
-								</Button>
-							</Flex>
-						</FlexItem>
-					</Flex>
-				) }
-
-				{ ! isLoading && ! error && ! reply && hasGenerated && (
-					<Notice status="warning" isDismissible={ false }>
-						{ __(
-							'The AI was unable to generate a reply suggestion for this comment.',
-							'ai'
-						) }
-					</Notice>
-				) }
-			</div>
-		</Modal>
+					)}
+					<Button
+						variant="secondary"
+						onClick={generateReply}
+						disabled={isLoading}
+						isBusy={isLoading}
+					>
+						{reply
+							? __('Regenerate', 'ai')
+							: __('Generate', 'ai')}
+					</Button>
+				</Flex>
+			</Flex>
+		</Modal >
 	);
 }
