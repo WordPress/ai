@@ -63,9 +63,9 @@ export function ReplyModal( {
 			);
 
 			setReply( result.reply ?? '' );
-		} catch ( err ) {
+		} catch ( err: any ) {
 			setError(
-				err instanceof Error
+				Boolean(err.message)
 					? err.message
 					: __( 'Failed to generate reply suggestion.', 'ai' )
 			);
@@ -135,13 +135,10 @@ export function ReplyModal( {
 					<FlexItem>
 						<p
 							style={ {
-								background: '#f6f7f7',
-								borderLeft: '3px solid #007cba',
+								borderLeft: '3px solid var(--wp-admin-theme-color)',
 								padding: '12px 16px',
-								whiteSpace: 'pre-wrap',
 								fontSize: '14px',
 								lineHeight: '1.6',
-								color: '#1e1e1e',
 							} }
 						>
 							{ reply }
