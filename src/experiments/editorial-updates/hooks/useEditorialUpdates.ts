@@ -125,7 +125,7 @@ export function useEditorialUpdates(): {
 		setProgress( 0 );
 		setTotal( 0 );
 
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const content = (
@@ -142,7 +142,7 @@ export function useEditorialUpdates(): {
 			const pendingNotes = await fetchAllNotesByStatus( postId, 'hold' );
 
 			if ( pendingNotes.length === 0 ) {
-				( dispatch( noticesStore ) as any ).createNotice(
+				dispatch( noticesStore ).createNotice(
 					'info',
 					__( 'No pending Notes found to refine.', 'ai' ),
 					{ type: 'snackbar' }
@@ -174,7 +174,7 @@ export function useEditorialUpdates(): {
 			} );
 
 			if ( refineableBlocks.length === 0 ) {
-				( dispatch( noticesStore ) as any ).createNotice(
+				dispatch( noticesStore ).createNotice(
 					'info',
 					__( 'No blocks found matching the existing Notes.', 'ai' ),
 					{ type: 'snackbar' }
@@ -312,7 +312,7 @@ export function useEditorialUpdates(): {
 
 			// If every block failed, surface an error notice.
 			if ( failedBlocksCount > 0 && refinedBlocksCount === 0 ) {
-				( dispatch( noticesStore ) as any ).createErrorNotice(
+				dispatch( noticesStore ).createErrorNotice(
 					firstErrorMessage ??
 						__( 'Refinement failed for all blocks.', 'ai' ),
 					{
@@ -362,7 +362,7 @@ export function useEditorialUpdates(): {
 						  ]
 						: [];
 
-				( dispatch( noticesStore ) as any ).createSuccessNotice(
+				dispatch( noticesStore ).createSuccessNotice(
 					sprintf(
 						/* translators: %d: number of blocks refined. */
 						_n(
@@ -379,7 +379,7 @@ export function useEditorialUpdates(): {
 					}
 				);
 			} else {
-				( dispatch( noticesStore ) as any ).createNotice(
+				dispatch( noticesStore ).createNotice(
 					'info',
 					__(
 						'No content changes were needed based on the existing Notes.',
@@ -389,7 +389,7 @@ export function useEditorialUpdates(): {
 				);
 			}
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice(
+			dispatch( noticesStore ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
 					id: NOTICE_ID,
