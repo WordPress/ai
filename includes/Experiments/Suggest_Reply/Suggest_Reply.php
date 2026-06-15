@@ -26,13 +26,10 @@ class Suggest_Reply extends Abstract_Feature {
 	}
 
 	public function register(): void {
-		// Register the reply-suggestion ability.
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 
-		// Add "Suggest reply" row action to the Comments list table.
 		add_filter( 'comment_row_actions', array( $this, 'add_row_action' ), 10, 2 );
 
-		// Enqueue the JS bundle on the Comments screen.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
@@ -56,11 +53,6 @@ class Suggest_Reply extends Abstract_Feature {
 			return $actions;
 		}
 
-		// Only show for approved comments.
-		if ( '1' !== (string) $comment->comment_approved ) {
-			return $actions;
-		}
-
 		$actions['wpai_suggest_reply'] = sprintf(
 			'<a href="#" class="wpai-suggest-reply" data-comment-id="%d" aria-label="%s">%s</a>',
 			absint( $comment->comment_ID ),
@@ -72,7 +64,7 @@ class Suggest_Reply extends Abstract_Feature {
 	}
 
 	public function enqueue_assets( string $hook_suffix ): void {
-		if ( 'edit-comments.php' !== $hook_suffix ) {
+		if ( ! in_array( $hook_suffix, array( 'edit-comments.php', 'index.php' ), true ) ) {
 			return;
 		}
 
