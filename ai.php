@@ -11,7 +11,7 @@
  * Plugin Name:       AI
  * Plugin URI:        https://github.com/WordPress/ai
  * Description:       AI features, experiments and capabilities for WordPress.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Requires at least: 7.0
  * Requires PHP:      7.4
  * Author:            WordPress.org Contributors
@@ -43,7 +43,7 @@ function constants(): void {
 	 * Plugin version.
 	 */
 	if ( ! defined( 'WPAI_VERSION' ) ) {
-		define( 'WPAI_VERSION', '1.0.1' );
+		define( 'WPAI_VERSION', '1.0.2' );
 	}
 
 	/**
