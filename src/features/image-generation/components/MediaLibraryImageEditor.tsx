@@ -599,6 +599,7 @@ export function MediaLibraryImageEditor( {
 							disabled={ ! canGoBack }
 							onClick={ goBack }
 							label={ __( 'Previous version', 'ai' ) }
+							__next40pxDefaultSize
 						/>
 						<div className="ai-image-history-nav__content">
 							<div className="ai-media-library-editor__comparison">
@@ -633,6 +634,7 @@ export function MediaLibraryImageEditor( {
 							disabled={ ! canGoForward }
 							onClick={ goForward }
 							label={ __( 'Next version', 'ai' ) }
+							__next40pxDefaultSize
 						/>
 					</div>
 					{ history.length > 1 && (

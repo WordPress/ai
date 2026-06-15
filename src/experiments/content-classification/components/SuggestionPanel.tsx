@@ -106,6 +106,7 @@ export default function SuggestionPanel( {
 								<Button
 									className="ai-content-classification__pill-accept"
 									onClick={ () => handleAccept( suggestion ) }
+									__next40pxDefaultSize
 									label={ sprintf(
 										/* translators: %s: Term name. */
 										__( 'Add "%s"', 'ai' ),
@@ -132,6 +133,7 @@ export default function SuggestionPanel( {
 									onClick={ () =>
 										handleDismiss( suggestion )
 									}
+									__next40pxDefaultSize
 									label={ sprintf(
 										/* translators: %s: Term name. */
 										__( 'Dismiss "%s"', 'ai' ),

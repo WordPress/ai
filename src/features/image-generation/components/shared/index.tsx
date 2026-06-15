@@ -185,6 +185,7 @@ export function ImageHistoryNav( {
 					onClick={ onGoBack }
 					label={ __( 'Previous version', 'ai' ) }
 					accessibleWhenDisabled
+					__next40pxDefaultSize
 				/>
 				<div className="ai-image-history-nav__content">
 					{ showComparison ? (
@@ -227,6 +228,7 @@ export function ImageHistoryNav( {
 					onClick={ onGoForward }
 					label={ __( 'Next version', 'ai' ) }
 					accessibleWhenDisabled
+					__next40pxDefaultSize
 				/>
 			</div>
 			{ historyLength > 1 && (
