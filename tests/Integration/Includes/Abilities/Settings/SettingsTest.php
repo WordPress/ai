@@ -153,18 +153,18 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The input schema exposes mutually exclusive `group` and `slugs` filters.
+	 * The input schema exposes mutually exclusive `group` and `settings` filters.
 	 *
 	 * @since 1.1.0
 	 */
-	public function test_input_schema_is_one_of_group_or_slugs(): void {
+	public function test_input_schema_is_one_of_group_or_settings(): void {
 		$this->register_ability();
 
 		$schema = wp_get_ability( 'core/settings' )->get_input_schema();
 
 		$this->assertCount( 3, $schema['oneOf'] );
 		$this->assertContains( 'reading', $schema['oneOf'][1]['properties']['group']['enum'] );
-		$this->assertContains( 'blogname', $schema['oneOf'][2]['properties']['slugs']['items']['enum'] );
+		$this->assertContains( 'blogname', $schema['oneOf'][2]['properties']['settings']['items']['enum'] );
 	}
 
 	/**
@@ -204,32 +204,32 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The `slugs` filter narrows the response to the requested setting names.
+	 * The `settings` filter narrows the response to the requested setting names.
 	 *
 	 * @since 1.1.0
 	 */
-	public function test_filters_by_slugs(): void {
+	public function test_filters_by_settings(): void {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/settings' )->execute( array( 'slugs' => array( 'blogname', 'posts_per_page' ) ) );
+		$result = wp_get_ability( 'core/settings' )->execute( array( 'settings' => array( 'blogname', 'posts_per_page' ) ) );
 
 		$this->assertSame( array( 'blogname', 'posts_per_page' ), array_keys( $result ) );
 	}
 
 	/**
-	 * Supplying both `group` and `slugs` violates the `oneOf` and is rejected.
+	 * Supplying both `group` and `settings` violates the `oneOf` and is rejected.
 	 *
 	 * @since 1.1.0
 	 */
-	public function test_rejects_group_and_slugs_together(): void {
+	public function test_rejects_group_and_settings_together(): void {
 		$this->become_admin();
 		$this->register_ability();
 
 		$result = wp_get_ability( 'core/settings' )->execute(
 			array(
-				'group' => 'reading',
-				'slugs' => array( 'blogname' ),
+				'group'    => 'reading',
+				'settings' => array( 'blogname' ),
 			)
 		);
 

@@ -86,9 +86,9 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 		expect( outcome.result ).not.toHaveProperty( 'use_smilies' );
 	} );
 
-	test( 'filters by slugs', async ( { page } ) => {
+	test( 'filters by settings', async ( { page } ) => {
 		const outcome = await runCoreSettings( page, {
-			slugs: [ 'blogname', 'posts_per_page' ],
+			settings: [ 'blogname', 'posts_per_page' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
@@ -98,12 +98,12 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 		] );
 	} );
 
-	test( 'rejects group and slugs together (mutually exclusive)', async ( {
+	test( 'rejects group and settings together (mutually exclusive)', async ( {
 		page,
 	} ) => {
 		const outcome = await runCoreSettings( page, {
 			group: 'reading',
-			slugs: [ 'blogname' ],
+			settings: [ 'blogname' ],
 		} );
 
 		expect( outcome.ok ).toBe( false );
