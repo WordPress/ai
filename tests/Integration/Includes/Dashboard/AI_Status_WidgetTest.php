@@ -90,6 +90,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_test-feature-a_enabled' );
 		delete_option( 'wpai_feature_test-feature-b_enabled' );
 		remove_all_filters( 'wpai_feature_test-feature-a_enabled' );
+		remove_all_filters( 'wpai_has_ai_credentials' );
 		parent::tearDown();
 	}
 
@@ -298,6 +299,117 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 			'ai-dashboard-status',
 			$output,
 			'Should render without errors with multiple features'
+		);
+	}
+
+	/**
+	 * Renders the widget in full status mode.
+	 *
+	 * Enables credentials (via filter), the global toggle, and the
+	 * individual setting for feature A, leaving feature B disabled.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The rendered widget output.
+	 */
+	private function render_status_view(): string {
+		add_filter( 'wpai_has_ai_credentials', '__return_true' );
+		update_option( Settings_Registration::GLOBAL_OPTION, true );
+		update_option( 'wpai_feature_test-feature-a_enabled', true );
+		update_option( 'wpai_feature_test-feature-b_enabled', false );
+
+		$registry = new Registry();
+		$registry->register_feature( new Status_Test_Feature_A() );
+		$registry->register_feature( new Status_Test_Feature_B() );
+
+		$widget = new AI_Status_Widget( $registry );
+
+		ob_start();
+		$widget->render();
+
+		return ob_get_clean();
+	}
+
+	/**
+	 * Tests that the status view renders the three-column layout.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_status_view_renders_columns() {
+		$output = $this->render_status_view();
+
+		$this->assertStringContainsString(
+			'ai-dashboard-status__columns',
+			$output,
+			'Should render the status view when setup is complete'
+		);
+	}
+
+	/**
+	 * Tests that an enabled experiment shows a success icon.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_status_view_shows_success_icon_for_enabled_experiment() {
+		$output = $this->render_status_view();
+
+		$this->assertMatchesRegularExpression(
+			'/dashicons-yes-alt.*First Feature/s',
+			$output,
+			'Enabled experiments should show a success icon'
+		);
+	}
+
+	/**
+	 * Tests that a disabled experiment shows a neutral icon, not an error icon.
+	 *
+	 * Disabled experiments are an expected state, not a problem, so they
+	 * should not be rendered with the red error cross.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_status_view_shows_neutral_icon_for_disabled_experiment() {
+		$output = $this->render_status_view();
+
+		$this->assertMatchesRegularExpression(
+			'/ai-dashboard-status__icon--neutral.*Second Feature/s',
+			$output,
+			'Disabled experiments should show a neutral icon'
+		);
+
+		// The Experiments column is rendered last, so everything after the
+		// section title belongs to it. Disabled experiments must not use
+		// the error icon there.
+		$experiments_section = substr( $output, (int) strpos( $output, 'Experiments' ) );
+		$this->assertStringNotContainsString(
+			'ai-dashboard-status__icon--error',
+			$experiments_section,
+			'Disabled experiments should not show the error icon'
+		);
+		$this->assertStringNotContainsString(
+			'dashicons-no',
+			$experiments_section,
+			'Disabled experiments should not use the dashicons-no icon'
+		);
+	}
+
+	/**
+	 * Tests that feature state is exposed to screen readers in the status view.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_status_view_exposes_state_to_screen_readers() {
+		$output = $this->render_status_view();
+
+		$this->assertMatchesRegularExpression(
+			'/screen-reader-text">[^<]*Enabled:/s',
+			$output,
+			'Enabled state should be announced to screen readers'
+		);
+		$this->assertMatchesRegularExpression(
+			'/screen-reader-text">[^<]*Disabled:/s',
+			$output,
+			'Disabled state should be announced to screen readers'
 		);
 	}
 

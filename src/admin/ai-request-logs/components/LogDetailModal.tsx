@@ -356,7 +356,13 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 					<code className="ai-request-logs__detail-id">
 						{ log.id }
 					</code>
-					<Button ref={ copyIdRef } variant="secondary" size="small">
+					<Button
+						ref={ hasCopied ? undefined : copyIdRef }
+						variant="secondary"
+						size="small"
+						disabled={ hasCopied }
+						accessibleWhenDisabled
+					>
 						{ hasCopied
 							? __( 'Copied!', 'ai' )
 							: __( 'Copy Log ID', 'ai' ) }

@@ -35,7 +35,8 @@ interface UseCopyToClipboardFeedback< T extends HTMLElement > {
 	ref: ( node: T | null ) => void;
 
 	/**
-	 * Whether the content was just copied. Resets after `timeout` ms.
+	 * Whether the current text was just copied. Resets after `timeout` ms, or
+	 * immediately if the text changes (e.g. the user edits the source).
 	 */
 	hasCopied: boolean;
 }
@@ -57,7 +58,7 @@ export function useCopyToClipboardFeedback< T extends HTMLElement >( {
 	announcement,
 	timeout = 4000,
 }: UseCopyToClipboardFeedbackOptions ): UseCopyToClipboardFeedback< T > {
-	const [ hasCopied, setHasCopied ] = useState( false );
+	const [ copiedText, setCopiedText ] = useState< string | null >( null );
 	const timeoutRef = useRef< ReturnType< typeof setTimeout > >();
 
 	const ref = useCopyToClipboard< T >( text, () => {
@@ -65,14 +66,14 @@ export function useCopyToClipboardFeedback< T extends HTMLElement >( {
 			speak( announcement );
 		}
 
-		setHasCopied( true );
+		setCopiedText( typeof text === 'function' ? text() : text );
 
 		if ( timeoutRef.current ) {
 			clearTimeout( timeoutRef.current );
 		}
 
 		timeoutRef.current = setTimeout( () => {
-			setHasCopied( false );
+			setCopiedText( null );
 		}, timeout );
 	} );
 
@@ -83,6 +84,15 @@ export function useCopyToClipboardFeedback< T extends HTMLElement >( {
 			}
 		};
 	}, [] );
+
+	// Only show the confirmation while the copied snapshot still matches the
+	// current text. If the source changes (e.g. the user edits a textarea), the
+	// trigger reverts to its default label immediately.
+	const currentText = typeof text === 'function' ? text() : text;
+	const hasCopied =
+		copiedText !== null &&
+		copiedText === currentText &&
+		copiedText.length > 0;
 
 	return { ref, hasCopied };
 }

@@ -40,11 +40,13 @@ function CopyButton( {
 		}
 	);
 
+	const isCopyDisabled = disabled || hasCopied;
+
 	return (
 		<Button
-			ref={ ref }
+			ref={ isCopyDisabled ? undefined : ref }
 			variant="tertiary"
-			disabled={ disabled }
+			disabled={ isCopyDisabled }
 			accessibleWhenDisabled
 		>
 			{ hasCopied
@@ -96,6 +98,7 @@ export default function MetaDescriptionModal( {
 			onRequestClose={ onClose }
 			className="ai-meta-description-modal"
 			size="medium"
+			focusOnMount="firstContentElement"
 		>
 			<div className="ai-meta-description-modal__content">
 				{ /* Editable textarea */ }
@@ -110,6 +113,7 @@ export default function MetaDescriptionModal( {
 							'Aim for 140–160 characters for optimal display in search results.',
 							'ai'
 						) }
+						disabled={ isGenerating }
 					/>
 					<CharacterCount count={ editableText.length } />
 				</div>
@@ -123,7 +127,11 @@ export default function MetaDescriptionModal( {
 							onClose();
 						} }
 						accessibleWhenDisabled
-						disabled={ editableText.trim().length === 0 }
+						disabled={
+							isGenerating ||
+							( !! editableText &&
+								editableText.trim().length === 0 )
+						}
 					>
 						{ __( 'Apply', 'ai' ) }
 					</Button>
@@ -138,9 +146,16 @@ export default function MetaDescriptionModal( {
 					</Button>
 					<CopyButton
 						text={ editableText }
-						disabled={ editableText.trim().length === 0 }
+						disabled={
+							isGenerating || editableText.trim().length === 0
+						}
 					/>
-					<Button variant="tertiary" onClick={ onClose }>
+					<Button
+						variant="tertiary"
+						isDestructive
+						onClick={ onClose }
+						className="ai-meta-description-modal__cancel"
+					>
 						{ __( 'Cancel', 'ai' ) }
 					</Button>
 				</div>
