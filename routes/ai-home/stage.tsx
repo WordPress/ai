@@ -632,13 +632,14 @@ function VisualCardToggle( {
 }: DataFormControlProps< AISettings > ) {
 	const feature = VISUAL_CARD_FEATURES.get( field.id );
 	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
+	const isToggleEnabled = globalEnabled && PAGE_DATA.hasValidCredentials;
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
 
 	return (
 		<Card.Root
 			className={ `${
-				! globalEnabled ? ' ai-showcase-card--disabled' : ''
+				! isToggleEnabled ? ' ai-showcase-card--disabled' : ''
 			}` }
 		>
 			{ feature?.image && (
@@ -651,7 +652,7 @@ function VisualCardToggle( {
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
 					}
-					disabled={ ! globalEnabled }
+					disabled={ ! isToggleEnabled }
 					help={ field.description }
 				/>
 				{ checked && isDeveloperMode && feature && (
@@ -748,6 +749,7 @@ function AISettingsPage() {
 	}, [ aiSettingKeys, editedRecord ] );
 
 	const globalEnabled = Boolean( data[ GLOBAL_FIELD_ID ] );
+	const credentialsOk = PAGE_DATA.hasValidCredentials;
 	const globalToggleDescription = __(
 		'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
 		'ai'
@@ -824,7 +826,7 @@ function AISettingsPage() {
 					<SectionActions
 						{ ...props }
 						experimentSettings={ experimentSettings }
-						globalEnabled={ globalEnabled }
+						globalEnabled={ globalEnabled && credentialsOk }
 						onBulkChange={ handleChange }
 					/>
 				),
@@ -842,7 +844,7 @@ function AISettingsPage() {
 
 			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
 				baseField.Edit = VisualCardToggle;
-			} else if ( ! globalEnabled ) {
+			} else if ( ! globalEnabled || ! credentialsOk ) {
 				baseField.Edit = DisabledToggle;
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
@@ -862,7 +864,7 @@ function AISettingsPage() {
 		} );
 
 		return [ ...sectionActionsFields, ...featureFields ];
-	}, [ featureDefinitions, featureGroups, globalEnabled, handleChange ] );
+	}, [ featureDefinitions, featureGroups, globalEnabled, credentialsOk, handleChange ] );
 
 	const form = useMemo< Form >( () => {
 		const showcaseChildren: string[] = [];
@@ -977,7 +979,7 @@ function AISettingsPage() {
 										[ GLOBAL_FIELD_ID ]: checked,
 									} );
 								} }
-								disabled={ isLoading }
+								disabled={ isLoading || ! credentialsOk }
 							/>
 							<InfoTip content={ globalToggleDescription } />
 						</Stack>
