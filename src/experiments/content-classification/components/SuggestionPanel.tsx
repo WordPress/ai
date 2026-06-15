@@ -38,6 +38,7 @@ export default function SuggestionPanel( {
 		isGenerating,
 		suggestions,
 		hasEnoughContent,
+		hasCJKContent,
 		handleGenerate,
 		handleAccept,
 		handleDismiss,
@@ -77,10 +78,15 @@ export default function SuggestionPanel( {
 
 			{ ! hasEnoughContent && ! hasSuggestions && (
 				<p className="ai-content-classification__hint components-base-control__help">
-					{ __(
-						'Add more content to enable AI suggestions (approximately 150 words).',
-						'ai'
-					) }
+					{ hasCJKContent
+						? __(
+								'Add more content to enable AI suggestions (approximately 150 characters).',
+								'ai'
+						  )
+						: __(
+								'Add more content to enable AI suggestions (approximately 150 words).',
+								'ai'
+						  ) }
 				</p>
 			) }
 

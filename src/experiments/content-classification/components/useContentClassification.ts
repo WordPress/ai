@@ -142,6 +142,7 @@ export function useContentClassification( taxonomy: string ): {
 	isGenerating: boolean;
 	suggestions: TagSuggestion[];
 	hasEnoughContent: boolean;
+	hasCJKContent: boolean;
 	handleGenerate: () => Promise< void >;
 	handleAccept: ( suggestion: TagSuggestion ) => void;
 	handleDismiss: ( suggestion: TagSuggestion ) => void;
@@ -242,6 +243,7 @@ export function useContentClassification( taxonomy: string ): {
 		isGenerating,
 		suggestions,
 		hasEnoughContent,
+		hasCJKContent,
 		handleGenerate,
 		handleAccept,
 		handleDismiss,
