@@ -6,7 +6,7 @@ import React from 'react';
 /**
  * WordPress dependencies
  */
-import { useEffect, useState, useCallback, useRef } from '@wordpress/element';
+import { useEffect, useState, useRef } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -19,145 +19,94 @@ type ModalState = {
 };
 
 export function ReplyModalController(): React.ReactElement {
-	const [ modalState, setModalState ] = useState< ModalState >( {
+	const [modalState, setModalState] = useState<ModalState>({
 		isOpen: false,
 		commentId: null,
-	} );
+	});
 
-	const populateTimeoutRef = useRef< number | null >( null );
-	const openModal = useCallback( ( commentId: number ) => {
-		setModalState( { isOpen: true, commentId } );
-	}, [] );
+	const populateTimeoutRef = useRef<number | null>(null);
 
-	const closeModal = useCallback( () => {
-		setModalState( ( prev ) => ( { ...prev, isOpen: false } ) );
-	}, [] );
-
-	const populateReplyTextarea = useCallback( ( reply: string ) => {
-		const textarea = document.querySelector< HTMLTextAreaElement >(
+	const populateReplyTextarea = (reply: string) => {
+		const textarea = document.querySelector<HTMLTextAreaElement>(
 			'#replycontainer #replycontent'
 		);
+		if (!textarea) return;
+		textarea.value = reply;
+		textarea.focus();
+		textarea.dispatchEvent(new Event('input', { bubbles: true }));
+	};
 
-		if ( ! textarea ) {
+	const isInlineReplyOpenForComment = (commentId: number): boolean => {
+		const replyRow = document.querySelector<HTMLElement>('#replyrow');
+		const commentIdInput = document.querySelector<HTMLInputElement>('#replyrow #comment_ID');
+		if (!replyRow || !commentIdInput) return false;
+		const isVisible = replyRow.style.display !== 'none' && replyRow.offsetParent !== null;
+		const isForComment = parseInt(commentIdInput.value, 10) === commentId;
+		return isVisible && isForComment;
+	};
+
+	const closeModal = () => setModalState((prev) => ({ ...prev, isOpen: false }));
+
+	const handleSelectReply = (reply: string, commentId: number) => {
+		closeModal();
+
+		if (isInlineReplyOpenForComment(commentId)) {
+			populateReplyTextarea(reply);
 			return;
 		}
 
-		textarea.value = reply;
-		textarea.focus();
-		// Trigger any listeners bound to the input event (e.g. character counts).
-		textarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
-	}, [] );
+		const replyButton = document.querySelector<HTMLButtonElement>(
+			`#comment-${commentId} .reply button`
+		);
+		if (replyButton) replyButton.click();
 
-	const isInlineReplyOpenForComment = useCallback(
-		( commentId: number ): boolean => {
-			const replyRow =
-				document.querySelector< HTMLElement >( '#replyrow' );
-			const commentIdInput = document.querySelector< HTMLInputElement >(
-				'#replyrow #comment_ID'
-			);
+		if (populateTimeoutRef.current !== null) {
+			window.clearTimeout(populateTimeoutRef.current);
+		}
+		populateTimeoutRef.current = window.setTimeout(() => {
+			populateReplyTextarea(reply);
+			populateTimeoutRef.current = null;
+		}, 150);
+	};
 
-			if ( ! replyRow || ! commentIdInput ) {
-				return false;
-			}
-
-			const isVisible =
-				replyRow.style.display !== 'none' &&
-				replyRow.offsetParent !== null;
-			const isForComment =
-				parseInt( commentIdInput.value, 10 ) === commentId;
-
-			return isVisible && isForComment;
-		},
-		[]
-	);
-
-	const handleSelectReply = useCallback(
-		( reply: string, commentId: number ) => {
-			closeModal();
-
-			if ( isInlineReplyOpenForComment( commentId ) ) {
-				populateReplyTextarea( reply );
-				return;
-			}
-
-			// Find and click WordPress's own Reply button to open the form.
-			const replyButton = document.querySelector< HTMLButtonElement >(
-				`#comment-${ commentId } .reply button`
-			);
-
-			if ( replyButton ) {
-				replyButton.click();
-			}
-
-			// Defer population to let WordPress render the inline reply row.
-			if ( populateTimeoutRef.current !== null ) {
-				window.clearTimeout( populateTimeoutRef.current );
-			}
-			populateTimeoutRef.current = window.setTimeout( () => {
-				populateReplyTextarea( reply );
-				populateTimeoutRef.current = null;
-			}, 150 );
-		},
-		[ closeModal, isInlineReplyOpenForComment, populateReplyTextarea ]
-	);
-
-	useEffect( () => {
-		const handleClick = ( event: MouseEvent ) => {
+	useEffect(() => {
+		const handleClick = (event: MouseEvent) => {
 			const target = event.target as HTMLElement;
-
-			if ( ! target.classList.contains( 'wpai-suggest-reply' ) ) {
-				return;
-			}
-
+			if (!target.classList.contains('wpai-suggest-reply')) return;
 			event.preventDefault();
-
-			const commentId = parseInt(
-				target.dataset[ 'commentId' ] ?? '0',
-				10
-			);
-
-			if ( commentId > 0 ) {
-				openModal( commentId );
+			const commentId = parseInt(target.dataset['commentId'] ?? '0', 10);
+			if (commentId > 0) {
+				setModalState({ isOpen: true, commentId });
 			}
 		};
 
-		const commentList = document.querySelector( '#the-comment-list' );
-
-		if ( commentList ) {
-			commentList.addEventListener(
-				'click',
-				handleClick as EventListener
-			);
-
-			return () => {
-				commentList.removeEventListener(
-					'click',
-					handleClick as EventListener
-				);
-			};
+		const commentList = document.querySelector('#the-comment-list');
+		
+		if (commentList) {
+			commentList.addEventListener('click', handleClick as EventListener);
+			return () => commentList.removeEventListener('click', handleClick as EventListener);
 		}
 
 		return undefined;
-	}, [ openModal ] );
+	}, []);
 
-	// Clean up any pending timeout on unmount.
-	useEffect( () => {
+	useEffect(() => {
 		return () => {
-			if ( populateTimeoutRef.current !== null ) {
-				window.clearTimeout( populateTimeoutRef.current );
+			if (populateTimeoutRef.current !== null) {
+				window.clearTimeout(populateTimeoutRef.current);
 			}
 		};
-	}, [] );
+	}, []);
 
 	return (
 		<>
-			{ modalState.isOpen && modalState.commentId !== null && (
+			{modalState.isOpen && modalState.commentId !== null && (
 				<ReplyModal
-					commentId={ modalState.commentId }
-					onClose={ closeModal }
-					onSelectReply={ handleSelectReply }
+					commentId={modalState.commentId}
+					onClose={closeModal}
+					onSelectReply={handleSelectReply}
 				/>
-			) }
+			)}
 		</>
 	);
 }
