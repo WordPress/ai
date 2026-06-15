@@ -109,4 +109,19 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 		expect( outcome.ok ).toBe( false );
 		expect( outcome.code ).toBe( 'ability_invalid_input' );
 	} );
+
+	test( 'exposes a setting registered by another active plugin', async ( {
+		page,
+	} ) => {
+		// Registered by the `e2e-sample-settings` plugin (mapped in .wp-env.test.json)
+		// with `show_in_abilities` and a default of `sample-default`.
+		const outcome = await runCoreSettings( page, {
+			settings: [ 'ai_e2e_sample_setting' ],
+		} );
+
+		expect( outcome.ok ).toBe( true );
+		expect( outcome.result ).toEqual( {
+			ai_e2e_sample_setting: 'sample-default',
+		} );
+	} );
 } );
