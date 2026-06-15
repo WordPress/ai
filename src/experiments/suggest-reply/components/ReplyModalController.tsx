@@ -30,9 +30,11 @@ export function ReplyModalController(): React.ReactElement {
 		const textarea = document.querySelector< HTMLTextAreaElement >(
 			'#replycontainer #replycontent'
 		);
+
 		if ( ! textarea ) {
 			return;
 		}
+
 		textarea.value = reply;
 		textarea.focus();
 		textarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
@@ -43,12 +45,15 @@ export function ReplyModalController(): React.ReactElement {
 		const commentIdInput = document.querySelector< HTMLInputElement >(
 			'#replyrow #comment_ID'
 		);
+
 		if ( ! replyRow || ! commentIdInput ) {
 			return false;
 		}
+
 		const isVisible =
 			replyRow.style.display !== 'none' && replyRow.offsetParent !== null;
 		const isForComment = parseInt( commentIdInput.value, 10 ) === commentId;
+
 		return isVisible && isForComment;
 	};
 
@@ -66,6 +71,7 @@ export function ReplyModalController(): React.ReactElement {
 		const replyButton = document.querySelector< HTMLButtonElement >(
 			`#comment-${ commentId } .reply button`
 		);
+
 		if ( replyButton ) {
 			replyButton.click();
 		}
@@ -73,6 +79,7 @@ export function ReplyModalController(): React.ReactElement {
 		if ( populateTimeoutRef.current !== null ) {
 			window.clearTimeout( populateTimeoutRef.current );
 		}
+
 		populateTimeoutRef.current = window.setTimeout( () => {
 			populateReplyTextarea( reply );
 			populateTimeoutRef.current = null;
@@ -82,11 +89,17 @@ export function ReplyModalController(): React.ReactElement {
 	useEffect( () => {
 		const handleClick = ( event: MouseEvent ) => {
 			const target = event.target as HTMLElement;
+
 			if ( ! target.classList.contains( 'wpai-suggest-reply' ) ) {
 				return;
 			}
+
 			event.preventDefault();
-			const commentId = parseInt( target.dataset.commentId ?? '0', 10 );
+			const commentId = parseInt(
+				target.getAttribute( 'data-comment-id' ) ?? '0',
+				10
+			);
+
 			if ( commentId > 0 ) {
 				setModalState( { isOpen: true, commentId } );
 			}
@@ -99,6 +112,7 @@ export function ReplyModalController(): React.ReactElement {
 				'click',
 				handleClick as EventListener
 			);
+
 			return () =>
 				commentList.removeEventListener(
 					'click',
