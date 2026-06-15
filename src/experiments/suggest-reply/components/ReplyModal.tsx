@@ -74,11 +74,6 @@ export function ReplyModal({
 		}
 	}, [commentId, tone, guidelines]);
 
-
-	const handleSelect = useCallback(() => {
-		onSelectReply(reply, commentId);
-	}, [reply, commentId, onSelectReply]);
-
 	const toneOptions = [
 		{ label: __('Friendly', 'ai'), value: 'friendly' },
 		{ label: __('Professional', 'ai'), value: 'professional' },
@@ -157,7 +152,7 @@ export function ReplyModal({
 					{reply && (
 						<Button
 							variant="primary"
-							onClick={handleSelect}
+							onClick={() => onSelectReply(reply, commentId)}
 							disabled={isLoading}
 						>
 							{__('Use this reply', 'ai')}
