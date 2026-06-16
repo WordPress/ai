@@ -20,7 +20,7 @@ import {
 	Spinner,
 	TextareaControl,
 } from '@wordpress/components';
-import { useState, useCallback, useRef } from '@wordpress/element';
+import { useState, useCallback, useRef, useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -60,6 +60,16 @@ export function ReplyModal( {
 	// Refs for focus management.
 	const useThisReplyRef = useRef< HTMLButtonElement >( null );
 	const generateRegenerateRef = useRef< HTMLButtonElement >( null );
+	const focusTimeoutRef = useRef< ReturnType< typeof setTimeout > | null >( null );
+
+	// Cancel any pending focus timeout when the modal unmounts.
+	useEffect( () => {
+		return () => {
+			if ( focusTimeoutRef.current !== null ) {
+				clearTimeout( focusTimeoutRef.current );
+			}
+		};
+	}, [] );
 
 	const { ref: copyRef, hasCopied } =
 		useCopyToClipboardFeedback< HTMLButtonElement >( {
@@ -84,7 +94,10 @@ export function ReplyModal( {
 			setReply( result.reply ?? '' );
 
 			// Defer focus so the button has time to mount after the reply renders.
-			setTimeout( () => useThisReplyRef.current?.focus(), 0 );
+			focusTimeoutRef.current = setTimeout(
+				() => useThisReplyRef.current?.focus(),
+				0
+			);
 		} catch ( err: any ) {
 			setError(
 				Boolean( err.message )
@@ -93,7 +106,10 @@ export function ReplyModal( {
 			);
 
 			// Defer focus so the button has time to mount after the error notice renders.
-			setTimeout( () => generateRegenerateRef.current?.focus(), 0 );
+			focusTimeoutRef.current = setTimeout(
+				() => generateRegenerateRef.current?.focus(),
+				0
+			);
 		} finally {
 			setIsLoading( false );
 		}
