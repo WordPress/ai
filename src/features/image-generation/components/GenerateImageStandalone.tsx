@@ -129,6 +129,9 @@ export function GenerateImageStandalone() {
 					onPromptChange={ setPrompt }
 					onGenerate={ () => safeGenerate( prompt.trim() ) }
 					error={ error }
+					hasImageGenerationSupport={ Boolean(
+						aiImageGenerationData?.hasImageGenerationSupport
+					) }
 				/>
 			) }
 

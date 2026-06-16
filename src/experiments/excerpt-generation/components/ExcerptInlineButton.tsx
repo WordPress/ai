@@ -47,6 +47,7 @@ export default function ExcerptInlineButton(): React.JSX.Element | null {
 			isBusy={ isGenerating }
 			className="ai-excerpt-inline-button"
 			label={ buttonLabel }
+			accessibleWhenDisabled
 			showTooltip
 		/>
 	);
