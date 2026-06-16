@@ -4,9 +4,10 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
-## [1.0.2] - 2026-06-15
+## [1.0.2] - 2026-06-16
 ### Added
 - Manual refresh button to the AI Request Logs table header ([#687](https://github.com/WordPress/ai/pull/687)).
+- New `ai_generated` param on our Image Import Ability to set if the imported image was AI generated or not ([GHSA-42mg-ffvx-4xff](https://github.com/WordPress/ai/security/advisories/GHSA-42mg-ffvx-4xff)).
 
 ### Changed
 - Ensure Editorial Notes and Editorial Updates controls stay grouped together in the post editor sidebar ([#605](https://github.com/WordPress/ai/pull/605)).
@@ -40,6 +41,10 @@ All notable changes to this project will be documented in this file, per [the Ke
 - AI Request Logs: main header overlapping table header ([#705](https://github.com/WordPress/ai/pull/705)).
 - Allow users to clear an applied Meta Description while preventing whitespace-only descriptions ([#706](https://github.com/WordPress/ai/pull/706)).
 - Rename unforwarded `MaskCanvas` component function to `InnerMaskCanvas` to avoid duplicate declarations ([#713](https://github.com/WordPress/ai/pull/713)).
+
+### Security
+- Remove the `meta` param from our Image Import Ability ([GHSA-42mg-ffvx-4xff](https://github.com/WordPress/ai/security/advisories/GHSA-42mg-ffvx-4xff)).
+- Check the current user's capabilities and the comment type before setting an Editorial Note ([GHSA-j7hg-vqpw-f98f](https://github.com/WordPress/ai/security/advisories/GHSA-j7hg-vqpw-f98f)).
 
 ### Developer
 - Clarify AI Connector provider setup documentation ([#638](https://github.com/WordPress/ai/pull/638)).
