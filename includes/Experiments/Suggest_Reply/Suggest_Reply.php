@@ -82,9 +82,8 @@ class Suggest_Reply extends Abstract_Feature {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param mixed      $actions The existing comment row actions.
+	 * @param mixed       $actions The existing comment row actions.
 	 * @param \WP_Comment $comment The comment object.
-	 * @return array The modified actions array.
 	 */
 	public function add_row_action( $actions, $comment ): array {
 		if (

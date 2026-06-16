@@ -114,7 +114,7 @@ class Reply_Suggestion extends Abstract_Ability {
 		}
 
 		// Fetch post context.
-		$post         = get_post( $comment->comment_post_ID );
+		$post         = get_post( (int) $comment->comment_post_ID );
 		$post_title   = $post instanceof \WP_Post ? $post->post_title : '';
 		$post_excerpt = $post instanceof \WP_Post
 			? wp_trim_words( wp_strip_all_tags( $post->post_content ), 50 )
