@@ -20,7 +20,7 @@ import {
 	Spinner,
 	TextareaControl,
 } from '@wordpress/components';
-import { useState, useCallback, useRef, useEffect } from '@wordpress/element';
+import { useState, useCallback } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -57,22 +57,6 @@ export function ReplyModal( {
 	const [ guidelines, setGuidelines ] = useState< string >( '' );
 	const [ error, setError ] = useState< string | null >( null );
 
-	// Refs for focus management.
-	const useThisReplyRef = useRef< HTMLButtonElement >( null );
-	const generateRegenerateRef = useRef< HTMLButtonElement >( null );
-	const focusTimeoutRef = useRef< ReturnType< typeof setTimeout > | null >(
-		null
-	);
-
-	// Cancel any pending focus timeout when the modal unmounts.
-	useEffect( () => {
-		return () => {
-			if ( focusTimeoutRef.current !== null ) {
-				clearTimeout( focusTimeoutRef.current );
-			}
-		};
-	}, [] );
-
 	const { ref: copyRef, hasCopied } =
 		useCopyToClipboardFeedback< HTMLButtonElement >( {
 			text: reply,
@@ -94,23 +78,11 @@ export function ReplyModal( {
 			);
 
 			setReply( result.reply ?? '' );
-
-			// Defer focus so the button has time to mount after the reply renders.
-			focusTimeoutRef.current = setTimeout(
-				() => useThisReplyRef.current?.focus(),
-				0
-			);
 		} catch ( err: any ) {
 			setError(
 				Boolean( err.message )
 					? err.message
 					: __( 'Failed to generate reply suggestion.', 'ai' )
-			);
-
-			// Defer focus so the button has time to mount after the error notice renders.
-			focusTimeoutRef.current = setTimeout(
-				() => generateRegenerateRef.current?.focus(),
-				0
 			);
 		} finally {
 			setIsLoading( false );
@@ -208,35 +180,37 @@ export function ReplyModal( {
 
 				{ /* Action buttons */ }
 				<Flex direction="row" gap={ 2 } justify="flex-start">
-					{ reply && ! error && (
-						<Button
-							ref={ useThisReplyRef }
-							variant="primary"
-							onClick={ () => onSelectReply( reply, commentId ) }
-							disabled={ isLoading }
-						>
-							{ __( 'Use this reply', 'ai' ) }
-						</Button>
-					) }
 					<Button
-						ref={ generateRegenerateRef }
-						variant="secondary"
+						variant="primary"
 						onClick={ generateReply }
 						disabled={ isLoading }
 						isBusy={ isLoading }
+						accessibleWhenDisabled
 					>
 						{ getGenerateText() }
 					</Button>
 					{ reply && ! error && (
-						<Button
-							ref={ copyRef }
-							variant="tertiary"
-							disabled={ isLoading }
-						>
-							{ hasCopied
-								? __( 'Copied!', 'ai' )
-								: __( 'Copy', 'ai' ) }
-						</Button>
+						<>
+							<Button
+								variant="secondary"
+								onClick={ () =>
+									onSelectReply( reply, commentId )
+								}
+								disabled={ isLoading }
+							>
+								{ __( 'Use this reply', 'ai' ) }
+							</Button>
+
+							<Button
+								ref={ copyRef }
+								variant="tertiary"
+								disabled={ isLoading }
+							>
+								{ hasCopied
+									? __( 'Copied!', 'ai' )
+									: __( 'Copy', 'ai' ) }
+							</Button>
+						</>
 					) }
 				</Flex>
 			</Flex>
