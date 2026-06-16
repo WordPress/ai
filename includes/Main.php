@@ -11,6 +11,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI\Abilities\Content\Content as Content_Ability;
 use WordPress\AI\Abilities\Settings\Settings as Settings_Ability;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abilities\Users\Users as Users_Ability;
@@ -140,6 +141,7 @@ final class Main {
 			( new Show_In_Abilities() )->register();
 			( new Settings_Ability() )->init();
 			( new Users_Ability() )->init();
+			( new Content_Ability() )->init();
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,
