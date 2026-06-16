@@ -296,29 +296,70 @@ import './index.scss';
 				} );
 			}
 
-			// Check property types
+			// Check property types and constraints
 			if ( schema.properties ) {
 				Object.keys( schema.properties ).forEach(
 					function ( propName ) {
-						if ( propName in input ) {
-							const propSchema = schema.properties[ propName ];
-							const value = input[ propName ];
+						if ( ! ( propName in input ) ) {
+							return;
+						}
 
-							if ( propSchema.type ) {
-								const isValid = this.validateType(
-									value,
-									propSchema.type
+						const propSchema = schema.properties[ propName ];
+						const value = input[ propName ];
+
+						if ( propSchema.type ) {
+							const isValid = this.validateType(
+								value,
+								propSchema.type
+							);
+							if ( ! isValid ) {
+								errors.push(
+									'Field "' +
+										propName +
+										'" should be of type "' +
+										propSchema.type +
+										'"'
 								);
-								if ( ! isValid ) {
-									errors.push(
-										'Field "' +
-											propName +
-											'" should be of type "' +
-											propSchema.type +
-											'"'
-									);
-								}
+								return;
 							}
+						}
+
+						if (
+							Array.isArray( propSchema.enum ) &&
+							! propSchema.enum.includes( value )
+						) {
+							errors.push(
+								'Field "' +
+									propName +
+									'" must be one of: ' +
+									propSchema.enum.join( ', ' )
+							);
+						}
+
+						if (
+							typeof value === 'number' &&
+							typeof propSchema.minimum === 'number' &&
+							value < propSchema.minimum
+						) {
+							errors.push(
+								'Field "' +
+									propName +
+									'" must be at least ' +
+									propSchema.minimum
+							);
+						}
+
+						if (
+							typeof value === 'number' &&
+							typeof propSchema.maximum === 'number' &&
+							value > propSchema.maximum
+						) {
+							errors.push(
+								'Field "' +
+									propName +
+									'" must be at most ' +
+									propSchema.maximum
+							);
 						}
 					}.bind( this )
 				);
@@ -339,8 +380,11 @@ import './index.scss';
 				case 'string':
 					return typeof value === 'string';
 				case 'number':
+					return (
+						typeof value === 'number' && Number.isFinite( value )
+					);
 				case 'integer':
-					return typeof value === 'number';
+					return Number.isInteger( value );
 				case 'boolean':
 					return typeof value === 'boolean';
 				case 'array':

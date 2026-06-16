@@ -44,6 +44,10 @@
 		justify-content: center;
 		gap: 10px;
 		padding: 20px 0;
+
+		svg {
+			margin: 0;
+		}
 	}
 
 	&__spinner-label {
@@ -259,7 +263,7 @@
 }
 
 .ai-generate-image-inline-modal {
-	.components-notice {
+	.ai-image-generation__actions + .components-notice {
 		margin-top: 15px;
 	}
 }

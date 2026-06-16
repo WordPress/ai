@@ -375,7 +375,7 @@ class AI_Request_Log_Repository {
 		do {
 			$deleted = $wpdb->query(
 				$wpdb->prepare(
-					"DELETE FROM {$table_name} WHERE timestamp < DATE_SUB(NOW(), INTERVAL %d DAY) LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"DELETE FROM {$table_name} WHERE timestamp < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY) LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					$retention_days,
 					self::DELETE_BATCH_SIZE
 				)
@@ -723,15 +723,15 @@ class AI_Request_Log_Repository {
 	private function get_date_condition( string $period ): string {
 		switch ( $period ) {
 			case 'minute':
-				return 'AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 MINUTE)';
+				return 'AND timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE)';
 			case 'hour':
-				return 'AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 HOUR)';
+				return 'AND timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 HOUR)';
 			case 'day':
-				return 'AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY)';
+				return 'AND timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY)';
 			case 'week':
-				return 'AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 WEEK)';
+				return 'AND timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 WEEK)';
 			case 'month':
-				return 'AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 MONTH)';
+				return 'AND timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MONTH)';
 			default:
 				return '';
 		}

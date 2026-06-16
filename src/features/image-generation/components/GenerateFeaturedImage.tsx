@@ -13,9 +13,14 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateImage } from '../functions/generate-image';
 import { uploadImage } from '../functions/upload-image';
-import { ensureProvider } from '../../../utils/provider-status';
+import {
+	ensureProvider,
+	getProviderData,
+} from '../../../utils/provider-status';
 
 const NOTICE_ID = 'ai_image_generation_error';
+
+const { aiImageGenerationData } = window as any;
 
 /**
  * GenerateFeaturedImage component.
@@ -39,6 +44,28 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 	 */
 	const handleGenerate = async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
+		if ( ! aiImageGenerationData?.hasImageGenerationSupport ) {
+			( dispatch( noticesStore ) as any ).createErrorNotice(
+				__(
+					'This feature requires an AI Connector that supports image generation. Review your Connectors to ensure you have a valid AI Connector configured.',
+					'ai'
+				),
+				{
+					id: NOTICE_ID,
+					isDismissible: true,
+					actions: getProviderData().connectorsUrl
+						? [
+								{
+									label: __( 'Manage Connectors', 'ai' ),
+									url: getProviderData().connectorsUrl,
+								},
+						  ]
+						: [],
+				}
+			);
 			return;
 		}
 

@@ -78,15 +78,8 @@ export interface ImageImportAbilityInput {
 	description?: string;
 	alt_text?: string;
 	mime_type?: string;
-	meta?: {
-		key: string;
-		value: string;
-	}[];
-	[ key: string ]:
-		| string
-		| number
-		| { key: string; value: string }[]
-		| undefined;
+	ai_generated?: boolean;
+	[ key: string ]: string | number | boolean | undefined;
 }
 
 /**
