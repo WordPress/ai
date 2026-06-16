@@ -20,13 +20,14 @@ import {
 	Spinner,
 	TextareaControl,
 } from '@wordpress/components';
-import { useState, useCallback } from '@wordpress/element';
+import { useState, useCallback, useRef } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { useCopyToClipboardFeedback } from '../../../hooks/use-copy-to-clipboard-feedback';
 
 type Tone = 'professional' | 'friendly' | 'casual';
 
@@ -55,6 +56,15 @@ export function ReplyModal( {
 	const [ tone, setTone ] = useState< Tone >( 'friendly' );
 	const [ guidelines, setGuidelines ] = useState< string >( '' );
 	const [ error, setError ] = useState< string | null >( null );
+    
+	// Refs for focus management.
+	const useThisReplyRef = useRef< HTMLButtonElement >( null );
+	const generateRegenerateRef = useRef< HTMLButtonElement >( null );
+
+	const { ref: copyRef, hasCopied } = useCopyToClipboardFeedback< HTMLButtonElement >( {
+		text: reply,
+		announcement: __( 'Reply copied to clipboard.', 'ai' ),
+	} );
 
 	const generateReply = useCallback( async () => {
 		setIsLoading( true );
@@ -71,12 +81,18 @@ export function ReplyModal( {
 			);
 
 			setReply( result.reply ?? '' );
+
+			// Defer focus so the button has time to mount after the reply renders.
+			setTimeout( () => useThisReplyRef.current?.focus(), 0 );
 		} catch ( err: any ) {
 			setError(
-				Boolean(err.message)
+				Boolean( err.message )
 					? err.message
 					: __( 'Failed to generate reply suggestion.', 'ai' )
 			);
+
+			// Defer focus so the button has time to mount after the error notice renders.
+			setTimeout( () => generateRegenerateRef.current?.focus(), 0 );
 		} finally {
 			setIsLoading( false );
 		}
@@ -110,7 +126,7 @@ export function ReplyModal( {
 					<TextareaControl
 						label={ __( 'Guidelines (optional)', 'ai' ) }
 						placeholder={ __(
-							'e.g. Always mention our support email, keep it under 3 sentences…',
+							'Add any instructions you want the AI to follow when generating responses…',
 							'ai'
 						) }
 						rows={ 2 }
@@ -158,6 +174,7 @@ export function ReplyModal( {
 				<Flex direction="row" gap={ 2 } justify="flex-start">
 					{ reply && (
 						<Button
+							ref={ useThisReplyRef }
 							variant="primary"
 							onClick={ () => onSelectReply( reply, commentId ) }
 							disabled={ isLoading }
@@ -166,6 +183,7 @@ export function ReplyModal( {
 						</Button>
 					) }
 					<Button
+						ref={ generateRegenerateRef }
 						variant="secondary"
 						onClick={ generateReply }
 						disabled={ isLoading }
@@ -175,6 +193,17 @@ export function ReplyModal( {
 							? __( 'Regenerate', 'ai' )
 							: __( 'Generate', 'ai' ) }
 					</Button>
+					{ reply && (
+						<Button
+							ref={ copyRef }
+							variant="tertiary"
+							disabled={ isLoading }
+						>
+							{ hasCopied
+								? __( 'Copied!', 'ai' )
+								: __( 'Copy', 'ai' ) }
+						</Button>
+					) }
 				</Flex>
 			</Flex>
 		</Modal>
