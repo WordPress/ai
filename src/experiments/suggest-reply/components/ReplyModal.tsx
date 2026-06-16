@@ -60,7 +60,9 @@ export function ReplyModal( {
 	// Refs for focus management.
 	const useThisReplyRef = useRef< HTMLButtonElement >( null );
 	const generateRegenerateRef = useRef< HTMLButtonElement >( null );
-	const focusTimeoutRef = useRef< ReturnType< typeof setTimeout > | null >( null );
+	const focusTimeoutRef = useRef< ReturnType< typeof setTimeout > | null >(
+		null
+	);
 
 	// Cancel any pending focus timeout when the modal unmounts.
 	useEffect( () => {
