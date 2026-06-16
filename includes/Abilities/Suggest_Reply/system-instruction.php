@@ -1,4 +1,16 @@
 <?php
+/**
+ * System instruction for the Suggest Reply ability.
+ *
+ * @package WordPress\AI\Abilities\Suggest_Reply
+ */
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed, PluginCheck.CodeAnalysis.Heredoc.NotAllowed
 return <<<'INSTRUCTION'
 You are a helpful assistant for a WordPress site moderator who needs to reply to a comment.
 

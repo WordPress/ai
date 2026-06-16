@@ -1,4 +1,8 @@
 /**
+ * Controller for the Suggest Reply modal.
+ */
+
+/**
  * External dependencies
  */
 import React from 'react';
@@ -18,6 +22,10 @@ type ModalState = {
 	commentId: number | null;
 };
 
+/**
+ * Mounts a delegated click listener on the comment list and renders the
+ * reply modal when a "Suggest reply" action link is clicked.
+ */
 export function ReplyModalController(): React.ReactElement {
 	const [ modalState, setModalState ] = useState< ModalState >( {
 		isOpen: false,
@@ -26,6 +34,7 @@ export function ReplyModalController(): React.ReactElement {
 
 	const populateTimeoutRef = useRef< number | null >( null );
 
+	/** Writes the generated reply into the inline reply textarea and focuses it. */
 	const populateReplyTextarea = ( reply: string ) => {
 		const textarea = document.querySelector< HTMLTextAreaElement >(
 			'#replycontainer #replycontent'
@@ -40,6 +49,7 @@ export function ReplyModalController(): React.ReactElement {
 		textarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
 	};
 
+	/** Returns true when the WordPress inline reply form is already open for the given comment. */
 	const isInlineReplyOpenForComment = ( commentId: number ): boolean => {
 		const replyRow = document.querySelector< HTMLElement >( '#replyrow' );
 		const commentIdInput = document.querySelector< HTMLInputElement >(
@@ -60,6 +70,10 @@ export function ReplyModalController(): React.ReactElement {
 	const closeModal = () =>
 		setModalState( ( prev ) => ( { ...prev, isOpen: false } ) );
 
+	/**
+	 * Closes the modal and inserts the selected reply into the comment reply form.
+	 * Opens the inline reply row first if it is not already visible.
+	 */
 	const handleSelectReply = ( reply: string, commentId: number ) => {
 		closeModal();
 

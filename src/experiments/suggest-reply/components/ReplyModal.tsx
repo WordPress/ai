@@ -1,4 +1,8 @@
 /**
+ * Modal component for the Suggest Reply experiment.
+ */
+
+/**
  * External dependencies
  */
 import React from 'react';
@@ -37,6 +41,10 @@ export type ReplyModalProps = {
 	onSelectReply: ( reply: string, commentId: number ) => void;
 };
 
+/**
+ * Renders the AI reply suggestion modal, allowing the moderator to choose
+ * a tone, provide optional guidelines, generate a reply, and insert it.
+ */
 export function ReplyModal( {
 	commentId,
 	onClose,

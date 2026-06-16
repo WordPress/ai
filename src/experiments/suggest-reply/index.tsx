@@ -1,4 +1,8 @@
 /**
+ * Suggest reply experiment plugin registration.
+ */
+
+/**
  * WordPress dependencies
  */
 import domReady from '@wordpress/dom-ready';
