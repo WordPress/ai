@@ -243,7 +243,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that purge_logs returns a success response structure.
+	 * Tests that purge_logs with before_days=0 deletes all logs.
 	 *
 	 * This test uses TRUNCATE internally via purge_all(), so it must
 	 * run last in the class to avoid breaking the transaction.
@@ -265,6 +265,64 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		$this->assertTrue( $data['success'] );
 		$this->assertArrayHasKey( 'deleted', $data );
 		$this->assertArrayHasKey( 'message', $data );
+	}
+
+	/**
+	 * Tests that purge_logs with before_days only removes old entries.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_purge_logs_with_before_days_removes_only_old_entries(): void {
+		global $wpdb;
+
+		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$table = $wpdb->prefix . \WordPress\AI\Logging\AI_Request_Log_Schema::TABLE_NAME;
+
+		// Insert a log and backdate it to 60 days ago.
+		$old_id = $this->insert_log();
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$table,
+			array( 'timestamp' => gmdate( 'Y-m-d H:i:s', strtotime( '-60 days' ) ) ),
+			array( 'log_id' => $old_id ),
+			array( '%s' ),
+			array( '%s' )
+		);
+
+		// Insert a recent log.
+		$this->insert_log();
+
+		$request = new WP_REST_Request( 'DELETE', '/ai/v1/logs' );
+		$request->set_param( 'before_days', 30 );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+
+		$data = $response->get_data();
+		$this->assertTrue( $data['success'] );
+		$this->assertSame( 1, $data['deleted'] );
+
+		// The recent log must still be present.
+		$get_request  = new WP_REST_Request( 'GET', '/ai/v1/logs' );
+		$get_response = rest_get_server()->dispatch( $get_request );
+		$this->assertSame( '1', $get_response->get_headers()['X-WP-Total'] );
+	}
+
+	/**
+	 * Tests that a negative before_days value is rejected.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_purge_logs_rejects_negative_before_days(): void {
+		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$request = new WP_REST_Request( 'DELETE', '/ai/v1/logs' );
+		$request->set_param( 'before_days', -1 );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 400, $response->get_status() );
 	}
 
 	/**

@@ -256,6 +256,76 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that delete_logs_older_than with a positive value only removes old entries.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_delete_logs_older_than_removes_only_old_entries(): void {
+		global $wpdb;
+
+		$table = $wpdb->prefix . \WordPress\AI\Logging\AI_Request_Log_Schema::TABLE_NAME;
+
+		// Insert a log and backdate it to 60 days ago.
+		$old_id = $this->manager->log(
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			)
+		);
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$table,
+			array( 'timestamp' => gmdate( 'Y-m-d H:i:s', strtotime( '-60 days' ) ) ),
+			array( 'log_id' => $old_id ),
+			array( '%s' ),
+			array( '%s' )
+		);
+
+		// Insert a recent log.
+		$this->manager->log(
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			)
+		);
+
+		$deleted = $this->manager->delete_logs_older_than( 30 );
+
+		$this->assertSame( 1, $deleted );
+		$this->assertSame( 1, $this->manager->get_logs()['total'] );
+	}
+
+	/**
+	 * Tests that delete_logs_older_than with 0 purges all logs.
+	 *
+	 * This test uses TRUNCATE internally, so it must run last in the class.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_delete_logs_older_than_zero_purges_all(): void {
+		$this->manager->log(
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			)
+		);
+		$this->manager->log(
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			)
+		);
+
+		$deleted = $this->manager->delete_logs_older_than( 0 );
+
+		$this->assertIsInt( $deleted );
+		$this->assertGreaterThanOrEqual( 2, $deleted );
+	}
+
+	/**
 	 * Tests that purge_all_logs returns the deleted row count.
 	 *
 	 * This test uses TRUNCATE internally, so it must run last
