@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI\Abilities\Content\Content as Content_Ability;
+use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
@@ -129,6 +131,11 @@ final class Main {
 
 			// Register our post-related WordPress Abilities.
 			( new Posts() )->register();
+
+			// Expose curated core post types to the Abilities API, then register the
+			// `core/content` ability (overriding any core-provided copy).
+			Show_In_Abilities::register();
+			Content_Ability::init();
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,
