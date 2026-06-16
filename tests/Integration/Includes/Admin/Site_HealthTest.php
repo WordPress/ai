@@ -84,7 +84,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
-	// ── Hook registration ─────────────────────────────────────────────────────
+	// Hook registration
 
 	/**
 	 * Tests that init() registers the debug_information filter.
@@ -112,7 +112,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 		);
 	}
 
-	// ── Debug information ─────────────────────────────────────────────────────
+	// Debug information
 
 	/**
 	 * Tests that the debug information section contains the expected keys.
@@ -198,7 +198,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 		}
 	}
 
-	// ── Status tests ──────────────────────────────────────────────────────────
+	// Status tests
 
 	/**
 	 * Tests that add_status_tests() injects the credentials test.

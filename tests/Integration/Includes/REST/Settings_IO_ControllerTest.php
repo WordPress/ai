@@ -83,7 +83,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
-	// ── Route registration ────────────────────────────────────────────────────
+	// Route registration
 
 	/**
 	 * Tests that the export REST route is registered.
@@ -115,7 +115,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( '/ai/v1/settings/import', $routes );
 	}
 
-	// ── Permission checks ─────────────────────────────────────────────────────
+	// Permission checks
 
 	/**
 	 * Tests that the permission check returns true for administrators.
@@ -182,7 +182,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 403, $response->get_status() );
 	}
 
-	// ── Export ────────────────────────────────────────────────────────────────
+	// Export
 
 	/**
 	 * Tests that the export endpoint returns the correct payload structure.
@@ -290,7 +290,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->assertContains( 'wpai_feature_io-test-feature_enabled', $exportable );
 	}
 
-	// ── Import ────────────────────────────────────────────────────────────────
+	// Import
 
 	/**
 	 * Tests that a valid import payload succeeds.

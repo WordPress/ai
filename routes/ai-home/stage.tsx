@@ -764,7 +764,6 @@ function AISettingsPage() {
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
 
-	// ── Import / Export state ────────────────────────────────────────────────
 	const fileInputRef = useRef< HTMLInputElement >( null );
 	const [ pendingImport, setPendingImport ] =
 		useState< ExportPayload | null >( null );
@@ -877,7 +876,6 @@ function AISettingsPage() {
 	const handleImportCancel = useCallback( () => {
 		setPendingImport( null );
 	}, [] );
-	// ────────────────────────────────────────────────────────────────────────
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		// Return the stable module-level reference when page data is available so
