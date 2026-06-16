@@ -1,4 +1,10 @@
 <?php
+/**
+ * Suggest reply experiment implementation.
+ *
+ * @package WordPress\AI
+ */
+
 declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Suggest_Reply;
@@ -11,12 +17,29 @@ use WordPress\AI\Experiments\Experiment_Category;
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Suggest reply experiment.
+ *
+ * Generates reply suggestions for a comment using AI.
+ *
+ * @since x.x.x
+ */
 class Suggest_Reply extends Abstract_Feature {
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @since x.x.x
+	 */
 	public static function get_id(): string {
 		return 'suggest-reply';
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @since x.x.x
+	 */
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Suggest Reply', 'ai' ),
@@ -25,6 +48,11 @@ class Suggest_Reply extends Abstract_Feature {
 		);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @since x.x.x
+	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 
@@ -33,6 +61,11 @@ class Suggest_Reply extends Abstract_Feature {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
+	/**
+	 * Registers the reply suggestion ability.
+	 *
+	 * @since x.x.x
+	 */
 	public function register_abilities(): void {
 		wp_register_ability(
 			'ai/reply-suggestion',
@@ -44,6 +77,15 @@ class Suggest_Reply extends Abstract_Feature {
 		);
 	}
 
+	/**
+	 * Adds a "Suggest reply" action link to the comment row actions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed      $actions The existing comment row actions.
+	 * @param \WP_Comment $comment The comment object.
+	 * @return array The modified actions array.
+	 */
 	public function add_row_action( $actions, $comment ): array {
 		if (
 			! is_array( $actions ) ||
@@ -63,6 +105,13 @@ class Suggest_Reply extends Abstract_Feature {
 		return $actions;
 	}
 
+	/**
+	 * Enqueues assets for the Suggest Reply experiment.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
 	public function enqueue_assets( string $hook_suffix ): void {
 		if ( ! in_array( $hook_suffix, array( 'edit-comments.php', 'index.php' ), true ) ) {
 			return;

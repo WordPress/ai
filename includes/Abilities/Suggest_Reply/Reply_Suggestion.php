@@ -1,4 +1,9 @@
 <?php
+/**
+ * Reply suggestion ability implementation.
+ *
+ * @package WordPress\AI
+ */
 
 declare( strict_types=1 );
 
@@ -12,8 +17,18 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Ability that generates AI-powered reply suggestions for a comment.
+ *
+ * @since x.x.x
+ */
 class Reply_Suggestion extends Abstract_Ability {
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @since x.x.x
+	 */
 	protected function input_schema(): array {
 		return array(
 			'type'       => 'object',
@@ -38,6 +53,11 @@ class Reply_Suggestion extends Abstract_Ability {
 		);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @since x.x.x
+	 */
 	protected function output_schema(): array {
 		return array(
 			'type'       => 'object',
@@ -54,6 +74,13 @@ class Reply_Suggestion extends Abstract_Ability {
 		);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @since x.x.x
+	 * 
+	 * @return array{comment_id: int, reply: string}|\WP_Error The result of the ability execution.
+	 */
 	protected function execute_callback( $input ) {
 		$input = wp_parse_args(
 			(array) $input,
@@ -114,6 +141,11 @@ class Reply_Suggestion extends Abstract_Ability {
 		);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @since x.x.x
+	 */
 	protected function permission_callback( $input ) {
 		if ( ! current_user_can( 'moderate_comments' ) ) {
 			return new WP_Error(
@@ -125,12 +157,29 @@ class Reply_Suggestion extends Abstract_Ability {
 		return true;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @since x.x.x
+	 */
 	protected function meta(): array {
 		return array(
 			'show_in_rest' => true,
 		);
 	}
 
+	/**
+	 * Builds the prompt context string from the comment and post data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Comment $comment      The comment to reply to.
+	 * @param string      $post_title   The title of the parent post.
+	 * @param string      $post_excerpt A short excerpt of the parent post content.
+	 * @param string      $tone         The desired reply tone (e.g. 'friendly', 'professional').
+	 * @param string      $guidelines   Optional editorial guidelines to apply.
+	 * @return string The assembled prompt context.
+	 */
 	private function build_context(
 		\WP_Comment $comment,
 		string $post_title,
@@ -159,6 +208,14 @@ class Reply_Suggestion extends Abstract_Ability {
 		return implode( "\n", $parts );
 	}
 
+	/**
+	 * Generates a reply suggestion via the AI client.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $context The assembled prompt context string.
+	 * @return string|\WP_Error The sanitized reply text, or a WP_Error on failure.
+	 */
 	private function generate_reply( string $context ) {
 		$prompt_builder = wp_ai_client_prompt( $context )
 			->using_system_instruction( $this->get_system_instruction() )
