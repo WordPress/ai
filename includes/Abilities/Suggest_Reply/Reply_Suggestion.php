@@ -26,7 +26,7 @@ class Reply_Suggestion extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
-	 * 
+	 *
 	 * @since x.x.x
 	 */
 	protected function input_schema(): array {
@@ -55,7 +55,7 @@ class Reply_Suggestion extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
-	 * 
+	 *
 	 * @since x.x.x
 	 */
 	protected function output_schema(): array {
@@ -76,9 +76,9 @@ class Reply_Suggestion extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
-	 * 
+	 *
 	 * @since x.x.x
-	 * 
+	 *
 	 * @return array{comment_id: int, reply: string}|\WP_Error The result of the ability execution.
 	 */
 	protected function execute_callback( $input ) {
@@ -143,7 +143,7 @@ class Reply_Suggestion extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
-	 * 
+	 *
 	 * @since x.x.x
 	 */
 	protected function permission_callback( $input ) {
@@ -159,7 +159,7 @@ class Reply_Suggestion extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
-	 * 
+	 *
 	 * @since x.x.x
 	 */
 	protected function meta(): array {

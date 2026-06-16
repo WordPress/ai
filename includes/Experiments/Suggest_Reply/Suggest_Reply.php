@@ -28,7 +28,7 @@ class Suggest_Reply extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 * 
+	 *
 	 * @since x.x.x
 	 */
 	public static function get_id(): string {
@@ -37,7 +37,7 @@ class Suggest_Reply extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 * 
+	 *
 	 * @since x.x.x
 	 */
 	protected function load_metadata(): array {
@@ -50,7 +50,7 @@ class Suggest_Reply extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
-	 * 
+	 *
 	 * @since x.x.x
 	 */
 	public function register(): void {
