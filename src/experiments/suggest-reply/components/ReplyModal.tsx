@@ -56,15 +56,16 @@ export function ReplyModal( {
 	const [ tone, setTone ] = useState< Tone >( 'friendly' );
 	const [ guidelines, setGuidelines ] = useState< string >( '' );
 	const [ error, setError ] = useState< string | null >( null );
-    
+
 	// Refs for focus management.
 	const useThisReplyRef = useRef< HTMLButtonElement >( null );
 	const generateRegenerateRef = useRef< HTMLButtonElement >( null );
 
-	const { ref: copyRef, hasCopied } = useCopyToClipboardFeedback< HTMLButtonElement >( {
-		text: reply,
-		announcement: __( 'Reply copied to clipboard.', 'ai' ),
-	} );
+	const { ref: copyRef, hasCopied } =
+		useCopyToClipboardFeedback< HTMLButtonElement >( {
+			text: reply,
+			announcement: __( 'Reply copied to clipboard.', 'ai' ),
+		} );
 
 	const generateReply = useCallback( async () => {
 		setIsLoading( true );
@@ -159,7 +160,8 @@ export function ReplyModal( {
 					<FlexItem>
 						<p
 							style={ {
-								borderLeft: '3px solid var(--wp-admin-theme-color)',
+								borderLeft:
+									'3px solid var(--wp-admin-theme-color)',
 								padding: '12px 16px',
 								fontSize: '14px',
 								lineHeight: '1.6',
