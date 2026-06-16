@@ -123,6 +123,22 @@ export function ReplyModal( {
 		{ label: __( 'Casual', 'ai' ), value: 'casual' },
 	];
 
+	const getGenerateText = useCallback( () => {
+		if ( isLoading ) {
+			return __( 'Generating…', 'ai' );
+		}
+
+		if ( error ) {
+			return __( 'Retry', 'ai' );
+		}
+
+		if ( reply ) {
+			return __( 'Regenerate', 'ai' );
+		}
+
+		return __( 'Generate', 'ai' );
+	}, [ error, reply, isLoading ] );
+
 	return (
 		<Modal
 			title={ __( 'Suggest Reply', 'ai' ) }
@@ -192,7 +208,7 @@ export function ReplyModal( {
 
 				{ /* Action buttons */ }
 				<Flex direction="row" gap={ 2 } justify="flex-start">
-					{ reply && (
+					{ reply && ! error && (
 						<Button
 							ref={ useThisReplyRef }
 							variant="primary"
@@ -209,11 +225,9 @@ export function ReplyModal( {
 						disabled={ isLoading }
 						isBusy={ isLoading }
 					>
-						{ reply
-							? __( 'Regenerate', 'ai' )
-							: __( 'Generate', 'ai' ) }
+						{ getGenerateText() }
 					</Button>
-					{ reply && (
+					{ reply && ! error && (
 						<Button
 							ref={ copyRef }
 							variant="tertiary"

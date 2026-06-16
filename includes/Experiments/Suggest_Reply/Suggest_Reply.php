@@ -43,7 +43,7 @@ class Suggest_Reply extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Suggest Reply', 'ai' ),
-			'description' => __( 'Adds a "Suggest reply" action to the Comments screen. AI generates reply candidates based on the comment content, post context, and optional editorial guidelines, which the moderator can review, edit, and insert.', 'ai' ),
+			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to generate and insert AI-powered reply suggestions.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
