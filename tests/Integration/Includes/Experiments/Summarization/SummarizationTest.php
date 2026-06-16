@@ -81,7 +81,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the editor assets are registered with the block editor assets hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_register_uses_block_editor_assets_hook() {
 		$experiment = new Summarization();
@@ -109,7 +109,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() does not load outside the post editor.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_enqueue_assets_skips_non_post_screens() {
 		$experiment = new Summarization();

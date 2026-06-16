@@ -401,7 +401,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests Google token usage sums candidatesTokenCount and thoughtsTokenCount.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_extract_token_usage_google_format_with_thoughts(): void {
 		$tokens = $this->extractor->extract_token_usage(
@@ -421,7 +421,7 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	/**
 	 * Tests Google token usage returns null output when no output fields exist.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_extract_token_usage_google_format_without_output_fields(): void {
 		$tokens = $this->extractor->extract_token_usage(
