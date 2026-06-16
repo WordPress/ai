@@ -293,20 +293,13 @@ const App: React.FC = () => {
 				data: { before_days: days },
 			} );
 
-			setLogs( [] );
-			setTotal( 0 );
-			setTotalPages( 1 );
-			setLogsQuery( ( previous ) => ( {
-				...previous,
-				page: 1,
-			} ) );
-
 			showNotice(
 				'success',
 				days > 0
 					? __( 'Logs have been deleted.', 'ai' )
 					: __( 'All logs have been purged.', 'ai' )
 			);
+			fetchLogs();
 			fetchSummary( summaryPeriod );
 			fetchFilters();
 		} catch ( apiError ) {
