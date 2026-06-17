@@ -200,13 +200,13 @@ class Summarization extends Abstract_Feature {
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */
 	public function maybe_enqueue_bulk_assets( string $hook_suffix ): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended Reading query param for script enqueue only.
-		if ( 'edit.php' !== $hook_suffix || ! isset( $_GET['wpai_bulk_summary'] ) || ! current_user_can( 'edit_posts' ) ) {
+		// Reading query param for script enqueue only.
+		if ( 'edit.php' !== $hook_suffix || ! isset( $_GET['wpai_bulk_summary'] ) || ! current_user_can( 'edit_posts' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended Reading query param for script enqueue only.
-		$raw_ids = isset( $_GET['wpai_post_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_post_ids'] ) ) : '';
+		// Reading query param for script enqueue only.
+		$raw_ids = isset( $_GET['wpai_post_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_post_ids'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$ids     = array_values( array_filter( array_map( 'absint', explode( ',', $raw_ids ) ) ) );
 
 		if ( empty( $ids ) ) {
@@ -214,10 +214,9 @@ class Summarization extends Abstract_Feature {
 		}
 
 		// Resolve the REST base once all posts in a list table share the same post type.
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended Reading post_type query param for script enqueue only.
-		$post_type     = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post';
+		$post_type     = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$post_type_obj = get_post_type_object( $post_type );
-		$rest_base     = ( $post_type_obj && $post_type_obj->rest_base ) ? (string) $post_type_obj->rest_base : 'posts';
+		$rest_base     = $post_type_obj && $post_type_obj->rest_base ? (string) $post_type_obj->rest_base : 'posts';
 
 		Asset_Loader::enqueue_script( 'summarization_bulk', 'experiments/summarization-bulk', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
