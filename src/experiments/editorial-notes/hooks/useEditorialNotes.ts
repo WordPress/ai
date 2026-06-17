@@ -266,7 +266,7 @@ export function useEditorialNotes(): {
 					dispatch( coreStore ) as any
 				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
 
-				( dispatch( noticesStore ) as any ).createSuccessNotice(
+				dispatch( noticesStore ).createSuccessNotice(
 					sprintf(
 						/* translators: %d: number of suggestions added. */
 						_n(
