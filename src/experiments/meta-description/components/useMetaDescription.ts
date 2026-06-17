@@ -91,7 +91,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		? sprintf(
 				/* translators: %d: minimum number of characters required */
 				__(
-					'Meta description generation will be available when the post content has at least %d characters.',
+					'Meta Description generation will be available when the post content has at least %d characters.',
 					'ai'
 				),
 				minContentLength
@@ -99,7 +99,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		: sprintf(
 				/* translators: %d: minimum number of words required */
 				__(
-					'Meta description generation will be available when the post content has at least %d words.',
+					'Meta Description generation will be available when the post content has at least %d words.',
 					'ai'
 				),
 				minContentLength

@@ -175,6 +175,15 @@ export default function MetaDescriptionModal( {
 						{ __( 'Cancel', 'ai' ) }
 					</Button>
 				</div>
+
+				{ isContentTooShort && (
+					<p
+						className="ai-meta-description__hint components-base-control__help"
+						style={ { color: '#757575' } }
+					>
+						{ tooShortLabel }
+					</p>
+				) }
 			</div>
 		</Modal>
 	);

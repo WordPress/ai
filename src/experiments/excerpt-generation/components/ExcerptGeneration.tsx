@@ -46,18 +46,28 @@ export default function ExcerptGeneration(): React.JSX.Element | null {
 	}
 
 	return (
-		<Button
-			icon={ update }
-			variant="secondary"
-			label={ isContentTooShort ? tooShortLabel : buttonLabel }
-			showTooltip
-			onClick={ handleGenerate }
-			disabled={ isGenerating || isContentTooShort }
-			accessibleWhenDisabled
-			isBusy={ isGenerating }
-			__next40pxDefaultSize
-		>
-			{ buttonLabel }
-		</Button>
+		<div>
+			<Button
+				icon={ update }
+				variant="secondary"
+				label={ isContentTooShort ? tooShortLabel : buttonLabel }
+				onClick={ handleGenerate }
+				disabled={ isGenerating || isContentTooShort }
+				accessibleWhenDisabled
+				isBusy={ isGenerating }
+				__next40pxDefaultSize
+			>
+				{ buttonLabel }
+			</Button>
+
+			{ isContentTooShort && (
+				<p
+					className="ai-excerpt-generation__hint components-base-control__help"
+					style={ { color: '#757575' } }
+				>
+					{ tooShortLabel }
+				</p>
+			) }
+		</div>
 	);
 }

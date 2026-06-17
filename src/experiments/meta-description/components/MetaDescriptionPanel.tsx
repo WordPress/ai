@@ -134,7 +134,6 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 							? tooShortLabel
 							: __( 'Generate Meta Description', 'ai' )
 					}
-					showTooltip
 					onClick={ handleOpenModal }
 					disabled={ isGenerating || isContentTooShort }
 					isBusy={ isGenerating }
@@ -147,6 +146,15 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 						? __( 'Generating…', 'ai' )
 						: __( 'Generate Meta Description', 'ai' ) }
 				</Button>
+			) }
+
+			{ isContentTooShort && ! hasDescription && (
+				<p
+					className="ai-meta-description__hint components-base-control__help"
+					style={ { color: '#757575' } }
+				>
+					{ tooShortLabel }
+				</p>
 			) }
 
 			{ isModalOpen && (

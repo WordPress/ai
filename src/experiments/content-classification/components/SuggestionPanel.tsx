@@ -78,12 +78,15 @@ export default function SuggestionPanel( {
 			) }
 
 			{ ! hasEnoughContent && ! hasSuggestions && (
-				<p className="ai-content-classification__hint components-base-control__help">
+				<p
+					className="ai-content-classification__hint components-base-control__help"
+					style={ { color: '#757575' } }
+				>
 					{ getWordCountType() !== 'words'
 						? sprintf(
 								/* translators: %d: Minimum content length. */
 								__(
-									'Add more content to enable AI suggestions (approximately %d characters).',
+									'Content Classification will be available when the post content has at least %d characters.',
 									'ai'
 								),
 								minContentLength
@@ -91,7 +94,7 @@ export default function SuggestionPanel( {
 						: sprintf(
 								/* translators: %d: Minimum content length. */
 								__(
-									'Add more content to enable AI suggestions (approximately %d words).',
+									'Content Classification will be available when the post content has at least %d words.',
 									'ai'
 								),
 								minContentLength
