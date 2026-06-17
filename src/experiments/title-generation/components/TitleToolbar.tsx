@@ -282,6 +282,7 @@ export default function TitleToolbar( {
 								onClick={ handleRegenerate }
 								disabled={ isRegenerating }
 								isBusy={ isRegenerating }
+								__next40pxDefaultSize
 							>
 								{ buttonLabel }
 							</Button>
@@ -291,6 +292,7 @@ export default function TitleToolbar( {
 								variant="primary"
 								onClick={ handleInsert }
 								disabled={ isRegenerating || ! generatedTitle }
+								__next40pxDefaultSize
 							>
 								{ __( 'Insert', 'ai' ) }
 							</Button>

@@ -342,6 +342,7 @@ export default function ContentResizingToolbar( {
 							disabled={ isLoading || suggestedContent === null }
 							accessibleWhenDisabled
 							ref={ acceptButtonRef }
+							__next40pxDefaultSize
 						>
 							{ __( 'Accept', 'ai' ) }
 						</Button>
@@ -351,6 +352,7 @@ export default function ContentResizingToolbar( {
 							disabled={ isLoading || lastAction === null }
 							isBusy={ isLoading }
 							accessibleWhenDisabled
+							__next40pxDefaultSize
 						>
 							{ isLoading
 								? __( 'Generating…', 'ai' )

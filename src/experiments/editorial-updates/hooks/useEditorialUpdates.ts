@@ -99,6 +99,26 @@ export function useEditorialUpdates(): {
 			if ( ! postId ) {
 				return false;
 			}
+
+			// Collect Note IDs linked from block metadata, then check whether any are
+			// still pending. This avoids showing the action for stale Notes left behind
+			// after refreshing before the generated Note metadata was explicitly saved.
+			const allBlocks = sel( blockEditorStore ).getBlocks() as Block[];
+			const linkedNoteIds = Array.from(
+				new Set(
+					flattenBlocks( allBlocks )
+						.filter( ( block ) =>
+							REVIEWABLE_BLOCK_TYPES.includes( block.name )
+						)
+						.map( ( block ) => block.attributes.metadata?.noteId )
+						.filter( ( id ) => typeof id === 'number' )
+				)
+			);
+
+			if ( linkedNoteIds.length === 0 ) {
+				return false;
+			}
+
 			const notes = ( sel( coreStore ) as any ).getEntityRecords(
 				'root',
 				'comment',
@@ -106,6 +126,7 @@ export function useEditorialUpdates(): {
 					type: 'note',
 					status: 'hold',
 					post: postId,
+					include: Array.from( linkedNoteIds ),
 					per_page: 1,
 					_fields: 'id',
 				}

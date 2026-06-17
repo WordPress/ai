@@ -265,6 +265,20 @@ export function useEditorialNotes(): {
 				(
 					dispatch( coreStore ) as any
 				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+
+				( dispatch( noticesStore ) as any ).createSuccessNotice(
+					sprintf(
+						/* translators: %d: number of suggestions added. */
+						_n(
+							'%d suggestion added. Save to keep changes.',
+							'%d suggestions added. Save to keep changes.',
+							totalSuggestions,
+							'ai'
+						),
+						totalSuggestions
+					),
+					{ type: 'snackbar' }
+				);
 			}
 		} catch ( error: any ) {
 			dispatch( noticesStore ).createErrorNotice(
@@ -348,8 +362,8 @@ export function useEditorialBlock(): {
 					sprintf(
 						/* translators: %d: number of suggestions added. */
 						_n(
-							'%d suggestion added.',
-							'%d suggestions added.',
+							'%d suggestion added. Save to keep changes.',
+							'%d suggestions added. Save to keep changes.',
 							suggestionCount,
 							'ai'
 						),

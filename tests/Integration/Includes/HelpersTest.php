@@ -373,7 +373,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the get-post-terms ability exposes a valid output schema.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_get_post_terms_output_schema_is_valid_json_schema() {
 		$ability = wp_get_ability( 'ai/get-post-terms' );
