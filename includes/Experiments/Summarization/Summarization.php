@@ -112,7 +112,7 @@ class Summarization extends Abstract_Feature {
 		 */
 		$min_content_length = (int) apply_filters_deprecated(
 			'wpai_summarization_min_content_length',
-			array( get_min_content_length( 'summarization', 100 ) ),
+			array( get_min_content_length( 'summarization', 50 ) ),
 			'x.x.x',
 			'wpai_min_content_length'
 		);

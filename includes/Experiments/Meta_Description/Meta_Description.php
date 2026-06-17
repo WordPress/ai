@@ -151,7 +151,7 @@ class Meta_Description extends Abstract_Feature {
 				'enabled'          => $this->is_enabled(),
 				'metaKey'          => SEO_Integration::get_meta_key( $seo_plugin ),
 				'seoPlugin'        => $seo_plugin,
-				'minContentLength' => get_min_content_length( 'meta-description', 100 ),
+				'minContentLength' => get_min_content_length( 'meta-description', 50 ),
 			)
 		);
 	}
