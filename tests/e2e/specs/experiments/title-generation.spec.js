@@ -184,6 +184,9 @@ test.describe( 'Title Generation Experiment', () => {
 			content: 'Too short.',
 		} );
 
+		// Save the post.
+		await editor.saveDraft();
+
 		// Click into the title field to reveal the toolbar.
 		await editor.canvas.locator( '.editor-post-title__input' ).click();
 
