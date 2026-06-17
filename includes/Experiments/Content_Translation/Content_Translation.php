@@ -51,6 +51,7 @@ class Content_Translation extends Abstract_Feature {
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 	}
 
 	/**
@@ -95,6 +96,18 @@ class Content_Translation extends Abstract_Feature {
 				'enabled'   => $this->is_enabled(),
 				'languages' => Languages::get_supported_languages_for_js(),
 			)
+		);
+	}
+
+	/**
+	 * Enqueues the block stylesheet for the editor canvas.
+	 *
+	 * @since x.x.x
+	 */
+	public function enqueue_block_assets(): void {
+		Asset_Loader::enqueue_style(
+			'content_translation',
+			'experiments/content-translation'
 		);
 	}
 }
