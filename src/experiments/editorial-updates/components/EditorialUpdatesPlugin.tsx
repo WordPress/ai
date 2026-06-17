@@ -64,6 +64,7 @@ export default function EditorialUpdatesPlugin() {
 							justifyContent: 'center',
 						} }
 						__next40pxDefaultSize
+						accessibleWhenDisabled
 					>
 						{ buttonLabel }
 					</Button>
