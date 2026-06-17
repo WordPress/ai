@@ -137,7 +137,8 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'description', $schema['properties'], 'Schema should have description property' );
 		$this->assertArrayHasKey( 'alt_text', $schema['properties'], 'Schema should have alt_text property' );
 		$this->assertArrayHasKey( 'mime_type', $schema['properties'], 'Schema should have mime_type property' );
-		$this->assertArrayHasKey( 'meta', $schema['properties'], 'Schema should have meta property' );
+		$this->assertArrayHasKey( 'ai_generated', $schema['properties'], 'Schema should have ai_generated property' );
+		$this->assertArrayNotHasKey( 'meta', $schema['properties'], 'Schema should not expose arbitrary meta writes' );
 		$this->assertArrayHasKey( 'required', $schema, 'Schema should have required array' );
 		$this->assertContains( 'data', $schema['required'], 'Data should be required' );
 
@@ -151,16 +152,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertEquals( 'string', $schema['properties']['description']['type'], 'Description should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['alt_text']['type'], 'Alt text should be string type' );
 		$this->assertEquals( 'string', $schema['properties']['mime_type']['type'], 'MIME type should be string type' );
-		$this->assertEquals( 'array', $schema['properties']['meta']['type'], 'Meta should be array type' );
-		$this->assertEquals( 'object', $schema['properties']['meta']['items']['type'], 'Meta items should be object type' );
-		$this->assertArrayHasKey( 'key', $schema['properties']['meta']['items']['properties'], 'Meta should have key property' );
-		$this->assertArrayHasKey( 'value', $schema['properties']['meta']['items']['properties'], 'Meta should have value property' );
-		$this->assertEquals( 'string', $schema['properties']['meta']['items']['properties']['key']['type'], 'Key should be string type' );
-		$this->assertEquals( 'string', $schema['properties']['meta']['items']['properties']['value']['type'], 'Value should be string type' );
-		$this->assertArrayHasKey( 'required', $schema['properties']['meta']['items'], 'Meta items should have required array' );
-		$this->assertContains( 'key', $schema['properties']['meta']['items']['required'], 'Key should be required' );
-		$this->assertContains( 'value', $schema['properties']['meta']['items']['required'], 'Value should be required' );
-		$this->assertArrayHasKey( 'additionalProperties', $schema['properties']['meta']['items'], 'Meta items should have additionalProperties' );
+		$this->assertEquals( 'boolean', $schema['properties']['ai_generated']['type'], 'AI generated should be boolean type' );
 	}
 
 	/**
@@ -240,18 +232,13 @@ class Image_ImportTest extends WP_UnitTestCase {
 		wp_set_current_user( $user_id );
 
 		$input = array(
-			'data'        => $this->valid_base64_image,
-			'filename'    => 'custom-test-image',
-			'title'       => 'Custom Test Image',
-			'description' => 'This is a custom test image description',
-			'alt_text'    => 'Custom Test Image Alt Text',
-			'mime_type'   => 'image/png',
-			'meta'        => array(
-				array(
-					'key'   => 'custom_meta_key',
-					'value' => 'custom_meta_value',
-				),
-			),
+			'data'         => $this->valid_base64_image,
+			'filename'     => 'custom-test-image',
+			'title'        => 'Custom Test Image',
+			'description'  => 'This is a custom test image description',
+			'alt_text'     => 'Custom Test Image Alt Text',
+			'mime_type'    => 'image/png',
+			'ai_generated' => true,
 		);
 
 		$result = $method->invoke( $this->ability, $input );
@@ -270,8 +257,43 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertEquals( 'This is a custom test image description', $attachment->post_content, 'Attachment description should match' );
 		$this->assertEquals( 'Custom Test Image Alt Text', get_post_meta( $result['image']['id'], '_wp_attachment_image_alt', true ), 'Attachment alt text should match' );
 
-		// Verify the meta data was saved.
-		$this->assertEquals( 'custom_meta_value', get_post_meta( $result['image']['id'], 'custom_meta_key', true ), 'Meta data should be saved' );
+		// Verify the AI-generated flag was saved.
+		$this->assertSame( '1', get_post_meta( $result['image']['id'], 'ai_generated', true ), 'AI-generated flag should be saved' );
+	}
+
+	/**
+	 * Tests that execute_callback() does not save arbitrary attachment meta.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_ignores_arbitrary_meta() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create a user with upload_files capability.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$input = array(
+			'data'      => $this->valid_base64_image,
+			'mime_type' => 'image/png',
+			'meta'      => array(
+				array(
+					'key'   => '_wp_attached_file',
+					'value' => 'ai-rest-poc-admin-owned-victim.png',
+				),
+			),
+		);
+
+		$result = $method->invoke( $this->ability, $input );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertNotSame(
+			'ai-rest-poc-admin-owned-victim.png',
+			get_post_meta( $result['image']['id'], '_wp_attached_file', true ),
+			'Arbitrary meta should not be saved from Ability input'
+		);
 	}
 
 	/**

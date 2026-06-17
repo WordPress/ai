@@ -223,12 +223,14 @@ export function AltTextControls( {
 								ref={ applyButtonRef }
 								variant="primary"
 								onClick={ handleApply }
+								__next40pxDefaultSize
 							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								onClick={ handleDismiss }
+								__next40pxDefaultSize
 							>
 								{ __( 'Dismiss', 'ai' ) }
 							</Button>
@@ -251,12 +253,14 @@ export function AltTextControls( {
 								ref={ applyButtonRef }
 								variant="primary"
 								onClick={ handleApply }
+								__next40pxDefaultSize
 							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								onClick={ handleDismiss }
+								__next40pxDefaultSize
 							>
 								{ __( 'Dismiss', 'ai' ) }
 							</Button>
@@ -275,6 +279,7 @@ export function AltTextControls( {
 						style={ { width: '100%', justifyContent: 'center' } }
 						isBusy={ isGenerating }
 						icon={ update }
+						__next40pxDefaultSize
 					>
 						{ getButtonLabel( !! hasExistingAlt, isGenerating ) }
 					</Button>

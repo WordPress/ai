@@ -5,16 +5,15 @@
 /**
  * WordPress dependencies
  */
-import { speak } from '@wordpress/a11y';
-import { useEffect, useRef, useState } from '@wordpress/element';
+import { useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Modal, Button, TextareaControl } from '@wordpress/components';
-import { useCopyToClipboard } from '@wordpress/compose';
 
 /**
  * Internal dependencies
  */
 import CharacterCount from './CharacterCount';
+import { useCopyToClipboardFeedback } from '../../../hooks/use-copy-to-clipboard-feedback';
 import type { MetaDescriptionSuggestion } from '../types';
 
 interface MetaDescriptionModalProps {
@@ -34,31 +33,14 @@ function CopyButton( {
 	text: string;
 	disabled: boolean;
 } ): JSX.Element {
-	const [ copiedText, setCopiedText ] = useState< string | null >( null );
-	const showCopyConfirmation = copiedText === text && text.length > 0;
-	const isCopyDisabled = disabled || showCopyConfirmation;
-
-	const timeoutIdRef = useRef< ReturnType< typeof setTimeout > >();
-
-	const ref = useCopyToClipboard< HTMLButtonElement >( text, () => {
-		speak( __( 'Meta description copied to clipboard.', 'ai' ) );
-		setCopiedText( text );
-
-		if ( timeoutIdRef.current ) {
-			clearTimeout( timeoutIdRef.current );
+	const { ref, hasCopied } = useCopyToClipboardFeedback< HTMLButtonElement >(
+		{
+			text,
+			announcement: __( 'Meta description copied to clipboard.', 'ai' ),
 		}
-		timeoutIdRef.current = setTimeout( () => {
-			setCopiedText( null );
-		}, 4000 );
-	} );
+	);
 
-	useEffect( () => {
-		return () => {
-			if ( timeoutIdRef.current ) {
-				clearTimeout( timeoutIdRef.current );
-			}
-		};
-	}, [] );
+	const isCopyDisabled = disabled || hasCopied;
 
 	return (
 		<Button
@@ -66,8 +48,9 @@ function CopyButton( {
 			variant="tertiary"
 			disabled={ isCopyDisabled }
 			accessibleWhenDisabled
+			__next40pxDefaultSize
 		>
-			{ showCopyConfirmation
+			{ hasCopied
 				? __( 'Copied!', 'ai' )
 				: __( 'Copy to clipboard', 'ai' ) }
 		</Button>
@@ -150,6 +133,7 @@ export default function MetaDescriptionModal( {
 							( !! editableText &&
 								editableText.trim().length === 0 )
 						}
+						__next40pxDefaultSize
 					>
 						{ __( 'Apply', 'ai' ) }
 					</Button>
@@ -159,6 +143,7 @@ export default function MetaDescriptionModal( {
 						disabled={ isGenerating }
 						isBusy={ isGenerating }
 						accessibleWhenDisabled
+						__next40pxDefaultSize
 					>
 						{ generateButtonLabel }
 					</Button>
@@ -173,6 +158,7 @@ export default function MetaDescriptionModal( {
 						isDestructive
 						onClick={ onClose }
 						className="ai-meta-description-modal__cancel"
+						__next40pxDefaultSize
 					>
 						{ __( 'Cancel', 'ai' ) }
 					</Button>

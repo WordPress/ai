@@ -62,8 +62,14 @@ class Editorial_Notes extends Abstract_Feature {
 				'type'          => 'boolean',
 				'single'        => true,
 				'show_in_rest'  => true,
-				'auth_callback' => static function (): bool {
-					return current_user_can( 'edit_posts' );
+				'auth_callback' => static function ( $allowed, $meta_key, $comment_id ): bool {
+					$comment = get_comment( $comment_id );
+
+					if ( ! $comment instanceof \WP_Comment ) {
+						return false;
+					}
+
+					return current_user_can( 'edit_post', (int) $comment->comment_post_ID );
 				},
 			)
 		);
@@ -89,14 +95,15 @@ class Editorial_Notes extends Abstract_Feature {
 	 * Overrides the author fields for AI-generated Notes before they are inserted.
 	 *
 	 * Fires via the rest_pre_insert_comment filter. When the REST request includes
-	 * meta.ai_note = true, replaces the authenticated user's identity with a generic
+	 * meta.ai_note = true on a Note (comment_type "note") created by a user who can
+	 * edit the target post, replaces the authenticated user's identity with a generic
 	 * "AI" author so Notes are not attributed to a personal account.
 	 *
 	 * @since 0.4.0
 	 *
 	 * @param array<string, mixed>|\WP_Error $prepared_comment The prepared comment data for wp_insert_comment().
 	 * @param \WP_REST_Request<array<string, mixed>> $request The REST API request.
-	 * @return array<string, mixed>|\WP_Error Modified comment data, or original on WP_Error or non-AI requests.
+	 * @return array<string, mixed>|\WP_Error Modified comment data, original on non-AI requests, or WP_Error if unauthorized.
 	 */
 	public function maybe_set_ai_author( $prepared_comment, \WP_REST_Request $request ) {
 		if ( is_wp_error( $prepared_comment ) ) {
@@ -106,6 +113,22 @@ class Editorial_Notes extends Abstract_Feature {
 		$meta = $request->get_param( 'meta' );
 
 		if ( ! is_array( $meta ) || empty( $meta['ai_note'] ) ) {
+			return $prepared_comment;
+		}
+
+		// Ensure the user has permission to edit the post.
+		$post_id = (int) ( $prepared_comment['comment_post_ID'] ?? $request->get_param( 'post' ) );
+
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			return new \WP_Error(
+				'ai_note_forbidden',
+				__( 'Sorry, you are not allowed to create AI Notes.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		// The AI author identity is only ever applied to Notes.
+		if ( 'note' !== ( $prepared_comment['comment_type'] ?? '' ) ) {
 			return $prepared_comment;
 		}
 
