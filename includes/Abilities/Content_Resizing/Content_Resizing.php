@@ -170,13 +170,12 @@ class Content_Resizing extends Abstract_Ability {
 				);
 			}
 
-				// Ensure the post type is allowed in REST endpoints.
-				$post_type = get_post_type( $post_id );
-				$post_type_obj = get_post_type_object( $post_type );
+			// Ensure the post type is allowed in REST endpoints.
+			$post_type_obj = get_post_type_object( $post->post_type );
 
-				if ( empty( $post_type_obj->show_in_rest ) ) {
-					return false;
-				}
+			if ( ! $post_type_obj || empty( $post_type_obj->show_in_rest ) ) {
+				return false;
+			}
 		} elseif ( ! current_user_can( 'edit_posts' ) ) {
 			return new WP_Error(
 				'insufficient_capabilities',
