@@ -43,6 +43,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
+		\WordPress\AI\Experiments\Content_Translation\Content_Translation::class,
 	);
 
 	/**

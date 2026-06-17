@@ -135,6 +135,11 @@ module.exports = {
 			'src/experiments/summarization',
 			'bulk.ts'
 		),
+		'experiments/content-translation': path.resolve(
+			process.cwd(),
+			'src/experiments/content-translation',
+			'index.tsx'
+		)
 	},
 
 	plugins: [
