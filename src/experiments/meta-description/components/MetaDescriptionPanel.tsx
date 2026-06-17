@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { useState } from '@wordpress/element';
+import { useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Button } from '@wordpress/components';
 import { update } from '@wordpress/icons';
@@ -31,13 +31,33 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
+		clearSuggestion,
 	} = useMetaDescription();
 
 	const [ isModalOpen, setIsModalOpen ] = useState( false );
 	const [ editableText, setEditableText ] = useState( '' );
 
+	const shouldFocusEditButton = useRef( false );
+	const shouldFocusGenerateButton = useRef( false );
+
 	const hasDescription =
 		currentDescription && currentDescription.trim().length > 0;
+
+	const focusEditButtonOnFirstMount = ( node: HTMLButtonElement | null ) => {
+		if ( shouldFocusEditButton.current && node ) {
+			node.focus();
+			shouldFocusEditButton.current = false;
+		}
+	};
+
+	const focusGenerateButtonOnEmptyState = (
+		node: HTMLButtonElement | null
+	) => {
+		if ( ! hasDescription && shouldFocusGenerateButton.current && node ) {
+			node.focus();
+			shouldFocusGenerateButton.current = false;
+		}
+	};
 
 	const handleOpenModal = async () => {
 		setEditableText( currentDescription );
@@ -49,6 +69,8 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 			}
 			setIsModalOpen( true );
 			await generateDescription();
+
+			shouldFocusEditButton.current = true;
 			return;
 		}
 
@@ -56,6 +78,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 	};
 
 	const handleOpenEditModal = () => {
+		clearSuggestion();
 		setEditableText( currentDescription );
 		setIsModalOpen( true );
 	};
@@ -80,8 +103,9 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					<div className="ai-meta-description-panel__actions">
 						<Button
 							variant="link"
-							onClick={ handleOpenEditModal }
 							size="compact"
+							onClick={ handleOpenEditModal }
+							ref={ focusEditButtonOnFirstMount }
 						>
 							{ __( 'Edit description', 'ai' ) }
 						</Button>
@@ -101,6 +125,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					onClick={ handleOpenModal }
 					disabled={ isGenerating }
 					isBusy={ isGenerating }
+					ref={ focusGenerateButtonOnEmptyState }
 					accessibleWhenDisabled
 				>
 					{ isGenerating
@@ -116,8 +141,19 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					editableText={ editableText }
 					onEditableTextChange={ setEditableText }
 					onGenerate={ generateDescription }
-					onApply={ applyDescription }
-					onClose={ () => setIsModalOpen( false ) }
+					onApply={ ( text ) => {
+						applyDescription( text );
+
+						// Restore focus to the generate button when applying an empty description.
+						if ( text.trim().length === 0 ) {
+							shouldFocusEditButton.current = false;
+							shouldFocusGenerateButton.current = true;
+						}
+					} }
+					onClose={ () => {
+						clearSuggestion();
+						setIsModalOpen( false );
+					} }
 				/>
 			) }
 		</div>

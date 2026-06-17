@@ -13,6 +13,7 @@ use Throwable;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
+use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 /**
  * Purposely using return instead of exit here.
@@ -146,7 +147,14 @@ function get_post_context( int $post_id ): array {
 			$grouped_terms = array();
 
 			foreach ( $terms as $term ) {
-				$grouped_terms[ $term->taxonomy ][] = $term->name;
+				$taxonomy = $term['taxonomy'] ?? '';
+				$name     = $term['name'] ?? '';
+
+				if ( '' === $taxonomy || '' === $name ) {
+					continue;
+				}
+
+				$grouped_terms[ $taxonomy ][] = $name;
 			}
 
 			$context = array_merge(
@@ -492,6 +500,56 @@ function has_ai_credentials(): bool {
 	 * @param array $connectors      The registered connectors.
 	 */
 	return (bool) apply_filters( 'wpai_has_ai_credentials', $has_credentials, $connectors );
+}
+
+/**
+ * Checks whether any configured connector exposes an image-generation-capable model.
+ *
+ * @since 1.0.2
+ *
+ * @return bool True if at least one configured connector has an image-generation-capable model.
+ */
+function has_image_generation_support(): bool {
+	static $result = null;
+
+	if ( null !== $result ) {
+		return $result;
+	}
+
+	if ( ! class_exists( AiClient::class ) ) {
+		$result = false;
+		return $result;
+	}
+
+	$registry   = AiClient::defaultRegistry();
+	$connectors = get_ai_connectors();
+
+	foreach ( array_keys( $connectors ) as $connector_id ) {
+		if ( ! has_connector_authentication( $connector_id ) ) {
+			continue;
+		}
+
+		try {
+			$provider_class = $registry->getProviderClassName( $connector_id );
+
+			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+			$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+
+			foreach ( $models as $model ) {
+				foreach ( $model->getSupportedCapabilities() as $capability ) {
+					if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
+						$result = true;
+						return $result;
+					}
+				}
+			}
+		} catch ( Throwable $e ) {
+			continue;
+		}
+	}
+
+	$result = false;
+	return $result;
 }
 
 /**

@@ -371,6 +371,26 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the get-post-terms ability exposes a valid output schema.
+	 *
+	 * @since 1.0.2
+	 */
+	public function test_get_post_terms_output_schema_is_valid_json_schema() {
+		$ability = wp_get_ability( 'ai/get-post-terms' );
+		$this->assertNotNull( $ability, 'get-post-terms ability should be registered' );
+
+		$output_schema = $ability->get_output_schema();
+
+		$this->assertSame( 'array', $output_schema['type'], 'Output schema should describe the list of term objects returned by the ability.' );
+		$this->assertArrayNotHasKey( 'properties', $output_schema, 'Output schema should not nest array keywords under properties.' );
+		$this->assertSame( 'object', $output_schema['items']['type'], 'Output schema items should describe term objects.' );
+		$this->assertSame( 'integer', $output_schema['items']['properties']['term_id']['type'], 'Term schema should include term_id.' );
+		$this->assertSame( 'string', $output_schema['items']['properties']['name']['type'], 'Term schema should include name.' );
+		$this->assertSame( 'string', $output_schema['items']['properties']['taxonomy']['type'], 'Term schema should include taxonomy.' );
+		$this->assertNotFalse( wp_json_encode( $output_schema ), 'Output schema should be JSON-encodable.' );
+	}
+
+	/**
 	 * Test that the wpai_get_post_details filter modifies the ability output.
 	 *
 	 * @since 0.7.0
@@ -478,8 +498,12 @@ class HelpersTest extends WP_UnitTestCase {
 		$post_id     = $this->factory->post->create();
 		wp_set_post_categories( $post_id, array( $category_id ) );
 
-		$filter_callback = static function ( $terms, $filter_post_id, $filter_taxonomies ) {
-			$terms['category'] = sprintf( 'post:%d|taxonomies:%s', $filter_post_id, implode( ',', $filter_taxonomies ) );
+		$received_post_id    = null;
+		$received_taxonomies = array();
+
+		$filter_callback = static function ( $terms, $filter_post_id, $filter_taxonomies ) use ( &$received_post_id, &$received_taxonomies ) {
+			$received_post_id    = $filter_post_id;
+			$received_taxonomies = $filter_taxonomies;
 			return $terms;
 		};
 
@@ -491,12 +515,8 @@ class HelpersTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_get_post_terms', $filter_callback, 10 );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
-		$this->assertArrayHasKey( 'category', $result, 'Result should include category key' );
-		$this->assertSame(
-			sprintf( 'post:%d|taxonomies:category,post_tag', $post_id ),
-			$result['category'],
-			'Filter output should encode the received post ID and taxonomies'
-		);
+		$this->assertSame( $post_id, $received_post_id, 'Filter should receive the post ID.' );
+		$this->assertSame( array( 'category', 'post_tag' ), $received_taxonomies, 'Filter should receive the allowed taxonomy names.' );
 	}
 
 	/**

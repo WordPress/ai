@@ -9,6 +9,15 @@ import type { LogsQuery } from './types';
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 25;
 
+export const DEFAULT_VIEW_FIELDS = [
+	'timestamp',
+	'operation',
+	'provider',
+	'tokens_total',
+	'duration_ms',
+	'status',
+];
+
 const sanitizeStringArray = ( value: unknown ): string[] => {
 	if ( ! Array.isArray( value ) ) {
 		return [];
@@ -51,6 +60,25 @@ const normalizeOperationSelection = (
 	);
 };
 
+const normalizeFields = ( raw: unknown ): string[] => {
+	// When no field order is stored yet, fall back to the default order.
+	if ( undefined === raw || null === raw ) {
+		return [ ...DEFAULT_VIEW_FIELDS ];
+	}
+
+	const sanitized = sanitizeStringArray( raw ).filter( ( field ) =>
+		DEFAULT_VIEW_FIELDS.includes( field )
+	);
+
+	// If nothing valid was stored, fall back to the default order.
+	// A shorter list is valid: the user may have hidden some columns.
+	if ( 0 === sanitized.length ) {
+		return [ ...DEFAULT_VIEW_FIELDS ];
+	}
+
+	return sanitized;
+};
+
 export const getDefaultLogsQuery = (): LogsQuery => ( {
 	page: DEFAULT_PAGE,
 	perPage: DEFAULT_PER_PAGE,
@@ -63,6 +91,7 @@ export const getDefaultLogsQuery = (): LogsQuery => ( {
 	userId: '',
 	orderby: 'timestamp',
 	order: 'desc',
+	fields: [ ...DEFAULT_VIEW_FIELDS ],
 } );
 
 export const normalizeLogsQuery = (
@@ -115,6 +144,7 @@ export const normalizeLogsQuery = (
 			'asc' === parsed.order || 'desc' === parsed.order
 				? parsed.order
 				: defaultQuery.order,
+		fields: normalizeFields( parsed.fields ),
 	};
 };
 

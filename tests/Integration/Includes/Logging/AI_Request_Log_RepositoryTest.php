@@ -533,6 +533,32 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that get_summary windowed periods compare against UTC, not the MySQL session time zone.
+	 *
+	 * Timestamps are written with current_time( 'mysql', true ) (UTC), so the period
+	 * cutoff in get_date_condition() must also be evaluated in UTC. Otherwise on a
+	 * MySQL session whose time zone is ahead of UTC, recent rows are excluded from
+	 * "Last Minute"/"Last Hour"/etc. summaries.
+	 *
+	 * @since 1.0.2
+	 */
+	public function test_get_summary_windowed_period_uses_utc_session_timezone(): void {
+		global $wpdb;
+
+		$this->insert_log();
+
+		$wpdb->query( "SET time_zone = '+13:00'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		try {
+			$summary = $this->repository->get_summary( 'hour', true );
+
+			$this->assertSame( 1, $summary['total_requests'] );
+		} finally {
+			$wpdb->query( "SET time_zone = '+00:00'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		}
+	}
+
+	/**
 	 * Tests that get_filter_options returns distinct values from logs.
 	 *
 	 * @since 1.0.0
@@ -594,6 +620,51 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 		// The recent log should still exist.
 		$remaining = $this->repository->query();
 		$this->assertSame( 1, $remaining['total'] );
+	}
+
+	/**
+	 * Tests that cleanup_by_retention measures the cutoff in UTC, not the MySQL session time zone.
+	 *
+	 * A row whose UTC age is still inside the retention window must not be deleted
+	 * just because the session time zone shifts NOW() ahead. Using a +13:00 session
+	 * with a row 29 days 18 hours old triggers the bug when the cutoff is built
+	 * from NOW() but not from UTC_TIMESTAMP().
+	 *
+	 * @since 1.0.2
+	 */
+	public function test_cleanup_by_retention_uses_utc_session_timezone(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
+
+		$stored_timestamp = gmdate(
+			'Y-m-d H:i:s',
+			time() - ( 29 * DAY_IN_SECONDS + 18 * HOUR_IN_SECONDS )
+		);
+
+		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$table,
+			array(
+				'log_id'    => wp_generate_uuid4(),
+				'timestamp' => $stored_timestamp,
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			),
+			array( '%s', '%s', '%s', '%s', '%s' )
+		);
+
+		$wpdb->query( "SET time_zone = '+13:00'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		try {
+			$deleted = $this->repository->cleanup_by_retention( 30 );
+
+			$this->assertSame( 0, $deleted );
+
+			$remaining = $this->repository->query();
+			$this->assertSame( 1, $remaining['total'] );
+		} finally {
+			$wpdb->query( "SET time_zone = '+00:00'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		}
 	}
 
 	/**
