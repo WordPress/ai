@@ -345,7 +345,7 @@ class Admin_Page {
 		</div>
 
 		<script type="application/json" id="ability-input-schema">
-			<?php echo wp_json_encode( $ability['input_schema'], JSON_UNESCAPED_UNICODE ); ?>
+			<?php echo wp_json_encode( $ability['input_schema'], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE ); ?>
 		</script>
 		<?php
 	}
