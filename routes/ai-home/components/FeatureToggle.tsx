@@ -8,7 +8,9 @@ import type { DataFormControlProps } from '@wordpress/dataviews';
  * Internal dependencies
  */
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
+import { useAccessControlModeContext } from '../hooks/use-access-control-mode';
 import { DeveloperSettings } from './DeveloperSettings';
+import { AccessControlSettings } from './AccessControlSettings';
 
 type AISettings = Record< string, boolean >;
 
@@ -39,6 +41,7 @@ export function FeatureToggle( {
 }: FeatureToggleProps ): React.JSX.Element {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isAccessControlMode = useAccessControlModeContext();
 
 	const resolvedFeatureId =
 		featureId ??
@@ -55,6 +58,9 @@ export function FeatureToggle( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
+			{ checked && isAccessControlMode && (
+				<AccessControlSettings featureId={ resolvedFeatureId } />
+			) }
 			{ checked && isDeveloperMode && (
 				<DeveloperSettings
 					featureId={ resolvedFeatureId }

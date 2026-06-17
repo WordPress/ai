@@ -13,6 +13,7 @@ namespace WordPress\AI\Settings;
 
 use WordPress\AI\Features\Registry;
 use WordPress\AI\REST\Models_Controller;
+use WordPress\AI\REST\Roles_Users_Controller;
 
 /**
  * Handles registration of settings for the AI plugin.
@@ -71,6 +72,7 @@ class Settings_Registration {
 
 		// Initialize the provider/model discovery REST endpoint.
 		( new Models_Controller() )->init();
+		( new Roles_Users_Controller() )->init();
 	}
 
 	/**
@@ -126,6 +128,40 @@ class Settings_Registration {
 									'type'    => 'string',
 									'default' => '',
 								),
+							),
+						),
+					),
+				)
+			);
+
+			register_setting(
+				self::OPTION_GROUP,
+				"wpai_feature_{$feature_id}_roles",
+				array(
+					'type'         => 'array',
+					'default'      => array(),
+					'show_in_rest' => array(
+						'schema' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type' => 'string',
+							),
+						),
+					),
+				)
+			);
+
+			register_setting(
+				self::OPTION_GROUP,
+				"wpai_feature_{$feature_id}_users",
+				array(
+					'type'         => 'array',
+					'default'      => array(),
+					'show_in_rest' => array(
+						'schema' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type' => 'integer',
 							),
 						),
 					),

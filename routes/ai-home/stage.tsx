@@ -37,12 +37,18 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
+import { AccessControlSettings } from './components/AccessControlSettings';
 import { FeatureToggle } from './components/FeatureToggle';
 import {
 	DeveloperModeContext,
 	useDeveloperMode,
 	useDeveloperModeContext,
 } from './hooks/use-developer-mode';
+import {
+	AccessControlModeContext,
+	useAccessControlMode,
+	useAccessControlModeContext,
+} from './hooks/use-access-control-mode';
 import './style.scss';
 
 type AISettings = Record< string, boolean >;
@@ -595,6 +601,7 @@ function FeatureToggleWithSettings( {
 	const feature = FEATURES_BY_SETTING.get( field.id );
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isAccessControlMode = useAccessControlModeContext();
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
@@ -608,6 +615,9 @@ function FeatureToggleWithSettings( {
 			/>
 			{ checked && feature && (
 				<InlineFeatureSettings feature={ feature } />
+			) }
+			{ checked && isAccessControlMode && feature && (
+				<AccessControlSettings featureId={ feature.id } />
 			) }
 			{ checked && isDeveloperMode && feature && (
 				<DeveloperSettings
@@ -634,6 +644,7 @@ function VisualCardToggle( {
 	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isAccessControlMode = useAccessControlModeContext();
 
 	return (
 		<Card.Root
@@ -654,6 +665,9 @@ function VisualCardToggle( {
 					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
+				{ checked && isAccessControlMode && feature && (
+					<AccessControlSettings featureId={ feature.id } />
+				) }
 				{ checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
@@ -686,6 +700,7 @@ function AISettingsPage() {
 		useDispatch( noticesStore );
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
+	const { isAccessControlMode, toggleAccessControlMode } = useAccessControlMode();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		// Return the stable module-level reference when page data is available so
@@ -959,6 +974,7 @@ function AISettingsPage() {
 
 	return (
 		<DeveloperModeContext.Provider value={ isDeveloperMode }>
+			<AccessControlModeContext.Provider value={ isAccessControlMode }>
 			<Page
 				visual={ <AIIcon /> }
 				title={ __( 'AI', 'ai' ) }
@@ -1001,6 +1017,22 @@ function AISettingsPage() {
 								<MenuGroup
 									label={ __( 'Developer Tools', 'ai' ) }
 								>
+									<MenuItem
+										role="menuitemcheckbox"
+										isSelected={ isAccessControlMode }
+										info={ __(
+											'Select roles and users that can access each feature',
+											'ai'
+										) }
+										icon={
+											isAccessControlMode ? checkIcon : null
+										}
+										onClick={ () => {
+											toggleAccessControlMode();
+										} }
+									>
+										{ __( 'Access controls', 'ai' ) }
+									</MenuItem>
 									<MenuItem
 										role="menuitemcheckbox"
 										isSelected={ isDeveloperMode }
@@ -1066,6 +1098,7 @@ function AISettingsPage() {
 					) }
 				</Stack>
 			</Page>
+			</AccessControlModeContext.Provider>
 		</DeveloperModeContext.Provider>
 	);
 }
