@@ -72,12 +72,11 @@ interface NoteRecord {
 }
 
 /**
- * Hook for determining whether Review Notes should be available for the
- * current post content.
+ * Hook for determining whether Editorial Notes should be available.
  *
- * @return Availability state for the Review Notes feature.
+ * @return Availability state for the Editorial Notes feature.
  */
-function useReviewNotesAvailability(): {
+function useEditorialNotesAvailability(): {
 	content: string;
 	minContentLength: number;
 	isContentTooShort: boolean;
@@ -87,7 +86,7 @@ function useReviewNotesAvailability(): {
 			return ( selectStore( editorStore ) as any ).getEditedPostContent();
 		}, [] ) ?? '';
 	const minContentLength: number =
-		( window as any ).aiReviewNotesData?.minContentLength ?? 100;
+		( window as any ).aiEditorialNotesData?.minContentLength ?? 100;
 
 	return {
 		content,
@@ -200,7 +199,7 @@ export function useEditorialNotes(): {
 	const [ total, setTotal ] = useState< number >( 0 );
 	const [ lastRunCount, setLastRunCount ] = useState< number | null >( null );
 	const { content, isContentTooShort, minContentLength } =
-		useReviewNotesAvailability();
+		useEditorialNotesAvailability();
 
 	const runReview = async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
@@ -348,7 +347,7 @@ export function useEditorialBlock(): {
 } {
 	const [ isReviewing, setIsReviewing ] = useState< boolean >( false );
 	const { content, isContentTooShort, minContentLength } =
-		useReviewNotesAvailability();
+		useEditorialNotesAvailability();
 
 	const reviewBlock = async ( clientId: string ) => {
 		if ( isContentTooShort ) {
