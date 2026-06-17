@@ -154,7 +154,7 @@ class Editorial_Notes extends Abstract_Feature {
 			'EditorialNotesData',
 			array(
 				'enabled'          => $this->is_enabled(),
-				'minContentLength' => get_min_content_length( 'editorial-notes', 50 ),
+				'minContentLength' => get_min_content_length( 'editorial-notes', 15 ),
 			)
 		);
 	}

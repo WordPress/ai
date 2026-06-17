@@ -138,7 +138,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_title_generation', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"100"',
+			'"minContentLength":"50"',
 			(string) wp_scripts()->get_data( 'ai_title_generation', 'data' )
 		);
 	}

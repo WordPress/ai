@@ -156,7 +156,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		// The descriptive text should explain when the button will be enabled.
 		await expect(
 			page.locator( '.ai-summarization-plugin-container .description' )
-		).toContainText( '100 words' );
+		).toContainText( '50 words' );
 	} );
 
 	test( 'Summarize button is enabled when content meets the minimum length', async ( {

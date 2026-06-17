@@ -136,7 +136,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_editorial_notes', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"100"',
+			'"minContentLength":"50"',
 			(string) wp_scripts()->get_data( 'ai_editorial_notes', 'data' )
 		);
 	}

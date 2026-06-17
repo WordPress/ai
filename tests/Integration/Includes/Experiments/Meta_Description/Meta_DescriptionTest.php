@@ -274,7 +274,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_meta_description', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"100"',
+			'"minContentLength":"50"',
 			(string) wp_scripts()->get_data( 'ai_meta_description', 'data' )
 		);
 	}

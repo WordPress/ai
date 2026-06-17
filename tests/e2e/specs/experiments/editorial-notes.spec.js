@@ -61,7 +61,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect(
 			page.locator( '.description', {
 				hasText:
-					'Editorial Notes will be available when the post content has at least 100 words.',
+					'Editorial Notes will be available when the post content has at least 15 words.',
 			} )
 		).toBeVisible();
 	} );
@@ -87,7 +87,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		await expect(
 			page.locator( '.description', {
-				hasText: 'at least 100 words.',
+				hasText: 'at least 15 words.',
 			} )
 		).toHaveCount( 0 );
 	} );
@@ -228,7 +228,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect(
 			page.locator( '.description', {
 				hasText:
-					'Editorial Notes will be available when the post content has at least 100 words.',
+					'Editorial Notes will be available when the post content has at least 15 words.',
 			} )
 		).toBeVisible();
 	} );

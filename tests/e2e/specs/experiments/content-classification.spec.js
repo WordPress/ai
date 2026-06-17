@@ -176,7 +176,8 @@ test.describe( 'Content Classification Experiment', () => {
 		// The hint should be visible.
 		await expect(
 			page.locator( '.ai-content-classification__hint', {
-				hasText: 'Add more content to enable AI suggestions',
+				hasText:
+					'Content Classification will be available when the post content has at least 50 words.',
 			} )
 		).toBeVisible();
 
@@ -211,7 +212,7 @@ test.describe( 'Content Classification Experiment', () => {
 		await expect(
 			page.locator( '.ai-content-classification__hint' ).first()
 		).toHaveText(
-			'Add more content to enable AI suggestions (approximately 150 words).'
+			'Content Classification will be available when the post content has at least 50 words.'
 		);
 		await expect(
 			page
