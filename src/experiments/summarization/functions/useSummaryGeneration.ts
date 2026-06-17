@@ -58,7 +58,7 @@ export function useSummaryGeneration() {
 		}
 
 		setIsSummarizing( true );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedSummary = await generateSummary(
@@ -120,7 +120,7 @@ export function useSummaryGeneration() {
 					? error
 					: error?.message ??
 					  __( 'Failed to generate summary.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+			dispatch( noticesStore ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );

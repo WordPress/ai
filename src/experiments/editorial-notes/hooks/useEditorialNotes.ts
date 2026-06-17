@@ -182,7 +182,7 @@ export function useEditorialNotes(): {
 		setTotal( 0 );
 		setLastRunCount( null );
 
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const postId = (
@@ -266,7 +266,7 @@ export function useEditorialNotes(): {
 					dispatch( coreStore ) as any
 				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
 
-				( dispatch( noticesStore ) as any ).createSuccessNotice(
+				dispatch( noticesStore ).createSuccessNotice(
 					sprintf(
 						/* translators: %d: number of suggestions added. */
 						_n(
@@ -281,7 +281,7 @@ export function useEditorialNotes(): {
 				);
 			}
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice(
+			dispatch( noticesStore ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
 					id: NOTICE_ID,
@@ -310,9 +310,7 @@ export function useEditorialBlock(): {
 	const reviewBlock = async ( clientId: string ) => {
 		setIsReviewing( true );
 
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_editorial_block_error'
-		);
+		dispatch( noticesStore ).removeNotice( 'ai_editorial_block_error' );
 
 		try {
 			const block = ( select( blockEditorStore ) as any ).getBlock(
@@ -360,7 +358,7 @@ export function useEditorialBlock(): {
 				( dispatch( editPostStore ) as any ).openGeneralSidebar?.(
 					NOTES_SIDEBAR_ID
 				);
-				( dispatch( noticesStore ) as any ).createSuccessNotice(
+				dispatch( noticesStore ).createSuccessNotice(
 					sprintf(
 						/* translators: %d: number of suggestions added. */
 						_n(
@@ -374,14 +372,14 @@ export function useEditorialBlock(): {
 					{ type: 'snackbar' }
 				);
 			} else {
-				( dispatch( noticesStore ) as any ).createNotice(
+				dispatch( noticesStore ).createNotice(
 					'info',
 					__( 'No new suggestions found.', 'ai' ),
 					{ type: 'snackbar' }
 				);
 			}
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice(
+			dispatch( noticesStore ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
 					id: 'ai_editorial_block_error',

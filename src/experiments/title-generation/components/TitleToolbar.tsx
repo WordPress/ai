@@ -159,7 +159,7 @@ export default function TitleToolbar( {
 
 		const content = select( editorStore ).getEditedPostContent();
 		setIsGenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const result = await generateTitle( postId as number, content );
@@ -170,7 +170,7 @@ export default function TitleToolbar( {
 				typeof error === 'string'
 					? error
 					: error?.message ?? __( 'Failed to generate title.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+			dispatch( noticesStore ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );
@@ -186,7 +186,7 @@ export default function TitleToolbar( {
 	const handleRegenerate = async () => {
 		const content = select( editorStore ).getEditedPostContent();
 		setIsRegenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const result = await generateTitle( postId as number, content );
@@ -196,7 +196,7 @@ export default function TitleToolbar( {
 				typeof error === 'string'
 					? error
 					: error?.message ?? __( 'Failed to generate title.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+			dispatch( noticesStore ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );
