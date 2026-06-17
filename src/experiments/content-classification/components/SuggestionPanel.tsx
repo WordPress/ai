@@ -111,6 +111,7 @@ export default function SuggestionPanel( {
 										__( 'Add "%s"', 'ai' ),
 										suggestion.term
 									) }
+									size="small"
 								>
 									{ suggestion.parent && (
 										<span className="ai-content-classification__pill-parent">
@@ -137,6 +138,7 @@ export default function SuggestionPanel( {
 										__( 'Dismiss "%s"', 'ai' ),
 										suggestion.term
 									) }
+									size="small"
 								/>
 							</span>
 						) ) }
