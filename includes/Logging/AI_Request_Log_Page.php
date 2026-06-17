@@ -86,10 +86,9 @@ class AI_Request_Log_Page {
 		Asset_Loader::enqueue_style( 'ai_request_logs', 'admin/ai-request-logs' );
 
 		/*
-		 * Explicitly load translations for the `wp-dataviews` script (default text domain).
-		 * The DataViews component ships its own UI strings (filters, pagination, sort/view
-		 * options) that are only inlined by WordPress in block-editor contexts. Calling this
-		 * here ensures those strings are translated on this admin page as well.
+		 * Explicitly load translations for the `wp-dataviews` script.
+		 * The DataViews component ships its own UI strings that are only
+		 * inlined by WordPress in block-editor contexts.
 		 */
 		wp_set_script_translations( 'wp-dataviews', 'default' );
 
