@@ -20,7 +20,7 @@ declare global {
 	}
 }
 
-function getProviderData(): ProviderStatus {
+export function getProviderData(): ProviderStatus {
 	return (
 		window.aiProviderData ?? {
 			hasProvider: false,

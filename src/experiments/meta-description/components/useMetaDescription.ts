@@ -37,6 +37,7 @@ interface UseMetaDescriptionReturn {
 	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
 	applyDescription: ( text: string ) => void;
+	clearSuggestion: () => void;
 }
 
 /**
@@ -135,6 +136,10 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		[ editPost, metaKey, meta ]
 	);
 
+	const clearSuggestion = useCallback( () => {
+		setSuggestion( null );
+	}, [] );
+
 	return {
 		isGenerating,
 		suggestion,
@@ -144,5 +149,6 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
+		clearSuggestion,
 	};
 }

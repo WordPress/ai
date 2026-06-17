@@ -5,6 +5,18 @@
 		margin: 10px 15px 15px 0;
 	}
 }
+.ai-request-logs {
+
+	.ai-request-logs__page {
+		background-color: #f0f0f1;
+	}
+
+	.ai-request-logs__page > div:first-child {
+		z-index: 2;
+		top: var(--wp-admin--admin-bar--height, 0px);
+	}
+}
+
 
 .ai-request-logs__app {
 	max-width: 1400px;
@@ -77,6 +89,11 @@
 	border: 1px solid #e0e0e0;
 	border-radius: 4px;
 	background: #fff;
+	overflow: hidden;
+
+	.ai-request-logs__refresh-button.components-button {
+		order: -1;
+	}
 }
 
 .ai-request-logs__cell--time {

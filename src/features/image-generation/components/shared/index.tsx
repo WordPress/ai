@@ -9,10 +9,12 @@ import {
 } from '@wordpress/components';
 import { __, isRTL, sprintf } from '@wordpress/i18n';
 import { chevronLeft, chevronRight } from '@wordpress/icons';
+import { useFocusOnMount } from '@wordpress/compose';
 
 /**
  * Internal dependencies
  */
+import { getProviderData } from '../../../../utils/provider-status';
 import type { HistoryEntry } from '../../types';
 
 // ─── GeneratingState ─────────────────────────────────────────────────────────
@@ -66,6 +68,7 @@ interface PromptFormProps {
 	onPromptChange: ( value: string ) => void;
 	onGenerate: () => void;
 	error?: string | null;
+	hasImageGenerationSupport?: boolean;
 }
 
 /**
@@ -76,32 +79,64 @@ export function PromptForm( {
 	onPromptChange,
 	onGenerate,
 	error,
+	hasImageGenerationSupport = true,
 }: PromptFormProps ) {
+	const { connectorsUrl } = getProviderData();
+	const focusOnMountRef = useFocusOnMount( 'firstInputElement' );
+
 	return (
-		<div className="ai-image-generation__idle">
-			<p className="description">
-				{ __( 'Describe the image you want to generate.', 'ai' ) }
-			</p>
-			<TextareaControl
-				label={ __( 'Prompt', 'ai' ) }
-				value={ prompt }
-				onChange={ onPromptChange }
-				rows={ 4 }
-				hideLabelFromVision
-			/>
-			<div className="ai-image-generation__actions">
-				<Button
-					variant="primary"
-					disabled={ ! prompt.trim() }
-					onClick={ onGenerate }
+		<div className="ai-image-generation__idle" ref={ focusOnMountRef }>
+			{ ! hasImageGenerationSupport ? (
+				<Notice
+					status="warning"
+					isDismissible={ false }
+					actions={
+						connectorsUrl
+							? [
+									{
+										label: __( 'Manage Connectors', 'ai' ),
+										url: connectorsUrl,
+										variant: 'link',
+									},
+							  ]
+							: []
+					}
 				>
-					{ __( 'Generate', 'ai' ) }
-				</Button>
-			</div>
-			{ error && (
-				<Notice status="error" isDismissible={ false }>
-					{ error }
+					{ __(
+						'This feature requires an AI Connector that supports image generation. Review your Connectors to ensure you have a valid AI Connector configured.',
+						'ai'
+					) }
 				</Notice>
+			) : (
+				<>
+					<p className="description">
+						{ __(
+							'Describe the image you want to generate.',
+							'ai'
+						) }
+					</p>
+					<TextareaControl
+						label={ __( 'Prompt', 'ai' ) }
+						value={ prompt }
+						onChange={ onPromptChange }
+						rows={ 4 }
+						hideLabelFromVision
+					/>
+					<div className="ai-image-generation__actions">
+						<Button
+							variant="primary"
+							disabled={ ! prompt.trim() }
+							onClick={ onGenerate }
+						>
+							{ __( 'Generate', 'ai' ) }
+						</Button>
+					</div>
+					{ error && (
+						<Notice status="error" isDismissible={ false }>
+							{ error }
+						</Notice>
+					) }
+				</>
 			) }
 		</div>
 	);
@@ -148,6 +183,7 @@ export function ImageHistoryNav( {
 					disabled={ ! canGoBack }
 					onClick={ onGoBack }
 					label={ __( 'Previous version', 'ai' ) }
+					accessibleWhenDisabled
 				/>
 				<div className="ai-image-history-nav__content">
 					{ showComparison ? (
@@ -189,6 +225,7 @@ export function ImageHistoryNav( {
 					disabled={ ! canGoForward }
 					onClick={ onGoForward }
 					label={ __( 'Next version', 'ai' ) }
+					accessibleWhenDisabled
 				/>
 			</div>
 			{ historyLength > 1 && (
@@ -231,8 +268,10 @@ export function RefinePromptForm( {
 	cancelIsDestructive = false,
 	error,
 }: RefinePromptFormProps ) {
+	const focusOnMountRef = useFocusOnMount( 'firstInputElement' );
+
 	return (
-		<div className="ai-image-generation__refining">
+		<div className="ai-image-generation__refining" ref={ focusOnMountRef }>
 			<img
 				src={ previewSrc }
 				alt={ previewAlt }

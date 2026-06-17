@@ -1,8 +1,8 @@
 === AI ===
-Contributors:      wordpressdotorg
+Contributors:      wordpressdotorg, dkotter, jeffpaul
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      7.0
-Stable tag:        1.0.1
+Stable tag:        1.0.2
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -34,8 +34,14 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
-* **Multi-Provider Support** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **Multi-Provider Support** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+
+**Provider Setup:**
+
+The AI plugin does not include provider credentials or provider implementations by itself. To use AI-powered features, install and activate at least one AI Connector plugin, then configure its credentials in `Settings -> Connectors`. Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
+
+Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
 
 **Coming Soon:**
 
@@ -57,7 +63,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 1. Upload the plugin files to the `/wp-content/plugins/ai` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Go to `Settings -> Connectors` and set up at least one AI connector.
+3. Install and activate at least one AI Connector plugin, then go to `Settings -> Connectors` and configure its credentials.
 4. Go to `Settings -> AI` and globally enable functionality and then enable the individual features or experiments you want to test.
 5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Regenerate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
 
@@ -68,7 +74,7 @@ The AI plugin is designed to be studied, extended, and built upon. Whether you'r
 **Extend the Plugin:**
 
 * **Build Custom Experiments** - Use the `Abstract_Feature` base class to create your own AI-powered features.
-* **Pre-configure Providers** - Hosts and agencies can set up AI providers so users don't need their own API keys.
+* **Pre-configure Providers** - Hosts and agencies can set up AI Connector plugins so users don't need their own API keys.
 * **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled).
 * **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities.
 * **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements.
@@ -101,15 +107,15 @@ This is an experimental plugin, so we recommend testing in a staging environment
 
 = Which AI providers are supported? =
 
-The plugin supports OpenAI, Google AI (Gemini), and Anthropic (Claude). You can configure one or multiple providers in Settings -> Connectors.
+The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`.
 
 = Do I need an API key to use the features? =
 
-Yes, currently you need to provide your own API key from a supported AI provider (OpenAI, Google AI, or Anthropic).
+Yes, currently you need to provide your own API key for the configured AI Connector plugin, such as OpenAI, Google AI, or Anthropic.
 
 = How much does it cost? =
 
-The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started.
+The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started. There are some local, open source, and free providers (like [Ollama](https://wordpress.org/plugins/ai-provider-for-ollama/)) that can be used as well.
 
 = Can I use this without coding knowledge? =
 
@@ -136,6 +142,54 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 #. Comments admin screen showing AI-powered comment moderation features, including color-coded badges for toxicity scoring and comment sentiment.
 
 == Changelog ==
+
+= 1.0.2 - 2026-06-15 =
+
+**Added**
+
+- Manual refresh button to the AI Request Logs table header ([#687](https://github.com/WordPress/ai/pull/687)).
+- New `ai_generated` param on our Image Import Ability to set if the imported image was AI generated or not ([GHSA-42mg-ffvx-4xff](https://github.com/WordPress/ai/security/advisories/GHSA-42mg-ffvx-4xff)).
+
+
+**Changed**
+
+- Ensure Editorial Notes and Editorial Updates controls stay grouped together in the post editor sidebar ([#605](https://github.com/WordPress/ai/pull/605)).
+- Use explicit UTF-8 encoding for generated Meta Description character counts ([#655](https://github.com/WordPress/ai/pull/655)).
+- Return a consistent decorative flag from Alt Text Generation results ([#659](https://github.com/WordPress/ai/pull/659)).
+- Show an error message immediately in the Image Generation UI when there's no AI Connector in place that supports image generation ([#679](https://github.com/WordPress/ai/pull/679)).
+- Use a neutral icon for disabled Features and Experiments in the AI Status widget ([#720](https://github.com/WordPress/ai/pull/720)).
+
+**Fixed**
+
+- Abilities Explorer schema validation ([#612](https://github.com/WordPress/ai/pull/612)).
+- Alt Text Generation button becomes unresponsive after using Next/Previous in the media modal ([#631](https://github.com/WordPress/ai/pull/631)).
+- Add descriptive accessible labels to approval matrix toggle controls ([#637](https://github.com/WordPress/ai/pull/637)).
+- Added accessible labels to the Provider and Category filter dropdowns on the Abilities Explorer page ([#642](https://github.com/WordPress/ai/pull/642)).
+- Lost focus after generating a Title ([#644](https://github.com/WordPress/ai/pull/644)).
+- Lost focus when generating Alt Text in Image block inspector controls ([#645](https://github.com/WordPress/ai/pull/645)).
+- Lost focus when toggling the Connector Approval state ([#646](https://github.com/WordPress/ai/pull/646)).
+- Lost focus after generating Images ([#647](https://github.com/WordPress/ai/pull/647)).
+- Added an accessible label to the ability test payload textarea in the Abilities Explorer ([#649](https://github.com/WordPress/ai/pull/649)).
+- Excerpt generation post context payload ([#651](https://github.com/WordPress/ai/pull/651)).
+- Clear out the Meta Description suggestion when the modal closes ([#653](https://github.com/WordPress/ai/pull/653)).
+- Lost focus after running Content Resizing actions ([#663](https://github.com/WordPress/ai/pull/663)).
+- Column reordering and hiding in the AI Request Logs table now persists instead of resetting to the default ([#669](https://github.com/WordPress/ai/pull/669)).
+- Summary statistics showing zero for short time periods on non-UTC MySQL servers ([#671](https://github.com/WordPress/ai/pull/671)).
+- UI inconsistency on AI Request Logs page ([#676](https://github.com/WordPress/ai/pull/676)).
+- Ensure thinking tokens are counted in AI Request Logs ([#680](https://github.com/WordPress/ai/pull/680)).
+- Ensure the Ability schemas and outputs are valid JSON Schema for strict REST and MCP consumers ([#688](https://github.com/WordPress/ai/pull/688)).
+- Title Generation button disappears after toggling off "Show template" ([#694](https://github.com/WordPress/ai/pull/694)).
+- Prevent accidental interactions and stale feedback in the Meta Description Generation modal and improve focus handling ([#696](https://github.com/WordPress/ai/pull/696)).
+- Ensure focus isn't lost after generating an Excerpt inline ([#698](https://github.com/WordPress/ai/pull/698)).
+- AI Request Logs: "Copy Log ID" gives no feedback when copied ([#700](https://github.com/WordPress/ai/pull/700)).
+- AI Request Logs: main header overlapping table header ([#705](https://github.com/WordPress/ai/pull/705)).
+- Allow users to clear an applied Meta Description while preventing whitespace-only descriptions ([#706](https://github.com/WordPress/ai/pull/706)).
+- Rename unforwarded `MaskCanvas` component function to `InnerMaskCanvas` to avoid duplicate declarations ([#713](https://github.com/WordPress/ai/pull/713)).
+
+**Security**
+
+- Remove the `meta` param from our Image Import Ability ([GHSA-42mg-ffvx-4xff](https://github.com/WordPress/ai/security/advisories/GHSA-42mg-ffvx-4xff)).
+- Check the current user's capabilities and the comment type before setting an Editorial Note ([GHSA-j7hg-vqpw-f98f](https://github.com/WordPress/ai/security/advisories/GHSA-j7hg-vqpw-f98f)).
 
 = 1.0.1 - 2026-05-27 =
 
@@ -304,58 +358,6 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 * **Fixed:** Fixed an issue where the Generate Alt Text button could appear when an Image block was not selected, particularly when working with Patterns ([#356](https://github.com/WordPress/ai/pull/356)).
 * **Fixed:** Fixed an issue where repeated calls to load system instructions could return empty content ([#358](https://github.com/WordPress/ai/pull/358)).
 * **Fixed:** Fixed an issue where retrieving post content did not always return the most recently edited version ([#367](https://github.com/WordPress/ai/pull/367)).
-
-= 0.6.0 - 2026-03-20 =
-
-**There are Breaking Changes in this release.**
-
-* **Breaking Changes:** Refactor `Experiments` to be a type of `Feature`, improving how functionality is organized and surfaced ([#316](https://github.com/WordPress/ai/pull/316)).
-
-The following classes have been removed. Anyone that was directly using these will need to make updates to utilize the correct replacements: `Abstract_Experiment`, `Invalid_Experiment_Metadata_Exception`, `Invalid_Experiment_Exception`, `Experiment_Loader`, `Experiment_Registry`.
-
-* **Breaking Changes:** Standardize the Title Generation Ability to align with other registered Abilities ([#227](https://github.com/WordPress/ai/pull/227)).
-
-The `ai/title-generation` Ability now uses a `context` argument instead of a `post_id` argument in the `input_schema`. Anyone directly using this Ability will need to make updates to account for that.
-
-* **Added:** New Experiment: Image Editing via prompt-based image refining in the Post Editor and Media Library ([#292](https://github.com/WordPress/ai/pull/292)).
-* **Added:** New Experiment: Image Editing via expanding or removing background and removing or replacing items in the Media Libary ([#305](https://github.com/WordPress/ai/pull/305), [#312](https://github.com/WordPress/ai/pull/312)).
-* **Changed:** Rename the plugin from "AI Experiments" to "AI" ([#287](https://github.com/WordPress/ai/pull/287)).
-* **Changed:** Replace `Invalid_Experiment_Exception` with `_doing_it_wrong()` ([#303](https://github.com/WordPress/ai/pull/303)).
-* **Changed:** Rename hook prefixes in `helpers.php` ([#315](https://github.com/WordPress/ai/pull/315)).
-* **Changed:** Rename plugin constants to `WPAI_*` ([#317](https://github.com/WordPress/ai/pull/317)).
-* **Changed:** Refactor the upgrade routine and add v0.6.0 migrations ([#321](https://github.com/WordPress/ai/pull/321)).
-* **Changed:** Move the Generate Alt Text button to the new Content tab for improved discoverability ([#306](https://github.com/WordPress/ai/pull/306)).
-* **Changed:** Remove stray "AI" references from UI for improved consistency ([#320](https://github.com/WordPress/ai/pull/320)).
-* **Changed:** Update documentation ([#314](https://github.com/WordPress/ai/pull/314)).
-* **Fixed:** Remove duplicate error display in the Generate Alt Text flow ([#255](https://github.com/WordPress/ai/pull/255)).
-
-= 0.5.0 - 2026-03-12 =
-
-* **Added:** Switch to using AI Client bundled in WordPress 7.0 ([#275](https://github.com/WordPress/ai/pull/275), [#301](https://github.com/WordPress/ai/pull/301)).
-* **Changed:** Bump WordPress minimum supported version from 6.9 to 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).
-* **Changed:** Bump WordPress tested-up-to version 7.0 ([#272](https://github.com/WordPress/ai/pull/272)).
-* **Changed:** Migrate credentials from the AI Credentials to the new Connectors screen ([#286](https://github.com/WordPress/ai/pull/286)).
-* **Changed:** Improve documentation and plugin assets ([#280](https://github.com/WordPress/ai/pull/280), [#281](https://github.com/WordPress/ai/pull/281), [#291](https://github.com/WordPress/ai/pull/291), [#293](https://github.com/WordPress/ai/pull/293), [#296](https://github.com/WordPress/ai/pull/296)).
-* **Removed:** No longer using AI Client via Composer package ([#271](https://github.com/WordPress/ai/pull/271)).
-
-= 0.4.1 - 2026-03-06 =
-
-* **Fixed:** Issues with 0.4.0 release merge and deploy ([#266](https://github.com/WordPress/ai/pull/266)).
-
-= 0.4.0 - 2026-03-05 =
-
-* **Added:** Inline Image Generation directly in the post editor, enabling users to generate images without leaving authoring/editing flows ([#235](https://github.com/WordPress/ai/pull/235)).
-* **Added:** Generate Image within the Media Library with prompt-based image generation workflows ([#258](https://github.com/WordPress/ai/pull/258)).
-* **Added:** Generate Review Notes experiment to analyze post content or individual blocks and suggest refinements via Notes comments in the editor ([#260](https://github.com/WordPress/ai/pull/260), [#267](https://github.com/WordPress/ai/pull/267)).
-* **Added:** Split editor and admin experiments within the settings page ([#232](https://github.com/WordPress/ai/pull/232)).
-* **Added:** Contextual help text to the Abilities Explorer screen to assist users in understanding what Abilities are and how to use them ([#243](https://github.com/WordPress/ai/pull/243)).
-* **Changed:** Update “Generate Summary” button style to use consistent UI with other buttons in the ediot ([#253](https://github.com/WordPress/ai/pull/253)).
-* **Changed:** Standardize Abilities invocation using the `runAbility` helper to improve consistency across API calls ([#228](https://github.com/WordPress/ai/pull/228)).
-* **Changed:** Make provider labels in the Abilities Explorer translatable and adjust badge styling for clarity ([#247](https://github.com/WordPress/ai/pull/247)).
-* **Changed:** Improve Abilities Explorer table layout by aligning spacing and styles with WordPress admin table conventions ([#248](https://github.com/WordPress/ai/pull/248)).
-* **Changed:** Improve the Ability test page with better internationalization and add copy-to-clipboard functionality ([#256](https://github.com/WordPress/ai/pull/256)).
-* **Removed:** Remove unused checkbox column from the Abilities Explorer table, as it was not tied to any bulk actions ([#246](https://github.com/WordPress/ai/pull/246)).
-* **Fixed:** Fix the position and behavior of the “Copy” button in code blocks within the Abilities Explorer ([#245](https://github.com/WordPress/ai/pull/245)).
 
 Older changelog entries can be found in the [CHANGELOG.md](https://github.com/WordPress/ai/blob/trunk/CHANGELOG.md) file.
 
