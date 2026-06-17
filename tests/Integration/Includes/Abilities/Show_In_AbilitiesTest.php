@@ -13,14 +13,14 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Show_In_Abilities test case.
  *
- * @since 1.1.0
+ * @since x.x.x
  */
 class Show_In_AbilitiesTest extends WP_UnitTestCase {
 
 	/**
 	 * Option names registered during a test, cleaned up on tear down.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @var array<string>
 	 */
@@ -29,7 +29,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -40,7 +40,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		remove_filter( 'register_setting_args', array( Show_In_Abilities::class, 'mark_setting' ), 10 );
@@ -56,7 +56,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Registers a setting and tracks it for cleanup.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param string               $group  The settings group.
 	 * @param string               $option The option name.
@@ -70,7 +70,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * A curated setting is flagged with `show_in_abilities => true`.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_marks_curated_boolean_setting(): void {
 		$this->register_setting( 'general', 'blogname', array( 'type' => 'string' ) );
@@ -83,7 +83,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * A curated setting that maps to an array value receives that array verbatim.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_marks_curated_array_setting(): void {
 		$this->register_setting( 'discussion', 'default_comment_status', array( 'type' => 'string' ) );
@@ -99,7 +99,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * A setting that is not in the curated map is left untouched.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_does_not_mark_uncurated_setting(): void {
 		$this->register_setting( 'general', 'wpai_not_curated_option', array( 'type' => 'string' ) );
@@ -112,7 +112,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * An explicit `show_in_abilities` value already on the setting is preserved.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_respects_existing_value(): void {
 		$this->register_setting(

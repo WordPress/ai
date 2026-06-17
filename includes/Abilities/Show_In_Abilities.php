@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since 1.1.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -27,14 +27,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since 1.1.0
+ * @since x.x.x
  */
 class Show_In_Abilities {
 
 	/**
 	 * Registers the hooks that mark core objects as exposed to abilities.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public static function register(): void {
 		add_filter( 'register_setting_args', array( self::class, 'mark_setting' ), 10, 4 );
@@ -46,7 +46,7 @@ class Show_In_Abilities {
 	 * Respects an explicit `show_in_abilities` value already present on the setting (for
 	 * example once core ships it natively), only filling it in when absent.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $args         The setting registration arguments.
 	 * @param array<string, mixed> $defaults     The default registration arguments.
@@ -71,7 +71,7 @@ class Show_In_Abilities {
 	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape). This matches
 	 * the set marked natively by the core `core/settings` implementation.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */

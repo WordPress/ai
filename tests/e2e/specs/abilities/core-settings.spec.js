@@ -86,9 +86,9 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 		expect( outcome.result ).not.toHaveProperty( 'use_smilies' );
 	} );
 
-	test( 'filters by settings', async ( { page } ) => {
+	test( 'filters by fields', async ( { page } ) => {
 		const outcome = await runCoreSettings( page, {
-			settings: [ 'blogname', 'posts_per_page' ],
+			fields: [ 'blogname', 'posts_per_page' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
@@ -98,16 +98,18 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 		] );
 	} );
 
-	test( 'rejects group and settings together (mutually exclusive)', async ( {
+	test( 'combines group and fields filters (intersection)', async ( {
 		page,
 	} ) => {
+		// `blogname` is in the `general` group and `posts_per_page` in `reading`; only the
+		// latter satisfies both filters.
 		const outcome = await runCoreSettings( page, {
 			group: 'reading',
-			settings: [ 'blogname' ],
+			fields: [ 'blogname', 'posts_per_page' ],
 		} );
 
-		expect( outcome.ok ).toBe( false );
-		expect( outcome.code ).toBe( 'ability_invalid_input' );
+		expect( outcome.ok ).toBe( true );
+		expect( Object.keys( outcome.result ) ).toEqual( [ 'posts_per_page' ] );
 	} );
 
 	test( 'exposes a setting registered by another active plugin', async ( {
@@ -116,7 +118,7 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 		// Registered by the `e2e-sample-settings` plugin (mapped in .wp-env.test.json)
 		// with `show_in_abilities` and a default of `sample-default`.
 		const outcome = await runCoreSettings( page, {
-			settings: [ 'ai_e2e_sample_setting' ],
+			fields: [ 'ai_e2e_sample_setting' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );

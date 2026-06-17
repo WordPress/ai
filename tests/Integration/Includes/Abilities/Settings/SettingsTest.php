@@ -14,14 +14,14 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Settings ability test case.
  *
- * @since 1.1.0
+ * @since x.x.x
  */
 class SettingsTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -36,7 +36,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		if ( wp_has_ability( 'core/settings' ) ) {
@@ -52,7 +52,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Ensures the `site` ability category exists for the ability to attach to.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private function ensure_site_category(): void {
 		if ( wp_has_ability_category( 'site' ) ) {
@@ -77,7 +77,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Registers the plugin's core/settings ability inside a faked init action.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private function register_ability(): void {
 		global $wp_current_filter;
@@ -92,7 +92,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Logs in as an administrator so the ability's permission check passes.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private function become_admin(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -101,7 +101,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * The ability is registered in the `site` category and flagged read-only.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_registers_core_settings_ability(): void {
 		$this->register_ability();
@@ -119,7 +119,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * When core already provides core/settings, the plugin's version replaces it.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_override_replaces_existing_core_settings(): void {
 		// Simulate a core-provided ability with a different (minimal) shape.
@@ -148,29 +148,29 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$ability = wp_get_ability( 'core/settings' );
 		$this->assertSame( 'Get Settings', $ability->get_label() );
-		// The plugin's shape uses a mutually-exclusive oneOf input schema.
-		$this->assertArrayHasKey( 'oneOf', $ability->get_input_schema() );
+		// The plugin's shape exposes optional `group` and `fields` filters.
+		$this->assertArrayHasKey( 'fields', $ability->get_input_schema()['properties'] );
 	}
 
 	/**
-	 * The input schema exposes mutually exclusive `group` and `settings` filters.
+	 * The input schema exposes optional `group` and `fields` filters.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
-	public function test_input_schema_is_one_of_group_or_settings(): void {
+	public function test_input_schema_exposes_group_and_fields_filters(): void {
 		$this->register_ability();
 
 		$schema = wp_get_ability( 'core/settings' )->get_input_schema();
 
-		$this->assertCount( 3, $schema['oneOf'] );
-		$this->assertContains( 'reading', $schema['oneOf'][1]['properties']['group']['enum'] );
-		$this->assertContains( 'blogname', $schema['oneOf'][2]['properties']['settings']['items']['enum'] );
+		$this->assertArrayNotHasKey( 'oneOf', $schema );
+		$this->assertContains( 'reading', $schema['properties']['group']['enum'] );
+		$this->assertContains( 'blogname', $schema['properties']['fields']['items']['enum'] );
 	}
 
 	/**
 	 * Without input the ability returns a flat map of correctly typed setting values.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_returns_flat_typed_values(): void {
 		$this->become_admin();
@@ -191,7 +191,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * The `group` filter narrows the response to a single settings group.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_filters_by_group(): void {
 		$this->become_admin();
@@ -204,43 +204,44 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The `settings` filter narrows the response to the requested setting names.
+	 * The `fields` filter narrows the response to the requested setting names.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
-	public function test_filters_by_settings(): void {
+	public function test_filters_by_fields(): void {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/settings' )->execute( array( 'settings' => array( 'blogname', 'posts_per_page' ) ) );
+		$result = wp_get_ability( 'core/settings' )->execute( array( 'fields' => array( 'blogname', 'posts_per_page' ) ) );
 
-		$this->assertSame( array( 'blogname', 'posts_per_page' ), array_keys( $result ) );
+		$this->assertEqualSets( array( 'blogname', 'posts_per_page' ), array_keys( $result ) );
 	}
 
 	/**
-	 * Supplying both `group` and `settings` violates the `oneOf` and is rejected.
+	 * Supplying both `group` and `fields` narrows the response to their intersection.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
-	public function test_rejects_group_and_settings_together(): void {
+	public function test_combines_group_and_fields_filters(): void {
 		$this->become_admin();
 		$this->register_ability();
 
+		// `blogname` is in the `general` group and `posts_per_page` in `reading`; only the
+		// latter satisfies both filters.
 		$result = wp_get_ability( 'core/settings' )->execute(
 			array(
-				'group'    => 'reading',
-				'settings' => array( 'blogname' ),
+				'group'  => 'reading',
+				'fields' => array( 'blogname', 'posts_per_page' ),
 			)
 		);
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+		$this->assertEqualSets( array( 'posts_per_page' ), array_keys( $result ) );
 	}
 
 	/**
 	 * Users without `manage_options` cannot run the ability.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_requires_manage_options(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
