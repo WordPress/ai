@@ -18,7 +18,7 @@ import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -26,7 +26,10 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
-import { getWordCountType, hasMinimumContent } from '../../../utils/word-count';
+import {
+	formatMinLengthLabel,
+	hasMinimumContent,
+} from '../../../utils/word-count';
 import type {
 	TitleGenerationAbilityInput,
 	GeneratedTitleData,
@@ -166,24 +169,19 @@ export default function TitleToolbar( {
 
 	// When the post content is too short, disable the button and surface the
 	// minimum-length requirement as its accessible tooltip.
-	const isCharacterType = getWordCountType() !== 'words';
-	const tooShortLabel = isCharacterType
-		? sprintf(
-				/* translators: %d: minimum number of characters required */
-				__(
-					'Title generation will be available when the post content has at least %d characters.',
-					'ai'
-				),
-				minContentLength
-		  )
-		: sprintf(
-				/* translators: %d: minimum number of words required */
-				__(
-					'Title generation will be available when the post content has at least %d words.',
-					'ai'
-				),
-				minContentLength
-		  );
+	const tooShortLabel = formatMinLengthLabel(
+		/* translators: %d: minimum number of characters required */
+		__(
+			'Title generation will be available when the post content has at least %d characters.',
+			'ai'
+		),
+		/* translators: %d: minimum number of words required */
+		__(
+			'Title generation will be available when the post content has at least %d words.',
+			'ai'
+		),
+		minContentLength
+	);
 
 	const buttonTooltip = isContentTooShort ? tooShortLabel : buttonLabel;
 	const isDisabled = isGenerating || isContentTooShort;

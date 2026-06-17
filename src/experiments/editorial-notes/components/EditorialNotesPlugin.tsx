@@ -27,7 +27,7 @@ import { commentContent } from '@wordpress/icons';
  * Internal dependencies
  */
 import { REVIEWABLE_BLOCK_TYPES } from '../../../utils/notes';
-import { getWordCountType } from '../../../utils/word-count';
+import { formatMinLengthLabel } from '../../../utils/word-count';
 import {
 	useEditorialBlock,
 	useEditorialNotes,
@@ -77,20 +77,20 @@ export default function EditorialNotesPlugin() {
 	const buttonLabel = isReviewing
 		? reviewingLabel
 		: __( 'Generate Editorial Notes', 'ai' );
-	const isCharacterType = getWordCountType() !== 'words';
-	const tooShortMessage = isCharacterType
-		? /* translators: %d: minimum number of characters required. */
-		  __(
-				'Editorial Notes will be available when the post content has at least %d characters.',
-				'ai'
-		  )
-		: /* translators: %d: minimum number of words required. */
-		  __(
-				'Editorial Notes will be available when the post content has at least %d words.',
-				'ai'
-		  );
 	const buttonDescription = isContentTooShort
-		? sprintf( tooShortMessage, minContentLength )
+		? formatMinLengthLabel(
+				/* translators: %d: minimum number of characters required. */
+				__(
+					'Editorial Notes will be available when the post content has at least %d characters.',
+					'ai'
+				),
+				/* translators: %d: minimum number of words required. */
+				__(
+					'Editorial Notes will be available when the post content has at least %d words.',
+					'ai'
+				),
+				minContentLength
+		  )
 		: __(
 				'This analyzes the content of this post block-by-block and adds editorial Notes with suggestions on each block.',
 				'ai'
@@ -112,7 +112,6 @@ export default function EditorialNotesPlugin() {
 								justifyContent: 'center',
 								width: '100%',
 							} }
-							accessibleWhenDisabled
 							__next40pxDefaultSize
 						>
 							{ buttonLabel }

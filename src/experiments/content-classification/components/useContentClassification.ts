@@ -155,10 +155,12 @@ export function useContentClassification( taxonomy: string ): {
 	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
 
+	const { minContentLength } = getSettings();
+
 	// Check if content has enough words.
 	const hasEnoughContent = hasMinimumContent(
 		content || '',
-		getSettings().minContentLength
+		minContentLength
 	);
 
 	const handleGenerate = useCallback( async () => {
@@ -238,7 +240,7 @@ export function useContentClassification( taxonomy: string ): {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
-		minContentLength: getSettings().minContentLength,
+		minContentLength,
 	};
 }
 
