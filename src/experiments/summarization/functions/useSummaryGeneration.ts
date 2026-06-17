@@ -18,10 +18,21 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
-import { count } from '@wordpress/wordcount';
+import { hasMinimumContent } from '../../../utils/word-count';
+import type { SummarizationData } from '../types';
 
+const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
 const NOTICE_ID = 'ai_summarization_error';
-const { aiSummarizationData } = window as any;
+
+const getSettings = (): SummarizationData => {
+	const settings = ( window as any ).aiSummarizationData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		minContentLength:
+			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
+	};
+};
 
 /**
  * Summary generation hook.
@@ -131,10 +142,10 @@ export function useSummaryGeneration() {
 	};
 
 	// Minimum content length required for summarization.
-	const minContentLength: number =
-		aiSummarizationData?.minContentLength ?? 100;
-	const isContentTooShort =
-		count( content, 'characters_including_spaces' ) < minContentLength;
+	const isContentTooShort = ! hasMinimumContent(
+		content || '',
+		getSettings().minContentLength
+	);
 
 	return {
 		isSummarizing,
@@ -142,6 +153,6 @@ export function useSummaryGeneration() {
 		summary,
 		handleSummarize,
 		isContentTooShort,
-		minContentLength,
+		minContentLength: getSettings().minContentLength,
 	};
 }
