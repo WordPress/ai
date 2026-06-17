@@ -540,7 +540,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	 * MySQL session whose time zone is ahead of UTC, recent rows are excluded from
 	 * "Last Minute"/"Last Hour"/etc. summaries.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_get_summary_windowed_period_uses_utc_session_timezone(): void {
 		global $wpdb;
@@ -630,7 +630,7 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	 * with a row 29 days 18 hours old triggers the bug when the cutoff is built
 	 * from NOW() but not from UTC_TIMESTAMP().
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_cleanup_by_retention_uses_utc_session_timezone(): void {
 		global $wpdb;

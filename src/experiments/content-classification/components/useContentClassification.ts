@@ -153,7 +153,7 @@ export function useContentClassification( taxonomy: string ): {
 	}, [] );
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
-	const { removeNotice, createErrorNotice } = dispatch( noticesStore ) as any;
+	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
 
 	// Check if content has enough words.
 	const hasEnoughContent = hasMinimumContent(
@@ -332,7 +332,7 @@ async function findOrCreateTerm(
 
 		return newTerm?.id ?? null;
 	} catch ( error: any ) {
-		const { createErrorNotice } = dispatch( noticesStore ) as any;
+		const { createErrorNotice } = dispatch( noticesStore );
 		createErrorNotice(
 			error?.message ||
 				`Could not add term "${ termName }". Please try again.`,

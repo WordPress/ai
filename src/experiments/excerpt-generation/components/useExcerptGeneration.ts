@@ -116,7 +116,7 @@ export function useExcerptGeneration(): {
 		}
 
 		setIsGenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedExcerpt = await generateExcerpt(
@@ -163,7 +163,7 @@ export function useExcerptGeneration(): {
 					? error
 					: error?.message ??
 					  __( 'Failed to generate excerpt.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+			dispatch( noticesStore ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );

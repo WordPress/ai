@@ -15,7 +15,13 @@ import {
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { useState, useCallback, useMemo } from '@wordpress/element';
+import {
+	useState,
+	useCallback,
+	useMemo,
+	useRef,
+	useLayoutEffect,
+} from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
@@ -65,6 +71,20 @@ export default function ContentResizingToolbar( {
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
 
+	const acceptButtonRef = useRef< HTMLDivElement | null >( null );
+
+	// Keep the modal scrolled to the action buttons when it opens or updates.
+	useLayoutEffect( () => {
+		if ( ! isModalOpen ) {
+			return;
+		}
+
+		acceptButtonRef.current?.scrollIntoView( {
+			block: 'start',
+			behavior: 'auto',
+		} );
+	}, [ isModalOpen, suggestedContent ] );
+
 	const { blockContent, isResized, postId } = useSelect(
 		( select ) => {
 			/* eslint-disable dot-notation */
@@ -81,7 +101,7 @@ export default function ContentResizingToolbar( {
 	);
 
 	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
-	const noticesDispatch = useDispatch( noticesStore ) as any;
+	const noticesDispatch = useDispatch( noticesStore );
 
 	const handleAction = useCallback(
 		async ( action: ContentResizingAction ) => {
@@ -157,10 +177,10 @@ export default function ContentResizingToolbar( {
 	}, [] );
 
 	const handleRetry = useCallback( () => {
-		if ( lastAction ) {
+		if ( lastAction && ! isLoading ) {
 			handleAction( lastAction );
 		}
-	}, [ handleAction, lastAction ] );
+	}, [ handleAction, isLoading, lastAction ] );
 
 	// Calculate the word difference between the original and suggested content.
 	const wordDiff = useMemo( () => {
@@ -274,70 +294,98 @@ export default function ContentResizingToolbar( {
 					isFullScreen={ false }
 					size="medium"
 					className="ai-content-resizing-modal"
+					focusOnMount="firstContentElement"
 				>
-					{ isLoading ? (
-						<div className="ai-content-resizing-modal__loading">
-							<Spinner />
-							<p>{ __( 'Generating…', 'ai' ) }</p>
+					<section
+						className="ai-content-resizing-modal__panel"
+						aria-label={ __( 'Original content', 'ai' ) }
+					>
+						<div className="ai-content-resizing-modal__label">
+							<span>{ __( 'Original', 'ai' ) }</span>
 						</div>
-					) : (
-						<>
-							<section
-								className="ai-content-resizing-modal__panel"
-								aria-label={ __( 'Original content', 'ai' ) }
+						<div
+							className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
+							dangerouslySetInnerHTML={ {
+								__html: blockContent,
+							} }
+						/>
+					</section>
+					<section
+						className="ai-content-resizing-modal__panel"
+						aria-label={ __( 'Suggested content', 'ai' ) }
+					>
+						<div className="ai-content-resizing-modal__label">
+							<span>{ __( 'Suggested', 'ai' ) }</span>
+							{ ! isLoading && wordDiff && (
+								<span
+									className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
+									aria-label={ wordDiff.ariaLabel }
+								>
+									{ wordDiff.label }
+								</span>
+							) }
+						</div>
+						{ isLoading ? (
+							<div
+								className="ai-content-resizing-modal__text ai-content-resizing-modal__loading"
+								role="status"
+								aria-live="polite"
 							>
-								<div className="ai-content-resizing-modal__label">
-									<span>{ __( 'Original', 'ai' ) }</span>
+								<div className="ai-content-resizing-modal__loading-status">
+									<Spinner />
+									<span>{ __( 'Generating…', 'ai' ) }</span>
 								</div>
 								<div
-									className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
-									dangerouslySetInnerHTML={ {
-										__html: blockContent,
-									} }
-								/>
-							</section>
-							<section
-								className="ai-content-resizing-modal__panel"
-								aria-label={ __( 'Suggested content', 'ai' ) }
-							>
-								<div className="ai-content-resizing-modal__label">
-									<span>{ __( 'Suggested', 'ai' ) }</span>
-									{ wordDiff && (
-										<span
-											className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
-											aria-label={ wordDiff.ariaLabel }
-										>
-											{ wordDiff.label }
-										</span>
+									className="ai-content-resizing-modal__loading-skeleton"
+									aria-hidden="true"
+								>
+									{ Array.from( { length: 3 } ).map(
+										( _, index ) => (
+											<span
+												key={ index }
+												className="ai-content-resizing-modal__loading-skeleton-line"
+											/>
+										)
 									) }
 								</div>
-								<div
-									className="ai-content-resizing-modal__text"
-									dangerouslySetInnerHTML={ {
-										__html: suggestedContent ?? '',
-									} }
-								/>
-							</section>
-							<Flex
-								justify="flex-start"
-								gap={ 2 }
-								className="ai-content-resizing-modal__actions"
-							>
-								<Button
-									variant="primary"
-									onClick={ handleAccept }
-								>
-									{ __( 'Accept', 'ai' ) }
-								</Button>
-								<Button
-									variant="secondary"
-									onClick={ handleRetry }
-								>
-									{ __( 'Regenerate', 'ai' ) }
-								</Button>
-							</Flex>
-						</>
-					) }
+							</div>
+						) : (
+							<div
+								className="ai-content-resizing-modal__text"
+								dangerouslySetInnerHTML={ {
+									__html: suggestedContent ?? '',
+								} }
+							/>
+						) }
+					</section>
+					<Flex
+						justify="flex-start"
+						gap={ 2 }
+						className="ai-content-resizing-modal__actions"
+					>
+						<Button
+							variant="primary"
+							onClick={ handleAccept }
+							disabled={ isLoading || suggestedContent === null }
+							accessibleWhenDisabled
+							ref={ acceptButtonRef }
+							__next40pxDefaultSize
+						>
+							{ __( 'Accept', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={ handleRetry }
+							disabled={ isLoading || lastAction === null }
+							isBusy={ isLoading }
+							accessibleWhenDisabled
+							__next40pxDefaultSize
+						>
+							{ isLoading
+								? __( 'Generating…', 'ai' )
+								: __( 'Regenerate', 'ai' ) }
+						</Button>
+					</Flex>
 				</Modal>
 			) }
 		</>

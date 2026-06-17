@@ -112,6 +112,7 @@ export default function EditorialNotesPlugin() {
 								justifyContent: 'center',
 								width: '100%',
 							} }
+							accessibleWhenDisabled
 							__next40pxDefaultSize
 						>
 							{ buttonLabel }

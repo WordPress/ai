@@ -201,7 +201,7 @@ export default function TitleToolbar( {
 		}
 
 		setIsGenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const result = await generateTitle( postId as number, content );
@@ -212,7 +212,7 @@ export default function TitleToolbar( {
 				typeof error === 'string'
 					? error
 					: error?.message ?? __( 'Failed to generate title.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+			dispatch( noticesStore ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );
@@ -227,7 +227,7 @@ export default function TitleToolbar( {
 	 */
 	const handleRegenerate = async () => {
 		setIsRegenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const result = await generateTitle( postId as number, content );
@@ -237,7 +237,7 @@ export default function TitleToolbar( {
 				typeof error === 'string'
 					? error
 					: error?.message ?? __( 'Failed to generate title.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+			dispatch( noticesStore ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );
@@ -325,6 +325,7 @@ export default function TitleToolbar( {
 								onClick={ handleRegenerate }
 								disabled={ isRegenerating }
 								isBusy={ isRegenerating }
+								__next40pxDefaultSize
 							>
 								{ buttonLabel }
 							</Button>
@@ -334,6 +335,7 @@ export default function TitleToolbar( {
 								variant="primary"
 								onClick={ handleInsert }
 								disabled={ isRegenerating || ! generatedTitle }
+								__next40pxDefaultSize
 							>
 								{ __( 'Insert', 'ai' ) }
 							</Button>

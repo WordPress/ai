@@ -42,6 +42,7 @@ export default [
 			'@wordpress/data-no-store-string-literals': 'error',
 			'@wordpress/wp-global-usage': 'error',
 			'@wordpress/react-no-unsafe-timeout': 'error',
+			'@wordpress/components-no-missing-40px-size-prop': 'error',
 
 			// Override WP defaults.
 			'@wordpress/i18n-text-domain': [

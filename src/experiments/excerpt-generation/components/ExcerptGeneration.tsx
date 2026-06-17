@@ -55,6 +55,7 @@ export default function ExcerptGeneration(): React.JSX.Element | null {
 			disabled={ isGenerating || isContentTooShort }
 			accessibleWhenDisabled
 			isBusy={ isGenerating }
+			__next40pxDefaultSize
 		>
 			{ buttonLabel }
 		</Button>
