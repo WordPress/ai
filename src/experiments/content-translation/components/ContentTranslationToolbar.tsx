@@ -9,27 +9,25 @@ import {
 import { __ } from '@wordpress/i18n';
 import { useMemo } from '@wordpress/element';
 
-/**
- * Internal dependencies
- */
-import { useContentTranslation } from '../hooks/useContentTranslation';
-
 type ContentTranslationToolbarProps = {
-	clientId: string;
+	isLoading: boolean;
+	translate: ( languageCode: string ) => Promise< void >;
+	canTranslate: boolean;
 };
 
 /**
  * Content translation toolbar component.
  *
- * @param props          Component props.
- * @param props.clientId The block client ID.
+ * @param props              Component props.
+ * @param props.isLoading    Whether a translation request is in progress.
+ * @param props.translate    Callback to translate the selected block.
+ * @param props.canTranslate Whether the selected block can be translated.
  */
 export default function ContentTranslationToolbar( {
-	clientId,
+	isLoading,
+	translate,
+	canTranslate,
 }: ContentTranslationToolbarProps ) {
-	const { isLoading, translate, canTranslate } =
-		useContentTranslation( clientId );
-
 	const controls = useMemo(
 		() =>
 			window?.aiContentTranslationData?.languages.map( ( language ) => ( {
