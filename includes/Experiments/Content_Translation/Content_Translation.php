@@ -72,6 +72,13 @@ class Content_Translation extends Abstract_Feature {
 		);
 	}
 
+	/**
+	 * Enqueues and localizes the admin script.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
 	public function enqueue_assets( string $hook_suffix ): void {
 		// Enqueue assets only on the post editor screen.
 		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
