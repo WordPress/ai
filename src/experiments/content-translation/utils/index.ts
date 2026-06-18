@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import type { Block } from '@wordpress/blocks';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -68,4 +69,22 @@ export function setTranslationLoadingClass( isLoading: boolean ) {
 		'ai-content-translation--is-loading',
 		isLoading
 	);
+}
+
+/**
+ * Get a user-friendly error message from an unknown error object.
+ *
+ * @param error The unknown error object to extract the message from.
+ * @return A string containing the error message to display to the user.
+ */
+export function getErrorMessage( error: unknown ): string {
+	if ( typeof error === 'string' ) {
+		return error;
+	}
+
+	if ( error && typeof error === 'object' && 'message' in error ) {
+		return String( ( error as { message: string } ).message );
+	}
+
+	return __( 'Something went wrong. Please try again.', 'ai' );
 }
