@@ -176,6 +176,7 @@ export function AccessControlSettings( {
 										onInputChange={ handleInputChange }
 										__experimentalExpandOnFocus
 										__experimentalShowHowTo={ false }
+										__next40pxDefaultSize
 										messages={ {
 											added: __( 'User added.', 'ai' ),
 											removed: __(
