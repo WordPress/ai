@@ -16,6 +16,7 @@ import { runAbility } from '../../../utils/run-ability';
 import { flattenBlocks } from '../../../utils/blocks';
 import { hasMinimumContent } from '../../../utils/word-count';
 import {
+	getErrorMessage,
 	getSettings,
 	getTranslatableBlock,
 	setTranslationLoadingClass,
@@ -130,16 +131,8 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					)
 				);
 			}
-		} catch ( error: unknown ) {
-			const message =
-				error instanceof Error
-					? error.message
-					: __(
-							'An error occured while translating the content.',
-							'ai'
-					  );
-
-			noticeDispatch.createErrorNotice( message, {
+		} catch ( error ) {
+			noticeDispatch.createErrorNotice( getErrorMessage( error ), {
 				id: TRANSLATION_NOTICE_ID,
 			} );
 		} finally {
