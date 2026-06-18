@@ -209,7 +209,7 @@ class Admin_Page {
 					<h3><?php esc_html_e( 'Input Schema', 'ai' ); ?></h3>
 					<div class="ability-schema-wrapper">
 						<button type="button" class="button button-small ability-copy-btn" data-copy="input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+						<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
 					</div>
 				</div>
 			<?php endif; ?>
@@ -219,7 +219,7 @@ class Admin_Page {
 					<h3><?php esc_html_e( 'Output Schema', 'ai' ); ?></h3>
 					<div class="ability-schema-wrapper">
 						<button type="button" class="button button-small ability-copy-btn" data-copy="output-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+						<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
 					</div>
 				</div>
 			<?php endif; ?>
@@ -228,7 +228,7 @@ class Admin_Page {
 				<h3><?php esc_html_e( 'Raw Data', 'ai' ); ?></h3>
 				<div class="ability-schema-wrapper">
 					<button type="button" class="button button-small ability-copy-btn" data-copy="raw-data"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
 				</div>
 			</div>
 		</div>
@@ -311,7 +311,7 @@ class Admin_Page {
 				<?php endif; ?>
 
 				<label for="ability-test-payload" class="screen-reader-text"><?php esc_html_e( 'Ability test input (JSON)', 'ai' ); ?></label>
-				<textarea id="ability-test-payload" rows="12"><?php echo esc_textarea( (string) wp_json_encode( $example_input, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></textarea>
+				<textarea id="ability-test-payload" rows="12"><?php echo esc_textarea( (string) wp_json_encode( $example_input, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></textarea>
 
 				<div class="ability-test-actions">
 					<button type="button" id="ability-test-invoke" class="button button-primary" data-ability="<?php echo esc_attr( $ability_slug ); ?>">
@@ -338,14 +338,14 @@ class Admin_Page {
 					<h3><?php esc_html_e( 'Input Schema Reference', 'ai' ); ?></h3>
 					<div class="ability-schema-wrapper">
 						<button type="button" class="button button-small ability-copy-btn" data-copy="test-input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="test-input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+						<pre class="ability-schema-display" id="test-input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
 					</div>
 				</div>
 			<?php endif; ?>
 		</div>
 
 		<script type="application/json" id="ability-input-schema">
-			<?php echo wp_json_encode( $ability['input_schema'] ); ?>
+			<?php echo wp_json_encode( $ability['input_schema'], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE ); ?>
 		</script>
 		<?php
 	}

@@ -668,7 +668,7 @@ function VisualCardToggle( {
 				{ checked && isAccessControlMode && feature && (
 					<AccessControlSettings featureId={ feature.id } />
 				) }
-				{ checked && isDeveloperMode && feature && (
+				{ globalEnabled && checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
 						capability={ feature.capability }

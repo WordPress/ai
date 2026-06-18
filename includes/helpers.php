@@ -505,7 +505,7 @@ function has_ai_credentials(): bool {
 /**
  * Checks whether any configured connector exposes an image-generation-capable model.
  *
- * @since x.x.x
+ * @since 1.0.2
  *
  * @return bool True if at least one configured connector has an image-generation-capable model.
  */
@@ -670,6 +670,27 @@ function is_connector_plugin_active( array $connector_data ): bool {
 	}
 
 	return is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $plugin_file );
+}
+
+/**
+ * Returns the minimum content length required for a given feature.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id     The feature identifier (e.g. 'content-resizing', 'content-classification', 'summarization').
+ * @param int    $content_length The default minimum content length.
+ * @return int The minimum content length.
+ */
+function get_min_content_length( string $feature_id, int $content_length = 100 ): int {
+	/**
+	 * Filters the minimum content length required for a feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $content_length The minimum content length. Default 100.
+	 * @param string $feature_id     The feature identifier.
+	 */
+	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
 }
 
 /**
