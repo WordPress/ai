@@ -7,7 +7,8 @@
 	}
 }
 
-.ai-content-translation-content--is-loading .block-editor-rich-text__editable {
+.block-editor-iframe__body.ai-content-translation--is-loading
+	.block-editor-rich-text__editable {
 	color: var(--wpds-color-fg-content-neutral-weak, #707070);
 
 	@media (prefers-reduced-motion: no-preference) {
@@ -32,8 +33,13 @@
 	}
 }
 
-.ai-content-translation-toolbar {
-	&__spinner.components-spinner {
-		margin-top: 0;
+.ai-content-translation-plugin {
+	&__trigger.components-button.has-icon.has-text {
+		width: 100%;
+		justify-content: center;
+	}
+
+	&__description {
+		color: var(--wpds-color-fg-content-neutral-weak, #757575);
 	}
 }

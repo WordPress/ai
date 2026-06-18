@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { useCallback, useState } from '@wordpress/element';
+import { useState } from '@wordpress/element';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
 import { store as noticesStore } from '@wordpress/notices';
@@ -11,86 +11,149 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
-import { getBlockText } from '../../../utils/blocks';
-
-/**
- * Notice ID for the content translation error notice.
- */
-const NOTICE_ID = 'ai_content_translation_error';
+import { flattenBlocks } from '../../../utils/blocks';
+import { hasMinimumContent } from '../../../utils/word-count';
+import {
+	getSettings,
+	getTranslatableBlock,
+	setTranslationLoadingClass,
+} from '../utils';
+import { TRANSLATION_BATCH_SIZE, TRANSLATION_NOTICE_ID } from '../constants';
 
 type UseContentTranslationReturn = {
-	translate: ( languageCode: string ) => Promise< void >;
-	canTranslate: boolean;
+	isContentTooShort: boolean;
 	isLoading: boolean;
+	progress: number;
+	total: number;
+	minContentLength: number;
+	translate: ( languageCode: string ) => Promise< void >;
 };
 
 /**
- * Hook to handle content translation for a specific block.
+ * Handles the content translation process, including managing loading state, progress, and error handling.
  *
- * @param clientId The block client ID.
- * @return An object containing the translate function, canTranslate boolean, and isLoading boolean.
+ * @return {UseContentTranslationReturn} An object containing the translation state and functions.
  */
-export function useContentTranslation(
-	clientId: string
-): UseContentTranslationReturn {
+export function useContentTranslation(): UseContentTranslationReturn {
 	const [ isLoading, setIsLoading ] = useState( false );
+	const [ progress, setProgress ] = useState( 0 );
+	const [ total, setTotal ] = useState( 0 );
 
 	const noticeDispatch = useDispatch( noticesStore );
 	const blockEditorDispatch = useDispatch( blockEditorStore );
 
-	const { blockContent, postId } = useSelect(
-		( select ) => {
-			const block = select( blockEditorStore ).getBlock( clientId );
-			return {
-				blockContent: block ? getBlockText( block ) : '',
-				postId: select( editorStore ).getCurrentPostId() as number,
-			};
-		},
-		[ clientId ]
+	const { postId, allBlocks, content } = useSelect( ( select ) => {
+		return {
+			postId: select( editorStore ).getCurrentPostId(),
+			allBlocks: select( blockEditorStore ).getBlocks(),
+			content: select( editorStore ).getEditedPostContent(),
+		};
+	}, [] );
+
+	const isContentTooShort = ! hasMinimumContent(
+		content || '',
+		getSettings().minContentLength
 	);
 
-	const translate = useCallback(
-		async ( languageCode: string ) => {
-			noticeDispatch.removeNotice( NOTICE_ID );
+	const translate = async ( languageCode: string ) => {
+		if ( ! ensureProvider( TRANSLATION_NOTICE_ID ) ) {
+			return;
+		}
 
-			setIsLoading( true );
+		if ( isContentTooShort ) {
+			return;
+		}
 
-			try {
-				const result = await runAbility< string >(
-					'ai/content-translation',
-					{
-						content: blockContent,
-						target_language: languageCode,
-						post_id: postId,
-					}
+		setProgress( 0 );
+		setTotal( 0 );
+
+		noticeDispatch.removeNotice( TRANSLATION_NOTICE_ID );
+
+		const translatableBlocks = flattenBlocks( allBlocks )
+			.map( ( block ) => getTranslatableBlock( block ) )
+			.filter( ( block ) => block !== null );
+
+		if ( translatableBlocks.length === 0 ) {
+			noticeDispatch.createErrorNotice(
+				__( 'No translatable content found in the post.', 'ai' ),
+				{
+					id: TRANSLATION_NOTICE_ID,
+				}
+			);
+
+			return;
+		}
+
+		setTotal( translatableBlocks.length );
+		setIsLoading( true );
+		setTranslationLoadingClass( true );
+
+		try {
+			// Process blocks in batches.
+			for (
+				let batchStart = 0;
+				batchStart < translatableBlocks.length;
+				batchStart += TRANSLATION_BATCH_SIZE
+			) {
+				const batch = translatableBlocks.slice(
+					batchStart,
+					batchStart + TRANSLATION_BATCH_SIZE
 				);
 
-				blockEditorDispatch.updateBlockAttributes( clientId, {
-					content: result,
-				} );
-			} catch ( error: unknown ) {
-				const message =
-					error instanceof Error
-						? error.message
-						: __(
-								'An error occured while translating the content.',
-								'ai'
-						  );
+				const results = await Promise.all(
+					batch.map( ( block ) =>
+						runAbility< string >( 'ai/content-translation', {
+							content: block.content,
+							target_language: languageCode,
+							post_id: postId,
+						} )
+					)
+				);
 
-				noticeDispatch.createErrorNotice( message, {
-					id: NOTICE_ID,
+				results.forEach( ( result, index ) => {
+					if ( ! result || ! batch[ index ] ) {
+						return;
+					}
+
+					const { clientId } = batch[ index ];
+					blockEditorDispatch.updateBlockAttributes( clientId, {
+						content: result,
+					} );
 				} );
-			} finally {
-				setIsLoading( false );
+
+				setProgress(
+					Math.min(
+						batchStart + TRANSLATION_BATCH_SIZE,
+						translatableBlocks.length
+					)
+				);
 			}
-		},
-		[ blockContent, postId, noticeDispatch, blockEditorDispatch, clientId ]
-	);
+		} catch ( error: unknown ) {
+			const message =
+				error instanceof Error
+					? error.message
+					: __(
+							'An error occured while translating the content.',
+							'ai'
+					  );
+
+			noticeDispatch.createErrorNotice( message, {
+				id: TRANSLATION_NOTICE_ID,
+			} );
+		} finally {
+			setIsLoading( false );
+			setTranslationLoadingClass( false );
+		}
+	};
 
 	return {
 		isLoading,
+		isContentTooShort,
+		progress,
+		total,
+		minContentLength: getSettings().minContentLength,
 		translate,
-		canTranslate: blockContent.trim().length > 0,
 	};
 }

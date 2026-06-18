@@ -15,6 +15,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -93,8 +95,9 @@ class Content_Translation extends Abstract_Feature {
 			'content_translation',
 			'ContentTranslationData',
 			array(
-				'enabled'   => $this->is_enabled(),
-				'languages' => Languages::get_supported_languages_for_js(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => get_min_content_length( 'content-translation', 15 ),
+				'languages'        => Languages::get_supported_languages_for_js(),
 			)
 		);
 	}

@@ -80,6 +80,22 @@ final class Languages {
 				'locale' => 'zh_CN',
 				'name'   => __( 'Chinese (Simplified)', 'ai' ),
 			),
+			'zh-tw' => array(
+				'locale' => 'zh_TW',
+				'name'   => __( 'Chinese (Traditional)', 'ai' ),
+			),
+			'ko'    => array(
+				'locale' => 'ko',
+				'name'   => __( 'Korean', 'ai' ),
+			),
+			'ar'    => array(
+				'locale' => 'ar',
+				'name'   => __( 'Arabic', 'ai' ),
+			),
+			'hi'    => array(
+				'locale' => 'hi',
+				'name'   => __( 'Hindi', 'ai' ),
+			),
 		);
 
 		/**
