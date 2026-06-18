@@ -3,6 +3,7 @@
  */
 import {
 	Button,
+	CheckboxControl,
 	Flex,
 	FlexItem,
 	FormTokenField,
@@ -34,27 +35,10 @@ export function AccessControlSettings( {
 	const effectiveRoles = localRoles ?? settings.roles;
 	const effectiveUsers = localUsers ?? settings.users;
 
-	const roleSuggestions = useMemo(
-		() => roles.map( ( r ) => r.name ),
-		[ roles ]
-	);
-
 	const userSuggestions = useMemo(
 		() => users.map( ( u ) => u.name ),
 		[ users ]
 	);
-
-	const roleMap = useMemo( () => {
-		const map = new Map< string, string >();
-		roles.forEach( ( r ) => map.set( r.name, r.id ) );
-		return map;
-	}, [ roles ] );
-
-	const reverseRoleMap = useMemo( () => {
-		const map = new Map< string, string >();
-		roles.forEach( ( r ) => map.set( r.id, r.name ) );
-		return map;
-	}, [ roles ] );
 
 	const userMap = useMemo( () => {
 		const map = new Map< string, number >();
@@ -68,11 +52,6 @@ export function AccessControlSettings( {
 		return map;
 	}, [ users ] );
 
-	const selectedRolesTokens = useMemo(
-		() => effectiveRoles.map( ( r ) => reverseRoleMap.get( r ) || r ),
-		[ effectiveRoles, reverseRoleMap ]
-	);
-
 	const selectedUsersTokens = useMemo(
 		() =>
 			effectiveUsers.map(
@@ -81,18 +60,15 @@ export function AccessControlSettings( {
 		[ effectiveUsers, reverseUserMap ]
 	);
 
-	const handleRolesChange = useCallback(
-		( tokens: ( string | { value: string } )[] ) => {
-			const newRoles: string[] = [];
-			tokens.forEach( ( token ) => {
-				const label = typeof token === 'string' ? token : token.value;
-				const id = roleMap.get( label ) || label;
-				newRoles.push( id );
-			} );
+	const handleRoleToggle = useCallback(
+		( roleId: string, checked: boolean ) => {
+			const newRoles = checked
+				? [ ...effectiveRoles, roleId ]
+				: effectiveRoles.filter( ( r ) => r !== roleId );
 			setLocalRoles( newRoles );
 			stage( { roles: newRoles, users: effectiveUsers } );
 		},
-		[ stage, effectiveUsers, roleMap ]
+		[ stage, effectiveRoles, effectiveUsers ]
 	);
 
 	const handleUsersChange = useCallback(
@@ -130,15 +106,34 @@ export function AccessControlSettings( {
 			) }
 			{ ! isLoading && ! fetchError && (
 				<>
-					<Flex gap={ 2 } direction="column">
+					<Flex gap={ 4 } direction="column">
 						<FlexItem>
-							<FormTokenField
-								label={ __( 'Roles', 'ai' ) }
-								value={ selectedRolesTokens }
-								suggestions={ roleSuggestions }
-								onChange={ handleRolesChange }
-								__experimentalExpandOnFocus
-							/>
+							<fieldset style={ { border: 'none' } }>
+								<legend
+									style={ {
+										fontSize: '11px',
+										fontWeight: 500,
+										textTransform: 'uppercase',
+										letterSpacing: '0.5px',
+										marginBottom: '8px',
+									} }
+								>
+									{ __( 'Roles', 'ai' ) }
+								</legend>
+								<Flex direction="column" gap={ 1 }>
+									{ roles.map( ( role ) => (
+										<FlexItem key={ role.id }>
+											<CheckboxControl
+												label={ role.name }
+												checked={ effectiveRoles.includes( role.id ) }
+												onChange={ ( checked ) =>
+													handleRoleToggle( role.id, checked )
+												}
+											/>
+										</FlexItem>
+									) ) }
+								</Flex>
+							</fieldset>
 						</FlexItem>
 						<FlexItem>
 							<FormTokenField
