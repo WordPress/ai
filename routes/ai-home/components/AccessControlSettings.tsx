@@ -1,10 +1,15 @@
 /**
  * WordPress dependencies
  */
-import { Button, FormTokenField, Spinner } from '@wordpress/components';
+import {
+	Button,
+	Flex,
+	FlexItem,
+	FormTokenField,
+	Spinner,
+} from '@wordpress/components';
 import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { Stack } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -125,34 +130,44 @@ export function AccessControlSettings( {
 			) }
 			{ ! isLoading && ! fetchError && (
 				<>
-					<FormTokenField
-						label={ __( 'Roles', 'ai' ) }
-						value={ selectedRolesTokens }
-						suggestions={ roleSuggestions }
-						onChange={ handleRolesChange }
-						__experimentalExpandOnFocus
-					/>
-					<FormTokenField
-						label={ __( 'Users', 'ai' ) }
-						value={ selectedUsersTokens }
-						suggestions={ userSuggestions }
-						onChange={ handleUsersChange }
-						__experimentalExpandOnFocus
-					/>
-					{ isDirty && (
-						<Stack align="flex-end" direction="row">
-							<Button
-								variant="primary"
-								onClick={ handleSave }
-								disabled={ isSaving }
-								size="compact"
-								isBusy={ isSaving }
-								accessibleWhenDisabled
-							>
-								{ isSaving ? <Spinner /> : __( 'Save', 'ai' ) }
-							</Button>
-						</Stack>
-					) }
+					<Flex gap={ 2 } direction="column">
+						<FlexItem>
+							<FormTokenField
+								label={ __( 'Roles', 'ai' ) }
+								value={ selectedRolesTokens }
+								suggestions={ roleSuggestions }
+								onChange={ handleRolesChange }
+								__experimentalExpandOnFocus
+							/>
+						</FlexItem>
+						<FlexItem>
+							<FormTokenField
+								label={ __( 'Users', 'ai' ) }
+								value={ selectedUsersTokens }
+								suggestions={ userSuggestions }
+								onChange={ handleUsersChange }
+								__experimentalExpandOnFocus
+							/>
+						</FlexItem>
+						{ isDirty && (
+							<FlexItem>
+								<Button
+									variant="primary"
+									onClick={ handleSave }
+									disabled={ isSaving }
+									size="compact"
+									isBusy={ isSaving }
+									accessibleWhenDisabled
+								>
+									{ isSaving ? (
+										<Spinner />
+									) : (
+										__( 'Save', 'ai' )
+									) }
+								</Button>
+							</FlexItem>
+						) }
+					</Flex>
 				</>
 			) }
 		</div>
