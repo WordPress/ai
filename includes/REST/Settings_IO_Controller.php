@@ -318,4 +318,3 @@ final class Settings_IO_Controller {
 		return false !== strpos( $option_name, '_field_developer' );
 	}
 }
-

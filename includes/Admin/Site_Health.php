@@ -11,10 +11,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
+use WordPress\AI\Settings\Settings_Registration;
 use function WordPress\AI\get_ai_connectors;
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_connector_authentication;
-use WordPress\AI\Settings\Settings_Registration;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -54,7 +54,7 @@ final class Site_Health {
 		$fields = array();
 
 		// Global AI enabled toggle.
-		$globally_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		$globally_enabled     = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
 		$fields['ai_enabled'] = array(
 			'label' => __( 'AI enabled', 'ai' ),
 			'value' => $globally_enabled ? __( 'Yes', 'ai' ) : __( 'No', 'ai' ),
@@ -68,7 +68,7 @@ final class Site_Health {
 		);
 
 		// Credentials status (name/source only — never the key itself).
-		$has_credentials = has_ai_credentials();
+		$has_credentials                  = has_ai_credentials();
 		$fields['credentials_configured'] = array(
 			'label' => __( 'Credentials configured', 'ai' ),
 			'value' => $has_credentials ? __( 'Yes', 'ai' ) : __( 'No', 'ai' ),
@@ -76,7 +76,7 @@ final class Site_Health {
 		);
 
 		// Configured providers — names only.
-		$configured_providers = $this->get_configured_provider_names();
+		$configured_providers           = $this->get_configured_provider_names();
 		$fields['configured_providers'] = array(
 			'label' => __( 'Configured providers', 'ai' ),
 			'value' => ! empty( $configured_providers )
@@ -85,7 +85,7 @@ final class Site_Health {
 		);
 
 		// Number of individually enabled features.
-		$enabled_features = $this->count_enabled_features();
+		$enabled_features           = $this->count_enabled_features();
 		$fields['enabled_features'] = array(
 			'label' => __( 'Features enabled', 'ai' ),
 			'value' => $enabled_features,
@@ -209,12 +209,13 @@ final class Site_Health {
 				continue;
 			}
 
-			if ( (bool) get_option( $option_name, false ) ) {
-				++$count;
+			if ( ! (bool) get_option( $option_name, false ) ) {
+				continue;
 			}
+
+			++$count;
 		}
 
 		return $count;
 	}
 }
-
