@@ -724,7 +724,7 @@ function VisualCardToggle( {
 					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
-				{ checked && isDeveloperMode && feature && (
+				{ globalEnabled && checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
 						capability={ feature.capability }

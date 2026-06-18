@@ -10,3 +10,11 @@ export interface SummarizationAbilityInput {
 	context: string;
 	[ key: string ]: string | undefined;
 }
+
+/**
+ * Localized data from the PHP side.
+ */
+export interface SummarizationData {
+	enabled: boolean;
+	minContentLength: number;
+}
