@@ -125,6 +125,7 @@ export function ReplyModal( {
 						value={ tone }
 						options={ toneOptions }
 						onChange={ ( value ) => setTone( value as Tone ) }
+						__next40pxDefaultSize
 					/>
 				</FlexItem>
 
@@ -186,6 +187,7 @@ export function ReplyModal( {
 						disabled={ isLoading }
 						isBusy={ isLoading }
 						accessibleWhenDisabled
+						__next40pxDefaultSize
 					>
 						{ getGenerateText() }
 					</Button>
@@ -197,6 +199,7 @@ export function ReplyModal( {
 									onSelectReply( reply, commentId )
 								}
 								disabled={ isLoading }
+								__next40pxDefaultSize
 							>
 								{ __( 'Use this reply', 'ai' ) }
 							</Button>
@@ -205,6 +208,7 @@ export function ReplyModal( {
 								ref={ copyRef }
 								variant="tertiary"
 								disabled={ isLoading }
+								__next40pxDefaultSize
 							>
 								{ hasCopied
 									? __( 'Copied!', 'ai' )
