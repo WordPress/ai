@@ -13,6 +13,7 @@ import { useState } from '@wordpress/element';
 import TranslationModal from './TranslationModal';
 import { useContentTranslation } from '../hooks/useContentTranslation';
 import { formatMinLengthLabel } from '../../../utils/word-count';
+import { getSettings } from '../utils';
 
 export default function ContentTranslationPlugin() {
 	const [ isOpen, setIsOpen ] = useState( false );
@@ -24,6 +25,10 @@ export default function ContentTranslationPlugin() {
 		minContentLength,
 		translate,
 	} = useContentTranslation();
+
+	if ( ! getSettings().enabled ) {
+		return null;
+	}
 
 	const buttonLabel = isTranslating
 		? sprintf(

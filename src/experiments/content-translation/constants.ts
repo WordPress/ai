@@ -19,5 +19,4 @@ export const TRANSLATION_BATCH_SIZE = 4;
 export const TRANSLATION_SUPPORTED_BLOCK_TYPES = [
 	'core/paragraph',
 	'core/heading',
-	'core/quote',
 ];
