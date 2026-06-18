@@ -3,7 +3,7 @@
  */
 import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useSelect } from '@wordpress/data';
-import { useCallback } from '@wordpress/element';
+import { useCallback, useMemo } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -14,8 +14,10 @@ interface AccessControlSettings {
 
 interface UseAccessControlSettingsReturn {
 	settings: AccessControlSettings;
-	update: ( next: AccessControlSettings ) => Promise< void >;
+	stage: ( next: AccessControlSettings ) => void;
+	save: () => Promise< void >;
 	clear: () => Promise< void >;
+	isDirty: boolean;
 	isSaving: boolean;
 }
 
@@ -33,20 +35,31 @@ export function useAccessControlSettings(
 	const rolesKey = `wpai_feature_${ featureId }_roles`;
 	const usersKey = `wpai_feature_${ featureId }_users`;
 
-	const { editedRecord, isSaving } = useSelect( ( select ) => {
-		const store: any = select( coreStore );
-		return {
-			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
-				| Record< string, unknown >
-				| undefined,
-			isSaving: store.isSavingEntityRecord( 'root', 'site' ) as boolean,
-		};
-	}, [] );
+	const { editedRecord, nonTransientEdits, isSaving } = useSelect(
+		( select ) => {
+			const store: any = select( coreStore );
+			return {
+				editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
+					| Record< string, unknown >
+					| undefined,
+				nonTransientEdits: ( store.getEntityRecordNonTransientEdits(
+					'root',
+					'site'
+				) ?? {} ) as Record< string, unknown >,
+				isSaving: store.isSavingEntityRecord(
+					'root',
+					'site'
+				) as boolean,
+			};
+		},
+		[]
+	);
 
 	const { editEntityRecord } = useDispatch( coreStore );
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
-	const { createErrorNotice } = useDispatch( noticesStore );
+	const { createErrorNotice, createSuccessNotice } =
+		useDispatch( noticesStore );
 
 	const rawRoles = editedRecord?.[ rolesKey ];
 	const rawUsers = editedRecord?.[ usersKey ];
@@ -56,40 +69,51 @@ export function useAccessControlSettings(
 		users: Array.isArray( rawUsers ) ? rawUsers.map( Number ) : [],
 	};
 
-	const save = useCallback(
-		async ( value: AccessControlSettings ) => {
+	const isDirty = useMemo(
+		() => rolesKey in nonTransientEdits || usersKey in nonTransientEdits,
+		[ rolesKey, usersKey, nonTransientEdits ]
+	);
+
+	const stage = useCallback(
+		( next: AccessControlSettings ) => {
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
 			editEntityRecord( 'root', 'site', undefined, {
-				[ rolesKey ]: value.roles,
-				[ usersKey ]: value.users,
+				[ rolesKey ]: next.roles,
+				[ usersKey ]: next.users,
 			} );
-			try {
-				await saveSpecifiedEdits(
-					'root',
-					'site',
-					undefined,
-					[ rolesKey, usersKey ],
-					{ throwOnError: true }
-				);
-			} catch {
-				createErrorNotice(
-					__( 'Failed to save access control settings.', 'ai' ),
-					{ type: 'snackbar' }
-				);
-			}
 		},
-		[ rolesKey, usersKey, editEntityRecord, saveSpecifiedEdits, createErrorNotice ]
+		[ rolesKey, usersKey, editEntityRecord ]
 	);
 
-	const update = useCallback(
-		( next: AccessControlSettings ) => save( next ),
-		[ save ]
-	);
+	const save = useCallback( async () => {
+		try {
+			await saveSpecifiedEdits(
+				'root',
+				'site',
+				undefined,
+				[ rolesKey, usersKey ],
+				{ throwOnError: true }
+			);
+			createSuccessNotice( __( 'Access control settings saved.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		} catch {
+			createErrorNotice(
+				__( 'Failed to save access control settings.', 'ai' ),
+				{ type: 'snackbar' }
+			);
+		}
+	}, [
+		rolesKey,
+		usersKey,
+		saveSpecifiedEdits,
+		createSuccessNotice,
+		createErrorNotice,
+	] );
 
-	const clear = useCallback(
-		() => save( EMPTY_SETTINGS ),
-		[ save ]
-	);
+	const clear = useCallback( () => {
+		stage( EMPTY_SETTINGS );
+	}, [ stage ] );
 
-	return { settings, update, clear, isSaving };
+	return { settings, stage, save, clear, isDirty, isSaving };
 }

@@ -1,9 +1,10 @@
 /**
  * WordPress dependencies
  */
-import { FormTokenField, Spinner } from '@wordpress/components';
-import { useCallback, useMemo } from '@wordpress/element';
+import { Button, FormTokenField, Spinner } from '@wordpress/components';
+import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { Stack } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -19,7 +20,14 @@ export function AccessControlSettings( {
 	featureId,
 }: AccessControlSettingsProps ): React.JSX.Element {
 	const { roles, users, isLoading, fetchError } = useRolesUsers();
-	const { settings, update } = useAccessControlSettings( featureId );
+	const { settings, stage, save, isDirty, isSaving } =
+		useAccessControlSettings( featureId );
+
+	const [ localRoles, setLocalRoles ] = useState< string[] | null >( null );
+	const [ localUsers, setLocalUsers ] = useState< number[] | null >( null );
+
+	const effectiveRoles = localRoles ?? settings.roles;
+	const effectiveUsers = localUsers ?? settings.users;
 
 	const roleSuggestions = useMemo(
 		() => roles.map( ( r ) => r.name ),
@@ -27,7 +35,7 @@ export function AccessControlSettings( {
 	);
 
 	const userSuggestions = useMemo(
-		() => users.map( ( u ) => `${ u.name } (#${ u.id })` ),
+		() => users.map( ( u ) => u.name ),
 		[ users ]
 	);
 
@@ -45,25 +53,28 @@ export function AccessControlSettings( {
 
 	const userMap = useMemo( () => {
 		const map = new Map< string, number >();
-		users.forEach( ( u ) => map.set( `${ u.name } (#${ u.id })`, u.id ) );
+		users.forEach( ( u ) => map.set( u.name, u.id ) );
 		return map;
 	}, [ users ] );
 
 	const reverseUserMap = useMemo( () => {
 		const map = new Map< number, string >();
-		users.forEach( ( u ) => map.set( u.id, `${ u.name } (#${ u.id })` ) );
+		users.forEach( ( u ) => map.set( u.id, u.name ) );
 		return map;
 	}, [ users ] );
 
-	const selectedRolesTokens = useMemo( () => {
-		return settings.roles.map( ( r ) => reverseRoleMap.get( r ) || r );
-	}, [ settings.roles, reverseRoleMap ] );
+	const selectedRolesTokens = useMemo(
+		() => effectiveRoles.map( ( r ) => reverseRoleMap.get( r ) || r ),
+		[ effectiveRoles, reverseRoleMap ]
+	);
 
-	const selectedUsersTokens = useMemo( () => {
-		return settings.users.map(
-			( u ) => reverseUserMap.get( u ) || u.toString()
-		);
-	}, [ settings.users, reverseUserMap ] );
+	const selectedUsersTokens = useMemo(
+		() =>
+			effectiveUsers.map(
+				( u ) => reverseUserMap.get( u ) || u.toString()
+			),
+		[ effectiveUsers, reverseUserMap ]
+	);
 
 	const handleRolesChange = useCallback(
 		( tokens: ( string | { value: string } )[] ) => {
@@ -73,9 +84,10 @@ export function AccessControlSettings( {
 				const id = roleMap.get( label ) || label;
 				newRoles.push( id );
 			} );
-			void update( { ...settings, roles: newRoles } );
+			setLocalRoles( newRoles );
+			stage( { roles: newRoles, users: effectiveUsers } );
 		},
-		[ update, settings, roleMap ]
+		[ stage, effectiveUsers, roleMap ]
 	);
 
 	const handleUsersChange = useCallback(
@@ -88,10 +100,17 @@ export function AccessControlSettings( {
 					newUsers.push( id );
 				}
 			} );
-			void update( { ...settings, users: newUsers } );
+			setLocalUsers( newUsers );
+			stage( { roles: effectiveRoles, users: newUsers } );
 		},
-		[ update, settings, userMap ]
+		[ stage, effectiveRoles, userMap ]
 	);
+
+	const handleSave = useCallback( async () => {
+		await save();
+		setLocalRoles( null );
+		setLocalUsers( null );
+	}, [ save ] );
 
 	return (
 		<div
@@ -120,6 +139,20 @@ export function AccessControlSettings( {
 						onChange={ handleUsersChange }
 						__experimentalExpandOnFocus
 					/>
+					{ isDirty && (
+						<Stack align="flex-end" direction="row">
+							<Button
+								variant="primary"
+								onClick={ handleSave }
+								disabled={ isSaving }
+								size="compact"
+								isBusy={ isSaving }
+								accessibleWhenDisabled
+							>
+								{ isSaving ? <Spinner /> : __( 'Save', 'ai' ) }
+							</Button>
+						</Stack>
+					) }
 				</>
 			) }
 		</div>

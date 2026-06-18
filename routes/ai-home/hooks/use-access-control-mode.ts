@@ -28,13 +28,15 @@ interface UseAccessControlModeReturn {
  * @return {UseAccessControlModeReturn} The access control mode return object.
  */
 export function useAccessControlMode(): UseAccessControlModeReturn {
-	const [ isAccessControlMode, setIsAccessControlMode ] = useState< boolean >( () => {
-		try {
-			return localStorage.getItem( STORAGE_KEY ) === 'true';
-		} catch {
-			return false;
+	const [ isAccessControlMode, setIsAccessControlMode ] = useState< boolean >(
+		() => {
+			try {
+				return localStorage.getItem( STORAGE_KEY ) === 'true';
+			} catch {
+				return false;
+			}
 		}
-	} );
+	);
 
 	useEffect( () => {
 		try {
