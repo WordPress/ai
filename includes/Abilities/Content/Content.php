@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since 1.1.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -28,19 +28,18 @@ defined( 'ABSPATH' ) || exit;
  *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
- * `// Plugin:` comments. Additionally, all user-facing strings use esc_html__() with the
- * 'ai' text domain rather than core's __().
+ * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since 1.1.0
+ * @since x.x.x
  */
 class Content {
 
 	/**
 	 * The ability category used for content abilities.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	public const CATEGORY = 'content';
@@ -48,7 +47,7 @@ class Content {
 	/**
 	 * The fields a post object may expose, in output order.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 * @var string[]
 	 */
 	private static array $fields = array(
@@ -69,7 +68,7 @@ class Content {
 	/**
 	 * Default number of posts returned per page in query mode.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 * @var int
 	 */
 	public const DEFAULT_PER_PAGE = 10;
@@ -77,10 +76,21 @@ class Content {
 	/**
 	 * Maximum number of posts returned per page in query mode.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 * @var int
 	 */
 	public const MAX_PER_PAGE = 100;
+
+	/**
+	 * Post types exposed through the Abilities API, computed once at registration.
+	 *
+	 * Plugin: cached so the input schema and the permission/execute callbacks derive from
+	 * the exact same set, and the post type list is only walked once per request.
+	 *
+	 * @since x.x.x
+	 * @var array<string, \WP_Post_Type>|null
+	 */
+	private static ?array $exposed_post_types = null;
 
 	/**
 	 * Hooks the ability into the Abilities API.
@@ -91,7 +101,7 @@ class Content {
 	 * (priority 11) so it can override any core-provided copy, and registers the category
 	 * as a fallback in case core has not.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public static function init(): void {
 		add_action( 'wp_abilities_api_categories_init', array( self::class, 'register_category' ), 11 );
@@ -104,7 +114,7 @@ class Content {
 	 * Plugin: this method has no equivalent in the core class; core relies on
 	 * wp_register_core_ability_categories() to register the `content` category.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public static function register_category(): void {
 		if ( wp_has_ability_category( self::CATEGORY ) ) {
@@ -114,8 +124,8 @@ class Content {
 		wp_register_ability_category(
 			self::CATEGORY,
 			array(
-				'label'       => esc_html__( 'Content', 'ai' ),
-				'description' => esc_html__( 'Abilities that retrieve or manage posts and other content.', 'ai' ),
+				'label'       => __( 'Content', 'ai' ),
+				'description' => __( 'Abilities that retrieve or manage posts and other content.', 'ai' ),
 			)
 		);
 	}
@@ -125,7 +135,7 @@ class Content {
 	 *
 	 * Must run on the `wp_abilities_api_init` hook.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public static function register(): void {
 		self::register_get_content();
@@ -141,7 +151,7 @@ class Content {
 	/**
 	 * Registers the read-only `core/content` ability.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public static function register_get_content(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
@@ -149,14 +159,17 @@ class Content {
 			wp_unregister_ability( 'core/content' );
 		}
 
-		$post_types = array_keys( self::get_exposed_post_types() );
+		// Plugin: compute once; check_permission()/execute_get_content() reuse this set.
+		self::$exposed_post_types = self::get_exposed_post_types();
+
+		$post_types = array_keys( self::$exposed_post_types );
 		$statuses   = self::get_available_statuses();
 
 		wp_register_ability(
 			'core/content',
 			array(
-				'label'               => esc_html__( 'Get Content', 'ai' ),
-				'description'         => esc_html__( 'Retrieves one or more posts of a post type exposed to abilities. Fetch a single post by ID or by slug, or query multiple posts filtered by post type, status, author, or parent. Returns a basic, support-aware set of fields per post.', 'ai' ),
+				'label'               => __( 'Get Content', 'ai' ),
+				'description'         => __( 'Retrieves one or more posts of a post type exposed to abilities. Fetch a single post by ID or by slug, or query multiple posts filtered by post type, status, author, or parent. Returns a basic, support-aware set of fields per post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => self::get_content_input_schema( $post_types, $statuses ),
 				'output_schema'       => self::get_content_output_schema(),
@@ -186,18 +199,18 @@ class Content {
 	 * `read_post` meta capability check in {@see self::execute_get_content()} is the
 	 * authoritative, row-level enforcement of author-scoped visibility.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
 	public static function check_permission( $input = array() ): bool {
 		$input   = is_array( $input ) ? $input : array();
-		$exposed = self::get_exposed_post_types();
+		$exposed = self::$exposed_post_types ?? self::get_exposed_post_types();
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			$post = get_post( (int) $input['id'] );
+			$post = get_post( self::input_int( $input['id'] ) );
 
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
@@ -210,14 +223,14 @@ class Content {
 		}
 
 		// Query / slug mode requires an exposed post type.
-		$post_type = isset( $input['post_type'] ) ? (string) $input['post_type'] : '';
+		$post_type = isset( $input['post_type'] ) && is_string( $input['post_type'] ) ? $input['post_type'] : '';
 		if ( '' === $post_type || ! isset( $exposed[ $post_type ] ) ) {
 			return false;
 		}
 
 		$post_type_object = $exposed[ $post_type ];
 
-		if ( ! current_user_can( $post_type_object->cap->read ?? 'read' ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( ! current_user_can( self::capability( $post_type_object, 'read', 'read' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 			return false;
 		}
 
@@ -227,11 +240,11 @@ class Content {
 			return true;
 		}
 
-		if ( current_user_can( $post_type_object->cap->edit_posts ?? 'edit_posts' ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( current_user_can( self::capability( $post_type_object, 'edit_posts', 'edit_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 			return true;
 		}
 
-		if ( current_user_can( $post_type_object->cap->read_private_posts ?? 'read_private_posts' ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( current_user_can( self::capability( $post_type_object, 'read_private_posts', 'read_private_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 			foreach ( $statuses as $status ) {
 				if ( 'private' !== $status && 'publish' !== $status ) {
 					return false;
@@ -244,21 +257,49 @@ class Content {
 	}
 
 	/**
+	 * Resolves a capability name from a post type's capability object, with a fallback.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post_Type $post_type_object The post type object.
+	 * @param string        $name             Capability key on the post type's `cap` object.
+	 * @param string        $fallback         Fallback capability name if unset or non-string.
+	 * @return string The resolved capability name.
+	 */
+	protected static function capability( \WP_Post_Type $post_type_object, string $name, string $fallback ): string {
+		$capability = $post_type_object->cap->$name ?? $fallback;
+
+		return is_string( $capability ) ? $capability : $fallback;
+	}
+
+	/**
+	 * Casts a raw input value to a non-negative integer.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The raw input value.
+	 * @return int The value as a non-negative integer, or 0 when not scalar.
+	 */
+	protected static function input_int( $value ): int {
+		return is_scalar( $value ) ? absint( $value ) : 0;
+	}
+
+	/**
 	 * Executes the `core/content` ability.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error A map with a `posts` list, or a WP_Error on failure.
 	 */
 	public static function execute_get_content( $input = array() ) {
 		$input   = is_array( $input ) ? $input : array();
-		$exposed = self::get_exposed_post_types();
+		$exposed = self::$exposed_post_types ?? self::get_exposed_post_types();
 		$fields  = self::normalize_fields( $input );
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			$post = get_post( (int) $input['id'] );
+			$post = get_post( self::input_int( $input['id'] ) );
 
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
@@ -276,13 +317,13 @@ class Content {
 		}
 
 		// Query / slug mode.
-		$post_type = isset( $input['post_type'] ) ? (string) $input['post_type'] : '';
+		$post_type = isset( $input['post_type'] ) && is_string( $input['post_type'] ) ? $input['post_type'] : '';
 		if ( '' === $post_type || ! isset( $exposed[ $post_type ] ) ) {
 			return self::not_found_error();
 		}
 
 		$per_page = self::normalize_per_page( $input );
-		$page     = isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1;
+		$page     = isset( $input['page'] ) ? max( 1, self::input_int( $input['page'] ) ) : 1;
 
 		$query_args = array(
 			'post_type'           => $post_type,
@@ -292,22 +333,25 @@ class Content {
 			'ignore_sticky_posts' => true,
 		);
 
-		if ( ! empty( $input['slug'] ) ) {
-			$query_args['name'] = sanitize_title( (string) $input['slug'] );
+		if ( ! empty( $input['slug'] ) && is_string( $input['slug'] ) ) {
+			$query_args['name'] = sanitize_title( $input['slug'] );
 		}
 
 		if ( ! empty( $input['author'] ) ) {
-			$query_args['author'] = (int) $input['author'];
+			$query_args['author'] = self::input_int( $input['author'] );
 		}
 
 		if ( isset( $input['parent'] ) ) {
-			$query_args['post_parent'] = (int) $input['parent'];
+			$query_args['post_parent'] = self::input_int( $input['parent'] );
 		}
 
 		$query = new WP_Query( $query_args );
 
 		$posts = array();
 		foreach ( $query->posts as $post ) {
+			if ( ! $post instanceof WP_Post ) {
+				continue;
+			}
 			if ( ! current_user_can( 'read_post', $post->ID ) ) {
 				continue;
 			}
@@ -324,13 +368,13 @@ class Content {
 	/**
 	 * Normalizes the requested per-page value to the supported bounds.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $input The ability input.
+	 * @param array<mixed> $input The ability input.
 	 * @return int The clamped per-page value.
 	 */
 	protected static function normalize_per_page( array $input ): int {
-		$per_page = isset( $input['per_page'] ) ? (int) $input['per_page'] : self::DEFAULT_PER_PAGE;
+		$per_page = isset( $input['per_page'] ) ? self::input_int( $input['per_page'] ) : self::DEFAULT_PER_PAGE;
 
 		return max( 1, min( self::MAX_PER_PAGE, $per_page ) );
 	}
@@ -338,7 +382,7 @@ class Content {
 	/**
 	 * Returns the post types exposed through the Abilities API, keyed by name.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, \WP_Post_Type> Exposed post type objects keyed by name.
 	 */
@@ -358,7 +402,7 @@ class Content {
 	/**
 	 * Returns the post statuses that may be requested through the ability.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @return string[] List of public, non-internal post status slugs.
 	 */
@@ -369,26 +413,28 @@ class Content {
 	/**
 	 * Normalizes the requested statuses to a non-empty, sanitized list defaulting to publish.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $input The ability input.
+	 * @param array<mixed> $input The ability input.
 	 * @return string[] Normalized list of post status slugs.
 	 */
 	protected static function normalize_statuses( array $input ): array {
 		$statuses = $input['status'] ?? array( 'publish' );
-		if ( ! is_array( $statuses ) || array() === $statuses ) {
+		if ( ! is_array( $statuses ) ) {
 			return array( 'publish' );
 		}
 
-		return array_map( 'sanitize_key', $statuses );
+		$statuses = array_values( array_filter( $statuses, 'is_string' ) );
+
+		return array() === $statuses ? array( 'publish' ) : array_map( 'sanitize_key', $statuses );
 	}
 
 	/**
 	 * Normalizes the requested fields to the supported set, defaulting to all fields.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $input The ability input.
+	 * @param array<mixed> $input The ability input.
 	 * @return string[] List of requested field names.
 	 */
 	protected static function normalize_fields( array $input ): array {
@@ -396,7 +442,8 @@ class Content {
 			return self::$fields;
 		}
 
-		$fields = array_intersect( self::$fields, array_map( 'strval', $input['fields'] ) );
+		$requested = array_filter( $input['fields'], 'is_string' );
+		$fields    = array_intersect( self::$fields, $requested );
 
 		return array() === $fields ? self::$fields : array_values( $fields );
 	}
@@ -404,7 +451,7 @@ class Content {
 	/**
 	 * Builds the input schema for the `core/content` ability.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param string[] $post_types Exposed post type names.
 	 * @param string[] $statuses   Requestable post status slugs.
@@ -413,7 +460,8 @@ class Content {
 	protected static function get_content_input_schema( array $post_types, array $statuses ): array {
 		return array(
 			'type'                 => 'object',
-			'default'              => array(),
+			// Object (not array()) so the serialized schema default is {}, consistent with type:object.
+			'default'              => (object) array(),
 			// `post_type` is required unless a single post is requested by `id`.
 			'anyOf'                => array(
 				array( 'required' => array( 'id' ) ),
@@ -423,16 +471,16 @@ class Content {
 				'post_type' => array(
 					'type'        => 'string',
 					'enum'        => $post_types,
-					'description' => esc_html__( 'Post type to retrieve. Required unless `id` is provided.', 'ai' ),
+					'description' => __( 'Post type to retrieve. Required unless `id` is provided.', 'ai' ),
 				),
 				'id'        => array(
 					'type'        => 'integer',
 					'minimum'     => 1,
-					'description' => esc_html__( 'Retrieve a single post by ID. When provided, `post_type` is optional.', 'ai' ),
+					'description' => __( 'Retrieve a single post by ID. When provided, `post_type` is optional.', 'ai' ),
 				),
 				'slug'      => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'Retrieve posts by slug. Requires `post_type`, as slugs are not unique across post types.', 'ai' ),
+					'description' => __( 'Retrieve posts by slug. Requires `post_type`, as slugs are not unique across post types.', 'ai' ),
 				),
 				'status'    => array(
 					'type'        => 'array',
@@ -442,17 +490,17 @@ class Content {
 						'type' => 'string',
 						'enum' => $statuses,
 					),
-					'description' => esc_html__( 'Filter by one or more post statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
+					'description' => __( 'Filter by one or more post statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
 				),
 				'author'    => array(
 					'type'        => 'integer',
 					'minimum'     => 1,
-					'description' => esc_html__( 'Filter by author user ID.', 'ai' ),
+					'description' => __( 'Filter by author user ID.', 'ai' ),
 				),
 				'parent'    => array(
 					'type'        => 'integer',
 					'minimum'     => 0,
-					'description' => esc_html__( 'Filter by parent post ID, for hierarchical post types. Use 0 for top-level posts.', 'ai' ),
+					'description' => __( 'Filter by parent post ID, for hierarchical post types. Use 0 for top-level posts.', 'ai' ),
 				),
 				'fields'    => array(
 					'type'        => 'array',
@@ -461,20 +509,20 @@ class Content {
 						'type' => 'string',
 						'enum' => self::$fields,
 					),
-					'description' => esc_html__( 'Limit each returned post to these fields. If omitted, all supported fields are returned.', 'ai' ),
+					'description' => __( 'Limit each returned post to these fields. If omitted, all supported fields are returned.', 'ai' ),
 				),
 				'page'      => array(
 					'type'        => 'integer',
 					'minimum'     => 1,
 					'default'     => 1,
-					'description' => esc_html__( 'Page of results to return in query mode. Ignored when retrieving a single post by ID.', 'ai' ),
+					'description' => __( 'Page of results to return in query mode. Ignored when retrieving a single post by ID.', 'ai' ),
 				),
 				'per_page'  => array(
 					'type'        => 'integer',
 					'minimum'     => 1,
 					'maximum'     => self::MAX_PER_PAGE,
 					'default'     => self::DEFAULT_PER_PAGE,
-					'description' => esc_html__( 'Maximum number of posts to return per page in query mode.', 'ai' ),
+					'description' => __( 'Maximum number of posts to return per page in query mode.', 'ai' ),
 				),
 			),
 			'additionalProperties' => false,
@@ -484,7 +532,7 @@ class Content {
 	/**
 	 * Builds the output schema for the `core/content` ability.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
@@ -495,43 +543,43 @@ class Content {
 			'properties'           => array(
 				'id'          => array(
 					'type'        => 'integer',
-					'description' => esc_html__( 'The post ID.', 'ai' ),
+					'description' => __( 'The post ID.', 'ai' ),
 				),
 				'type'        => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The post type.', 'ai' ),
+					'description' => __( 'The post type.', 'ai' ),
 				),
 				'status'      => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The post status.', 'ai' ),
+					'description' => __( 'The post status.', 'ai' ),
 				),
 				'date'        => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The publication date, in ISO 8601 format (GMT).', 'ai' ),
+					'description' => __( 'The publication date, in ISO 8601 format (GMT).', 'ai' ),
 				),
 				'modified'    => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The last modified date, in ISO 8601 format (GMT).', 'ai' ),
+					'description' => __( 'The last modified date, in ISO 8601 format (GMT).', 'ai' ),
 				),
 				'slug'        => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The post slug.', 'ai' ),
+					'description' => __( 'The post slug.', 'ai' ),
 				),
 				'link'        => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The permalink URL.', 'ai' ),
+					'description' => __( 'The permalink URL.', 'ai' ),
 				),
 				'title'       => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The post title. Present when the post type supports titles.', 'ai' ),
+					'description' => __( 'The post title. Present when the post type supports titles.', 'ai' ),
 				),
 				'excerpt'     => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The post excerpt. Present when the post type supports excerpts. Empty when withheld for a password-protected post.', 'ai' ),
+					'description' => __( 'The post excerpt. Present when the post type supports excerpts. Empty when withheld for a password-protected post.', 'ai' ),
 				),
 				'raw_content' => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor. Empty when withheld for a password-protected post.', 'ai' ),
+					'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor. Empty when withheld for a password-protected post.', 'ai' ),
 				),
 				'author'      => array(
 					'type'                 => 'object',
@@ -539,18 +587,18 @@ class Content {
 					'properties'           => array(
 						'id'           => array(
 							'type'        => 'integer',
-							'description' => esc_html__( 'The author user ID.', 'ai' ),
+							'description' => __( 'The author user ID.', 'ai' ),
 						),
 						'display_name' => array(
 							'type'        => 'string',
-							'description' => esc_html__( 'The author display name.', 'ai' ),
+							'description' => __( 'The author display name.', 'ai' ),
 						),
 					),
-					'description'          => esc_html__( 'The post author. Present when the post type supports authors.', 'ai' ),
+					'description'          => __( 'The post author. Present when the post type supports authors.', 'ai' ),
 				),
 				'parent'      => array(
 					'type'        => 'integer',
-					'description' => esc_html__( 'The parent post ID. Present for hierarchical post types.', 'ai' ),
+					'description' => __( 'The parent post ID. Present for hierarchical post types.', 'ai' ),
 				),
 			),
 		);
@@ -561,16 +609,16 @@ class Content {
 			'properties'           => array(
 				'posts'       => array(
 					'type'        => 'array',
-					'description' => esc_html__( 'The posts matching the request. A single-element list when requested by ID.', 'ai' ),
+					'description' => __( 'The posts matching the request. A single-element list when requested by ID.', 'ai' ),
 					'items'       => $post_schema,
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => esc_html__( 'Total number of posts matching the query, across all pages. Surfaced over REST as the X-WP-Total header.', 'ai' ),
+					'description' => __( 'Total number of posts matching the query, across all pages. Surfaced over REST as the X-WP-Total header.', 'ai' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',
-					'description' => esc_html__( 'Total number of pages available. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
+					'description' => __( 'Total number of pages available. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
 				),
 			),
 		);
@@ -579,7 +627,7 @@ class Content {
 	/**
 	 * Formats a post into the ability output shape.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post   The post object.
 	 * @param string[] $fields The requested field names.
@@ -646,7 +694,7 @@ class Content {
 	/**
 	 * Returns the post title with the protected/private prefixes stripped.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post The post object.
 	 * @return string The post title.
@@ -665,7 +713,7 @@ class Content {
 	/**
 	 * Returns the raw title format, used to strip protected/private title prefixes.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @return string The unprefixed title format.
 	 */
@@ -676,13 +724,14 @@ class Content {
 	/**
 	 * Formats a post date field as an ISO 8601 string in GMT.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post  The post object.
 	 * @param string   $field Either 'date' or 'modified'.
 	 * @return string The ISO 8601 date, or an empty string if unavailable.
 	 */
 	protected static function format_gmt_date( WP_Post $post, string $field ): string {
+		$field    = 'modified' === $field ? 'modified' : 'date';
 		$datetime = get_post_datetime( $post, $field, 'gmt' );
 		if ( $datetime ) {
 			return $datetime->format( 'c' );
@@ -697,14 +746,14 @@ class Content {
 	/**
 	 * Builds the uniform not-found error.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @return \WP_Error The not-found error.
 	 */
 	protected static function not_found_error(): WP_Error {
 		return new WP_Error(
 			'content_not_found',
-			esc_html__( 'The requested content was not found.', 'ai' ),
+			__( 'The requested content was not found.', 'ai' ),
 			array( 'status' => 404 )
 		);
 	}

@@ -14,14 +14,14 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Content ability test case.
  *
- * @since 1.1.0
+ * @since x.x.x
  */
 class ContentTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -35,7 +35,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		if ( wp_has_ability( 'core/content' ) ) {
@@ -63,7 +63,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Ensures the `content` ability category exists for the ability to attach to.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private function ensure_content_category(): void {
 		if ( wp_has_ability_category( 'content' ) ) {
@@ -88,7 +88,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Registers the plugin's core/content ability inside a faked init action.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private function register_ability(): void {
 		global $wp_current_filter;
@@ -115,7 +115,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The ability is registered in the `content` category and flagged read-only.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_registers_core_content_ability(): void {
 		$this->register_ability();
@@ -133,7 +133,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * When core already provides core/content, the plugin's version replaces it.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_override_replaces_existing_core_content(): void {
 		global $wp_current_filter;
@@ -165,7 +165,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The input schema requires either `id` or `post_type` and exposes only marked types.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_input_schema_requires_id_or_post_type(): void {
 		$this->register_ability();
@@ -188,7 +188,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * A published post can be fetched by ID.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_get_single_published_post_by_id(): void {
 		$this->login_as( 'administrator' );
@@ -214,7 +214,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Query mode returns only published posts by default.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_query_returns_only_published_by_default(): void {
 		$this->login_as( 'administrator' );
@@ -233,7 +233,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Querying by slug without a post type is rejected by the input schema.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_query_by_slug_requires_post_type(): void {
 		$this->login_as( 'administrator' );
@@ -248,7 +248,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The `fields` filter limits the returned keys.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_fields_filter_limits_returned_keys(): void {
 		$this->login_as( 'administrator' );
@@ -269,7 +269,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Logged-out users cannot run the ability.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_logged_out_user_is_denied(): void {
 		wp_set_current_user( 0 );
@@ -284,7 +284,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Subscribers cannot request draft posts.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_subscriber_cannot_request_draft_status(): void {
 		$this->login_as( 'subscriber' );
@@ -304,7 +304,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * An author can pass the draft gate but only sees their own drafts.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_author_cannot_see_other_authors_drafts(): void {
 		$author_a = self::factory()->user->create( array( 'role' => 'author' ) );
@@ -341,7 +341,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Password-protected content is withheld from users who cannot edit the post.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_password_protected_content_withheld_from_non_editor(): void {
 		$post_id = self::factory()->post->create(
@@ -368,7 +368,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Query mode paginates with `page`/`per_page` and reports totals.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_query_paginates_and_reports_totals(): void {
 		$this->login_as( 'administrator' );
@@ -403,7 +403,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * A single post fetched by ID still reports pagination totals of one.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public function test_single_post_reports_totals(): void {
 		$this->login_as( 'administrator' );
