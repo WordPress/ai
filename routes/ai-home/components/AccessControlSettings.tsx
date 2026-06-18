@@ -16,7 +16,8 @@ import { __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { useAccessControlSettings } from '../hooks/use-access-control-settings';
-import { useRolesUsers } from '../hooks/use-roles-users';
+import { useRoles, useUserSearch } from '../hooks/use-roles-users';
+import type { User } from '../hooks/use-roles-users';
 
 interface AccessControlSettingsProps {
 	featureId: string;
@@ -25,39 +26,44 @@ interface AccessControlSettingsProps {
 export function AccessControlSettings( {
 	featureId,
 }: AccessControlSettingsProps ): React.JSX.Element {
-	const { roles, users, isLoading, fetchError } = useRolesUsers();
+	const {
+		roles,
+		isLoading: rolesLoading,
+		fetchError: rolesFetchError,
+	} = useRoles();
+	const { suggestions, isSearching, search } = useUserSearch();
 	const { settings, stage, save, isDirty, isSaving } =
 		useAccessControlSettings( featureId );
 
 	const [ localRoles, setLocalRoles ] = useState< string[] | null >( null );
+	// Preserve selected users by ID so they survive suggestion list changes.
+	const [ selectedUserMap, setSelectedUserMap ] = useState<
+		Map< number, string >
+	>( new Map() );
 	const [ localUsers, setLocalUsers ] = useState< number[] | null >( null );
 
 	const effectiveRoles = localRoles ?? settings.roles;
 	const effectiveUsers = localUsers ?? settings.users;
 
-	const userSuggestions = useMemo(
-		() => users.map( ( u ) => u.name ),
-		[ users ]
-	);
-
-	const userMap = useMemo( () => {
+	// Build a name→id map from the current suggestions page.
+	const suggestionNameToId = useMemo( () => {
 		const map = new Map< string, number >();
-		users.forEach( ( u ) => map.set( u.name, u.id ) );
+		suggestions.forEach( ( u: User ) => map.set( u.name, u.id ) );
 		return map;
-	}, [ users ] );
+	}, [ suggestions ] );
 
-	const reverseUserMap = useMemo( () => {
-		const map = new Map< number, string >();
-		users.forEach( ( u ) => map.set( u.id, u.name ) );
-		return map;
-	}, [ users ] );
+	// Derive display labels for currently selected users.
+	// Falls back to a merged map of suggestions + previously seen names.
+	const selectedUsersTokens = useMemo( () => {
+		return effectiveUsers.map(
+			( id ) => selectedUserMap.get( id ) ?? id.toString()
+		);
+	}, [ effectiveUsers, selectedUserMap ] );
 
-	const selectedUsersTokens = useMemo(
-		() =>
-			effectiveUsers.map(
-				( u ) => reverseUserMap.get( u ) || u.toString()
-			),
-		[ effectiveUsers, reverseUserMap ]
+	// Suggestion labels for the token field.
+	const userSuggestionNames = useMemo(
+		() => suggestions.map( ( u: User ) => u.name ),
+		[ suggestions ]
 	);
 
 	const handleRoleToggle = useCallback(
@@ -74,17 +80,29 @@ export function AccessControlSettings( {
 	const handleUsersChange = useCallback(
 		( tokens: ( string | { value: string } )[] ) => {
 			const newUsers: number[] = [];
+			const newMap = new Map< number, string >( selectedUserMap );
+
 			tokens.forEach( ( token ) => {
 				const label = typeof token === 'string' ? token : token.value;
-				const id = userMap.get( label );
+				const id = suggestionNameToId.get( label );
 				if ( id !== undefined ) {
 					newUsers.push( id );
+					newMap.set( id, label );
 				}
 			} );
+
 			setLocalUsers( newUsers );
+			setSelectedUserMap( newMap );
 			stage( { roles: effectiveRoles, users: newUsers } );
 		},
-		[ stage, effectiveRoles, userMap ]
+		[ stage, effectiveRoles, suggestionNameToId, selectedUserMap ]
+	);
+
+	const handleInputChange = useCallback(
+		( input: string ) => {
+			search( input );
+		},
+		[ search ]
 	);
 
 	const handleSave = useCallback( async () => {
@@ -92,6 +110,9 @@ export function AccessControlSettings( {
 		setLocalRoles( null );
 		setLocalUsers( null );
 	}, [ save ] );
+
+	const isLoading = rolesLoading;
+	const fetchError = rolesFetchError;
 
 	return (
 		<div
@@ -125,9 +146,14 @@ export function AccessControlSettings( {
 										<FlexItem key={ role.id }>
 											<CheckboxControl
 												label={ role.name }
-												checked={ effectiveRoles.includes( role.id ) }
+												checked={ effectiveRoles.includes(
+													role.id
+												) }
 												onChange={ ( checked ) =>
-													handleRoleToggle( role.id, checked )
+													handleRoleToggle(
+														role.id,
+														checked
+													)
 												}
 											/>
 										</FlexItem>
@@ -136,13 +162,47 @@ export function AccessControlSettings( {
 							</fieldset>
 						</FlexItem>
 						<FlexItem>
-							<FormTokenField
-								label={ __( 'Users', 'ai' ) }
-								value={ selectedUsersTokens }
-								suggestions={ userSuggestions }
-								onChange={ handleUsersChange }
-								__experimentalExpandOnFocus
-							/>
+							<Flex
+								style={ {
+									position: 'relative',
+								} }
+							>
+								<div style={ { flex: 1 } }>
+									<FormTokenField
+										label={ __( 'Users', 'ai' ) }
+										value={ selectedUsersTokens }
+										suggestions={ userSuggestionNames }
+										onChange={ handleUsersChange }
+										onInputChange={ handleInputChange }
+										__experimentalExpandOnFocus
+										__experimentalShowHowTo={ false }
+										messages={ {
+											added: __( 'User added.', 'ai' ),
+											removed: __(
+												'User removed.',
+												'ai'
+											),
+											remove: __( 'Remove user', 'ai' ),
+											__experimentalInvalid: __(
+												'No matching user found.',
+												'ai'
+											),
+										} }
+									/>
+								</div>
+								{ isSearching && (
+									<div
+										style={ {
+											marginTop: '4px',
+											position: 'absolute',
+											right: 0,
+											top: '20px',
+										} }
+									>
+										<Spinner />
+									</div>
+								) }
+							</Flex>
 						</FlexItem>
 						{ isDirty && (
 							<FlexItem>
