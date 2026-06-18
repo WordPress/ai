@@ -84,7 +84,7 @@ test.describe( 'AI Request Logging Experiment', () => {
 			postType: 'post',
 			title: '',
 			content:
-				'This is some test content for the AI Request Logging spec.',
+				'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough words for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.',
 		} );
 		await editor.saveDraft();
 		await editor.canvas.locator( '.editor-post-title__input' ).click();
