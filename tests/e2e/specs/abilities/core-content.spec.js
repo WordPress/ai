@@ -47,6 +47,36 @@ async function runCoreContent( page, input ) {
 }
 
 test.describe( 'core/content ability (client-side Abilities API)', () => {
+	const seededPostIds = [];
+
+	test.beforeAll( async ( { requestUtils } ) => {
+		// The global setup deletes all `post` entries, so seed a few published
+		// posts for the query-mode tests to retrieve.
+		const posts = await Promise.all(
+			[ 'one', 'two', 'three' ].map( ( suffix ) =>
+				requestUtils.createPost( {
+					title: `core/content seeded post ${ suffix }`,
+					status: 'publish',
+				} )
+			)
+		);
+		seededPostIds.push( ...posts.map( ( post ) => post.id ) );
+	} );
+
+	test.afterAll( async ( { requestUtils } ) => {
+		// Remove only the posts seeded here, leaving any other specs' content alone.
+		await Promise.all(
+			seededPostIds.map( ( id ) =>
+				requestUtils.rest( {
+					method: 'DELETE',
+					path: `/wp/v2/posts/${ id }`,
+					params: { force: true },
+				} )
+			)
+		);
+		seededPostIds.length = 0;
+	} );
+
 	test.beforeEach( async ( { admin, page } ) => {
 		// Enabling an experiment loads its block-editor script, which declares the
 		// `@wordpress/abilities` + `@wordpress/core-abilities` modules as dependencies
@@ -120,7 +150,11 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result.posts ).toHaveLength( 1 );
-		expect( outcome.result.posts[ 0 ].title ).toBe( 'AI E2E Sample Content' );
-		expect( outcome.result.posts[ 0 ].slug ).toBe( 'ai-e2e-sample-content' );
+		expect( outcome.result.posts[ 0 ].title ).toBe(
+			'AI E2E Sample Content'
+		);
+		expect( outcome.result.posts[ 0 ].slug ).toBe(
+			'ai-e2e-sample-content'
+		);
 	} );
 } );
