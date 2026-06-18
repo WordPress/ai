@@ -1,9 +1,9 @@
 @keyframes ai-content-translation-text-shimmer {
-	0% {
-		background-position: 180% 0;
+	from {
+		background-position: 300% 0;
 	}
-	100% {
-		background-position: -80% 0;
+	to {
+		background-position: 0 0;
 	}
 }
 
@@ -14,22 +14,20 @@
 	@media (prefers-reduced-motion: no-preference) {
 		background: linear-gradient(
 			90deg,
-			var(--wpds-color-fg-content-neutral-weak, #707070) 30%,
+			var(--wpds-color-fg-content-neutral-weak, #707070) 42%,
 			color-mix(
 					in srgb,
 					var(--wpds-color-fg-content-neutral-weak, #707070) 55%,
 					#fff
 				)
 				50%,
-			var(--wpds-color-fg-content-neutral-weak, #707070) 70%
+			var(--wpds-color-fg-content-neutral-weak, #707070) 58%
 		);
+		background-size: 300% 100%;
+		animation: ai-content-translation-text-shimmer 1.8s linear infinite;
 		background-clip: text;
-		background-size: 250% 100%;
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
-		animation: ai-content-translation-text-shimmer 1.1s linear infinite;
-		animation-delay: -0.35s;
-		animation-fill-mode: both;
 	}
 }
 
