@@ -28,6 +28,7 @@ build-types/
 # AI files
 .gemini/
 .claude/
+.mcp.json
 AGENTS.md
 GEMINI.md
 CLAUDE.md
