@@ -9,6 +9,11 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Content_Translation;
 
+/**
+ * Class providing supported languages for AI content translation.
+ *
+ * @since x.x.x
+ */
 final class Languages {
 
 	/**
@@ -21,11 +26,11 @@ final class Languages {
 	private const DEFAULT_TARGET_LANGUAGE = 'en-us';
 
 	/**
-	 * The default target language for translation.
+	 * Returns the default target language for translation.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var string
+	 * @return string The default target language code.
 	 */
 	public static function get_default_target_language(): string {
 		return self::DEFAULT_TARGET_LANGUAGE;
@@ -36,72 +41,30 @@ final class Languages {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{locale: string, name: string}> Supported languages.
+	 * @return array<string, string> Supported languages.
 	 */
 	public static function get_supported_languages(): array {
 		$languages = array(
-			'en-us' => array(
-				'locale' => 'en_US',
-				'name'   => __( 'English (US)', 'ai' ),
-			),
-			'en-gb' => array(
-				'locale' => 'en_GB',
-				'name'   => __( 'English (UK)', 'ai' ),
-			),
-			'es-es' => array(
-				'locale' => 'es_ES',
-				'name'   => __( 'Spanish (Spain)', 'ai' ),
-			),
-			'fr-fr' => array(
-				'locale' => 'fr_FR',
-				'name'   => __( 'French (France)', 'ai' ),
-			),
-			'de-de' => array(
-				'locale' => 'de_DE',
-				'name'   => __( 'German', 'ai' ),
-			),
-			'it-it' => array(
-				'locale' => 'it_IT',
-				'name'   => __( 'Italian', 'ai' ),
-			),
-			'pt-br' => array(
-				'locale' => 'pt_BR',
-				'name'   => __( 'Portuguese (Brazil)', 'ai' ),
-			),
-			'nl-nl' => array(
-				'locale' => 'nl_NL',
-				'name'   => __( 'Dutch', 'ai' ),
-			),
-			'ja'    => array(
-				'locale' => 'ja',
-				'name'   => __( 'Japanese', 'ai' ),
-			),
-			'zh-cn' => array(
-				'locale' => 'zh_CN',
-				'name'   => __( 'Chinese (Simplified)', 'ai' ),
-			),
-			'zh-tw' => array(
-				'locale' => 'zh_TW',
-				'name'   => __( 'Chinese (Traditional)', 'ai' ),
-			),
-			'ko'    => array(
-				'locale' => 'ko',
-				'name'   => __( 'Korean', 'ai' ),
-			),
-			'ar'    => array(
-				'locale' => 'ar',
-				'name'   => __( 'Arabic', 'ai' ),
-			),
-			'hi'    => array(
-				'locale' => 'hi',
-				'name'   => __( 'Hindi', 'ai' ),
-			),
+			'en-us' => __( 'English (US)', 'ai' ),
+			'en-gb' => __( 'English (UK)', 'ai' ),
+			'es-es' => __( 'Spanish (Spain)', 'ai' ),
+			'fr-fr' => __( 'French (France)', 'ai' ),
+			'de-de' => __( 'German', 'ai' ),
+			'it-it' => __( 'Italian', 'ai' ),
+			'pt-br' => __( 'Portuguese (Brazil)', 'ai' ),
+			'nl-nl' => __( 'Dutch', 'ai' ),
+			'ja'    => __( 'Japanese', 'ai' ),
+			'zh-cn' => __( 'Chinese (Simplified)', 'ai' ),
+			'zh-tw' => __( 'Chinese (Traditional)', 'ai' ),
+			'ko'    => __( 'Korean', 'ai' ),
+			'ar'    => __( 'Arabic', 'ai' ),
+			'hi'    => __( 'Hindi', 'ai' ),
 		);
 
 		/**
 		 * Filters supported target languages for AI content translation.
 		 *
-		 * @param array<string, array{locale: string, name: string}> $languages Supported languages.
+		 * @param array<string, string> $languages Supported languages.
 		 */
 		return (array) apply_filters( 'wpai_content_translation_languages', $languages );
 	}
@@ -111,16 +74,16 @@ final class Languages {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<int, array{code: string, locale: string, name: string}> Supported languages for JavaScript.
+	 * @return array<int, array{code: string, name: string}> Supported languages for JavaScript.
 	 */
 	public static function get_supported_languages_for_js(): array {
 		$languages = self::get_supported_languages();
 
 		return array_map(
-			static function ( string $code, array $language ): array {
+			static function ( string $code, string $name ): array {
 				return array(
 					'code' => $code,
-					'name' => $language['name'],
+					'name' => $name,
 				);
 			},
 			array_keys( $languages ),
@@ -140,7 +103,7 @@ final class Languages {
 		$languages = self::get_supported_languages();
 
 		if ( isset( $languages[ $language_code ] ) ) {
-			return $languages[ $language_code ]['name'];
+			return $languages[ $language_code ];
 		}
 
 		return null;

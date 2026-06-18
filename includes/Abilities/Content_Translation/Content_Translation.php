@@ -1,6 +1,6 @@
 <?php
 /**
- * Content trnslation WordPress Ability implementation.
+ * Content translation WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
@@ -15,6 +15,11 @@ use WordPress\AI\Experiments\Content_Translation\Content_Translation as Content_
 
 use function WordPress\AI\count_words;
 
+/**
+ * Content Translation WordPress Ability.
+ *
+ * @since x.x.x
+ */
 class Content_Translation extends Abstract_Ability {
 
 	/**
@@ -186,11 +191,11 @@ class Content_Translation extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string $prompt The prompt to use for the content translation.
-	 * @param string $target_language The target language for the translation.
+	 * @param string $language The target language for the translation.
 	 * @return string|\WP_Error The translated content, or a WP_Error if there was an error.
 	 */
-	protected function generate_translated_content( string $prompt, string $target_language ) {
-		$builder = $this->get_prompt_builder( $prompt, $target_language );
+	protected function generate_translated_content( string $prompt, string $language ) {
+		$builder = $this->get_prompt_builder( $prompt, $language );
 
 		if ( is_wp_error( $builder ) ) {
 			return $builder;
@@ -205,16 +210,16 @@ class Content_Translation extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string $prompt The prompt to build.
-	 * @param string $target_language The target language.
+	 * @param string $language The target language.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error if there isn't a model that supports text generation.
 	 */
-	private function get_prompt_builder( string $prompt, string $target_language ) {
+	private function get_prompt_builder( string $prompt, string $language ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction(
 				$this->get_system_instruction(
 					'system-instruction.php',
 					array(
-						'target_language' => $target_language,
+						'target_language' => $language,
 					)
 				)
 			)
