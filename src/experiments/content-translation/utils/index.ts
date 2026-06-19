@@ -9,7 +9,7 @@ import { __ } from '@wordpress/i18n';
  */
 import { getBlockText } from '../../../utils/blocks';
 import { runAbility } from '../../../utils/run-ability';
-import type { AIContentTranslationData } from '../types/types';
+import type { AIContentTranslationData } from '../types';
 import {
 	TRANSLATION_LOADING_CLASSES,
 	TRANSLATION_MINIMUM_CONTENT_COUNT_DEFAULT,
