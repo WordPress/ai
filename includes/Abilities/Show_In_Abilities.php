@@ -25,6 +25,11 @@ defined( 'ABSPATH' ) || exit;
  * It is intentionally object-type-agnostic: today it marks settings; post types and
  * meta can be marked here the same way when those abilities land.
  *
+ * Timing: the `core/settings` ability snapshots the exposed settings when it registers
+ * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
+ * before that hook fires — i.e. its `register_setting()` call must run before abilities
+ * init — for the ability to pick it up.
+ *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
