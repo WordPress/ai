@@ -705,10 +705,6 @@ function get_min_content_length( string $feature_id, int $content_length = 100 )
  * @return bool True if the user has access, false otherwise.
  */
 function ai_current_user_can_access_feature( string $feature_id ): bool {
-	if ( ! is_user_logged_in() ) {
-		return false;
-	}
-
 	$roles = get_option( "wpai_feature_{$feature_id}_roles", array() );
 	$users = get_option( "wpai_feature_{$feature_id}_users", array() );
 
