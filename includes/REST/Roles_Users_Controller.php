@@ -63,7 +63,7 @@ class Roles_Users_Controller {
 			'number' => self::MAX_USERS,
 		);
 
-		if ( $search !== '' ) {
+		if ( '' !== $search ) {
 			$get_users_args['search']         = '*' . $search . '*';
 			$get_users_args['search_columns'] = array( 'user_login', 'display_name', 'user_email' );
 		}
