@@ -31,6 +31,8 @@ class Content_Translation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	public static function get_id(): string {
 		return 'content-translation';
@@ -38,6 +40,8 @@ class Content_Translation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -49,6 +53,8 @@ class Content_Translation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
