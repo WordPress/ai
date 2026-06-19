@@ -616,9 +616,12 @@ function FeatureToggleWithSettings( {
 			{ checked && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
-			{ checked && isAccessControlMode && feature && feature.category !== 'admin' && (
-				<AccessControlSettings featureId={ feature.id } />
-			) }
+			{ checked &&
+				isAccessControlMode &&
+				feature &&
+				feature.category !== 'admin' && (
+					<AccessControlSettings featureId={ feature.id } />
+				) }
 			{ checked && isDeveloperMode && feature && (
 				<DeveloperSettings
 					featureId={ feature.id }
@@ -665,9 +668,12 @@ function VisualCardToggle( {
 					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
-				{ checked && isAccessControlMode && feature && feature.category !== 'admin' && (
-					<AccessControlSettings featureId={ feature.id } />
-				) }
+				{ checked &&
+					isAccessControlMode &&
+					feature &&
+					feature.category !== 'admin' && (
+						<AccessControlSettings featureId={ feature.id } />
+					) }
 				{ globalEnabled && checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
