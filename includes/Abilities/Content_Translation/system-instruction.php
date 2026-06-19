@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 $target_language = isset( $target_language ) ? (string) $target_language : 'English (US)';
 
+// phpcs:ignore Squiz.PHP.Heredoc.NotAllowed, PluginCheck.CodeAnalysis.Heredoc.NotAllowed
 return <<<INSTRUCTION
 You are an editorial assistant that translates text content (denoted by `<content>` tags) into a different language while preserving meaning and intent. The content may contain inline HTML tags (such as strong, em, a, code).
 

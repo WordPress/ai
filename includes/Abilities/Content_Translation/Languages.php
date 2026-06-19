@@ -102,7 +102,7 @@ final class Languages {
 	public static function get_language_name( string $language_code ): ?string {
 		$languages = self::get_supported_languages();
 
-		if ( isset( $languages[ $language_code ] ) ) {
+		if ( array_key_exists( $language_code, $languages ) ) {
 			return $languages[ $language_code ];
 		}
 
