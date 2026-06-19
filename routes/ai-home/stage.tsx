@@ -276,8 +276,9 @@ function isExportPayload( value: unknown ): value is ExportPayload {
 		return false;
 	}
 	return (
-		typeof value[ 'version' ] === 'number' &&
-		isRecord( value[ 'providers' ] ) &&
+		// eslint-disable-next-line dot-notation
+		typeof value[ 'version' ] === 'number' && // eslint-disable-next-line dot-notation
+		isRecord( value[ 'providers' ] ) && // eslint-disable-next-line dot-notation
 		isRecord( value[ 'settings' ] )
 	);
 }
