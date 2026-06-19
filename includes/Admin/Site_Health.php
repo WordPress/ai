@@ -200,6 +200,7 @@ final class Site_Health {
 		$count      = 0;
 
 		foreach ( $registered as $option_name => $args ) {
+			$option_name = (string) $option_name;
 			if ( ( $args['group'] ?? '' ) !== Settings_Registration::OPTION_GROUP ) {
 				continue;
 			}
