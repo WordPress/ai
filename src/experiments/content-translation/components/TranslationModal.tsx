@@ -1,7 +1,12 @@
 /**
  * WordPress dependencies
  */
-import { Button, Modal, SelectControl } from '@wordpress/components';
+import {
+	Button,
+	Modal,
+	SelectControl,
+	ToggleControl,
+} from '@wordpress/components';
 import { useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Stack } from '@wordpress/ui';
@@ -14,7 +19,10 @@ import { getSettings } from '../utils';
 type TranslationModalProps = {
 	canTranslate: boolean;
 	closeModal: () => void;
-	translate: ( languageCode: string ) => Promise< void >;
+	translate: (
+		languageCode: string,
+		options?: { translateTitle?: boolean }
+	) => Promise< void >;
 };
 
 /**
@@ -39,6 +47,7 @@ export default function TranslationModal( {
 		[]
 	);
 
+	const [ translateTitle, setTranslateTitle ] = useState( false );
 	const [ selectedLanguage, setSelectedLanguage ] = useState(
 		controls?.[ 0 ]?.value || ''
 	);
@@ -47,6 +56,7 @@ export default function TranslationModal( {
 		<Modal
 			onRequestClose={ closeModal }
 			title={ __( 'Generate Translation', 'ai' ) }
+			focusOnMount="firstInputElement"
 			size="medium"
 		>
 			<Stack direction="column" gap="xl">
@@ -58,13 +68,25 @@ export default function TranslationModal( {
 					__next40pxDefaultSize
 				/>
 
+				<ToggleControl
+					label={ __( 'Also translate the title', 'ai' ) }
+					help={ __(
+						'Translates the title along with the post content.',
+						'ai'
+					) }
+					onChange={ ( value ) => setTranslateTitle( value ) }
+					checked={ translateTitle }
+				/>
+
 				<Stack direction="row" gap="sm" justify="flex-end">
 					<Button
 						variant="primary"
 						__next40pxDefaultSize
 						onClick={ () => {
 							closeModal();
-							void translate( selectedLanguage );
+							void translate( selectedLanguage, {
+								translateTitle,
+							} );
 						} }
 						disabled={ ! canTranslate || ! selectedLanguage }
 					>

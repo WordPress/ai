@@ -8,8 +8,10 @@ import { __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { getBlockText } from '../../../utils/blocks';
+import { runAbility } from '../../../utils/run-ability';
 import type { AIContentTranslationData } from '../types/types';
 import {
+	TRANSLATION_LOADING_CLASSES,
 	TRANSLATION_MINIMUM_CONTENT_COUNT_DEFAULT,
 	TRANSLATION_SUPPORTED_BLOCK_TYPES,
 } from '../constants';
@@ -17,7 +19,7 @@ import {
 /**
  * Retrieves the content translation settings from the global window object.
  *
- * @return {AIContentTranslationData} The content translation settings.
+ * @return The content translation settings.
  */
 export const getSettings = (): AIContentTranslationData => {
 	const settings = window?.aiContentTranslationData ?? {};
@@ -54,19 +56,21 @@ export function getTranslatableBlock( block: Block ) {
 }
 
 /**
- * Toggle a CSS class on the editor body to indicate whether the translation process is currently loading.
+ * Toggle the loading class used to show the translation-in-progress state.
  *
- * @param isLoading A boolean indicating whether the translation process is currently loading.
+ * @param loadingClass The loading class to toggle.
+ * @param isLoading    A boolean indicating whether the loading class should be toggled.
  */
-export function setTranslationLoadingClass( isLoading: boolean ) {
-	const editorBody =
-		document.querySelector< HTMLIFrameElement >(
-			'iframe[name="editor-canvas"]'
-		)?.contentDocument?.body ??
-		document.querySelector< HTMLElement >( '.editor-styles-wrapper' );
+export function setTranslationLoadingClass(
+	loadingClass: keyof typeof TRANSLATION_LOADING_CLASSES,
+	isLoading: boolean
+) {
+	const editorBody = document.querySelector< HTMLIFrameElement >(
+		'iframe[name="editor-canvas"]'
+	)?.contentDocument?.body;
 
 	editorBody?.classList.toggle(
-		'ai-content-translation--is-loading',
+		TRANSLATION_LOADING_CLASSES[ loadingClass ],
 		isLoading
 	);
 }
@@ -87,4 +91,24 @@ export function getErrorMessage( error: unknown ): string {
 	}
 
 	return __( 'Something went wrong. Please try again.', 'ai' );
+}
+
+/**
+ * Translates the content of a post using the AI API.
+ *
+ * @param content        The content to translate.
+ * @param targetLanguage The target language to translate the content to.
+ * @param postId         The ID of the post to translate the content for.
+ * @return  A promise that resolves to the translated content.
+ */
+export function translateContent(
+	content: string,
+	targetLanguage: string,
+	postId: number
+): Promise< string > {
+	return runAbility< string >( 'ai/content-translation', {
+		content,
+		target_language: targetLanguage,
+		post_id: postId,
+	} );
 }
