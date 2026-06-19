@@ -307,9 +307,11 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create();
 
 		$comment_data = array(
-			'comment_post_ID'  => $post_id,
-			'comment_content'  => 'spam-comment-test',
-			'comment_approved' => '1',
+			'comment_post_ID'      => $post_id,
+			'comment_author'       => 'Test Spammer',
+			'comment_author_email' => 'spammer@example.com',
+			'comment_content'      => 'spam-comment-test',
+			'comment_approved'     => '1',
 		);
 
 		$comment_id = wp_new_comment( $comment_data );
