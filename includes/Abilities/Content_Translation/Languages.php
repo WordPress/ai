@@ -45,20 +45,20 @@ final class Languages {
 	 */
 	public static function get_supported_languages(): array {
 		$languages = array(
-			'en-us' => __( 'English (US)', 'ai' ),
-			'en-gb' => __( 'English (UK)', 'ai' ),
-			'es-es' => __( 'Spanish (Spain)', 'ai' ),
-			'fr-fr' => __( 'French (France)', 'ai' ),
-			'de-de' => __( 'German', 'ai' ),
-			'it-it' => __( 'Italian', 'ai' ),
-			'pt-br' => __( 'Portuguese (Brazil)', 'ai' ),
-			'nl-nl' => __( 'Dutch', 'ai' ),
-			'ja'    => __( 'Japanese', 'ai' ),
+			'ar'    => __( 'Arabic', 'ai' ),
 			'zh-cn' => __( 'Chinese (Simplified)', 'ai' ),
 			'zh-tw' => __( 'Chinese (Traditional)', 'ai' ),
-			'ko'    => __( 'Korean', 'ai' ),
-			'ar'    => __( 'Arabic', 'ai' ),
+			'nl-nl' => __( 'Dutch', 'ai' ),
+			'en-gb' => __( 'English (UK)', 'ai' ),
+			'en-us' => __( 'English (US)', 'ai' ),
+			'fr-fr' => __( 'French', 'ai' ),
+			'de-de' => __( 'German', 'ai' ),
 			'hi'    => __( 'Hindi', 'ai' ),
+			'it-it' => __( 'Italian', 'ai' ),
+			'ja'    => __( 'Japanese', 'ai' ),
+			'ko'    => __( 'Korean', 'ai' ),
+			'pt-br' => __( 'Portuguese (Brazil)', 'ai' ),
+			'es-es' => __( 'Spanish', 'ai' ),
 		);
 
 		/**
