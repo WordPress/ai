@@ -505,12 +505,21 @@ function has_ai_credentials(): bool {
 /**
  * Checks whether any configured connector exposes an image-generation-capable model.
  *
- * @since 1.0.2
+ * The result is memoized for the duration of the request. Pass true to recompute,
+ * which is useful when connector configuration changes within a single request.
  *
+ * @since 1.0.2
+ * @since 1.0.3 Added the `$reset_cache` parameter.
+ *
+ * @param bool $reset_cache Optional. Whether to bypass the memoized result and recompute it. Default false.
  * @return bool True if at least one configured connector has an image-generation-capable model.
  */
-function has_image_generation_support(): bool {
+function has_image_generation_support( bool $reset_cache = false ): bool {
 	static $result = null;
+
+	if ( $reset_cache ) {
+		$result = null;
+	}
 
 	if ( null !== $result ) {
 		return $result;
@@ -525,7 +534,12 @@ function has_image_generation_support(): bool {
 	$connectors = get_ai_connectors();
 
 	foreach ( array_keys( $connectors ) as $connector_id ) {
-		if ( ! has_connector_authentication( $connector_id ) ) {
+		// A connector qualifies when it has API-key credentials, or when its
+		// provider reports itself configured through the registry. The latter
+		// covers connectors that authenticate without an API key (e.g. OAuth),
+		// consistent with how text generation honors connectors that do not
+		// rely on API key settings.
+		if ( ! has_connector_authentication( $connector_id ) && ! is_connector_configured( $connector_id ) ) {
 			continue;
 		}
 
