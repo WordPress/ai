@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
+import { Button, Icon } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { __, sprintf } from '@wordpress/i18n';
 import { Stack, Text } from '@wordpress/ui';
@@ -67,7 +67,7 @@ export default function ContentTranslationPlugin() {
 				className="ai-content-translation-plugin"
 			>
 				<Button
-					icon="translation"
+					icon={ <Icon icon="translation" aria-hidden="true" /> }
 					variant="secondary"
 					__next40pxDefaultSize
 					onClick={ () => setIsOpen( ( prev ) => ! prev ) }
