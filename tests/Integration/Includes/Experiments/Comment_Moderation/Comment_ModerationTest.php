@@ -310,6 +310,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 			'comment_post_ID'      => $post_id,
 			'comment_author'       => 'Test Spammer',
 			'comment_author_email' => 'spammer@example.com',
+			'comment_author_url'   => '',
 			'comment_content'      => 'spam-comment-test',
 			'comment_approved'     => '1',
 		);
