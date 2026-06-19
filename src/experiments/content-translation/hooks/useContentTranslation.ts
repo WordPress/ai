@@ -118,6 +118,8 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		} finally {
 			setIsContentTranslating( false );
 			setTranslationLoadingClass( 'BLOCKS', false );
+			setProgress( 0 );
+			setTotal( 0 );
 		}
 	};
 
