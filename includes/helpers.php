@@ -722,9 +722,5 @@ function ai_current_user_can_access_feature( string $feature_id ): bool {
 		return true;
 	}
 
-	if ( ! empty( array_intersect( $current_user->roles, $roles ) ) ) {
-		return true;
-	}
-
-	return false;
+	return (bool) array_intersect( $current_user->roles, $roles );
 }

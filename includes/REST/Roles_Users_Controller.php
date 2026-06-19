@@ -41,7 +41,13 @@ class Roles_Users_Controller {
 		return current_user_can( 'manage_options' );
 	}
 
-	public function get_roles_users( \WP_REST_Request $request ) {
+	/**
+	 * Returns roles and users for the access control endpoint.
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return \WP_REST_Response
+	 */
+	public function get_roles_users( \WP_REST_Request $request ): \WP_REST_Response {
 		$roles = array();
 
 		foreach ( wp_roles()->roles as $role_id => $role ) {
@@ -51,7 +57,7 @@ class Roles_Users_Controller {
 			);
 		}
 
-		$search    = (string) $request->get_param( 'search' );
+		$search         = (string) $request->get_param( 'search' );
 		$get_users_args = array(
 			'fields' => array( 'ID', 'display_name' ),
 			'number' => self::MAX_USERS,
