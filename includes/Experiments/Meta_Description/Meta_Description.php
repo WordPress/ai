@@ -55,6 +55,10 @@ class Meta_Description extends Abstract_Feature {
 	 * @since 0.7.0
 	 */
 	public function register(): void {
+		if ( ! \WordPress\AI\ai_current_user_can_access_feature( $this->get_id() ) ) {
+			return;
+		}
+
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );

@@ -16,7 +16,7 @@ interface UseAccessControlSettingsReturn {
 	settings: AccessControlSettings;
 	stage: ( next: AccessControlSettings ) => void;
 	save: () => Promise< void >;
-	clear: () => Promise< void >;
+	clear: () => void;
 	isDirty: boolean;
 	isSaving: boolean;
 }
