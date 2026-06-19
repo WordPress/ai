@@ -6,3 +6,9 @@ export type AIContentTranslationData = {
 		name: string;
 	} >;
 };
+
+declare global {
+	interface Window {
+		aiContentTranslationData: AIContentTranslationData;
+	}
+}
