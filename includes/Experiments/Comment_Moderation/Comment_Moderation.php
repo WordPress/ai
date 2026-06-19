@@ -301,6 +301,11 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
+		// Skip moderation if the comment is already marked as spam or trash.
+		if ( in_array( $comment->comment_approved, array( 'spam', 'trash' ), true ) ) {
+			return;
+		}
+
 		$analysis = $this->get_comment_analysis_ability()->analyze_comment_by_id( (int) $comment_id );
 		if ( is_wp_error( $analysis ) ) {
 			return;
