@@ -188,8 +188,8 @@ class Settings {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param list[] $groups      Available settings groups.
-	 * @param list[] $field_names Available exposed setting names.
+	 * @param list<string> $groups      Available settings groups.
+	 * @param list<string> $field_names Available exposed setting names.
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
 	protected static function get_settings_input_schema( array $groups, array $field_names ): array {
