@@ -45,6 +45,13 @@ class Comment_Moderation extends Abstract_Feature {
 	public const META_SENTIMENT = '_wpai_sentiment';
 
 	/**
+	 * Comment meta key for value score.
+	 *
+	 * @var string
+	 */
+	public const META_VALUE_SCORE = '_wpai_value_score';
+
+	/**
 	 * Comment meta key for analysis status.
 	 *
 	 * @var string
@@ -127,6 +134,63 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @var string
 	 */
 	public const TOXICITY_HIGH = 'high';
+
+	/**
+	 * Value score level: low.
+	 *
+	 * @var string
+	 */
+	public const VALUE_SCORE_LOW = 'low';
+
+	/**
+	 * Value score level: medium.
+	 *
+	 * @var string
+	 */
+	public const VALUE_SCORE_MEDIUM = 'medium';
+
+	/**
+	 * Value score level: high.
+	 *
+	 * @var string
+	 */
+	public const VALUE_SCORE_HIGH = 'high';
+
+	/**
+	 * Gets the configuration for Value_Score levels.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string}> The Value_Score configuration.
+	 */
+	public static function get_value_score_config(): array {
+		return array(
+			self::VALUE_SCORE_LOW    => array(
+				'label'       => __( 'Low', 'ai' ),
+				'filterLabel' => __( 'Low Value Score (<40%)', 'ai' ),
+				'class'       => 'ai-badge--low-value',
+				'icon'        => '✓',
+				'min'         => 0.0,
+				'max'         => 0.4,
+			),
+			self::VALUE_SCORE_MEDIUM => array(
+				'label'       => __( 'Medium', 'ai' ),
+				'filterLabel' => __( 'Medium Value Score (40%-69%)', 'ai' ),
+				'class'       => 'ai-badge--medium-value',
+				'icon'        => '👍',
+				'min'         => 0.4,
+				'max'         => 0.7,
+			),
+			self::VALUE_SCORE_HIGH   => array(
+				'label'       => __( 'High', 'ai' ),
+				'filterLabel' => __( 'High Value Score (>=70%)', 'ai' ),
+				'class'       => 'ai-badge--high-value',
+				'icon'        => '🌟',
+				'min'         => 0.7,
+				'max'         => 1.0,
+			),
+		);
+	}
 
 	/**
 	 * Gets the configuration for sentiment levels.
@@ -372,8 +436,9 @@ class Comment_Moderation extends Abstract_Feature {
 				continue;
 			}
 
-			$new_columns['wpai_sentiment'] = __( 'Sentiment', 'ai' );
-			$new_columns['wpai_toxicity']  = __( 'Toxicity', 'ai' );
+			$new_columns['wpai_sentiment']   = __( 'Sentiment', 'ai' );
+			$new_columns['wpai_toxicity']    = __( 'Toxicity', 'ai' );
+			$new_columns['wpai_value_score'] = __( 'Value', 'ai' );
 		}
 
 		return $new_columns;
@@ -420,7 +485,8 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		$sentiment = get_comment_meta( $comment_id, self::META_SENTIMENT, true );
-		$score     = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
+		$toxicity  = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
+		$value     = (float) get_comment_meta( $comment_id, self::META_VALUE_SCORE, true );
 
 		// Capture the pills HTML in an output buffer.
 		ob_start();
@@ -428,7 +494,8 @@ class Comment_Moderation extends Abstract_Feature {
 		<div class="ai-dashboard-pills">
 			<?php
 			$this->render_sentiment_badge( (string) $sentiment );
-			$this->render_toxicity_badge( $score );
+			$this->render_toxicity_badge( $toxicity );
+			$this->render_value_score_badge( $value );
 			?>
 		</div>
 		<?php
@@ -454,6 +521,7 @@ class Comment_Moderation extends Abstract_Feature {
 
 		$current_sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$current_toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$current_value     = isset( $_GET['wpai_value_score'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_value_score'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		// Sentiment Dropdown.
 		$sentiments = self::get_sentiment_config();
@@ -482,6 +550,20 @@ class Comment_Moderation extends Abstract_Feature {
 			<?php endforeach; ?>
 		</select>
 		<?php
+
+		// Value Score Dropdown.
+		$value_scores = self::get_value_score_config();
+		?>
+		<label class="screen-reader-text" for="wpai-filter-value-score"><?php esc_html_e( 'Filter by Value Score', 'ai' ); ?></label>
+		<select name="wpai_value_score" id="wpai-filter-value-score">
+			<option value=""><?php esc_html_e( 'All Value Scores', 'ai' ); ?></option>
+			<?php foreach ( $value_scores as $value => $config ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current_value, $value ); ?>>
+					<?php echo esc_html( $config['filterLabel'] ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<?php
 	}
 
 	/**
@@ -493,8 +575,10 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @return array<string, string> The modified sortable columns.
 	 */
 	public function add_sortable_columns( $columns ): array {
-		$columns['wpai_sentiment'] = 'wpai_sentiment';
-		$columns['wpai_toxicity']  = 'wpai_toxicity';
+		$columns['wpai_sentiment']   = 'wpai_sentiment';
+		$columns['wpai_toxicity']    = 'wpai_toxicity';
+		$columns['wpai_value_score'] = 'wpai_value_score';
+
 		return $columns;
 	}
 
@@ -521,9 +605,9 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		// Handle filtering.
-		$sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
+		$sentiment  = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$toxicity   = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$value      = isset( $_GET['wpai_value_score'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_value_score'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$sentiments = self::get_sentiment_config();
 		if ( ! empty( $sentiment ) && array_key_exists( $sentiment, $sentiments ) ) {
 			$meta_query[] = array(
@@ -588,6 +672,21 @@ class Comment_Moderation extends Abstract_Feature {
 			);
 
 			$query->query_vars['orderby'] = 'wpai_toxicity_sort';
+		} elseif ( 'wpai_value_score' === $orderby ) {
+			$meta_query[] = array(
+				'relation'               => 'OR',
+				'wpai_value_score_sort'  => array(
+					'key'     => self::META_VALUE_SCORE,
+					'compare' => 'EXISTS',
+					'type'    => 'DECIMAL(10, 5)',
+				),
+				'wpai_value_score_empty' => array(
+					'key'     => self::META_VALUE_SCORE,
+					'compare' => 'NOT EXISTS',
+				),
+			);
+
+			$query->query_vars['orderby'] = 'wpai_value_score_sort';
 		}
 
 		if ( empty( $meta_query ) ) {
@@ -612,6 +711,8 @@ class Comment_Moderation extends Abstract_Feature {
 			$this->render_sentiment_column( (int) $comment_id, $status );
 		} elseif ( 'wpai_toxicity' === (string) $column_name ) {
 			$this->render_toxicity_column( (int) $comment_id, $status );
+		} elseif ( 'wpai_value_score' === (string) $column_name ) {
+			$this->render_value_score_column( (int) $comment_id, $status );
 		}
 	}
 
@@ -664,6 +765,30 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
+	 * Renders the value score column content.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int    $comment_id The comment ID.
+	 * @param string $status     The analysis status.
+	 */
+	private function render_value_score_column( int $comment_id, string $status ): void {
+		if ( self::STATUS_COMPLETE === $status ) {
+			$score = (float) get_comment_meta( $comment_id, self::META_VALUE_SCORE, true );
+			$this->render_value_score_badge( $score );
+		} elseif ( self::STATUS_PENDING === $status ) {
+			$this->render_pending_badge( $comment_id );
+		} elseif ( self::STATUS_PROCESSING === $status ) {
+			$this->render_processing_badge( $comment_id );
+		} elseif ( self::STATUS_FAILED === $status ) {
+			$this->render_failed_badge();
+		} else {
+			// Empty or not analyzed - show dash.
+			echo '<span class="ai-badge ai-badge--empty">—</span>';
+		}
+	}
+
+	/**
 	 * Renders a sentiment badge.
 	 *
 	 * @since 0.9.0
@@ -702,6 +827,37 @@ class Comment_Moderation extends Abstract_Feature {
 			}
 		}
 
+		$label = $badge['label'];
+		$class = $badge['class'];
+		$icon  = $badge['icon'];
+
+		printf(
+			'<span class="ai-badge %s" title="%s (%d%%)">%s %s</span>',
+			esc_attr( $class ),
+			esc_attr( $label ),
+			absint( $score * 100 ),
+			esc_html( $icon ),
+			esc_html( $label )
+		);
+	}
+
+	/**
+	 * Renders a value score badge.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param float $score The value score (0-1).
+	 */
+	private function render_value_score_badge( float $score ): void {
+		$config = self::get_value_score_config();
+		$badge  = $config[ self::VALUE_SCORE_LOW ];
+
+		foreach ( $config as $tier ) {
+			if ( $score >= $tier['min'] && ( $score < $tier['max'] || 1.0 === $tier['max'] ) ) {
+				$badge = $tier;
+				break;
+			}
+		}
 		$label = $badge['label'];
 		$class = $badge['class'];
 		$icon  = $badge['icon'];
@@ -963,8 +1119,9 @@ class Comment_Moderation extends Abstract_Feature {
 			array(
 				'enabled' => $this->is_enabled(),
 				'labels'  => array(
-					'sentiment' => self::get_sentiment_config(),
-					'toxicity'  => self::get_toxicity_config(),
+					'sentiment'   => self::get_sentiment_config(),
+					'toxicity'    => self::get_toxicity_config(),
+					'value_score' => self::get_value_score_config(),
 				),
 			)
 		);
@@ -1010,17 +1167,17 @@ class Comment_Moderation extends Abstract_Feature {
 				color: #383d41;
 			}
 
-			.ai-badge--low-toxicity {
+			.ai-badge--low-toxicity, .ai-badge--high-value {
 				background-color: #d4edda;
 				color: #155724;
 			}
 
-			.ai-badge--medium-toxicity {
+			.ai-badge--medium-toxicity, .ai-badge--medium-value {
 				background-color: #fff3cd;
 				color: #856404;
 			}
 
-			.ai-badge--high-toxicity {
+			.ai-badge--high-toxicity, .ai-badge--low-value {
 				background-color: #f8d7da;
 				color: #721c24;
 			}
