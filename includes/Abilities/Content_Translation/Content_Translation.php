@@ -107,18 +107,17 @@ class Content_Translation extends Abstract_Ability {
 			);
 		}
 
+		$prompt = sprintf( '<content>%s</content>', $content );
+
 		// Validate the target language.
 		$target_language = sanitize_key( (string) $args['target_language'] );
-		if ( ! Languages::is_supported( $target_language ) ) {
+		$language        = Languages::get_language_name( $target_language );
+		if ( null === $language ) {
 			return new WP_Error(
 				'invalid_target_language',
 				esc_html__( 'The specified target language is not supported for translation.', 'ai' )
 			);
 		}
-
-		$language = Languages::get_language_name( $target_language );
-
-		$prompt = sprintf( '<content>%s</content>', $content );
 
 		$result = $this->generate_translated_content( $prompt, $language );
 
