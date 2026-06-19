@@ -7,8 +7,8 @@
 	}
 }
 
-.block-editor-iframe__body.ai-content-translation--is-loading
-	.block-editor-rich-text__editable {
+.ai-content-translation--is-title-loading .wp-block-post-title,
+.ai-content-translation--is-blocks-loading .block-editor-rich-text__editable {
 	color: var(--wpds-color-fg-content-neutral-weak, #707070);
 
 	@media (prefers-reduced-motion: no-preference) {
@@ -28,6 +28,7 @@
 		background-clip: text;
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
+		will-change: background-position;
 	}
 }
 
