@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin name: E2E Test Request Mocking
- * Description: This plugin is used to mock the API requests when running E2E tests. It also registers test fixtures, such as a setting flagged for the Abilities API.
+ * Plugin name: E2E Testing
+ * Description: Support plugin for the E2E test suite. Mocks API requests and registers test fixtures, such as a setting flagged for the Abilities API.
  * Version: 0.1.0
  * Author: WordPress.org Contributors
  * Author URI: https://make.wordpress.org/ai/

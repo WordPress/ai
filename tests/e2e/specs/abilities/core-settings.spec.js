@@ -115,7 +115,7 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 	test( 'exposes a setting registered by another active plugin', async ( {
 		page,
 	} ) => {
-		// Registered by the `e2e-request-mocking` plugin (mapped in .wp-env.test.json)
+		// Registered by the `e2e-testing` plugin (mapped in .wp-env.test.json)
 		// with `show_in_abilities` and a default of `sample-default`.
 		const outcome = await runCoreSettings( page, {
 			fields: [ 'ai_e2e_sample_setting' ],
