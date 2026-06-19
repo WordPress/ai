@@ -616,7 +616,7 @@ function FeatureToggleWithSettings( {
 			{ checked && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
-			{ checked && isAccessControlMode && feature && (
+			{ checked && isAccessControlMode && feature && feature.category !== 'admin' && (
 				<AccessControlSettings featureId={ feature.id } />
 			) }
 			{ checked && isDeveloperMode && feature && (
@@ -665,7 +665,7 @@ function VisualCardToggle( {
 					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
-				{ checked && isAccessControlMode && feature && (
+				{ checked && isAccessControlMode && feature && feature.category !== 'admin' && (
 					<AccessControlSettings featureId={ feature.id } />
 				) }
 				{ globalEnabled && checked && isDeveloperMode && feature && (
@@ -865,11 +865,13 @@ function AISettingsPage() {
 			} else {
 				const featureId = feature.id;
 				const featureCapability = feature.capability;
+				const featureCategory = feature.category;
 				baseField.Edit = ( props ) => (
 					<FeatureToggle
 						{ ...props }
 						featureId={ featureId }
 						capability={ featureCapability }
+						category={ featureCategory }
 					/>
 				);
 			}
