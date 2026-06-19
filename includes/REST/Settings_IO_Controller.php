@@ -268,6 +268,9 @@ final class Settings_IO_Controller {
 		$exportable = array();
 
 		foreach ( $registered as $option_name => $args ) {
+			// Ensure $option_name is a string
+			$option_name = (string) $option_name;
+
 			if ( ( $args['group'] ?? '' ) !== Settings_Registration::OPTION_GROUP ) {
 				continue;
 			}
