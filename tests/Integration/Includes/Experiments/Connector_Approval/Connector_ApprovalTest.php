@@ -211,4 +211,79 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		$data3 = $filtered3->get_data();
 		$this->assertSame( 'Some other message.', $data3['message'] );
 	}
+
+	/**
+	 * Test that registering the experiment registers notices and pages when is_admin() is true.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_register_in_admin_context() {
+		// Mock admin context using set_current_screen
+		set_current_screen( 'dashboard' );
+
+		$admin_experiment = new Connector_Approval();
+		$admin_experiment->register();
+
+		// Clean up the current screen
+		set_current_screen( 'front' );
+
+		// Check that the actions were added
+		$this->assertGreaterThan( 0, has_action( 'admin_notices' ) );
+		$this->assertGreaterThan( 0, has_action( 'admin_menu' ) );
+	}
+
+	/**
+	 * Test customize_rest_error returns the input immediately if it is not a WP_REST_Response or is not an error.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_customize_rest_error_with_invalid_response() {
+		$this->experiment->register();
+
+		// Not a WP_REST_Response (e.g. string)
+		$result_string = $this->experiment->customize_rest_error( 'not_a_response', rest_get_server(), new \WP_REST_Request() );
+		$this->assertSame( 'not_a_response', $result_string );
+
+		// WP_REST_Response but not an error (status 200)
+		$response_200 = new \WP_REST_Response( array( 'status' => 'ok' ), 200 );
+		$result_200   = $this->experiment->customize_rest_error( $response_200, rest_get_server(), new \WP_REST_Request() );
+		$this->assertSame( $response_200, $result_200 );
+	}
+
+	/**
+	 * Test customize_rest_error filter modifies error messages for all context abilities.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_customize_rest_error_all_abilities() {
+		$this->experiment->register();
+
+		$abilities = array(
+			'ai/image-generation'         => 'Image generation failed.',
+			'ai/alt-text-generation'       => 'Alt text generation failed.',
+			'ai/meta-description'         => 'Meta description generation failed.',
+			'ai/editorial-notes'           => 'Editorial notes generation failed.',
+			'ai/editorial-updates'         => 'Editorial updates generation failed.',
+			'ai/content-resizing'          => 'Content resizing failed.',
+			'ai/content-classification'    => 'Content classification failed.',
+			'ai/summarization'             => 'Summarization failed.',
+			'ai/comment-analysis'          => 'Comment analysis failed.',
+		);
+
+		foreach ( $abilities as $ability_id => $expected_substring ) {
+			$request = new \WP_REST_Request( 'POST', "/wp-abilities/v1/abilities/{$ability_id}/run" );
+			$response = new \WP_REST_Response(
+				array(
+					'code'    => 'wpai_connector_not_approved',
+					'message' => 'Blocked.',
+					'data'    => array( 'status' => 403 ),
+				),
+				403
+			);
+
+			$filtered = $this->experiment->customize_rest_error( $response, rest_get_server(), $request );
+			$data     = $filtered->get_data();
+			$this->assertStringContainsString( $expected_substring, $data['message'] );
+		}
+	}
 }
