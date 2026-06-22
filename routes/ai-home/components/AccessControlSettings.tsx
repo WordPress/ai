@@ -9,7 +9,7 @@ import {
 	FormTokenField,
 	Spinner,
 } from '@wordpress/components';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -51,9 +51,23 @@ export function AccessControlSettings( {
 		);
 	}, [ effectiveUsers, selectedUserMap ] );
 
+	// Seed selectedUserMap with every user returned from the API so that
+	// saved users always show their display name instead of a raw ID.
+	useEffect( () => {
+		setSelectedUserMap( ( prev ) => {
+			const next = new Map( prev );
+			suggestions.forEach( ( u: User ) => next.set( u.id, u.name ) );
+			return next;
+		} );
+	}, [ suggestions ] );
+
+	// Exclude already-selected users from the suggestions dropdown.
 	const userSuggestionNames = useMemo(
-		() => suggestions.map( ( u: User ) => u.name ),
-		[ suggestions ]
+		() =>
+			suggestions
+				.filter( ( u: User ) => ! effectiveUsers.includes( u.id ) )
+				.map( ( u: User ) => u.name ),
+		[ suggestions, effectiveUsers ]
 	);
 
 	const handleRoleToggle = useCallback(
@@ -74,7 +88,17 @@ export function AccessControlSettings( {
 
 			tokens.forEach( ( token ) => {
 				const label = typeof token === 'string' ? token : token.value;
-				const id = suggestionNameToId.get( label );
+				let id = suggestionNameToId.get( label );
+
+				if ( id === undefined ) {
+					for ( const [ mapId, mapLabel ] of selectedUserMap.entries() ) {
+						if ( mapLabel === label ) {
+							id = mapId;
+							break;
+						}
+					}
+				}
+
 				if ( id !== undefined ) {
 					newUsers.push( id );
 					newMap.set( id, label );
@@ -84,8 +108,9 @@ export function AccessControlSettings( {
 			setLocalUsers( newUsers );
 			setSelectedUserMap( newMap );
 			stage( { roles: effectiveRoles, users: newUsers } );
+			search( '' );
 		},
-		[ stage, effectiveRoles, suggestionNameToId, selectedUserMap ]
+		[ stage, effectiveRoles, suggestionNameToId, selectedUserMap, search ]
 	);
 
 	const handleInputChange = useCallback(
