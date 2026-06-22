@@ -73,8 +73,11 @@ final class Show_In_Abilities {
 	 * Returns the curated core settings to expose, keyed by option name.
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array with
-	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape). This matches
-	 * the set marked natively by the core `core/settings` implementation.
+	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape).
+	 *
+	 * This list is kept 1:1 with the settings core flags `show_in_abilities` on in
+	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
+	 * Keep the two in sync when adding or removing entries.
 	 *
 	 * @since x.x.x
 	 *

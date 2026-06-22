@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Settings;
 
+use WP_Ability;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Settings\Settings;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -40,6 +41,20 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->show_in_abilities->register();
 		register_initial_settings();
 
+		// A non-core setting flagged for the Abilities API, to verify that any registered
+		// setting (not just the core ones) is exposed by the ability.
+		register_setting(
+			'general',
+			'core_settings_ability_test_option',
+			array(
+				'type'              => 'integer',
+				'label'             => 'Custom Ability Setting',
+				'description'       => 'A custom setting exposed through the Abilities API.',
+				'show_in_abilities' => true,
+				'default'           => 42,
+			)
+		);
+
 		$this->ensure_site_category();
 	}
 
@@ -54,6 +69,7 @@ class SettingsTest extends WP_UnitTestCase {
 		}
 
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
+		unregister_setting( 'general', 'core_settings_ability_test_option' );
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
@@ -113,17 +129,18 @@ class SettingsTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_registers_core_settings_ability(): void {
+	public function test_core_settings_ability_is_registered(): void {
 		$this->register_ability();
 
 		$ability = wp_get_ability( 'core/settings' );
 
-		$this->assertNotNull( $ability );
-		$this->assertSame( 'core/settings', $ability->get_name() );
+		$this->assertInstanceOf( WP_Ability::class, $ability );
 		$this->assertSame( 'site', $ability->get_category() );
+		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ) );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );
 		$this->assertTrue( $annotations['readonly'] );
+		$this->assertFalse( $annotations['destructive'] );
 	}
 
 	/**
@@ -167,14 +184,20 @@ class SettingsTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_input_schema_exposes_group_and_fields_filters(): void {
+	public function test_core_settings_input_schema_exposes_group_and_fields_filters(): void {
 		$this->register_ability();
 
 		$schema = wp_get_ability( 'core/settings' )->get_input_schema();
 
+		$this->assertSame( 'object', $schema['type'] );
+		$this->assertArrayHasKey( 'default', $schema );
 		$this->assertArrayNotHasKey( 'oneOf', $schema );
+
+		$this->assertContains( 'general', $schema['properties']['group']['enum'] );
 		$this->assertContains( 'reading', $schema['properties']['group']['enum'] );
+
 		$this->assertContains( 'blogname', $schema['properties']['fields']['items']['enum'] );
+		$this->assertContains( 'posts_per_page', $schema['properties']['fields']['items']['enum'] );
 	}
 
 	/**
@@ -182,7 +205,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_returns_flat_typed_values(): void {
+	public function test_core_settings_returns_flat_typed_values(): void {
 		$this->become_admin();
 		$this->register_ability();
 
@@ -203,7 +226,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_filters_by_group(): void {
+	public function test_core_settings_filters_by_group(): void {
 		$this->become_admin();
 		$this->register_ability();
 
@@ -218,7 +241,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_filters_by_fields(): void {
+	public function test_core_settings_filters_by_fields(): void {
 		$this->become_admin();
 		$this->register_ability();
 
@@ -232,7 +255,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_combines_group_and_fields_filters(): void {
+	public function test_core_settings_combines_group_and_fields_filters(): void {
 		$this->become_admin();
 		$this->register_ability();
 
@@ -253,7 +276,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_requires_manage_options(): void {
+	public function test_core_settings_requires_manage_options(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 		$this->register_ability();
 
@@ -261,5 +284,28 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+	}
+
+	/**
+	 * A setting registered with `show_in_abilities` (for example by a plugin) is exposed by the ability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_exposes_a_custom_registered_setting(): void {
+		$this->register_ability();
+
+		$ability = wp_get_ability( 'core/settings' );
+
+		// Present in both the input `fields` enum and the output schema built at registration.
+		$this->assertContains( 'core_settings_ability_test_option', $ability->get_input_schema()['properties']['fields']['items']['enum'] );
+		$this->assertArrayHasKey( 'core_settings_ability_test_option', $ability->get_output_schema()['properties'] );
+
+		// And returned, correctly typed, by execute.
+		$this->become_admin();
+		update_option( 'core_settings_ability_test_option', 7 );
+
+		$result = $ability->execute( array( 'fields' => array( 'core_settings_ability_test_option' ) ) );
+
+		$this->assertSame( array( 'core_settings_ability_test_option' => 7 ), $result );
 	}
 }
