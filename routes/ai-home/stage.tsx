@@ -647,7 +647,6 @@ function VisualCardToggle( {
 	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
-	const isAccessControlMode = useAccessControlModeContext();
 
 	return (
 		<Card.Root
@@ -668,12 +667,6 @@ function VisualCardToggle( {
 					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
-				{ checked &&
-					isAccessControlMode &&
-					feature &&
-					feature.category !== 'admin' && (
-						<AccessControlSettings featureId={ feature.id } />
-					) }
 				{ globalEnabled && checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
@@ -817,6 +810,44 @@ function AISettingsPage() {
 			registry,
 		]
 	);
+
+	const handleToggleAccessControlMode = useCallback( async () => {
+		if ( isAccessControlMode ) {
+			const resets: Record< string, [] > = {};
+			const keysToSave: string[] = [];
+
+			featureDefinitions.forEach( ( feature ) => {
+				const rolesKey = `wpai_feature_${ feature.id }_roles`;
+				const usersKey = `wpai_feature_${ feature.id }_users`;
+				resets[ rolesKey ] = [];
+				resets[ usersKey ] = [];
+				keysToSave.push( rolesKey, usersKey );
+			} );
+
+			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
+			editEntityRecord( 'root', 'site', undefined, resets );
+
+			try {
+				await saveSpecifiedEdits( 'root', 'site', undefined, keysToSave, {
+					throwOnError: true,
+				} );
+			} catch {
+				createErrorNotice(
+					__( 'Failed to disable access controls', 'ai' ),
+					{ type: 'snackbar' }
+				);
+			}
+		}
+
+		toggleAccessControlMode();
+	}, [
+		isAccessControlMode,
+		featureDefinitions,
+		editEntityRecord,
+		saveSpecifiedEdits,
+		createErrorNotice,
+		toggleAccessControlMode,
+	] );
 
 	const fields = useMemo< Field< AISettings >[] >( () => {
 		const sectionActionsFields: Field< AISettings >[] = [];
@@ -1038,9 +1069,7 @@ function AISettingsPage() {
 													? checkIcon
 													: null
 											}
-											onClick={ () => {
-												toggleAccessControlMode();
-											} }
+											onClick={ handleToggleAccessControlMode }
 										>
 											{ __( 'Access controls', 'ai' ) }
 										</MenuItem>

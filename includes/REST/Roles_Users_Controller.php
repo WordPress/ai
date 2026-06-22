@@ -1,4 +1,9 @@
 <?php
+/**
+ * REST controller for roles and users.
+ *
+ * @package WordPress\AI\REST
+ */
 
 declare( strict_types=1 );
 

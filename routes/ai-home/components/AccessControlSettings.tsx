@@ -28,15 +28,14 @@ export function AccessControlSettings( {
 }: AccessControlSettingsProps ): React.JSX.Element {
 	const {
 		roles,
-		isLoading: rolesLoading,
-		fetchError: rolesFetchError,
+		isLoading,
+		fetchError,
 	} = useRoles();
 	const { suggestions, isSearching, search } = useUserSearch();
 	const { settings, stage, save, isDirty, isSaving } =
 		useAccessControlSettings( featureId );
 
 	const [ localRoles, setLocalRoles ] = useState< string[] | null >( null );
-	// Preserve selected users by ID so they survive suggestion list changes.
 	const [ selectedUserMap, setSelectedUserMap ] = useState<
 		Map< number, string >
 	>( new Map() );
@@ -44,23 +43,18 @@ export function AccessControlSettings( {
 
 	const effectiveRoles = localRoles ?? settings.roles;
 	const effectiveUsers = localUsers ?? settings.users;
-
-	// Build a name→id map from the current suggestions page.
 	const suggestionNameToId = useMemo( () => {
 		const map = new Map< string, number >();
 		suggestions.forEach( ( u: User ) => map.set( u.name, u.id ) );
 		return map;
 	}, [ suggestions ] );
 
-	// Derive display labels for currently selected users.
-	// Falls back to a merged map of suggestions + previously seen names.
 	const selectedUsersTokens = useMemo( () => {
 		return effectiveUsers.map(
 			( id ) => selectedUserMap.get( id ) ?? id.toString()
 		);
 	}, [ effectiveUsers, selectedUserMap ] );
 
-	// Suggestion labels for the token field.
 	const userSuggestionNames = useMemo(
 		() => suggestions.map( ( u: User ) => u.name ),
 		[ suggestions ]
@@ -110,9 +104,6 @@ export function AccessControlSettings( {
 		setLocalRoles( null );
 		setLocalUsers( null );
 	}, [ save ] );
-
-	const isLoading = rolesLoading;
-	const fetchError = rolesFetchError;
 
 	return (
 		<div
