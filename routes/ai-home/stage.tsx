@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
+import apiFetch from '@wordpress/api-fetch';
 import {
 	Button,
 	Card,
@@ -23,7 +24,7 @@ import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
@@ -84,7 +85,27 @@ interface PageData {
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 const GLOBAL_FIELD_ID = 'wpai_features_enabled';
+const RAG_FEATURE_ID = 'rag-search';
 const noop = () => {};
+
+interface RagStatusCounts {
+	dirty: number;
+	processing: number;
+	clean: number;
+	error: number;
+}
+
+interface RagStatus {
+	available: boolean;
+	unavailable_reason: string;
+	backend_label: string;
+	storage_ready: boolean;
+	has_index_data: boolean;
+	counts: RagStatusCounts;
+	next_scheduled_run: number | null;
+	embedding_model: string;
+	embedding_dimensions: number;
+}
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;
@@ -253,6 +274,50 @@ const STABLE_FEATURE_DEFINITIONS: FeatureData[] = ( () => {
 	}
 	return unique;
 } )();
+
+function toNumberValue( value: unknown ): number {
+	return typeof value === 'number' && Number.isFinite( value ) ? value : 0;
+}
+
+function normalizeRagStatus( value: unknown ): RagStatus | null {
+	if ( ! isRecord( value ) ) {
+		return null;
+	}
+
+	const status = value as Partial< RagStatus >;
+	const counts: Partial< RagStatusCounts > = isRecord( status.counts )
+		? ( status.counts as Partial< RagStatusCounts > )
+		: {};
+	const nextScheduledRun =
+		typeof status.next_scheduled_run === 'number'
+			? status.next_scheduled_run
+			: null;
+
+	return {
+		available: Boolean( status.available ),
+		unavailable_reason: toStringValue( status.unavailable_reason ),
+		backend_label: toStringValue( status.backend_label ),
+		storage_ready: Boolean( status.storage_ready ),
+		has_index_data: Boolean( status.has_index_data ),
+		counts: {
+			dirty: toNumberValue( counts.dirty ),
+			processing: toNumberValue( counts.processing ),
+			clean: toNumberValue( counts.clean ),
+			error: toNumberValue( counts.error ),
+		},
+		next_scheduled_run: nextScheduledRun,
+		embedding_model: toStringValue( status.embedding_model ),
+		embedding_dimensions: toNumberValue( status.embedding_dimensions ),
+	};
+}
+
+function formatScheduledRun( timestamp: number | null ): string {
+	if ( ! timestamp ) {
+		return __( 'None', 'ai' );
+	}
+
+	return new Date( timestamp * 1000 ).toLocaleString();
+}
 
 interface InfoTipProps {
 	content: string;
@@ -454,6 +519,196 @@ function SectionActions( {
 	);
 }
 
+function RagStatusPanel( { enabled }: { enabled: boolean } ) {
+	const [ status, setStatus ] = useState< RagStatus | null >( null );
+	const [ isLoading, setIsLoading ] = useState( true );
+	const [ mutatingAction, setMutatingAction ] = useState<
+		'reindex' | 'delete' | null
+	>( null );
+	const { createSuccessNotice, createErrorNotice } =
+		useDispatch( noticesStore );
+
+	const refreshStatus = useCallback( async () => {
+		setIsLoading( true );
+		try {
+			const response = await apiFetch( {
+				path: '/ai/v1/rag/status',
+			} );
+			setStatus( normalizeRagStatus( response ) );
+		} catch {
+			setStatus( null );
+		} finally {
+			setIsLoading( false );
+		}
+	}, [] );
+
+	useEffect( () => {
+		void refreshStatus();
+	}, [ refreshStatus ] );
+
+	const handleReindex = useCallback( async () => {
+		setMutatingAction( 'reindex' );
+		try {
+			const response = await apiFetch( {
+				path: '/ai/v1/rag/reindex',
+				method: 'POST',
+			} );
+			setStatus( normalizeRagStatus( response ) );
+			createSuccessNotice( __( 'RAG indexing scheduled.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		} catch {
+			createErrorNotice( __( 'Failed to schedule RAG indexing.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		} finally {
+			setMutatingAction( null );
+		}
+	}, [ createErrorNotice, createSuccessNotice ] );
+
+	const handleDelete = useCallback( async () => {
+		// eslint-disable-next-line no-alert -- A destructive cleanup needs explicit confirmation.
+		const confirmed = window.confirm(
+			__(
+				'Delete all RAG index data? This removes stored vectors, indexing status, and scheduled RAG indexing work.',
+				'ai'
+			)
+		);
+
+		if ( ! confirmed ) {
+			return;
+		}
+
+		setMutatingAction( 'delete' );
+		try {
+			const response = await apiFetch( {
+				path: '/ai/v1/rag/index',
+				method: 'DELETE',
+			} );
+			setStatus( normalizeRagStatus( response ) );
+			createSuccessNotice( __( 'RAG index data deleted.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		} catch {
+			createErrorNotice( __( 'Failed to delete RAG index data.', 'ai' ), {
+				type: 'snackbar',
+			} );
+		} finally {
+			setMutatingAction( null );
+		}
+	}, [ createErrorNotice, createSuccessNotice ] );
+
+	if ( ! enabled && isLoading ) {
+		return null;
+	}
+
+	if ( ! enabled && ! status?.has_index_data ) {
+		return null;
+	}
+
+	if ( ! enabled ) {
+		return (
+			<div className="ai-rag-status ai-rag-status--cleanup">
+				<span>{ __( 'RAG index data exists.', 'ai' ) }</span>
+				<Button
+					variant="outline"
+					size="compact"
+					className="ai-rag-status__danger-button"
+					onClick={ handleDelete }
+					disabled={ mutatingAction !== null }
+					loading={ mutatingAction === 'delete' }
+				>
+					{ __( 'Delete index data', 'ai' ) }
+				</Button>
+			</div>
+		);
+	}
+
+	if ( isLoading || ! status ) {
+		return (
+			<div className="ai-rag-status ai-rag-status--loading">
+				<Spinner />
+			</div>
+		);
+	}
+
+	return (
+		<Stack direction="column" gap="sm" className="ai-rag-status">
+			{ ! status.available && status.unavailable_reason && (
+				<Notice.Root intent="warning">
+					<Notice.Description>
+						{ status.unavailable_reason }
+					</Notice.Description>
+				</Notice.Root>
+			) }
+			<div className="ai-rag-status__grid">
+				<span>{ __( 'Backend', 'ai' ) }</span>
+				<strong>{ status.backend_label }</strong>
+				<span>{ __( 'Storage', 'ai' ) }</span>
+				<strong>
+					{ status.storage_ready
+						? __( 'Ready', 'ai' )
+						: __( 'Not ready', 'ai' ) }
+				</strong>
+				<span>{ __( 'Embedding model', 'ai' ) }</span>
+				<strong>
+					{ status.embedding_model || __( 'Unknown', 'ai' ) }
+				</strong>
+				<span>{ __( 'Next run', 'ai' ) }</span>
+				<strong>
+					{ formatScheduledRun( status.next_scheduled_run ) }
+				</strong>
+			</div>
+			<div className="ai-rag-status__counts">
+				<span>
+					{ sprintf(
+						// translators: %d: Dirty post count.
+						__( '%d dirty', 'ai' ),
+						status.counts.dirty
+					) }
+				</span>
+				<span>
+					{ sprintf(
+						// translators: %d: Clean post count.
+						__( '%d clean', 'ai' ),
+						status.counts.clean
+					) }
+				</span>
+				<span>
+					{ sprintf(
+						// translators: %d: Error post count.
+						__( '%d error', 'ai' ),
+						status.counts.error
+					) }
+				</span>
+			</div>
+			<Stack direction="row" gap="sm" className="ai-rag-status__actions">
+				<Button
+					variant="outline"
+					size="compact"
+					onClick={ handleReindex }
+					disabled={ ! status.available || mutatingAction !== null }
+					loading={ mutatingAction === 'reindex' }
+				>
+					{ __( 'Reindex', 'ai' ) }
+				</Button>
+				<Button
+					variant="outline"
+					size="compact"
+					className="ai-rag-status__danger-button"
+					onClick={ handleDelete }
+					disabled={
+						! status.has_index_data || mutatingAction !== null
+					}
+					loading={ mutatingAction === 'delete' }
+				>
+					{ __( 'Delete index data', 'ai' ) }
+				</Button>
+			</Stack>
+		</Stack>
+	);
+}
+
 function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	const fieldIds = useMemo(
 		() => feature.settingsFields.map( ( f ) => f.id ),
@@ -610,6 +865,45 @@ function FeatureToggleWithSettings( {
 				<InlineFeatureSettings feature={ feature } />
 			) }
 			{ checked && isDeveloperMode && feature && (
+				<DeveloperSettings
+					featureId={ feature.id }
+					capability={ feature.capability }
+				/>
+			) }
+		</div>
+	);
+}
+
+interface RagFeatureToggleProps extends DataFormControlProps< AISettings > {
+	feature: FeatureData;
+	globalEnabled: boolean;
+}
+
+function RagFeatureToggle( {
+	field,
+	data,
+	onChange,
+	feature,
+	globalEnabled,
+}: RagFeatureToggleProps ) {
+	const checked = !! field.getValue( { item: data } );
+	const isDeveloperMode = useDeveloperModeContext();
+	const enabled = checked && globalEnabled;
+
+	return (
+		<div className="ai-feature-toggle-with-settings">
+			<ToggleControl
+				label={ field.label }
+				help={ field.description }
+				checked={ checked }
+				onChange={ ( value ) => {
+					onChange( { [ field.id ]: value } );
+				} }
+				disabled={ ! globalEnabled }
+			/>
+			{ enabled && <InlineFeatureSettings feature={ feature } /> }
+			<RagStatusPanel enabled={ enabled } />
+			{ enabled && isDeveloperMode && (
 				<DeveloperSettings
 					featureId={ feature.id }
 					capability={ feature.capability }
@@ -840,7 +1134,15 @@ function AISettingsPage() {
 				type: 'boolean' as const,
 			};
 
-			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
+			if ( feature.id === RAG_FEATURE_ID ) {
+				baseField.Edit = ( props ) => (
+					<RagFeatureToggle
+						{ ...props }
+						feature={ feature }
+						globalEnabled={ globalEnabled }
+					/>
+				);
+			} else if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
 				baseField.Edit = VisualCardToggle;
 			} else if ( ! globalEnabled ) {
 				baseField.Edit = DisabledToggle;

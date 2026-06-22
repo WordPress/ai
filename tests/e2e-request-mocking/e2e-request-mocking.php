@@ -168,6 +168,11 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$response = file_get_contents( __DIR__ . '/responses/OpenAI/image.json' );
 	}
 
+	// Mock the OpenAI embeddings API response.
+	if ( str_contains( $url, 'https://api.openai.com/v1/embeddings' ) ) {
+		$response = ai_e2e_openai_embeddings_response( $parsed_args['body'] ?? '' );
+	}
+
 	if ( ! empty( $response ) ) {
 		return array(
 			'headers'     => array(),
@@ -185,4 +190,43 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 
 	// Return the original response if the URL is not a known request.
 	return $preempt;
+}
+
+/**
+ * Builds a deterministic OpenAI embeddings response.
+ *
+ * @param string $body Request body.
+ * @return string JSON response.
+ */
+function ai_e2e_openai_embeddings_response( $body ) {
+	$payload = json_decode( is_string( $body ) ? $body : '', true );
+	$inputs  = isset( $payload['input'] ) && is_array( $payload['input'] ) ? $payload['input'] : array( '' );
+	$data    = array();
+
+	foreach ( array_values( $inputs ) as $index => $input ) {
+		$seed      = abs( crc32( (string) $input ) );
+		$embedding = array();
+
+		for ( $i = 0; $i < 1536; ++$i ) {
+			$embedding[] = ( ( ( $seed + $i ) % 2000 ) - 1000 ) / 1000;
+		}
+
+		$data[] = array(
+			'object'    => 'embedding',
+			'index'     => $index,
+			'embedding' => $embedding,
+		);
+	}
+
+	return wp_json_encode(
+		array(
+			'object' => 'list',
+			'data'   => $data,
+			'model'  => 'text-embedding-3-small',
+			'usage'  => array(
+				'prompt_tokens' => 1,
+				'total_tokens'  => 1,
+			),
+		)
+	);
 }
