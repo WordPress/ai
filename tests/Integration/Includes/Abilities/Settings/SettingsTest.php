@@ -93,7 +93,7 @@ class SettingsTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			Settings::register();
+			( new Settings() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
