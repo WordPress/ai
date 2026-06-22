@@ -20,6 +20,10 @@
 	}
 }
 
+body:has(.ai-settings-page) .components-popover {
+	z-index: 2;
+}
+
 .ai-settings-page__infotip-trigger {
 	background: none;
 	border: none;
