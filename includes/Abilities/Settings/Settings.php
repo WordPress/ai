@@ -61,8 +61,8 @@ final class Settings {
 	 *
 	 * @since x.x.x
 	 */
-	public static function init(): void {
-		add_action( 'wp_abilities_api_init', array( new self(), 'register' ), 11 );
+	public function init(): void {
+		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
 	}
 
 	/**

@@ -135,7 +135,7 @@ final class Main {
 			// Expose curated core objects to the Abilities API, then register the
 			// `core/settings` ability (overriding any core-provided copy).
 			( new Show_In_Abilities() )->register();
-			Settings_Ability::init();
+			( new Settings_Ability() )->init();
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,
