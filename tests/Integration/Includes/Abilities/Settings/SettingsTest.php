@@ -19,6 +19,15 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 class SettingsTest extends WP_UnitTestCase {
 
 	/**
+	 * The settings exposure component. Held so the same instance can detach its filter on tear down.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Abilities\Show_In_Abilities
+	 */
+	private $show_in_abilities;
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
@@ -27,7 +36,8 @@ class SettingsTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		// Mark the curated core settings, then register them (as happens on rest_api_init).
-		Show_In_Abilities::register();
+		$this->show_in_abilities = new Show_In_Abilities();
+		$this->show_in_abilities->register();
 		register_initial_settings();
 
 		$this->ensure_site_category();
@@ -43,7 +53,7 @@ class SettingsTest extends WP_UnitTestCase {
 			wp_unregister_ability( 'core/settings' );
 		}
 
-		remove_filter( 'register_setting_args', array( Show_In_Abilities::class, 'mark_setting' ), 10 );
+		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 		wp_set_current_user( 0 );
 
 		parent::tearDown();

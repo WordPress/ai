@@ -34,15 +34,15 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since x.x.x
  */
-class Show_In_Abilities {
+final class Show_In_Abilities {
 
 	/**
 	 * Registers the hooks that mark core objects as exposed to abilities.
 	 *
 	 * @since x.x.x
 	 */
-	public static function register(): void {
-		add_filter( 'register_setting_args', array( self::class, 'mark_setting' ), 10, 4 );
+	public function register(): void {
+		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
 	}
 
 	/**
@@ -59,8 +59,8 @@ class Show_In_Abilities {
 	 * @param string               $option_name  The option name.
 	 * @return array<string, mixed> The (possibly amended) registration arguments.
 	 */
-	public static function mark_setting( array $args, array $defaults, string $option_group, string $option_name ): array {
-		$settings = self::settings_map();
+	public function mark_setting( array $args, array $defaults, string $option_group, string $option_name ): array {
+		$settings = $this->settings_map();
 
 		if ( isset( $settings[ $option_name ] ) && empty( $args['show_in_abilities'] ) ) {
 			$args['show_in_abilities'] = $settings[ $option_name ];
@@ -80,7 +80,7 @@ class Show_In_Abilities {
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
-	private static function settings_map(): array {
+	private function settings_map(): array {
 		return array(
 			// General.
 			'blogname'               => true,

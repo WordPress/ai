@@ -27,6 +27,15 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	private $registered_options = array();
 
 	/**
+	 * The component under test. Held so the same instance can detach its filter on tear down.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Abilities\Show_In_Abilities
+	 */
+	private $show_in_abilities;
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
@@ -34,7 +43,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		Show_In_Abilities::register();
+		$this->show_in_abilities = new Show_In_Abilities();
+		$this->show_in_abilities->register();
 	}
 
 	/**
@@ -43,7 +53,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		remove_filter( 'register_setting_args', array( Show_In_Abilities::class, 'mark_setting' ), 10 );
+		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 
 		foreach ( $this->registered_options as $option ) {
 			unregister_setting( 'group', $option );
