@@ -39,7 +39,6 @@ test.describe( 'Content Translation Experiment', () => {
 		// Enable the Content Translation Experiment.
 		await enableExperiment( admin, page, 'Content Translation' );
 
-		// Create a new post with content that meets the minimum length requirement (>= 100 words).
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Content Translation Experiment',
