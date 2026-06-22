@@ -13,6 +13,13 @@ import { createHigherOrderComponent } from '@wordpress/compose';
  */
 import { AltTextControls } from './components/AltTextControls';
 import type { ImageBlockAttributes } from './types';
+import { exposeToDevTools } from '../../utils/devtools';
+
+exposeToDevTools( {
+	name: 'Alt Text Generation',
+	description: 'Generates descriptive alt text for image blocks using AI.',
+	abilitySlug: 'ai/alt-text-generation',
+} );
 
 interface BlockEditProps {
 	clientId: string;

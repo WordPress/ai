@@ -11,11 +11,18 @@ import { addFilter } from '@wordpress/hooks';
  * Internal dependencies
  */
 import SuggestionPanel from './components/SuggestionPanel';
+import { exposeToDevTools } from '../../utils/devtools';
 
 /**
  * Styles
  */
 import './index.scss';
+
+exposeToDevTools( {
+	name: 'Content Classification',
+	description: 'Suggests tags and categories for the current post using AI.',
+	abilitySlug: 'ai/content-classification',
+} );
 
 const SUPPORTED_TAXONOMIES = [ 'post_tag', 'category' ];
 
