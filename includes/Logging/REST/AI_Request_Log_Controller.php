@@ -260,6 +260,11 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 				'type'        => 'string',
 				'default'     => '',
 			),
+			'operation'        => array(
+				'description' => __( 'Filter by operation. Accepts a single value or a comma-separated list.', 'ai' ),
+				'type'        => 'string',
+				'default'     => '',
+			),
 			'user_id'          => array(
 				'description' => __( 'Filter by user ID.', 'ai' ),
 				'type'        => 'integer',
