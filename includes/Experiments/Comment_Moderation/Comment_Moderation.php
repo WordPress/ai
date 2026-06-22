@@ -302,9 +302,10 @@ class Comment_Moderation extends Abstract_Feature {
 			Settings_Registration::OPTION_GROUP,
 			static::get_field_option_name( 'moderate_guests' ),
 			array(
-				'type'         => 'boolean',
-				'default'      => self::DEFAULT_MODERATE_GUESTS,
-				'show_in_rest' => array(
+				'type'              => 'boolean',
+				'default'           => self::DEFAULT_MODERATE_GUESTS,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => array(
 					'schema' => array(
 						'type' => 'boolean',
 					),
