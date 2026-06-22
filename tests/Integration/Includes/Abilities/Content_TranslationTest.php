@@ -103,6 +103,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_guideline_categories_returns_site_and_copy(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'guideline_categories' );
+		$method->setAccessible( true );
 
 		$this->assertSame(
 			array( 'site', 'copy' ),
@@ -118,7 +119,9 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_category_returns_correct_category(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'category' );
-		$result     = $method->invoke( $this->ability );
+
+		$method->setAccessible( true );
+		$result = $method->invoke( $this->ability );
 
 		$this->assertEquals( 'ai-experiments', $result, 'Category should be ai-experiments' );
 	}
@@ -131,7 +134,9 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_input_schema_returns_expected_structure(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'input_schema' );
-		$schema     = $method->invoke( $this->ability );
+
+		$method->setAccessible( true );
+		$schema = $method->invoke( $this->ability );
 
 		$this->assertIsArray( $schema, 'Input schema should be an array' );
 		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
@@ -199,7 +204,9 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_output_schema_returns_expected_structure(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'output_schema' );
-		$schema     = $method->invoke( $this->ability );
+
+		$method->setAccessible( true );
+		$schema = $method->invoke( $this->ability );
 
 		$this->assertIsArray( $schema, 'Output schema should be an array' );
 		$this->assertEquals( 'string', $schema['type'], 'Schema type should be string' );
@@ -226,7 +233,9 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_execute_callback_without_content(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
-		$result     = $method->invoke( $this->ability, array() );
+
+		$method->setAccessible( true );
+		$result = $method->invoke( $this->ability, array() );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'content_not_provided', $result->get_error_code(), 'Error code should be content_not_provided' );
@@ -240,7 +249,9 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_execute_callback_with_empty_content(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
-		$result     = $method->invoke( $this->ability, array( 'content' => '' ) );
+
+		$method->setAccessible( true );
+		$result = $method->invoke( $this->ability, array( 'content' => '' ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'content_not_provided', $result->get_error_code(), 'Error code should be content_not_provided' );
@@ -254,7 +265,9 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_execute_callback_with_invalid_target_language(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
-		$result     = $method->invoke(
+
+		$method->setAccessible( true );
+		$result = $method->invoke(
 			$this->ability,
 			array(
 				'content'         => 'A content to translate.',
@@ -278,6 +291,8 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_execute_callback_returns_translated_content(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
+
+		$method->setAccessible( true );
 
 		try {
 			$result = $method->invoke(
@@ -319,6 +334,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_permission_callback_with_edit_posts_capability(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
 
 		$user_id = $this->factory()->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
@@ -339,6 +355,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_permission_callback_with_post_id_and_edit_post_capability(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
 
 		$post_id = $this->factory()->post->create(
 			array(
@@ -367,6 +384,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_permission_callback_without_edit_posts_capability(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
 
 		$user_id = $this->factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $user_id );
@@ -389,6 +407,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_permission_callback_for_logged_out_user(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
 
 		wp_set_current_user( 0 );
 
@@ -410,6 +429,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_permission_callback_with_post_type_without_show_in_rest(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
 
 		register_post_type(
 			'test_no_rest',
@@ -448,7 +468,9 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_meta_returns_expected_structure(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'meta' );
-		$meta       = $method->invoke( $this->ability );
+
+		$method->setAccessible( true );
+		$meta = $method->invoke( $this->ability );
 
 		$this->assertIsArray( $meta, 'Meta should be an array' );
 		$this->assertArrayHasKey( 'show_in_rest', $meta, 'Meta should have show_in_rest' );
