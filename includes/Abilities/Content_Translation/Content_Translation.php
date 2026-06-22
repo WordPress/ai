@@ -29,7 +29,16 @@ class Content_Translation extends Abstract_Ability {
 	 *
 	 * @var int
 	 */
-	protected const MIN_WORDS = 1;
+	protected const MIN_WORDS = 3;
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -41,18 +50,20 @@ class Content_Translation extends Abstract_Ability {
 			'type'       => 'object',
 			'properties' => array(
 				'post_id'         => array(
-					'type'        => 'integer',
-					'description' => esc_html__( 'The ID of the post to translate content for.', 'ai' ),
+					'type'              => 'integer',
+					'sanitize_callback' => 'absint',
+					'description'       => esc_html__( 'The ID of the post to translate content for.', 'ai' ),
 				),
 				'content'         => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The block content to translate.', 'ai' ),
 				),
 				'target_language' => array(
-					'type'        => 'string',
-					'enum'        => Languages::get_codes(),
-					'default'     => Languages::get_default_target_language(),
-					'description' => esc_html__( 'The target language for translation.', 'ai' ),
+					'type'              => 'string',
+					'enum'              => Languages::get_codes(),
+					'default'           => Languages::get_default_target_language(),
+					'sanitize_callback' => 'sanitize_key',
+					'description'       => esc_html__( 'The target language for translation.', 'ai' ),
 				),
 			),
 		);
@@ -162,6 +173,13 @@ class Content_Translation extends Abstract_Ability {
 					'insufficient_permissions',
 					esc_html__( 'You do not have permission to edit this post.', 'ai' )
 				);
+			}
+
+			// Ensure the post type is allowed in REST endpoints.
+			$post_type_obj = get_post_type_object( $post->post_type );
+
+			if ( ! $post_type_obj || empty( $post_type_obj->show_in_rest ) ) {
+				return false;
 			}
 		} elseif ( ! current_user_can( 'edit_posts' ) ) {
 			return new WP_Error(
