@@ -80,7 +80,7 @@ class Show_In_Abilities {
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
-	public static function settings_map(): array {
+	private static function settings_map(): array {
 		return array(
 			// General.
 			'blogname'               => true,
