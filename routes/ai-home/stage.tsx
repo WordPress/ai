@@ -828,9 +828,15 @@ function AISettingsPage() {
 			editEntityRecord( 'root', 'site', undefined, resets );
 
 			try {
-				await saveSpecifiedEdits( 'root', 'site', undefined, keysToSave, {
-					throwOnError: true,
-				} );
+				await saveSpecifiedEdits(
+					'root',
+					'site',
+					undefined,
+					keysToSave,
+					{
+						throwOnError: true,
+					}
+				);
 			} catch {
 				createErrorNotice(
 					__( 'Failed to disable access controls', 'ai' ),
@@ -1069,7 +1075,9 @@ function AISettingsPage() {
 													? checkIcon
 													: null
 											}
-											onClick={ handleToggleAccessControlMode }
+											onClick={
+												handleToggleAccessControlMode
+											}
 										>
 											{ __( 'Access controls', 'ai' ) }
 										</MenuItem>

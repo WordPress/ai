@@ -26,11 +26,7 @@ interface AccessControlSettingsProps {
 export function AccessControlSettings( {
 	featureId,
 }: AccessControlSettingsProps ): React.JSX.Element {
-	const {
-		roles,
-		isLoading,
-		fetchError,
-	} = useRoles();
+	const { roles, isLoading, fetchError } = useRoles();
 	const { suggestions, isSearching, search } = useUserSearch();
 	const { settings, stage, save, isDirty, isSaving } =
 		useAccessControlSettings( featureId );
