@@ -91,7 +91,10 @@ export function AccessControlSettings( {
 				let id = suggestionNameToId.get( label );
 
 				if ( id === undefined ) {
-					for ( const [ mapId, mapLabel ] of selectedUserMap.entries() ) {
+					for ( const [
+						mapId,
+						mapLabel,
+					] of selectedUserMap.entries() ) {
 						if ( mapLabel === label ) {
 							id = mapId;
 							break;
