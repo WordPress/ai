@@ -29,7 +29,7 @@ class Content_Translation extends Abstract_Ability {
 	 *
 	 * @var int
 	 */
-	protected const MIN_WORDS = 3;
+	protected const MIN_WORDS = 1;
 
 	/**
 	 * {@inheritDoc}

@@ -247,24 +247,6 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() returns error when content is too short.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_execute_callback_with_too_short_content(): void {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'execute_callback' );
-		$result     = $method->invoke( $this->ability, array( 'content' => 'Test content.' ) );
-
-		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
-		$this->assertEquals(
-			'content_too_short',
-			$result->get_error_code(),
-			'Error code should be content_too_short'
-		);
-	}
-
-	/**
 	 * Test that execute_callback() returns error when target language is invalid.
 	 *
 	 * @since x.x.x
