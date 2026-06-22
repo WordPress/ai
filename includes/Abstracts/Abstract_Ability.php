@@ -12,10 +12,13 @@ namespace WordPress\AI\Abstracts;
 use ReflectionClass;
 use WP_Ability;
 use WP_Error;
+use WordPress\AI\Connector_Approval\Approvals_Store;
+use WordPress\AI\Connector_Approval\Caller_Identifier;
 
 use WordPress\AiClient\AiClient;
 
 use function WordPress\AI\format_guidelines_for_prompt;
+use function WordPress\AI\get_ai_connectors;
 use function WordPress\AI\get_feature_developer_model_config;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 
@@ -270,6 +273,10 @@ abstract class Abstract_Ability extends WP_Ability {
 	 */
 	protected function ensure_text_generation_supported( $prompt_builder, string $message ) {
 		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
+			$unapproved_error = $this->maybe_get_unapproved_connector_error( $message );
+			if ( $unapproved_error ) {
+				return $unapproved_error;
+			}
 			return new WP_Error( 'unsupported_model', $message );
 		}
 
@@ -287,10 +294,53 @@ abstract class Abstract_Ability extends WP_Ability {
 	 */
 	protected function ensure_image_generation_supported( $prompt_builder, string $message ) {
 		if ( ! $prompt_builder->is_supported_for_image_generation() ) {
+			$unapproved_error = $this->maybe_get_unapproved_connector_error( $message );
+			if ( $unapproved_error ) {
+				return $unapproved_error;
+			}
 			return new WP_Error( 'unsupported_model', $message );
 		}
 
 		return $prompt_builder;
+	}
+
+	/**
+	 * Checks if any configured connector is unapproved and returns a corresponding WP_Error if so.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $message The fallback error message.
+	 * @return \WP_Error|null A WP_Error if an unapproved connector is found, null otherwise.
+	 */
+	private function maybe_get_unapproved_connector_error( string $message ) {
+		if ( ! class_exists( Approvals_Store::class ) || ! class_exists( Caller_Identifier::class ) ) {
+			return null;
+		}
+
+		$store      = new Approvals_Store();
+		$identifier = new Caller_Identifier();
+		$caller     = $identifier->identify();
+
+		if ( ! $caller ) {
+			return null;
+		}
+
+		$connectors = get_ai_connectors();
+		foreach ( array_keys( $connectors ) as $connector_id ) {
+			if ( ! $store->is_approved( $caller['basename'], $connector_id ) ) {
+				return new WP_Error(
+					'wpai_connector_not_approved',
+					$message,
+					array(
+						'status'       => 403,
+						'connector_id' => $connector_id,
+						'caller'       => $caller,
+					)
+				);
+			}
+		}
+
+		return null;
 	}
 
 	/**

@@ -131,4 +131,84 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		}
 		$this->assertContains( 'DELETE', $pending_methods );
 	}
+
+	/**
+	 * Test that customize_rest_error filter modifies error messages.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_customize_rest_error() {
+		$this->experiment->register();
+
+		$request = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/title-generation/run' );
+		$response = new \WP_REST_Response(
+			array(
+				'code'    => 'wpai_connector_not_approved',
+				'message' => 'The "google" AI connector has not been approved for use by "ai/ai.php".',
+				'data'    => array( 'status' => 403 ),
+			),
+			403
+		);
+
+		$filtered_response = apply_filters( 'rest_post_dispatch', $response, rest_get_server(), $request );
+		$data = $filtered_response->get_data();
+
+		$this->assertStringContainsString( 'Title generation failed.', $data['message'] );
+		$this->assertStringContainsString( 'The AI connector is currently pending authorization.', $data['message'] );
+		$this->assertStringContainsString( 'Please approve the request under Tools > Connector Approvals.', $data['message'] );
+	}
+
+	/**
+	 * Test that customize_rest_error filter modifies error messages for different abilities.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_customize_rest_error_different_abilities() {
+		$this->experiment->register();
+
+		// Test excerpt generation.
+		$request1 = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/excerpt-generation/run' );
+		$response1 = new \WP_REST_Response(
+			array(
+				'code'    => 'wpai_connector_not_approved',
+				'message' => 'Blocked.',
+				'data'    => array( 'status' => 403 ),
+			),
+			403
+		);
+
+		$filtered1 = apply_filters( 'rest_post_dispatch', $response1, rest_get_server(), $request1 );
+		$data1 = $filtered1->get_data();
+		$this->assertStringContainsString( 'Excerpt generation failed.', $data1['message'] );
+
+		// Test fallback.
+		$request2 = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/unknown-ability/run' );
+		$response2 = new \WP_REST_Response(
+			array(
+				'code'    => 'wpai_connector_not_approved',
+				'message' => 'Blocked.',
+				'data'    => array( 'status' => 403 ),
+			),
+			403
+		);
+
+		$filtered2 = apply_filters( 'rest_post_dispatch', $response2, rest_get_server(), $request2 );
+		$data2 = $filtered2->get_data();
+		$this->assertStringContainsString( 'Request failed.', $data2['message'] );
+
+		// Test non-matching error code.
+		$request3 = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/title-generation/run' );
+		$response3 = new \WP_REST_Response(
+			array(
+				'code'    => 'some_other_error',
+				'message' => 'Some other message.',
+				'data'    => array( 'status' => 403 ),
+			),
+			403
+		);
+
+		$filtered3 = apply_filters( 'rest_post_dispatch', $response3, rest_get_server(), $request3 );
+		$data3 = $filtered3->get_data();
+		$this->assertSame( 'Some other message.', $data3['message'] );
+	}
 }

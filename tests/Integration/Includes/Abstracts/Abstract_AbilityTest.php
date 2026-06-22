@@ -591,4 +591,98 @@ PHP
 
 		$this->assertSame( $prompt_builder, $result, 'Should return the same builder instance when supported' );
 	}
+
+	/**
+	 * Test that ensure_text_generation_supported() returns wpai_connector_not_approved WP_Error when a connector is unapproved.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_ensure_text_generation_supported_returns_connector_not_approved_when_unapproved(): void {
+		$registry = \WP_Connector_Registry::get_instance();
+		if ( null !== $registry && ! $registry->is_registered( 'test_provider' ) ) {
+			$registry->register(
+				'test_provider',
+				array(
+					'name'           => 'Test Provider',
+					'type'           => 'ai_provider',
+					'authentication' => array(
+						'method'       => 'api_key',
+						'setting_name' => 'test_provider_key',
+					),
+				)
+			);
+		}
+		update_option( 'test_provider_key', 'test-key-123456789' );
+
+		// Set approval matrix: empty, meaning it's unapproved.
+		delete_option( 'wpai_connector_approvals' );
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'ensure_text_generation_supported' );
+		$method->setAccessible( true );
+
+		$prompt_builder = new class() {
+			public function is_supported_for_text_generation(): bool {
+				return false;
+			}
+		};
+
+		$result = $method->invoke( $this->ability, $prompt_builder, 'Text capability missing.' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'wpai_connector_not_approved', $result->get_error_code() );
+
+		// Clean up.
+		if ( null !== $registry ) {
+			$registry->unregister( 'test_provider' );
+		}
+		delete_option( 'test_provider_key' );
+	}
+
+	/**
+	 * Test that ensure_image_generation_supported() returns wpai_connector_not_approved WP_Error when a connector is unapproved.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_ensure_image_generation_supported_returns_connector_not_approved_when_unapproved(): void {
+		$registry = \WP_Connector_Registry::get_instance();
+		if ( null !== $registry && ! $registry->is_registered( 'test_provider' ) ) {
+			$registry->register(
+				'test_provider',
+				array(
+					'name'           => 'Test Provider',
+					'type'           => 'ai_provider',
+					'authentication' => array(
+						'method'       => 'api_key',
+						'setting_name' => 'test_provider_key',
+					),
+				)
+			);
+		}
+		update_option( 'test_provider_key', 'test-key-123456789' );
+
+		// Set approval matrix: empty, meaning it's unapproved.
+		delete_option( 'wpai_connector_approvals' );
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'ensure_image_generation_supported' );
+		$method->setAccessible( true );
+
+		$prompt_builder = new class() {
+			public function is_supported_for_image_generation(): bool {
+				return false;
+			}
+		};
+
+		$result = $method->invoke( $this->ability, $prompt_builder, 'Image capability missing.' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'wpai_connector_not_approved', $result->get_error_code() );
+
+		// Clean up.
+		if ( null !== $registry ) {
+			$registry->unregister( 'test_provider' );
+		}
+		delete_option( 'test_provider_key' );
+	}
 }
