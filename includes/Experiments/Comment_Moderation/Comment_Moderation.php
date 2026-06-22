@@ -364,6 +364,11 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
+		// Skip moderation if the comment is already marked as spam or trash.
+		if ( in_array( $comment->comment_approved, array( 'spam', 'trash' ), true ) ) {
+			return;
+		}
+
 		// Prevent running on anonymous comments if setting is disabled.
 		if ( 0 === (int) $comment->user_id && ! $this->should_moderate_guests() ) {
 			return;
