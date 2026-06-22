@@ -290,6 +290,46 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test moderate_comment() skips comments flagged as spam in pre_comment_approved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_moderate_comment_skips_spam_comments() {
+		// Simulate a spam filter.
+		$filter = static function ( $approved, $commentdata ) {
+			if ( 'spam-comment-test' === $commentdata['comment_content'] ) {
+				return 'spam';
+			}
+			return $approved;
+		};
+		add_filter( 'pre_comment_approved', $filter, 10, 2 );
+
+		$post_id = self::factory()->post->create();
+
+		$comment_data = array(
+			'comment_post_ID'      => $post_id,
+			'comment_author'       => 'Test Spammer',
+			'comment_author_email' => 'spammer@example.com',
+			'comment_author_url'   => '',
+			'comment_content'      => 'spam-comment-test',
+			'comment_approved'     => '1',
+		);
+
+		$comment_id = wp_new_comment( $comment_data );
+		remove_filter( 'pre_comment_approved', $filter, 10 );
+
+		$this->assertNotFalse( $comment_id, 'Comment should be inserted.' );
+		$comment = get_comment( $comment_id );
+		$this->assertSame( 'spam', $comment->comment_approved, 'Comment approved status should be spam.' );
+
+		$this->assertSame(
+			'',
+			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true ),
+			'Spam comment should not be analyzed by AI.'
+		);
+	}
+
+	/**
 	 * Filters the analysis result for tests.
 	 *
 	 * @since 0.9.0
