@@ -30,7 +30,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since x.x.x
  */
-class Settings {
+final class Settings {
 
 	/**
 	 * The ability category used for settings abilities.
@@ -38,7 +38,7 @@ class Settings {
 	 * @since x.x.x
 	 * @var string
 	 */
-	public const CATEGORY = 'site';
+	private const CATEGORY = 'site';
 
 	/**
 	 * Settings exposed through the Abilities API, computed once at registration.
@@ -88,7 +88,7 @@ class Settings {
 	 *
 	 * @since x.x.x
 	 */
-	public static function register_get_settings(): void {
+	private static function register_get_settings(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
 		if ( wp_has_ability( 'core/settings' ) ) {
 			wp_unregister_ability( 'core/settings' );
@@ -198,7 +198,7 @@ class Settings {
 	 * @param list<string> $field_names Available exposed setting names.
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
-	protected static function get_settings_input_schema( array $groups, array $field_names ): array {
+	private static function get_settings_input_schema( array $groups, array $field_names ): array {
 		return array(
 			'type'                 => 'object',
 			// Object (not array()) so the serialized schema default is {}, consistent with type:object.
@@ -234,7 +234,7 @@ class Settings {
 	 *
 	 * @return array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}> Settings keyed by exposed name.
 	 */
-	protected static function get_exposed_settings(): array {
+	private static function get_exposed_settings(): array {
 		$settings = array();
 
 		foreach ( get_registered_settings() as $option_name => $args ) {
@@ -266,7 +266,7 @@ class Settings {
 	 * @param bool|array<string, mixed> $show The setting's `show_in_abilities` value.
 	 * @return array<string, mixed> The value JSON Schema.
 	 */
-	protected static function value_schema( array $args, $show ): array {
+	private static function value_schema( array $args, $show ): array {
 		$schema = array(
 			'type' => isset( $args['type'] ) && is_string( $args['type'] ) ? $args['type'] : 'string',
 		);
@@ -294,7 +294,7 @@ class Settings {
 	 * @param string $type  The registered setting type.
 	 * @return mixed The value cast to the declared type.
 	 */
-	protected static function cast_value( $value, string $type ) {
+	private static function cast_value( $value, string $type ) {
 		switch ( $type ) {
 			case 'boolean':
 				return (bool) $value;
