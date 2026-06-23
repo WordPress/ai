@@ -51,40 +51,37 @@ test.describe( 'Content Summarization Experiment', () => {
 		await editor.openDocumentSettingsSidebar();
 
 		// Ensure the Generate Summary button exists, is visible, and has the correct text.
-		const generateButton = page.locator(
-			'.ai-summarization-plugin-container button'
-		);
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+			exact: true,
+		} );
 		await expect( generateButton ).toBeVisible();
-		await expect( generateButton ).toHaveText( 'Generate Summary' );
 
 		// Click the Generate Summary button.
 		await generateButton.click();
 
-		// Ensure the generated summary is inserted as a group block.
+		// Ensure the generated summary is inserted and contains the expected text.
 		await expect(
-			editor.canvas.locator( '.wp-block-group.ai-summarization-summary' )
-		).toBeVisible();
-
-		// Ensure the summary content is inside a paragraph within the group.
-		await expect(
-			editor.canvas.locator(
-				'.wp-block-group.ai-summarization-summary p',
-				{
+			editor.canvas
+				.getByRole( 'document', {
+					name: 'Block: Content Summary',
+				} )
+				.filter( {
 					hasText:
 						'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
-				}
-			)
+				} )
 		).toBeVisible();
 
 		// Ensure the sidebar is visible and on the Post tab.
 		await editor.openDocumentSettingsSidebar();
-		await page
-			.locator( '.editor-sidebar__panel-tabs button:has-text("Post")' )
-			.click();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
 
-		// Ensure the Generate Summary button text is updated.
-		await expect( generateButton ).toBeVisible();
-		await expect( generateButton ).toHaveText( 'Regenerate Summary' );
+		// Ensure the Regenerate Summary button is visible.
+		await expect(
+			page
+				.getByRole( 'button', { name: 'Regenerate Summary' } )
+				.filter( { hasText: 'Regenerate Summary' } )
+		).toBeVisible();
 
 		// Save the post.
 		await editor.saveDraft();
@@ -117,7 +114,9 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		// Ensure the Generate Summary button doesn't exist.
 		await expect(
-			page.locator( '.ai-summarization-plugin-container button' )
+			page.getByRole( 'button', {
+				name: 'Generate Summary',
+			} )
 		).not.toBeVisible();
 	} );
 
@@ -145,18 +144,18 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		const generateButton = page.locator(
-			'.ai-summarization-plugin-container button'
-		);
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+		} );
 
 		// Button should be visible but disabled.
 		await expect( generateButton ).toBeVisible();
 		await expect( generateButton ).toBeDisabled();
 
 		// The descriptive text should explain when the button will be enabled.
-		await expect(
-			page.locator( '.ai-summarization-plugin-container .description' )
-		).toContainText( '50 words' );
+		await expect( generateButton ).toHaveAccessibleDescription(
+			/50 words?/i
+		);
 	} );
 
 	test( 'Summarize button is enabled when content meets the minimum length', async ( {
@@ -184,18 +183,18 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		const generateButton = page.locator(
-			'.ai-summarization-plugin-container button'
-		);
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+		} );
 
 		// Button should be visible and enabled.
 		await expect( generateButton ).toBeVisible();
 		await expect( generateButton ).toBeEnabled();
 
 		// The descriptive text should NOT mention the minimum word requirement.
-		await expect(
-			page.locator( '.ai-summarization-plugin-container .description' )
-		).not.toContainText( 'words' );
+		await expect( generateButton ).not.toHaveAccessibleDescription(
+			/words?/i
+		);
 	} );
 
 	test( 'Ensure the Content Summarization Experiment UI is not visible when the experiment is disabled', async ( {
@@ -225,7 +224,9 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		// Ensure the Generate Summary button doesn't exist.
 		await expect(
-			page.locator( '.ai-summarization-plugin-container button' )
+			page.getByRole( 'button', {
+				name: 'Generate Summary',
+			} )
 		).not.toBeVisible();
 	} );
 } );
