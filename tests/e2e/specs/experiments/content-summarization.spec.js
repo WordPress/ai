@@ -60,16 +60,23 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Click the Generate Summary button.
 		await generateButton.click();
 
-		// Ensure the generated summary is inserted and contains the expected text.
+		const summaryBlock = editor.canvas
+			.getByRole( 'document', {
+				name: 'Block: Content Summary',
+			} )
+			.first();
+
+		// Ensure the summary block is visible.
+		await expect( summaryBlock ).toBeVisible();
+
+		// Ensure the summary content is inside a paragraph within the group.
+		await expect( summaryBlock ).toContainClass( 'wp-block-group' );
+
 		await expect(
-			editor.canvas
-				.getByRole( 'document', {
-					name: 'Block: Content Summary',
-				} )
-				.filter( {
-					hasText:
-						'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
-				} )
+			summaryBlock.locator( 'p', {
+				hasText:
+					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			} )
 		).toBeVisible();
 
 		// Ensure the sidebar is visible and on the Post tab.
@@ -116,6 +123,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		await expect(
 			page.getByRole( 'button', {
 				name: 'Generate Summary',
+				exact: true,
 			} )
 		).not.toBeVisible();
 	} );
@@ -146,6 +154,7 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		const generateButton = page.getByRole( 'button', {
 			name: 'Generate Summary',
+			exact: true,
 		} );
 
 		// Button should be visible but disabled.
@@ -185,6 +194,7 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		const generateButton = page.getByRole( 'button', {
 			name: 'Generate Summary',
+			exact: true,
 		} );
 
 		// Button should be visible and enabled.
@@ -226,6 +236,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		await expect(
 			page.getByRole( 'button', {
 				name: 'Generate Summary',
+				exact: true,
 			} )
 		).not.toBeVisible();
 	} );
