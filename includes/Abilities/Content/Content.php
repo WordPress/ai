@@ -199,8 +199,8 @@ final class Content {
 	 * Permission callback for the `core/content` ability.
 	 *
 	 * Implements defense in depth: this gate decides whether the request may proceed at
-	 * all (coarse, by post type capabilities and requested statuses), while the per-post
-	 * `read_post` meta capability check in {@see self::execute_get_content()} is the
+	 * all (coarse, by post type capabilities), while the per-post `edit_post` meta
+	 * capability check in {@see self::execute_get_content()} is the
 	 * authoritative, row-level enforcement of author-scoped visibility.
 	 *
 	 * @since x.x.x
@@ -223,7 +223,7 @@ final class Content {
 				return false;
 			}
 
-			return current_user_can( 'read_post', $post->ID );
+			return current_user_can( 'edit_post', $post->ID );
 		}
 
 		// Query / slug mode requires an exposed post type.
@@ -234,30 +234,11 @@ final class Content {
 
 		$post_type_object = $exposed[ $post_type ];
 
-		if ( ! current_user_can( $this->capability( $post_type_object, 'read', 'read' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( ! current_user_can( $this->capability( $post_type_object, 'edit_posts', 'edit_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 			return false;
 		}
 
-		$statuses = $this->normalize_statuses( $input );
-
-		if ( array( 'publish' ) === $statuses ) {
-			return true;
-		}
-
-		if ( current_user_can( $this->capability( $post_type_object, 'edit_posts', 'edit_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-			return true;
-		}
-
-		if ( current_user_can( $this->capability( $post_type_object, 'read_private_posts', 'read_private_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-			foreach ( $statuses as $status ) {
-				if ( 'private' !== $status && 'publish' !== $status ) {
-					return false;
-				}
-			}
-			return true;
-		}
-
-		return false;
+		return true;
 	}
 
 	/**
@@ -308,7 +289,7 @@ final class Content {
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
 				|| ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] )
-				|| ! current_user_can( 'read_post', $post->ID )
+				|| ! current_user_can( 'edit_post', $post->ID )
 			) {
 				return $this->not_found_error();
 			}
@@ -334,6 +315,7 @@ final class Content {
 			'post_status'         => $this->normalize_statuses( $input ),
 			'posts_per_page'      => $per_page,
 			'paged'               => $page,
+			'perm'                => 'editable',
 			'ignore_sticky_posts' => true,
 		);
 
@@ -356,7 +338,7 @@ final class Content {
 			if ( ! $post instanceof WP_Post ) {
 				continue;
 			}
-			if ( ! current_user_can( 'read_post', $post->ID ) ) {
+			if ( ! current_user_can( 'edit_post', $post->ID ) ) {
 				continue;
 			}
 			$posts[] = $this->format_post( $post, $fields );
