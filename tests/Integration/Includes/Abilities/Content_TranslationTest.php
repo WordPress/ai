@@ -258,6 +258,22 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that execute_callback() returns error when content is too short.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_with_too_short_content(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+
+		$method->setAccessible( true );
+		$result = $method->invoke( $this->ability, array( 'content' => '<span></span>' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'content_too_short', $result->get_error_code(), 'Error code should be content_too_short' );
+	}
+
+	/**
 	 * Test that execute_callback() returns error when target language is invalid.
 	 *
 	 * @since x.x.x
@@ -344,6 +360,43 @@ class Content_TranslationTest extends WP_UnitTestCase {
 			$result,
 			'Permission should be granted for user with edit_posts capability'
 		);
+	}
+
+	/**
+	 * Test that permission_callback() returns error when post corresponding to the provided post ID is not found.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_with_nonexistent_post_id(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => 99999 ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'post_not_found', $result->get_error_code(), 'Error code should be post_not_found' );
+	}
+
+	/**
+	 * Test that permission_callback() returns error when user does not have edit_post capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_with_user_without_edit_post_capability(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory()->post->create();
+
+		$user_id = $this->factory()->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'insufficient_permissions', $result->get_error_code(), 'Error code should be insufficient_permissions' );
 	}
 
 	/**
@@ -475,5 +528,28 @@ class Content_TranslationTest extends WP_UnitTestCase {
 		$this->assertIsArray( $meta, 'Meta should be an array' );
 		$this->assertArrayHasKey( 'show_in_rest', $meta, 'Meta should have show_in_rest' );
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
+	}
+
+	/**
+	 * Test that generate_translated_content() returns WP_Error when no supported model is available.
+	 *
+	 * This is the expected out-of-the-box result in the test environment, where no
+	 * AI provider/model is configured.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_translated_content_returns_wp_error_when_no_supported_model_is_available(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_translated_content' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$this->ability,
+			'<content>Test content to translate.</content>',
+			'French'
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
 	}
 }
