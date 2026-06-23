@@ -316,7 +316,7 @@ class Ability_Handler {
 	/**
 	 * Validate a property value against a schema.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 *
 	 * @param string              $prop_name   Property name.
 	 * @param mixed               $value       Property value.

@@ -2,11 +2,11 @@
 
 ![AI](https://github.com/WordPress/ai/blob/trunk/.wordpress-org/banner-1544x500.png)
 
-![Required PHP Version](https://img.shields.io/wordpress/plugin/required-php/ai?label=Requires%20PHP) ![Required WordPress Version](https://img.shields.io/wordpress/plugin/wp-version/ai?label=Requires%20WordPress) ![WordPress Tested Up To](https://img.shields.io/wordpress/plugin/tested/ai?label=WordPress) [![GPL-2.0-or-later License](https://img.shields.io/github/license/WordPress/ai.svg)](https://github.com/WordPress/ai/blob/trunk/LICENSE.md?label=License)
+![Required PHP Version](https://img.shields.io/wordpress/plugin/required-php/ai?label=Requires%20PHP) ![Required WordPress Version](https://img.shields.io/wordpress/plugin/wp-version/ai?label=Requires%20WordPress) ![WordPress Tested Up To](https://img.shields.io/wordpress/plugin/tested/ai?label=WordPress) [![GPL-2.0-or-later License](https://img.shields.io/github/license/wordpress/ai.svg)](https://github.com/WordPress/ai/blob/trunk/LICENSE.md?label=License)
 
 ![WordPress.org Rating](https://img.shields.io/wordpress/plugin/rating/ai?label=WP.org%20Rating) ![WordPress Plugin Downloads](https://img.shields.io/wordpress/plugin/dt/ai?label=WP.org%20Downloads) ![WordPress Plugin Active Installs](https://img.shields.io/wordpress/plugin/installs/ai?label=WP.org%20Active%20Installs) [![WordPress Playground Demo](https://img.shields.io/wordpress/plugin/v/ai?logo=wordpress&logoColor=FFFFFF&label=Live%20Demo&labelColor=3858E9&color=3858E9)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/WordPress/ai/trunk/.wordpress-org/blueprints/blueprint.json)
 
-[![Test](https://github.com/WordPress/ai/actions/workflows/test.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/test.yml) [![Dependency Review](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml)
+[![Test](https://github.com/WordPress/ai/actions/workflows/test.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/test.yml) [![Plugin Check](https://github.com/WordPress/ai/actions/workflows/plugin-check.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/plugin-check.yml) [![Dependency Review](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml)
 
 > AI features and experiments for WordPress. Modular framework for testing AI capabilities.
 
@@ -49,12 +49,18 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
-* **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with popular AI providers like OpenAI, Google, and Anthropic.
+* **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
+
+## Provider Setup
+
+The AI plugin does not include provider credentials or provider implementations by itself. To use AI-powered features, install and activate at least one AI Connector plugin, then configure its credentials in `Settings -> Connectors`. Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
+
+Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
 
 ## Roadmap
 
-You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/7).
+You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/1).
 
 Overview of planned features:
 
@@ -66,7 +72,7 @@ Overview of planned features:
 
 ## Developer Experience
 
-The AI plugin is meant to be studied, forked, and extended.  If you’re a host or agency, you can configure AI providers on behalf of your users so they don’t need to bring their own API keys.
+The AI plugin is meant to be studied, forked, and extended.  If you’re a host or agency, you can install and configure AI Connector plugins on behalf of your users so they don’t need to bring their own API keys.
 
 If you’re a plugin developer, you’ll be able to:
 

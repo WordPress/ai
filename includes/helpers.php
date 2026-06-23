@@ -13,6 +13,7 @@ use Throwable;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
+use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 /**
  * Purposely using return instead of exit here.
@@ -502,6 +503,56 @@ function has_ai_credentials(): bool {
 }
 
 /**
+ * Checks whether any configured connector exposes an image-generation-capable model.
+ *
+ * @since 1.0.2
+ *
+ * @return bool True if at least one configured connector has an image-generation-capable model.
+ */
+function has_image_generation_support(): bool {
+	static $result = null;
+
+	if ( null !== $result ) {
+		return $result;
+	}
+
+	if ( ! class_exists( AiClient::class ) ) {
+		$result = false;
+		return $result;
+	}
+
+	$registry   = AiClient::defaultRegistry();
+	$connectors = get_ai_connectors();
+
+	foreach ( array_keys( $connectors ) as $connector_id ) {
+		if ( ! has_connector_authentication( $connector_id ) ) {
+			continue;
+		}
+
+		try {
+			$provider_class = $registry->getProviderClassName( $connector_id );
+
+			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+			$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+
+			foreach ( $models as $model ) {
+				foreach ( $model->getSupportedCapabilities() as $capability ) {
+					if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
+						$result = true;
+						return $result;
+					}
+				}
+			}
+		} catch ( Throwable $e ) {
+			continue;
+		}
+	}
+
+	$result = false;
+	return $result;
+}
+
+/**
  * Returns provider availability data for script localization.
  *
  * @since 1.0.0
@@ -619,4 +670,25 @@ function is_connector_plugin_active( array $connector_data ): bool {
 	}
 
 	return is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $plugin_file );
+}
+
+/**
+ * Returns the minimum content length required for a given feature.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id     The feature identifier (e.g. 'content-resizing', 'content-classification', 'summarization').
+ * @param int    $content_length The default minimum content length.
+ * @return int The minimum content length.
+ */
+function get_min_content_length( string $feature_id, int $content_length = 100 ): int {
+	/**
+	 * Filters the minimum content length required for a feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $content_length The minimum content length. Default 100.
+	 * @param string $feature_id     The feature identifier.
+	 */
+	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
 }

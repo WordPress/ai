@@ -18,6 +18,11 @@
 		justify-content: space-between;
 		margin-top: 8px;
 	}
+
+	&__generate-button {
+		width: 100%;
+		justify-content: center;
+	}
 }
 
 // Character count.
@@ -61,5 +66,9 @@
 		gap: 8px;
 		padding-top: 8px;
 		border-top: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	}
+
+	&__cancel {
+		margin-left: auto;
 	}
 }
