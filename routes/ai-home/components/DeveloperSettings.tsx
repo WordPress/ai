@@ -4,7 +4,13 @@
 import { Button, Spinner } from '@wordpress/components';
 import { DataForm } from '@wordpress/dataviews';
 import type { Field, Form } from '@wordpress/dataviews';
-import { useCallback, useEffect, useMemo, useRef, useState } from '@wordpress/element';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Notice } from '@wordpress/ui';
 
@@ -46,7 +52,8 @@ export function DeveloperSettings( {
 	const { settings, update, clear, isSaving } =
 		useDeveloperFeatureSettings( featureId );
 
-	const [ draftSettings, setDraftSettings ] = useState< DeveloperSelection | null >( null );
+	const [ draftSettings, setDraftSettings ] =
+		useState< DeveloperSelection | null >( null );
 	const [ isSavingThis, setIsSavingThis ] = useState( false );
 
 	useEffect( () => {
@@ -62,7 +69,9 @@ export function DeveloperSettings( {
 	const currentSettings = draftSettings ?? settings;
 
 	const getModelElements = useCallback( () => {
-		const provider = providers.find( ( p ) => p.id === currentSettings.provider );
+		const provider = providers.find(
+			( p ) => p.id === currentSettings.provider
+		);
 		if ( ! provider ) {
 			return Promise.resolve( [] );
 		}
@@ -112,7 +121,10 @@ export function DeveloperSettings( {
 	const handleChange = useCallback(
 		( changes: Partial< DeveloperSelection > ) => {
 			if ( 'provider' in changes ) {
-				setDraftSettings( { ...currentSettings, provider: changes.provider ?? '', model: '' } );
+				setDraftSettings( {
+					provider: changes.provider ?? '',
+					model: '',
+				} );
 			} else {
 				setDraftSettings( { ...currentSettings, ...changes } );
 			}
@@ -131,7 +143,8 @@ export function DeveloperSettings( {
 		}
 	}, [ draftSettings, update, clear ] );
 
-	const hasSavedSelection = currentSettings.provider !== '' || currentSettings.model !== '';
+	const hasSavedSelection =
+		currentSettings.provider !== '' || currentSettings.model !== '';
 	const hasUnsavedChanges =
 		draftSettings !== null &&
 		( draftSettings.provider !== settings.provider ||
@@ -203,9 +216,10 @@ export function DeveloperSettings( {
 							<Button
 								variant="primary"
 								onClick={ handleSave }
-								disabled={ isSavingThis || !hasUnsavedChanges }
+								disabled={ isSavingThis || ! hasUnsavedChanges }
 								isBusy={ isSavingThis }
 								accessibleWhenDisabled
+								__next40pxDefaultSize
 							>
 								{ __( 'Save', 'ai' ) }
 							</Button>
@@ -221,12 +235,11 @@ export function DeveloperSettings( {
 										)
 										?.focus();
 									setDraftSettings( {
-										...currentSettings,
 										provider: '',
 										model: '',
 									} );
 								} }
-								disabled={ isSaving }
+								disabled={ isSavingThis }
 								accessibleWhenDisabled
 							>
 								{ __( 'Reset to default', 'ai' ) }
