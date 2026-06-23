@@ -233,13 +233,10 @@ final class Content {
 			return false;
 		}
 
-		$post_type_object = $exposed[ $post_type ];
+		$post_type_object      = $exposed[ $post_type ];
+		$edit_posts_capability = $this->capability( $post_type_object, 'edit_posts', 'edit_posts' );
 
-		if ( ! current_user_can( $this->capability( $post_type_object, 'edit_posts', 'edit_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-			return false;
-		}
-
-		return true;
+		return current_user_can( $edit_posts_capability ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 	}
 
 	/**
