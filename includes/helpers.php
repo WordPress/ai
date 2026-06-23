@@ -505,64 +505,70 @@ function has_ai_credentials(): bool {
 /**
  * Checks whether any configured connector exposes an image-generation-capable model.
  *
- * The result is memoized for the duration of the request. Pass true to recompute,
- * which is useful when connector configuration changes within a single request.
+ * Only connectors with API-key credentials are inspected, and the detection
+ * never issues a live API request, so it is safe to call on every admin page
+ * load. Connectors that authenticate without an API key (e.g. OAuth) can
+ * advertise support through the {@see 'wpai_has_image_generation_support'}
+ * filter.
  *
  * @since 1.0.2
- * @since 1.0.3 Added the `$reset_cache` parameter.
  *
- * @param bool $reset_cache Optional. Whether to bypass the memoized result and recompute it. Default false.
- * @return bool True if at least one configured connector has an image-generation-capable model.
+ * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
+ * @return bool True if at least one connector supports image generation.
  */
 function has_image_generation_support( bool $reset_cache = false ): bool {
 	static $result = null;
 
-	if ( $reset_cache ) {
-		$result = null;
-	}
-
-	if ( null !== $result ) {
+	if ( ! $reset_cache && null !== $result ) {
 		return $result;
 	}
 
-	if ( ! class_exists( AiClient::class ) ) {
-		$result = false;
-		return $result;
-	}
+	$connectors  = array();
+	$has_support = false;
 
-	$registry   = AiClient::defaultRegistry();
-	$connectors = get_ai_connectors();
+	if ( class_exists( AiClient::class ) ) {
+		$registry   = AiClient::defaultRegistry();
+		$connectors = get_ai_connectors();
 
-	foreach ( array_keys( $connectors ) as $connector_id ) {
-		// A connector qualifies when it has API-key credentials, or when its
-		// provider reports itself configured through the registry. The latter
-		// covers connectors that authenticate without an API key (e.g. OAuth),
-		// consistent with how text generation honors connectors that do not
-		// rely on API key settings.
-		if ( ! has_connector_authentication( $connector_id ) && ! is_connector_configured( $connector_id ) ) {
-			continue;
-		}
+		foreach ( array_keys( $connectors ) as $connector_id ) {
+			if ( ! has_connector_authentication( $connector_id ) ) {
+				continue;
+			}
 
-		try {
-			$provider_class = $registry->getProviderClassName( $connector_id );
+			try {
+				$provider_class = $registry->getProviderClassName( $connector_id );
 
-			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-			$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
 
-			foreach ( $models as $model ) {
-				foreach ( $model->getSupportedCapabilities() as $capability ) {
-					if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
-						$result = true;
-						return $result;
+				foreach ( $models as $model ) {
+					foreach ( $model->getSupportedCapabilities() as $capability ) {
+						if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
+							$has_support = true;
+							break 3;
+						}
 					}
 				}
+			} catch ( Throwable $e ) {
+				continue;
 			}
-		} catch ( Throwable $e ) {
-			continue;
 		}
 	}
 
-	$result = false;
+	/**
+	 * Filters whether image generation is supported.
+	 *
+	 * Allows third-party plugins to declare image generation support for
+	 * connectors that do not rely on API key settings (e.g. OAuth), without
+	 * triggering a live API request.
+	 *
+	 * @since 1.0.3
+	 *
+	 * @param bool  $has_support Whether image generation is supported.
+	 * @param array $connectors  The registered connectors.
+	 */
+	$result = (bool) apply_filters( 'wpai_has_image_generation_support', $has_support, $connectors );
+
 	return $result;
 }
 

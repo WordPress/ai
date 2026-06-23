@@ -1174,15 +1174,15 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that has_image_generation_support() detects connectors that authenticate without an API key.
+	 * Test that a connector can advertise image generation support through the filter.
 	 *
 	 * Regression test: connectors that authenticate without an API key (e.g. OAuth) are
-	 * not picked up by has_connector_authentication(), so support detection must also
-	 * honor connectors the registry reports as configured.
+	 * not picked up by has_connector_authentication(), so they advertise support through
+	 * the wpai_has_image_generation_support filter, which is request-free.
 	 *
 	 * @since 1.0.3
 	 */
-	public function test_has_image_generation_support_detects_configured_connector_without_api_key(): void {
+	public function test_has_image_generation_support_detects_connector_via_filter(): void {
 		if ( ! class_exists( AiClient::class ) ) {
 			$this->markTestSkipped( 'AiClient not available.' );
 		}
@@ -1198,17 +1198,27 @@ class HelpersTest extends WP_UnitTestCase {
 				),
 			)
 		);
-		Helper_Test_Provider_Availability::$is_configured                = true;
 		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
 
 		$this->assertFalse(
 			\WordPress\AI\has_connector_authentication( self::TEST_IMAGE_PROVIDER_ID ),
 			'A non-API-key connector should not report API-key authentication.'
 		);
-		$this->assertTrue(
+		$this->assertFalse(
 			\WordPress\AI\has_image_generation_support( true ),
-			'A configured connector with an image-generation model should be detected.'
+			'A non-API-key connector is not detected until it advertises support.'
 		);
+
+		add_filter( 'wpai_has_image_generation_support', '__return_true' );
+
+		try {
+			$this->assertTrue(
+				\WordPress\AI\has_image_generation_support( true ),
+				'A connector advertising support through the filter should be detected.'
+			);
+		} finally {
+			remove_filter( 'wpai_has_image_generation_support', '__return_true' );
+		}
 	}
 
 	/**
@@ -1235,8 +1245,6 @@ class HelpersTest extends WP_UnitTestCase {
 		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
 		update_option( $setting_name, 'test-api-key' );
 
-		// Force the configured state off to prove detection happens via API-key auth.
-		Helper_Test_Provider_Availability::$is_configured                = false;
 		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
 
 		try {
@@ -1247,7 +1255,7 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that has_image_generation_support() returns false when configured models lack the capability.
+	 * Test that has_image_generation_support() returns false when a connector's models lack the capability.
 	 *
 	 * @since 1.0.3
 	 */
@@ -1263,22 +1271,31 @@ class HelpersTest extends WP_UnitTestCase {
 				'name'           => 'Helper Test Image Provider',
 				'type'           => 'ai_provider',
 				'authentication' => array(
-					'method' => 'none',
+					'method' => 'api_key',
 				),
 			)
 		);
-		Helper_Test_Provider_Availability::$is_configured                = true;
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
 		Image_Generation_Test_Model_Metadata::$supports_image_generation = false;
 
-		$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+		try {
+			$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+		} finally {
+			delete_option( $setting_name );
+		}
 	}
 
 	/**
-	 * Test that has_image_generation_support() skips connectors without authentication or configuration.
+	 * Test that has_image_generation_support() skips connectors without credentials.
+	 *
+	 * A non-API-key connector that does not advertise support through the
+	 * wpai_has_image_generation_support filter must not be detected.
 	 *
 	 * @since 1.0.3
 	 */
-	public function test_has_image_generation_support_skips_unauthenticated_unconfigured_connector(): void {
+	public function test_has_image_generation_support_skips_connector_without_credentials(): void {
 		if ( ! class_exists( AiClient::class ) ) {
 			$this->markTestSkipped( 'AiClient not available.' );
 		}
@@ -1294,10 +1311,45 @@ class HelpersTest extends WP_UnitTestCase {
 				),
 			)
 		);
-		Helper_Test_Provider_Availability::$is_configured                = false;
 		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
 
 		$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+	}
+
+	/**
+	 * Test that the filter can suppress support for an otherwise-qualifying connector.
+	 *
+	 * @since 1.0.3
+	 */
+	public function test_has_image_generation_support_filter_can_suppress(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+
+		add_filter( 'wpai_has_image_generation_support', '__return_false' );
+
+		try {
+			$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+		} finally {
+			remove_filter( 'wpai_has_image_generation_support', '__return_false' );
+			delete_option( $setting_name );
+		}
 	}
 
 	/**
