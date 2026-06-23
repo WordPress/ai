@@ -21,7 +21,7 @@ const SAMPLE_PARAGRAPH =
 	'This paragraph contains enough words for the resize toolbar to work against.';
 
 // The mocked OpenAI response returns this string for the generic completions fixture
-// (see tests/e2e-request-mocking/responses/OpenAI/completions.json).
+// (see tests/e2e-testing/responses/OpenAI/completions.json).
 const MOCKED_RESPONSE =
 	'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure';
 

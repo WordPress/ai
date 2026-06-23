@@ -29,11 +29,11 @@ const EXPERIMENT_GROUPS = {
 
 test.describe( 'Plugin settings', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
-		await requestUtils.deactivatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.deactivatePlugin( 'e2e-testing' );
 	} );
 
 	test.afterAll( async ( { requestUtils } ) => {
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 		await seedCredentials( requestUtils );
 	} );
 
@@ -43,7 +43,7 @@ test.describe( 'Plugin settings', () => {
 		requestUtils,
 	} ) => {
 		// Activate the request mocking plugin.
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 
 		// Clear out any existing Connectors.
 		await clearConnectors( admin, page );
@@ -74,7 +74,7 @@ test.describe( 'Plugin settings', () => {
 		requestUtils,
 	} ) => {
 		// Activate the request mocking plugin.
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 
 		await visitConnectorsPage( admin );
 
