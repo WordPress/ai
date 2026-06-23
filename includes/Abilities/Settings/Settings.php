@@ -17,10 +17,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Settings
  *
- * Registers the read-only `core/settings` ability, which returns WordPress settings as a
- * flat map of setting name to value. Only settings flagged with `show_in_abilities` are
- * exposed. It is structured to also back a future write-oriented `core/manage-settings`
- * ability via the shared helpers (get_exposed_settings(), value_schema(), cast_value()).
+ * Registers the read-only `core/settings` ability and the write-oriented `core/manage-settings`
+ * ability. Both operate on the same settings — those flagged with `show_in_abilities` — as a flat
+ * map of setting name to value: `core/settings` reads them and `core/manage-settings` updates them,
+ * sharing the helpers get_exposed_settings(), value_schema() and cast_value().
+ *
+ * Plugin: WordPress core's WP_Settings_Abilities currently reserves `core/manage-settings` but does
+ * not implement it; the plugin ships the write ability ahead of core.
  *
  * This class is kept almost identical to the WordPress core class `WP_Settings_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
@@ -74,13 +77,7 @@ final class Settings {
 	 */
 	public function register(): void {
 		$this->register_get_settings();
-
-		/*
-		 * A future write-oriented ability can be registered here, reusing the shared
-		 * helpers below (get_exposed_settings(), value_schema(), cast_value()):
-		 *
-		 *     $this->register_manage_settings();
-		 */
+		$this->register_manage_settings();
 	}
 
 	/**
@@ -137,6 +134,70 @@ final class Settings {
 	}
 
 	/**
+	 * Registers the write-oriented `core/manage-settings` ability.
+	 *
+	 * Accepts a map of exposed setting name to its new value and stores each one, returning the
+	 * updated values. Every setting exposed to abilities is writable: a truthy `show_in_abilities`
+	 * flag grants both read (via `core/settings`) and write (via this ability), so the input and
+	 * output schemas reuse the same per-setting schemas as the read ability.
+	 *
+	 * The Abilities API validates the input against those schemas (with `additionalProperties`
+	 * disabled) before {@see execute_manage_settings()} runs, so an invalid or unknown value aborts
+	 * the whole call before any option is written — matching the all-or-nothing behavior of the core
+	 * REST settings controller.
+	 *
+	 * Plugin: WordPress core reserves this ability in WP_Settings_Abilities::register() but does not
+	 * yet implement it. The plugin implements it here, reusing the exposed-settings snapshot that
+	 * register_get_settings() computed.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_manage_settings(): void {
+		// Plugin: unregister any core-provided copy first so the plugin's version wins.
+		if ( wp_has_ability( 'core/manage-settings' ) ) {
+			wp_unregister_ability( 'core/manage-settings' );
+		}
+
+		$settings   = (array) $this->exposed_settings;
+		$properties = array();
+		foreach ( $settings as $exposed_name => $setting ) {
+			$properties[ $exposed_name ] = $setting['schema'];
+		}
+
+		wp_register_ability(
+			'core/manage-settings',
+			array(
+				'label'               => __( 'Manage Settings', 'ai' ),
+				'description'         => __( 'Updates one or more WordPress settings exposed to abilities. Accepts a map of setting name to its new value and returns the updated values.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'                 => 'object',
+					'description'          => __( 'A map of setting name to the new value to store. At least one setting is required.', 'ai' ),
+					'properties'           => $properties,
+					'minProperties'        => 1,
+					'additionalProperties' => false,
+				),
+				'output_schema'       => array(
+					'type'                 => 'object',
+					'description'          => __( 'A map of each updated setting name to its new value.', 'ai' ),
+					'properties'           => $properties,
+					'additionalProperties' => false,
+				),
+				'execute_callback'    => array( $this, 'execute_manage_settings' ),
+				'permission_callback' => array( $this, 'has_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+						'idempotent'  => true,
+					),
+					'show_in_rest' => true,
+				),
+			)
+		);
+	}
+
+	/**
 	 * Executes the `core/settings` ability.
 	 *
 	 * @since x.x.x
@@ -170,6 +231,53 @@ final class Settings {
 			$value = get_option( $setting['option'], $setting['default'] );
 
 			$result[ $exposed_name ] = $this->cast_value( $value, $type );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Executes the `core/manage-settings` ability.
+	 *
+	 * The Abilities API validates the input against the registered input schema (each setting's own
+	 * value schema, with `additionalProperties` disabled) before this runs, so every value reaching
+	 * here is known and valid; an invalid value aborts the call before any option is written. Each
+	 * value is sanitized against its schema and stored, then read back and cast for the response.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input The ability input: a map of exposed setting name to its new value.
+	 * @return array<string, mixed> Map of each updated setting name to its stored value.
+	 */
+	public function execute_manage_settings( $input = array() ): array {
+		$input = is_array( $input ) ? $input : array();
+
+		$settings = $this->exposed_settings;
+		if ( null === $settings ) {
+			// The cache is populated in register_get_settings() before the ability is
+			// registered, so this is unreachable in practice; bail defensively otherwise.
+			return array();
+		}
+
+		$result = array();
+		foreach ( $input as $exposed_name => $value ) {
+			if ( ! is_string( $exposed_name ) || ! isset( $settings[ $exposed_name ] ) ) {
+				// `additionalProperties: false` already rejects unknown keys upstream; guard defensively.
+				continue;
+			}
+
+			$setting = $settings[ $exposed_name ];
+
+			// Sanitize against the declared schema before storing; update_option() additionally
+			// runs the setting's own registered sanitize_callback.
+			$value = rest_sanitize_value_from_schema( $value, $setting['schema'], $exposed_name );
+
+			update_option( $setting['option'], $value );
+
+			$type   = isset( $setting['schema']['type'] ) && is_string( $setting['schema']['type'] ) ? $setting['schema']['type'] : 'string';
+			$stored = get_option( $setting['option'], $setting['default'] );
+
+			$result[ $exposed_name ] = $this->cast_value( $stored, $type );
 		}
 
 		return $result;
