@@ -19,6 +19,15 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 class ContentTest extends WP_UnitTestCase {
 
 	/**
+	 * The exposure component. Held so the same instance can detach its filters on tear down.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Abilities\Show_In_Abilities
+	 */
+	private $show_in_abilities;
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
@@ -27,9 +36,15 @@ class ContentTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		// Mark the curated core post types (post, page) as exposed to abilities.
-		Show_In_Abilities::register();
+		$this->show_in_abilities = new Show_In_Abilities();
+		$this->show_in_abilities->register();
 
 		$this->ensure_content_category();
+
+		// The plugin also registers the `core/settings` ability (into the `site` category)
+		// on the same abilities-init hook, so make sure that category exists too; otherwise
+		// its registration emits an "incorrect usage" notice that fails this test.
+		$this->ensure_site_category();
 	}
 
 	/**
@@ -42,8 +57,8 @@ class ContentTest extends WP_UnitTestCase {
 			wp_unregister_ability( 'core/content' );
 		}
 
-		remove_filter( 'register_setting_args', array( Show_In_Abilities::class, 'mark_setting' ), 10 );
-		remove_filter( 'register_post_type_args', array( Show_In_Abilities::class, 'mark_post_type' ), 10 );
+		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
+		remove_filter( 'register_post_type_args', array( $this->show_in_abilities, 'mark_post_type' ), 10 );
 
 		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
 		foreach ( array( 'post', 'page' ) as $post_type ) {
@@ -86,6 +101,32 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Ensures the `site` ability category exists, used by the plugin's `core/settings`
+	 * ability which registers on the same hook as `core/content`.
+	 *
+	 * @since x.x.x
+	 */
+	private function ensure_site_category(): void {
+		if ( wp_has_ability_category( 'site' ) ) {
+			return;
+		}
+
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			wp_register_ability_category(
+				'site',
+				array(
+					'label'       => 'Site',
+					'description' => 'Site.',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
 	 * Registers the plugin's core/content ability inside a faked init action.
 	 *
 	 * @since x.x.x
@@ -94,7 +135,7 @@ class ContentTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			Content::register();
+			( new Content() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -125,9 +166,12 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertNotNull( $ability );
 		$this->assertSame( 'core/content', $ability->get_name() );
 		$this->assertSame( 'content', $ability->get_category() );
+		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ) );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );
 		$this->assertTrue( $annotations['readonly'] );
+		$this->assertFalse( $annotations['destructive'] );
+		$this->assertTrue( $annotations['idempotent'] );
 	}
 
 	/**
@@ -172,6 +216,8 @@ class ContentTest extends WP_UnitTestCase {
 
 		$schema = wp_get_ability( 'core/content' )->get_input_schema();
 
+		$this->assertSame( 'object', $schema['type'] );
+		$this->assertFalse( $schema['additionalProperties'] );
 		$this->assertSame(
 			array(
 				array( 'required' => array( 'id' ) ),
@@ -183,6 +229,62 @@ class ContentTest extends WP_UnitTestCase {
 		$enum = $schema['properties']['post_type']['enum'];
 		$this->assertContains( 'post', $enum );
 		$this->assertContains( 'page', $enum );
+	}
+
+	/**
+	 * The output schema describes each post as an object with no required fields.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_output_schema_has_no_required_post_fields(): void {
+		$this->register_ability();
+
+		$schema    = wp_get_ability( 'core/content' )->get_output_schema();
+		$post_item = $schema['properties']['posts']['items'];
+
+		$this->assertSame( 'object', $post_item['type'] );
+		$this->assertArrayNotHasKey( 'required', $post_item );
+		$this->assertFalse( $post_item['additionalProperties'] );
+		$this->assertArrayHasKey( 'raw_content', $post_item['properties'] );
+		$this->assertArrayHasKey( 'total', $schema['properties'] );
+		$this->assertArrayHasKey( 'total_pages', $schema['properties'] );
+	}
+
+	/**
+	 * A post type registered by another active plugin and flagged `show_in_abilities`
+	 * is exposed by the ability, both in the input enum and in query results.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_exposes_a_post_type_registered_by_another_plugin(): void {
+		register_post_type(
+			'wpai_content_cpt',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title', 'editor' ),
+			)
+		);
+
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$enum = wp_get_ability( 'core/content' )->get_input_schema()['properties']['post_type']['enum'];
+		$this->assertContains( 'wpai_content_cpt', $enum );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'wpai_content_cpt',
+				'post_status' => 'publish',
+			)
+		);
+
+		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'wpai_content_cpt' ) );
+		$ids    = wp_list_pluck( $result['posts'], 'id' );
+
+		$this->assertContains( $post_id, $ids );
+
+		unregister_post_type( 'wpai_content_cpt' );
 	}
 
 	/**

@@ -27,6 +27,15 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	private $registered_options = array();
 
 	/**
+	 * The component under test. Held so the same instance can detach its filters on tear down.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Abilities\Show_In_Abilities
+	 */
+	private $show_in_abilities;
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
@@ -34,7 +43,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		Show_In_Abilities::register();
+		$this->show_in_abilities = new Show_In_Abilities();
+		$this->show_in_abilities->register();
 	}
 
 	/**
@@ -43,8 +53,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		remove_filter( 'register_setting_args', array( Show_In_Abilities::class, 'mark_setting' ), 10 );
-		remove_filter( 'register_post_type_args', array( Show_In_Abilities::class, 'mark_post_type' ), 10 );
+		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
+		remove_filter( 'register_post_type_args', array( $this->show_in_abilities, 'mark_post_type' ), 10 );
 
 		foreach ( $this->registered_options as $option ) {
 			unregister_setting( 'group', $option );
@@ -146,7 +156,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_marks_curated_registered_post_types(): void {
-		// Show_In_Abilities::register() ran in setUp and patches existing post types.
+		// $this->show_in_abilities->register() ran in setUp and patches existing post types.
 		$this->assertNotEmpty( get_post_type_object( 'post' )->show_in_abilities );
 		$this->assertNotEmpty( get_post_type_object( 'page' )->show_in_abilities );
 	}
@@ -157,7 +167,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_filter_marks_curated_post_type(): void {
-		$args = Show_In_Abilities::mark_post_type( array(), 'page' );
+		$args = $this->show_in_abilities->mark_post_type( array(), 'page' );
 
 		$this->assertTrue( $args['show_in_abilities'] );
 	}
@@ -168,7 +178,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_filter_skips_uncurated_post_type(): void {
-		$args = Show_In_Abilities::mark_post_type( array(), 'wpai_not_curated_cpt' );
+		$args = $this->show_in_abilities->mark_post_type( array(), 'wpai_not_curated_cpt' );
 
 		$this->assertTrue( empty( $args['show_in_abilities'] ) );
 	}
@@ -179,7 +189,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_filter_respects_existing_post_type_value(): void {
-		$args = Show_In_Abilities::mark_post_type(
+		$args = $this->show_in_abilities->mark_post_type(
 			array( 'show_in_abilities' => array( 'custom' => true ) ),
 			'post'
 		);
