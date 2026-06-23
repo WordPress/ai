@@ -141,7 +141,7 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 	test( 'exposes a post type registered by another active plugin', async ( {
 		page,
 	} ) => {
-		// The `e2e-sample-content` plugin (mapped in .wp-env.test.json) registers the
+		// The `e2e-testing` plugin (mapped in .wp-env.test.json) registers the
 		// `ai_e2e_sample` post type with `show_in_abilities` and seeds a published post.
 		const outcome = await runCoreContent( page, {
 			post_type: 'ai_e2e_sample',
