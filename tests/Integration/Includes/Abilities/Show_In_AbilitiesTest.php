@@ -29,7 +29,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * The component under test. Held so the same instance can detach its filters on tear down.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @var \WordPress\AI\Abilities\Show_In_Abilities
 	 */
