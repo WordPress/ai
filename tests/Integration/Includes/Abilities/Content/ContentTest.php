@@ -207,28 +207,82 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The input schema requires either `id` or `post_type` and exposes only marked types.
+	 * The input schema models two mutually exclusive modes (by `id` or by `post_type`),
+	 * each rejecting the other's properties, and exposes only marked types.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_input_schema_requires_id_or_post_type(): void {
+	public function test_input_schema_models_mutually_exclusive_modes(): void {
 		$this->register_ability();
 
 		$schema = wp_get_ability( 'core/content' )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'] );
-		$this->assertFalse( $schema['additionalProperties'] );
-		$this->assertSame(
+		$this->assertCount( 2, $schema['oneOf'] );
+
+		[ $by_id, $by_type ] = $schema['oneOf'];
+
+		// Mode 1 requires `id`; Mode 2 requires `post_type`. Both reject extra properties.
+		$this->assertSame( array( 'id' ), $by_id['required'] );
+		$this->assertSame( array( 'post_type' ), $by_type['required'] );
+		$this->assertFalse( $by_id['additionalProperties'] );
+		$this->assertFalse( $by_type['additionalProperties'] );
+
+		// Query-only filters live only in the query mode, not the by-ID mode.
+		$this->assertArrayHasKey( 'per_page', $by_type['properties'] );
+		$this->assertArrayNotHasKey( 'per_page', $by_id['properties'] );
+
+		// Exposed post types appear in both modes' `post_type` enum.
+		$this->assertContains( 'post', $by_type['properties']['post_type']['enum'] );
+		$this->assertContains( 'page', $by_id['properties']['post_type']['enum'] );
+	}
+
+	/**
+	 * Query-mode filters cannot be combined with a by-ID lookup: passing `per_page` alongside
+	 * `id` is rejected outright rather than silently ignored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_id_mode_rejects_query_only_params(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute(
 			array(
-				array( 'required' => array( 'id' ) ),
-				array( 'required' => array( 'post_type' ) ),
-			),
-			$schema['anyOf']
+				'id'       => 1,
+				'per_page' => 10,
+			)
 		);
 
-		$enum = $schema['properties']['post_type']['enum'];
-		$this->assertContains( 'post', $enum );
-		$this->assertContains( 'page', $enum );
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * `post_type` is accepted alongside `id` as a guard: the by-ID mode still resolves the post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_id_mode_accepts_post_type_guard(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'post',
+				'post_status' => 'publish',
+			)
+		);
+
+		$result = wp_get_ability( 'core/content' )->execute(
+			array(
+				'id'        => $post_id,
+				'post_type' => 'post',
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( $post_id, $result['posts'][0]['id'] );
 	}
 
 	/**
@@ -269,7 +323,8 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$enum = wp_get_ability( 'core/content' )->get_input_schema()['properties']['post_type']['enum'];
+		// Query mode is the second `oneOf` branch; its `post_type` enum lists exposed types.
+		$enum = wp_get_ability( 'core/content' )->get_input_schema()['oneOf'][1]['properties']['post_type']['enum'];
 		$this->assertContains( 'wpai_content_cpt', $enum );
 
 		$post_id = self::factory()->post->create(
