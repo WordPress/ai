@@ -260,4 +260,47 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		$experiment->enqueue_assets( 'options-general.php' );
 		$this->assertFalse( wp_script_is( 'ai_meta_description', 'enqueued' ), 'Script should not be enqueued on options-general.php' );
 	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the default minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_default_min_content_length(): void {
+		set_current_screen( 'post' );
+
+		$experiment = new Meta_Description();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_meta_description', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"50"',
+			(string) wp_scripts()->get_data( 'ai_meta_description', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length(): void {
+		set_current_screen( 'post' );
+
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+
+		$experiment = new Meta_Description();
+		$experiment->enqueue_assets( 'post.php' );
+
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_meta_description', 'data' )
+		);
+	}
 }

@@ -20,6 +20,10 @@
 	}
 }
 
+body:has(.ai-settings-page) .components-popover {
+	z-index: 2;
+}
+
 .ai-settings-page__infotip-trigger {
 	background: none;
 	border: none;
@@ -46,7 +50,7 @@
 
 
 .ai-feature-settings-form {
-	margin-top: var(--wpds-dimension-padding-xs);
+	margin-top: var(--wpds-dimension-padding-sm);
 	padding-inline-start: 40px;
 	max-width: 480px;
 }

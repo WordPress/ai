@@ -16,6 +16,10 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
+import {
+	formatMinLengthLabel,
+	hasMinimumContent,
+} from '../../../utils/word-count';
 import type {
 	MetaDescriptionAbilityInput,
 	MetaDescriptionAbilityResponse,
@@ -24,6 +28,7 @@ import type {
 } from '../types';
 
 const NOTICE_ID = 'ai_meta_description_error';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
 
 const getLocalized = (): MetaDescriptionData | undefined =>
 	( window as any ).aiMetaDescriptionData as MetaDescriptionData | undefined;
@@ -34,6 +39,8 @@ interface UseMetaDescriptionReturn {
 	currentDescription: string;
 	metaKey: string;
 	hasSeoPlugin: boolean;
+	isContentTooShort: boolean;
+	tooShortLabel: string;
 	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
 	applyDescription: ( text: string ) => void;
@@ -75,6 +82,26 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 			meta: currentMeta,
 		};
 	}, [] );
+
+	const minContentLength =
+		localized?.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT;
+	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
+
+	// Minimum-length requirement message, surfaced as the button tooltip when
+	// the content is too short to generate from.
+	const tooShortLabel = formatMinLengthLabel(
+		/* translators: %d: minimum number of characters required */
+		__(
+			'Meta Description generation will be available when the post content has at least %d characters.',
+			'ai'
+		),
+		/* translators: %d: minimum number of words required */
+		__(
+			'Meta Description generation will be available when the post content has at least %d words.',
+			'ai'
+		),
+		minContentLength
+	);
 
 	const generateDescription = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
@@ -146,6 +173,8 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		currentDescription: meta?.[ metaKey ] ?? '',
 		metaKey,
 		hasSeoPlugin,
+		isContentTooShort,
+		tooShortLabel,
 		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,

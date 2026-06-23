@@ -57,7 +57,7 @@ This is an experimental plugin; functionality may change as we gather feedback f
 
 **Roadmap:**
 
-You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/7).
+You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/1).
 
 == Installation ==
 

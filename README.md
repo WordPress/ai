@@ -60,7 +60,7 @@ Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-
 
 ## Roadmap
 
-You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/7).
+You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/1).
 
 Overview of planned features:
 

@@ -7,12 +7,13 @@
  */
 import { Button, Flex, FlexItem } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 import { update } from '@wordpress/icons';
 
 /**
  * Internal dependencies
  */
+import { formatMinLengthLabel } from '../../../utils/word-count';
 import { useSummaryGeneration } from '../functions/useSummaryGeneration';
 
 const { aiSummarizationData } = window as any;
@@ -42,10 +43,15 @@ export default function SummarizationPlugin() {
 	let buttonDescription: string;
 
 	if ( isContentTooShort ) {
-		buttonDescription = sprintf(
+		buttonDescription = formatMinLengthLabel(
 			/* translators: %d: minimum number of characters required */
 			__(
 				'Summarization will be available when the post content has at least %d characters.',
+				'ai'
+			),
+			/* translators: %d: minimum number of words required */
+			__(
+				'Summarization will be available when the post content has at least %d words.',
 				'ai'
 			),
 			minContentLength

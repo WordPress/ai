@@ -127,6 +127,7 @@ export function PromptForm( {
 							variant="primary"
 							disabled={ ! prompt.trim() }
 							onClick={ onGenerate }
+							__next40pxDefaultSize
 						>
 							{ __( 'Generate', 'ai' ) }
 						</Button>
@@ -184,6 +185,7 @@ export function ImageHistoryNav( {
 					onClick={ onGoBack }
 					label={ __( 'Previous version', 'ai' ) }
 					accessibleWhenDisabled
+					size="compact"
 				/>
 				<div className="ai-image-history-nav__content">
 					{ showComparison ? (
@@ -226,6 +228,7 @@ export function ImageHistoryNav( {
 					onClick={ onGoForward }
 					label={ __( 'Next version', 'ai' ) }
 					accessibleWhenDisabled
+					size="compact"
 				/>
 			</div>
 			{ historyLength > 1 && (
@@ -291,6 +294,7 @@ export function RefinePromptForm( {
 					variant="primary"
 					disabled={ ! refinePrompt.trim() }
 					onClick={ onRefine }
+					__next40pxDefaultSize
 				>
 					{ __( 'Refine', 'ai' ) }
 				</Button>
@@ -298,6 +302,7 @@ export function RefinePromptForm( {
 					variant="tertiary"
 					isDestructive={ cancelIsDestructive }
 					onClick={ onCancel }
+					__next40pxDefaultSize
 				>
 					{ __( 'Cancel Refinement', 'ai' ) }
 				</Button>

@@ -17,3 +17,11 @@ export interface TitleGenerationAbilityInput {
 export interface GeneratedTitleData {
 	title: string;
 }
+
+/**
+ * Localized data from the PHP side.
+ */
+export interface TitleGenerationData {
+	enabled: boolean;
+	minContentLength: number;
+}
