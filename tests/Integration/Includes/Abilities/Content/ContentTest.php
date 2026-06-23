@@ -238,6 +238,23 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Branch-local defaults are omitted so the schema can compile in the client-side
+	 * Abilities API validator. Runtime defaults are still applied by the ability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_input_schema_omits_oneof_branch_defaults(): void {
+		$this->register_ability();
+
+		$schema  = wp_get_ability( 'core/content' )->get_input_schema();
+		$by_type = $schema['oneOf'][1];
+
+		$this->assertArrayNotHasKey( 'default', $by_type['properties']['status'] );
+		$this->assertArrayNotHasKey( 'default', $by_type['properties']['page'] );
+		$this->assertArrayNotHasKey( 'default', $by_type['properties']['per_page'] );
+	}
+
+	/**
 	 * Query-mode filters cannot be combined with a by-ID lookup: passing `per_page` alongside
 	 * `id` is rejected outright rather than silently ignored.
 	 *
