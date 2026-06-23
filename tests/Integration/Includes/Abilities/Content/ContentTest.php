@@ -386,6 +386,80 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A missing post ID is denied before execution can probe the requested object.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_by_missing_id_is_denied(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => 999999 ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+	}
+
+	/**
+	 * A post type guard mismatch is denied before execution can probe the requested object.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_by_id_with_mismatched_post_type_is_denied(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$result = wp_get_ability( 'core/content' )->execute(
+			array(
+				'id'        => $post_id,
+				'post_type' => 'page',
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+	}
+
+	/**
+	 * A post from a post type not exposed to abilities is denied.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_by_id_for_unexposed_post_type_is_denied(): void {
+		register_post_type(
+			'wpai_hidden_cpt',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+				'supports'     => array( 'title', 'editor' ),
+			)
+		);
+
+		try {
+			$this->login_as( 'administrator' );
+
+			$post_id = self::factory()->post->create(
+				array(
+					'post_type'   => 'wpai_hidden_cpt',
+					'post_status' => 'publish',
+				)
+			);
+			$this->assertGreaterThan( 0, $post_id );
+
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+
+			$this->assertWPError( $result );
+			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		} finally {
+			unregister_post_type( 'wpai_hidden_cpt' );
+		}
+	}
+
+	/**
 	 * Query mode returns only published posts by default.
 	 *
 	 * @since x.x.x

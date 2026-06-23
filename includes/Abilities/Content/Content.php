@@ -220,7 +220,7 @@ final class Content {
 				|| ! isset( $exposed[ $post->post_type ] )
 				|| ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] )
 			) {
-				return current_user_can( 'read' );
+				return false;
 			}
 
 			return current_user_can( 'read_post', $post->ID );
