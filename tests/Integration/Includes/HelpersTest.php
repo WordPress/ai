@@ -137,14 +137,29 @@ final class Image_Generation_Test_Model_Metadata {
 final class Image_Generation_Test_Model_Metadata_Directory {
 
 	/**
+	 * Whether listing model metadata should throw to simulate a provider failure.
+	 *
+	 * @since 1.0.3
+	 *
+	 * @var bool
+	 */
+	public static bool $should_throw = false;
+
+	/**
 	 * Lists the stub model metadata.
 	 *
 	 * @since 1.0.3
+	 *
+	 * @throws \RuntimeException When $should_throw is set, to exercise the support-detection guard.
 	 *
 	 * @return list<\WordPress\AI\Tests\Integration\Includes\Image_Generation_Test_Model_Metadata> Stub model metadata.
 	 */
 	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client model metadata directory API.
 	public function listModelMetadata(): array {
+		if ( self::$should_throw ) {
+			throw new \RuntimeException( 'Simulated provider failure.' );
+		}
+
 		return array( new Image_Generation_Test_Model_Metadata() );
 	}
 }
@@ -265,6 +280,7 @@ class HelpersTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_test-feature_field_developer' );
 		Helper_Test_Provider_Availability::$is_configured                = false;
 		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+		Image_Generation_Test_Model_Metadata_Directory::$should_throw    = false;
 		$this->unregister_test_ai_provider();
 		$this->unregister_test_image_provider();
 
@@ -1348,6 +1364,65 @@ class HelpersTest extends WP_UnitTestCase {
 			$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
 		} finally {
 			remove_filter( 'wpai_has_image_generation_support', '__return_false' );
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
+	 * Test that has_image_generation_support() memoizes its result until the cache is reset.
+	 *
+	 * @since 1.0.3
+	 */
+	public function test_has_image_generation_support_memoizes_result(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		add_filter( 'wpai_has_image_generation_support', '__return_true' );
+
+		try {
+			$computed = \WordPress\AI\has_image_generation_support( true );
+			remove_filter( 'wpai_has_image_generation_support', '__return_true' );
+
+			// Without a cache reset the memoized result is returned, even though the
+			// filter that produced it has since been removed.
+			$this->assertTrue( $computed );
+			$this->assertSame( $computed, \WordPress\AI\has_image_generation_support() );
+		} finally {
+			remove_filter( 'wpai_has_image_generation_support', '__return_true' );
+		}
+	}
+
+	/**
+	 * Test that has_image_generation_support() skips a connector whose provider throws.
+	 *
+	 * @since 1.0.3
+	 */
+	public function test_has_image_generation_support_skips_connector_that_throws(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata_Directory::$should_throw = true;
+
+		try {
+			$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+		} finally {
+			Image_Generation_Test_Model_Metadata_Directory::$should_throw = false;
 			delete_option( $setting_name );
 		}
 	}
