@@ -505,12 +505,6 @@ function has_ai_credentials(): bool {
 /**
  * Checks whether any configured connector exposes an image-generation-capable model.
  *
- * Only connectors with API-key credentials are inspected, and the detection
- * never issues a live API request, so it is safe to call on every admin page
- * load. Connectors that authenticate without an API key (e.g. OAuth) can
- * advertise support through the {@see 'wpai_has_image_generation_support'}
- * filter.
- *
  * @since 1.0.2
  *
  * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
