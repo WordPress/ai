@@ -409,4 +409,55 @@ test.describe( 'Content Classification Experiment', () => {
 			page.locator( '.ai-content-classification' )
 		).toHaveCount( 0 );
 	} );
+
+	test( 'Suggested pills persist when switching sidebar tabs', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Set strategy to allow_new so mock suggestions (new terms) pass through.
+		await setStrategy( admin, page, 'allow_new' );
+
+		await admin.createNewPost( {
+			title: 'Content Classification Cache Persistence Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: LONG_CONTENT },
+		} );
+
+		// Open the Tags panel
+		await openTaxonomyPanel( editor, page, 'Tags' );
+
+		// Click the Suggest Tags button.
+		await page
+			.locator( '.ai-content-classification button', {
+				hasText: 'Suggest Tags',
+			} )
+			.first()
+			.click();
+
+		// Wait for suggestions to appear.
+		await expect(
+			page.locator( '.ai-content-classification__suggestions' ).first()
+		).toBeVisible();
+
+		// Verify suggestion pills are rendered.
+		await expect(
+			page.locator( '.ai-content-classification__pill' ).first()
+		).toBeVisible();
+
+		// Switch to the Block tab.
+		const blockTab = page.getByRole( 'tab', { name: 'Block' } );
+		await blockTab.click();
+
+		// Open the Tags panel again (this switches back to the Post tab and expands Tags).
+		await openTaxonomyPanel( editor, page, 'Tags' );
+
+		// Verify suggestion pills are STILL rendered and visible.
+		await expect(
+			page.locator( '.ai-content-classification__pill' ).first()
+		).toBeVisible();
+	} );
 } );
