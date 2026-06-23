@@ -606,7 +606,7 @@ final class Content {
 				),
 				'raw_content' => array(
 					'type'        => 'string',
-					'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor. Empty when withheld for a password-protected post.', 'ai' ),
+					'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor. Empty when the current user cannot edit the post.', 'ai' ),
 				),
 				'author'      => array(
 					'type'                 => 'object',
@@ -665,7 +665,8 @@ final class Content {
 		$wants     = static function ( string $field ) use ( $fields ): bool {
 			return in_array( $field, $fields, true );
 		};
-		$protected = post_password_required( $post ) && ! current_user_can( 'edit_post', $post->ID );
+		$can_edit  = current_user_can( 'edit_post', $post->ID );
+		$protected = post_password_required( $post ) && ! $can_edit;
 
 		$data = array();
 
@@ -700,7 +701,7 @@ final class Content {
 		}
 
 		if ( $wants( 'raw_content' ) && post_type_supports( $type, 'editor' ) ) {
-			$data['raw_content'] = $protected ? '' : (string) $post->post_content;
+			$data['raw_content'] = $can_edit && ! $protected ? (string) $post->post_content : '';
 		}
 
 		if ( $wants( 'author' ) && post_type_supports( $type, 'author' ) ) {
