@@ -203,15 +203,7 @@ export function DeveloperSettings( {
 							onChange={ handleChange }
 						/>
 					</div>
-					<div
-						className="ai-developer-mode-fields__actions"
-						style={ {
-							display: 'flex',
-							alignItems: 'center',
-							gap: '16px',
-							marginTop: '16px',
-						} }
-					>
+					<div className="ai-developer-mode-fields__actions">
 						{ ( hasUnsavedChanges || isSavingThis ) && (
 							<Button
 								variant="primary"

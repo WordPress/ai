@@ -89,6 +89,10 @@ body:has(.ai-settings-page) .components-popover {
 	}
 
 	.ai-developer-mode-fields__actions {
+		display: flex;
+		align-items: center;
+		gap: var(--wpds-dimension-gap-lg, 16px);
+		margin-top: var(--wpds-dimension-gap-lg, 16px);
 		padding-bottom: var(--wpds-dimension-gap-sm, 8px);
 	}
 }
