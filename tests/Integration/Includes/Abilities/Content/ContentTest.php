@@ -530,6 +530,38 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Subscribers cannot request published content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_subscriber_cannot_request_published_content(): void {
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'post' ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+	}
+
+	/**
+	 * Subscribers cannot fetch a published post by ID.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_subscriber_cannot_get_single_published_post_by_id(): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+	}
+
+	/**
 	 * Subscribers cannot request draft posts.
 	 *
 	 * @since x.x.x
@@ -587,11 +619,11 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Raw content is withheld from users who can read but cannot edit the post.
+	 * Raw content is available to users who can edit the post.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_raw_content_withheld_from_non_editor(): void {
+	public function test_raw_content_visible_to_editor(): void {
 		$post_id = self::factory()->post->create(
 			array(
 				'post_status'  => 'publish',
@@ -599,7 +631,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->login_as( 'subscriber' );
+		$this->login_as( 'editor' );
 		$this->register_ability();
 
 		$result = wp_get_ability( 'core/content' )->execute(
@@ -609,15 +641,15 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( '', $result['posts'][0]['raw_content'] );
+		$this->assertSame( 'Public body with raw block markup.', $result['posts'][0]['raw_content'] );
 	}
 
 	/**
-	 * Password-protected content is withheld from users who cannot edit the post.
+	 * Password-protected content is visible to users who can edit the post.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_password_protected_content_withheld_from_non_editor(): void {
+	public function test_password_protected_content_visible_to_editor(): void {
 		$post_id = self::factory()->post->create(
 			array(
 				'post_status'   => 'publish',
@@ -626,7 +658,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->login_as( 'subscriber' );
+		$this->login_as( 'editor' );
 		$this->register_ability();
 
 		$result = wp_get_ability( 'core/content' )->execute(
@@ -636,7 +668,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( '', $result['posts'][0]['raw_content'] );
+		$this->assertSame( 'Top secret body.', $result['posts'][0]['raw_content'] );
 	}
 
 	/**
