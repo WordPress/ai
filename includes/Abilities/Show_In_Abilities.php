@@ -22,8 +22,13 @@ defined( 'ABSPATH' ) || exit;
  * component polyfills that flag onto a curated set of core objects so the abilities
  * return data on a stock site, before/without the equivalent core change.
  *
- * It is intentionally object-type-agnostic: today it marks settings; post types and
- * meta can be marked here the same way when those abilities land.
+ * It is intentionally object-type-agnostic: today it marks settings and post types; meta
+ * can be marked here the same way when those abilities land.
+ *
+ * Timing: the `core/settings` ability snapshots the exposed settings when it registers
+ * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
+ * before that hook fires — i.e. its `register_setting()` call must run before abilities
+ * init — for the ability to pick it up.
  *
  * Timing: the `core/read-settings` ability snapshots the exposed settings when it registers
  * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
@@ -34,23 +39,23 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since x.x.x
  */
-class Show_In_Abilities {
+final class Show_In_Abilities {
 
 	/**
 	 * Registers the hooks that mark core objects as exposed to abilities.
 	 *
 	 * @since x.x.x
 	 */
-	public static function register(): void {
-		add_filter( 'register_setting_args', array( self::class, 'mark_setting' ), 10, 4 );
-		add_filter( 'register_post_type_args', array( self::class, 'mark_post_type' ), 10, 2 );
+	public function register(): void {
+		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
+		add_filter( 'register_post_type_args', array( $this, 'mark_post_type' ), 10, 2 );
 
 		/*
 		 * Core post types (post, page) are registered very early — during bootstrap and on
 		 * `init` priority 0 — which is typically before this component runs, so the filter
 		 * above would miss them. Mark any already-registered curated post types directly.
 		 */
-		self::mark_registered_post_types();
+		$this->mark_registered_post_types();
 	}
 
 	/**
@@ -67,8 +72,8 @@ class Show_In_Abilities {
 	 * @param string               $option_name  The option name.
 	 * @return array<string, mixed> The (possibly amended) registration arguments.
 	 */
-	public static function mark_setting( array $args, array $defaults, string $option_group, string $option_name ): array {
-		$settings = self::settings_map();
+	public function mark_setting( array $args, array $defaults, string $option_group, string $option_name ): array {
+		$settings = $this->settings_map();
 
 		if ( isset( $settings[ $option_name ] ) && empty( $args['show_in_abilities'] ) ) {
 			$args['show_in_abilities'] = $settings[ $option_name ];
@@ -90,8 +95,8 @@ class Show_In_Abilities {
 	 * @param string               $post_type The post type key.
 	 * @return array<string, mixed> The (possibly amended) registration arguments.
 	 */
-	public static function mark_post_type( array $args, string $post_type ): array {
-		$post_types = self::post_types_map();
+	public function mark_post_type( array $args, string $post_type ): array {
+		$post_types = $this->post_types_map();
 
 		if ( isset( $post_types[ $post_type ] ) && empty( $args['show_in_abilities'] ) ) {
 			$args['show_in_abilities'] = $post_types[ $post_type ];
@@ -110,8 +115,8 @@ class Show_In_Abilities {
 	 *
 	 * @since x.x.x
 	 */
-	public static function mark_registered_post_types(): void {
-		foreach ( self::post_types_map() as $post_type => $show ) {
+	public function mark_registered_post_types(): void {
+		foreach ( $this->post_types_map() as $post_type => $show ) {
 			$object = get_post_type_object( $post_type );
 			if ( ! ( $object instanceof \WP_Post_Type ) || ! empty( $object->show_in_abilities ) ) {
 				continue;
@@ -132,7 +137,7 @@ class Show_In_Abilities {
 	 *
 	 * @return array<string, bool|array<string, mixed>> Post types map keyed by post type key.
 	 */
-	public static function post_types_map(): array {
+	private function post_types_map(): array {
 		return array(
 			'post' => true,
 			'page' => true,
@@ -143,14 +148,17 @@ class Show_In_Abilities {
 	 * Returns the curated core settings to expose, keyed by option name.
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array with
-	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape). This matches
-	 * the set marked natively by the core `core/settings` implementation.
+	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape).
+	 *
+	 * This list is kept 1:1 with the settings core flags `show_in_abilities` on in
+	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
+	 * Keep the two in sync when adding or removing entries.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
-	public static function settings_map(): array {
+	private function settings_map(): array {
 		return array(
 			// General.
 			'blogname'               => true,
