@@ -30,11 +30,15 @@ defined( 'ABSPATH' ) || exit;
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
+ * Plugin: the class is final and instance-based (with private helpers), matching the
+ * plugin's other ability classes (e.g. `Settings`) and core's `WP_Settings_Abilities`.
+ * Core's `WP_Content_Abilities` is still static; the structures are otherwise equivalent.
+ *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
  */
-class Content {
+final class Content {
 
 	/**
 	 * The ability category used for content abilities.
@@ -42,7 +46,23 @@ class Content {
 	 * @since x.x.x
 	 * @var string
 	 */
-	public const CATEGORY = 'content';
+	private const CATEGORY = 'content';
+
+	/**
+	 * Default number of posts returned per page in query mode.
+	 *
+	 * @since x.x.x
+	 * @var int
+	 */
+	private const DEFAULT_PER_PAGE = 10;
+
+	/**
+	 * Maximum number of posts returned per page in query mode.
+	 *
+	 * @since x.x.x
+	 * @var int
+	 */
+	private const MAX_PER_PAGE = 100;
 
 	/**
 	 * The fields a post object may expose, in output order.
@@ -50,7 +70,7 @@ class Content {
 	 * @since x.x.x
 	 * @var string[]
 	 */
-	private static array $fields = array(
+	private array $fields = array(
 		'id',
 		'type',
 		'status',
@@ -66,22 +86,6 @@ class Content {
 	);
 
 	/**
-	 * Default number of posts returned per page in query mode.
-	 *
-	 * @since x.x.x
-	 * @var int
-	 */
-	public const DEFAULT_PER_PAGE = 10;
-
-	/**
-	 * Maximum number of posts returned per page in query mode.
-	 *
-	 * @since x.x.x
-	 * @var int
-	 */
-	public const MAX_PER_PAGE = 100;
-
-	/**
 	 * Post types exposed through the Abilities API, computed once at registration.
 	 *
 	 * Plugin: cached so the input schema and the permission/execute callbacks derive from
@@ -90,7 +94,7 @@ class Content {
 	 * @since x.x.x
 	 * @var array<string, \WP_Post_Type>|null
 	 */
-	private static ?array $exposed_post_types = null;
+	private ?array $exposed_post_types = null;
 
 	/**
 	 * Hooks the ability into the Abilities API.
@@ -103,9 +107,9 @@ class Content {
 	 *
 	 * @since x.x.x
 	 */
-	public static function init(): void {
-		add_action( 'wp_abilities_api_categories_init', array( self::class, 'register_category' ), 11 );
-		add_action( 'wp_abilities_api_init', array( self::class, 'register' ), 11 );
+	public function init(): void {
+		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_category' ), 11 );
+		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
 	}
 
 	/**
@@ -116,7 +120,7 @@ class Content {
 	 *
 	 * @since x.x.x
 	 */
-	public static function register_category(): void {
+	public function register_category(): void {
 		if ( wp_has_ability_category( self::CATEGORY ) ) {
 			return;
 		}
@@ -137,14 +141,14 @@ class Content {
 	 *
 	 * @since x.x.x
 	 */
-	public static function register(): void {
-		self::register_get_content();
+	public function register(): void {
+		$this->register_get_content();
 
 		/*
 		 * A future write-oriented ability can be registered here, reusing the shared
 		 * helpers below (get_exposed_post_types(), format_post(), check_permission()):
 		 *
-		 *     self::register_manage_content();
+		 *     $this->register_manage_content();
 		 */
 	}
 
@@ -153,17 +157,17 @@ class Content {
 	 *
 	 * @since x.x.x
 	 */
-	public static function register_get_content(): void {
+	private function register_get_content(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
 		if ( wp_has_ability( 'core/content' ) ) {
 			wp_unregister_ability( 'core/content' );
 		}
 
 		// Plugin: compute once; check_permission()/execute_get_content() reuse this set.
-		self::$exposed_post_types = self::get_exposed_post_types();
+		$this->exposed_post_types = $this->get_exposed_post_types();
 
-		$post_types = array_keys( self::$exposed_post_types );
-		$statuses   = self::get_available_statuses();
+		$post_types = array_keys( $this->exposed_post_types );
+		$statuses   = $this->get_available_statuses();
 
 		wp_register_ability(
 			'core/content',
@@ -171,10 +175,10 @@ class Content {
 				'label'               => __( 'Get Content', 'ai' ),
 				'description'         => __( 'Retrieves one or more posts of a post type exposed to abilities. Fetch a single post by ID or by slug, or query multiple posts filtered by post type, status, author, or parent. Returns a basic, support-aware set of fields per post.', 'ai' ),
 				'category'            => self::CATEGORY,
-				'input_schema'        => self::get_content_input_schema( $post_types, $statuses ),
-				'output_schema'       => self::get_content_output_schema(),
-				'execute_callback'    => array( self::class, 'execute_get_content' ),
-				'permission_callback' => array( self::class, 'check_permission' ),
+				'input_schema'        => $this->get_content_input_schema( $post_types, $statuses ),
+				'output_schema'       => $this->get_content_output_schema(),
+				'execute_callback'    => array( $this, 'execute_get_content' ),
+				'permission_callback' => array( $this, 'check_permission' ),
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => true,
@@ -204,13 +208,13 @@ class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public static function check_permission( $input = array() ): bool {
+	public function check_permission( $input = array() ): bool {
 		$input   = is_array( $input ) ? $input : array();
-		$exposed = self::$exposed_post_types ?? self::get_exposed_post_types();
+		$exposed = $this->exposed_post_types ?? $this->get_exposed_post_types();
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			$post = get_post( self::input_int( $input['id'] ) );
+			$post = get_post( $this->input_int( $input['id'] ) );
 
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
@@ -230,21 +234,21 @@ class Content {
 
 		$post_type_object = $exposed[ $post_type ];
 
-		if ( ! current_user_can( self::capability( $post_type_object, 'read', 'read' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( ! current_user_can( $this->capability( $post_type_object, 'read', 'read' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 			return false;
 		}
 
-		$statuses = self::normalize_statuses( $input );
+		$statuses = $this->normalize_statuses( $input );
 
 		if ( array( 'publish' ) === $statuses ) {
 			return true;
 		}
 
-		if ( current_user_can( self::capability( $post_type_object, 'edit_posts', 'edit_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( current_user_can( $this->capability( $post_type_object, 'edit_posts', 'edit_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 			return true;
 		}
 
-		if ( current_user_can( self::capability( $post_type_object, 'read_private_posts', 'read_private_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( current_user_can( $this->capability( $post_type_object, 'read_private_posts', 'read_private_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 			foreach ( $statuses as $status ) {
 				if ( 'private' !== $status && 'publish' !== $status ) {
 					return false;
@@ -266,7 +270,7 @@ class Content {
 	 * @param string        $fallback         Fallback capability name if unset or non-string.
 	 * @return string The resolved capability name.
 	 */
-	protected static function capability( \WP_Post_Type $post_type_object, string $name, string $fallback ): string {
+	private function capability( \WP_Post_Type $post_type_object, string $name, string $fallback ): string {
 		$capability = $post_type_object->cap->$name ?? $fallback;
 
 		return is_string( $capability ) ? $capability : $fallback;
@@ -280,7 +284,7 @@ class Content {
 	 * @param mixed $value The raw input value.
 	 * @return int The value as a non-negative integer, or 0 when not scalar.
 	 */
-	protected static function input_int( $value ): int {
+	private function input_int( $value ): int {
 		return is_scalar( $value ) ? absint( $value ) : 0;
 	}
 
@@ -292,25 +296,25 @@ class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error A map with a `posts` list, or a WP_Error on failure.
 	 */
-	public static function execute_get_content( $input = array() ) {
+	public function execute_get_content( $input = array() ) {
 		$input   = is_array( $input ) ? $input : array();
-		$exposed = self::$exposed_post_types ?? self::get_exposed_post_types();
-		$fields  = self::normalize_fields( $input );
+		$exposed = $this->exposed_post_types ?? $this->get_exposed_post_types();
+		$fields  = $this->normalize_fields( $input );
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			$post = get_post( self::input_int( $input['id'] ) );
+			$post = get_post( $this->input_int( $input['id'] ) );
 
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
 				|| ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] )
 				|| ! current_user_can( 'read_post', $post->ID )
 			) {
-				return self::not_found_error();
+				return $this->not_found_error();
 			}
 
 			return array(
-				'posts'       => array( self::format_post( $post, $fields ) ),
+				'posts'       => array( $this->format_post( $post, $fields ) ),
 				'total'       => 1,
 				'total_pages' => 1,
 			);
@@ -319,15 +323,15 @@ class Content {
 		// Query / slug mode.
 		$post_type = isset( $input['post_type'] ) && is_string( $input['post_type'] ) ? $input['post_type'] : '';
 		if ( '' === $post_type || ! isset( $exposed[ $post_type ] ) ) {
-			return self::not_found_error();
+			return $this->not_found_error();
 		}
 
-		$per_page = self::normalize_per_page( $input );
-		$page     = isset( $input['page'] ) ? max( 1, self::input_int( $input['page'] ) ) : 1;
+		$per_page = $this->normalize_per_page( $input );
+		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
 		$query_args = array(
 			'post_type'           => $post_type,
-			'post_status'         => self::normalize_statuses( $input ),
+			'post_status'         => $this->normalize_statuses( $input ),
 			'posts_per_page'      => $per_page,
 			'paged'               => $page,
 			'ignore_sticky_posts' => true,
@@ -338,11 +342,11 @@ class Content {
 		}
 
 		if ( ! empty( $input['author'] ) ) {
-			$query_args['author'] = self::input_int( $input['author'] );
+			$query_args['author'] = $this->input_int( $input['author'] );
 		}
 
 		if ( isset( $input['parent'] ) ) {
-			$query_args['post_parent'] = self::input_int( $input['parent'] );
+			$query_args['post_parent'] = $this->input_int( $input['parent'] );
 		}
 
 		$query = new WP_Query( $query_args );
@@ -355,7 +359,7 @@ class Content {
 			if ( ! current_user_can( 'read_post', $post->ID ) ) {
 				continue;
 			}
-			$posts[] = self::format_post( $post, $fields );
+			$posts[] = $this->format_post( $post, $fields );
 		}
 
 		return array(
@@ -373,8 +377,8 @@ class Content {
 	 * @param array<mixed> $input The ability input.
 	 * @return int The clamped per-page value.
 	 */
-	protected static function normalize_per_page( array $input ): int {
-		$per_page = isset( $input['per_page'] ) ? self::input_int( $input['per_page'] ) : self::DEFAULT_PER_PAGE;
+	private function normalize_per_page( array $input ): int {
+		$per_page = isset( $input['per_page'] ) ? $this->input_int( $input['per_page'] ) : self::DEFAULT_PER_PAGE;
 
 		return max( 1, min( self::MAX_PER_PAGE, $per_page ) );
 	}
@@ -386,7 +390,7 @@ class Content {
 	 *
 	 * @return array<string, \WP_Post_Type> Exposed post type objects keyed by name.
 	 */
-	protected static function get_exposed_post_types(): array {
+	private function get_exposed_post_types(): array {
 		$exposed = array();
 
 		foreach ( get_post_types( array(), 'objects' ) as $post_type_object ) {
@@ -406,7 +410,7 @@ class Content {
 	 *
 	 * @return string[] List of public, non-internal post status slugs.
 	 */
-	protected static function get_available_statuses(): array {
+	private function get_available_statuses(): array {
 		return array_values( get_post_stati( array( 'internal' => false ) ) );
 	}
 
@@ -418,7 +422,7 @@ class Content {
 	 * @param array<mixed> $input The ability input.
 	 * @return string[] Normalized list of post status slugs.
 	 */
-	protected static function normalize_statuses( array $input ): array {
+	private function normalize_statuses( array $input ): array {
 		$statuses = $input['status'] ?? array( 'publish' );
 		if ( ! is_array( $statuses ) ) {
 			return array( 'publish' );
@@ -437,15 +441,15 @@ class Content {
 	 * @param array<mixed> $input The ability input.
 	 * @return string[] List of requested field names.
 	 */
-	protected static function normalize_fields( array $input ): array {
+	private function normalize_fields( array $input ): array {
 		if ( empty( $input['fields'] ) || ! is_array( $input['fields'] ) ) {
-			return self::$fields;
+			return $this->fields;
 		}
 
 		$requested = array_filter( $input['fields'], 'is_string' );
-		$fields    = array_intersect( self::$fields, $requested );
+		$fields    = array_intersect( $this->fields, $requested );
 
-		return array() === $fields ? self::$fields : array_values( $fields );
+		return array() === $fields ? $this->fields : array_values( $fields );
 	}
 
 	/**
@@ -457,7 +461,7 @@ class Content {
 	 * @param string[] $statuses   Requestable post status slugs.
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
-	protected static function get_content_input_schema( array $post_types, array $statuses ): array {
+	private function get_content_input_schema( array $post_types, array $statuses ): array {
 		return array(
 			'type'                 => 'object',
 			// Object (not array()) so the serialized schema default is {}, consistent with type:object.
@@ -507,7 +511,7 @@ class Content {
 					'uniqueItems' => true,
 					'items'       => array(
 						'type' => 'string',
-						'enum' => self::$fields,
+						'enum' => $this->fields,
 					),
 					'description' => __( 'Limit each returned post to these fields. If omitted, all supported fields are returned.', 'ai' ),
 				),
@@ -536,7 +540,7 @@ class Content {
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
-	protected static function get_content_output_schema(): array {
+	private function get_content_output_schema(): array {
 		$post_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
@@ -633,7 +637,7 @@ class Content {
 	 * @param string[] $fields The requested field names.
 	 * @return array<string, mixed> The formatted post data.
 	 */
-	protected static function format_post( WP_Post $post, array $fields ): array {
+	private function format_post( WP_Post $post, array $fields ): array {
 		$type      = $post->post_type;
 		$wants     = static function ( string $field ) use ( $fields ): bool {
 			return in_array( $field, $fields, true );
@@ -652,10 +656,10 @@ class Content {
 			$data['status'] = $post->post_status;
 		}
 		if ( $wants( 'date' ) ) {
-			$data['date'] = self::format_gmt_date( $post, 'date' );
+			$data['date'] = $this->format_gmt_date( $post, 'date' );
 		}
 		if ( $wants( 'modified' ) ) {
-			$data['modified'] = self::format_gmt_date( $post, 'modified' );
+			$data['modified'] = $this->format_gmt_date( $post, 'modified' );
 		}
 		if ( $wants( 'slug' ) ) {
 			$data['slug'] = $post->post_name;
@@ -665,7 +669,7 @@ class Content {
 		}
 
 		if ( $wants( 'title' ) && post_type_supports( $type, 'title' ) ) {
-			$data['title'] = self::get_title( $post );
+			$data['title'] = $this->get_title( $post );
 		}
 
 		if ( $wants( 'excerpt' ) && post_type_supports( $type, 'excerpt' ) ) {
@@ -699,8 +703,8 @@ class Content {
 	 * @param \WP_Post $post The post object.
 	 * @return string The post title.
 	 */
-	protected static function get_title( WP_Post $post ): string {
-		$strip = array( self::class, 'return_raw_title_format' );
+	private function get_title( WP_Post $post ): string {
+		$strip = array( $this, 'return_raw_title_format' );
 		add_filter( 'protected_title_format', $strip );
 		add_filter( 'private_title_format', $strip );
 		$title = get_the_title( $post );
@@ -717,7 +721,7 @@ class Content {
 	 *
 	 * @return string The unprefixed title format.
 	 */
-	public static function return_raw_title_format(): string {
+	public function return_raw_title_format(): string {
 		return '%s';
 	}
 
@@ -730,7 +734,7 @@ class Content {
 	 * @param string   $field Either 'date' or 'modified'.
 	 * @return string The ISO 8601 date, or an empty string if unavailable.
 	 */
-	protected static function format_gmt_date( WP_Post $post, string $field ): string {
+	private function format_gmt_date( WP_Post $post, string $field ): string {
 		$field    = 'modified' === $field ? 'modified' : 'date';
 		$datetime = get_post_datetime( $post, $field, 'gmt' );
 		if ( $datetime ) {
@@ -750,7 +754,7 @@ class Content {
 	 *
 	 * @return \WP_Error The not-found error.
 	 */
-	protected static function not_found_error(): WP_Error {
+	private function not_found_error(): WP_Error {
 		return new WP_Error(
 			'content_not_found',
 			__( 'The requested content was not found.', 'ai' ),
