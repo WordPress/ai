@@ -12,6 +12,8 @@ AI features, experiments and capabilities for WordPress.
 
 The AI plugin brings AI-powered features directly into your WordPress admin and editing experience.
 
+Requires the WordPress Block Editor.  The Classic Editor plugin and other non-Block Editor editing experiences are not supported.
+
 **What's Inside:**
 
 This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the AI Client library and Abilities API into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
@@ -120,6 +122,16 @@ The plugin itself is free, but you'll need to pay for API usage from your chosen
 = Can I use this without coding knowledge? =
 
 Absolutely! The plugin is designed for content creators and site administrators. Once your AI Connectors are configured, you can use the AI functionality directly from the post editor.
+
+= Does this plugin support the Classic Editor? =
+
+No.
+
+The AI plugin currently supports only the Block Editor (aka Gutenberg).  The plugin is designed around modern editor APIs, block-based content workflows, and the evolving editing capabilities being developed within WordPress core (including Gutenberg).
+
+The Block Editor has been the default WordPress editing experience since WordPress 5.0 in 2018 and remains the primary focus of active editor development.  Concentrating development efforts on the Block Editor enables the project to ship new features, experiments, and integrations more quickly while avoiding the complexity of maintaining parallel implementations across multiple editing experiences.
+
+Although the Classic Editor plugin continues to have a large installed base, the Core AI team has chosen to prioritize innovation and experimentation within the Block Editor ecosystem.  At this time there are no plans to add official Classic Editor support.
 
 = Where can I get help or report issues? =
 
