@@ -21,10 +21,11 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Content
  *
- * Registers the read-only `core/content` ability, which retrieves one or more posts of a
- * post type exposed to abilities via `show_in_abilities`. Supports fetching a single post
- * by ID or by slug, or querying multiple posts filtered by post type, status, author, or
- * parent, returning a basic, support-aware set of fields per post.
+ * Registers the read-only `core/content` ability, which retrieves one or more editable
+ * posts of a post type exposed to abilities via `show_in_abilities`. Supports fetching a
+ * single editable post by ID or by slug, or querying multiple editable posts filtered by
+ * post type, status, author, or parent, returning a basic, support-aware set of fields
+ * per post.
  *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
@@ -173,7 +174,7 @@ final class Content {
 			'core/content',
 			array(
 				'label'               => __( 'Get Content', 'ai' ),
-				'description'         => __( 'Retrieves one or more posts of a post type exposed to abilities. Fetch a single post by ID or by slug, or query multiple posts filtered by post type, status, author, or parent. Returns a basic, support-aware set of fields per post.', 'ai' ),
+				'description'         => __( 'Retrieves one or more editable posts of a post type exposed to abilities. Fetch a single editable post by ID or by slug, or query multiple editable posts filtered by post type, status, author, or parent. Returns a basic, support-aware set of fields per post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_input_schema( $post_types, $statuses ),
 				'output_schema'       => $this->get_content_output_schema(),
@@ -467,35 +468,35 @@ final class Content {
 		return array(
 			'type'  => 'object',
 			'oneOf' => array(
-				// Mode 1: retrieve a single post by ID.
+				// Mode 1: retrieve a single editable post by ID.
 				array(
-					'title'                => __( 'Get a single post by ID', 'ai' ),
+					'title'                => __( 'Get a single editable post by ID', 'ai' ),
 					'required'             => array( 'id' ),
 					'additionalProperties' => false,
 					'properties'           => array(
 						'id'        => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
-							'description' => __( 'Retrieve a single post by ID.', 'ai' ),
+							'description' => __( 'Retrieve a single editable post by ID.', 'ai' ),
 						),
 						'post_type' => array(
 							'type'        => 'string',
 							'enum'        => $post_types,
-							'description' => __( 'Optional. Restrict the lookup to this post type; the post is returned only if it matches.', 'ai' ),
+							'description' => __( 'Optional. Restrict the lookup to this post type; the post is returned only if it matches and the current user can edit it.', 'ai' ),
 						),
 						'fields'    => $fields,
 					),
 				),
-				// Mode 2: query a set of posts by post type and filters.
+				// Mode 2: query a set of editable posts by post type and filters.
 				array(
-					'title'                => __( 'Query posts by type and filters', 'ai' ),
+					'title'                => __( 'Query editable posts by type and filters', 'ai' ),
 					'required'             => array( 'post_type' ),
 					'additionalProperties' => false,
 					'properties'           => array(
 						'post_type' => array(
 							'type'        => 'string',
 							'enum'        => $post_types,
-							'description' => __( 'Post type to query.', 'ai' ),
+							'description' => __( 'Post type to query for editable posts.', 'ai' ),
 						),
 						'slug'      => array(
 							'type'        => 'string',
@@ -508,7 +509,7 @@ final class Content {
 								'type' => 'string',
 								'enum' => $statuses,
 							),
-							'description' => __( 'Filter by one or more post statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
+							'description' => __( 'Filter editable posts by one or more post statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
 						),
 						'author'    => array(
 							'type'        => 'integer',
@@ -588,7 +589,7 @@ final class Content {
 				),
 				'raw_content' => array(
 					'type'        => 'string',
-					'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor. Empty when the current user cannot edit the post.', 'ai' ),
+					'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor.', 'ai' ),
 				),
 				'author'      => array(
 					'type'                 => 'object',
@@ -618,16 +619,16 @@ final class Content {
 			'properties'           => array(
 				'posts'       => array(
 					'type'        => 'array',
-					'description' => __( 'The posts matching the request. A single-element list when requested by ID.', 'ai' ),
+					'description' => __( 'The editable posts matching the request. A single-element list when requested by ID.', 'ai' ),
 					'items'       => $post_schema,
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of posts matching the query, across all pages. Surfaced over REST as the X-WP-Total header.', 'ai' ),
+					'description' => __( 'Total number of posts matching the query, across all pages, after applying the editable permission filter to the query. Surfaced over REST as the X-WP-Total header.', 'ai' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of pages available. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
+					'description' => __( 'Total number of query result pages available after applying the editable permission filter to the query. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
 				),
 			),
 		);
