@@ -88,7 +88,7 @@ body:has(.ai-settings-page) .components-popover {
 		margin-bottom: var(--wpds-dimension-gap-lg, 12px);
 	}
 
-	.ai-developer-mode-fields__reset-button {
-		margin-top: var(--wpds-dimension-gap-lg, 12px);
+	.ai-developer-mode-fields__actions {
+		padding-bottom: var(--wpds-dimension-gap-sm, 8px);
 	}
 }
