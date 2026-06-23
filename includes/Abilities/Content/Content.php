@@ -522,7 +522,6 @@ final class Content {
 						'status'    => array(
 							'type'        => 'array',
 							'uniqueItems' => true,
-							'default'     => array( 'publish' ),
 							'items'       => array(
 								'type' => 'string',
 								'enum' => $statuses,
@@ -543,14 +542,12 @@ final class Content {
 						'page'      => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
-							'default'     => 1,
 							'description' => __( 'Page of results to return.', 'ai' ),
 						),
 						'per_page'  => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
 							'maximum'     => self::MAX_PER_PAGE,
-							'default'     => self::DEFAULT_PER_PAGE,
 							'description' => __( 'Maximum number of posts to return per page.', 'ai' ),
 						),
 					),
