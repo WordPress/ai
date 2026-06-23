@@ -22,8 +22,13 @@ defined( 'ABSPATH' ) || exit;
  * component polyfills that flag onto a curated set of core objects so the abilities
  * return data on a stock site, before/without the equivalent core change.
  *
- * It is intentionally object-type-agnostic: today it marks settings; post types and
- * meta can be marked here the same way when those abilities land.
+ * It is intentionally object-type-agnostic: today it marks settings and post types; meta
+ * can be marked here the same way when those abilities land.
+ *
+ * Timing: the `core/settings` ability snapshots the exposed settings when it registers
+ * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
+ * before that hook fires — i.e. its `register_setting()` call must run before abilities
+ * init — for the ability to pick it up.
  *
  * Timing: the `core/read-settings` ability snapshots the exposed settings when it registers
  * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
@@ -168,8 +173,7 @@ final class Show_In_Abilities {
 	 * Returns the curated core settings to expose, keyed by option name.
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array with
-	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape). This matches
-	 * the set marked natively by the core `core/settings` implementation.
+	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape).
 	 *
 	 * This list is kept 1:1 with the settings core flags `show_in_abilities` on in
 	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
