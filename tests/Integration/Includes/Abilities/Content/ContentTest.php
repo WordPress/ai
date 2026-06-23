@@ -587,6 +587,32 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Raw content is withheld from users who can read but cannot edit the post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_raw_content_withheld_from_non_editor(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => 'Public body with raw block markup.',
+			)
+		);
+
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'raw_content' ),
+			)
+		);
+
+		$this->assertSame( '', $result['posts'][0]['raw_content'] );
+	}
+
+	/**
 	 * Password-protected content is withheld from users who cannot edit the post.
 	 *
 	 * @since x.x.x
