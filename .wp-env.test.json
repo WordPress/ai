@@ -6,7 +6,6 @@
 	"plugins": [
 		".",
 		"./tests/e2e-testing",
-		"./tests/e2e-sample-content",
 		"https://downloads.wordpress.org/plugin/ai-provider-for-google.zip",
 		"https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip"
 	],
