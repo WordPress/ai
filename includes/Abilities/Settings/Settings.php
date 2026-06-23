@@ -22,9 +22,6 @@ defined( 'ABSPATH' ) || exit;
  * map of setting name to value: `core/settings` reads them and `core/manage-settings` updates them,
  * sharing the helpers get_exposed_settings(), value_schema() and cast_value().
  *
- * Plugin: WordPress core's WP_Settings_Abilities currently reserves `core/manage-settings` but does
- * not implement it; the plugin ships the write ability ahead of core.
- *
  * This class is kept almost identical to the WordPress core class `WP_Settings_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
@@ -136,19 +133,11 @@ final class Settings {
 	/**
 	 * Registers the write-oriented `core/manage-settings` ability.
 	 *
-	 * Accepts a map of exposed setting name to its new value and stores each one, returning the
-	 * updated values. Every setting exposed to abilities is writable: a truthy `show_in_abilities`
-	 * flag grants both read (via `core/settings`) and write (via this ability), so the input and
-	 * output schemas reuse the same per-setting schemas as the read ability.
+	 * The input and output schemas reuse each exposed setting's own schema, so every setting
+	 * readable via `core/settings` is also writable through this ability.
 	 *
-	 * The Abilities API validates the input against those schemas (with `additionalProperties`
-	 * disabled) before {@see execute_manage_settings()} runs, so an invalid or unknown value aborts
-	 * the whole call before any option is written — matching the all-or-nothing behavior of the core
-	 * REST settings controller.
-	 *
-	 * Plugin: WordPress core reserves this ability in WP_Settings_Abilities::register() but does not
-	 * yet implement it. The plugin implements it here, reusing the exposed-settings snapshot that
-	 * register_get_settings() computed.
+	 * Plugin: core reserves this ability in WP_Settings_Abilities::register() but does not yet
+	 * implement it; the plugin ships it here, reusing the snapshot register_get_settings() computed.
 	 *
 	 * @since x.x.x
 	 */

@@ -84,7 +84,6 @@ test.describe( 'core/manage-settings ability (client-side Abilities API)', () =>
 		} );
 
 		expect( updated.ok ).toBe( true );
-		// The write ability echoes back the stored, correctly typed values.
 		expect( updated.result ).toEqual( {
 			blogname: 'Managed Settings E2E',
 			posts_per_page: 13,
