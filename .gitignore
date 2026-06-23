@@ -28,7 +28,6 @@ build-types/
 # AI files
 .gemini/
 .claude/
-.mcp.json
 AGENTS.md
 GEMINI.md
 CLAUDE.md
@@ -59,6 +58,3 @@ CLAUDE.md
 
 # Build
 ai.zip
-
-# Claude local notes (untracked)
-/CLAUDE.local.md
