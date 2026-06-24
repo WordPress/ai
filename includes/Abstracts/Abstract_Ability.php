@@ -192,7 +192,41 @@ abstract class Abstract_Ability extends WP_Ability {
 		 * @param string $name        The name of the ability.
 		 * @param array  $data        The data passed to the system instruction file.
 		 */
-		return apply_filters( 'wpai_system_instruction', $instruction, $this->get_name(), $data );
+		$instruction = apply_filters( 'wpai_system_instruction', $instruction, $this->get_name(), $data );
+
+		/**
+		 * Filters the system instruction for a specific ability.
+		 *
+		 * The dynamic portion of the hook name, `$slug`, refers to the ability slug
+		 * derived from its name (e.g. `ai/title-generation` becomes `title_generation`).
+		 *
+		 * This scoped filter runs after the global `wpai_system_instruction` filter,
+		 * allowing developers to target a single ability without inspecting the name.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $instruction The system instruction text.
+		 * @param array  $data        The data passed to the system instruction file.
+		 */
+		return apply_filters( "wpai_{$this->get_ability_slug()}_system_instruction", $instruction, $data );
+	}
+
+	/**
+	 * Returns the hook-safe slug for this ability.
+	 *
+	 * Derived from the ability name by stripping the `ai/` namespace prefix and
+	 * converting hyphens to underscores. For example, `ai/title-generation`
+	 * becomes `title_generation`. Used to build per-ability filter hook names.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The hook-safe ability slug.
+	 */
+	protected function get_ability_slug(): string {
+		$name = (string) $this->get_name();
+		$name = preg_replace( '#^ai/#', '', $name );
+
+		return str_replace( '-', '_', (string) $name );
 	}
 
 	/**

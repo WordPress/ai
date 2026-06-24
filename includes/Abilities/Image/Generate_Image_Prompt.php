@@ -250,6 +250,17 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			$content .= "\n\n<style>" . $style . '</style>';
 		}
 
+		/**
+		 * Filters the assembled user prompt for image prompt generation.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string                       $content The assembled prompt string (content, context, style tags).
+		 * @param string|array<string, string> $context The additional context.
+		 * @param string                       $style   The style instructions.
+		 */
+		$content = (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $content, $context, $style );
+
 		$prompt_builder = $this->get_prompt_builder( $content );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -273,6 +284,20 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction( 'image-prompt-system-instruction.php' ) )
 			->using_temperature( 0.9 )
 			->using_model_preference( ...get_preferred_models_for_text_generation() );
+
+		/**
+		 * Filters the configured prompt builder for image prompt generation.
+		 *
+		 * Runs after the model preference is applied and before text-generation
+		 * support is verified. Extend the builder rather than replacing it, and
+		 * always return a WP_AI_Client_Prompt_Builder.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+		 * @param string                       $prompt         The user prompt string.
+		 */
+		$prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
