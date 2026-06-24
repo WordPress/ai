@@ -1240,7 +1240,55 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_feature_developer_model_config() returns empty strings when unset.
+	 * Tests that get_min_content_length() returns the default value when no filter is registered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_min_content_length_returns_default_value(): void {
+		$result = \WordPress\AI\get_min_content_length( 'summarization', 100 );
+
+		$this->assertSame( 100, $result );
+	}
+
+	/**
+	 * Tests that get_min_content_length() returns a custom value when filtered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_min_content_length_returns_filtered_value(): void {
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+		$result = \WordPress\AI\get_min_content_length( 'summarization', 100 );
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertSame( 250, $result );
+	}
+
+	/**
+	 * Tests that the wpai_min_content_length filter receives the feature ID.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_min_content_length_filter_receives_feature_id(): void {
+		$received_feature_id = null;
+
+		$filter = static function ( int $length, string $feature_id ) use ( &$received_feature_id ): int {
+			$received_feature_id = $feature_id;
+			return $length;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter, 10, 2 );
+		\WordPress\AI\get_min_content_length( 'excerpt-generation', 100 );
+		remove_filter( 'wpai_min_content_length', $filter, 10 );
+
+		$this->assertSame( 'excerpt-generation', $received_feature_id );
+	}
+
+	/**
+	 * Tests that get_feature_developer_model_config() returns empty strings when unset.
 	 *
 	 * @since 0.9.0
 	 */

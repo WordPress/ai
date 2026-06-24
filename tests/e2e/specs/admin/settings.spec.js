@@ -29,11 +29,11 @@ const EXPERIMENT_GROUPS = {
 
 test.describe( 'Plugin settings', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
-		await requestUtils.deactivatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.deactivatePlugin( 'e2e-testing' );
 	} );
 
 	test.afterAll( async ( { requestUtils } ) => {
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 		await seedCredentials( requestUtils );
 	} );
 
@@ -43,7 +43,7 @@ test.describe( 'Plugin settings', () => {
 		requestUtils,
 	} ) => {
 		// Activate the request mocking plugin.
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 
 		// Clear out any existing Connectors.
 		await clearConnectors( admin, page );
@@ -74,7 +74,7 @@ test.describe( 'Plugin settings', () => {
 		requestUtils,
 	} ) => {
 		// Activate the request mocking plugin.
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 
 		await visitConnectorsPage( admin );
 
@@ -493,5 +493,48 @@ test.describe( 'Plugin settings', () => {
 
 		// Disable the Excerpt Generation Experiment.
 		await disableExperiment( admin, page, 'Excerpt Generation' );
+	} );
+
+	test( 'Developer mode settings are hidden for disabled visual feature cards', async ( {
+		admin,
+		page,
+	} ) => {
+		// Globally turn on experiments so the Image Generation feature can be enabled.
+		await enableExperiments( admin, page );
+
+		// Enable the visual Image Generation feature card.
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
+
+		// Turn on model selection while AI is globally enabled.
+		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+		const modelSelection = page.getByRole( 'menuitemcheckbox', {
+			name: /Model selection/,
+		} );
+		if (
+			( await modelSelection.getAttribute( 'aria-checked' ) ) !== 'true'
+		) {
+			await modelSelection.click();
+		}
+
+		// Globally disable AI. The feature card remains checked, but inactive.
+		await disableExperiments( admin, page );
+
+		const disabledImageGenerationCard = page.locator(
+			'.ai-showcase-card--disabled',
+			{
+				has: page.getByText( 'Image Generation and Editing' ),
+			}
+		);
+
+		await expect( disabledImageGenerationCard ).toBeVisible();
+
+		// The disabled visual feature card should not expose active provider/model controls.
+		await expect(
+			disabledImageGenerationCard.locator( '.ai-developer-mode-fields' )
+		).not.toBeVisible();
+
+		// Restore state.
+		await enableExperiments( admin, page );
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 } );

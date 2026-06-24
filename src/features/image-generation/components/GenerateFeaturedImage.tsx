@@ -48,7 +48,7 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 		}
 
 		if ( ! aiImageGenerationData?.hasImageGenerationSupport ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice(
+			dispatch( noticesStore ).createErrorNotice(
 				__(
 					'This feature requires an AI Connector that supports image generation. Review your Connectors to ensure you have a valid AI Connector configured.',
 					'ai'
@@ -71,7 +71,7 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 
 		setIsGenerating( true );
 		setProgress( '' );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedImageData = await generateImage( content, {
@@ -87,7 +87,7 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 			const message =
 				error?.message ||
 				__( 'An error occurred during image generation.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+			dispatch( noticesStore ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );

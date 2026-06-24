@@ -98,6 +98,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_comment-moderation_enabled' );
+		delete_option( 'wpai_feature_comment-moderation_field_moderate_guests' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
@@ -287,6 +288,132 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		);
 		$this->assertSame( '', get_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, true ) );
 		$this->assertSame( '', get_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, true ) );
+	}
+
+	/**
+	 * Test moderate_comment() skips comments flagged as spam in pre_comment_approved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_moderate_comment_skips_spam_comments() {
+		// Simulate a spam filter.
+		$filter = static function ( $approved, $commentdata ) {
+			if ( 'spam-comment-test' === $commentdata['comment_content'] ) {
+				return 'spam';
+			}
+			return $approved;
+		};
+		add_filter( 'pre_comment_approved', $filter, 10, 2 );
+
+		$post_id = self::factory()->post->create();
+
+		$comment_data = array(
+			'comment_post_ID'      => $post_id,
+			'comment_author'       => 'Test Spammer',
+			'comment_author_email' => 'spammer@example.com',
+			'comment_author_url'   => '',
+			'comment_content'      => 'spam-comment-test',
+			'comment_approved'     => '1',
+		);
+
+		$comment_id = wp_new_comment( $comment_data );
+		remove_filter( 'pre_comment_approved', $filter, 10 );
+
+		$this->assertNotFalse( $comment_id, 'Comment should be inserted.' );
+		$comment = get_comment( $comment_id );
+		$this->assertSame( 'spam', $comment->comment_approved, 'Comment approved status should be spam.' );
+
+		$this->assertSame(
+			'',
+			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true ),
+			'Spam comment should not be analyzed by AI.'
+		);
+	}
+
+	/**
+	 * Test moderate_comment() skips guest comments automatically on creation when moderate_guests is disabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_moderate_comment_skips_anonymous_comments_when_moderate_guests_disabled() {
+		update_option( 'wpai_feature_comment-moderation_field_moderate_guests', false );
+
+		$post_id = self::factory()->post->create();
+
+		// Guest comment (user_id => 0) should be skipped.
+		$guest_comment_data = array(
+			'comment_post_ID'      => $post_id,
+			'comment_author'       => 'Anonymous Author',
+			'comment_author_email' => 'anonymous@example.com',
+			'comment_author_url'   => '',
+			'comment_content'      => 'Guest comment content',
+			'comment_approved'     => '1',
+			'user_id'              => 0,
+		);
+
+		add_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+		$guest_comment_id = wp_new_comment( $guest_comment_data );
+		remove_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+
+		$this->assertSame(
+			'',
+			get_comment_meta( $guest_comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true ),
+			'Anonymous comment should not be analyzed when moderate_guests is disabled.'
+		);
+
+		// Logged-in user comment should be analyzed.
+		$user_id           = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$user_comment_data = array(
+			'comment_post_ID'      => $post_id,
+			'comment_author'       => 'Logged In User',
+			'comment_author_email' => 'user@example.com',
+			'comment_author_url'   => '',
+			'comment_content'      => 'Logged in comment content',
+			'comment_approved'     => '1',
+			'user_id'              => $user_id,
+		);
+
+		add_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+		$user_comment_id = wp_new_comment( $user_comment_data );
+		remove_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+
+		$this->assertSame(
+			Comment_Moderation::STATUS_COMPLETE,
+			get_comment_meta( $user_comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true ),
+			'Logged-in user comment should be analyzed.'
+		);
+	}
+
+	/**
+	 * Test moderate_comment() analyzes guest comments automatically on creation when moderate_guests is enabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_moderate_comment_analyzes_anonymous_comments_when_moderate_guests_enabled() {
+		update_option( 'wpai_feature_comment-moderation_field_moderate_guests', true );
+
+		$post_id = self::factory()->post->create();
+
+		// Guest comment (user_id => 0) should be analyzed.
+		$guest_comment_data = array(
+			'comment_post_ID'      => $post_id,
+			'comment_author'       => 'Anonymous Author',
+			'comment_author_email' => 'anonymous@example.com',
+			'comment_author_url'   => '',
+			'comment_content'      => 'Guest comment content',
+			'comment_approved'     => '1',
+			'user_id'              => 0,
+		);
+
+		add_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+		$guest_comment_id = wp_new_comment( $guest_comment_data );
+		remove_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+
+		$this->assertSame(
+			Comment_Moderation::STATUS_COMPLETE,
+			get_comment_meta( $guest_comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true ),
+			'Anonymous comment should be analyzed when moderate_guests toggle is enabled.'
+		);
 	}
 
 	/**
