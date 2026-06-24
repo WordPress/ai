@@ -121,13 +121,16 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 	test( 'limits each post to the requested fields', async ( { page } ) => {
 		const outcome = await runCoreContent( page, {
 			post_type: 'post',
-			fields: [ 'id', 'title' ],
+			fields: [ 'id', 'title_rendered' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result.posts.length ).toBeGreaterThan( 0 );
 		for ( const post of outcome.result.posts ) {
-			expect( Object.keys( post ).sort() ).toEqual( [ 'id', 'title' ] );
+			expect( Object.keys( post ).sort() ).toEqual( [
+				'id',
+				'title_rendered',
+			] );
 		}
 	} );
 
@@ -150,7 +153,7 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result.posts ).toHaveLength( 1 );
-		expect( outcome.result.posts[ 0 ].title ).toBe(
+		expect( outcome.result.posts[ 0 ].title_rendered ).toBe(
 			'AI E2E Sample Content'
 		);
 		expect( outcome.result.posts[ 0 ].slug ).toBe(
