@@ -97,14 +97,14 @@ final class Helper_Test_Provider implements ProviderInterface {
 /**
  * Stub model metadata used by image generation support tests.
  *
- * @since 1.0.3
+ * @since x.x.x
  */
 final class Image_Generation_Test_Model_Metadata {
 
 	/**
 	 * Whether the stub model advertises image-generation support.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 *
 	 * @var bool
 	 */
@@ -113,7 +113,7 @@ final class Image_Generation_Test_Model_Metadata {
 	/**
 	 * Returns the stub model's supported capabilities.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 *
 	 * @return list<object{value:string}> Supported capabilities.
 	 */
@@ -132,14 +132,14 @@ final class Image_Generation_Test_Model_Metadata {
 /**
  * Stub model metadata directory used by image generation support tests.
  *
- * @since 1.0.3
+ * @since x.x.x
  */
 final class Image_Generation_Test_Model_Metadata_Directory {
 
 	/**
 	 * Whether listing model metadata should throw to simulate a provider failure.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 *
 	 * @var bool
 	 */
@@ -148,7 +148,7 @@ final class Image_Generation_Test_Model_Metadata_Directory {
 	/**
 	 * Lists the stub model metadata.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 *
 	 * @throws \RuntimeException When $should_throw is set, to exercise the support-detection guard.
 	 *
@@ -170,14 +170,14 @@ final class Image_Generation_Test_Model_Metadata_Directory {
  * Mirrors only the static methods that has_image_generation_support() and the AI
  * client registry invoke, so it intentionally does not implement ProviderInterface.
  *
- * @since 1.0.3
+ * @since x.x.x
  */
 final class Image_Generation_Test_Provider {
 
 	/**
 	 * Returns the stub provider availability.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 *
 	 * @return \WordPress\AI\Tests\Integration\Includes\Helper_Test_Provider_Availability Stub availability reporting configured state.
 	 */
@@ -188,7 +188,7 @@ final class Image_Generation_Test_Provider {
 	/**
 	 * Returns the stub model metadata directory.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 *
 	 * @return \WordPress\AI\Tests\Integration\Includes\Image_Generation_Test_Model_Metadata_Directory Stub model metadata directory.
 	 */
@@ -219,7 +219,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Stub provider ID used for image generation support tests.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -1196,7 +1196,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * not picked up by has_connector_authentication(), so they advertise support through
 	 * the wpai_has_image_generation_support filter, which is request-free.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	public function test_has_image_generation_support_detects_connector_via_filter(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1240,7 +1240,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_image_generation_support() still detects API-key connectors.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	public function test_has_image_generation_support_detects_api_key_connector(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1273,7 +1273,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_image_generation_support() returns false when a connector's models lack the capability.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	public function test_has_image_generation_support_returns_false_when_models_lack_capability(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1309,7 +1309,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * A non-API-key connector that does not advertise support through the
 	 * wpai_has_image_generation_support filter must not be detected.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	public function test_has_image_generation_support_skips_connector_without_credentials(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1335,7 +1335,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the filter can suppress support for an otherwise-qualifying connector.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	public function test_has_image_generation_support_filter_can_suppress(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1371,7 +1371,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_image_generation_support() memoizes its result until the cache is reset.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	public function test_has_image_generation_support_memoizes_result(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1396,7 +1396,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_image_generation_support() skips a connector whose provider throws.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	public function test_has_image_generation_support_skips_connector_that_throws(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1589,7 +1589,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Registers the image generation stub provider in the AI client registry.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	private function register_test_image_provider(): void {
 		$registry = AiClient::defaultRegistry();
@@ -1610,7 +1610,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Unregisters the image generation stub provider from the AI client registry.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 */
 	private function unregister_test_image_provider(): void {
 		if ( ! class_exists( AiClient::class ) ) {

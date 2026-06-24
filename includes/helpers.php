@@ -556,7 +556,7 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 	 * connectors that do not rely on API key settings (e.g. OAuth), without
 	 * triggering a live API request.
 	 *
-	 * @since 1.0.3
+	 * @since x.x.x
 	 *
 	 * @param bool  $has_support Whether image generation is supported.
 	 * @param array $connectors  The registered connectors.
