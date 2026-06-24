@@ -135,16 +135,12 @@ export function DeveloperSettings( {
 	const handleSave = useCallback( () => {
 		if ( draftSettings ) {
 			setIsSavingThis( true );
-			if ( draftSettings.provider === '' && draftSettings.model === '' ) {
-				void clear();
-			} else {
-				void update( draftSettings );
-			}
+			void update( draftSettings );
 		}
-	}, [ draftSettings, update, clear ] );
+	}, [ draftSettings, update ] );
 
 	const hasSavedSelection =
-		currentSettings.provider !== '' || currentSettings.model !== '';
+		settings.provider !== '' || settings.model !== '';
 	const hasUnsavedChanges =
 		draftSettings !== null &&
 		( draftSettings.provider !== settings.provider ||
@@ -226,10 +222,8 @@ export function DeveloperSettings( {
 											'select'
 										)
 										?.focus();
-									setDraftSettings( {
-										provider: '',
-										model: '',
-									} );
+									setDraftSettings( null );
+									void clear();
 								} }
 								disabled={ isSavingThis }
 								accessibleWhenDisabled

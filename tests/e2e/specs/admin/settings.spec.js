@@ -495,7 +495,7 @@ test.describe( 'Plugin settings', () => {
 		await disableExperiment( admin, page, 'Excerpt Generation' );
 	} );
 
-	test( 'Developer settings save button appears, values persist after save, and reset requires explicit save', async ( {
+	test( 'Developer settings save button appears, values persist after save, and reset does not requires explicit save', async ( {
 		admin,
 		page,
 		requestUtils,
@@ -504,8 +504,11 @@ test.describe( 'Plugin settings', () => {
 		await requestUtils.activatePlugin( 'e2e-testing' );
 		await seedCredentials( requestUtils );
 
-		// Setup: Enable AI and the Content Classification experiment.
+		// Setup: Enable AI, disable all other experiments, then enable only Content Classification.
 		await enableExperiments( admin, page );
+		await disableAllExperimentsInGroup( admin, page, EXPERIMENT_GROUPS.editor );
+		await disableAllExperimentsInGroup( admin, page, EXPERIMENT_GROUPS.admin );
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 		await enableExperiment( admin, page, 'Content Classification' );
 
 		// Enable developer mode (Model selection).
@@ -558,24 +561,18 @@ test.describe( 'Plugin settings', () => {
 			developerFieldsAfterReload.getByLabel( 'Model' )
 		).toHaveValue( 'gpt-5.2' );
 
-		// Click Reset to default, verify Save button appears and dropdown reverts to default.
+		// Click Reset to default
 		const resetButton = developerFieldsAfterReload.getByRole( 'button', {
 			name: 'Reset to default',
 		} );
+		await expect( resetButton ).toBeVisible();
 		await resetButton.click();
 
-		const saveButtonAfterReset = developerFieldsAfterReload.getByRole(
-			'button',
-			{ name: 'Save' }
-		);
-		await expect( saveButtonAfterReset ).toBeVisible();
 		await expect(
 			developerFieldsAfterReload.getByLabel( 'Provider' )
 		).toHaveValue( '' );
 
-		// Click Save to confirm the reset.
-		await saveButtonAfterReset.click();
-		await expect( saveButtonAfterReset ).not.toBeVisible( {
+		await expect( resetButton ).not.toBeVisible( {
 			timeout: 10000,
 		} );
 
@@ -601,8 +598,11 @@ test.describe( 'Plugin settings', () => {
 		await requestUtils.activatePlugin( 'e2e-testing' );
 		await seedCredentials( requestUtils );
 
-		// Setup: Enable AI and the Content Classification experiment.
+		// Setup: Enable AI, disable all other experiments, then enable only Content Classification.
 		await enableExperiments( admin, page );
+		await disableAllExperimentsInGroup( admin, page, EXPERIMENT_GROUPS.editor );
+		await disableAllExperimentsInGroup( admin, page, EXPERIMENT_GROUPS.admin );
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 		await enableExperiment( admin, page, 'Content Classification' );
 
 		// Ensure the developer settings are cleared from a prior test.
