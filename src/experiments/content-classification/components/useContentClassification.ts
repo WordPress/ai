@@ -226,8 +226,40 @@ export function useContentClassification( taxonomy: string ): {
 	// Handle accepting a suggestion.
 	const handleAccept = useCallback(
 		( suggestion: TagSuggestion ) => {
-			removeSuggestionFromList( suggestion );
-			addTermToPost( taxonomy, suggestion );
+			// Obtain original position of the suggestion before removal.
+			let originalIndex = -1;
+			setSuggestions( ( prev ) => {
+				originalIndex = prev.findIndex(
+					( s ) => s.term === suggestion.term
+				);
+				return prev.filter( ( s ) => s.term !== suggestion.term );
+			} );
+
+			addTermToPost( taxonomy, suggestion ).then( ( success ) => {
+				if ( ! success ) {
+					setSuggestions( ( prev ) => {
+						// Skip if already present.
+						if (
+							prev.some( ( s ) => s.term === suggestion.term )
+						) {
+							return prev;
+						}
+
+						// If original index was invalid, push to the end.
+						if (
+							originalIndex < 0 ||
+							originalIndex > prev.length
+						) {
+							return [ ...prev, suggestion ];
+						}
+
+						// Otherwise, insert at the correct position.
+						const newSuggestions = [ ...prev ];
+						newSuggestions.splice( originalIndex, 0, suggestion );
+						return newSuggestions;
+					} );
+				}
+			} );
 		},
 		[ taxonomy ]
 	);
@@ -259,14 +291,12 @@ export function useContentClassification( taxonomy: string ): {
  *
  * @param taxonomy   The taxonomy slug.
  * @param suggestion The suggestion to add.
+ * @return Promise resolving to true if successful, false otherwise.
  */
 async function addTermToPost(
 	taxonomy: string,
 	suggestion: TagSuggestion
-): Promise< void > {
-	const { editPost }: any = dispatch( editorStore );
-	const { getEditedPostAttribute } = select( editorStore );
-
+): Promise< boolean > {
 	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
 	const restBase = taxonomyObject?.rest_base ?? taxonomy;
 
@@ -280,8 +310,13 @@ async function addTermToPost(
 		);
 		if ( resolvedParent ) {
 			parentId = resolvedParent;
+		} else {
+			return false;
 		}
 	}
+
+	const { editPost }: any = dispatch( editorStore );
+	const { getEditedPostAttribute } = select( editorStore );
 
 	const currentTerms: number[] = getEditedPostAttribute( restBase ) ?? [];
 	const termId = await findOrCreateTerm(
@@ -291,11 +326,16 @@ async function addTermToPost(
 		parentId
 	);
 
-	if ( termId && ! currentTerms.includes( termId ) ) {
-		editPost( {
-			[ restBase ]: [ ...currentTerms, termId ],
-		} );
+	if ( termId ) {
+		if ( ! currentTerms.includes( termId ) ) {
+			editPost( {
+				[ restBase ]: [ ...currentTerms, termId ],
+			} );
+		}
+		return true;
 	}
+
+	return false;
 }
 
 /**
