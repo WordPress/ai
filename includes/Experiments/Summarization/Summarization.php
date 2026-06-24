@@ -56,7 +56,7 @@ class Summarization extends Abstract_Feature {
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 
 		/**
-		 * Filters the post types that support the bulk "Generate AI Summary" action.
+		 * Filters the post types that support the bulk "Generate Summary" action.
 		 *
 		 * @since x.x.x
 		 *
@@ -142,7 +142,7 @@ class Summarization extends Abstract_Feature {
 	}
 
 	/**
-	 * Adds the "Generate AI Summary" option to the posts list bulk actions menu.
+	 * Adds the "Generate Summary" option to the posts list bulk actions menu.
 	 *
 	 * @since x.x.x
 	 *
@@ -154,13 +154,13 @@ class Summarization extends Abstract_Feature {
 			return $actions;
 		}
 
-		$actions['wpai_generate_summary'] = __( 'Generate AI Summary', 'ai' );
+		$actions['wpai_generate_summary'] = __( 'Generate Summary', 'ai' );
 
 		return $actions;
 	}
 
 	/**
-	 * Handles the "Generate AI Summary" bulk action by redirecting with selected post IDs.
+	 * Handles the "Generate Summary" bulk action by redirecting with selected post IDs.
 	 *
 	 * The actual generation is performed client-side after the redirect so that slow
 	 * AI API calls do not risk hitting PHP's execution time limit.
