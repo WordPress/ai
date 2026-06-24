@@ -642,7 +642,11 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( array( 'id', 'title_rendered' ), array_keys( $result['posts'][0] ) );
+		$this->assertSame(
+			array( 'id', 'title_rendered' ),
+			array_keys( $result['posts'][0] ),
+			'The fields filter should limit the response to exactly the requested keys.'
+		);
 	}
 
 	/**
@@ -892,7 +896,11 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( 'Public body with raw block markup.', $result['posts'][0]['content_raw'] );
+		$this->assertSame(
+			'Public body with raw block markup.',
+			$result['posts'][0]['content_raw'],
+			'Editors should receive explicitly requested raw content.'
+		);
 	}
 
 	/**
