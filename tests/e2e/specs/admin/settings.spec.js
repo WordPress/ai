@@ -531,7 +531,7 @@ test.describe( 'Plugin settings', () => {
 			name: 'Save',
 		} );
 
-		// Select provider and model, verify Save button appears
+		// Select provider and model, verify Save button appears.
 		await providerSelect.selectOption( 'openai' );
 		const modelSelect = developerFields.getByLabel( 'Model' );
 		await expect( modelSelect ).toBeVisible( { timeout: 5000 } );
@@ -539,7 +539,7 @@ test.describe( 'Plugin settings', () => {
 
 		await expect( saveButton ).toBeVisible();
 
-		// Click Save, reload, verify values persist
+		// Click Save, reload, verify values persist.
 		await saveButton.click();
 		await expect( saveButton ).not.toBeVisible( { timeout: 10000 } );
 
@@ -556,7 +556,7 @@ test.describe( 'Plugin settings', () => {
 			developerFieldsAfterReload.getByLabel( 'Model' )
 		).toHaveValue( 'gpt-5.2' );
 
-		// Click Reset to default, verify Save button appears and dropdown reverts to default
+		// Click Reset to default, verify Save button appears and dropdown reverts to default.
 		const resetButton = developerFieldsAfterReload.getByRole( 'button', {
 			name: 'Reset to default',
 		} );
@@ -571,7 +571,7 @@ test.describe( 'Plugin settings', () => {
 			developerFieldsAfterReload.getByLabel( 'Provider' )
 		).toHaveValue( '' );
 
-		// Click Save to confirm the reset
+		// Click Save to confirm the reset.
 		await saveButtonAfterReset.click();
 		await expect( saveButtonAfterReset ).not.toBeVisible( {
 			timeout: 10000,
