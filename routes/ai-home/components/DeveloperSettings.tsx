@@ -139,8 +139,7 @@ export function DeveloperSettings( {
 		}
 	}, [ draftSettings, update ] );
 
-	const hasSavedSelection =
-		settings.provider !== '' || settings.model !== '';
+	const hasSavedSelection = settings.provider !== '' || settings.model !== '';
 	const hasUnsavedChanges =
 		draftSettings !== null &&
 		( draftSettings.provider !== settings.provider ||

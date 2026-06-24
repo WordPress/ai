@@ -506,8 +506,16 @@ test.describe( 'Plugin settings', () => {
 
 		// Setup: Enable AI, disable all other experiments, then enable only Content Classification.
 		await enableExperiments( admin, page );
-		await disableAllExperimentsInGroup( admin, page, EXPERIMENT_GROUPS.editor );
-		await disableAllExperimentsInGroup( admin, page, EXPERIMENT_GROUPS.admin );
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
 		await disableExperiment( admin, page, 'Image Generation and Editing' );
 		await enableExperiment( admin, page, 'Content Classification' );
 
@@ -600,8 +608,16 @@ test.describe( 'Plugin settings', () => {
 
 		// Setup: Enable AI, disable all other experiments, then enable only Content Classification.
 		await enableExperiments( admin, page );
-		await disableAllExperimentsInGroup( admin, page, EXPERIMENT_GROUPS.editor );
-		await disableAllExperimentsInGroup( admin, page, EXPERIMENT_GROUPS.admin );
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
 		await disableExperiment( admin, page, 'Image Generation and Editing' );
 		await enableExperiment( admin, page, 'Content Classification' );
 
