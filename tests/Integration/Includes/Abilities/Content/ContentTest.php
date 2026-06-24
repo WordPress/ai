@@ -37,7 +37,16 @@ class ContentTest extends WP_UnitTestCase {
 	private static $user_ids = array();
 
 	/**
-	 * Creates shared users for the roles exercised by the content ability tests.
+	 * Shared post IDs keyed by fixture name.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string, int>
+	 */
+	private static $post_ids = array();
+
+	/**
+	 * Creates shared users and posts for the content ability tests.
 	 *
 	 * @since x.x.x
 	 *
@@ -52,6 +61,75 @@ class ContentTest extends WP_UnitTestCase {
 			'author'           => $factory->user->create( array( 'role' => 'author' ) ),
 			'author_secondary' => $factory->user->create( array( 'role' => 'author' ) ),
 		);
+
+		self::$post_ids = array(
+			'published'                  => $factory->post->create( array( 'post_status' => 'publish' ) ),
+			'published_content'          => $factory->post->create(
+				array(
+					'post_title'   => 'Hello Content',
+					'post_content' => 'Body here.',
+					'post_status'  => 'publish',
+				)
+			),
+			'subscriber_content'         => $factory->post->create(
+				array(
+					'post_title'   => 'Visible to subscribers',
+					'post_content' => 'Rendered body for subscribers.',
+					'post_status'  => 'publish',
+				)
+			),
+			'readable_single'            => $factory->post->create(
+				array(
+					'post_title'   => 'Readable single',
+					'post_content' => 'Readable single body.',
+					'post_status'  => 'publish',
+				)
+			),
+			'limited_role_content'       => $factory->post->create(
+				array(
+					'post_author'  => self::$user_ids['administrator'],
+					'post_title'   => 'Readable title',
+					'post_content' => 'Readable body for limited role.',
+					'post_excerpt' => 'Readable excerpt.',
+					'post_status'  => 'publish',
+				)
+			),
+			'raw_content'                => $factory->post->create(
+				array(
+					'post_status'  => 'publish',
+					'post_content' => 'Public body with raw block markup.',
+				)
+			),
+			'password_protected_editor'  => $factory->post->create(
+				array(
+					'post_status'   => 'publish',
+					'post_password' => 'secret',
+					'post_content'  => 'Top secret body.',
+				)
+			),
+			'password_protected_limited' => $factory->post->create(
+				array(
+					'post_author'   => self::$user_ids['administrator'],
+					'post_status'   => 'publish',
+					'post_password' => 'secret',
+					'post_content'  => 'Hidden rendered body.',
+				)
+			),
+		);
+	}
+
+	/**
+	 * Deletes shared posts created for the content ability tests.
+	 *
+	 * @since x.x.x
+	 */
+	public static function wpTearDownAfterClass(): void {
+		foreach ( self::$post_ids as $post_id ) {
+			wp_delete_post( $post_id, true );
+		}
+
+		self::$post_ids = array();
+		self::$user_ids = array();
 	}
 
 	/**
@@ -344,12 +422,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$post_id = self::factory()->post->create(
-			array(
-				'post_type'   => 'post',
-				'post_status' => 'publish',
-			)
-		);
+		$post_id = self::$post_ids['published'];
 
 		$result = wp_get_ability( 'core/content' )->execute(
 			array(
@@ -430,13 +503,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$post_id = self::factory()->post->create(
-			array(
-				'post_title'   => 'Hello Content',
-				'post_content' => 'Body here.',
-				'post_status'  => 'publish',
-			)
-		);
+		$post_id = self::$post_ids['published_content'];
 
 		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
 
@@ -473,7 +540,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$post_id = self::$post_ids['published'];
 
 		$result = wp_get_ability( 'core/content' )->execute(
 			array(
@@ -566,7 +633,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$post_id = self::$post_ids['published_content'];
 
 		$result = wp_get_ability( 'core/content' )->execute(
 			array(
@@ -599,13 +666,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_subscriber_can_request_published_content(): void {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_title'   => 'Visible to subscribers',
-				'post_content' => 'Rendered body for subscribers.',
-				'post_status'  => 'publish',
-			)
-		);
+		$post_id = self::$post_ids['subscriber_content'];
 
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
@@ -633,13 +694,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_subscriber_can_get_single_published_post_by_id(): void {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_title'   => 'Readable single',
-				'post_content' => 'Readable single body.',
-				'post_status'  => 'publish',
-			)
-		);
+		$post_id = self::$post_ids['readable_single'];
 
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
@@ -679,7 +734,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_subscriber_cannot_request_raw_fields_for_single_post(): void {
-		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$post_id = self::$post_ids['published'];
 
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
@@ -703,15 +758,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * @param string $role The role to test.
 	 */
 	public function test_default_fields_omit_raw_fields_for_roles_without_edit_access_to_other_users_posts( string $role ): void {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_author'  => self::$user_ids['administrator'],
-				'post_title'   => 'Readable title',
-				'post_content' => 'Readable body for limited role.',
-				'post_excerpt' => 'Readable excerpt.',
-				'post_status'  => 'publish',
-			)
-		);
+		$post_id = self::$post_ids['limited_role_content'];
 
 		$this->login_as( $role );
 		$this->register_ability();
@@ -734,12 +781,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * @param string $role The role to test.
 	 */
 	public function test_raw_field_requests_are_denied_for_roles_without_edit_access_to_other_users_posts( string $role ): void {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_author' => self::$user_ids['administrator'],
-				'post_status' => 'publish',
-			)
-		);
+		$post_id = self::$post_ids['limited_role_content'];
 
 		$this->login_as( $role );
 		$this->register_ability();
@@ -838,12 +880,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_raw_content_visible_to_editor(): void {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_status'  => 'publish',
-				'post_content' => 'Public body with raw block markup.',
-			)
-		);
+		$post_id = self::$post_ids['raw_content'];
 
 		$this->login_as( 'editor' );
 		$this->register_ability();
@@ -864,13 +901,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_password_protected_content_visible_to_editor(): void {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_status'   => 'publish',
-				'post_password' => 'secret',
-				'post_content'  => 'Top secret body.',
-			)
-		);
+		$post_id = self::$post_ids['password_protected_editor'];
 
 		$this->login_as( 'editor' );
 		$this->register_ability();
@@ -902,14 +933,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * @param string $role The role to test.
 	 */
 	public function test_password_protected_rendered_content_is_empty_for_roles_without_edit_access_to_other_users_posts( string $role ): void {
-		$post_id = self::factory()->post->create(
-			array(
-				'post_author'   => self::$user_ids['administrator'],
-				'post_status'   => 'publish',
-				'post_password' => 'secret',
-				'post_content'  => 'Hidden rendered body.',
-			)
-		);
+		$post_id = self::$post_ids['password_protected_limited'];
 
 		$this->login_as( $role );
 		$this->register_ability();
@@ -969,7 +993,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$post_id = self::$post_ids['published'];
 
 		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
 
