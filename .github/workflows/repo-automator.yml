@@ -35,6 +35,7 @@ jobs:
           conflict-comment: "{author} could you please rebase your PR on top of the latest changes from the `develop` branch?"
           reviewers: |
             team:ai-maintainers
+          validate-description: false  # TODO: fix upstream to allow for different PR template types so we can flag for things like missing AI usage and changelog
           validate-credits: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
