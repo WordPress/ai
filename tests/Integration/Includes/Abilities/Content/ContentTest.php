@@ -28,6 +28,33 @@ class ContentTest extends WP_UnitTestCase {
 	private $show_in_abilities;
 
 	/**
+	 * Shared user IDs keyed by role or fixture name.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string, int>
+	 */
+	private static $user_ids = array();
+
+	/**
+	 * Creates shared users for the roles exercised by the content ability tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_UnitTest_Factory $factory The unit test factory.
+	 */
+	public static function wpSetUpBeforeClass( $factory ): void {
+		self::$user_ids = array(
+			'administrator'    => $factory->user->create( array( 'role' => 'administrator' ) ),
+			'editor'           => $factory->user->create( array( 'role' => 'editor' ) ),
+			'subscriber'       => $factory->user->create( array( 'role' => 'subscriber' ) ),
+			'contributor'      => $factory->user->create( array( 'role' => 'contributor' ) ),
+			'author'           => $factory->user->create( array( 'role' => 'author' ) ),
+			'author_secondary' => $factory->user->create( array( 'role' => 'author' ) ),
+		);
+	}
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
@@ -144,11 +171,11 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Logs in as a user with the given role and returns the user ID.
 	 *
-	 * @param string $role The role to create the user with.
-	 * @return int The new user ID.
+	 * @param string $role The role to log in as.
+	 * @return int The user ID.
 	 */
 	private function login_as( string $role ): int {
-		$user_id = self::factory()->user->create( array( 'role' => $role ) );
+		$user_id = self::$user_ids[ $role ] ?? self::factory()->user->create( array( 'role' => $role ) );
 		wp_set_current_user( $user_id );
 		return $user_id;
 	}
@@ -182,15 +209,15 @@ class ContentTest extends WP_UnitTestCase {
 
 		$ability = wp_get_ability( 'core/content' );
 
-		$this->assertNotNull( $ability );
-		$this->assertSame( 'core/content', $ability->get_name() );
-		$this->assertSame( 'content', $ability->get_category() );
-		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ) );
+		$this->assertNotNull( $ability, 'The core/content ability should be registered.' );
+		$this->assertSame( 'core/content', $ability->get_name(), 'The registered ability should use the expected name.' );
+		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
+		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );
-		$this->assertTrue( $annotations['readonly'] );
-		$this->assertFalse( $annotations['destructive'] );
-		$this->assertTrue( $annotations['idempotent'] );
+		$this->assertTrue( $annotations['readonly'], 'The ability should be marked read-only.' );
+		$this->assertFalse( $annotations['destructive'], 'The ability should be marked non-destructive.' );
+		$this->assertTrue( $annotations['idempotent'], 'The ability should be marked idempotent.' );
 	}
 
 	/**
@@ -218,11 +245,19 @@ class ContentTest extends WP_UnitTestCase {
 			array_pop( $wp_current_filter );
 		}
 
-		$this->assertSame( 'Core Provided', wp_get_ability( 'core/content' )->get_label() );
+		$this->assertSame(
+			'Core Provided',
+			wp_get_ability( 'core/content' )->get_label(),
+			'The core-provided ability should be registered before the plugin override.'
+		);
 
 		$this->register_ability();
 
-		$this->assertSame( 'Get Content', wp_get_ability( 'core/content' )->get_label() );
+		$this->assertSame(
+			'Get Content',
+			wp_get_ability( 'core/content' )->get_label(),
+			'The plugin-provided content ability should replace the existing one.'
+		);
 	}
 
 	/**
@@ -236,30 +271,30 @@ class ContentTest extends WP_UnitTestCase {
 
 		$schema = wp_get_ability( 'core/content' )->get_input_schema();
 
-		$this->assertSame( 'object', $schema['type'] );
-		$this->assertCount( 2, $schema['oneOf'] );
+		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
+		$this->assertCount( 2, $schema['oneOf'], 'The input schema should expose exactly two modes.' );
 
 		[ $by_id, $by_type ] = $schema['oneOf'];
 
 		// Mode 1 requires `id`; Mode 2 requires `post_type`. Both reject extra properties.
-		$this->assertSame( array( 'id' ), $by_id['required'] );
-		$this->assertSame( array( 'post_type' ), $by_type['required'] );
-		$this->assertFalse( $by_id['additionalProperties'] );
-		$this->assertFalse( $by_type['additionalProperties'] );
+		$this->assertSame( array( 'id' ), $by_id['required'], 'The by-ID mode should require an ID.' );
+		$this->assertSame( array( 'post_type' ), $by_type['required'], 'The query mode should require a post type.' );
+		$this->assertFalse( $by_id['additionalProperties'], 'The by-ID mode should reject unrelated properties.' );
+		$this->assertFalse( $by_type['additionalProperties'], 'The query mode should reject unrelated properties.' );
 
 		// Query-only filters live only in the query mode, not the by-ID mode.
-		$this->assertArrayHasKey( 'per_page', $by_type['properties'] );
-		$this->assertArrayNotHasKey( 'per_page', $by_id['properties'] );
+		$this->assertArrayHasKey( 'per_page', $by_type['properties'], 'The query mode should support pagination.' );
+		$this->assertArrayNotHasKey( 'per_page', $by_id['properties'], 'The by-ID mode should not accept query-only pagination.' );
 
 		// Exposed post types appear in both modes' `post_type` enum.
-		$this->assertContains( 'post', $by_type['properties']['post_type']['enum'] );
-		$this->assertContains( 'page', $by_id['properties']['post_type']['enum'] );
+		$this->assertContains( 'post', $by_type['properties']['post_type']['enum'], 'The query mode should include exposed posts.' );
+		$this->assertContains( 'page', $by_id['properties']['post_type']['enum'], 'The by-ID guard should include exposed pages.' );
 
 		$fields_enum = $by_type['properties']['fields']['items']['enum'];
-		$this->assertContains( 'content_raw', $fields_enum );
-		$this->assertContains( 'content_rendered', $fields_enum );
-		$this->assertContains( 'title_raw', $fields_enum );
-		$this->assertContains( 'title_rendered', $fields_enum );
+		$this->assertContains( 'content_raw', $fields_enum, 'The fields enum should include raw content.' );
+		$this->assertContains( 'content_rendered', $fields_enum, 'The fields enum should include rendered content.' );
+		$this->assertContains( 'title_raw', $fields_enum, 'The fields enum should include raw titles.' );
+		$this->assertContains( 'title_rendered', $fields_enum, 'The fields enum should include rendered titles.' );
 	}
 
 	/**
@@ -274,9 +309,9 @@ class ContentTest extends WP_UnitTestCase {
 		$schema  = wp_get_ability( 'core/content' )->get_input_schema();
 		$by_type = $schema['oneOf'][1];
 
-		$this->assertArrayNotHasKey( 'default', $by_type['properties']['status'] );
-		$this->assertArrayNotHasKey( 'default', $by_type['properties']['page'] );
-		$this->assertArrayNotHasKey( 'default', $by_type['properties']['per_page'] );
+		$this->assertArrayNotHasKey( 'default', $by_type['properties']['status'], 'Status should rely on runtime defaults, not schema defaults.' );
+		$this->assertArrayNotHasKey( 'default', $by_type['properties']['page'], 'Page should rely on runtime defaults, not schema defaults.' );
+		$this->assertArrayNotHasKey( 'default', $by_type['properties']['per_page'], 'Per-page should rely on runtime defaults, not schema defaults.' );
 	}
 
 	/**
@@ -296,8 +331,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+		$this->assertWPError( $result, 'Combining by-ID mode with query-only params should fail validation.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Invalid mode combinations should return an input error.' );
 	}
 
 	/**
@@ -323,8 +358,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertIsArray( $result );
-		$this->assertSame( $post_id, $result['posts'][0]['id'] );
+		$this->assertIsArray( $result, 'A matching post type guard should allow the by-ID lookup.' );
+		$this->assertSame( $post_id, $result['posts'][0]['id'], 'The guarded by-ID lookup should return the requested post.' );
 	}
 
 	/**
@@ -338,14 +373,14 @@ class ContentTest extends WP_UnitTestCase {
 		$schema    = wp_get_ability( 'core/content' )->get_output_schema();
 		$post_item = $schema['properties']['posts']['items'];
 
-		$this->assertSame( array( 'posts', 'total', 'total_pages' ), $schema['required'] );
-		$this->assertSame( 'object', $post_item['type'] );
-		$this->assertArrayNotHasKey( 'required', $post_item );
-		$this->assertFalse( $post_item['additionalProperties'] );
-		$this->assertArrayHasKey( 'content_raw', $post_item['properties'] );
-		$this->assertArrayHasKey( 'content_rendered', $post_item['properties'] );
-		$this->assertArrayHasKey( 'total', $schema['properties'] );
-		$this->assertArrayHasKey( 'total_pages', $schema['properties'] );
+		$this->assertSame( array( 'posts', 'total', 'total_pages' ), $schema['required'], 'The response wrapper should require all top-level properties.' );
+		$this->assertSame( 'object', $post_item['type'], 'Each returned post should be described as an object.' );
+		$this->assertArrayNotHasKey( 'required', $post_item, 'Individual post fields should remain optional.' );
+		$this->assertFalse( $post_item['additionalProperties'], 'Returned posts should not allow unknown properties.' );
+		$this->assertArrayHasKey( 'content_raw', $post_item['properties'], 'The post schema should describe raw content.' );
+		$this->assertArrayHasKey( 'content_rendered', $post_item['properties'], 'The post schema should describe rendered content.' );
+		$this->assertArrayHasKey( 'total', $schema['properties'], 'The response schema should describe the total count.' );
+		$this->assertArrayHasKey( 'total_pages', $schema['properties'], 'The response schema should describe page count.' );
 	}
 
 	/**
@@ -369,7 +404,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		// Query mode is the second `oneOf` branch; its `post_type` enum lists exposed types.
 		$enum = wp_get_ability( 'core/content' )->get_input_schema()['oneOf'][1]['properties']['post_type']['enum'];
-		$this->assertContains( 'wpai_content_cpt', $enum );
+		$this->assertContains( 'wpai_content_cpt', $enum, 'Custom post types marked show_in_abilities should appear in the query enum.' );
 
 		$post_id = self::factory()->post->create(
 			array(
@@ -381,7 +416,7 @@ class ContentTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'wpai_content_cpt' ) );
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
-		$this->assertContains( $post_id, $ids );
+		$this->assertContains( $post_id, $ids, 'The custom post type should be queryable through the content ability.' );
 
 		unregister_post_type( 'wpai_content_cpt' );
 	}
@@ -405,13 +440,13 @@ class ContentTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
 
-		$this->assertIsArray( $result );
-		$this->assertCount( 1, $result['posts'] );
-		$this->assertSame( $post_id, $result['posts'][0]['id'] );
-		$this->assertSame( 'Hello Content', $result['posts'][0]['title_raw'] );
-		$this->assertSame( 'Hello Content', $result['posts'][0]['title_rendered'] );
-		$this->assertSame( 'Body here.', $result['posts'][0]['content_raw'] );
-		$this->assertStringContainsString( 'Body here.', $result['posts'][0]['content_rendered'] );
+		$this->assertIsArray( $result, 'The by-ID lookup should return a response array.' );
+		$this->assertCount( 1, $result['posts'], 'The by-ID lookup should return exactly one post.' );
+		$this->assertSame( $post_id, $result['posts'][0]['id'], 'The by-ID lookup should return the requested post.' );
+		$this->assertSame( 'Hello Content', $result['posts'][0]['title_raw'], 'Editable users should receive raw titles by default.' );
+		$this->assertSame( 'Hello Content', $result['posts'][0]['title_rendered'], 'Rendered titles should be returned by default.' );
+		$this->assertSame( 'Body here.', $result['posts'][0]['content_raw'], 'Editable users should receive raw content by default.' );
+		$this->assertStringContainsString( 'Body here.', $result['posts'][0]['content_rendered'], 'Rendered content should be returned by default.' );
 	}
 
 	/**
@@ -425,8 +460,8 @@ class ContentTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => 999999 ) );
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		$this->assertWPError( $result, 'Missing posts should be denied before execution probes object details.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Missing posts should fail closed as a permission error.' );
 	}
 
 	/**
@@ -447,8 +482,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		$this->assertWPError( $result, 'Mismatched post type guards should deny the lookup.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Mismatched post type guards should fail closed as a permission error.' );
 	}
 
 	/**
@@ -475,14 +510,14 @@ class ContentTest extends WP_UnitTestCase {
 					'post_status' => 'publish',
 				)
 			);
-			$this->assertGreaterThan( 0, $post_id );
+			$this->assertGreaterThan( 0, $post_id, 'The hidden custom post should be created for the denial check.' );
 
 			$this->register_ability();
 
 			$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
 
-			$this->assertWPError( $result );
-			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+			$this->assertWPError( $result, 'Posts from unexposed post types should be denied.' );
+			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Unexposed post types should fail closed as a permission error.' );
 		} finally {
 			unregister_post_type( 'wpai_hidden_cpt' );
 		}
@@ -503,8 +538,8 @@ class ContentTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'post' ) );
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
-		$this->assertContains( $published, $ids );
-		$this->assertNotContains( $draft, $ids );
+		$this->assertContains( $published, $ids, 'Published posts should be returned by default.' );
+		$this->assertNotContains( $draft, $ids, 'Draft posts should not be returned by default.' );
 	}
 
 	/**
@@ -518,8 +553,8 @@ class ContentTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/content' )->execute( array( 'slug' => 'whatever' ) );
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+		$this->assertWPError( $result, 'Slug queries without a post type should fail validation.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Invalid slug queries should return an input error.' );
 	}
 
 	/**
@@ -554,8 +589,8 @@ class ContentTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'post' ) );
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		$this->assertWPError( $result, 'Logged-out users should not be allowed to run the content ability.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Logged-out users should receive a permission error.' );
 	}
 
 	/**
@@ -583,13 +618,13 @@ class ContentTest extends WP_UnitTestCase {
 		);
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
-		$this->assertContains( $post_id, $ids );
+		$this->assertContains( $post_id, $ids, 'Subscribers should be able to query readable published posts.' );
 		$post_index = array_search( $post_id, $ids, true );
-		$this->assertIsInt( $post_index );
+		$this->assertIsInt( $post_index, 'The published post should be present in the subscriber query response.' );
 		$post = $result['posts'][ $post_index ];
-		$this->assertSame( 'Visible to subscribers', $post['title_rendered'] );
-		$this->assertStringContainsString( 'Rendered body for subscribers.', $post['content_rendered'] );
-		$this->assertArrayNotHasKey( 'content_raw', $post );
+		$this->assertSame( 'Visible to subscribers', $post['title_rendered'], 'Subscribers should receive rendered titles.' );
+		$this->assertStringContainsString( 'Rendered body for subscribers.', $post['content_rendered'], 'Subscribers should receive rendered content.' );
+		$this->assertArrayNotHasKey( 'content_raw', $post, 'Subscribers should not receive raw content without edit access.' );
 	}
 
 	/**
@@ -611,11 +646,11 @@ class ContentTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
 
-		$this->assertIsArray( $result );
-		$this->assertSame( 'Readable single', $result['posts'][0]['title_rendered'] );
-		$this->assertStringContainsString( 'Readable single body.', $result['posts'][0]['content_rendered'] );
-		$this->assertArrayNotHasKey( 'title_raw', $result['posts'][0] );
-		$this->assertArrayNotHasKey( 'content_raw', $result['posts'][0] );
+		$this->assertIsArray( $result, 'Subscribers should be able to fetch a readable published post by ID.' );
+		$this->assertSame( 'Readable single', $result['posts'][0]['title_rendered'], 'Subscribers should receive the rendered title.' );
+		$this->assertStringContainsString( 'Readable single body.', $result['posts'][0]['content_rendered'], 'Subscribers should receive rendered content.' );
+		$this->assertArrayNotHasKey( 'title_raw', $result['posts'][0], 'Subscribers should not receive raw titles without edit access.' );
+		$this->assertArrayNotHasKey( 'content_raw', $result['posts'][0], 'Subscribers should not receive raw content without edit access.' );
 	}
 
 	/**
@@ -634,8 +669,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		$this->assertWPError( $result, 'Subscribers should not be able to request raw fields in query mode.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Subscriber raw-field query requests should return a permission error.' );
 	}
 
 	/**
@@ -656,8 +691,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		$this->assertWPError( $result, 'Subscribers should not be able to request raw fields by ID.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Subscriber raw-field by-ID requests should return a permission error.' );
 	}
 
 	/**
@@ -668,10 +703,9 @@ class ContentTest extends WP_UnitTestCase {
 	 * @param string $role The role to test.
 	 */
 	public function test_default_fields_omit_raw_fields_for_roles_without_edit_access_to_other_users_posts( string $role ): void {
-		$post_owner_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		$post_id       = self::factory()->post->create(
+		$post_id = self::factory()->post->create(
 			array(
-				'post_author'  => $post_owner_id,
+				'post_author'  => self::$user_ids['administrator'],
 				'post_title'   => 'Readable title',
 				'post_content' => 'Readable body for limited role.',
 				'post_excerpt' => 'Readable excerpt.',
@@ -700,10 +734,9 @@ class ContentTest extends WP_UnitTestCase {
 	 * @param string $role The role to test.
 	 */
 	public function test_raw_field_requests_are_denied_for_roles_without_edit_access_to_other_users_posts( string $role ): void {
-		$post_owner_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		$post_id       = self::factory()->post->create(
+		$post_id = self::factory()->post->create(
 			array(
-				'post_author' => $post_owner_id,
+				'post_author' => self::$user_ids['administrator'],
 				'post_status' => 'publish',
 			)
 		);
@@ -718,7 +751,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertWPError( $result );
+		$this->assertWPError( $result, 'Raw field requests should fail for users without edit access.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Raw field requests should require edit access to the post.' );
 	}
 
@@ -738,8 +771,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		$this->assertWPError( $result, 'Subscribers should not be allowed to query draft posts.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Subscriber draft queries should return a permission error.' );
 	}
 
 	/**
@@ -758,8 +791,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertWPError( $result );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		$this->assertWPError( $result, 'Subscribers should not be allowed to query private posts.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Subscriber private queries should return a permission error.' );
 	}
 
 	/**
@@ -768,8 +801,8 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_author_cannot_see_other_authors_drafts(): void {
-		$author_a = self::factory()->user->create( array( 'role' => 'author' ) );
-		$author_b = self::factory()->user->create( array( 'role' => 'author' ) );
+		$author_a = self::$user_ids['author'];
+		$author_b = self::$user_ids['author_secondary'];
 
 		$draft_a = self::factory()->post->create(
 			array(
@@ -795,8 +828,8 @@ class ContentTest extends WP_UnitTestCase {
 		);
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
-		$this->assertContains( $draft_b, $ids );
-		$this->assertNotContains( $draft_a, $ids );
+		$this->assertContains( $draft_b, $ids, 'Authors should see their own drafts.' );
+		$this->assertNotContains( $draft_a, $ids, 'Authors should not see another author\'s drafts.' );
 	}
 
 	/**
@@ -849,8 +882,16 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( 'Top secret body.', $result['posts'][0]['content_raw'] );
-		$this->assertStringContainsString( 'Top secret body.', $result['posts'][0]['content_rendered'] );
+		$this->assertSame(
+			'Top secret body.',
+			$result['posts'][0]['content_raw'],
+			'Editors should receive raw password-protected content.'
+		);
+		$this->assertStringContainsString(
+			'Top secret body.',
+			$result['posts'][0]['content_rendered'],
+			'Editors should receive rendered password-protected content.'
+		);
 	}
 
 	/**
@@ -861,10 +902,9 @@ class ContentTest extends WP_UnitTestCase {
 	 * @param string $role The role to test.
 	 */
 	public function test_password_protected_rendered_content_is_empty_for_roles_without_edit_access_to_other_users_posts( string $role ): void {
-		$post_owner_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		$post_id       = self::factory()->post->create(
+		$post_id = self::factory()->post->create(
 			array(
-				'post_author'   => $post_owner_id,
+				'post_author'   => self::$user_ids['administrator'],
 				'post_status'   => 'publish',
 				'post_password' => 'secret',
 				'post_content'  => 'Hidden rendered body.',
@@ -904,9 +944,9 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertCount( 2, $page1['posts'] );
-		$this->assertGreaterThanOrEqual( 3, $page1['total'] );
-		$this->assertSame( (int) ceil( $page1['total'] / 2 ), $page1['total_pages'] );
+		$this->assertCount( 2, $page1['posts'], 'The first page should honor the requested per_page value.' );
+		$this->assertGreaterThanOrEqual( 3, $page1['total'], 'The query should report the total matching post count.' );
+		$this->assertSame( (int) ceil( $page1['total'] / 2 ), $page1['total_pages'], 'The query should report the computed total page count.' );
 
 		$page2 = wp_get_ability( 'core/content' )->execute(
 			array(
@@ -916,8 +956,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertNotEmpty( $page2['posts'] );
-		$this->assertSame( $page1['total'], $page2['total'] );
+		$this->assertNotEmpty( $page2['posts'], 'The second page should return remaining posts.' );
+		$this->assertSame( $page1['total'], $page2['total'], 'Pagination should keep total counts stable across pages.' );
 	}
 
 	/**
@@ -933,7 +973,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
 
-		$this->assertSame( 1, $result['total'] );
-		$this->assertSame( 1, $result['total_pages'] );
+		$this->assertSame( 1, $result['total'], 'Single-post responses should report one total result.' );
+		$this->assertSame( 1, $result['total_pages'], 'Single-post responses should report one total page.' );
 	}
 }
