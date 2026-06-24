@@ -495,6 +495,171 @@ test.describe( 'Plugin settings', () => {
 		await disableExperiment( admin, page, 'Excerpt Generation' );
 	} );
 
+	test( 'Developer settings save button appears, values persist after save, and reset requires explicit save', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		// Activate the request mocking plugin and seed a valid connector.
+		await requestUtils.activatePlugin( 'e2e-testing' );
+		await seedCredentials( requestUtils );
+
+		// Setup: Enable AI and the Content Classification experiment.
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Enable developer mode (Model selection).
+		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+		const modelSelection = page.getByRole( 'menuitemcheckbox', {
+			name: /Model selection/,
+		} );
+		if (
+			( await modelSelection.getAttribute( 'aria-checked' ) ) !== 'true'
+		) {
+			await modelSelection.click();
+		}
+		// Close the menu.
+		await page.keyboard.press( 'Escape' );
+
+		// Scope all selectors to the first developer settings form (Content Classification).
+		const developerFields = page.locator( '.ai-developer-mode-fields' ).first();
+
+		await expect( developerFields ).toBeVisible( { timeout: 10000 } );
+
+		const providerSelect = developerFields.getByLabel( 'Provider' );
+		const saveButton = developerFields.getByRole( 'button', {
+			name: 'Save',
+		} );
+
+		// Select provider and model, verify Save button appears
+		await providerSelect.selectOption( 'openai' );
+		const modelSelect = developerFields.getByLabel( 'Model' );
+		await expect( modelSelect ).toBeVisible( { timeout: 5000 } );
+		await modelSelect.selectOption( 'gpt-5.2' );
+
+		await expect( saveButton ).toBeVisible();
+
+		// Click Save, reload, verify values persist
+		await saveButton.click();
+		await expect( saveButton ).not.toBeVisible( { timeout: 10000 } );
+
+		await visitSettingsPage( admin );
+
+		const developerFieldsAfterReload = page
+			.locator( '.ai-developer-mode-fields' )
+			.first();
+
+		await expect(
+			developerFieldsAfterReload.getByLabel( 'Provider' )
+		).toHaveValue( 'openai' );
+		await expect(
+			developerFieldsAfterReload.getByLabel( 'Model' )
+		).toHaveValue( 'gpt-5.2' );
+
+		// Click Reset to default, verify Save button appears and dropdown reverts to default
+		const resetButton = developerFieldsAfterReload.getByRole( 'button', {
+			name: 'Reset to default',
+		} );
+		await resetButton.click();
+
+		const saveButtonAfterReset = developerFieldsAfterReload.getByRole(
+			'button',
+			{ name: 'Save' }
+		);
+		await expect( saveButtonAfterReset ).toBeVisible();
+		await expect(
+			developerFieldsAfterReload.getByLabel( 'Provider' )
+		).toHaveValue( '' );
+
+		// Click Save to confirm the reset
+		await saveButtonAfterReset.click();
+		await expect( saveButtonAfterReset ).not.toBeVisible( {
+			timeout: 10000,
+		} );
+
+		// Cleanup: Toggle off model selection.
+		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+			.click();
+		await expect(
+			page.locator( '.ai-developer-mode-fields' )
+		).not.toBeVisible();
+
+		// Cleanup: Disable the Content Classification experiment.
+		await disableExperiment( admin, page, 'Content Classification' );
+	} );
+
+	test( 'Unsaved developer settings do not persist on page reload', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		// Activate the request mocking plugin and seed a valid connector.
+		await requestUtils.activatePlugin( 'e2e-testing' );
+		await seedCredentials( requestUtils );
+
+		// Setup: Enable AI and the Content Classification experiment.
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Ensure the developer settings are cleared from a prior test.
+		await visitSettingsPage( admin );
+
+		// Enable developer mode (Model selection).
+		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+		const modelSelection = page.getByRole( 'menuitemcheckbox', {
+			name: /Model selection/,
+		} );
+		if (
+			( await modelSelection.getAttribute( 'aria-checked' ) ) !== 'true'
+		) {
+			await modelSelection.click();
+		}
+		await page.keyboard.press( 'Escape' );
+
+		// Scope all selectors to the first developer settings form (Content Classification).
+		const developerFields = page.locator( '.ai-developer-mode-fields' ).first();
+
+		await expect( developerFields ).toBeVisible( { timeout: 10000 } );
+
+		// Select provider and model but do NOT click Save.
+		const providerSelect = developerFields.getByLabel( 'Provider' );
+		await providerSelect.selectOption( 'openai' );
+		const modelSelect = developerFields.getByLabel( 'Model' );
+		await expect( modelSelect ).toBeVisible( { timeout: 5000 } );
+		await modelSelect.selectOption( 'gpt-5.2' );
+
+		// Confirm Save button is visible (unsaved changes exist).
+		await expect(
+			developerFields.getByRole( 'button', { name: 'Save' } )
+		).toBeVisible();
+
+		// Reload the page WITHOUT saving.
+		await visitSettingsPage( admin );
+
+		const developerFieldsAfterReload = page
+			.locator( '.ai-developer-mode-fields' )
+			.first();
+
+		// Verify the provider has reverted to the default.
+		await expect(
+			developerFieldsAfterReload.getByLabel( 'Provider' )
+		).toHaveValue( '' );
+
+		// Cleanup: Toggle off model selection.
+		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+			.click();
+		await expect(
+			page.locator( '.ai-developer-mode-fields' )
+		).not.toBeVisible();
+
+		// Cleanup: Disable the Content Classification experiment.
+		await disableExperiment( admin, page, 'Content Classification' );
+	} );
+
 	test( 'Developer mode settings are hidden for disabled visual feature cards', async ( {
 		admin,
 		page,
