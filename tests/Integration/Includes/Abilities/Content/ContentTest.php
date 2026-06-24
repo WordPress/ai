@@ -235,6 +235,12 @@ class ContentTest extends WP_UnitTestCase {
 		// Exposed post types appear in both modes' `post_type` enum.
 		$this->assertContains( 'post', $by_type['properties']['post_type']['enum'] );
 		$this->assertContains( 'page', $by_id['properties']['post_type']['enum'] );
+
+		$fields_enum = $by_type['properties']['fields']['items']['enum'];
+		$this->assertContains( 'content_raw', $fields_enum );
+		$this->assertContains( 'content_rendered', $fields_enum );
+		$this->assertContains( 'title_raw', $fields_enum );
+		$this->assertContains( 'title_rendered', $fields_enum );
 	}
 
 	/**
@@ -313,10 +319,12 @@ class ContentTest extends WP_UnitTestCase {
 		$schema    = wp_get_ability( 'core/content' )->get_output_schema();
 		$post_item = $schema['properties']['posts']['items'];
 
+		$this->assertSame( array( 'posts', 'total', 'total_pages' ), $schema['required'] );
 		$this->assertSame( 'object', $post_item['type'] );
 		$this->assertArrayNotHasKey( 'required', $post_item );
 		$this->assertFalse( $post_item['additionalProperties'] );
-		$this->assertArrayHasKey( 'raw_content', $post_item['properties'] );
+		$this->assertArrayHasKey( 'content_raw', $post_item['properties'] );
+		$this->assertArrayHasKey( 'content_rendered', $post_item['properties'] );
 		$this->assertArrayHasKey( 'total', $schema['properties'] );
 		$this->assertArrayHasKey( 'total_pages', $schema['properties'] );
 	}
@@ -381,8 +389,10 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result );
 		$this->assertCount( 1, $result['posts'] );
 		$this->assertSame( $post_id, $result['posts'][0]['id'] );
-		$this->assertSame( 'Hello Content', $result['posts'][0]['title'] );
-		$this->assertSame( 'Body here.', $result['posts'][0]['raw_content'] );
+		$this->assertSame( 'Hello Content', $result['posts'][0]['title_raw'] );
+		$this->assertSame( 'Hello Content', $result['posts'][0]['title_rendered'] );
+		$this->assertSame( 'Body here.', $result['posts'][0]['content_raw'] );
+		$this->assertStringContainsString( 'Body here.', $result['posts'][0]['content_rendered'] );
 	}
 
 	/**
@@ -507,11 +517,11 @@ class ContentTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/content' )->execute(
 			array(
 				'id'     => $post_id,
-				'fields' => array( 'id', 'title' ),
+				'fields' => array( 'id', 'title_rendered' ),
 			)
 		);
 
-		$this->assertSame( array( 'id', 'title' ), array_keys( $result['posts'][0] ) );
+		$this->assertSame( array( 'id', 'title_rendered' ), array_keys( $result['posts'][0] ) );
 	}
 
 	/**
@@ -530,32 +540,102 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Subscribers cannot request published content.
+	 * Subscribers can request rendered published content.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_subscriber_cannot_request_published_content(): void {
+	public function test_subscriber_can_request_published_content(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Visible to subscribers',
+				'post_content' => 'Rendered body for subscribers.',
+				'post_status'  => 'publish',
+			)
+		);
+
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'post' ) );
+		$result = wp_get_ability( 'core/content' )->execute(
+			array(
+				'post_type' => 'post',
+				'fields'    => array( 'id', 'title_rendered', 'content_rendered' ),
+			)
+		);
+		$ids    = wp_list_pluck( $result['posts'], 'id' );
+
+		$this->assertContains( $post_id, $ids );
+		$post_index = array_search( $post_id, $ids, true );
+		$this->assertIsInt( $post_index );
+		$post = $result['posts'][ $post_index ];
+		$this->assertSame( 'Visible to subscribers', $post['title_rendered'] );
+		$this->assertStringContainsString( 'Rendered body for subscribers.', $post['content_rendered'] );
+		$this->assertArrayNotHasKey( 'content_raw', $post );
+	}
+
+	/**
+	 * Subscribers can fetch a published post by ID.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_subscriber_can_get_single_published_post_by_id(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Readable single',
+				'post_content' => 'Readable single body.',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'Readable single', $result['posts'][0]['title_rendered'] );
+		$this->assertStringContainsString( 'Readable single body.', $result['posts'][0]['content_rendered'] );
+		$this->assertArrayNotHasKey( 'title_raw', $result['posts'][0] );
+		$this->assertArrayNotHasKey( 'content_raw', $result['posts'][0] );
+	}
+
+	/**
+	 * Subscribers cannot request edit-context raw fields in query mode.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_subscriber_cannot_request_raw_fields_in_query_mode(): void {
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute(
+			array(
+				'post_type' => 'post',
+				'fields'    => array( 'content_raw' ),
+			)
+		);
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
 	}
 
 	/**
-	 * Subscribers cannot fetch a published post by ID.
+	 * Subscribers cannot request edit-context raw fields for a single post.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_subscriber_cannot_get_single_published_post_by_id(): void {
+	public function test_subscriber_cannot_request_raw_fields_for_single_post(): void {
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'content_raw' ),
+			)
+		);
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
@@ -574,6 +654,26 @@ class ContentTest extends WP_UnitTestCase {
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'draft' ),
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+	}
+
+	/**
+	 * Subscribers cannot request private posts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_subscriber_cannot_request_private_status(): void {
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute(
+			array(
+				'post_type' => 'post',
+				'status'    => array( 'private' ),
 			)
 		);
 
@@ -637,11 +737,11 @@ class ContentTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/content' )->execute(
 			array(
 				'id'     => $post_id,
-				'fields' => array( 'id', 'raw_content' ),
+				'fields' => array( 'id', 'content_raw' ),
 			)
 		);
 
-		$this->assertSame( 'Public body with raw block markup.', $result['posts'][0]['raw_content'] );
+		$this->assertSame( 'Public body with raw block markup.', $result['posts'][0]['content_raw'] );
 	}
 
 	/**
@@ -664,11 +764,40 @@ class ContentTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/content' )->execute(
 			array(
 				'id'     => $post_id,
-				'fields' => array( 'id', 'raw_content' ),
+				'fields' => array( 'id', 'content_raw', 'content_rendered' ),
 			)
 		);
 
-		$this->assertSame( 'Top secret body.', $result['posts'][0]['raw_content'] );
+		$this->assertSame( 'Top secret body.', $result['posts'][0]['content_raw'] );
+		$this->assertStringContainsString( 'Top secret body.', $result['posts'][0]['content_rendered'] );
+	}
+
+	/**
+	 * Password-protected rendered content is withheld from users who cannot edit the post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_password_protected_rendered_content_is_empty_for_subscriber(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status'   => 'publish',
+				'post_password' => 'secret',
+				'post_content'  => 'Hidden rendered body.',
+			)
+		);
+
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'content_rendered', 'content_protected' ),
+			)
+		);
+
+		$this->assertSame( '', $result['posts'][0]['content_rendered'] );
+		$this->assertTrue( $result['posts'][0]['content_protected'] );
 	}
 
 	/**

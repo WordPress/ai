@@ -21,11 +21,11 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Content
  *
- * Registers the read-only `core/content` ability, which retrieves one or more editable
+ * Registers the read-only `core/content` ability, which retrieves one or more readable
  * posts of a post type exposed to abilities via `show_in_abilities`. Supports fetching a
- * single editable post by ID or by slug, or querying multiple editable posts filtered by
+ * single readable post by ID or by slug, or querying multiple readable posts filtered by
  * post type, status, author, or parent, returning a basic, support-aware set of fields
- * per post.
+ * per post. Raw fields are only returned for posts the current user can edit.
  *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
@@ -66,7 +66,27 @@ final class Content {
 	private const MAX_PER_PAGE = 100;
 
 	/**
+	 * Fields that expose edit-context post data.
+	 *
+	 * Requests that explicitly include any of these fields require edit access. When
+	 * fields are omitted, these fields are returned only for posts the current user
+	 * can edit.
+	 *
+	 * @since x.x.x
+	 * @var string[]
+	 */
+	private array $edit_fields = array(
+		'title_raw',
+		'excerpt_raw',
+		'content_raw',
+	);
+
+	/**
 	 * The fields a post object may expose, in output order.
+	 *
+	 * Read-context fields are returned for readable posts. Edit-context fields are
+	 * returned only when explicitly requested by a user with edit access, or when
+	 * fields are omitted and the user can edit the post.
 	 *
 	 * @since x.x.x
 	 * @var string[]
@@ -76,12 +96,19 @@ final class Content {
 		'type',
 		'status',
 		'date',
+		'date_gmt',
 		'modified',
+		'modified_gmt',
 		'slug',
 		'link',
-		'title',
-		'excerpt',
-		'raw_content',
+		'title_raw',
+		'title_rendered',
+		'excerpt_raw',
+		'excerpt_rendered',
+		'excerpt_protected',
+		'content_raw',
+		'content_rendered',
+		'content_protected',
 		'author',
 		'parent',
 	);
@@ -174,7 +201,7 @@ final class Content {
 			'core/content',
 			array(
 				'label'               => __( 'Get Content', 'ai' ),
-				'description'         => __( 'Retrieves one or more editable posts of a post type exposed to abilities. Fetch a single editable post by ID or by slug, or query multiple editable posts filtered by post type, status, author, or parent. Returns a basic, support-aware set of fields per post.', 'ai' ),
+				'description'         => __( 'Retrieves one or more readable posts of a post type exposed to abilities. Fetch a single readable post by ID or by slug, or query multiple readable posts filtered by post type, status, author, or parent. Returns a basic, support-aware set of fields per post, with raw fields limited to users who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_input_schema( $post_types, $statuses ),
 				'output_schema'       => $this->get_content_output_schema(),
@@ -200,9 +227,9 @@ final class Content {
 	 * Permission callback for the `core/content` ability.
 	 *
 	 * Implements defense in depth: this gate decides whether the request may proceed at
-	 * all (coarse, by post type capabilities), while the per-post `edit_post` meta
-	 * capability check in {@see self::execute_get_content()} is the
-	 * authoritative, row-level enforcement of author-scoped visibility.
+	 * all, while the per-post read/edit checks in {@see self::execute_get_content()}
+	 * are the authoritative, row-level enforcement. Requests that explicitly ask for
+	 * edit-context fields require edit access before execution.
 	 *
 	 * @since x.x.x
 	 *
@@ -212,6 +239,12 @@ final class Content {
 	public function check_permission( $input = array() ): bool {
 		$input   = is_array( $input ) ? $input : array();
 		$exposed = $this->exposed_post_types ?? $this->get_exposed_post_types();
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$requires_edit = $this->has_explicit_edit_fields( $input );
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
@@ -224,7 +257,7 @@ final class Content {
 				return false;
 			}
 
-			return current_user_can( 'edit_post', $post->ID );
+			return $requires_edit ? current_user_can( 'edit_post', $post->ID ) : $this->check_read_permission( $post );
 		}
 
 		// Query / slug mode requires an exposed post type.
@@ -233,10 +266,14 @@ final class Content {
 			return false;
 		}
 
-		$post_type_object      = $exposed[ $post_type ];
-		$edit_posts_capability = $this->capability( $post_type_object, 'edit_posts', 'edit_posts' );
+		$post_type_object = $exposed[ $post_type ];
+		if ( $requires_edit ) {
+			$edit_posts_capability = $this->capability( $post_type_object, 'edit_posts', 'edit_posts' );
 
-		return current_user_can( $edit_posts_capability ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+			return current_user_can( $edit_posts_capability ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		}
+
+		return $this->can_query_statuses( $input, $post_type_object );
 	}
 
 	/**
@@ -268,6 +305,101 @@ final class Content {
 	}
 
 	/**
+	 * Checks whether the input explicitly requests edit-context fields.
+	 *
+	 * Omitted fields are not treated as edit-intent: default responses include the
+	 * fields visible for each individual post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return bool True if edit-context fields were explicitly requested.
+	 */
+	private function has_explicit_edit_fields( array $input ): bool {
+		if ( empty( $input['fields'] ) || ! is_array( $input['fields'] ) ) {
+			return false;
+		}
+
+		$requested = array_filter( $input['fields'], 'is_string' );
+
+		return array() !== array_intersect( $this->edit_fields, $requested );
+	}
+
+	/**
+	 * Checks whether the current user may query the requested statuses.
+	 *
+	 * This mirrors the REST posts controller's conservative collection-status gate:
+	 * requesting non-default statuses requires edit access, except `private`, which
+	 * may be queried by users who can read private posts.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed>  $input            The ability input.
+	 * @param \WP_Post_Type $post_type_object The post type object.
+	 * @return bool True if the requested statuses may be queried.
+	 */
+	private function can_query_statuses( array $input, \WP_Post_Type $post_type_object ): bool {
+		$edit_posts_capability   = $this->capability( $post_type_object, 'edit_posts', 'edit_posts' );
+		$read_private_capability = $this->capability( $post_type_object, 'read_private_posts', 'read_private_posts' );
+
+		foreach ( $this->normalize_statuses( $input ) as $status ) {
+			if ( 'publish' === $status ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+			if ( 'private' === $status && current_user_can( $read_private_capability ) ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+			if ( current_user_can( $edit_posts_capability ) ) {
+				continue;
+			}
+
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Checks if a post can be read by the current user.
+	 *
+	 * Mirrors the REST posts controller's read permission, while keeping this ability
+	 * authenticated-only via {@see self::check_permission()}.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post Post object.
+	 * @return bool Whether the post can be read.
+	 */
+	private function check_read_permission( WP_Post $post ): bool {
+		$post_type = get_post_type_object( $post->post_type );
+		if ( ! $post_type instanceof \WP_Post_Type || empty( $post_type->show_in_abilities ) ) {
+			return false;
+		}
+
+		if ( 'publish' === $post->post_status || current_user_can( 'read_post', $post->ID ) ) {
+			return true;
+		}
+
+		$post_status_object = get_post_status_object( $post->post_status );
+		if ( $post_status_object && $post_status_object->public ) {
+			return true;
+		}
+
+		if ( 'inherit' === $post->post_status && $post->post_parent > 0 ) {
+			$parent = get_post( $post->post_parent );
+			if ( $parent instanceof WP_Post ) {
+				return $this->check_read_permission( $parent );
+			}
+		}
+
+		return 'inherit' === $post->post_status;
+	}
+
+	/**
 	 * Executes the `core/content` ability.
 	 *
 	 * @since x.x.x
@@ -276,9 +408,10 @@ final class Content {
 	 * @return array<string, mixed>|\WP_Error A map with a `posts` list, or a WP_Error on failure.
 	 */
 	public function execute_get_content( $input = array() ) {
-		$input   = is_array( $input ) ? $input : array();
-		$exposed = $this->exposed_post_types ?? $this->get_exposed_post_types();
-		$fields  = $this->normalize_fields( $input );
+		$input         = is_array( $input ) ? $input : array();
+		$exposed       = $this->exposed_post_types ?? $this->get_exposed_post_types();
+		$fields        = $this->normalize_fields( $input );
+		$requires_edit = $this->has_explicit_edit_fields( $input );
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
@@ -287,7 +420,8 @@ final class Content {
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
 				|| ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] )
-				|| ! current_user_can( 'edit_post', $post->ID )
+				|| ( $requires_edit && ! current_user_can( 'edit_post', $post->ID ) )
+				|| ( ! $requires_edit && ! $this->check_read_permission( $post ) )
 			) {
 				return $this->not_found_error();
 			}
@@ -309,12 +443,14 @@ final class Content {
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
 		$query_args = array(
-			'post_type'           => $post_type,
-			'post_status'         => $this->normalize_statuses( $input ),
-			'posts_per_page'      => $per_page,
-			'paged'               => $page,
-			'perm'                => 'editable',
-			'ignore_sticky_posts' => true,
+			'post_type'              => $post_type,
+			'post_status'            => $this->normalize_statuses( $input ),
+			'posts_per_page'         => $per_page,
+			'paged'                  => $page,
+			'perm'                   => $requires_edit ? 'editable' : 'readable',
+			'ignore_sticky_posts'    => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
 		);
 
 		if ( ! empty( $input['slug'] ) && is_string( $input['slug'] ) ) {
@@ -336,10 +472,17 @@ final class Content {
 			if ( ! $post instanceof WP_Post ) {
 				continue;
 			}
-			if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+			if ( $requires_edit && ! current_user_can( 'edit_post', $post->ID ) ) {
 				continue;
 			}
-			$posts[] = $this->format_post( $post, $fields );
+			if ( ! $requires_edit && ! $this->check_read_permission( $post ) ) {
+				continue;
+			}
+			$formatted = $this->format_post( $post, $fields );
+			if ( array() === $formatted ) {
+				continue;
+			}
+			$posts[] = $formatted;
 		}
 
 		return array(
@@ -416,6 +559,9 @@ final class Content {
 	/**
 	 * Normalizes the requested fields to the supported set, defaulting to all fields.
 	 *
+	 * An empty or absent `fields` value selects every field. Edit-context fields are
+	 * still omitted per post when the current user cannot edit that post.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
@@ -459,41 +605,41 @@ final class Content {
 				'type' => 'string',
 				'enum' => $this->fields,
 			),
-			'description' => __( 'Limit each returned post to these fields. If omitted, all supported fields are returned.', 'ai' ),
+			'description' => __( 'Limit each returned post to these fields. If omitted, all fields visible to the current user are returned. Explicit raw field requests require edit access.', 'ai' ),
 		);
 
 		return array(
 			'type'  => 'object',
 			'oneOf' => array(
-				// Mode 1: retrieve a single editable post by ID.
+				// Mode 1: retrieve a single readable post by ID.
 				array(
-					'title'                => __( 'Get a single editable post by ID', 'ai' ),
+					'title'                => __( 'Get a single readable post by ID', 'ai' ),
 					'required'             => array( 'id' ),
 					'additionalProperties' => false,
 					'properties'           => array(
 						'id'        => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
-							'description' => __( 'Retrieve a single editable post by ID.', 'ai' ),
+							'description' => __( 'Retrieve a single readable post by ID.', 'ai' ),
 						),
 						'post_type' => array(
 							'type'        => 'string',
 							'enum'        => $post_types,
-							'description' => __( 'Optional. Restrict the lookup to this post type; the post is returned only if it matches and the current user can edit it.', 'ai' ),
+							'description' => __( 'Optional. Restrict the lookup to this post type; the post is returned only if it matches and the current user can read it.', 'ai' ),
 						),
 						'fields'    => $fields,
 					),
 				),
-				// Mode 2: query a set of editable posts by post type and filters.
+				// Mode 2: query a set of readable posts by post type and filters.
 				array(
-					'title'                => __( 'Query editable posts by type and filters', 'ai' ),
+					'title'                => __( 'Query readable posts by type and filters', 'ai' ),
 					'required'             => array( 'post_type' ),
 					'additionalProperties' => false,
 					'properties'           => array(
 						'post_type' => array(
 							'type'        => 'string',
 							'enum'        => $post_types,
-							'description' => __( 'Post type to query for editable posts.', 'ai' ),
+							'description' => __( 'Post type to query for readable posts.', 'ai' ),
 						),
 						'slug'      => array(
 							'type'        => 'string',
@@ -506,7 +652,7 @@ final class Content {
 								'type' => 'string',
 								'enum' => $statuses,
 							),
-							'description' => __( 'Filter editable posts by one or more post statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
+							'description' => __( 'Filter readable posts by one or more post statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
 						),
 						'author'    => array(
 							'type'        => 'integer',
@@ -539,6 +685,9 @@ final class Content {
 	/**
 	 * Builds the output schema for the `core/content` ability.
 	 *
+	 * No field is marked required because the `fields` input lets the caller request any
+	 * subset, and a field is only present when its post type supports it.
+	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
@@ -548,47 +697,75 @@ final class Content {
 			'type'                 => 'object',
 			'additionalProperties' => false,
 			'properties'           => array(
-				'id'          => array(
+				'id'                => array(
 					'type'        => 'integer',
 					'description' => __( 'The post ID.', 'ai' ),
 				),
-				'type'        => array(
+				'type'              => array(
 					'type'        => 'string',
 					'description' => __( 'The post type.', 'ai' ),
 				),
-				'status'      => array(
+				'status'            => array(
 					'type'        => 'string',
 					'description' => __( 'The post status.', 'ai' ),
 				),
-				'date'        => array(
+				'date'              => array(
 					'type'        => 'string',
-					'description' => __( 'The publication date, in ISO 8601 format (GMT).', 'ai' ),
+					'description' => __( "The publication date, in ISO 8601 format using the site's timezone.", 'ai' ),
 				),
-				'modified'    => array(
+				'date_gmt'          => array(
 					'type'        => 'string',
-					'description' => __( 'The last modified date, in ISO 8601 format (GMT).', 'ai' ),
+					'description' => __( 'The publication date, in ISO 8601 format as GMT.', 'ai' ),
 				),
-				'slug'        => array(
+				'modified'          => array(
+					'type'        => 'string',
+					'description' => __( "The last modified date, in ISO 8601 format using the site's timezone.", 'ai' ),
+				),
+				'modified_gmt'      => array(
+					'type'        => 'string',
+					'description' => __( 'The last modified date, in ISO 8601 format as GMT.', 'ai' ),
+				),
+				'slug'              => array(
 					'type'        => 'string',
 					'description' => __( 'The post slug.', 'ai' ),
 				),
-				'link'        => array(
+				'link'              => array(
 					'type'        => 'string',
 					'description' => __( 'The permalink URL.', 'ai' ),
 				),
-				'title'       => array(
+				'title_raw'         => array(
 					'type'        => 'string',
-					'description' => __( 'The post title. Present when the post type supports titles.', 'ai' ),
+					'description' => __( 'The raw post title. Present when the post type supports titles and the current user can edit the post.', 'ai' ),
 				),
-				'excerpt'     => array(
+				'title_rendered'    => array(
 					'type'        => 'string',
-					'description' => __( 'The post excerpt. Present when the post type supports excerpts. Empty when withheld for a password-protected post.', 'ai' ),
+					'description' => __( 'The rendered post title. Present when the post type supports titles.', 'ai' ),
 				),
-				'raw_content' => array(
+				'excerpt_raw'       => array(
 					'type'        => 'string',
-					'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor.', 'ai' ),
+					'description' => __( 'The raw post excerpt. Present when the post type supports excerpts and the current user can edit the post.', 'ai' ),
 				),
-				'author'      => array(
+				'excerpt_rendered'  => array(
+					'type'        => 'string',
+					'description' => __( 'The rendered post excerpt. Present when the post type supports excerpts. Empty when withheld for a password-protected post.', 'ai' ),
+				),
+				'excerpt_protected' => array(
+					'type'        => 'boolean',
+					'description' => __( 'Whether the excerpt is protected with a password. Present when the post type supports excerpts.', 'ai' ),
+				),
+				'content_raw'       => array(
+					'type'        => 'string',
+					'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor and the current user can edit the post.', 'ai' ),
+				),
+				'content_rendered'  => array(
+					'type'        => 'string',
+					'description' => __( 'The rendered post content. Present when the post type supports the editor. Empty when withheld for a password-protected post.', 'ai' ),
+				),
+				'content_protected' => array(
+					'type'        => 'boolean',
+					'description' => __( 'Whether the content is protected with a password. Present when the post type supports the editor.', 'ai' ),
+				),
+				'author'            => array(
 					'type'                 => 'object',
 					'additionalProperties' => false,
 					'properties'           => array(
@@ -603,7 +780,7 @@ final class Content {
 					),
 					'description'          => __( 'The post author. Present when the post type supports authors.', 'ai' ),
 				),
-				'parent'      => array(
+				'parent'            => array(
 					'type'        => 'integer',
 					'description' => __( 'The parent post ID. Present for hierarchical post types.', 'ai' ),
 				),
@@ -613,19 +790,20 @@ final class Content {
 		return array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
+			'required'             => array( 'posts', 'total', 'total_pages' ),
 			'properties'           => array(
 				'posts'       => array(
 					'type'        => 'array',
-					'description' => __( 'The editable posts matching the request. A single-element list when requested by ID.', 'ai' ),
+					'description' => __( 'The readable posts matching the request. A single-element list when requested by ID.', 'ai' ),
 					'items'       => $post_schema,
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of posts matching the query, across all pages, after applying the editable permission filter to the query. Surfaced over REST as the X-WP-Total header.', 'ai' ),
+					'description' => __( 'Total number of posts matching the query, across all pages, after applying the permission filter to the query. Surfaced over REST as the X-WP-Total header.', 'ai' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of query result pages available after applying the editable permission filter to the query. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
+					'description' => __( 'Total number of query result pages available after applying the permission filter to the query. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
 				),
 			),
 		);
@@ -633,6 +811,11 @@ final class Content {
 
 	/**
 	 * Formats a post into the ability output shape.
+	 *
+	 * Only the requested fields that the post type supports and the current user can see
+	 * are included. Raw fields are edit-context fields; rendered fields are read-context
+	 * fields and are withheld for password-protected posts unless the current user can edit
+	 * the post, mirroring the REST API behavior.
 	 *
 	 * @since x.x.x
 	 *
@@ -660,10 +843,16 @@ final class Content {
 			$data['status'] = $post->post_status;
 		}
 		if ( $wants( 'date' ) ) {
-			$data['date'] = $this->format_gmt_date( $post, 'date' );
+			$data['date'] = $this->format_local_date( $post, 'date' );
+		}
+		if ( $wants( 'date_gmt' ) ) {
+			$data['date_gmt'] = $this->format_gmt_date( $post, 'date' );
 		}
 		if ( $wants( 'modified' ) ) {
-			$data['modified'] = $this->format_gmt_date( $post, 'modified' );
+			$data['modified'] = $this->format_local_date( $post, 'modified' );
+		}
+		if ( $wants( 'modified_gmt' ) ) {
+			$data['modified_gmt'] = $this->format_gmt_date( $post, 'modified' );
 		}
 		if ( $wants( 'slug' ) ) {
 			$data['slug'] = $post->post_name;
@@ -672,16 +861,36 @@ final class Content {
 			$data['link'] = (string) get_permalink( $post );
 		}
 
-		if ( $wants( 'title' ) && post_type_supports( $type, 'title' ) ) {
-			$data['title'] = $this->get_title( $post );
+		if ( $wants( 'title_raw' ) && post_type_supports( $type, 'title' ) && $can_edit ) {
+			$data['title_raw'] = $post->post_title;
 		}
 
-		if ( $wants( 'excerpt' ) && post_type_supports( $type, 'excerpt' ) ) {
-			$data['excerpt'] = $protected ? '' : (string) get_the_excerpt( $post );
+		if ( $wants( 'title_rendered' ) && post_type_supports( $type, 'title' ) ) {
+			$data['title_rendered'] = $this->get_title( $post );
 		}
 
-		if ( $wants( 'raw_content' ) && post_type_supports( $type, 'editor' ) ) {
-			$data['raw_content'] = $can_edit && ! $protected ? (string) $post->post_content : '';
+		if ( $wants( 'excerpt_raw' ) && post_type_supports( $type, 'excerpt' ) && $can_edit ) {
+			$data['excerpt_raw'] = $post->post_excerpt;
+		}
+
+		if ( $wants( 'excerpt_rendered' ) && post_type_supports( $type, 'excerpt' ) ) {
+			$data['excerpt_rendered'] = $protected ? '' : (string) get_the_excerpt( $post );
+		}
+
+		if ( $wants( 'excerpt_protected' ) && post_type_supports( $type, 'excerpt' ) ) {
+			$data['excerpt_protected'] = (bool) $post->post_password;
+		}
+
+		if ( $wants( 'content_raw' ) && post_type_supports( $type, 'editor' ) && $can_edit ) {
+			$data['content_raw'] = $post->post_content;
+		}
+
+		if ( $wants( 'content_rendered' ) && post_type_supports( $type, 'editor' ) ) {
+			$data['content_rendered'] = $protected ? '' : $this->get_rendered_content( $post );
+		}
+
+		if ( $wants( 'content_protected' ) && post_type_supports( $type, 'editor' ) ) {
+			$data['content_protected'] = (bool) $post->post_password;
 		}
 
 		if ( $wants( 'author' ) && post_type_supports( $type, 'author' ) ) {
@@ -730,7 +939,66 @@ final class Content {
 	}
 
 	/**
+	 * Returns post content transformed for display.
+	 *
+	 * Mirrors the REST posts controller by preparing post globals before applying
+	 * `the_content`, then restoring the previous global post context.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post The post object.
+	 * @return string Rendered post content.
+	 */
+	private function get_rendered_content( WP_Post $post ): string {
+		$previous_post = $GLOBALS['post'] ?? null;
+
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Temporarily mirrors REST post context for content rendering.
+		$GLOBALS['post'] = $post;
+		setup_postdata( $post );
+
+		/** This filter is documented in wp-includes/post-template.php. */
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
+		$content = apply_filters( 'the_content', $post->post_content );
+
+		if ( $previous_post instanceof WP_Post ) {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
+			$GLOBALS['post'] = $previous_post;
+			setup_postdata( $previous_post );
+		} else {
+			unset( $GLOBALS['post'] );
+			wp_reset_postdata();
+		}
+
+		return (string) $content;
+	}
+
+	/**
+	 * Formats a post date field as an ISO 8601 string in the site's timezone.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post  The post object.
+	 * @param string   $field Either 'date' or 'modified'.
+	 * @return string The ISO 8601 date, or an empty string if unavailable.
+	 */
+	private function format_local_date( WP_Post $post, string $field ): string {
+		$field    = 'modified' === $field ? 'modified' : 'date';
+		$datetime = get_post_datetime( $post, $field, 'local' );
+		if ( $datetime ) {
+			return $datetime->format( 'c' );
+		}
+
+		$local     = 'modified' === $field ? $post->post_modified : $post->post_date;
+		$timestamp = mysql2date( 'U', $local, false );
+
+		return $timestamp ? (string) wp_date( 'c', (int) $timestamp ) : '';
+	}
+
+	/**
 	 * Formats a post date field as an ISO 8601 string in GMT.
+	 *
+	 * Uses get_post_datetime() so that posts without a GMT timestamp (e.g. some drafts)
+	 * still resolve to a valid date.
 	 *
 	 * @since x.x.x
 	 *
@@ -745,6 +1013,7 @@ final class Content {
 			return $datetime->format( 'c' );
 		}
 
+		// Fallback for posts without a resolvable timestamp.
 		$local     = 'modified' === $field ? $post->post_modified : $post->post_date;
 		$timestamp = mysql2date( 'U', $local, false );
 
