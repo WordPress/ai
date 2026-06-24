@@ -522,7 +522,9 @@ test.describe( 'Plugin settings', () => {
 		await page.keyboard.press( 'Escape' );
 
 		// Scope all selectors to the first developer settings form (Content Classification).
-		const developerFields = page.locator( '.ai-developer-mode-fields' ).first();
+		const developerFields = page
+			.locator( '.ai-developer-mode-fields' )
+			.first();
 
 		await expect( developerFields ).toBeVisible( { timeout: 10000 } );
 
@@ -619,7 +621,9 @@ test.describe( 'Plugin settings', () => {
 		await page.keyboard.press( 'Escape' );
 
 		// Scope all selectors to the first developer settings form (Content Classification).
-		const developerFields = page.locator( '.ai-developer-mode-fields' ).first();
+		const developerFields = page
+			.locator( '.ai-developer-mode-fields' )
+			.first();
 
 		await expect( developerFields ).toBeVisible( { timeout: 10000 } );
 
