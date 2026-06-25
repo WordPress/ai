@@ -50,6 +50,8 @@ test.describe( 'core/users ability (client-side Abilities API)', () => {
 	let currentUser;
 
 	test.beforeAll( async ( { requestUtils } ) => {
+		await requestUtils.activatePlugin( 'ai' );
+
 		currentUser = await requestUtils.rest( {
 			path: '/wp/v2/users/me',
 			params: { context: 'edit' },
