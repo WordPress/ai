@@ -24,12 +24,14 @@ const {
  * is enabled in the block editor (it declares them as `module_dependencies`), which is
  * set up in `beforeEach`.
  *
- * @param {import('@playwright/test').Page} page  The Playwright page.
- * @param {Object}                          input The ability input.
+ * @param {import('@playwright/test').Page} page   The Playwright page.
+ * @param {Object}                          input  Optional. The ability input.
  * @return {Promise<Object>} `{ ok: true, result }` or `{ ok: false, code }`.
  */
 async function runCoreUsers( page, input ) {
-	return page.evaluate( async ( abilityInput ) => {
+	const hasInput = arguments.length > 1;
+
+	return page.evaluate( async ( { abilityInput, shouldPassInput } ) => {
 		const { ready } = await import( '@wordpress/core-abilities' );
 		if ( ready ) {
 			await ready;
@@ -38,12 +40,14 @@ async function runCoreUsers( page, input ) {
 		const { executeAbility } = await import( '@wordpress/abilities' );
 
 		try {
-			const result = await executeAbility( 'core/users', abilityInput );
+			const result = shouldPassInput
+				? await executeAbility( 'core/users', abilityInput )
+				: await executeAbility( 'core/users' );
 			return { ok: true, result };
 		} catch ( e ) {
 			return { ok: false, code: e && e.code ? e.code : null };
 		}
-	}, input );
+	}, { abilityInput: input, shouldPassInput: hasInput } );
 }
 
 test.describe( 'core/users ability (client-side Abilities API)', () => {
@@ -92,6 +96,19 @@ test.describe( 'core/users ability (client-side Abilities API)', () => {
 		page,
 	} ) => {
 		const outcome = await runCoreUsers( page, {} );
+
+		expect( outcome.ok ).toBe( true );
+		expect( Array.isArray( outcome.result.users ) ).toBe( true );
+		expect( outcome.result.users.length ).toBeGreaterThan( 0 );
+		expect(
+			outcome.result.users.some( ( user ) => user.id === currentUser.id )
+		).toBe( true );
+	} );
+
+	test( 'returns a users collection when input is omitted', async ( {
+		page,
+	} ) => {
+		const outcome = await runCoreUsers( page );
 
 		expect( outcome.ok ).toBe( true );
 		expect( Array.isArray( outcome.result.users ) ).toBe( true );
