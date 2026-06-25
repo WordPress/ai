@@ -487,33 +487,56 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * User email and login lookups for another user require list or edit permissions.
+	 * User email and login lookups for another user require list or edit permissions across roles.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_roles_for_sensitive_identifier_lookup_permissions
+	 *
+	 * @param string $role        Current user's role.
+	 * @param bool   $can_resolve Whether the role can resolve another user by sensitive identifiers.
 	 */
-	public function test_user_email_and_login_lookup_for_another_user_requires_permission(): void {
-		wp_set_current_user( $this->subscriber_id );
+	public function test_roles_have_expected_sensitive_identifier_lookup_permissions( string $role, bool $can_resolve ): void {
+		wp_set_current_user( self::$fixture_ids[ $role ] );
 		$this->register_ability();
 
 		$ability = wp_get_ability( 'core/users' );
 
 		$result = $ability->execute( array( 'user_email' => 'users-ability-author@example.com' ) );
-		$this->assertWPError( $result, 'A subscriber should not be able to resolve another user by email.' );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Email lookup denial should use the invalid permissions error.' );
+		if ( $can_resolve ) {
+			$this->assertIsArray( $result, sprintf( 'The %s role should be able to resolve another user by email.', $role ) );
+			$this->assertSame( $this->public_author_id, $result['users'][0]['id'], sprintf( 'The email lookup should return the public author for the %s role.', $role ) );
+		} else {
+			$this->assertWPError( $result, sprintf( 'The %s role should not be able to resolve another user by email.', $role ) );
+			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), sprintf( 'Email lookup denial for the %s role should use the invalid permissions error.', $role ) );
+		}
 
 		$result = $ability->execute( array( 'user_login' => 'users_ability_author' ) );
-		$this->assertWPError( $result, 'A subscriber should not be able to resolve another user by login.' );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Login lookup denial should use the invalid permissions error.' );
+		if ( $can_resolve ) {
+			$this->assertIsArray( $result, sprintf( 'The %s role should be able to resolve another user by login.', $role ) );
+			$this->assertSame( $this->public_author_id, $result['users'][0]['id'], sprintf( 'The login lookup should return the public author for the %s role.', $role ) );
+			return;
+		}
 
-		wp_set_current_user( $this->admin_id );
+		$this->assertWPError( $result, sprintf( 'The %s role should not be able to resolve another user by login.', $role ) );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), sprintf( 'Login lookup denial for the %s role should use the invalid permissions error.', $role ) );
+	}
 
-		$result = $ability->execute( array( 'user_email' => 'users-ability-author@example.com' ) );
-		$this->assertIsArray( $result, 'An administrator should be able to resolve another user by email.' );
-		$this->assertSame( $this->public_author_id, $result['users'][0]['id'], 'The email lookup should return the public author for an administrator.' );
-
-		$result = $ability->execute( array( 'user_login' => 'users_ability_author' ) );
-		$this->assertIsArray( $result, 'An administrator should be able to resolve another user by login.' );
-		$this->assertSame( $this->public_author_id, $result['users'][0]['id'], 'The login lookup should return the public author for an administrator.' );
+	/**
+	 * Data provider for role-based sensitive identifier lookup checks.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: bool}>
+	 */
+	public static function data_roles_for_sensitive_identifier_lookup_permissions(): array {
+		return array(
+			'administrator' => array( 'administrator', true ),
+			'editor'        => array( 'editor', false ),
+			'author'        => array( 'author', false ),
+			'contributor'   => array( 'contributor', false ),
+			'subscriber'    => array( 'subscriber', false ),
+		);
 	}
 
 	/**
