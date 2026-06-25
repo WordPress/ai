@@ -750,6 +750,7 @@ final class Users {
 			),
 			'user_registered' => array(
 				'type'        => 'string',
+				'format'      => 'date-time',
 				'description' => __( 'Registration date for the user. Present when the current user can view it.', 'ai' ),
 			),
 			'roles'           => array(
@@ -861,7 +862,7 @@ final class Users {
 				$data['locale'] = (string) get_user_locale( $user );
 			}
 			if ( $fields_requested( 'user_registered' ) ) {
-				$data['user_registered'] = (string) $user->user_registered;
+				$data['user_registered'] = gmdate( 'c', strtotime( $user->user_registered ) );
 			}
 		}
 

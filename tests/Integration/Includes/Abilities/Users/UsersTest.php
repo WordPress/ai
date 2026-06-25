@@ -295,6 +295,10 @@ class UsersTest extends WP_UnitTestCase {
 		$fields = $schema['oneOf'][4]['properties']['fields']['items']['enum'];
 		$this->assertContains( 'roles', $fields );
 		$this->assertContains( 'avatar_urls', $fields );
+
+		$output_schema   = wp_get_ability( 'core/users' )->get_output_schema();
+		$user_properties = $output_schema['properties']['users']['items']['properties'];
+		$this->assertSame( 'date-time', $user_properties['user_registered']['format'] );
 	}
 
 	/**
@@ -365,6 +369,13 @@ class UsersTest extends WP_UnitTestCase {
 		$result = $ability->execute( array( 'user_login' => 'users_ability_subscriber' ) );
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->subscriber_id, $result['users'][0]['id'] );
+
+		$result = $ability->execute( array( 'id' => $this->subscriber_id, 'fields' => array( 'id', 'user_registered' ) ) );
+		$this->assertIsArray( $result );
+		$this->assertSame(
+			gmdate( 'c', strtotime( get_userdata( $this->subscriber_id )->user_registered ) ),
+			$result['users'][0]['user_registered']
+		);
 	}
 
 	/**
