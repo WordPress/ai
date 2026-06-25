@@ -71,27 +71,27 @@ class UsersTest extends WP_UnitTestCase {
 
 		$this->admin_id = self::factory()->user->create(
 			array(
-				'role'         => 'administrator',
-				'user_login'   => 'users_ability_admin',
-				'user_email'   => 'users-ability-admin@example.com',
+				'role'          => 'administrator',
+				'user_login'    => 'users_ability_admin',
+				'user_email'    => 'users-ability-admin@example.com',
 				'user_nicename' => 'users-ability-admin',
 			)
 		);
 
 		$this->subscriber_id = self::factory()->user->create(
 			array(
-				'role'         => 'subscriber',
-				'user_login'   => 'users_ability_subscriber',
-				'user_email'   => 'users-ability-subscriber@example.com',
+				'role'          => 'subscriber',
+				'user_login'    => 'users_ability_subscriber',
+				'user_email'    => 'users-ability-subscriber@example.com',
 				'user_nicename' => 'users-ability-subscriber',
 			)
 		);
 
 		$this->public_author_id = self::factory()->user->create(
 			array(
-				'role'         => 'author',
-				'user_login'   => 'users_ability_author',
-				'user_email'   => 'users-ability-author@example.com',
+				'role'          => 'author',
+				'user_login'    => 'users_ability_author',
+				'user_email'    => 'users-ability-author@example.com',
 				'user_nicename' => 'users-ability-author',
 			)
 		);
