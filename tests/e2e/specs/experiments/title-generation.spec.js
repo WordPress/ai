@@ -50,44 +50,39 @@ test.describe( 'Title Generation Experiment', () => {
 		await editor.saveDraft();
 
 		// Click into the title field.
-		await editor.canvas.locator( '.editor-post-title__input' ).click();
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add Title' } )
+			.click();
 
 		// Ensure the title toolbar is visible with "Generate" label.
 		await expect(
-			editor.canvas.locator( '.ai-title-toolbar-container', {
-				hasText: 'Generate',
-			} )
+			editor.canvas.getByRole( 'button', { name: 'Generate' } )
 		).toBeVisible();
 
 		// Click the Generate button.
-		await editor.canvas
-			.locator( '.ai-title-toolbar-container button' )
-			.click();
+		await editor.canvas.getByRole( 'button', { name: 'Generate' } ).click();
+
+		const modal = page.getByRole( 'dialog', {
+			name: 'Title suggestion',
+		} );
 
 		// Ensure the title modal is visible.
-		await expect(
-			page.locator( '.ai-title-generation-modal' )
-		).toBeVisible();
+		await expect( modal ).toBeVisible();
 
 		// Ensure the generated title textarea is visible.
 		await expect(
-			page.locator( '.ai-title-generation-modal textarea' )
+			page.getByRole( 'textbox', { name: 'Generated title' } )
 		).toBeVisible();
 
 		// Click Insert to apply the generated title.
-		await page
-			.locator( '.ai-title-generation-modal' )
-			.getByRole( 'button', { name: 'Insert' } )
-			.click();
+		await modal.getByRole( 'button', { name: 'Insert' } ).click();
 
 		// Ensure the title modal is closed.
-		await expect(
-			page.locator( '.ai-title-generation-modal' )
-		).not.toBeVisible();
+		await expect( modal ).not.toBeVisible();
 
 		// Ensure the title is updated.
 		await expect(
-			editor.canvas.locator( '.editor-post-title__input' )
+			editor.canvas.getByRole( 'textbox', { name: 'Add Title' } )
 		).toHaveText(
 			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
 			{ timeout: 10000 }
@@ -119,44 +114,41 @@ test.describe( 'Title Generation Experiment', () => {
 		await editor.saveDraft();
 
 		// Click into the title field.
-		await editor.canvas.locator( '.editor-post-title__input' ).click();
-
-		// Ensure the title toolbar is visible with "Regenerate" label.
-		await expect(
-			editor.canvas.locator( '.ai-title-toolbar-container', {
-				hasText: 'Regenerate',
-			} )
-		).toBeVisible();
-
-		// Click the Regenerate button.
 		await editor.canvas
-			.locator( '.ai-title-toolbar-container button' )
+			.getByRole( 'textbox', { name: 'Add Title' } )
 			.click();
 
+		const generateTitleToolbar = editor.canvas.getByRole( 'toolbar', {
+			name: 'Generate title toolbar',
+		} );
+
+		// Ensure the title toolbar is visible.
+		await expect( generateTitleToolbar ).toBeVisible();
+
+		// Click the Regenerate button.
+		await generateTitleToolbar
+			.getByRole( 'button', { name: 'Regenerate' } )
+			.click();
+
+		const modal = page.getByRole( 'dialog', { name: 'Title suggestion' } );
+
 		// Ensure the title modal is visible.
-		await expect(
-			page.locator( '.ai-title-generation-modal' )
-		).toBeVisible();
+		await expect( modal ).toBeVisible();
 
 		// Ensure the generated title textarea is visible.
 		await expect(
-			page.locator( '.ai-title-generation-modal textarea' )
+			page.getByRole( 'textbox', { name: 'Generated title' } )
 		).toBeVisible();
 
 		// Click Insert to apply the generated title.
-		await page
-			.locator( '.ai-title-generation-modal' )
-			.getByRole( 'button', { name: 'Insert' } )
-			.click();
+		await modal.getByRole( 'button', { name: 'Insert' } ).click();
 
 		// Ensure the title modal is closed.
-		await expect(
-			page.locator( '.ai-title-generation-modal' )
-		).not.toBeVisible();
+		await expect( modal ).not.toBeVisible();
 
 		// Ensure the title is updated.
 		await expect(
-			editor.canvas.locator( '.editor-post-title__input' )
+			editor.canvas.getByRole( 'textbox', { name: 'Add Title' } )
 		).toHaveText(
 			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
 			{ timeout: 10000 }
@@ -188,18 +180,22 @@ test.describe( 'Title Generation Experiment', () => {
 		await editor.saveDraft();
 
 		// Click into the title field to reveal the toolbar.
-		await editor.canvas.locator( '.editor-post-title__input' ).click();
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add Title' } )
+			.click();
+
+		const generateTitleToolbar = editor.canvas.getByRole( 'toolbar', {
+			name: 'Generate title toolbar',
+		} );
 
 		// The toolbar is visible with the "Generate" label.
-		await expect(
-			editor.canvas.locator( '.ai-title-toolbar-container', {
-				hasText: 'Generate',
-			} )
-		).toBeVisible();
+		await expect( generateTitleToolbar ).toBeVisible();
 
 		await expect(
-			editor.canvas.locator( '.ai-title-toolbar-container button' )
-		).toHaveAttribute( 'aria-disabled', 'true' );
+			generateTitleToolbar
+				.getByRole( 'button' )
+				.filter( { hasText: 'Generate' } )
+		).toBeDisabled();
 	} );
 
 	test( 'Ensure the Title Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
@@ -225,11 +221,15 @@ test.describe( 'Title Generation Experiment', () => {
 		await editor.saveDraft();
 
 		// Click into the title field.
-		await editor.canvas.locator( '.editor-post-title__input' ).click();
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add Title' } )
+			.click();
 
 		// Ensure the title toolbar is not there.
 		await expect(
-			editor.canvas.locator( '.ai-title-toolbar-container' )
+			editor.canvas.getByRole( 'toolbar', {
+				name: 'Generate title toolbar',
+			} )
 		).not.toBeVisible();
 	} );
 
@@ -256,11 +256,15 @@ test.describe( 'Title Generation Experiment', () => {
 		await editor.saveDraft();
 
 		// Click into the title field.
-		await editor.canvas.locator( '.editor-post-title__input' ).click();
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add Title' } )
+			.click();
 
 		// Ensure the title toolbar is not there.
 		await expect(
-			editor.canvas.locator( '.ai-title-toolbar-container' )
+			editor.canvas.getByRole( 'toolbar', {
+				name: 'Generate title toolbar',
+			} )
 		).not.toBeVisible();
 	} );
 } );
