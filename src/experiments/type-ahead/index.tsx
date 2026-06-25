@@ -19,6 +19,7 @@ import { addFilter } from '@wordpress/hooks';
 import TypeAheadBlock from './components/TypeAheadBlock';
 import { ALLOWED_BLOCKS } from './constants';
 import type { TypeAheadSettings } from './types';
+import { normalizeTypeAheadSettings } from './utils/settings';
 import './index.scss';
 
 /**
@@ -55,5 +56,5 @@ const bootstrap = ( settings: TypeAheadSettings ) => {
 
 const settings = window.aiTypeAheadData;
 if ( settings ) {
-	bootstrap( settings );
+	bootstrap( normalizeTypeAheadSettings( settings ) );
 }

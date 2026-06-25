@@ -13,6 +13,21 @@ export type TypeAheadSettings = {
 	maxWords: number;
 };
 
+/**
+ * Localized data from the PHP side.
+ *
+ * wp_localize_script() casts scalar values to strings, so numeric and boolean
+ * fields may arrive as strings until normalized for runtime use.
+ */
+export type TypeAheadLocalizedData = {
+	enabled?: boolean | string;
+	completionMode?: CompletionMode;
+	triggerDelay?: number | string;
+	confidence?: number | string;
+	showHeadings?: boolean | string;
+	maxWords?: number | string;
+};
+
 export type Suggestion = {
 	text: string;
 	confidence: number;
@@ -44,6 +59,6 @@ export type TypeAheadAbilityInput = {
 
 declare global {
 	interface Window {
-		aiTypeAheadData?: TypeAheadSettings;
+		aiTypeAheadData?: TypeAheadLocalizedData;
 	}
 }
