@@ -105,6 +105,7 @@ class UsersTest extends WP_UnitTestCase {
 		);
 
 		$this->ensure_user_category();
+		$this->ensure_site_category();
 	}
 
 	/**
@@ -142,6 +143,32 @@ class UsersTest extends WP_UnitTestCase {
 				array(
 					'label'       => 'Users',
 					'description' => 'Users.',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * Ensures the `site` ability category exists, used by the plugin's `core/settings`
+	 * ability which registers on the same hook as `core/users`.
+	 *
+	 * @since x.x.x
+	 */
+	private function ensure_site_category(): void {
+		if ( wp_has_ability_category( 'site' ) ) {
+			return;
+		}
+
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			wp_register_ability_category(
+				'site',
+				array(
+					'label'       => 'Site',
+					'description' => 'Site.',
 				)
 			);
 		} finally {
