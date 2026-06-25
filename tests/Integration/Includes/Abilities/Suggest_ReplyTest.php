@@ -364,4 +364,42 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 
 		$this->assertStringNotContainsString( 'Editorial Guidelines:', $context );
 	}
+
+	/**
+	 * Test that execute_callback() returns a WP_Error when no text-generation model is available.
+	 *
+	 * The generate_reply() path calls ensure_text_generation_supported(), which returns
+	 * a WP_Error with code 'unsupported_model' when the prompt builder cannot find a
+	 * model capable of text generation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_returns_error_when_no_text_generation_model_available() {
+		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
+		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		delete_option( 'wp_ai_client_provider_credentials' );
+
+		$comment_id = self::factory()->comment->create(
+			array(
+				'comment_author'  => 'Carol',
+				'comment_content' => 'Interesting read.',
+			)
+		);
+
+		$reflection  = new \ReflectionClass( $this->ability );
+		$exec_method = $reflection->getMethod( 'execute_callback' );
+		$exec_method->setAccessible( true );
+
+		$result = $exec_method->invoke(
+			$this->ability,
+			array(
+				'comment_id' => $comment_id,
+				'tone'       => 'friendly',
+				'guidelines' => '',
+			)
+		);
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'unsupported_model', $result->get_error_code() );
+	}
 }
