@@ -260,9 +260,9 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertCount( 5, $schema['oneOf'] );
 
 		$this->assertSame( array( 'id' ), $schema['oneOf'][0]['required'] );
-		$this->assertSame( array( 'email' ), $schema['oneOf'][1]['required'] );
-		$this->assertSame( array( 'username' ), $schema['oneOf'][2]['required'] );
-		$this->assertSame( array( 'slug' ), $schema['oneOf'][3]['required'] );
+		$this->assertSame( array( 'user_email' ), $schema['oneOf'][1]['required'] );
+		$this->assertSame( array( 'user_login' ), $schema['oneOf'][2]['required'] );
+		$this->assertSame( array( 'user_nicename' ), $schema['oneOf'][3]['required'] );
 		$this->assertArrayNotHasKey( 'required', $schema['oneOf'][4] );
 
 		$collection_properties = $schema['oneOf'][4]['properties'];
@@ -270,7 +270,25 @@ class UsersTest extends WP_UnitTestCase {
 			array( 'roles', 'has_published_posts', 'fields', 'page', 'per_page' ),
 			array_keys( $collection_properties )
 		);
-		foreach ( array( 'search', 'include', 'exclude', 'slug', 'order', 'orderby', 'search_columns', 'offset', 'context', 'who', 'capabilities' ) as $excluded_property ) {
+		$excluded_properties = array(
+			'search',
+			'include',
+			'exclude',
+			'email',
+			'username',
+			'slug',
+			'user_email',
+			'user_login',
+			'user_nicename',
+			'order',
+			'orderby',
+			'search_columns',
+			'offset',
+			'context',
+			'who',
+			'capabilities',
+		);
+		foreach ( $excluded_properties as $excluded_property ) {
 			$this->assertArrayNotHasKey( $excluded_property, $collection_properties );
 		}
 
@@ -317,7 +335,7 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The current user can read themselves by ID, email, and username.
+	 * The current user can read themselves by ID, user email, and user login.
 	 *
 	 * @since x.x.x
 	 */
@@ -330,31 +348,31 @@ class UsersTest extends WP_UnitTestCase {
 		$result = $ability->execute(
 			array(
 				'id'     => $this->subscriber_id,
-				'fields' => array( 'id', 'email', 'username', 'roles' ),
+				'fields' => array( 'id', 'user_email', 'user_login', 'roles' ),
 			)
 		);
 
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->subscriber_id, $result['users'][0]['id'] );
-		$this->assertSame( 'users-ability-subscriber@example.com', $result['users'][0]['email'] );
-		$this->assertSame( 'users_ability_subscriber', $result['users'][0]['username'] );
+		$this->assertSame( 'users-ability-subscriber@example.com', $result['users'][0]['user_email'] );
+		$this->assertSame( 'users_ability_subscriber', $result['users'][0]['user_login'] );
 		$this->assertContains( 'subscriber', $result['users'][0]['roles'] );
 
-		$result = $ability->execute( array( 'email' => 'users-ability-subscriber@example.com' ) );
+		$result = $ability->execute( array( 'user_email' => 'users-ability-subscriber@example.com' ) );
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->subscriber_id, $result['users'][0]['id'] );
 
-		$result = $ability->execute( array( 'username' => 'users_ability_subscriber' ) );
+		$result = $ability->execute( array( 'user_login' => 'users_ability_subscriber' ) );
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->subscriber_id, $result['users'][0]['id'] );
 	}
 
 	/**
-	 * Public-author users can be read by ID or slug by logged-in users.
+	 * Public-author users can be read by ID or user nicename by logged-in users.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_public_author_can_be_read_by_id_and_slug(): void {
+	public function test_public_author_can_be_read_by_id_and_user_nicename(): void {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
@@ -363,47 +381,47 @@ class UsersTest extends WP_UnitTestCase {
 		$result = $ability->execute(
 			array(
 				'id'     => $this->public_author_id,
-				'fields' => array( 'id', 'slug', 'email' ),
+				'fields' => array( 'id', 'user_nicename', 'user_email' ),
 			)
 		);
 
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->public_author_id, $result['users'][0]['id'] );
-		$this->assertSame( 'users-ability-author', $result['users'][0]['slug'] );
-		$this->assertArrayNotHasKey( 'email', $result['users'][0] );
+		$this->assertSame( 'users-ability-author', $result['users'][0]['user_nicename'] );
+		$this->assertArrayNotHasKey( 'user_email', $result['users'][0] );
 
-		$result = $ability->execute( array( 'slug' => 'users-ability-author' ) );
+		$result = $ability->execute( array( 'user_nicename' => 'users-ability-author' ) );
 
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->public_author_id, $result['users'][0]['id'] );
 	}
 
 	/**
-	 * Email and username lookups for another user require list or edit permissions.
+	 * User email and login lookups for another user require list or edit permissions.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_email_and_username_lookup_for_another_user_requires_permission(): void {
+	public function test_user_email_and_login_lookup_for_another_user_requires_permission(): void {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
 		$ability = wp_get_ability( 'core/users' );
 
-		$result = $ability->execute( array( 'email' => 'users-ability-author@example.com' ) );
+		$result = $ability->execute( array( 'user_email' => 'users-ability-author@example.com' ) );
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
 
-		$result = $ability->execute( array( 'username' => 'users_ability_author' ) );
+		$result = $ability->execute( array( 'user_login' => 'users_ability_author' ) );
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
 
 		wp_set_current_user( $this->admin_id );
 
-		$result = $ability->execute( array( 'email' => 'users-ability-author@example.com' ) );
+		$result = $ability->execute( array( 'user_email' => 'users-ability-author@example.com' ) );
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->public_author_id, $result['users'][0]['id'] );
 
-		$result = $ability->execute( array( 'username' => 'users_ability_author' ) );
+		$result = $ability->execute( array( 'user_login' => 'users_ability_author' ) );
 		$this->assertIsArray( $result );
 		$this->assertSame( $this->public_author_id, $result['users'][0]['id'] );
 	}
@@ -478,7 +496,7 @@ class UsersTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/users' )->execute(
 			array(
 				'id'     => $this->public_author_id,
-				'fields' => array( 'id', 'email', 'roles' ),
+				'fields' => array( 'id', 'user_email', 'roles' ),
 			)
 		);
 
