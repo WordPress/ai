@@ -96,6 +96,38 @@ final class Users {
 	);
 
 	/**
+	 * Cached public post type names.
+	 *
+	 * @since x.x.x
+	 * @var string[]|null
+	 */
+	private ?array $public_post_types = null;
+
+	/**
+	 * Cached supported field list.
+	 *
+	 * @since x.x.x
+	 * @var string[]|null
+	 */
+	private ?array $fields = null;
+
+	/**
+	 * Whether the cached supported field list includes avatars.
+	 *
+	 * @since x.x.x
+	 * @var bool|null
+	 */
+	private ?bool $fields_include_avatars = null;
+
+	/**
+	 * Cached role names.
+	 *
+	 * @since x.x.x
+	 * @var string[]|null
+	 */
+	private ?array $role_names = null;
+
+	/**
 	 * Hooks the ability into the Abilities API.
 	 *
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
@@ -443,6 +475,10 @@ final class Users {
 	 * @return string[] Public post type names.
 	 */
 	private function get_public_post_types(): array {
+		if ( null !== $this->public_post_types ) {
+			return $this->public_post_types;
+		}
+
 		$post_types = array();
 
 		foreach ( get_post_types( array( 'public' => true ), 'names' ) as $post_type ) {
@@ -453,7 +489,9 @@ final class Users {
 			$post_types[] = $post_type;
 		}
 
-		return $post_types;
+		$this->public_post_types = $post_types;
+
+		return $this->public_post_types;
 	}
 
 	/**
@@ -488,13 +526,39 @@ final class Users {
 	 * @return string[] Supported field names.
 	 */
 	private function get_fields(): array {
+		$include_avatars = (bool) get_option( 'show_avatars' );
+
+		if ( null !== $this->fields && $include_avatars === $this->fields_include_avatars ) {
+			return $this->fields;
+		}
+
 		$fields = $this->read_fields;
 
-		if ( get_option( 'show_avatars' ) ) {
+		if ( $include_avatars ) {
 			$fields[] = 'avatar_urls';
 		}
 
-		return array_merge( $fields, $this->sensitive_fields, array( 'roles' ) );
+		$this->fields                 = array_merge( $fields, $this->sensitive_fields, array( 'roles' ) );
+		$this->fields_include_avatars = $include_avatars;
+
+		return $this->fields;
+	}
+
+	/**
+	 * Returns registered role names.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string[] Role names.
+	 */
+	private function get_role_names(): array {
+		if ( null !== $this->role_names ) {
+			return $this->role_names;
+		}
+
+		$this->role_names = array_keys( wp_roles()->roles );
+
+		return $this->role_names;
 	}
 
 	/**
@@ -575,7 +639,9 @@ final class Users {
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
 	private function get_users_input_schema(): array {
-		$fields = array(
+		$role_names        = $this->get_role_names();
+		$public_post_types = $this->get_public_post_types();
+		$fields            = array(
 			'type'        => 'array',
 			'uniqueItems' => true,
 			'items'       => array(
@@ -649,6 +715,7 @@ final class Users {
 							'minItems'    => 1,
 							'items'       => array(
 								'type' => 'string',
+								'enum' => $role_names,
 							),
 							'description' => __( 'Filter users by one or more roles. Requires permission to list users.', 'ai' ),
 						),
@@ -664,6 +731,7 @@ final class Users {
 									'minItems'    => 1,
 									'items'       => array(
 										'type' => 'string',
+										'enum' => $public_post_types,
 									),
 								),
 							),
@@ -758,6 +826,7 @@ final class Users {
 				'description' => __( 'Roles assigned to the user. Present when the current user can view them.', 'ai' ),
 				'items'       => array(
 					'type' => 'string',
+					'enum' => $this->get_role_names(),
 				),
 			),
 		);
