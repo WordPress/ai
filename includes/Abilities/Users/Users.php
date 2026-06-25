@@ -931,7 +931,10 @@ final class Users {
 				$data['locale'] = (string) get_user_locale( $user );
 			}
 			if ( $fields_requested( 'user_registered' ) ) {
-				$data['user_registered'] = gmdate( 'c', strtotime( $user->user_registered ) );
+				$registered_timestamp = strtotime( $user->user_registered );
+				if ( false !== $registered_timestamp ) {
+					$data['user_registered'] = gmdate( 'c', $registered_timestamp );
+				}
 			}
 		}
 
