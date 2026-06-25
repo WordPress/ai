@@ -34,6 +34,14 @@ const MAX_SUGGESTIONS = 10;
 
 const suggestionsCache: Record< string, TagSuggestion[] > = {};
 
+/**
+ * Tracks the current suggestions generation cycle count for each taxonomy.
+ *
+ * Incremented on suggestion regeneration or dismissal.
+ * Prevents race conditions from stale request failures trying to restore pills.
+ */
+const generationCounts: Record< string, number > = {};
+
 const normalizeMaxSuggestions = ( value: unknown ): number => {
 	const parsedValue = Number.parseInt(
 		String( value ?? DEFAULT_MAX_SUGGESTIONS ),
@@ -178,6 +186,9 @@ export function useContentClassification( taxonomy: string ): {
 			return;
 		}
 
+		generationCounts[ taxonomy ] =
+			( generationCounts[ taxonomy ] || 0 ) + 1;
+
 		const settings = getSettings();
 		setIsGenerating( true );
 		setSuggestions( [] );
@@ -235,29 +246,21 @@ export function useContentClassification( taxonomy: string ): {
 				return prev.filter( ( s ) => s.term !== suggestion.term );
 			} );
 
+			const clickGenerationCount = generationCounts[ taxonomy ] || 0;
+
 			addTermToPost( taxonomy, suggestion ).then( ( success ) => {
-				if ( ! success ) {
-					setSuggestions( ( prev ) => {
-						// Skip if already present.
-						if (
-							prev.some( ( s ) => s.term === suggestion.term )
-						) {
-							return prev;
-						}
+				if ( success ) {
+					return;
+				}
 
-						// If original index was invalid, push to the end.
-						if (
-							originalIndex < 0 ||
-							originalIndex > prev.length
-						) {
-							return [ ...prev, suggestion ];
-						}
-
-						// Otherwise, insert at the correct position.
-						const newSuggestions = [ ...prev ];
-						newSuggestions.splice( originalIndex, 0, suggestion );
-						return newSuggestions;
-					} );
+				// Ensure to not add suggestion back if a new generation/clear has been triggered.
+				if (
+					( generationCounts[ taxonomy ] || 0 ) ===
+					clickGenerationCount
+				) {
+					setSuggestions( ( prev ) =>
+						insertSuggestionAt( prev, suggestion, originalIndex )
+					);
 				}
 			} );
 		},
@@ -271,8 +274,10 @@ export function useContentClassification( taxonomy: string ): {
 
 	// Handle dismissing all suggestions.
 	const handleDismissAll = useCallback( () => {
+		generationCounts[ taxonomy ] =
+			( generationCounts[ taxonomy ] || 0 ) + 1;
 		setSuggestions( [] );
-	}, [] );
+	}, [ taxonomy ] );
 
 	return {
 		isGenerating,
@@ -284,6 +289,35 @@ export function useContentClassification( taxonomy: string ): {
 		handleDismissAll,
 		minContentLength,
 	};
+}
+
+/**
+ * Inserts a suggestion back into a list at the specified index, preventing duplicates.
+ *
+ * @param list       The current list of suggestions.
+ * @param suggestion The suggestion to insert.
+ * @param index      The index to insert the suggestion at.
+ * @return The updated list of suggestions.
+ */
+function insertSuggestionAt(
+	list: TagSuggestion[],
+	suggestion: TagSuggestion,
+	index: number
+): TagSuggestion[] {
+	// Skip if already present.
+	if ( list.some( ( s ) => s.term === suggestion.term ) ) {
+		return list;
+	}
+
+	// If original index is invalid, push to the end.
+	if ( index < 0 || index > list.length ) {
+		return [ ...list, suggestion ];
+	}
+
+	// Otherwise, insert at the correct position.
+	const newList = [ ...list ];
+	newList.splice( index, 0, suggestion );
+	return newList;
 }
 
 /**
