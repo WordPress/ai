@@ -8,7 +8,7 @@
 import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
-import { useState, useCallback } from '@wordpress/element';
+import { useState, useCallback, useEffect } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
 import { addQueryArgs } from '@wordpress/url';
 import apiFetch from '@wordpress/api-fetch';
@@ -31,6 +31,8 @@ const NOTICE_ID = 'ai_content_classification_error';
 const DEFAULT_MAX_SUGGESTIONS = 5;
 const MIN_SUGGESTIONS = 1;
 const MAX_SUGGESTIONS = 10;
+
+const suggestionsCache: Record< string, TagSuggestion[] > = {};
 
 const normalizeMaxSuggestions = ( value: unknown ): number => {
 	const parsedValue = Number.parseInt(
@@ -152,7 +154,15 @@ export function useContentClassification( taxonomy: string ): {
 		};
 	}, [] );
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
-	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
+	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >(
+		() => suggestionsCache[ taxonomy ] ?? []
+	);
+
+	// Sync suggestions to the cache whenever they change.
+	useEffect( () => {
+		suggestionsCache[ taxonomy ] = suggestions;
+	}, [ taxonomy, suggestions ] );
+
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
 
 	const { minContentLength } = getSettings();
