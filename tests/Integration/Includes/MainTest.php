@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
 use WordPress\AI\Main;
+use WordPress\AI\Asset_Loader;
 
 /**
  * Main test case.
@@ -89,6 +90,37 @@ class MainTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'options-connectors.php', $links[0] );
 		$this->assertStringContainsString( 'options-general.php', $links[1] );
 		$this->assertSame( 'existing-link', $links[2] );
+	}
+
+	/**
+	 * @since 1.0.0
+	 */
+	public function test_register_provider_data_adds_global_data() {
+		$main = Main::get_instance();
+		$main->register_provider_data();
+
+		Asset_Loader::enqueue_script( 'test-provider-check', 'features/image-generation' );
+
+		$registered = wp_scripts()->registered['ai_test-provider-check'];
+		$before     = $registered->extra['before'] ?? array();
+		$inline     = implode( "\n", $before );
+
+		$this->assertStringContainsString( 'window.aiProviderData=', $inline );
+		$this->assertStringContainsString( 'hasProvider', $inline );
+		$this->assertStringContainsString( 'connectorsUrl', $inline );
+	}
+
+	/**
+	 * @since 1.0.0
+	 */
+	public function test_load_registers_provider_data_action() {
+		$main = Main::get_instance();
+		$main->load();
+
+		$this->assertNotFalse(
+			has_action( 'init', array( $main, 'register_provider_data' ) ),
+			'load() should register register_provider_data on the init action.'
+		);
 	}
 
 	/**

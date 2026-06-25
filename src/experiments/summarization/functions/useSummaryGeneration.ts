@@ -10,12 +10,29 @@ import { store as blockEditorStore } from '@wordpress/block-editor';
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useEffect, useState } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
  */
 import { generateSummary } from './generate-summary';
+import { ensureProvider } from '../../../utils/provider-status';
+import { hasMinimumContent } from '../../../utils/word-count';
+import type { SummarizationData } from '../types';
+
+const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const NOTICE_ID = 'ai_summarization_error';
+
+const getSettings = (): SummarizationData => {
+	const settings = ( window as any ).aiSummarizationData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		minContentLength:
+			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
+	};
+};
 
 /**
  * Summary generation hook.
@@ -33,27 +50,26 @@ export function useSummaryGeneration() {
 	const [ isSummarizing, setIsSummarizing ] = useState( false );
 	const [ summary, setSummary ] = useState( '' );
 
-	// Check if a summary block exists and update state accordingly.
+	// Check if a summary group block exists and update state accordingly.
 	useEffect( () => {
-		const summaryBlock = allBlocks.find(
+		const summaryGroup = allBlocks.find(
 			( block ) =>
-				block.name === 'core/paragraph' &&
+				block.name === 'core/group' &&
 				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 		);
-		/* eslint-disable dot-notation -- summaryBlock.attributes is a BlockInstance */
-		if ( summaryBlock && summaryBlock.attributes[ 'content' ] ) {
-			setSummary( String( summaryBlock.attributes[ 'content' ] ) );
-		}
+		setSummary( summaryGroup ? 'exists' : '' );
 	}, [ allBlocks ] );
 
 	/**
 	 * Handles the summarization button click.
 	 */
 	const handleSummarize = async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsSummarizing( true );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_summarization_error'
-		);
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedSummary = await generateSummary(
@@ -70,29 +86,39 @@ export function useSummaryGeneration() {
 				},
 			} );
 
-			// Check if an existing AI summary block exists.
+			// Split the response into paragraphs and create inner blocks.
+			const paragraphs = generatedSummary
+				.split( /\n\n+/ )
+				.filter( ( p ) => p.trim() );
+			const innerBlocks = paragraphs.map( ( text ) =>
+				createBlock( 'core/paragraph', { content: text.trim() } )
+			);
+
+			// Check if an existing Content Summary group block exists.
 			const existingSummaryBlock = allBlocks.find(
 				( block ) =>
-					block.name === 'core/paragraph' &&
-					block.attributes[ 'aiGeneratedSummary' ] === true
+					block.name === 'core/group' &&
+					block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 			);
 
 			if ( existingSummaryBlock ) {
-				// Update only the content of the existing block to preserve styles and other attributes.
-				/* eslint-disable dot-notation -- updateBlockAttributes from store index signature */
-				( dispatch( blockEditorStore ) as any )[
-					'updateBlockAttributes'
-				]( existingSummaryBlock.clientId, {
-					content: generatedSummary,
-				} );
-				/* eslint-enable dot-notation */
+				// Replace inner blocks of the existing group to preserve its attributes.
+				// eslint-disable-next-line dot-notation
+				( dispatch( blockEditorStore ) as any )[ 'replaceInnerBlocks' ](
+					existingSummaryBlock.clientId,
+					innerBlocks,
+					false
+				);
 			} else {
-				// Insert a new summary block at the top.
-				const summaryBlock = createBlock( 'core/paragraph', {
-					content: generatedSummary,
-					className: 'ai-summarization-summary',
-					aiGeneratedSummary: true,
-				} );
+				// Insert a new summary group block at the top.
+				const summaryBlock = createBlock(
+					'core/group',
+					{
+						className: 'ai-summarization-summary',
+						aiGeneratedSummary: true,
+					},
+					innerBlocks
+				);
 				// eslint-disable-next-line dot-notation
 				( dispatch( blockEditorStore ) as any )[ 'insertBlock' ](
 					summaryBlock,
@@ -100,8 +126,13 @@ export function useSummaryGeneration() {
 				);
 			}
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
-				id: 'ai_summarization_error',
+			const message =
+				typeof error === 'string'
+					? error
+					: error?.message ??
+					  __( 'Failed to generate summary.', 'ai' );
+			dispatch( noticesStore ).createErrorNotice( message, {
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 			setSummary( '' );
@@ -110,10 +141,18 @@ export function useSummaryGeneration() {
 		}
 	};
 
+	// Minimum content length required for summarization.
+	const isContentTooShort = ! hasMinimumContent(
+		content || '',
+		getSettings().minContentLength
+	);
+
 	return {
 		isSummarizing,
 		hasSummary: summary && summary.trim().length > 0,
 		summary,
 		handleSummarize,
+		isContentTooShort,
+		minContentLength: getSettings().minContentLength,
 	};
 }

@@ -81,6 +81,24 @@ interface Feature {
 	public function register(): void;
 
 	/**
+	 * Checks if features are globally enabled.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return bool True if globally enabled, false otherwise.
+	 */
+	public function is_globally_enabled(): bool;
+
+	/**
+	 * Checks if the feature is individually enabled.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return bool True if individually enabled, false otherwise.
+	 */
+	public function is_individually_enabled(): bool;
+
+	/**
 	 * Checks if the feature is currently enabled.
 	 *
 	 * @since 0.6.0
@@ -115,4 +133,13 @@ interface Feature {
 	 * @return string The image URL, or empty string if not set.
 	 */
 	public function get_image(): string;
+
+	/**
+	 * Gets the AI capability type required by this feature.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @return string The capability type (e.g. 'text_generation', 'image_generation', 'vision').
+	 */
+	public function get_capability(): string;
 }

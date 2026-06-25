@@ -17,7 +17,9 @@ namespace WordPress\AI\Admin\Dashboard;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Registration;
 
+use function WordPress\AI\get_ai_connectors;
 use function WordPress\AI\has_ai_credentials;
+use function WordPress\AI\is_connector_configured;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -60,14 +62,14 @@ class AI_Status_Widget {
 	 * @since 0.8.0
 	 */
 	public function render(): void {
-		$has_credentials = has_ai_credentials();
-		$global_enabled  = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
-		$any_feature_on  = $this->has_any_enabled_feature();
+		$has_credentials         = has_ai_credentials();
+		$global_enabled          = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		$feature_setting_enabled = $this->has_any_enabled_feature_setting();
 
-		if ( $has_credentials && $global_enabled && $any_feature_on ) {
+		if ( $has_credentials && $global_enabled && $feature_setting_enabled ) {
 			$this->render_status();
 		} else {
-			$this->render_getting_started( $has_credentials, $global_enabled, $any_feature_on );
+			$this->render_getting_started( $has_credentials, $global_enabled, $feature_setting_enabled );
 		}
 	}
 
@@ -76,11 +78,11 @@ class AI_Status_Widget {
 	 *
 	 * @since 0.8.0
 	 *
-	 * @param bool $has_credentials   Whether any AI provider credentials are configured.
-	 * @param bool $global_enabled    Whether the global features toggle is on.
-	 * @param bool $any_feature_on Whether at least one feature is enabled.
+	 * @param bool $has_credentials         Whether any AI provider credentials are configured.
+	 * @param bool $global_enabled          Whether the global features toggle is on.
+	 * @param bool $feature_setting_enabled Whether at least one feature setting is enabled.
 	 */
-	private function render_getting_started( bool $has_credentials, bool $global_enabled, bool $any_feature_on ): void {
+	private function render_getting_started( bool $has_credentials, bool $global_enabled, bool $feature_setting_enabled ): void {
 		$steps = array(
 			array(
 				'done'  => $has_credentials,
@@ -93,7 +95,7 @@ class AI_Status_Widget {
 				'url'   => admin_url( 'options-general.php?page=ai-wp-admin' ),
 			),
 			array(
-				'done'  => $any_feature_on,
+				'done'  => $feature_setting_enabled,
 				'label' => __( 'Enable a feature or experiment', 'ai' ),
 				'url'   => admin_url( 'options-general.php?page=ai-wp-admin' ),
 			),
@@ -158,9 +160,11 @@ class AI_Status_Widget {
 						<?php foreach ( $stable_features as $feature ) : ?>
 							<li class="ai-dashboard-status__list-item">
 								<?php if ( $feature->is_enabled() ) : ?>
-									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success"></span>
+									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Enabled:', 'ai' ); ?></span>
 								<?php else : ?>
-									<span class="dashicons dashicons-no ai-dashboard-status__icon--error"></span>
+									<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Disabled:', 'ai' ); ?></span>
 								<?php endif; ?>
 								<?php echo esc_html( $feature->get_label() ); ?>
 							</li>
@@ -177,9 +181,11 @@ class AI_Status_Widget {
 						<?php foreach ( $experimental_features as $feature ) : ?>
 							<li class="ai-dashboard-status__list-item">
 								<?php if ( $feature->is_enabled() ) : ?>
-									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success"></span>
+									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Enabled:', 'ai' ); ?></span>
 								<?php else : ?>
-									<span class="dashicons dashicons-no ai-dashboard-status__icon--error"></span>
+									<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Disabled:', 'ai' ); ?></span>
 								<?php endif; ?>
 								<?php echo esc_html( $feature->get_label() ); ?>
 							</li>
@@ -205,16 +211,27 @@ class AI_Status_Widget {
 	private function get_ai_connectors(): array {
 		$connectors = array();
 
-		foreach ( wp_get_connectors() as $slug => $connector_data ) {
-			if ( 'ai_provider' !== $connector_data['type'] ) {
-				continue;
-			}
-
+		foreach ( get_ai_connectors() as $slug => $connector_data ) {
 			$auth       = $connector_data['authentication'];
-			$configured = ( $this->is_connector_plugin_active( $connector_data )
-				&& 'api_key' === $auth['method']
-				&& ! empty( $auth['setting_name'] )
-				&& '' !== get_option( $auth['setting_name'], '' ) );
+			$configured = 'api_key' === $auth['method']
+				&& is_connector_configured( $slug );
+
+			/**
+			 * Filters whether an AI connector is configured.
+			 *
+			 * Allows third-party plugins to declare credential availability for
+			 * connectors that do not rely on API key settings.
+			 *
+			 * The dynamic portion of the hook name, `$slug`, refers to the connector slug.
+			 * For example, if the connector slug is 'openai', the hook name
+			 * will be 'wpai_is_openai_connector_configured'.
+			 *
+			 * @since 0.9.0
+			 *
+			 * @param bool $configured Whether the connector is configured.
+			 * @param array<string, mixed> $connector_data The connector data.
+			 */
+			$configured = (bool) apply_filters( "wpai_is_{$slug}_connector_configured", $configured, $connector_data );
 
 			$connectors[] = array(
 				'name'       => $connector_data['name'] ?? $slug,
@@ -226,55 +243,15 @@ class AI_Status_Widget {
 	}
 
 	/**
-	 * Checks whether the connector's related plugin is currently active.
-	 *
-	 * If plugin metadata is not provided for a connector, it is treated as active.
+	 * Checks whether any registered feature has its individual setting enabled.
 	 *
 	 * @since 0.8.0
 	 *
-	 * @param array<string, mixed> $connector_data Connector metadata.
-	 * @return bool True if the connector plugin is active or unknown, false if known inactive.
+	 * @return bool True if at least one feature setting is enabled.
 	 */
-	private function is_connector_plugin_active( array $connector_data ): bool {
-		if ( empty( $connector_data['plugin'] ) || ! is_array( $connector_data['plugin'] ) ) {
-			return true;
-		}
-
-		$plugin_file = '';
-
-		if ( ! empty( $connector_data['plugin']['file'] ) && is_string( $connector_data['plugin']['file'] ) ) {
-			$plugin_file = $connector_data['plugin']['file'];
-		} elseif ( ! empty( $connector_data['plugin']['plugin_file'] ) && is_string( $connector_data['plugin']['plugin_file'] ) ) {
-			$plugin_file = $connector_data['plugin']['plugin_file'];
-		} elseif ( ! empty( $connector_data['plugin']['pluginFile'] ) && is_string( $connector_data['plugin']['pluginFile'] ) ) {
-			$plugin_file = $connector_data['plugin']['pluginFile'];
-		}
-
-		if ( '' === $plugin_file ) {
-			return true;
-		}
-
-		if ( ! function_exists( 'is_plugin_active' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-
-		if ( is_plugin_active( $plugin_file ) ) {
-			return true;
-		}
-
-		return is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $plugin_file );
-	}
-
-	/**
-	 * Checks whether any registered feature is individually enabled.
-	 *
-	 * @since 0.8.0
-	 *
-	 * @return bool True if at least one feature is enabled.
-	 */
-	private function has_any_enabled_feature(): bool {
+	private function has_any_enabled_feature_setting(): bool {
 		foreach ( $this->registry->get_all_features() as $feature ) {
-			if ( $feature->is_enabled() ) {
+			if ( $feature->is_individually_enabled() ) {
 				return true;
 			}
 		}

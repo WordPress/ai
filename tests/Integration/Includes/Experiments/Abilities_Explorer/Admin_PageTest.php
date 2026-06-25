@@ -201,6 +201,6 @@ class Admin_PageTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'ability-explorer-wrap', $output );
-		$this->assertStringContainsString( 'Ability Explorer', $output );
+		$this->assertStringContainsString( 'Abilities Explorer', $output );
 	}
 }

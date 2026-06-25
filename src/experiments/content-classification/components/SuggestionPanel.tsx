@@ -6,15 +6,16 @@
  * WordPress dependencies
  */
 import { Button, Flex, FlexItem } from '@wordpress/components';
-import { select } from '@wordpress/data';
+import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, isRTL, sprintf } from '@wordpress/i18n';
 import { close as closeIcon, update } from '@wordpress/icons';
 
 /**
  * Internal dependencies
  */
 import { useContentClassification } from './useContentClassification';
+import { getWordCountType } from '../../../utils/word-count';
 import type { TagSuggestion } from '../types';
 
 interface SuggestionPanelProps {
@@ -42,9 +43,13 @@ export default function SuggestionPanel( {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
+		minContentLength,
 	} = useContentClassification( taxonomy );
 
-	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
+	const taxonomyObject: any = useSelect(
+		( selectFn ) => selectFn( coreStore ).getTaxonomy( taxonomy ),
+		[ taxonomy ]
+	);
 	const taxonomyLabel: string = taxonomyObject?.name ?? taxonomy;
 
 	const hasSuggestions = suggestions.length > 0;
@@ -53,6 +58,7 @@ export default function SuggestionPanel( {
 		<div className="ai-content-classification">
 			{ ! hasSuggestions && (
 				<Button
+					accessibleWhenDisabled
 					icon={ update }
 					variant="secondary"
 					onClick={ handleGenerate }
@@ -72,11 +78,27 @@ export default function SuggestionPanel( {
 			) }
 
 			{ ! hasEnoughContent && ! hasSuggestions && (
-				<p className="ai-content-classification__hint components-base-control__help">
-					{ __(
-						'Add more content to enable AI suggestions (approximately 150 words).',
-						'ai'
-					) }
+				<p
+					className="ai-content-classification__hint components-base-control__help"
+					style={ { color: '#757575' } }
+				>
+					{ getWordCountType() !== 'words'
+						? sprintf(
+								/* translators: %d: Minimum content length. */
+								__(
+									'Content Classification will be available when the post content has at least %d characters.',
+									'ai'
+								),
+								minContentLength
+						  )
+						: sprintf(
+								/* translators: %d: Minimum content length. */
+								__(
+									'Content Classification will be available when the post content has at least %d words.',
+									'ai'
+								),
+								minContentLength
+						  ) }
 				</p>
 			) }
 
@@ -107,10 +129,12 @@ export default function SuggestionPanel( {
 										__( 'Add "%s"', 'ai' ),
 										suggestion.term
 									) }
+									size="small"
 								>
 									{ suggestion.parent && (
 										<span className="ai-content-classification__pill-parent">
-											{ suggestion.parent + ' › ' }
+											{ suggestion.parent +
+												( isRTL() ? ' ‹ ' : ' › ' ) }
 										</span>
 									) }
 									{ suggestion.term }
@@ -132,6 +156,7 @@ export default function SuggestionPanel( {
 										__( 'Dismiss "%s"', 'ai' ),
 										suggestion.term
 									) }
+									size="small"
 								/>
 							</span>
 						) ) }
@@ -141,11 +166,7 @@ export default function SuggestionPanel( {
 						className="ai-content-classification__actions"
 					>
 						<FlexItem>
-							<Button
-								variant="link"
-								onClick={ handleGenerate }
-								disabled={ isGenerating }
-							>
+							<Button variant="link" onClick={ handleGenerate }>
 								{ __( 'Suggest again', 'ai' ) }
 							</Button>
 						</FlexItem>

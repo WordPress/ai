@@ -8,12 +8,18 @@
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import { ensureProvider } from '../../../utils/provider-status';
+import {
+	formatMinLengthLabel,
+	hasMinimumContent,
+} from '../../../utils/word-count';
 import type {
 	MetaDescriptionAbilityInput,
 	MetaDescriptionAbilityResponse,
@@ -22,6 +28,7 @@ import type {
 } from '../types';
 
 const NOTICE_ID = 'ai_meta_description_error';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
 
 const getLocalized = (): MetaDescriptionData | undefined =>
 	( window as any ).aiMetaDescriptionData as MetaDescriptionData | undefined;
@@ -32,8 +39,12 @@ interface UseMetaDescriptionReturn {
 	currentDescription: string;
 	metaKey: string;
 	hasSeoPlugin: boolean;
+	isContentTooShort: boolean;
+	tooShortLabel: string;
+	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
 	applyDescription: ( text: string ) => void;
+	clearSuggestion: () => void;
 }
 
 /**
@@ -53,6 +64,11 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const [ suggestion, setSuggestion ] =
 		useState< MetaDescriptionSuggestion | null >( null );
 
+	const ensureProviderAvailable = useCallback(
+		() => ensureProvider( NOTICE_ID ),
+		[]
+	);
+
 	const { postId, content, title, meta } = useSelect( ( select ) => {
 		const editor = select( editorStore );
 		const currentMeta = editor.getEditedPostAttribute( 'meta' ) as
@@ -67,7 +83,31 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		};
 	}, [] );
 
+	const minContentLength =
+		localized?.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT;
+	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
+
+	// Minimum-length requirement message, surfaced as the button tooltip when
+	// the content is too short to generate from.
+	const tooShortLabel = formatMinLengthLabel(
+		/* translators: %d: minimum number of characters required */
+		__(
+			'Meta Description generation will be available when the post content has at least %d characters.',
+			'ai'
+		),
+		/* translators: %d: minimum number of words required */
+		__(
+			'Meta Description generation will be available when the post content has at least %d words.',
+			'ai'
+		),
+		minContentLength
+	);
+
 	const generateDescription = useCallback( async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsGenerating( true );
 		setSuggestion( null );
 
@@ -91,7 +131,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				setSuggestion( response.description );
 			} else {
 				createErrorNotice(
-					'No meta description suggestion was generated.',
+					__( 'No meta description suggestion was generated.', 'ai' ),
 					{ id: NOTICE_ID, isDismissible: true }
 				);
 			}
@@ -99,7 +139,8 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 			const message =
 				typeof error === 'string'
 					? error
-					: error?.message ?? 'Failed to generate meta description.';
+					: error?.message ??
+					  __( 'Failed to generate meta description.', 'ai' );
 
 			createErrorNotice( message, {
 				id: NOTICE_ID,
@@ -122,13 +163,21 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		[ editPost, metaKey, meta ]
 	);
 
+	const clearSuggestion = useCallback( () => {
+		setSuggestion( null );
+	}, [] );
+
 	return {
 		isGenerating,
 		suggestion,
 		currentDescription: meta?.[ metaKey ] ?? '',
 		metaKey,
 		hasSeoPlugin,
+		isContentTooShort,
+		tooShortLabel,
+		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
+		clearSuggestion,
 	};
 }

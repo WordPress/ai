@@ -19,6 +19,9 @@ const EXPERIMENT_LABEL = 'Meta Description Generation';
 const MOCK_DESCRIPTION_PATTERN =
 	/Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure/;
 
+const LONG_CONTENT =
+	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough words for the meta description experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new description for the post.';
+
 /**
  * Opens the Post sidebar and expands the Meta Description panel.
  *
@@ -67,8 +70,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Button Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -84,6 +86,33 @@ test.describe( 'Meta Description Experiment', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Generate Meta Description button is disabled when there is not enough content', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Create a new post with content well below the minimum length.
+		await admin.createNewPost( {
+			title: 'Meta Description Minimum Length Test',
+			content: 'Too short.',
+		} );
+
+		await editor.saveDraft();
+
+		// Open the Meta Description panel.
+		await openMetaDescriptionPanel( editor, page );
+
+		const generateButton = page.locator(
+			'.ai-meta-description-panel button',
+			{ hasText: 'Generate Meta Description' }
+		);
+		await expect( generateButton ).toBeVisible();
+		await expect( generateButton ).toHaveAttribute(
+			'aria-disabled',
+			'true'
+		);
+	} );
+
 	test( 'Generates and applies a meta description', async ( {
 		admin,
 		editor,
@@ -91,8 +120,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Generate Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -160,8 +188,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Regenerate Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -235,8 +262,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Edit Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -300,6 +326,90 @@ test.describe( 'Meta Description Experiment', () => {
 		await editor.saveDraft();
 	} );
 
+	test( 'Editing after canceling a regenerated suggestion shows the saved description', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		const savedDescription =
+			'A custom saved description that should remain editable.';
+
+		await admin.createNewPost( {
+			title: 'Meta Description Cancel Regenerate Test',
+			content: LONG_CONTENT,
+		} );
+
+		await editor.saveDraft();
+		await page.reload();
+
+		// Open the Meta Description panel.
+		await openMetaDescriptionPanel( editor, page );
+
+		// Generate and apply the initial description so the edit actions appear.
+		await page
+			.locator( '.ai-meta-description-panel button', {
+				hasText: 'Generate Meta Description',
+			} )
+			.click();
+
+		await expect(
+			page.locator( '.ai-meta-description-modal textarea' )
+		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
+			timeout: 10000,
+		} );
+
+		await page
+			.locator( '.ai-meta-description-modal' )
+			.getByRole( 'button', { name: 'Apply' } )
+			.click();
+
+		// Replace it with a custom saved value that differs from the mock.
+		await page
+			.locator( '.ai-meta-description-panel__actions' )
+			.getByRole( 'button', { name: 'Edit description' } )
+			.click();
+
+		await page
+			.locator( '.ai-meta-description-modal textarea' )
+			.fill( savedDescription );
+
+		await page
+			.locator( '.ai-meta-description-modal' )
+			.getByRole( 'button', { name: 'Apply' } )
+			.click();
+
+		await expect(
+			page.locator( '.ai-meta-description-panel__text' )
+		).toHaveText( savedDescription );
+
+		// Generate a new suggestion, but cancel without applying it.
+		await page
+			.locator( '.ai-meta-description-panel__actions' )
+			.getByRole( 'button', { name: 'Regenerate meta description' } )
+			.click();
+
+		await expect(
+			page.locator( '.ai-meta-description-modal textarea' )
+		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
+			timeout: 10000,
+		} );
+
+		await page
+			.locator( '.ai-meta-description-modal' )
+			.getByRole( 'button', { name: 'Cancel' } )
+			.click();
+
+		// Opening Edit should show the saved value, not the canceled suggestion.
+		await page
+			.locator( '.ai-meta-description-panel__actions' )
+			.getByRole( 'button', { name: 'Edit description' } )
+			.click();
+
+		await expect(
+			page.locator( '.ai-meta-description-modal textarea' )
+		).toHaveValue( savedDescription );
+	} );
+
 	test( 'Shows Copy to clipboard button in the modal', async ( {
 		admin,
 		editor,
@@ -307,8 +417,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Copy Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -348,8 +457,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Meta Description Globally Disabled Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -371,8 +479,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Meta Description Disabled Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();

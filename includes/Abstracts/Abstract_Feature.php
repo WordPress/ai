@@ -77,6 +77,14 @@ abstract class Abstract_Feature implements Feature {
 	protected string $image;
 
 	/**
+	 * The AI capability type required by this feature.
+	 *
+	 * @since 0.9.0
+	 * @var string
+	 */
+	protected string $capability;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -115,6 +123,7 @@ abstract class Abstract_Feature implements Feature {
 		$this->category    = $metadata['category'];
 		$this->stability   = $metadata['stability'] ?? 'experimental';
 		$this->image       = $metadata['image'] ?? '';
+		$this->capability  = $metadata['capability'] ?? 'text_generation';
 	}
 
 	/**
@@ -158,24 +167,15 @@ abstract class Abstract_Feature implements Feature {
 
 	/**
 	 * {@inheritDoc}
-	 *
-	 * Features require both the global toggle and individual feature toggle to be enabled.
-	 * Results are cached per instance to avoid redundant option lookups and filter calls.
 	 */
-	final public function is_enabled(): bool {
-		// Return cached result if available.
-		if ( null !== $this->enabled_cache ) {
-			return $this->enabled_cache;
-		}
+	final public function is_globally_enabled(): bool {
+		return (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+	}
 
-		// Check global features toggle first.
-		$global_enabled = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
-		if ( ! $global_enabled ) {
-			$this->enabled_cache = false;
-			return false;
-		}
-
-		// Check feature-specific option.
+	/**
+	 * {@inheritDoc}
+	 */
+	final public function is_individually_enabled(): bool {
 		$feature_enabled = (bool) get_option( "wpai_feature_{$this->id}_enabled", false );
 
 		// @todo remove in v1.0
@@ -196,12 +196,26 @@ abstract class Abstract_Feature implements Feature {
 		 *
 		 * @param bool $feature_enabled Whether the feature is enabled.
 		 */
-		$is_enabled = (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $is_enabled );
+		return (bool) apply_filters( "wpai_feature_{$this->id}_enabled", $is_enabled );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Features require both the global toggle and individual
+	 * feature toggle to be enabled. Results are cached per
+	 * instance to avoid redundant option lookups and filter calls.
+	 */
+	final public function is_enabled(): bool {
+		// Return cached result if available.
+		if ( null !== $this->enabled_cache ) {
+			return $this->enabled_cache;
+		}
 
 		// Cache the result.
-		$this->enabled_cache = $is_enabled;
+		$this->enabled_cache = $this->is_globally_enabled() && $this->is_individually_enabled();
 
-		return $is_enabled;
+		return $this->enabled_cache;
 	}
 
 	/**
@@ -212,14 +226,17 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * Gets the image URL for feature showcase display.
-	 *
-	 * @since 0.8.0
-	 *
-	 * @return string The image URL, or empty string if not set.
+	 * {@inheritDoc}
 	 */
 	public function get_image(): string {
 		return $this->image;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_capability(): string {
+		return $this->capability;
 	}
 
 	/**
@@ -280,7 +297,7 @@ abstract class Abstract_Feature implements Feature {
 	public function get_settings_fields_metadata(): array {
 		$fields = $this->get_settings_fields();
 		foreach ( $fields as &$field ) {
-			$field['id'] = $this->get_field_option_name( $field['id'] );
+			$field['id'] = static::get_field_option_name( $field['id'] );
 		}
 		unset( $field );
 		return $fields;
@@ -298,8 +315,8 @@ abstract class Abstract_Feature implements Feature {
 	 * @param string $option_name The base option name (e.g., 'api_key', 'temperature').
 	 * @return string The fully namespaced option name.
 	 */
-	final protected function get_field_option_name( string $option_name ): string {
-		return "wpai_feature_{$this->id}_field_{$option_name}";
+	final public static function get_field_option_name( string $option_name ): string {
+		return 'wpai_feature_' . static::get_id() . '_field_' . $option_name;
 	}
 
 	/**

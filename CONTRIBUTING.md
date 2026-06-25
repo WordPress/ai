@@ -20,7 +20,12 @@ cd ai
 
 2. **Install dependencies and build assets:**
 
+Before running `npm i`, ensure your Node.js and npm versions match the minimum requirements specified in the `package.json` file.
+
+If you use `nvm` for managing Node.js versions, run `nvm use` before `npm i` to automatically switch to the correct version.
+
 ```bash
+# If using nvm, run: nvm use
 composer install && npm i && npm run build
 ```
 
@@ -50,8 +55,6 @@ composer format && npm run lint:js:fix && npm run format
 npm run wp-env:test start -- --xdebug=coverage && npm run test:e2e && npm run test:php && npm run wp-env:test stop
 ```
 
----
-
 ### Coding standards
 
 All code must follow the [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/). This ensures consistency across the WordPress ecosystem and makes the codebase maintainable.
@@ -73,10 +76,10 @@ All parameters, return values, and properties should use explicit type hints whe
 
 The following naming conventions must be followed for consistency and autoloading:
 
-- Interfaces are suffixed with `_Interface` (e.g., `Experiment_Interface`).
-- Traits are suffixed with `_Trait` (e.g., `Validation_Trait`).
+- Contracts live under `includes/Contracts/` and use descriptive names (e.g., `Feature`).
+- Traits, when introduced, should use descriptive names and follow the existing PSR-4 layout.
 - File names are the same as the class, trait, and interface name for PSR-4 autoloading.
-- Classes use WordPress naming conventions with underscores (e.g., `Experiment_Loader`).
+- Classes use WordPress naming conventions with underscores where useful for readability (e.g., `Settings_Registration`).
 - Namespaces follow the pattern `WordPress\AI\{Component}`.
 
 ### General rules
@@ -100,20 +103,20 @@ The following naming conventions must be followed for consistency and autoloadin
 
 ```php
 /**
- * Class for handling experiment registration.
+ * Class for handling feature registration.
  *
  * @since x.x.x
  */
-class Experiment_Registry {
+class Registry {
 	/**
-	 * Registers a new experiment with the plugin.
+	 * Registers a new feature with the plugin.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param Experiment $experiment The experiment instance to register.
+	 * @param Feature $feature The feature instance to register.
 	 * @return bool True if registered successfully, false otherwise.
 	 */
-	public function register_experiment( Experiment $experiment ): bool {
+	public function register_feature( Feature $feature ): bool {
 		// Implementation
 	}
 }
@@ -144,6 +147,8 @@ echo 'Hello World';
 - As with all WordPress projects, we want to ensure a welcoming environment for everyone. With that in mind, all contributors are expected to follow our [Code of Conduct](https://make.wordpress.org/handbook/community-code-of-conduct/).
 - All WordPress projects are licensed under the GPLv2+, and all contributions to the AI plugin will be released under the GPLv2+ license. You maintain copyright over any contribution you make, and by submitting a pull request, you are agreeing to release that contribution under the GPLv2+ license.
 
+---
+
 ## Additional resources
 
 For more detailed information on plugin architecture, creating experiments, and development workflows, see:
@@ -153,5 +158,7 @@ For more detailed information on plugin architecture, creating experiments, and 
 - [Release Instructions](docs/RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
 - [Testing Strategy](docs/TESTING.md) - Testing philosophy and guidelines
 - [Testing API Strategy](docs/TESTING_REST_API.md) - Testing philosophy and guidelines
-- [Experiment Lifecycle](docs/EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
+- [Example Experiment](includes/Experiments/Example_Experiment/README.md) - Reference implementation
+- [Custom Experiment Reference](docs/experiments/custom-experiment-reference.md) - Documented example for extending the plugin
+- [Feature and Experiment Lifecycle](docs/FEATURE_EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [WordPress AI Team](https://make.wordpress.org/ai/) - Community and discussion

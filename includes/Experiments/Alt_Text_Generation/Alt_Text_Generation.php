@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\Alt_Text_Generation;
 use WordPress\AI\Abilities\Image\Alt_Text_Generation as Alt_Text_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\CLI\Alt_Text_Command;
 use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -50,6 +51,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'label'       => __( 'Alt Text Generation', 'ai' ),
 			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'capability'  => 'vision',
 		);
 	}
 
@@ -65,6 +67,12 @@ class Alt_Text_Generation extends Abstract_Feature {
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
 		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
 		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
+
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+			return;
+		}
+
+		\WP_CLI::add_command( 'ai alt-text', Alt_Text_Command::class );
 	}
 
 	/**
@@ -89,7 +97,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @since 0.3.0
 	 */
 	public function enqueue_editor_assets(): void {
-		Asset_Loader::enqueue_script( 'alt_text_generation', 'experiments/alt-text-generation' );
+		Asset_Loader::enqueue_script( 'alt_text_generation', 'experiments/alt-text-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'alt_text_generation',
 			'AltTextGenerationData',
@@ -99,6 +107,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 		);
 
 		$this->maybe_enqueue_media_script();
+		$this->maybe_enqueue_media_editor_script();
 	}
 
 	/**
@@ -147,7 +156,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'alt_text_generation_media', 'experiments/alt-text-generation-media' );
+		Asset_Loader::enqueue_script( 'alt_text_generation_media', 'experiments/alt-text-generation-media', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'alt_text_generation_media',
 			'AltTextGenerationMediaData',
@@ -157,6 +166,32 @@ class Alt_Text_Generation extends Abstract_Feature {
 		);
 
 		$this->media_assets_enqueued = true;
+	}
+
+	/**
+	 * Conditionally enqueues assets for the experimental Gutenberg media editor.
+	 *
+	 * Requires the Gutenberg media editor experiment or media modal experiment to be enabled.
+	 *
+	 * @since 1.0.0
+	 */
+	private function maybe_enqueue_media_editor_script(): void {
+		if ( ! is_plugin_active( 'gutenberg/gutenberg.php' ) ) {
+			return;
+		}
+
+		$experiments = get_option( 'gutenberg-experiments' );
+		if (
+			! isset( $experiments['gutenberg-media-editor'] ) &&
+			! isset( $experiments['gutenberg-media-editor-modal'] )
+		) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script(
+			'alt_text_generation_media_editor',
+			'experiments/alt-text-generation-media-editor'
+		);
 	}
 
 	/**
@@ -195,9 +230,15 @@ class Alt_Text_Generation extends Abstract_Feature {
 	public function render_attachment_meta_box( \WP_Post $post ): void {
 		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
-		echo '<div class="ai-alt-text-media-actions" style="margin-top: 16px; max-width: 150px;">';
-		echo '<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>';
-		echo '</div>';
+		printf(
+			'<div class="ai-alt-text-media-actions" style="margin-top: 16px;">' .
+				'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
+				'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
+				'<p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>' .
+			'</div>',
+			absint( $post->ID ),
+			esc_html( $button_text )
+		);
 	}
 
 	/**
@@ -223,9 +264,9 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param string        $redirect_url The current redirect URL.
-	 * @param string        $doaction     The bulk action being performed.
-	 * @param list<int>     $post_ids     The list of post IDs to process.
+	 * @param string    $redirect_url The current redirect URL.
+	 * @param string    $doaction     The bulk action being performed.
+	 * @param list<int> $post_ids     The list of post IDs to process.
 	 * @return string The redirect URL, possibly with bulk alt text query args appended.
 	 */
 	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
@@ -267,7 +308,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'alt_text_generation_bulk', 'experiments/alt-text-generation-bulk' );
+		Asset_Loader::enqueue_script( 'alt_text_generation_bulk', 'experiments/alt-text-generation-bulk', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'alt_text_generation_bulk',
 			'AltTextGenerationBulkData',
@@ -283,7 +324,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @since 0.3.0
 	 *
 	 * @param array<string, mixed> $fields The attachment fields.
-	 * @param \WP_Post|null $post The attachment post.
+	 * @param \WP_Post|null        $post The attachment post.
 	 * @return array<string, mixed> The attachment fields with the button added.
 	 */
 	public function add_button_to_media_modal( array $fields, ?\WP_Post $post ): array {
@@ -301,7 +342,15 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'label'        => __( 'Alt Text', 'ai' ),
 			'input'        => 'html',
 			'show_in_edit' => false,
-			'html'         => '<div class="ai-alt-text-media-actions"><button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="' . absint( $post->ID ) . '">' . esc_html( $button_text ) . '</button><span class="spinner" aria-hidden="true" style="margin-left: 8px;"></span><p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p></div>',
+			'html'         => sprintf(
+				'<div class="ai-alt-text-media-actions">' .
+					'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
+					'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
+					'<p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p>' .
+				'</div>',
+				absint( $post->ID ),
+				esc_html( $button_text )
+			),
 		);
 
 		return $fields;

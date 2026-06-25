@@ -7,6 +7,14 @@
  */
 export interface ExcerptGenerationAbilityInput {
 	content: string;
-	post_id: number;
-	[ key: string ]: string | number | undefined;
+	context: string;
+	[ key: string ]: string | undefined;
+}
+
+/**
+ * Localized data from the PHP side.
+ */
+export interface ExcerptGenerationData {
+	enabled: boolean;
+	minContentLength: number;
 }

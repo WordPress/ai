@@ -16,6 +16,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
 
+use function WordPress\AI\has_image_generation_support;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -43,6 +45,7 @@ class Image_Generation extends Abstract_Feature {
 			'description' => __( 'Generate and edit images using AI. Requires an AI connector that includes support for image generation models.', 'ai' ),
 			'stability'   => 'stable',
 			'image'       => WPAI_PLUGIN_URL . 'assets/images/showcase-image-generation.webp',
+			'capability'  => 'image_generation',
 		);
 	}
 
@@ -219,14 +222,15 @@ class Image_Generation extends Abstract_Feature {
 	 * @since 0.4.0
 	 */
 	private function enqueue_shared_assets(): void {
-		Asset_Loader::enqueue_script( 'image_generation', 'features/image-generation' );
+		Asset_Loader::enqueue_script( 'image_generation', 'features/image-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'image_generation', 'features/image-generation' );
 		Asset_Loader::localize_script(
 			'image_generation',
 			'ImageGenerationData',
 			array(
-				'enabled'        => $this->is_enabled(),
-				'altTextEnabled' => ( new Alt_Text_Generation() )->is_enabled(),
+				'enabled'                   => $this->is_enabled(),
+				'altTextEnabled'            => ( new Alt_Text_Generation() )->is_enabled(),
+				'hasImageGenerationSupport' => has_image_generation_support(),
 			)
 		);
 	}

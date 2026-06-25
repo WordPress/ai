@@ -5,22 +5,23 @@
 /**
  * WordPress dependencies
  */
-import { speak } from '@wordpress/a11y';
-import { useEffect, useRef, useState } from '@wordpress/element';
+import { useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Modal, Button, TextareaControl } from '@wordpress/components';
-import { useCopyToClipboard } from '@wordpress/compose';
 
 /**
  * Internal dependencies
  */
 import CharacterCount from './CharacterCount';
+import { useCopyToClipboardFeedback } from '../../../hooks/use-copy-to-clipboard-feedback';
 import type { MetaDescriptionSuggestion } from '../types';
 
 interface MetaDescriptionModalProps {
 	isGenerating: boolean;
 	suggestion: MetaDescriptionSuggestion | null;
 	editableText: string;
+	isContentTooShort: boolean;
+	tooShortLabel: string;
 	onEditableTextChange: ( text: string ) => void;
 	onGenerate: () => Promise< void >;
 	onApply: ( text: string ) => void;
@@ -34,35 +35,24 @@ function CopyButton( {
 	text: string;
 	disabled: boolean;
 } ): JSX.Element {
-	const [ showCopyConfirmation, setShowCopyConfirmation ] = useState( false );
-	const timeoutIdRef = useRef< ReturnType< typeof setTimeout > >();
-	const ref = useCopyToClipboard< HTMLButtonElement >( text, () => {
-		speak( __( 'Meta description copied to clipboard.', 'ai' ) );
-		setShowCopyConfirmation( true );
-		if ( timeoutIdRef.current ) {
-			clearTimeout( timeoutIdRef.current );
+	const { ref, hasCopied } = useCopyToClipboardFeedback< HTMLButtonElement >(
+		{
+			text,
+			announcement: __( 'Meta description copied to clipboard.', 'ai' ),
 		}
-		timeoutIdRef.current = setTimeout( () => {
-			setShowCopyConfirmation( false );
-		}, 4000 );
-	} );
+	);
 
-	useEffect( () => {
-		return () => {
-			if ( timeoutIdRef.current ) {
-				clearTimeout( timeoutIdRef.current );
-			}
-		};
-	}, [] );
+	const isCopyDisabled = disabled || hasCopied;
 
 	return (
 		<Button
-			ref={ ref }
+			ref={ isCopyDisabled ? undefined : ref }
 			variant="tertiary"
-			disabled={ disabled }
+			disabled={ isCopyDisabled }
 			accessibleWhenDisabled
+			__next40pxDefaultSize
 		>
-			{ showCopyConfirmation
+			{ hasCopied
 				? __( 'Copied!', 'ai' )
 				: __( 'Copy to clipboard', 'ai' ) }
 		</Button>
@@ -76,6 +66,8 @@ function CopyButton( {
  * @param props.isGenerating         Whether generation is in progress.
  * @param props.suggestion           The generated suggestion.
  * @param props.editableText         The current editable text value.
+ * @param props.isContentTooShort    Whether the content is too short to generate a suggestion.
+ * @param props.tooShortLabel        Label to show when content is too short.
  * @param props.onEditableTextChange Callback to update the editable text.
  * @param props.onGenerate           Callback to trigger generation.
  * @param props.onApply              Callback to apply the description.
@@ -85,6 +77,8 @@ export default function MetaDescriptionModal( {
 	isGenerating,
 	suggestion,
 	editableText,
+	isContentTooShort,
+	tooShortLabel,
 	onEditableTextChange,
 	onGenerate,
 	onApply,
@@ -102,7 +96,7 @@ export default function MetaDescriptionModal( {
 		: __( 'Generate', 'ai' );
 
 	if ( isGenerating ) {
-		generateButtonLabel = __( 'Generating', 'ai' );
+		generateButtonLabel = __( 'Generating…', 'ai' );
 	}
 
 	return (
@@ -111,12 +105,14 @@ export default function MetaDescriptionModal( {
 			onRequestClose={ onClose }
 			className="ai-meta-description-modal"
 			size="medium"
+			focusOnMount="firstContentElement"
 		>
 			<div className="ai-meta-description-modal__content">
 				{ /* Editable textarea */ }
 				<div className="ai-meta-description-modal__editor">
 					<TextareaControl
 						label={ __( 'Meta description', 'ai' ) }
+						hideLabelFromVision
 						value={ editableText }
 						onChange={ onEditableTextChange }
 						rows={ 3 }
@@ -124,7 +120,7 @@ export default function MetaDescriptionModal( {
 							'Aim for 140–160 characters for optimal display in search results.',
 							'ai'
 						) }
-						__nextHasNoMarginBottom
+						disabled={ isGenerating }
 					/>
 					<CharacterCount count={ editableText.length } />
 				</div>
@@ -138,27 +134,56 @@ export default function MetaDescriptionModal( {
 							onClose();
 						} }
 						accessibleWhenDisabled
-						disabled={ editableText.trim().length === 0 }
+						disabled={
+							isGenerating ||
+							( !! editableText &&
+								editableText.trim().length === 0 )
+						}
+						__next40pxDefaultSize
 					>
 						{ __( 'Apply', 'ai' ) }
 					</Button>
 					<Button
 						variant="secondary"
+						label={
+							isContentTooShort
+								? tooShortLabel
+								: generateButtonLabel
+						}
+						showTooltip
 						onClick={ onGenerate }
-						disabled={ isGenerating }
+						disabled={ isGenerating || isContentTooShort }
 						isBusy={ isGenerating }
 						accessibleWhenDisabled
+						__next40pxDefaultSize
 					>
 						{ generateButtonLabel }
 					</Button>
 					<CopyButton
 						text={ editableText }
-						disabled={ editableText.trim().length === 0 }
+						disabled={
+							isGenerating || editableText.trim().length === 0
+						}
 					/>
-					<Button variant="tertiary" onClick={ onClose }>
+					<Button
+						variant="tertiary"
+						isDestructive
+						onClick={ onClose }
+						className="ai-meta-description-modal__cancel"
+						__next40pxDefaultSize
+					>
 						{ __( 'Cancel', 'ai' ) }
 					</Button>
 				</div>
+
+				{ isContentTooShort && (
+					<p
+						className="ai-meta-description__hint components-base-control__help"
+						style={ { color: '#757575' } }
+					>
+						{ tooShortLabel }
+					</p>
+				) }
 			</div>
 		</Modal>
 	);

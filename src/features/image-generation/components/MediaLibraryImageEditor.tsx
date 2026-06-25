@@ -10,7 +10,7 @@
  * WordPress dependencies
  */
 import { useState, useRef, useEffect, useCallback } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, sprintf, isRTL } from '@wordpress/i18n';
 import {
 	Button,
 	TextareaControl,
@@ -386,6 +386,7 @@ export function MediaLibraryImageEditor( {
 							onClick={ () =>
 								setShowPrompt( ( show ) => ! show )
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
@@ -408,6 +409,7 @@ export function MediaLibraryImageEditor( {
 										: undefined;
 									handleGenerate( preset.prompt, reference );
 								} }
+								__next40pxDefaultSize
 							>
 								{ preset.label }
 							</Button>
@@ -423,13 +425,13 @@ export function MediaLibraryImageEditor( {
 								value={ prompt }
 								onChange={ setPrompt }
 								rows={ 3 }
-								__nextHasNoMarginBottom
 							/>
 							<div className="ai-media-library-editor__actions">
 								<Button
 									variant="primary"
 									disabled={ ! prompt.trim() }
 									onClick={ () => handleGenerate() }
+									__next40pxDefaultSize
 								>
 									{ __( 'Generate', 'ai' ) }
 								</Button>
@@ -454,7 +456,6 @@ export function MediaLibraryImageEditor( {
 					/>
 					<div className="ai-media-library-editor__masking-sidebar">
 						<RangeControl
-							__nextHasNoMarginBottom
 							label={ __( 'Brush size', 'ai' ) }
 							value={ brushSize }
 							onChange={ ( value ) =>
@@ -468,12 +469,14 @@ export function MediaLibraryImageEditor( {
 							<Button
 								variant="secondary"
 								onClick={ () => maskCanvasRef.current?.undo() }
+								__next40pxDefaultSize
 							>
 								{ __( 'Undo', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								onClick={ () => maskCanvasRef.current?.clear() }
+								__next40pxDefaultSize
 							>
 								{ __( 'Clear', 'ai' ) }
 							</Button>
@@ -487,7 +490,6 @@ export function MediaLibraryImageEditor( {
 								value={ replacePrompt }
 								onChange={ setReplacePrompt }
 								rows={ 2 }
-								__nextHasNoMarginBottom
 							/>
 						) }
 						<div className="ai-media-library-editor__masking-sidebar-actions">
@@ -499,6 +501,7 @@ export function MediaLibraryImageEditor( {
 										! replacePrompt.trim() )
 								}
 								onClick={ handleMaskApply }
+								__next40pxDefaultSize
 							>
 								{ maskMode === 'remove'
 									? __( 'Remove', 'ai' )
@@ -512,6 +515,7 @@ export function MediaLibraryImageEditor( {
 									setMaskMode( null );
 									setMaskingSource( null );
 								} }
+								__next40pxDefaultSize
 							>
 								{ __( 'Cancel', 'ai' ) }
 							</Button>
@@ -536,7 +540,7 @@ export function MediaLibraryImageEditor( {
 					) }
 					<div className="ai-media-library-editor__spinner-row">
 						<Spinner />
-						<span>{ __( 'Generating image…', 'ai' ) }</span>
+						<span>{ __( 'Generating…', 'ai' ) }</span>
 					</div>
 				</div>
 			) }
@@ -571,6 +575,7 @@ export function MediaLibraryImageEditor( {
 										historyIndex
 									);
 								} }
+								__next40pxDefaultSize
 							>
 								{ preset.label }
 							</Button>
@@ -590,10 +595,11 @@ export function MediaLibraryImageEditor( {
 					<div className="ai-image-history-nav">
 						<Button
 							className="ai-image-history-nav__arrow"
-							icon={ chevronLeft }
+							icon={ isRTL() ? chevronRight : chevronLeft }
 							disabled={ ! canGoBack }
 							onClick={ goBack }
 							label={ __( 'Previous version', 'ai' ) }
+							size="compact"
 						/>
 						<div className="ai-image-history-nav__content">
 							<div className="ai-media-library-editor__comparison">
@@ -624,10 +630,11 @@ export function MediaLibraryImageEditor( {
 						</div>
 						<Button
 							className="ai-image-history-nav__arrow"
-							icon={ chevronRight }
+							icon={ isRTL() ? chevronLeft : chevronRight }
 							disabled={ ! canGoForward }
 							onClick={ goForward }
 							label={ __( 'Next version', 'ai' ) }
+							size="compact"
 						/>
 					</div>
 					{ history.length > 1 && (
@@ -641,7 +648,11 @@ export function MediaLibraryImageEditor( {
 						</p>
 					) }
 					<div className="ai-media-library-editor__actions">
-						<Button variant="primary" onClick={ handleSave }>
+						<Button
+							variant="primary"
+							onClick={ handleSave }
+							__next40pxDefaultSize
+						>
 							{ __( 'Save to Media Library', 'ai' ) }
 						</Button>
 						<Button
@@ -651,6 +662,7 @@ export function MediaLibraryImageEditor( {
 								setError( null );
 								setState( 'refining' );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
@@ -664,6 +676,7 @@ export function MediaLibraryImageEditor( {
 									activeEntry?.referenceHistoryIndex
 								)
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
 						</Button>
@@ -671,6 +684,7 @@ export function MediaLibraryImageEditor( {
 							variant="tertiary"
 							isDestructive
 							onClick={ handleReset }
+							__next40pxDefaultSize
 						>
 							{ __( 'Start over', 'ai' ) }
 						</Button>
@@ -713,6 +727,7 @@ export function MediaLibraryImageEditor( {
 										historyIndex
 									);
 								} }
+								__next40pxDefaultSize
 							>
 								{ preset.label }
 							</Button>
@@ -726,7 +741,6 @@ export function MediaLibraryImageEditor( {
 						value={ refinePrompt }
 						onChange={ setRefinePrompt }
 						rows={ 3 }
-						__nextHasNoMarginBottom
 					/>
 					<div className="ai-media-library-editor__actions">
 						<Button
@@ -740,6 +754,7 @@ export function MediaLibraryImageEditor( {
 									historyIndex
 								)
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Apply', 'ai' ) }
 						</Button>
@@ -749,6 +764,7 @@ export function MediaLibraryImageEditor( {
 								setError( null );
 								setState( 'preview' );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Cancel', 'ai' ) }
 						</Button>

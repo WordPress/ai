@@ -6,7 +6,12 @@ import type { Locator, Page } from '@playwright/test';
 /**
  * WordPress dependencies
  */
-import { type Admin, expect } from '@wordpress/e2e-test-utils-playwright';
+import {
+	type Admin,
+	type Editor,
+	type RequestUtils,
+	expect,
+} from '@wordpress/e2e-test-utils-playwright';
 
 const CONNECTOR_LABELS: Record< string, string > = {
 	'ai-provider-for-openai': 'OpenAI',
@@ -71,6 +76,27 @@ export const visitSettingsPage = async ( admin: Admin ) => {
  */
 export const visitConnectorsPage = async ( admin: Admin ) => {
 	await admin.visitAdminPage( 'options-connectors.php' );
+};
+
+/**
+ * Visits the AI Request Logs page under Tools.
+ *
+ * @param admin The admin fixture from the test context.
+ */
+export const visitRequestLogsPage = async ( admin: Admin ) => {
+	await admin.visitAdminPage( 'tools.php', 'page=ai-request-logs' );
+};
+
+/**
+ * Empties the AI request log table via the REST endpoint.
+ *
+ * @param requestUtils The request utils fixture from the test context.
+ */
+export const purgeRequestLogs = async ( requestUtils: RequestUtils ) => {
+	await requestUtils.rest( {
+		method: 'DELETE',
+		path: '/ai/v1/logs',
+	} );
 };
 
 /**
@@ -140,6 +166,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	// Wait for page to fully load before finding the global toggle.
 	const globalToggle = page.getByLabel( 'Enable AI' );
 	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
+	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
 
 	// Nothing to do if experiments are already disabled.
 	if ( ! ( await globalToggle.isChecked() ) ) {
@@ -165,6 +192,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	// Wait for page to fully load before finding the global toggle.
 	const globalToggle = page.getByLabel( 'Enable AI' );
 	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
+	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
 
 	// Nothing to do if experiments are already enabled.
 	if ( await globalToggle.isChecked() ) {
@@ -192,41 +220,16 @@ export const enableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	// Visual-card features use a showcase card with an Enable/Disable button
-	// instead of a toggle input.
-	const showcaseCard = page.locator( '.ai-showcase-card', {
-		has: page.locator( '.ai-showcase-card__title', {
-			hasText: experimentLabel,
-		} ),
-	} );
-
-	// Wait for either the showcase card or the toggle to appear.
 	const toggle = page.getByLabel( experimentLabel );
-	await expect( showcaseCard.or( toggle ) ).toBeVisible( {
-		timeout: 10000,
-	} );
+	await expect( toggle ).toBeVisible( { timeout: 10000 } );
+	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
-	if ( await showcaseCard.isVisible() ) {
-		// Already enabled if the "Enabled" badge is visible.
-		if (
-			await showcaseCard
-				.locator( '.ai-showcase-card__enabled-badge' )
-				.isVisible()
-		) {
-			return;
-		}
-
-		await showcaseCard
-			.locator( '.ai-showcase-card__actions button' )
-			.click();
-	} else {
-		// Nothing to do if this experiment is already enabled.
-		if ( await toggle.isChecked() ) {
-			return;
-		}
-
-		await toggle.check();
+	// Nothing to do if this experiment is already enabled.
+	if ( await toggle.isChecked() ) {
+		return;
 	}
+
+	await toggle.check();
 
 	// Ensure the save was successful.
 	await expect(
@@ -250,41 +253,16 @@ export const disableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	// Visual-card features use a showcase card with an Enable/Disable button
-	// instead of a toggle input.
-	const showcaseCard = page.locator( '.ai-showcase-card', {
-		has: page.locator( '.ai-showcase-card__title', {
-			hasText: experimentLabel,
-		} ),
-	} );
-
-	// Wait for either the showcase card or the toggle to appear.
 	const toggle = page.getByLabel( experimentLabel );
-	await expect( showcaseCard.or( toggle ) ).toBeVisible( {
-		timeout: 10000,
-	} );
+	await expect( toggle ).toBeVisible( { timeout: 10000 } );
+	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
-	if ( await showcaseCard.isVisible() ) {
-		// Already disabled if there's no "Enabled" badge.
-		if (
-			! ( await showcaseCard
-				.locator( '.ai-showcase-card__enabled-badge' )
-				.isVisible() )
-		) {
-			return;
-		}
-
-		await showcaseCard
-			.locator( '.ai-showcase-card__actions button' )
-			.click();
-	} else {
-		// Nothing to do if this experiment is already disabled.
-		if ( ! ( await toggle.isChecked() ) ) {
-			return;
-		}
-
-		await toggle.uncheck();
+	// Nothing to do if this experiment is already disabled.
+	if ( ! ( await toggle.isChecked() ) ) {
+		return;
 	}
+
+	await toggle.uncheck();
 
 	// Ensure the save was successful.
 	await expect(
@@ -417,4 +395,45 @@ export const getExperimentTogglesInGroup = async (
 	}
 
 	return experimentToggles;
+};
+
+/**
+ * Selects the first paragraph block in the editor canvas so its block toolbar renders.
+ *
+ * Uses `editor.selectBlocks()` rather than a raw click so selection is reliable
+ * regardless of where the click lands within the block's text.
+ *
+ * @param editor The editor fixture from the test context.
+ * @return The paragraph block locator.
+ */
+export const selectFirstParagraph = async ( editor: Editor ) => {
+	const paragraph = editor.canvas
+		.locator( '[data-type="core/paragraph"]' )
+		.first();
+	await editor.selectBlocks( paragraph );
+	return paragraph;
+};
+
+/**
+ * Seeds a dummy OpenAI API key.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ */
+export const seedCredentials = async ( requestUtils: RequestUtils ) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/credentials/seed',
+		method: 'POST',
+	} );
+};
+
+/**
+ * Clears the dummy OpenAI API key.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ */
+export const clearCredentials = async ( requestUtils: RequestUtils ) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/credentials/clear',
+		method: 'POST',
+	} );
 };

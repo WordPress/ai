@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { useState } from '@wordpress/element';
+import { useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Button } from '@wordpress/components';
 import { update } from '@wordpress/icons';
@@ -28,33 +28,68 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		isGenerating,
 		suggestion,
 		currentDescription,
+		isContentTooShort,
+		tooShortLabel,
+		ensureProviderAvailable,
 		generateDescription,
 		applyDescription,
+		clearSuggestion,
 	} = useMetaDescription();
 
 	const [ isModalOpen, setIsModalOpen ] = useState( false );
 	const [ editableText, setEditableText ] = useState( '' );
 
+	const shouldFocusEditButton = useRef( false );
+	const shouldFocusGenerateButton = useRef( false );
+
 	const hasDescription =
 		currentDescription && currentDescription.trim().length > 0;
 
-	const handleOpenModal = async () => {
-		setEditableText( currentDescription );
-		setIsModalOpen( true );
-
-		// Auto-generate on first open if no existing description.
-		if ( ! hasDescription ) {
-			await generateDescription();
+	const focusEditButtonOnFirstMount = ( node: HTMLButtonElement | null ) => {
+		if ( shouldFocusEditButton.current && node ) {
+			node.focus();
+			shouldFocusEditButton.current = false;
 		}
 	};
 
+	const focusGenerateButtonOnEmptyState = (
+		node: HTMLButtonElement | null
+	) => {
+		if ( ! hasDescription && shouldFocusGenerateButton.current && node ) {
+			node.focus();
+			shouldFocusGenerateButton.current = false;
+		}
+	};
+
+	const handleOpenModal = async () => {
+		setEditableText( currentDescription );
+
+		// Auto-generate on first open if no existing description.
+		if ( ! hasDescription ) {
+			if ( ! ensureProviderAvailable() ) {
+				return;
+			}
+			setIsModalOpen( true );
+			await generateDescription();
+
+			shouldFocusEditButton.current = true;
+			return;
+		}
+
+		setIsModalOpen( true );
+	};
+
 	const handleOpenEditModal = () => {
+		clearSuggestion();
 		setEditableText( currentDescription );
 		setIsModalOpen( true );
 	};
 
 	const handleRegenerate = async () => {
 		setEditableText( currentDescription );
+		if ( ! ensureProviderAvailable() ) {
+			return;
+		}
 		setIsModalOpen( true );
 		await generateDescription();
 	};
@@ -70,16 +105,22 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					<div className="ai-meta-description-panel__actions">
 						<Button
 							variant="link"
-							onClick={ handleOpenEditModal }
 							size="compact"
+							onClick={ handleOpenEditModal }
+							ref={ focusEditButtonOnFirstMount }
 						>
 							{ __( 'Edit description', 'ai' ) }
 						</Button>
 						<Button
 							icon={ update }
-							label={ __( 'Regenerate meta description', 'ai' ) }
+							label={
+								isContentTooShort
+									? tooShortLabel
+									: __( 'Regenerate meta description', 'ai' )
+							}
+							showTooltip
 							onClick={ handleRegenerate }
-							disabled={ isGenerating }
+							disabled={ isGenerating || isContentTooShort }
 							size="compact"
 							accessibleWhenDisabled
 						/>
@@ -88,13 +129,32 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 			) : (
 				<Button
 					variant="secondary"
+					label={
+						isContentTooShort
+							? tooShortLabel
+							: __( 'Generate Meta Description', 'ai' )
+					}
 					onClick={ handleOpenModal }
-					disabled={ isGenerating }
+					disabled={ isGenerating || isContentTooShort }
 					isBusy={ isGenerating }
+					ref={ focusGenerateButtonOnEmptyState }
 					accessibleWhenDisabled
+					__next40pxDefaultSize
+					className="ai-meta-description-panel__generate-button"
 				>
-					{ __( 'Generate Meta Description', 'ai' ) }
+					{ isGenerating
+						? __( 'Generating…', 'ai' )
+						: __( 'Generate Meta Description', 'ai' ) }
 				</Button>
+			) }
+
+			{ isContentTooShort && ! hasDescription && (
+				<p
+					className="ai-meta-description__hint components-base-control__help"
+					style={ { color: '#757575' } }
+				>
+					{ tooShortLabel }
+				</p>
 			) }
 
 			{ isModalOpen && (
@@ -102,10 +162,23 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 					isGenerating={ isGenerating }
 					suggestion={ suggestion }
 					editableText={ editableText }
+					isContentTooShort={ isContentTooShort }
+					tooShortLabel={ tooShortLabel }
 					onEditableTextChange={ setEditableText }
 					onGenerate={ generateDescription }
-					onApply={ applyDescription }
-					onClose={ () => setIsModalOpen( false ) }
+					onApply={ ( text ) => {
+						applyDescription( text );
+
+						// Restore focus to the generate button when applying an empty description.
+						if ( text.trim().length === 0 ) {
+							shouldFocusEditButton.current = false;
+							shouldFocusGenerateButton.current = true;
+						}
+					} }
+					onClose={ () => {
+						clearSuggestion();
+						setIsModalOpen( false );
+					} }
 				/>
 			) }
 		</div>

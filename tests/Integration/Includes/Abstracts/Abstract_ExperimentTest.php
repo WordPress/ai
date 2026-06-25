@@ -105,6 +105,31 @@ class Mock_Custom_Stability_Experiment extends Test_Uncategorized_Experiment {
 }
 
 /**
+ * Mock experiment with custom capability metadata.
+ *
+ * @since 0.9.0
+ */
+class Mock_Custom_Capability_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-custom-capability';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Custom Capability',
+			'description' => 'Test description',
+			'capability'  => 'none',
+		);
+	}
+}
+
+/**
  * Test experiment with an empty string category.
  *
  * @since 0.4.0
@@ -229,6 +254,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_test-categorized_enabled' );
 		delete_option( 'wpai_feature_test-uncategorized_enabled' );
 		delete_option( 'wpai_feature_test-empty-category_enabled' );
+		remove_all_filters( 'wpai_feature_test-categorized_enabled' );
 		parent::tearDown();
 	}
 
@@ -318,6 +344,80 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	public function test_get_stability_custom() {
 		$experiment = new Mock_Custom_Stability_Experiment();
 		$this->assertEquals( 'stable', $experiment->get_stability(), 'Custom stability should be returned from metadata' );
+	}
+
+	/**
+	 * Tests that is_globally_enabled() returns the global enabled state.
+	 *
+	 * @since 1.0.1
+	 */
+	public function test_is_globally_enabled_returns_global_enabled_state(): void {
+		$experiment = new Test_Categorized_Experiment();
+
+		update_option( 'wpai_features_enabled', false );
+		$this->assertFalse( $experiment->is_globally_enabled() );
+
+		update_option( 'wpai_features_enabled', true );
+		$this->assertTrue( $experiment->is_globally_enabled() );
+	}
+
+	/**
+	 * Tests that is_individually_enabled() applies the feature enabled filter.
+	 *
+	 * @since 1.0.1
+	 */
+	public function test_is_individually_enabled_applies_feature_filter(): void {
+		update_option( 'wpai_feature_test-categorized_enabled', false );
+		add_filter( 'wpai_feature_test-categorized_enabled', '__return_true' );
+
+		$experiment = new Test_Categorized_Experiment();
+
+		$this->assertTrue( $experiment->is_individually_enabled() );
+	}
+
+	/**
+	 * Tests that is_enabled() still requires the global enabled state.
+	 *
+	 * @since 1.0.1
+	 */
+	public function test_is_enabled_still_requires_global_enabled_state(): void {
+		update_option( 'wpai_features_enabled', false );
+		update_option( 'wpai_feature_test-categorized_enabled', true );
+
+		$experiment = new Test_Categorized_Experiment();
+
+		$this->assertTrue( $experiment->is_individually_enabled() );
+		$this->assertFalse( $experiment->is_enabled() );
+	}
+
+	/**
+	 * Tests that get_capability() defaults to text_generation when the capability key is absent from metadata.
+	 *
+	 * @since 0.9.0
+	 */
+	public function test_get_capability_defaults_to_text_generation_when_missing(): void {
+		$experiment = new Test_Uncategorized_Experiment();
+
+		$this->assertSame(
+			'text_generation',
+			$experiment->get_capability(),
+			'get_capability() should return text_generation when no capability key is present in metadata'
+		);
+	}
+
+	/**
+	 * Tests that get_capability() returns the value declared in metadata.
+	 *
+	 * @since 0.9.0
+	 */
+	public function test_get_capability_returns_metadata_value(): void {
+		$experiment = new Mock_Custom_Capability_Experiment();
+
+		$this->assertSame(
+			'none',
+			$experiment->get_capability(),
+			'get_capability() should return the capability declared in load_metadata()'
+		);
 	}
 
 	/**

@@ -43,6 +43,35 @@ class Stub_Editor_Feature extends Abstract_Feature {
 }
 
 /**
+ * Stub feature with a custom AI capability.
+ */
+class Stub_Image_Capability_Feature extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'stub-image-capability';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Stub Image Capability',
+			'description' => 'A feature with a custom capability.',
+			'category'    => Experiment_Category::EDITOR,
+			'capability'  => 'image_generation',
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register(): void {}
+}
+
+/**
  * Stub feature for admin category.
  */
 class Stub_Admin_Feature extends Abstract_Feature {
@@ -276,6 +305,7 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$this->assertSame( 'Stub Editor Feature', $feature['label'] );
 		$this->assertSame( 'An editor feature for testing.', $feature['description'] );
 		$this->assertSame( Experiment_Category::EDITOR, $feature['category'] );
+		$this->assertSame( 'text_generation', $feature['capability'] );
 
 		$group = $result['groups'][0];
 		$this->assertSame( Experiment_Category::EDITOR, $group['id'] );
@@ -487,6 +517,17 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$feature = $result['features'][0];
 		$this->assertArrayHasKey( 'settingsFields', $feature );
 		$this->assertSame( array(), $feature['settingsFields'], 'Feature without custom settings should have empty settingsFields' );
+	}
+
+	/**
+	 * Test that feature metadata includes a custom capability when provided.
+	 */
+	public function test_feature_metadata_includes_custom_capability() {
+		$this->registry->register_feature( new Stub_Image_Capability_Feature() );
+
+		$result = $this->get_settings_feature_metadata( $this->registry );
+
+		$this->assertSame( 'image_generation', $result['features'][0]['capability'] );
 	}
 
 	/**

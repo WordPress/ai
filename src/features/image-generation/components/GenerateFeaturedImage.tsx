@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Button, Spinner } from '@wordpress/components';
+import { Button } from '@wordpress/components';
 import { dispatch, select, useDispatch } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -13,6 +13,14 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateImage } from '../functions/generate-image';
 import { uploadImage } from '../functions/upload-image';
+import {
+	ensureProvider,
+	getProviderData,
+} from '../../../utils/provider-status';
+
+const NOTICE_ID = 'ai_image_generation_error';
+
+const { aiImageGenerationData } = window as any;
 
 /**
  * GenerateFeaturedImage component.
@@ -21,7 +29,7 @@ import { uploadImage } from '../functions/upload-image';
  *
  * @return {React.JSX.Element} The GenerateFeaturedImage component.
  */
-export default function GenerateFeaturedImage(): React.JSX.Element {
+export default function GenerateFeaturedImage(): React.JSX.Element | null {
 	const { editPost } = useDispatch( editorStore );
 
 	const content = select( editorStore ).getEditedPostContent();
@@ -29,44 +37,69 @@ export default function GenerateFeaturedImage(): React.JSX.Element {
 		select( editorStore ).getEditedPostAttribute( 'featured_media' );
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
-	const [ progressMessage, setProgressMessage ] = useState< string | null >(
-		null
-	);
-
-	const buttonLabel = featuredImage
-		? __( 'Generate new featured image', 'ai' )
-		: __( 'Generate featured image', 'ai' );
+	const [ progress, setProgress ] = useState( '' );
 
 	/**
 	 * Handles the generate button click.
 	 */
 	const handleGenerate = async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
+		if ( ! aiImageGenerationData?.hasImageGenerationSupport ) {
+			dispatch( noticesStore ).createErrorNotice(
+				__(
+					'This feature requires an AI Connector that supports image generation. Review your Connectors to ensure you have a valid AI Connector configured.',
+					'ai'
+				),
+				{
+					id: NOTICE_ID,
+					isDismissible: true,
+					actions: getProviderData().connectorsUrl
+						? [
+								{
+									label: __( 'Manage Connectors', 'ai' ),
+									url: getProviderData().connectorsUrl,
+								},
+						  ]
+						: [],
+				}
+			);
+			return;
+		}
+
 		setIsGenerating( true );
-		setProgressMessage( null );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_image_generation_error'
-		);
+		setProgress( '' );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedImageData = await generateImage( content, {
-				onProgress: setProgressMessage,
+				onProgress: setProgress,
 			} );
 			const importedImage = await uploadImage( generatedImageData, {
-				onProgress: setProgressMessage,
+				onProgress: setProgress,
 			} );
 			editPost( {
 				featured_media: importedImage.id,
 			} );
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice( error, {
-				id: 'ai_image_generation_error',
+			const message =
+				error?.message ||
+				__( 'An error occurred during image generation.', 'ai' );
+			dispatch( noticesStore ).createErrorNotice( message, {
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
 			setIsGenerating( false );
-			setProgressMessage( null );
+			setProgress( '' );
 		}
 	};
+
+	if ( featuredImage && ! isGenerating ) {
+		return null;
+	}
 
 	return (
 		<div className="ai-featured-image editor-post-featured-image">
@@ -76,27 +109,17 @@ export default function GenerateFeaturedImage(): React.JSX.Element {
 					className="ai-generate-featured-image editor-post-featured-image__toggle"
 					onClick={ handleGenerate }
 					disabled={ isGenerating }
+					accessibleWhenDisabled
 					isBusy={ isGenerating }
 				>
-					{ buttonLabel }
+					{ isGenerating
+						? __( 'Generating…', 'ai' )
+						: __( 'Generate featured image', 'ai' ) }
 				</Button>
-				{ progressMessage && (
-					<div
-						className="ai-featured-image__progress"
-						role="status"
-						aria-live="polite"
-						style={ { color: '#757575', marginTop: '10px' } }
-					>
-						{ progressMessage }
-						<Spinner
-							style={ {
-								marginLeft: '5px',
-								marginTop: '0',
-								position: 'inherit',
-								verticalAlign: 'text-top',
-							} }
-						/>
-					</div>
+				{ isGenerating && progress && (
+					<p className="ai-featured-image__progress description">
+						{ progress }
+					</p>
 				) }
 			</div>
 		</div>

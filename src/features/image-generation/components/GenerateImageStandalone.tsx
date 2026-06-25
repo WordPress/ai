@@ -1,31 +1,26 @@
 /**
  * WordPress dependencies
  */
+import { Button, Notice } from '@wordpress/components';
 import { useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
-import {
-	Button,
-	TextareaControl,
-	Spinner,
-	Notice,
-} from '@wordpress/components';
-import { chevronLeft, chevronRight } from '@wordpress/icons';
+import { __ } from '@wordpress/i18n';
+import { useFocusOnMount } from '@wordpress/compose';
 
 /**
  * Internal dependencies
  */
-import { runAbility } from '../../../utils/run-ability';
 import { uploadImage } from '../functions/upload-image';
-import { useImageHistory } from '../hooks/useImageHistory';
-import type {
-	GeneratedImageData,
-	ImageGenerationAbilityInput,
-	UploadedImage,
-} from '../types';
+import { useImageGeneration } from '../hooks/useImageGeneration';
+import { isProviderAvailable } from '../../../utils/provider-status';
+import type { UploadedImage } from '../types';
+import {
+	GeneratingState,
+	ImageHistoryNav,
+	PromptForm,
+	RefinePromptForm,
+} from './shared';
 
 const { aiImageGenerationData } = window as any;
-
-type ModalState = 'idle' | 'generating' | 'preview' | 'refining';
 
 /**
  * Standalone component for AI image generation in the Media Library.
@@ -34,91 +29,39 @@ type ModalState = 'idle' | 'generating' | 'preview' | 'refining';
  * can be saved while remaining in the preview state with navigation.
  */
 export function GenerateImageStandalone() {
-	const [ state, setState ] = useState< ModalState >( 'idle' );
-	const [ prompt, setPrompt ] = useState( '' );
-	const [ refinePrompt, setRefinePrompt ] = useState( '' );
 	const [ savedUploads, setSavedUploads ] = useState< UploadedImage[] >( [] );
-	const [ progress, setProgress ] = useState( '' );
-	const [ error, setError ] = useState< string | null >( null );
+	const [ savedHistoryIndices, setSavedHistoryIndices ] = useState<
+		Set< number >
+	>( new Set() );
 
 	const {
+		state,
+		setState,
+		prompt,
+		setPrompt,
+		refinePrompt,
+		setRefinePrompt,
+		progress,
+		setProgress,
+		error,
+		setError,
 		history,
 		historyIndex,
 		activeEntry,
 		canGoBack,
 		canGoForward,
-		addToHistory,
 		goBack,
 		goForward,
 		resetHistory,
-	} = useImageHistory();
+		generate,
+		previewSrc,
+		showComparison,
+		comparisonLeftLabel,
+		comparisonRightLabel,
+	} = useImageGeneration();
 
-	/**
-	 * Runs the image generation ability with the given prompt and
-	 * optional reference image for the refining flow.
-	 *
-	 * @param {string}           activePrompt    The prompt to generate an image from.
-	 * @param {string|undefined} referenceImage  Optional base64 image for refining.
-	 * @param {number|undefined} refHistoryIndex History index of the entry whose image is the reference.
-	 */
-	async function generate(
-		activePrompt: string,
-		referenceImage?: string,
-		refHistoryIndex?: number
-	): Promise< void > {
-		setError( null );
-		setState( 'generating' );
-		setProgress( __( 'Generating image…', 'ai' ) );
+	const focusOnMountRef = useFocusOnMount( 'firstElement' );
 
-		try {
-			const input: ImageGenerationAbilityInput = { prompt: activePrompt };
-			if ( referenceImage ) {
-				input.reference = referenceImage;
-			}
-
-			const response = ( await runAbility(
-				'ai/image-generation',
-				input
-			) ) as GeneratedImageData;
-
-			if ( ! response || ! response.image ) {
-				throw new Error(
-					__( 'Invalid response from image generation', 'ai' )
-				);
-			}
-
-			const prevData = activeEntry?.generatedData;
-			const previousPrompts = referenceImage
-				? prevData?.prompts ??
-				  ( prevData?.prompt ? [ prevData.prompt ] : [] )
-				: [];
-			const promptHistory = previousPrompts.filter( Boolean );
-			const lastPrompt = promptHistory[ promptHistory.length - 1 ];
-			const prompts =
-				lastPrompt === activePrompt
-					? promptHistory
-					: [ ...promptHistory, activePrompt ];
-
-			addToHistory(
-				{ ...response, prompt: activePrompt, prompts },
-				referenceImage,
-				!! referenceImage,
-				refHistoryIndex
-			);
-			setState( 'preview' );
-		} catch ( err: any ) {
-			const message: string =
-				err?.message ||
-				__( 'An error occurred during image generation.', 'ai' );
-
-			setError( message );
-			setState( referenceImage ? 'refining' : 'idle' );
-		}
-	}
-
-	/**
-	 * Uploads the active generated image to the Media Library.
-	 */
 	async function handleSaveImage(): Promise< void > {
 		if ( ! activeEntry ) {
 			return;
@@ -136,8 +79,10 @@ export function GenerateImageStandalone() {
 					altTextEnabled: aiImageGenerationData?.altTextEnabled,
 				}
 			);
-
 			setSavedUploads( ( prev ) => [ ...prev, uploaded ] );
+			setSavedHistoryIndices(
+				( prev ) => new Set( [ ...prev, historyIndex ] )
+			);
 			setState( 'preview' );
 		} catch ( err: any ) {
 			setError( err?.message || __( 'Failed to upload image.', 'ai' ) );
@@ -145,84 +90,139 @@ export function GenerateImageStandalone() {
 		}
 	}
 
-	const previewSrc = activeEntry?.generatedData?.image?.data
-		? `data:image/png;base64,${ activeEntry.generatedData.image.data }`
-		: null;
+	/**
+	 * Wraps generate() with an inline provider availability check.
+	 *
+	 * Outside the block editor the @wordpress/notices store has no renderer,
+	 * so ensureProvider()'s dispatched notice is invisible. This guard uses
+	 * isProviderAvailable() and sets component-level error state instead,
+	 * ensuring the user sees a Notice in the standalone UI.
+	 *
+	 * @param activePrompt    The prompt text to generate an image from.
+	 * @param referenceImage  Optional base64 data URI of a reference image for refinement.
+	 * @param refHistoryIndex Optional history index of the reference image entry.
+	 */
+	function safeGenerate(
+		activePrompt: string,
+		referenceImage?: string,
+		refHistoryIndex?: number
+	): void {
+		if ( ! isProviderAvailable() ) {
+			setError(
+				__(
+					'This feature requires an AI Connector to function properly. Please set up a provider in Settings → Connectors.',
+					'ai'
+				)
+			);
+			return;
+		}
+		generate( activePrompt, referenceImage, refHistoryIndex );
+	}
 
-	// Show comparison only when the active entry was a refinement.
-	const showComparison = Boolean( activeEntry?.referenceSrc );
-	const comparisonLeftLabel = sprintf(
-		/* translators: %d: version number */
-		__( 'Version %d', 'ai' ),
-		( activeEntry?.referenceHistoryIndex ?? 0 ) + 1
-	);
-	const comparisonRightLabel = sprintf(
-		/* translators: %d: version number */
-		__( 'Version %d', 'ai' ),
-		historyIndex + 1
-	);
-
-	// Most recently saved upload.
 	const lastSaved = savedUploads[ savedUploads.length - 1 ] ?? null;
 
 	return (
 		<div className="ai-generate-image-standalone">
 			{ state === 'idle' && (
-				<div className="ai-generate-image-standalone__idle">
-					<p className="description">
-						{ __(
-							'Describe the image you want to generate.',
-							'ai'
-						) }
-					</p>
-					<TextareaControl
-						label={ __( 'Prompt', 'ai' ) }
-						value={ prompt }
-						onChange={ setPrompt }
-						rows={ 4 }
-						hideLabelFromVision
-						__nextHasNoMarginBottom
-					/>
-					<div className="ai-generate-image-standalone__actions">
-						<Button
-							variant="primary"
-							disabled={ ! prompt.trim() }
-							onClick={ () => generate( prompt.trim() ) }
-						>
-							{ __( 'Generate', 'ai' ) }
-						</Button>
-					</div>
-					{ error && (
-						<Notice status="error" isDismissible={ false }>
-							{ error }
-						</Notice>
+				<PromptForm
+					prompt={ prompt }
+					onPromptChange={ setPrompt }
+					onGenerate={ () => safeGenerate( prompt.trim() ) }
+					error={ error }
+					hasImageGenerationSupport={ Boolean(
+						aiImageGenerationData?.hasImageGenerationSupport
 					) }
-				</div>
+				/>
 			) }
 
 			{ state === 'generating' && (
-				<div className="ai-generate-image-standalone__generating">
-					{ previewSrc && (
-						<img
-							src={ previewSrc }
-							alt={ activeEntry?.generatedData?.prompt ?? '' }
-							className="ai-generate-image-standalone__preview-image"
-						/>
-					) }
-					<div className="ai-generate-image-standalone__spinner-row">
-						<Spinner />
-						<span>{ progress }</span>
-					</div>
-					{ error && (
-						<Notice status="error" isDismissible={ false }>
-							{ error }
-						</Notice>
-					) }
-				</div>
+				<GeneratingState
+					progress={ progress }
+					previewSrc={ previewSrc }
+					previewAlt={ activeEntry?.generatedData?.prompt ?? '' }
+				/>
 			) }
 
 			{ state === 'preview' && previewSrc && (
 				<div className="ai-generate-image-standalone__preview">
+					<ImageHistoryNav
+						previewSrc={ previewSrc }
+						activeEntry={ activeEntry }
+						canGoBack={ canGoBack }
+						canGoForward={ canGoForward }
+						onGoBack={ goBack }
+						onGoForward={ goForward }
+						historyLength={ history.length }
+						historyIndex={ historyIndex }
+						showComparison={ showComparison }
+						comparisonLeftLabel={ comparisonLeftLabel }
+						comparisonRightLabel={ comparisonRightLabel }
+					/>
+					<div
+						className="ai-image-generation__actions"
+						ref={ focusOnMountRef }
+					>
+						<Button
+							variant="primary"
+							onClick={ handleSaveImage }
+							disabled={ savedHistoryIndices.has( historyIndex ) }
+							accessibleWhenDisabled
+							__next40pxDefaultSize
+						>
+							{ __( 'Save to Media Library', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={ () => {
+								setRefinePrompt( '' );
+								setState( 'refining' );
+							} }
+							__next40pxDefaultSize
+						>
+							{ __( 'Refine Image', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={ () =>
+								safeGenerate(
+									activeEntry?.generatedData.prompt ??
+										prompt.trim(),
+									activeEntry?.referenceSrc,
+									activeEntry?.referenceHistoryIndex
+								)
+							}
+							__next40pxDefaultSize
+						>
+							{ __( 'Generate Another Image', 'ai' ) }
+						</Button>
+						<Button
+							variant="tertiary"
+							onClick={ () => {
+								resetHistory();
+								setState( 'idle' );
+								setError( null );
+							} }
+							__next40pxDefaultSize
+						>
+							{ __( 'Edit Prompt', 'ai' ) }
+						</Button>
+						<Button
+							variant="tertiary"
+							isDestructive
+							onClick={ () => {
+								resetHistory();
+								setSavedUploads( [] );
+								setSavedHistoryIndices( new Set() );
+								setPrompt( '' );
+								setState( 'idle' );
+								setError( null );
+							} }
+							style={ { marginInlineStart: 'auto' } }
+							__next40pxDefaultSize
+						>
+							{ __( 'Cancel', 'ai' ) }
+						</Button>
+					</div>
 					{ lastSaved && (
 						<Notice
 							status="success"
@@ -243,122 +243,6 @@ export function GenerateImageStandalone() {
 							</a>
 						</Notice>
 					) }
-					<div className="ai-image-history-nav">
-						<Button
-							className="ai-image-history-nav__arrow"
-							icon={ chevronLeft }
-							disabled={ ! canGoBack }
-							onClick={ goBack }
-							label={ __( 'Previous version', 'ai' ) }
-						/>
-						<div className="ai-image-history-nav__content">
-							{ showComparison ? (
-								<div className="ai-generate-image-standalone__comparison">
-									<div className="ai-generate-image-standalone__comparison-item">
-										<p className="ai-generate-image-standalone__comparison-label">
-											{ comparisonLeftLabel }
-										</p>
-										<img
-											src={
-												activeEntry?.referenceSrc ?? ''
-											}
-											alt={ comparisonLeftLabel }
-											className="ai-generate-image-standalone__preview-image"
-										/>
-									</div>
-									<div className="ai-generate-image-standalone__comparison-item">
-										<p className="ai-generate-image-standalone__comparison-label">
-											{ comparisonRightLabel }
-										</p>
-										<img
-											src={ previewSrc }
-											alt={
-												activeEntry?.generatedData
-													?.prompt ?? ''
-											}
-											className="ai-generate-image-standalone__preview-image is-active"
-										/>
-									</div>
-								</div>
-							) : (
-								<img
-									src={ previewSrc }
-									alt={
-										activeEntry?.generatedData?.prompt ?? ''
-									}
-									className="ai-generate-image-standalone__preview-image is-active"
-								/>
-							) }
-						</div>
-						<Button
-							className="ai-image-history-nav__arrow"
-							icon={ chevronRight }
-							disabled={ ! canGoForward }
-							onClick={ goForward }
-							label={ __( 'Next version', 'ai' ) }
-						/>
-					</div>
-					{ history.length > 1 && (
-						<p className="ai-image-history-nav__counter">
-							{ sprintf(
-								/* translators: 1: current position, 2: total count */
-								__( '%1$d / %2$d', 'ai' ),
-								historyIndex + 1,
-								history.length
-							) }
-						</p>
-					) }
-					<div className="ai-generate-image-standalone__actions">
-						<Button variant="primary" onClick={ handleSaveImage }>
-							{ __( 'Save to Media Library', 'ai' ) }
-						</Button>
-						<Button
-							variant="secondary"
-							onClick={ () => {
-								setRefinePrompt( '' );
-								setState( 'refining' );
-							} }
-						>
-							{ __( 'Refine Image', 'ai' ) }
-						</Button>
-						<Button
-							variant="secondary"
-							onClick={ () => {
-								generate(
-									activeEntry?.generatedData.prompt ??
-										prompt.trim(),
-									activeEntry?.referenceSrc,
-									activeEntry?.referenceHistoryIndex
-								);
-							} }
-						>
-							{ __( 'Generate Another Image', 'ai' ) }
-						</Button>
-						<Button
-							variant="tertiary"
-							onClick={ () => {
-								resetHistory();
-								setState( 'idle' );
-								setError( null );
-							} }
-						>
-							{ __( 'Edit Prompt', 'ai' ) }
-						</Button>
-						<Button
-							variant="tertiary"
-							isDestructive
-							onClick={ () => {
-								resetHistory();
-								setSavedUploads( [] );
-								setPrompt( '' );
-								setState( 'idle' );
-								setError( null );
-							} }
-							style={ { marginLeft: 'auto' } }
-						>
-							{ __( 'Cancel', 'ai' ) }
-						</Button>
-					</div>
 					{ error && (
 						<Notice status="error" isDismissible={ false }>
 							{ error }
@@ -368,53 +252,25 @@ export function GenerateImageStandalone() {
 			) }
 
 			{ state === 'refining' && previewSrc && (
-				<div className="ai-generate-image-standalone__refining">
-					<img
-						src={ previewSrc }
-						alt={ activeEntry?.generatedData?.prompt ?? '' }
-						className="ai-generate-image-standalone__preview-image"
-					/>
-					<TextareaControl
-						label={ __(
-							'Describe the refinements you want to make to the image.',
-							'ai'
-						) }
-						value={ refinePrompt }
-						onChange={ setRefinePrompt }
-						rows={ 3 }
-						__nextHasNoMarginBottom
-					/>
-					<div className="ai-generate-image-standalone__actions">
-						<Button
-							variant="primary"
-							disabled={ ! refinePrompt.trim() }
-							onClick={ () =>
-								generate(
-									refinePrompt.trim(),
-									previewSrc,
-									historyIndex
-								)
-							}
-						>
-							{ __( 'Refine', 'ai' ) }
-						</Button>
-						<Button
-							variant="tertiary"
-							isDestructive
-							onClick={ () => {
-								setState( 'preview' );
-								setError( null );
-							} }
-						>
-							{ __( 'Cancel Refinement', 'ai' ) }
-						</Button>
-					</div>
-					{ error && (
-						<Notice status="error" isDismissible={ false }>
-							{ error }
-						</Notice>
-					) }
-				</div>
+				<RefinePromptForm
+					previewSrc={ previewSrc }
+					previewAlt={ activeEntry?.generatedData?.prompt ?? '' }
+					refinePrompt={ refinePrompt }
+					onRefinePromptChange={ setRefinePrompt }
+					onRefine={ () =>
+						safeGenerate(
+							refinePrompt.trim(),
+							previewSrc,
+							historyIndex
+						)
+					}
+					onCancel={ () => {
+						setState( 'preview' );
+						setError( null );
+					} }
+					cancelIsDestructive
+					error={ error }
+				/>
 			) }
 		</div>
 	);

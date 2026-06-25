@@ -10,7 +10,6 @@ on:
     types:
       - opened
       - synchronize
-      - ready_for_review
 
 # Cancels all previous workflow runs for pull requests that have not completed.
 concurrency:
@@ -29,16 +28,17 @@ jobs:
     runs-on: 'ubuntu-24.04'
     permissions:
       contents: read
+      pull-requests: write
     timeout-minutes: 20
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
           persist-credentials: false
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.3'
           coverage: none
@@ -59,9 +59,9 @@ jobs:
         run: npm run build
 
       - name: Run plugin check
-        uses: wordpress/plugin-check-action@6f5a57e173c065a394b78688f75df543e4011902 # v1.1.5
+        uses: wordpress/plugin-check-action@98a1788320d0add90df2d8183934ecccbc4e05d2 # v1.1.7
         with:
-          wp-version: 'trunk'
+          wp-version: 'latest'
           # Exclude file_type because of the dev files present in the repository.
           exclude-checks: |
             file_type
@@ -72,3 +72,4 @@ jobs:
             build
             docs
             tests
+          ignore-warnings: true

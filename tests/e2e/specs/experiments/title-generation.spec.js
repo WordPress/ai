@@ -13,6 +13,9 @@ const {
 	enableExperiments,
 } = require( '../../utils/helpers' );
 
+const LONG_CONTENT =
+	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough words for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.';
+
 test.describe( 'Title Generation Experiment', () => {
 	test( 'Can enable the title generation experiment', async ( {
 		admin,
@@ -40,8 +43,7 @@ test.describe( 'Title Generation Experiment', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: '',
-			content:
-				'This is some test content for the Title Generation Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		// Save the post.
@@ -110,8 +112,7 @@ test.describe( 'Title Generation Experiment', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Title Generation',
-			content:
-				'This is some test content for the Title Generation Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		// Save the post.
@@ -163,6 +164,42 @@ test.describe( 'Title Generation Experiment', () => {
 
 		// Save the post.
 		await editor.saveDraft();
+	} );
+
+	test( 'Generate button is disabled when there is not enough content', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Title Generation Experiment.
+		await enableExperiment( admin, page, 'Title Generation' );
+
+		// Create a new post with content well below the minimum length.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: '',
+			content: 'Too short.',
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Click into the title field to reveal the toolbar.
+		await editor.canvas.locator( '.editor-post-title__input' ).click();
+
+		// The toolbar is visible with the "Generate" label.
+		await expect(
+			editor.canvas.locator( '.ai-title-toolbar-container', {
+				hasText: 'Generate',
+			} )
+		).toBeVisible();
+
+		await expect(
+			editor.canvas.locator( '.ai-title-toolbar-container button' )
+		).toHaveAttribute( 'aria-disabled', 'true' );
 	} );
 
 	test( 'Ensure the Title Generation Experiment UI is not visible when Experiments are globally disabled', async ( {

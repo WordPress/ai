@@ -14,9 +14,9 @@ import {
 	ToolbarGroup,
 	ToolbarButton,
 } from '@wordpress/components';
-import { dispatch, select, useDispatch } from '@wordpress/data';
+import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
-import { useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
@@ -25,9 +25,29 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import type { TitleGenerationAbilityInput, GeneratedTitleData } from '../types';
+import { ensureProvider } from '../../../utils/provider-status';
+import {
+	formatMinLengthLabel,
+	hasMinimumContent,
+} from '../../../utils/word-count';
+import type {
+	TitleGenerationAbilityInput,
+	GeneratedTitleData,
+	TitleGenerationData,
+} from '../types';
 
-const { aiTitleGenerationData } = window as any;
+const NOTICE_ID = 'ai_title_generation_error';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+
+const getSettings = (): TitleGenerationData => {
+	const settings = ( window as any ).aiTitleGenerationData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		minContentLength:
+			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
+	};
+};
 
 /**
  * Generates a title for the given post ID and content.
@@ -78,8 +98,15 @@ interface TitleToolbarProps {
 export default function TitleToolbar( {
 	isStandalone = false,
 }: TitleToolbarProps ): React.JSX.Element | null {
-	const postId = select( editorStore ).getCurrentPostId();
-	const title = select( editorStore ).getEditedPostAttribute( 'title' );
+	const { postId, title, content } = useSelect( ( select ) => {
+		const editor = select( editorStore );
+
+		return {
+			postId: editor.getCurrentPostId(),
+			title: editor.getEditedPostAttribute( 'title' ) as string,
+			content: editor.getEditedPostContent() as string,
+		};
+	}, [] );
 
 	const { editPost } = useDispatch( editorStore );
 
@@ -88,13 +115,49 @@ export default function TitleToolbar( {
 	const [ isOpen, setOpen ] = useState< boolean >( false );
 	const [ generatedTitle, setGeneratedTitle ] = useState< string >( '' );
 
+	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
+
+	// Tracks the pending focus-restore timeout so it can be cancelled on unmount.
+	const focusTimeoutRef = useRef< ReturnType< typeof setTimeout > | null >(
+		null
+	);
+
+	useEffect( () => {
+		return () => {
+			if ( focusTimeoutRef.current ) {
+				clearTimeout( focusTimeoutRef.current );
+			}
+		};
+	}, [] );
+
 	const openModal = () => setOpen( true );
+
+	/**
+	 * Returns focus to the title input after the modal closes.
+	 */
+	const restoreFocus = () => {
+		focusTimeoutRef.current = setTimeout( () => {
+			focusTimeoutRef.current = null;
+
+			const titleInput =
+				generateButtonRef.current?.ownerDocument.querySelector(
+					'.editor-post-title__input'
+				) as HTMLElement | null;
+
+			titleInput?.focus();
+		}, 0 );
+	};
+
 	const closeModal = () => {
 		setOpen( false );
 		setGeneratedTitle( '' );
+		restoreFocus();
 	};
 
 	const hasTitle = title.trim().length > 0;
+
+	const { minContentLength } = getSettings();
+	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
 
 	let buttonLabel: string = __( 'Generate', 'ai' );
 
@@ -104,6 +167,25 @@ export default function TitleToolbar( {
 		buttonLabel = __( 'Regenerate', 'ai' );
 	}
 
+	// When the post content is too short, disable the button and surface the
+	// minimum-length requirement as its accessible tooltip.
+	const tooShortLabel = formatMinLengthLabel(
+		/* translators: %d: minimum number of characters required */
+		__(
+			'Title generation will be available when the post content has at least %d characters.',
+			'ai'
+		),
+		/* translators: %d: minimum number of words required */
+		__(
+			'Title generation will be available when the post content has at least %d words.',
+			'ai'
+		),
+		minContentLength
+	);
+
+	const buttonTooltip = isContentTooShort ? tooShortLabel : buttonLabel;
+	const isDisabled = isGenerating || isContentTooShort;
+
 	/**
 	 * Handles the toolbar Generate/Regenerate button click.
 	 */
@@ -112,11 +194,12 @@ export default function TitleToolbar( {
 			return;
 		}
 
-		const content = select( editorStore ).getEditedPostContent();
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
 		setIsGenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_title_generation_error'
-		);
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const result = await generateTitle( postId as number, content );
@@ -127,8 +210,8 @@ export default function TitleToolbar( {
 				typeof error === 'string'
 					? error
 					: error?.message ?? __( 'Failed to generate title.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
-				id: 'ai_title_generation_error',
+			dispatch( noticesStore ).createErrorNotice( message, {
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
@@ -141,11 +224,8 @@ export default function TitleToolbar( {
 	 * Fetches a new suggestion without closing the modal.
 	 */
 	const handleRegenerate = async () => {
-		const content = select( editorStore ).getEditedPostContent();
 		setIsRegenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_title_generation_error'
-		);
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const result = await generateTitle( postId as number, content );
@@ -155,8 +235,8 @@ export default function TitleToolbar( {
 				typeof error === 'string'
 					? error
 					: error?.message ?? __( 'Failed to generate title.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
-				id: 'ai_title_generation_error',
+			dispatch( noticesStore ).createErrorNotice( message, {
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
@@ -173,7 +253,7 @@ export default function TitleToolbar( {
 	};
 
 	// Don't render if disabled.
-	if ( ! aiTitleGenerationData?.enabled ) {
+	if ( ! getSettings().enabled ) {
 		return null;
 	}
 
@@ -181,11 +261,13 @@ export default function TitleToolbar( {
 		<PostTypeSupportCheck supportKeys="title">
 			{ isStandalone ? (
 				<Button
+					ref={ generateButtonRef }
 					icon={ update }
 					variant="secondary"
-					label={ buttonLabel }
+					label={ buttonTooltip }
+					showTooltip
 					onClick={ handleGenerate }
-					disabled={ isGenerating }
+					disabled={ isDisabled }
 					isBusy={ isGenerating }
 					accessibleWhenDisabled
 					__next40pxDefaultSize
@@ -195,10 +277,12 @@ export default function TitleToolbar( {
 			) : (
 				<ToolbarGroup>
 					<ToolbarButton
+						ref={ generateButtonRef }
 						icon={ update }
-						label={ buttonLabel }
+						label={ buttonTooltip }
+						showTooltip
 						onClick={ handleGenerate }
-						disabled={ isGenerating }
+						disabled={ isDisabled }
 						isBusy={ isGenerating }
 					>
 						{ buttonLabel }
@@ -226,7 +310,6 @@ export default function TitleToolbar( {
 						value={ generatedTitle }
 						onChange={ setGeneratedTitle }
 						disabled={ isRegenerating }
-						__nextHasNoMarginBottom
 					/>
 					<Flex
 						justify="flex-end"
@@ -235,10 +318,12 @@ export default function TitleToolbar( {
 					>
 						<FlexItem>
 							<Button
+								accessibleWhenDisabled
 								variant="secondary"
 								onClick={ handleRegenerate }
 								disabled={ isRegenerating }
 								isBusy={ isRegenerating }
+								__next40pxDefaultSize
 							>
 								{ buttonLabel }
 							</Button>
@@ -248,6 +333,7 @@ export default function TitleToolbar( {
 								variant="primary"
 								onClick={ handleInsert }
 								disabled={ isRegenerating || ! generatedTitle }
+								__next40pxDefaultSize
 							>
 								{ __( 'Insert', 'ai' ) }
 							</Button>

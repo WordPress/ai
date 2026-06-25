@@ -28,10 +28,16 @@ async function globalSetup( config: FullConfig ) {
 	// Reset the test environment before running the tests.
 	await Promise.all( [
 		requestUtils.activateTheme( 'twentytwentyone' ),
+		requestUtils.activatePlugin( 'e2e-testing' ),
 		requestUtils.deleteAllPosts(),
 		requestUtils.deleteAllBlocks(),
 		requestUtils.resetPreferences(),
 	] );
+
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/credentials/seed',
+		method: 'POST',
+	} );
 
 	await requestContext.dispose();
 }

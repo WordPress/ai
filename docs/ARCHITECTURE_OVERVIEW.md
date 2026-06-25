@@ -19,7 +19,6 @@ ai/
 │   ├── Abilities/                    # AI Ability implementations (Excerpt, Image, etc.)
 │   ├── Abstracts/                    # Base implementations (Abstract_Ability, Abstract_Feature)
 │   ├── Contracts/                    # Interfaces (Feature contract)
-│   ├── Exception/                    # Custom exceptions
 │   ├── Experiments/                  # Experiment implementations (Abilities_Explorer, etc.)
 │   ├── Features/                     # Feature registration and loading (Loader.php, Registry.php, Feature_Category.php)
 │   ├── Services/                     # External services (AI_Service)
@@ -36,6 +35,6 @@ ai/
 └── tests/                            # Tests
     ├── Integration/                  # Integration tests for WordPress + Plugin
     ├── e2e/                          # Playwright end-to-end tests
-    ├── e2e-request-mocking/          # Mock API calls for e2e tests
+    ├── e2e-testing/                  # Support plugin for e2e tests (API mocking, fixtures)
     └── bootstrap.php                 # PHPUnit bootstrap
 ```

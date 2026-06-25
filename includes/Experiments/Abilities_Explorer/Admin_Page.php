@@ -72,7 +72,7 @@ class Admin_Page {
 		$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : 'list'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		echo '<div class="wrap ability-explorer-wrap">';
-		echo '<h1>' . esc_html__( 'Ability Explorer', 'ai' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'Abilities Explorer', 'ai' ) . '</h1>';
 
 		// Render appropriate view based on action.
 		switch ( $action ) {
@@ -180,7 +180,7 @@ class Admin_Page {
 		?>
 		<div class="ability-explorer-detail">
 			<div class="ability-detail-header">
-				<a href="<?php echo esc_url( $back_url ); ?>" class="button">&larr; <?php esc_html_e( 'Back to List', 'ai' ); ?></a>
+				<a href="<?php echo esc_url( $back_url ); ?>" class="button"><?php echo wp_kses_post( __( '&larr; Back to List', 'ai' ) ); ?></a>
 				<a href="<?php echo esc_url( $test_url ); ?>" class="button button-primary"><?php esc_html_e( 'Test Ability', 'ai' ); ?></a>
 			</div>
 
@@ -209,7 +209,7 @@ class Admin_Page {
 					<h3><?php esc_html_e( 'Input Schema', 'ai' ); ?></h3>
 					<div class="ability-schema-wrapper">
 						<button type="button" class="button button-small ability-copy-btn" data-copy="input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+						<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
 					</div>
 				</div>
 			<?php endif; ?>
@@ -219,7 +219,7 @@ class Admin_Page {
 					<h3><?php esc_html_e( 'Output Schema', 'ai' ); ?></h3>
 					<div class="ability-schema-wrapper">
 						<button type="button" class="button button-small ability-copy-btn" data-copy="output-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+						<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
 					</div>
 				</div>
 			<?php endif; ?>
@@ -228,7 +228,7 @@ class Admin_Page {
 				<h3><?php esc_html_e( 'Raw Data', 'ai' ); ?></h3>
 				<div class="ability-schema-wrapper">
 					<button type="button" class="button button-small ability-copy-btn" data-copy="raw-data"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
 				</div>
 			</div>
 		</div>
@@ -271,7 +271,7 @@ class Admin_Page {
 		?>
 		<div class="ability-explorer-test-runner">
 			<div class="ability-detail-header">
-				<a href="<?php echo esc_url( $back_url ); ?>" class="button">&larr; <?php esc_html_e( 'Back to List', 'ai' ); ?></a>
+				<a href="<?php echo esc_url( $back_url ); ?>" class="button"><?php echo wp_kses_post( __( '&larr; Back to List', 'ai' ) ); ?></a>
 				<a href="<?php echo esc_url( $detail_url ); ?>" class="button"><?php esc_html_e( 'View Details', 'ai' ); ?></a>
 			</div>
 
@@ -310,7 +310,8 @@ class Admin_Page {
 					</div>
 				<?php endif; ?>
 
-				<textarea id="ability-test-payload" rows="12"><?php echo esc_textarea( (string) wp_json_encode( $example_input, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></textarea>
+				<label for="ability-test-payload" class="screen-reader-text"><?php esc_html_e( 'Ability test input (JSON)', 'ai' ); ?></label>
+				<textarea id="ability-test-payload" rows="12"><?php echo esc_textarea( (string) wp_json_encode( $example_input, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></textarea>
 
 				<div class="ability-test-actions">
 					<button type="button" id="ability-test-invoke" class="button button-primary" data-ability="<?php echo esc_attr( $ability_slug ); ?>">
@@ -337,14 +338,14 @@ class Admin_Page {
 					<h3><?php esc_html_e( 'Input Schema Reference', 'ai' ); ?></h3>
 					<div class="ability-schema-wrapper">
 						<button type="button" class="button button-small ability-copy-btn" data-copy="test-input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="test-input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+						<pre class="ability-schema-display" id="test-input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
 					</div>
 				</div>
 			<?php endif; ?>
 		</div>
 
 		<script type="application/json" id="ability-input-schema">
-			<?php echo wp_json_encode( $ability['input_schema'] ); ?>
+			<?php echo wp_json_encode( $ability['input_schema'], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE ); ?>
 		</script>
 		<?php
 	}
@@ -504,6 +505,8 @@ class Admin_Page {
 			)
 		);
 
+		$provider_tags = array( 'strong' => array() );
+
 		$screen->add_help_tab(
 			array(
 				'id'      => 'abilities-providers',
@@ -511,9 +514,9 @@ class Admin_Page {
 				'content' =>
 					'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
 					'<ul>' .
-						'<li><strong>' . esc_html__( 'Core', 'ai' ) . '</strong>: ' . esc_html__( 'Built into WordPress itself.', 'ai' ) . '</li>' .
-						'<li><strong>' . esc_html__( 'Plugin', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by an active plugin.', 'ai' ) . '</li>' .
-						'<li><strong>' . esc_html__( 'Theme', 'ai' ) . '</strong>: ' . esc_html__( 'Registered by the active theme.', 'ai' ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Core</strong>: Built into WordPress itself.', 'ai' ), $provider_tags ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Plugin</strong>: Registered by an active plugin.', 'ai' ), $provider_tags ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Theme</strong>: Registered by the active theme.', 'ai' ), $provider_tags ) . '</li>' .
 					'</ul>',
 			)
 		);

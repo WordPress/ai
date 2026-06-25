@@ -4,6 +4,180 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [1.0.2] - 2026-06-16
+### Added
+- Manual refresh button to the AI Request Logs table header ([#687](https://github.com/WordPress/ai/pull/687)).
+- New `ai_generated` param on our Image Import Ability to set if the imported image was AI generated or not ([GHSA-42mg-ffvx-4xff](https://github.com/WordPress/ai/security/advisories/GHSA-42mg-ffvx-4xff)).
+
+### Changed
+- Ensure Editorial Notes and Editorial Updates controls stay grouped together in the post editor sidebar ([#605](https://github.com/WordPress/ai/pull/605)).
+- Use explicit UTF-8 encoding for generated Meta Description character counts ([#655](https://github.com/WordPress/ai/pull/655)).
+- Return a consistent decorative flag from Alt Text Generation results ([#659](https://github.com/WordPress/ai/pull/659)).
+- Show an error message immediately in the Image Generation UI when there's no AI Connector in place that supports image generation ([#679](https://github.com/WordPress/ai/pull/679)).
+- Use a neutral icon for disabled Features and Experiments in the AI Status widget ([#720](https://github.com/WordPress/ai/pull/720)).
+
+### Fixed
+- Abilities Explorer schema validation ([#612](https://github.com/WordPress/ai/pull/612)).
+- Alt Text Generation button becomes unresponsive after using Next/Previous in the media modal ([#631](https://github.com/WordPress/ai/pull/631)).
+- Add descriptive accessible labels to approval matrix toggle controls ([#637](https://github.com/WordPress/ai/pull/637)).
+- Added accessible labels to the Provider and Category filter dropdowns on the Abilities Explorer page ([#642](https://github.com/WordPress/ai/pull/642)).
+- Lost focus after generating a Title ([#644](https://github.com/WordPress/ai/pull/644)).
+- Lost focus when generating Alt Text in Image block inspector controls ([#645](https://github.com/WordPress/ai/pull/645)).
+- Lost focus when toggling the Connector Approval state ([#646](https://github.com/WordPress/ai/pull/646)).
+- Lost focus after generating Images ([#647](https://github.com/WordPress/ai/pull/647)).
+- Added an accessible label to the ability test payload textarea in the Abilities Explorer ([#649](https://github.com/WordPress/ai/pull/649)).
+- Excerpt generation post context payload ([#651](https://github.com/WordPress/ai/pull/651)).
+- Clear out the Meta Description suggestion when the modal closes ([#653](https://github.com/WordPress/ai/pull/653)).
+- Lost focus after running Content Resizing actions ([#663](https://github.com/WordPress/ai/pull/663)).
+- Column reordering and hiding in the AI Request Logs table now persists instead of resetting to the default ([#669](https://github.com/WordPress/ai/pull/669)).
+- Summary statistics showing zero for short time periods on non-UTC MySQL servers ([#671](https://github.com/WordPress/ai/pull/671)).
+- UI inconsistency on AI Request Logs page ([#676](https://github.com/WordPress/ai/pull/676)).
+- Ensure thinking tokens are counted in AI Request Logs ([#680](https://github.com/WordPress/ai/pull/680)).
+- Ensure the Ability schemas and outputs are valid JSON Schema for strict REST and MCP consumers ([#688](https://github.com/WordPress/ai/pull/688)).
+- Title Generation button disappears after toggling off "Show template" ([#694](https://github.com/WordPress/ai/pull/694)).
+- Prevent accidental interactions and stale feedback in the Meta Description Generation modal and improve focus handling ([#696](https://github.com/WordPress/ai/pull/696)).
+- Ensure focus isn't lost after generating an Excerpt inline ([#698](https://github.com/WordPress/ai/pull/698)).
+- AI Request Logs: "Copy Log ID" gives no feedback when copied ([#700](https://github.com/WordPress/ai/pull/700)).
+- AI Request Logs: main header overlapping table header ([#705](https://github.com/WordPress/ai/pull/705)).
+- Allow users to clear an applied Meta Description while preventing whitespace-only descriptions ([#706](https://github.com/WordPress/ai/pull/706)).
+- Rename unforwarded `MaskCanvas` component function to `InnerMaskCanvas` to avoid duplicate declarations ([#713](https://github.com/WordPress/ai/pull/713)).
+
+### Security
+- Remove the `meta` param from our Image Import Ability ([GHSA-42mg-ffvx-4xff](https://github.com/WordPress/ai/security/advisories/GHSA-42mg-ffvx-4xff)).
+- Check the current user's capabilities and the comment type before setting an Editorial Note ([GHSA-j7hg-vqpw-f98f](https://github.com/WordPress/ai/security/advisories/GHSA-j7hg-vqpw-f98f)).
+
+### Developer
+- Clarify AI Connector provider setup documentation ([#638](https://github.com/WordPress/ai/pull/638)).
+- Add `@WordPress/ai-maintainers` team ([#677](https://github.com/WordPress/ai/pull/677)).
+- Removes the `ready_for_review` pull request event from the Test and Plugin Check GitHub Actions workflows ([#703](https://github.com/WordPress/ai/pull/703)).
+- Bump `tmp` from 0.2.5 to 0.2.7 ([#630](https://github.com/WordPress/ai/pull/630)).
+- Bump `phpstan/php-8-stubs` from 0.4.34 to 0.4.35 ([#635](https://github.com/WordPress/ai/pull/635)).
+- Bump `phpstan/phpstan` from 2.1.54 to 2.2.1 ([#635](https://github.com/WordPress/ai/pull/635), [#672](https://github.com/WordPress/ai/pull/672)).
+- Bump `codecov/codecov-action` from 6.0.0 to 6.0.1 ([#636](https://github.com/WordPress/ai/pull/636)).
+- Bump `WordPress/action-wp-playground-pr-preview` to latest version ([#673](https://github.com/WordPress/ai/pull/673)).
+- Bump `actions/checkout` from 6.0.2 to 6.0.3 ([#707](https://github.com/WordPress/ai/pull/707)).
+- Bump `wordpress/plugin-check-action` from v1.1.6 to v1.1.7 ([#726](https://github.com/WordPress/ai/pull/726)).
+- Update NPM dev-depependencies ([#712](https://github.com/WordPress/ai/pull/712)).
+
+## [1.0.1] - 2026-05-27
+### Added
+- New helper functions that are used to determine if we have valid AI Connector credentials ([#603](https://github.com/WordPress/ai/pull/603)).
+- New helper methods, `is_globally_enabled` and `is_individually_enabled` to help tell if a feature is enabled individually or if features are globally enabled ([#604](https://github.com/WordPress/ai/pull/604)).
+
+### Changed
+- Removed the description from the Abilities listing within the Abilities Explorer ([#592](https://github.com/WordPress/ai/pull/592)).
+- Filter Guideline queries by the guideline type content ([#593](https://github.com/WordPress/ai/pull/593)).
+- Use the new `has_connector_authentication` instead of `is_connector_configured` to avoid unnecessary API requests ([#603](https://github.com/WordPress/ai/pull/603)).
+
+### Removed
+- Deprecated `__nextHasNoMarginBottom` prop ([#609](https://github.com/WordPress/ai/pull/609)).
+
+### Fixed
+- Utilize a new `is_connector_configured` function to properly determine if a connector is configured, whether via an API key, constant or ENV var ([#537](https://github.com/WordPress/ai/pull/537)).
+- "Generate Editorial Note" button appearing in the block settings menu during post revisions ([#591](https://github.com/WordPress/ai/pull/591)).
+- If the Connector Approvals experiment is turned on, ensure we don't over-aggressively block functionality in the AI plugin that isn't actually making requests, like Request Logging ([#595](https://github.com/WordPress/ai/pull/595)).
+- Better matching of the originating code when the Connector Approvals experiment is on ([#595](https://github.com/WordPress/ai/pull/595)).
+- Focus loss issues when interacting with Purge actions in the Request Logs experiments page ([#599](https://github.com/WordPress/ai/pull/599)).
+- Disable the "Purge All" button when no logs are available to purge ([#599](https://github.com/WordPress/ai/pull/599)).
+- AI Status feature checklist properly shows if an individual feature is enabled even if globally features are disabled ([#604](https://github.com/WordPress/ai/pull/604)).
+- Ensure focus isn't lost when buttons enter disabled state during Alt Text Generation, Content Classification, Content Summarization, Excerpt Generation, Featured Image Generation, and Title Generation ([#608](https://github.com/WordPress/ai/pull/608), [#611](https://github.com/WordPress/ai/pull/611)).
+- Settings page strings, which are enqueued as script modules, are now localized at runtime ([#613](https://github.com/WordPress/ai/pull/613)).
+- Connector Approvals "Dismiss" button failing for pending requests whose key contains a slash ([#615](https://github.com/WordPress/ai/pull/615)).
+- Hide empty provider capabilities section in the dashboard widget ([#616](https://github.com/WordPress/ai/pull/616)).
+- Playground and test configs now target the latest WordPress release instead of the beta release ([#626](https://github.com/WordPress/ai/pull/626)).
+- Connector Approvals notice no longer overlaps the page header on the AI Request Logs screen ([#628](https://github.com/WordPress/ai/pull/628)).
+
+### Developer
+- Corrected installation instructions in readme ([#620](https://github.com/WordPress/ai/pull/620)).
+- Bump `@wordpress/build` from 0.13.0 to 0.14.0 ([#606](https://github.com/WordPress/ai/pull/606)).
+- Bump `@wordpress/scripts` from 32.1.0 to 32.2.0 ([#606](https://github.com/WordPress/ai/pull/606)).
+
+## [1.0.0] - 2026-05-19
+### Added
+- New Experiment: Request Logging that provides observability for all AI operations ([#437](https://github.com/WordPress/ai/pull/437)).
+- New Experiment: Connector Approvals that allows administrators the ability to determine which plugins can access which AI connectors ([#467](https://github.com/WordPress/ai/pull/467)).
+- Integrate Alt Text generation into the experimental media editor ([#446](https://github.com/WordPress/ai/pull/446)).
+- Sorting and filtering in Comments screen by Toxicity and/or Sentiment ([#518](https://github.com/WordPress/ai/pull/518)).
+- Toxicity and Sentiment labelling in admin dashboard for comments ([#518](https://github.com/WordPress/ai/pull/518)).
+
+### Changed
+- Disable the Summarization button until content reaches a certain length ([#492](https://github.com/WordPress/ai/pull/492)).
+- Refined image generation loading state ([#512](https://github.com/WordPress/ai/pull/512)).
+- Featured image button now hides when image is already set ([#512](https://github.com/WordPress/ai/pull/512)).
+- When no AI provider is configured and a feature is triggered, show actionable guidance directing users to configure an AI Connector ([#523](https://github.com/WordPress/ai/pull/523)).
+- Update Meta Description loading state and remove duplicate heading in modal ([#527](https://github.com/WordPress/ai/pull/527)).
+- Rename "Review Notes" experiment to "Editorial Notes" and "Refine from Notes" experiment to "Editorial Updates" ([#528](https://github.com/WordPress/ai/pull/528)).
+- Keep comments without moderation metadata visible when sorting by Comment Moderation columns ([#538](https://github.com/WordPress/ai/pull/538)).
+- Updated plugin banner and icons ([#546](https://github.com/WordPress/ai/pull/546)).
+- Show a notice when a user has chosen a provider that no longer exists ([#552](https://github.com/WordPress/ai/pull/552)).
+- When no provider is configured, show an error notice instead of an admin notice for alt text generation ([#561](https://github.com/WordPress/ai/pull/561)).
+- Standardize error message text ([#562](https://github.com/WordPress/ai/pull/562)).
+- Abilities Explorer page heading ([#585](https://github.com/WordPress/ai/pull/585)).
+
+### Fixed
+- Ensure we properly use the new client-side Abilities API ([#482](https://github.com/WordPress/ai/pull/482)).
+- Keep keyboard focus on the Provider select when resetting per-feature developer settings to default ([#532](https://github.com/WordPress/ai/pull/532)).
+- Deduplicate provider API requests on the settings page when developer mode is toggled on ([#542](https://github.com/WordPress/ai/pull/542)).
+- Update the Playground Preview workflow to use `pluginData` instead of `pluginZipFile` ([#548](https://github.com/WordPress/ai/pull/548)).
+- Empty space shown for Model field when saved provider no longer exists in developer settings ([#552](https://github.com/WordPress/ai/pull/552)).
+- Prevent analyzing newly inserted comments when no provider is configured ([#554](https://github.com/WordPress/ai/pull/554)).
+- Ensure the meta description modal doesn't open if no provider is configured ([#558](https://github.com/WordPress/ai/pull/558)).
+- False error for alt text generation on decorative images in media library ([#559](https://github.com/WordPress/ai/pull/559)).
+- Show a failed badge when comment analysis fails ([#568](https://github.com/WordPress/ai/pull/568)).
+- Correct RTL rendering of directional icons, runtime-set styles, and inline styles in the admin UI ([#573](https://github.com/WordPress/ai/pull/573)).
+- Add notice to standalone image generation when there is no provider connected ([#575](https://github.com/WordPress/ai/pull/575)).
+- Ensure we show a more specific error message when no valid AI connector is in place and we try to generate a featured image ([#576](https://github.com/WordPress/ai/pull/576)).
+- Improve keyboard focus visibility for suggested term actions in content classification ([#580](https://github.com/WordPress/ai/pull/580)).
+- User-facing text in several experiments is now fully translatable, and JS-side translations are loaded at runtime ([#582](https://github.com/WordPress/ai/pull/582)).
+- Make title generation and content classification UI react to current editor state ([#584](https://github.com/WordPress/ai/pull/584)).
+- Ensure global AI enabled options are migrated properly ([#586](https://github.com/WordPress/ai/pull/586)).
+
+### Developer
+- Various documentation updates ([#475](https://github.com/WordPress/ai/pull/475), [#501](https://github.com/WordPress/ai/pull/501), [#540](https://github.com/WordPress/ai/pull/540), [#550](https://github.com/WordPress/ai/pull/550), [#569](https://github.com/WordPress/ai/pull/569)).
+- Add an `.npmrc` config file ([#535](https://github.com/WordPress/ai/pull/535)).
+- Add a 7 day cooldown period for GitHub Action updates triggered by Dependabot ([#553](https://github.com/WordPress/ai/pull/553)).
+- Bump `phpstan/phpstan` from 2.1.51 to 2.1.54 ([#524](https://github.com/WordPress/ai/pull/524)).
+- Bump `@wordpress/build` from 0.12.0 to 0.13.0 ([#525](https://github.com/WordPress/ai/pull/525)).
+- Bump `@wordpress/scripts` from 32.0.0 to 32.1.0 ([#525](https://github.com/WordPress/ai/pull/525)).
+- Bump `dealerdirect/phpcodesniffer-composer-installer` from 1.2.0 to 1.2.1 ([#555](https://github.com/WordPress/ai/pull/555)).
+- Bump `shivammathur/setup-php` from 2.37.0 to 2.37.1 ([#556](https://github.com/WordPress/ai/pull/556)).
+- Bump `actions/dependency-review-action` from 4.9.0 to 5.0.0 ([#556](https://github.com/WordPress/ai/pull/556)).
+- Bump `wordpress/plugin-check-action` from 1.1.5 to 1.1.6 ([#556](https://github.com/WordPress/ai/pull/556)).
+
+## [0.9.0] - 2026-05-07
+### Added
+- New Experiment: Comment Moderation to automatically moderate comments based on toxicity detection and sentiment analysis ([#155](https://github.com/WordPress/ai/pull/155), [#516](https://github.com/WordPress/ai/pull/516)).
+- New Experiment: Content Resizing to shorten, expand, or rephrase selected block content ([#331](https://github.com/WordPress/ai/pull/331)).
+- Developer Mode settings page toggle to set the desired provider and model per feature ([#486](https://github.com/WordPress/ai/pull/486)).
+- WP-CLI command, `wp ai alt-text generate`, for bulk alt text generation ([#436](https://github.com/WordPress/ai/pull/436)).
+- Basic styles for the Content Summary block ([#510](https://github.com/WordPress/ai/pull/510)).
+
+### Changed
+- Compress the AI settings page by moving the global AI toggle into the header with an infotip ([#455](https://github.com/WordPress/ai/pull/455)).
+- Update AI settings page to use `@wordpress/ui` components and related UI adjustments ([#472](https://github.com/WordPress/ai/pull/472), [#488](https://github.com/WordPress/ai/pull/488), [#490](https://github.com/WordPress/ai/pull/490), [#491](https://github.com/WordPress/ai/pull/491), [#505](https://github.com/WordPress/ai/pull/505), [#519](https://github.com/WordPress/ai/pull/519)).
+- AI-generated images are now saved with descriptive, slugified filenames derived from the post title or prompt instead of `ai-generated-image-<timestamp>` ([#471](https://github.com/WordPress/ai/pull/471)).
+- For image generation, set guidelines as part of the prompt instead of system instructions ([#497](https://github.com/WordPress/ai/pull/497)).
+- Update the Content Summary experiment to render the summary in a Group variation block instead of a Paragraph variation block ([#510](https://github.com/WordPress/ai/pull/510)).
+
+### Fixed
+- Standards compliance switch from the custom `$builder->is_text_generation_supported()` method with the abstract `ensure_text_generation_supported()` method ([#465](https://github.com/WordPress/ai/pull/465)).
+- Ability schema JSON viewer now stays LTR under RTL admin languages ([#485](https://github.com/WordPress/ai/pull/485)).
+- Ensure the Generate Image button doesn't render in contexts that aren't valid ([#489](https://github.com/WordPress/ai/pull/489)).
+- Localize several user-facing fallback error strings in image-generation and summarization flows ([#500](https://github.com/WordPress/ai/pull/500)).
+
+### Security
+- Bump `serialize-javascript` from 6.0.2 to 7.0.5 ([#503](https://github.com/WordPress/ai/pull/503)).
+- Bump `postcss` from 8.5.10 to 8.5.14 ([#503](https://github.com/WordPress/ai/pull/503)).
+- Bump `minimatch` from 3.0.8 to 3.1.4 ([#503](https://github.com/WordPress/ai/pull/503)).
+
+### Developer
+- Ignore `/.wp-env.test.override.json` so local test-only `wp-env` overrides stay untracked ([#484](https://github.com/WordPress/ai/pull/484)).
+- Add E2E coverage for Dashboard Widgets ([#498](https://github.com/WordPress/ai/pull/498)).
+- Add custom experiment reference documentation for developers extending the plugin ([#499](https://github.com/WordPress/ai/pull/499)).
+- Add squash merge commit approach to developer guide ([#504](https://github.com/WordPress/ai/pull/504), [#511](https://github.com/WordPress/ai/pull/511), [#521](https://github.com/WordPress/ai/pull/521)).
+- Bump `phpstan/phpstan` from 2.1.46 to 2.1.51 ([#468](https://github.com/WordPress/ai/pull/468), [#493](https://github.com/WordPress/ai/pull/493)).
+- Bump `actions/setup-node` from 6.3.0 to 6.4.0 ([#469](https://github.com/WordPress/ai/pull/469)).
+
 ## [0.8.0] - 2026-04-23
 ### Added
 - New Experiment: Refine from Notes, automatically apply editorial notes to content ([#289](https://github.com/WordPress/ai/pull/289)).
@@ -17,7 +191,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 - Promote Image Generation from an Experiment to a Feature ([#418](https://github.com/WordPress/ai/pull/418)).
 - Title Generation now utilizes a modal for editing and regeneration before applying changes to the Post Title ([#290](https://github.com/WordPress/ai/pull/290)).
 - Update feature descriptions to include AI provider model supports ([#377](https://github.com/WordPress/ai/pull/377)).
-- Update button loading states to match the standard loading pattern ([#382](https://github.com/WordPress/ai/pull/382), [#389](https://github.com/WordPress/ai/pull/389), [#396](https://github.com/WordPress/ai/pull/396),[#433](https://github.com/WordPress/ai/pull/433), [#449](https://github.com/WordPress/ai/pull/449)).
+- Update button loading states to match the standard loading pattern ([#382](https://github.com/WordPress/ai/pull/382), [#389](https://github.com/WordPress/ai/pull/389), [#396](https://github.com/WordPress/ai/pull/396), [#433](https://github.com/WordPress/ai/pull/433), [#449](https://github.com/WordPress/ai/pull/449)).
 - Refactor `Main` bootstrap class ([#404](https://github.com/WordPress/ai/pull/404)).
 - Allow bulk enabling/disabling Experiments in groups ([#422](https://github.com/WordPress/ai/pull/422)).
 - Improve visual hierarchy on the AI settings page so card titles are more prominent than the toggle labels ([#431](https://github.com/WordPress/ai/pull/431)).
@@ -278,6 +452,10 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[1.0.2]: https://github.com/WordPress/ai/compare/1.0.1...1.0.2
+[1.0.1]: https://github.com/WordPress/ai/compare/1.0.0...1.0.1
+[1.0.0]: https://github.com/WordPress/ai/compare/0.9.0...1.0.0
+[0.9.0]: https://github.com/WordPress/ai/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/WordPress/ai/compare/0.7.0...0.8.0
 [0.7.0]: https://github.com/WordPress/ai/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/WordPress/ai/compare/0.5.0...0.6.0

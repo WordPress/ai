@@ -11,6 +11,7 @@ namespace WordPress\AI\Abilities\Image;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation as Alt_Text_Generation_Experiment;
 
 use function WordPress\AI\get_preferred_vision_models;
 use function WordPress\AI\normalize_content;
@@ -66,9 +67,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 					'description'       => esc_html__( 'The attachment ID of the image to generate alt text for.', 'ai' ),
 				),
 				'image_url'     => array(
-					'type'              => 'string',
-					'sanitize_callback' => array( $this, 'sanitize_image_reference_input' ),
-					'description'       => esc_html__( 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.', 'ai' ),
 				),
 				'context'       => array(
 					'type'              => 'string',
@@ -121,6 +121,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 			),
 		);
 
+		if ( isset( $args['image_url'] ) ) {
+			$args['image_url'] = $this->sanitize_image_reference_input( $args['image_url'] );
+		}
+
 		// Get the image reference.
 		$image_reference = $this->get_image_reference( $args );
 
@@ -149,7 +153,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		// Return the alt text in the format the Ability expects.
 		return array(
-			'alt_text' => sanitize_text_field( $result ),
+			'alt_text'      => sanitize_text_field( $result ),
+			'is_decorative' => false,
 		);
 	}
 
@@ -405,8 +410,9 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->with_file( $reference )
 			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
-			->using_temperature( 0.3 )
-			->using_model_preference( ...get_preferred_vision_models() );
+			->using_temperature( 0.3 );
+
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Alt_Text_Generation_Experiment::class, get_preferred_vision_models() );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

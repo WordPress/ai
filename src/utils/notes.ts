@@ -1,5 +1,5 @@
 /**
- * Shared utilities for Notes-related experiments (Review Notes, Refine Notes).
+ * Shared utilities for Notes-related experiments (Editorial Notes, Editorial Updates).
  */
 
 /**
