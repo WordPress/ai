@@ -559,6 +559,51 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the 'month' summary period spans a fixed 30-day window.
+	 *
+	 * The dashboard labels this period "Last 30 Days" and the logs table filters
+	 * it as a fixed 30-day window, so the summary cutoff must also be 30 days.
+	 * A calendar INTERVAL 1 MONTH spans 28–31 days depending on the month, which
+	 * makes the summary cards disagree with the table for the same selection.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_summary_month_period_uses_30_day_window(): void {
+		global $wpdb;
+		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
+
+		// Just inside the 30-day window (29 days, 23 hours old).
+		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$table,
+			array(
+				'log_id'    => wp_generate_uuid4(),
+				'timestamp' => gmdate( 'Y-m-d H:i:s', strtotime( '-29 days -23 hours' ) ),
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			),
+			array( '%s', '%s', '%s', '%s', '%s' )
+		);
+
+		// Just outside the 30-day window (30 days, 1 hour old).
+		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$table,
+			array(
+				'log_id'    => wp_generate_uuid4(),
+				'timestamp' => gmdate( 'Y-m-d H:i:s', strtotime( '-30 days -1 hour' ) ),
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			),
+			array( '%s', '%s', '%s', '%s', '%s' )
+		);
+
+		$summary = $this->repository->get_summary( 'month', true );
+
+		$this->assertSame( 1, $summary['total_requests'] );
+	}
+
+	/**
 	 * Tests that get_filter_options returns distinct values from logs.
 	 *
 	 * @since 1.0.0

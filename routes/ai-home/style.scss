@@ -20,6 +20,10 @@
 	}
 }
 
+body:has(.ai-settings-page) .components-popover {
+	z-index: 2;
+}
+
 .ai-settings-page__infotip-trigger {
 	background: none;
 	border: none;
@@ -46,7 +50,7 @@
 
 
 .ai-feature-settings-form {
-	margin-top: var(--wpds-dimension-padding-xs);
+	margin-top: var(--wpds-dimension-padding-sm);
 	padding-inline-start: 40px;
 	max-width: 480px;
 }
@@ -81,10 +85,14 @@
 	}
 
 	.ai-developer-mode-fields__notice {
-		margin-bottom: var(--wpds-dimension-gap-lg, 12px);
+		margin-bottom: var(--wpds-dimension-gap-lg, 16px);
 	}
 
-	.ai-developer-mode-fields__reset-button {
-		margin-top: var(--wpds-dimension-gap-lg, 12px);
+	.ai-developer-mode-fields__actions {
+		display: flex;
+		align-items: center;
+		gap: var(--wpds-dimension-gap-lg, 16px);
+		margin-top: var(--wpds-dimension-gap-lg, 16px);
+		padding-bottom: var(--wpds-dimension-gap-sm, 8px);
 	}
 }
