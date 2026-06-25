@@ -181,7 +181,11 @@ class Generate_Image extends Abstract_Ability {
 	 *
 	 * @param string $prompt The prompt to generate an image from.
 	 * @param string|null $reference_image Optional base64-encoded image to use as a reference for edits.
-	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
+	 * @return array{
+	 *   data: string,
+	 *   provider_metadata: array<string, string|null>,
+	 *   model_metadata: array<string, string>
+	 * }|\WP_Error The generated image data, or a WP_Error on failure.
 	 */
 	protected function generate_image( string $prompt, ?string $reference_image = null ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
 		$prompt_builder = $this->get_prompt_builder( $prompt, $reference_image );
@@ -190,7 +194,13 @@ class Generate_Image extends Abstract_Ability {
 			return $prompt_builder;
 		}
 
-		// Generate the image using the AI client.
+		/**
+		 * Generate the image using the AI client.
+		 *
+		 * @var \WordPress\AiClient\Results\DTO\GenerativeAiResult $result
+		 *
+		 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
+		 */
 		$result = $prompt_builder->generate_image_result();
 
 		if ( is_wp_error( $result ) ) {
@@ -258,7 +268,9 @@ class Generate_Image extends Abstract_Ability {
 		}
 
 		$prompt_builder = wp_ai_client_prompt( $prompt )
+			/** @phpstan-ignore argument.type (@todo This can be removed when php-ai-client uses FQCN) */
 			->using_request_options( $request_options )
+			/** @phpstan-ignore argument.type (@todo This can be removed when php-ai-client uses FQCN) */
 			->as_output_file_type( FileTypeEnum::inline() );
 
 		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Image_Generation_Feature::class, get_preferred_image_models() );

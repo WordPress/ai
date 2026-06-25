@@ -134,7 +134,9 @@ class AI_Service {
 		if ( ! empty( $options ) ) {
 			$config_array = $this->map_options_to_config( $options );
 			if ( ! empty( $config_array ) ) {
-				$config  = ModelConfig::fromArray( $config_array );
+				$config = ModelConfig::fromArray( $config_array );
+
+				/** @phpstan-ignore argument.type (@todo This can be removed when php-ai-client uses FQCN) */
 				$builder = $builder->using_model_config( $config );
 			}
 		}

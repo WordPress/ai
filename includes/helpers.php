@@ -530,13 +530,27 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 			}
 
 			try {
+				/**
+				 * @var class-string<\WordPress\AiClient\Providers\Contracts\ProviderInterface> $provider_class
+				 *
+				 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
+				 */
 				$provider_class = $registry->getProviderClassName( $connector_id );
 
-				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+				/**
+				 * @var list<\WordPress\AiClient\Providers\Models\DTO\ModelMetadata> $models
+				 *
+				 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
+				 */
 				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
 
 				foreach ( $models as $model ) {
 					foreach ( $model->getSupportedCapabilities() as $capability ) {
+						/**
+						 * @var \WordPress\AiClient\Providers\Models\Enums\CapabilityEnum $capability
+						 *
+						 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
+						 */
 						if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
 							$has_support = true;
 							break 3;

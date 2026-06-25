@@ -157,18 +157,21 @@ final class Models_Controller {
 		switch ( $capability ) {
 			case 'text_generation':
 				return new ModelRequirements(
+					/** @phpstan-ignore argument.type (@todo This can be removed when php-ai-client uses FQCN) */
 					array( CapabilityEnum::textGeneration() ),
 					array()
 				);
 
 			case 'image_generation':
 				return new ModelRequirements(
+					/** @phpstan-ignore argument.type (@todo This can be removed when php-ai-client uses FQCN) */
 					array( CapabilityEnum::imageGeneration() ),
 					array()
 				);
 
 			case 'vision':
 				return new ModelRequirements(
+					/** @phpstan-ignore argument.type (@todo This can be removed when php-ai-client uses FQCN) */
 					array( CapabilityEnum::textGeneration() ),
 					array(
 						new RequiredOption(
@@ -206,6 +209,11 @@ final class Models_Controller {
 
 		foreach ( array_keys( $active_connectors ) as $connector_id ) {
 			try {
+				/**
+				 * @var list<\WordPress\AiClient\Providers\Models\DTO\ModelMetadata> $models
+				 *
+				 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
+				 */
 				$models = $registry->findProviderModelsMetadataForSupport( $connector_id, $requirements );
 
 				if ( empty( $models ) ) {
@@ -214,7 +222,11 @@ final class Models_Controller {
 
 				$provider_class = $registry->getProviderClassName( $connector_id );
 
-				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+				/**
+				 * @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class
+				 *
+				 * @phpstan-ignore varTag.nativeType (@todo This can be removed when php-ai-client uses FQCN)
+				 */
 				$provider_name = $provider_class::metadata()->getName();
 
 				$model_items = array();
