@@ -262,7 +262,22 @@ final class Users {
 				$query_args['has_published_posts'] = $has_published_posts;
 			}
 		} else {
-			$query_args['has_published_posts'] = $this->get_public_author_post_types();
+			$public_post_types   = $this->get_public_post_types();
+			$has_published_posts = $this->normalize_has_published_posts( $input );
+
+			if ( is_array( $has_published_posts ) ) {
+				$public_post_types = array_values( array_intersect( $public_post_types, $has_published_posts ) );
+			}
+
+			if ( array() === $public_post_types ) {
+				return array(
+					'users'       => array(),
+					'total'       => 0,
+					'total_pages' => 0,
+				);
+			}
+
+			$query_args['has_published_posts'] = $public_post_types;
 		}
 
 		$query = new WP_User_Query( $query_args );
@@ -415,7 +430,7 @@ final class Users {
 	}
 
 	/**
-	 * Checks whether a user has published posts in REST-visible author post types.
+	 * Checks whether a user has published posts in public post types.
 	 *
 	 * @since x.x.x
 	 *
@@ -423,27 +438,27 @@ final class Users {
 	 * @return bool Whether the user is publicly visible as an author.
 	 */
 	private function is_public_author( WP_User $user ): bool {
-		$post_types = $this->get_public_author_post_types();
+		$post_types = $this->get_public_post_types();
 		if ( array() === $post_types ) {
 			return false;
 		}
 
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.count_user_posts_count_user_posts -- Mirrors the Core REST users controller public-author visibility check.
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.count_user_posts_count_user_posts -- Public-author checks only consider public post types.
 		return count_user_posts( (int) $user->ID, $post_types ) > 0;
 	}
 
 	/**
-	 * Returns REST-visible post types that support authors.
+	 * Returns public post types.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string[] REST-visible author post type names.
+	 * @return string[] Public post type names.
 	 */
-	private function get_public_author_post_types(): array {
+	private function get_public_post_types(): array {
 		$post_types = array();
 
-		foreach ( get_post_types( array( 'show_in_rest' => true ), 'names' ) as $post_type ) {
-			if ( ! is_string( $post_type ) || ! post_type_supports( $post_type, 'author' ) ) {
+		foreach ( get_post_types( array( 'public' => true ), 'names' ) as $post_type ) {
+			if ( ! is_string( $post_type ) ) {
 				continue;
 			}
 
