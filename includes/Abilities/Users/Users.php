@@ -127,8 +127,8 @@ final class Users {
 		wp_register_ability_category(
 			self::CATEGORY,
 			array(
-				'label'       => __( 'Users', 'ai' ),
-				'description' => __( 'Abilities that retrieve or manage WordPress users.', 'ai' ),
+				'label'       => __( 'User', 'ai' ),
+				'description' => __( 'Abilities that retrieve or modify user information and settings.', 'ai' ),
 			)
 		);
 	}
