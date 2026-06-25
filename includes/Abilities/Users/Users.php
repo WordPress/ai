@@ -583,8 +583,9 @@ final class Users {
 		);
 
 		return array(
-			'type'  => 'object',
-			'oneOf' => array(
+			'type'    => 'object',
+			'default' => (object) array(),
+			'oneOf'   => array(
 				array(
 					'title'                => __( 'Get a single readable user by ID', 'ai' ),
 					'required'             => array( 'id' ),
