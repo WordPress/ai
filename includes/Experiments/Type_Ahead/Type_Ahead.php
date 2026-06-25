@@ -13,7 +13,6 @@ use WordPress\AI\Abilities\Type_Ahead\Type_Ahead as Type_Ahead_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
-use WordPress\AI\Settings\Settings_Registration;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
