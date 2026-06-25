@@ -54,13 +54,19 @@ test.describe( 'Title Generation Experiment', () => {
 			.getByRole( 'textbox', { name: 'Add Title' } )
 			.click();
 
+		const generateTitleToolbar = editor.canvas.getByRole( 'toolbar', {
+			name: 'Generate title toolbar',
+		} );
+
 		// Ensure the title toolbar is visible with "Generate" label.
 		await expect(
-			editor.canvas.getByRole( 'button', { name: 'Generate' } )
+			generateTitleToolbar.filter( { hasText: 'Generate' } )
 		).toBeVisible();
 
 		// Click the Generate button.
-		await editor.canvas.getByRole( 'button', { name: 'Generate' } ).click();
+		await generateTitleToolbar
+			.getByRole( 'button', { name: 'Generate' } )
+			.click();
 
 		const modal = page.getByRole( 'dialog', {
 			name: 'Title suggestion',
