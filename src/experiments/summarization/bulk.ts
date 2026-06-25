@@ -152,7 +152,7 @@ async function processBulkSummary(): Promise< void > {
 
 	for ( const id of postIds ) {
 		try {
-			// Generate summary the ability fetches the post content from the DB
+			// The summarization ability fetches the post content from the DB
 			// using the post ID, so we only need to pass the context.
 			const summary = await runAbility< string >( 'ai/summarization', {
 				context: String( id ),
