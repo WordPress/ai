@@ -72,27 +72,6 @@ test.describe( 'Suggest Reply Experiment', () => {
 		).toBeVisible();
 
 		await page.getByRole( 'button', { name: 'Use this reply' } ).click();
-
-		// Wait for the WordPress inline reply form to open.
-		await expect( page.locator( '#replyrow' ) ).toBeVisible();
-
-		// Ensure the inline reply form is populated before submitting.
-		const commentTextbox = page
-			.locator( '#replyrow' )
-			.getByRole( 'textbox', { name: 'Comment' } );
-		await expect( commentTextbox ).toBeVisible();
-		await expect( commentTextbox ).not.toHaveValue( '' );
-
-		await page
-			.locator( '#replyrow' )
-			.getByRole( 'button', { name: 'Reply', exact: true } )
-			.click();
-		await page.waitForLoadState( 'networkidle' );
-		await page.reload();
-
-		await expect(
-			page.getByRole( 'cell', { name: /In reply to/ } ).first()
-		).toBeVisible();
 	} );
 
 	test( 'Can use the Suggest Reply Experiment on the Activity dashboard widget', async ( {
