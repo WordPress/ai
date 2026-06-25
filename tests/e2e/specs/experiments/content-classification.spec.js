@@ -533,4 +533,85 @@ test.describe( 'Content Classification Experiment', () => {
 			page.locator( '.ai-content-classification__pill-accept' ).first()
 		).toHaveText( pillText );
 	} );
+
+	test( 'Does not restore suggestion pill if it belongs to a stale generation session', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await setStrategy( admin, page, 'allow_new' );
+
+		await admin.createNewPost( {
+			title: 'Content Classification Stale Generation Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: LONG_CONTENT },
+		} );
+
+		// Open the Tags panel and suggest.
+		await openTaxonomyPanel( editor, page, 'Tags' );
+		await page
+			.locator( '.ai-content-classification button', {
+				hasText: 'Suggest Tags',
+			} )
+			.first()
+			.click();
+
+		await expect(
+			page.locator( '.ai-content-classification__pill' ).first()
+		).toBeVisible();
+
+		let resolveRoute;
+		const routePromise = new Promise( ( resolve ) => {
+			resolveRoute = resolve;
+		} );
+
+		// Intercept tag creation/search REST calls to fail.
+		await page.route( /\/wp\/v2\/tags/, async ( route ) => {
+			await routePromise;
+			await route.fulfill( {
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					code: 'internal_server_error',
+					message: 'Database connection failed.',
+				} ),
+			} );
+		} );
+
+		const firstPill = page
+			.locator( '.ai-content-classification__pill' )
+			.first();
+		const pillText = await firstPill
+			.locator( '.ai-content-classification__pill-accept' )
+			.textContent();
+
+		// Click to accept a term.
+		await firstPill
+			.locator( '.ai-content-classification__pill-accept' )
+			.click();
+
+		// Pill should disappear immediately.
+		await expect(
+			page.locator( '.ai-content-classification__pill-accept' ).first()
+		).not.toHaveText( pillText );
+
+		// While API call is pending, click "Dismiss all" to clear suggestions and increment session count.
+		await page
+			.locator( '.ai-content-classification__actions button', {
+				hasText: 'Dismiss all',
+			} )
+			.first()
+			.click();
+
+		// Resolve the promise to return the failure response.
+		resolveRoute();
+
+		// Since the session is now stale, the suggestions UI should remain cleared/empty.
+		await expect(
+			page.locator( '.ai-content-classification__suggestions' ).first()
+		).not.toBeVisible();
+	} );
 } );
