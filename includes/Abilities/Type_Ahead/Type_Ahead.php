@@ -335,7 +335,15 @@ class Type_Ahead extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction() )
 			->as_json_response( $this->suggestion_schema() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Type_Ahead_Experiment::class, array( 'claude-haiku-4-5', 'gemini-2.5-flash', 'gpt-4.1-nano' ) );
+		$prompt_builder = $this->set_provider_model_preference(
+			$prompt_builder,
+			Type_Ahead_Experiment::class,
+			array(
+				array( 'anthropic', 'claude-haiku-4-5' ),
+				array( 'google', 'gemini-2.5-flash' ),
+				array( 'openai', 'gpt-4.1-nano' ),
+			)
+		);
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
