@@ -77,7 +77,9 @@ test.describe( 'Suggest Reply Experiment', () => {
 		await expect( page.locator( '#replyrow' ) ).toBeVisible();
 
 		// Ensure the inline reply form is populated before submitting.
-		const commentTextbox = page.locator( '#replyrow' ).getByRole( 'textbox', { name: 'Comment' } );
+		const commentTextbox = page
+			.locator( '#replyrow' )
+			.getByRole( 'textbox', { name: 'Comment' } );
 		await expect( commentTextbox ).toBeVisible();
 		await expect( commentTextbox ).not.toHaveValue( '' );
 
