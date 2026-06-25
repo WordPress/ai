@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
  * per user by omitting fields the current user cannot view.
  *
  * This class is kept almost identical to the WordPress core class `WP_Users_Abilities`
- * so the two implementations stay in sync. Differences from the core class are marked with
+ * so the two implementations stay in sync. Most differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
  * Plugin: the class is final and instance-based (with private helpers), matching the
@@ -101,36 +101,12 @@ final class Users {
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
 	 * invoked directly from wp_register_core_abilities() (already on the
 	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
-	 * (priority 11) so it can override any core-provided copy, and registers the category
-	 * as a fallback in case core has not.
+	 * (priority 11) so it can override any core-provided copy.
 	 *
 	 * @since x.x.x
 	 */
 	public function init(): void {
-		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_category' ), 11 );
 		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
-	}
-
-	/**
-	 * Registers the `user` ability category if it is not already registered.
-	 *
-	 * Plugin: this method has no equivalent in the core class; core relies on
-	 * wp_register_core_ability_categories() to register the `user` category.
-	 *
-	 * @since x.x.x
-	 */
-	public function register_category(): void {
-		if ( wp_has_ability_category( self::CATEGORY ) ) {
-			return;
-		}
-
-		wp_register_ability_category(
-			self::CATEGORY,
-			array(
-				'label'       => __( 'User', 'ai' ),
-				'description' => __( 'Abilities that retrieve or modify user information and settings.', 'ai' ),
-			)
-		);
 	}
 
 	/**
@@ -339,22 +315,34 @@ final class Users {
 	 * @return \WP_User|null User object, or null when not found.
 	 */
 	private function find_user( array $input ): ?WP_User {
-		if ( isset( $input['id'] ) ) {
+		if ( array_key_exists( 'id', $input ) ) {
 			$user = get_userdata( $this->input_int( $input['id'] ) );
 			return $user instanceof WP_User ? $user : null;
 		}
 
-		if ( isset( $input['user_email'] ) && is_string( $input['user_email'] ) ) {
+		if ( array_key_exists( 'user_email', $input ) ) {
+			if ( ! is_string( $input['user_email'] ) ) {
+				return null;
+			}
+
 			$user = get_user_by( 'email', sanitize_email( $input['user_email'] ) );
 			return $user instanceof WP_User ? $user : null;
 		}
 
-		if ( isset( $input['user_login'] ) && is_string( $input['user_login'] ) ) {
+		if ( array_key_exists( 'user_login', $input ) ) {
+			if ( ! is_string( $input['user_login'] ) ) {
+				return null;
+			}
+
 			$user = get_user_by( 'login', $input['user_login'] );
 			return $user instanceof WP_User ? $user : null;
 		}
 
-		if ( isset( $input['user_nicename'] ) && is_string( $input['user_nicename'] ) ) {
+		if ( array_key_exists( 'user_nicename', $input ) ) {
+			if ( ! is_string( $input['user_nicename'] ) ) {
+				return null;
+			}
+
 			$user = get_user_by( 'slug', sanitize_title( $input['user_nicename'] ) );
 			return $user instanceof WP_User ? $user : null;
 		}
