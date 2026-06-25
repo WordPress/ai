@@ -428,6 +428,7 @@ final class Users {
 			return false;
 		}
 
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.count_user_posts_count_user_posts -- Mirrors the Core REST users controller public-author visibility check.
 		return count_user_posts( (int) $user->ID, $post_types ) > 0;
 	}
 
@@ -442,9 +443,11 @@ final class Users {
 		$post_types = array();
 
 		foreach ( get_post_types( array( 'show_in_rest' => true ), 'names' ) as $post_type ) {
-			if ( is_string( $post_type ) && post_type_supports( $post_type, 'author' ) ) {
-				$post_types[] = $post_type;
+			if ( ! is_string( $post_type ) || ! post_type_supports( $post_type, 'author' ) ) {
+				continue;
 			}
+
+			$post_types[] = $post_type;
 		}
 
 		return $post_types;
