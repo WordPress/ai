@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * Registers the read-only `core/users` ability, which retrieves one or more
  * readable WordPress users. Supports fetching a single readable user by ID,
- * email, username, or slug, or querying a paginated collection optionally
+ * user email, user login, or user nicename, or querying a paginated collection optionally
  * filtered by roles or published-post authorship. Field-level access is enforced
  * per user by omitting fields the current user cannot view.
  *
@@ -74,9 +74,9 @@ final class Users {
 		'id',
 		'display_name',
 		'description',
-		'url',
+		'user_url',
 		'link',
-		'slug',
+		'user_nicename',
 	);
 
 	/**
@@ -86,13 +86,13 @@ final class Users {
 	 * @var string[]
 	 */
 	private array $sensitive_fields = array(
-		'username',
-		'email',
+		'user_login',
+		'user_email',
 		'first_name',
 		'last_name',
 		'nickname',
 		'locale',
-		'registered_date',
+		'user_registered',
 	);
 
 	/**
@@ -159,7 +159,7 @@ final class Users {
 			'core/users',
 			array(
 				'label'               => __( 'Get Users', 'ai' ),
-				'description'         => __( 'Retrieves one or more readable WordPress users. Fetch a single readable user by ID, email, username, or slug, or query a paginated collection optionally filtered by roles or published-post authorship.', 'ai' ),
+				'description'         => __( 'Retrieves one or more readable WordPress users. Fetch a single readable user by ID, user email, user login, or user nicename, or query a paginated collection optionally filtered by roles or published-post authorship.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_users_input_schema(),
 				'output_schema'       => $this->get_users_output_schema(),
@@ -306,7 +306,7 @@ final class Users {
 	 * @return string The lookup type, or an empty string for collection mode.
 	 */
 	private function get_lookup_type( array $input ): string {
-		foreach ( array( 'id', 'email', 'username', 'slug' ) as $key ) {
+		foreach ( array( 'id', 'user_email', 'user_login', 'user_nicename' ) as $key ) {
 			if ( array_key_exists( $key, $input ) ) {
 				return $key;
 			}
@@ -329,18 +329,18 @@ final class Users {
 			return $user instanceof WP_User ? $user : null;
 		}
 
-		if ( isset( $input['email'] ) && is_string( $input['email'] ) ) {
-			$user = get_user_by( 'email', sanitize_email( $input['email'] ) );
+		if ( isset( $input['user_email'] ) && is_string( $input['user_email'] ) ) {
+			$user = get_user_by( 'email', sanitize_email( $input['user_email'] ) );
 			return $user instanceof WP_User ? $user : null;
 		}
 
-		if ( isset( $input['username'] ) && is_string( $input['username'] ) ) {
-			$user = get_user_by( 'login', $input['username'] );
+		if ( isset( $input['user_login'] ) && is_string( $input['user_login'] ) ) {
+			$user = get_user_by( 'login', $input['user_login'] );
 			return $user instanceof WP_User ? $user : null;
 		}
 
-		if ( isset( $input['slug'] ) && is_string( $input['slug'] ) ) {
-			$user = get_user_by( 'slug', sanitize_title( $input['slug'] ) );
+		if ( isset( $input['user_nicename'] ) && is_string( $input['user_nicename'] ) ) {
+			$user = get_user_by( 'slug', sanitize_title( $input['user_nicename'] ) );
 			return $user instanceof WP_User ? $user : null;
 		}
 
@@ -362,7 +362,7 @@ final class Users {
 	/**
 	 * Checks whether a single-user lookup may return the target user.
 	 *
-	 * Email and username are identifier-sensitive lookup modes and do not use the
+	 * User email and login are identifier-sensitive lookup modes and do not use the
 	 * public-author fallback.
 	 *
 	 * @since x.x.x
@@ -380,7 +380,7 @@ final class Users {
 			return true;
 		}
 
-		if ( 'email' === $lookup_type || 'username' === $lookup_type ) {
+		if ( 'user_email' === $lookup_type || 'user_login' === $lookup_type ) {
 			return false;
 		}
 
@@ -562,9 +562,9 @@ final class Users {
 	 * combinations are rejected rather than silently ignored:
 	 *
 	 *   - Get a single readable user by `id`.
-	 *   - Get a single readable user by `email`.
-	 *   - Get a single readable user by `username`.
-	 *   - Get a single readable user by `slug`.
+	 *   - Get a single readable user by `user_email`.
+	 *   - Get a single readable user by `user_login`.
+	 *   - Get a single readable user by `user_nicename`.
 	 *   - Query a collection of readable users.
 	 *
 	 * @since x.x.x
@@ -601,39 +601,39 @@ final class Users {
 				),
 				array(
 					'title'                => __( 'Get a single readable user by email address', 'ai' ),
-					'required'             => array( 'email' ),
+					'required'             => array( 'user_email' ),
 					'additionalProperties' => false,
 					'properties'           => array(
-						'email'  => array(
+						'user_email' => array(
 							'type'        => 'string',
 							'format'      => 'email',
 							'description' => __( 'Retrieve a single readable user by email address. Resolving another user by email requires permission to list or edit users.', 'ai' ),
 						),
-						'fields' => $fields,
+						'fields'     => $fields,
 					),
 				),
 				array(
-					'title'                => __( 'Get a single readable user by username', 'ai' ),
-					'required'             => array( 'username' ),
+					'title'                => __( 'Get a single readable user by login', 'ai' ),
+					'required'             => array( 'user_login' ),
 					'additionalProperties' => false,
 					'properties'           => array(
-						'username' => array(
+						'user_login' => array(
 							'type'        => 'string',
-							'description' => __( 'Retrieve a single readable user by username. Resolving another user by username requires permission to list or edit users.', 'ai' ),
+							'description' => __( 'Retrieve a single readable user by login. Resolving another user by login requires permission to list or edit users.', 'ai' ),
 						),
-						'fields'   => $fields,
+						'fields'     => $fields,
 					),
 				),
 				array(
-					'title'                => __( 'Get a single readable user by slug', 'ai' ),
-					'required'             => array( 'slug' ),
+					'title'                => __( 'Get a single readable user by nicename', 'ai' ),
+					'required'             => array( 'user_nicename' ),
 					'additionalProperties' => false,
 					'properties'           => array(
-						'slug'   => array(
+						'user_nicename' => array(
 							'type'        => 'string',
-							'description' => __( 'Retrieve a single readable user by slug.', 'ai' ),
+							'description' => __( 'Retrieve a single readable user by nicename.', 'ai' ),
 						),
-						'fields' => $fields,
+						'fields'        => $fields,
 					),
 				),
 				array(
@@ -708,7 +708,7 @@ final class Users {
 				'type'        => 'string',
 				'description' => __( 'Description of the user.', 'ai' ),
 			),
-			'url'             => array(
+			'user_url'        => array(
 				'type'        => 'string',
 				'description' => __( 'URL of the user.', 'ai' ),
 			),
@@ -716,15 +716,15 @@ final class Users {
 				'type'        => 'string',
 				'description' => __( 'Author archive URL for the user.', 'ai' ),
 			),
-			'slug'            => array(
+			'user_nicename'   => array(
 				'type'        => 'string',
 				'description' => __( 'An alphanumeric identifier for the user.', 'ai' ),
 			),
-			'username'        => array(
+			'user_login'      => array(
 				'type'        => 'string',
 				'description' => __( 'Login name for the user. Present when the current user can view it.', 'ai' ),
 			),
-			'email'           => array(
+			'user_email'      => array(
 				'type'        => 'string',
 				'format'      => 'email',
 				'description' => __( 'The email address for the user. Present when the current user can view it.', 'ai' ),
@@ -745,10 +745,9 @@ final class Users {
 				'type'        => 'string',
 				'description' => __( 'Locale for the user. Present when the current user can view it.', 'ai' ),
 			),
-			'registered_date' => array(
+			'user_registered' => array(
 				'type'        => 'string',
-				'format'      => 'date-time',
-				'description' => __( 'Registration date for the user in ISO 8601 format. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'Registration date for the user. Present when the current user can view it.', 'ai' ),
 			),
 			'roles'           => array(
 				'type'        => 'array',
@@ -826,25 +825,25 @@ final class Users {
 		if ( $fields_requested( 'description' ) ) {
 			$data['description'] = (string) $user->description;
 		}
-		if ( $fields_requested( 'url' ) ) {
-			$data['url'] = (string) $user->user_url;
+		if ( $fields_requested( 'user_url' ) ) {
+			$data['user_url'] = (string) $user->user_url;
 		}
 		if ( $fields_requested( 'link' ) ) {
 			$data['link'] = (string) get_author_posts_url( $user_id, $user->user_nicename );
 		}
-		if ( $fields_requested( 'slug' ) ) {
-			$data['slug'] = (string) $user->user_nicename;
+		if ( $fields_requested( 'user_nicename' ) ) {
+			$data['user_nicename'] = (string) $user->user_nicename;
 		}
 		if ( $fields_requested( 'avatar_urls' ) && get_option( 'show_avatars' ) ) {
 			$data['avatar_urls'] = rest_get_avatar_urls( $user );
 		}
 
 		if ( $can_view_sensitive ) {
-			if ( $fields_requested( 'username' ) ) {
-				$data['username'] = (string) $user->user_login;
+			if ( $fields_requested( 'user_login' ) ) {
+				$data['user_login'] = (string) $user->user_login;
 			}
-			if ( $fields_requested( 'email' ) ) {
-				$data['email'] = (string) $user->user_email;
+			if ( $fields_requested( 'user_email' ) ) {
+				$data['user_email'] = (string) $user->user_email;
 			}
 			if ( $fields_requested( 'first_name' ) ) {
 				$data['first_name'] = (string) $user->first_name;
@@ -858,11 +857,8 @@ final class Users {
 			if ( $fields_requested( 'locale' ) ) {
 				$data['locale'] = (string) get_user_locale( $user );
 			}
-			if ( $fields_requested( 'registered_date' ) ) {
-				$registered_timestamp = strtotime( (string) $user->user_registered );
-				if ( false !== $registered_timestamp ) {
-					$data['registered_date'] = gmdate( 'c', $registered_timestamp );
-				}
+			if ( $fields_requested( 'user_registered' ) ) {
+				$data['user_registered'] = (string) $user->user_registered;
 			}
 		}
 

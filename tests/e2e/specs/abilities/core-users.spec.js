@@ -75,13 +75,15 @@ test.describe( 'core/users ability (client-side Abilities API)', () => {
 	test( 'returns the current user by ID', async ( { page } ) => {
 		const outcome = await runCoreUsers( page, {
 			id: currentUser.id,
-			fields: [ 'id', 'display_name', 'email' ],
+			fields: [ 'id', 'display_name', 'user_email' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result.users ).toHaveLength( 1 );
 		expect( outcome.result.users[ 0 ].id ).toBe( currentUser.id );
-		expect( outcome.result.users[ 0 ].email ).toBe( currentUser.email );
+		expect( outcome.result.users[ 0 ].user_email ).toBe(
+			currentUser.email
+		);
 		expect( typeof outcome.result.total ).toBe( 'number' );
 		expect( typeof outcome.result.total_pages ).toBe( 'number' );
 	} );
