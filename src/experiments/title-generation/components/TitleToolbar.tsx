@@ -325,7 +325,9 @@ export default function TitleToolbar( {
 								isBusy={ isRegenerating }
 								__next40pxDefaultSize
 							>
-								{ buttonLabel }
+								{ isRegenerating
+									? __( 'Regenerating…', 'ai' )
+									: __( 'Regenerate', 'ai' ) }
 							</Button>
 						</FlexItem>
 						<FlexItem>
