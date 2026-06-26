@@ -9,6 +9,7 @@
  * WordPress dependencies
  */
 import { createRoot, useEffect } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -196,6 +197,36 @@ function TitleToolbarWrapper(): React.JSX.Element {
 			}
 		};
 
+		// Tear down any state left over from a previous attachment so the
+		// toolbar can be re-attached to a freshly rendered title input. This
+		// happens when the editor recreates the title DOM, e.g. after toggling
+		// "Show template" on and then off.
+		const resetAttachmentState = () => {
+			if ( removeTitleListeners ) {
+				removeTitleListeners();
+				removeTitleListeners = null;
+			}
+
+			if ( removeToolbarListeners ) {
+				removeToolbarListeners();
+				removeToolbarListeners = null;
+			}
+
+			if ( root ) {
+				root.unmount();
+				root = null;
+			}
+
+			if ( wrapperContainer ) {
+				wrapperContainer.remove();
+				wrapperContainer = null;
+			}
+
+			toolbarContainer = null;
+			titleInput = null;
+			isAttached = false;
+		};
+
 		// Wait for the editor to be ready
 		const findAndAttachToolbar = () => {
 			// Don't try if already attached
@@ -279,6 +310,11 @@ function TitleToolbarWrapper(): React.JSX.Element {
 			// Create a container for our toolbar
 			toolbarContainer = editorDoc.createElement( 'div' );
 			toolbarContainer.className = 'ai-title-toolbar-container';
+			toolbarContainer.setAttribute( 'role', 'toolbar' );
+			toolbarContainer.setAttribute(
+				'aria-label',
+				__( 'Generate title toolbar', 'ai' )
+			);
 			toolbarContainer.style.cssText =
 				'display: none; position: absolute; z-index: 1000; top: -60px;';
 
@@ -329,20 +365,27 @@ function TitleToolbarWrapper(): React.JSX.Element {
 			findAndAttachToolbar();
 		}, 100 );
 
-		// Also listen for DOM changes in the editor iframe
-		// But only check if we haven't attached yet
+		// Also listen for DOM changes in the editor iframe.
+		// The observer stays connected for the editor's lifetime so the toolbar
+		// can be re-attached if the editor recreates the title input (e.g. when
+		// toggling "Show template" on and then off).
 		const setupObserver = () => {
 			const editorDoc = getEditorDocument();
 			if ( editorDoc && ! observer ) {
-				observer = new MutationObserver( ( _mutations, obs ) => {
-					if (
-						! isAttached &&
-						! editorDoc.querySelector( '.ai-title-toolbar-wrapper' )
-					) {
+				observer = new MutationObserver( () => {
+					const wrapperExists = !! editorDoc.querySelector(
+						'.ai-title-toolbar-wrapper'
+					);
+
+					// Our injected toolbar was removed from the DOM, but we
+					// still think it is attached. Reset so we can re-attach to
+					// the new title input.
+					if ( isAttached && ! wrapperExists ) {
+						resetAttachmentState();
+					}
+
+					if ( ! isAttached && ! wrapperExists ) {
 						findAndAttachToolbar();
-					} else if ( isAttached ) {
-						// Disconnect observer once toolbar is attached
-						obs.disconnect();
 					}
 				} );
 

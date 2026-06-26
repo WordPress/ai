@@ -15,6 +15,8 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Settings\Settings_Registration;
 
+use function WordPress\AI\get_min_content_length;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -145,15 +147,16 @@ class Content_Classification extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'content_classification', 'experiments/content-classification' );
+		Asset_Loader::enqueue_script( 'content_classification', 'experiments/content-classification', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'content_classification', 'experiments/content-classification' );
 		Asset_Loader::localize_script(
 			'content_classification',
 			'ContentClassificationData',
 			array(
-				'enabled'        => $this->is_enabled(),
-				'strategy'       => $this->get_strategy(),
-				'maxSuggestions' => $this->get_max_suggestions(),
+				'enabled'          => $this->is_enabled(),
+				'strategy'         => $this->get_strategy(),
+				'maxSuggestions'   => $this->get_max_suggestions(),
+				'minContentLength' => get_min_content_length( 'content-classification', 50 ),
 			)
 		);
 	}
@@ -166,7 +169,7 @@ class Content_Classification extends Abstract_Feature {
 	public function register_settings(): void {
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			$this->get_field_option_name( 'strategy' ),
+			static::get_field_option_name( 'strategy' ),
 			array(
 				'type'              => 'string',
 				'default'           => self::STRATEGY_EXISTING_ONLY,
@@ -182,7 +185,7 @@ class Content_Classification extends Abstract_Feature {
 
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			$this->get_field_option_name( 'max_suggestions' ),
+			static::get_field_option_name( 'max_suggestions' ),
 			array(
 				'type'              => 'integer',
 				'default'           => self::DEFAULT_MAX_SUGGESTIONS,
@@ -268,7 +271,7 @@ class Content_Classification extends Abstract_Feature {
 	 * @return string The strategy to use.
 	 */
 	public function get_strategy(): string {
-		$strategy = get_option( $this->get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY );
+		$strategy = get_option( static::get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY );
 
 		/**
 		 * Filters the strategy to use for content classification.
@@ -292,7 +295,7 @@ class Content_Classification extends Abstract_Feature {
 	 * @return int The maximum number of suggestions to generate.
 	 */
 	public function get_max_suggestions(): int {
-		$max_suggestions = (int) get_option( $this->get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
+		$max_suggestions = (int) get_option( static::get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
 
 		/**
 		 * Filters the maximum number of suggestions to generate for content classification.

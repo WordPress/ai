@@ -4,12 +4,14 @@
 import { Button, Notice } from '@wordpress/components';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { useFocusOnMount } from '@wordpress/compose';
 
 /**
  * Internal dependencies
  */
 import { uploadImage } from '../functions/upload-image';
 import { useImageGeneration } from '../hooks/useImageGeneration';
+import { isProviderAvailable } from '../../../utils/provider-status';
 import type { UploadedImage } from '../types';
 import {
 	GeneratingState,
@@ -58,6 +60,8 @@ export function GenerateImageStandalone() {
 		comparisonRightLabel,
 	} = useImageGeneration();
 
+	const focusOnMountRef = useFocusOnMount( 'firstElement' );
+
 	async function handleSaveImage(): Promise< void > {
 		if ( ! activeEntry ) {
 			return;
@@ -80,14 +84,39 @@ export function GenerateImageStandalone() {
 				( prev ) => new Set( [ ...prev, historyIndex ] )
 			);
 			setState( 'preview' );
-		} catch ( err: unknown ) {
-			setError(
-				err instanceof Error
-					? err.message
-					: __( 'Failed to upload image.', 'ai' )
-			);
+		} catch ( err: any ) {
+			setError( err?.message || __( 'Failed to upload image.', 'ai' ) );
 			setState( 'preview' );
 		}
+	}
+
+	/**
+	 * Wraps generate() with an inline provider availability check.
+	 *
+	 * Outside the block editor the @wordpress/notices store has no renderer,
+	 * so ensureProvider()'s dispatched notice is invisible. This guard uses
+	 * isProviderAvailable() and sets component-level error state instead,
+	 * ensuring the user sees a Notice in the standalone UI.
+	 *
+	 * @param activePrompt    The prompt text to generate an image from.
+	 * @param referenceImage  Optional base64 data URI of a reference image for refinement.
+	 * @param refHistoryIndex Optional history index of the reference image entry.
+	 */
+	function safeGenerate(
+		activePrompt: string,
+		referenceImage?: string,
+		refHistoryIndex?: number
+	): void {
+		if ( ! isProviderAvailable() ) {
+			setError(
+				__(
+					'This feature requires an AI Connector to function properly. Please set up a provider in Settings → Connectors.',
+					'ai'
+				)
+			);
+			return;
+		}
+		generate( activePrompt, referenceImage, refHistoryIndex );
 	}
 
 	const lastSaved = savedUploads[ savedUploads.length - 1 ] ?? null;
@@ -98,8 +127,11 @@ export function GenerateImageStandalone() {
 				<PromptForm
 					prompt={ prompt }
 					onPromptChange={ setPrompt }
-					onGenerate={ () => generate( prompt.trim() ) }
+					onGenerate={ () => safeGenerate( prompt.trim() ) }
 					error={ error }
+					hasImageGenerationSupport={ Boolean(
+						aiImageGenerationData?.hasImageGenerationSupport
+					) }
 				/>
 			) }
 
@@ -126,11 +158,16 @@ export function GenerateImageStandalone() {
 						comparisonLeftLabel={ comparisonLeftLabel }
 						comparisonRightLabel={ comparisonRightLabel }
 					/>
-					<div className="ai-image-generation__actions">
+					<div
+						className="ai-image-generation__actions"
+						ref={ focusOnMountRef }
+					>
 						<Button
 							variant="primary"
 							onClick={ handleSaveImage }
 							disabled={ savedHistoryIndices.has( historyIndex ) }
+							accessibleWhenDisabled
+							__next40pxDefaultSize
 						>
 							{ __( 'Save to Media Library', 'ai' ) }
 						</Button>
@@ -140,19 +177,21 @@ export function GenerateImageStandalone() {
 								setRefinePrompt( '' );
 								setState( 'refining' );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
 						<Button
 							variant="secondary"
 							onClick={ () =>
-								generate(
+								safeGenerate(
 									activeEntry?.generatedData.prompt ??
 										prompt.trim(),
 									activeEntry?.referenceSrc,
 									activeEntry?.referenceHistoryIndex
 								)
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
 						</Button>
@@ -163,6 +202,7 @@ export function GenerateImageStandalone() {
 								setState( 'idle' );
 								setError( null );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Edit Prompt', 'ai' ) }
 						</Button>
@@ -177,7 +217,8 @@ export function GenerateImageStandalone() {
 								setState( 'idle' );
 								setError( null );
 							} }
-							style={ { marginLeft: 'auto' } }
+							style={ { marginInlineStart: 'auto' } }
+							__next40pxDefaultSize
 						>
 							{ __( 'Cancel', 'ai' ) }
 						</Button>
@@ -217,7 +258,7 @@ export function GenerateImageStandalone() {
 					refinePrompt={ refinePrompt }
 					onRefinePromptChange={ setRefinePrompt }
 					onRefine={ () =>
-						generate(
+						safeGenerate(
 							refinePrompt.trim(),
 							previewSrc,
 							historyIndex

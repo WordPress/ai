@@ -16,6 +16,8 @@ const {
 const NOTICE_TEXT =
 	'This feature requires an AI Connector to function properly.';
 const MANAGE_CONNECTORS_TEXT = 'Manage Connectors';
+const LONG_CONTENT =
+	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough words for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.';
 
 async function openMetaDescriptionPanel( editor, page ) {
 	await editor.openDocumentSettingsSidebar();
@@ -67,7 +69,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: '',
-			content: 'Test content for title generation without a provider.',
+			content: LONG_CONTENT,
 		} );
 		await editor.saveDraft();
 
@@ -101,7 +103,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Excerpt No Provider',
-			content: 'Test content for excerpt generation without a provider.',
+			content: LONG_CONTENT,
 		} );
 		await editor.saveDraft();
 		await editor.openDocumentSettingsSidebar();
@@ -125,8 +127,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Summarization No Provider',
-			content:
-				'This is some test content for the Content Summarization Experiment. It needs to be at least one hundred characters long.',
+			content: LONG_CONTENT,
 		} );
 		await editor.saveDraft();
 		await editor.openDocumentSettingsSidebar();
@@ -135,6 +136,31 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 			'.ai-summarization-plugin-container button'
 		);
 		await expect( generateButton ).toBeVisible();
+		await generateButton.click();
+
+		await expectProviderNotice( page );
+	} );
+
+	test( 'Featured Image Generation shows notice when clicking Generate without a provider', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Image Generation and Editing' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Featured Image No Provider',
+			content:
+				'Test content for featured image generation without a provider.',
+		} );
+		await editor.saveDraft();
+		await editor.openDocumentSettingsSidebar();
+
+		const generateButton = page.locator( '.ai-featured-image button', {
+			hasText: 'Generate featured image',
+		} );
+		await expect( generateButton ).toBeVisible( { timeout: 5000 } );
 		await generateButton.click();
 
 		await expectProviderNotice( page );
@@ -150,8 +176,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Meta Description No Provider',
-			content:
-				'Test content for meta description generation without a provider.',
+			content: LONG_CONTENT,
 		} );
 		await editor.saveDraft();
 
@@ -173,27 +198,26 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await expectProviderNotice( page );
 	} );
 
-	test( 'Review Notes shows notice when clicking Generate Review Notes without a provider', async ( {
+	test( 'Editorial Notes shows notice when clicking Generate Editorial Notes without a provider', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		await enableExperiment( admin, page, 'Review Notes' );
+		await enableExperiment( admin, page, 'Editorial Notes' );
 
 		await admin.createNewPost( {
-			title: 'Test Review Notes No Provider',
+			title: 'Test Editorial Notes No Provider',
 		} );
 
 		await editor.insertBlock( {
 			name: 'core/paragraph',
 			attributes: {
-				content:
-					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+				content: LONG_CONTENT,
 			},
 		} );
 
 		// After inserting a block, the sidebar switches to Block tab.
-		// Switch back to Post tab where the Generate Review Notes button lives.
+		// Switch back to Post tab where the Generate Editorial Notes button lives.
 		await editor.openDocumentSettingsSidebar();
 		const postTab = page.getByRole( 'tab', { name: 'Post' } );
 		if ( ( await postTab.count() ) > 0 ) {
@@ -201,7 +225,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		}
 
 		const reviewButton = page.getByRole( 'button', {
-			name: 'Generate Review Notes',
+			name: 'Generate Editorial Notes',
 		} );
 		await expect( reviewButton ).toBeVisible( { timeout: 5000 } );
 		await reviewButton.click();
@@ -273,7 +297,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Dismissible Notice Test',
-			content: 'Test content for dismissible notice test.',
+			content: LONG_CONTENT,
 		} );
 		await editor.saveDraft();
 		await editor.openDocumentSettingsSidebar();
@@ -308,7 +332,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await admin.createNewPost( {
 			postType: 'post',
 			title: '',
-			content: 'Test content for duplicate notice test.',
+			content: LONG_CONTENT,
 		} );
 		await editor.saveDraft();
 

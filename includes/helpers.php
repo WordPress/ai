@@ -12,6 +12,8 @@ namespace WordPress\AI;
 use Throwable;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
+use WordPress\AiClient\AiClient;
+use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 /**
  * Purposely using return instead of exit here.
@@ -145,7 +147,14 @@ function get_post_context( int $post_id ): array {
 			$grouped_terms = array();
 
 			foreach ( $terms as $term ) {
-				$grouped_terms[ $term->taxonomy ][] = $term->name;
+				$taxonomy = $term['taxonomy'] ?? '';
+				$name     = $term['name'] ?? '';
+
+				if ( '' === $taxonomy || '' === $name ) {
+					continue;
+				}
+
+				$grouped_terms[ $taxonomy ][] = $name;
 			}
 
 			$context = array_merge(
@@ -369,6 +378,92 @@ function format_guidelines_for_prompt( array $categories, ?string $block_name = 
 }
 
 /**
+ * Determines if a connector is configured.
+ *
+ * @since 1.0.1
+ *
+ * @param string $connector_id The connector ID.
+ * @return bool True if the connector is configured, false otherwise.
+ */
+function is_connector_configured( string $connector_id ): bool {
+	$registry = AiClient::defaultRegistry();
+	return $registry->hasProvider( $connector_id ) && $registry->isProviderConfigured( $connector_id );
+}
+
+/**
+ * Determines if a connector has authentication in place.
+ *
+ * This checks for API-key credentials by source only (environment variable,
+ * PHP constant, or stored option) and does not make external API requests.
+ *
+ * @since 1.0.1
+ *
+ * @param string $connector_id The connector ID.
+ * @return bool True if connector authentication is present, false otherwise.
+ */
+function has_connector_authentication( string $connector_id ): bool {
+	if ( ! wp_is_connector_registered( $connector_id ) ) {
+		return false;
+	}
+
+	$connector = wp_get_connector( $connector_id );
+	if ( ! is_array( $connector ) ) {
+		return false;
+	}
+
+	$auth = $connector['authentication'] ?? null;
+	if ( ! is_array( $auth ) || ( $auth['method'] ?? '' ) !== 'api_key' ) {
+		return false;
+	}
+
+	$setting_name = $auth['setting_name'] ?? '';
+	if ( ! is_string( $setting_name ) || '' === $setting_name ) {
+		return false;
+	}
+
+	return 'none' !== get_connector_api_key_source(
+		$setting_name,
+		$auth['env_var_name'] ?? '',
+		$auth['constant_name'] ?? ''
+	);
+}
+
+/**
+ * Determines the source of a connector API key.
+ *
+ * Checks in order: environment variable, PHP constant, database option.
+ *
+ * @since 1.0.1
+ *
+ * @param string $setting_name  The option name for the API key.
+ * @param string $env_var_name  Optional environment variable name.
+ * @param string $constant_name Optional PHP constant name.
+ * @return string The key source: 'env', 'constant', 'database', or 'none'.
+ */
+function get_connector_api_key_source( string $setting_name, string $env_var_name = '', string $constant_name = '' ): string {
+	if ( '' !== $env_var_name ) {
+		$env_value = getenv( $env_var_name );
+		if ( false !== $env_value && '' !== $env_value ) {
+			return 'env';
+		}
+	}
+
+	if ( '' !== $constant_name && defined( $constant_name ) ) {
+		$const_value = constant( $constant_name );
+		if ( is_string( $const_value ) && '' !== $const_value ) {
+			return 'constant';
+		}
+	}
+
+	$db_value = get_option( $setting_name, '' );
+	if ( '' !== $db_value ) {
+		return 'database';
+	}
+
+	return 'none';
+}
+
+/**
  * Checks if we have AI credentials set.
  *
  * @since 0.1.0
@@ -379,13 +474,13 @@ function has_ai_credentials(): bool {
 	$connectors      = get_ai_connectors();
 	$has_credentials = false;
 
-	foreach ( $connectors as $connector_data ) {
+	foreach ( $connectors as $connector_id => $connector_data ) {
 		$auth = $connector_data['authentication'];
-		if ( 'api_key' !== $auth['method'] || empty( $auth['setting_name'] ) ) {
+		if ( 'api_key' !== $auth['method'] ) {
 			continue;
 		}
 
-		if ( '' === get_option( $auth['setting_name'], '' ) ) {
+		if ( ! has_connector_authentication( $connector_id ) ) {
 			continue;
 		}
 
@@ -408,9 +503,73 @@ function has_ai_credentials(): bool {
 }
 
 /**
+ * Checks whether any configured connector exposes an image-generation-capable model.
+ *
+ * @since 1.0.2
+ *
+ * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
+ * @return bool True if at least one connector supports image generation.
+ */
+function has_image_generation_support( bool $reset_cache = false ): bool {
+	static $result = null;
+
+	if ( ! $reset_cache && null !== $result ) {
+		return $result;
+	}
+
+	$connectors  = array();
+	$has_support = false;
+
+	if ( class_exists( AiClient::class ) ) {
+		$registry   = AiClient::defaultRegistry();
+		$connectors = get_ai_connectors();
+
+		foreach ( array_keys( $connectors ) as $connector_id ) {
+			if ( ! has_connector_authentication( $connector_id ) ) {
+				continue;
+			}
+
+			try {
+				$provider_class = $registry->getProviderClassName( $connector_id );
+
+				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+
+				foreach ( $models as $model ) {
+					foreach ( $model->getSupportedCapabilities() as $capability ) {
+						if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
+							$has_support = true;
+							break 3;
+						}
+					}
+				}
+			} catch ( Throwable $e ) {
+				continue;
+			}
+		}
+	}
+
+	/**
+	 * Filters whether image generation is supported.
+	 *
+	 * Allows third-party plugins to declare image generation support for
+	 * connectors that do not rely on API key settings (e.g. OAuth), without
+	 * triggering a live API request.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool  $has_support Whether image generation is supported.
+	 * @param array $connectors  The registered connectors.
+	 */
+	$result = (bool) apply_filters( 'wpai_has_image_generation_support', $has_support, $connectors );
+
+	return $result;
+}
+
+/**
  * Returns provider availability data for script localization.
  *
- * @since x.x.x
+ * @since 1.0.0
  *
  * @return array{hasProvider: bool, connectorsUrl: string} Provider availability data.
  */
@@ -525,4 +684,25 @@ function is_connector_plugin_active( array $connector_data ): bool {
 	}
 
 	return is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $plugin_file );
+}
+
+/**
+ * Returns the minimum content length required for a given feature.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id     The feature identifier (e.g. 'content-resizing', 'content-classification', 'summarization').
+ * @param int    $content_length The default minimum content length.
+ * @return int The minimum content length.
+ */
+function get_min_content_length( string $feature_id, int $content_length = 100 ): int {
+	/**
+	 * Filters the minimum content length required for a feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $content_length The minimum content length. Default 100.
+	 * @param string $feature_id     The feature identifier.
+	 */
+	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
 }

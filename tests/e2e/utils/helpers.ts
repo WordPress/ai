@@ -79,6 +79,27 @@ export const visitConnectorsPage = async ( admin: Admin ) => {
 };
 
 /**
+ * Visits the AI Request Logs page under Tools.
+ *
+ * @param admin The admin fixture from the test context.
+ */
+export const visitRequestLogsPage = async ( admin: Admin ) => {
+	await admin.visitAdminPage( 'tools.php', 'page=ai-request-logs' );
+};
+
+/**
+ * Empties the AI request log table via the REST endpoint.
+ *
+ * @param requestUtils The request utils fixture from the test context.
+ */
+export const purgeRequestLogs = async ( requestUtils: RequestUtils ) => {
+	await requestUtils.rest( {
+		method: 'DELETE',
+		path: '/ai/v1/logs',
+	} );
+};
+
+/**
  * Clears out any existing Connectors.
  *
  * @param admin The admin fixture from the test context.
@@ -364,7 +385,7 @@ export const getExperimentTogglesInGroup = async (
 		.filter( { has: page.getByText( groupName, { exact: true } ) } );
 
 	// Get all checkboxes in that section (experiment toggles are checkboxes, buttons are for bulk actions).
-	const allToggles = section.getByRole( 'checkbox' );
+	const allToggles = section.locator( '.components-form-toggle__input' );
 	const count = await allToggles.count();
 	const experimentToggles: Locator[] = [];
 

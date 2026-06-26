@@ -5,12 +5,11 @@
 /**
  * WordPress dependencies
  */
-import { dispatch, select } from '@wordpress/data';
+import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
-import { useState, useCallback } from '@wordpress/element';
+import { useState, useCallback, useEffect } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
-import { count as wordCount } from '@wordpress/wordcount';
 import { addQueryArgs } from '@wordpress/url';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -19,6 +18,7 @@ import apiFetch from '@wordpress/api-fetch';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
+import { hasMinimumContent } from '../../../utils/word-count';
 import type {
 	ContentClassificationAbilityInput,
 	ContentClassificationResponse,
@@ -26,15 +26,41 @@ import type {
 	ContentClassificationData,
 } from '../types';
 
-const MINIMUM_WORD_COUNT = 150;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
 const NOTICE_ID = 'ai_content_classification_error';
+const DEFAULT_MAX_SUGGESTIONS = 5;
+const MIN_SUGGESTIONS = 1;
+const MAX_SUGGESTIONS = 10;
 
-const getSettings = (): ContentClassificationData =>
-	( window as any ).aiContentClassificationData ?? {
-		enabled: false,
-		strategy: 'existing_only',
-		maxSuggestions: 5,
+const suggestionsCache: Record< string, TagSuggestion[] > = {};
+
+const normalizeMaxSuggestions = ( value: unknown ): number => {
+	const parsedValue = Number.parseInt(
+		String( value ?? DEFAULT_MAX_SUGGESTIONS ),
+		10
+	);
+
+	if ( Number.isNaN( parsedValue ) ) {
+		return DEFAULT_MAX_SUGGESTIONS;
+	}
+
+	return Math.min(
+		MAX_SUGGESTIONS,
+		Math.max( MIN_SUGGESTIONS, parsedValue )
+	);
+};
+
+const getSettings = (): ContentClassificationData => {
+	const settings = ( window as any ).aiContentClassificationData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		strategy: settings.strategy ?? 'existing_only',
+		maxSuggestions: normalizeMaxSuggestions( settings.maxSuggestions ),
+		minContentLength:
+			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
 	};
+};
 
 /**
  * Generates taxonomy suggestions for the given post.
@@ -117,16 +143,35 @@ export function useContentClassification( taxonomy: string ): {
 	handleAccept: ( suggestion: TagSuggestion ) => void;
 	handleDismiss: ( suggestion: TagSuggestion ) => void;
 	handleDismissAll: () => void;
+	minContentLength: number;
 } {
-	const postId = select( editorStore ).getCurrentPostId() as number;
-	const content = select( editorStore ).getEditedPostContent();
+	const { postId, content } = useSelect( ( selectFn ) => {
+		const editor = selectFn( editorStore );
+
+		return {
+			postId: editor.getCurrentPostId() as number,
+			content: editor.getEditedPostContent(),
+		};
+	}, [] );
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
-	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >( [] );
-	const { removeNotice, createErrorNotice } = dispatch( noticesStore ) as any;
+	const [ suggestions, setSuggestions ] = useState< TagSuggestion[] >(
+		() => suggestionsCache[ taxonomy ] ?? []
+	);
+
+	// Sync suggestions to the cache whenever they change.
+	useEffect( () => {
+		suggestionsCache[ taxonomy ] = suggestions;
+	}, [ taxonomy, suggestions ] );
+
+	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
+
+	const { minContentLength } = getSettings();
 
 	// Check if content has enough words.
-	const hasEnoughContent =
-		wordCount( content || '', 'words' ) >= MINIMUM_WORD_COUNT;
+	const hasEnoughContent = hasMinimumContent(
+		content || '',
+		minContentLength
+	);
 
 	const handleGenerate = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
@@ -141,10 +186,12 @@ export function useContentClassification( taxonomy: string ): {
 		removeNotice( NOTICE_ID );
 
 		try {
+			const latestContent = select( editorStore ).getEditedPostContent();
+
 			// Generate suggestions.
 			const result = await generateSuggestions(
 				postId,
-				content,
+				latestContent,
 				taxonomy,
 				settings.strategy,
 				settings.maxSuggestions
@@ -167,7 +214,7 @@ export function useContentClassification( taxonomy: string ): {
 		} finally {
 			setIsGenerating( false );
 		}
-	}, [ postId, content, taxonomy, removeNotice, createErrorNotice ] );
+	}, [ postId, taxonomy, removeNotice, createErrorNotice ] );
 
 	// Remove a suggestion from the list.
 	const removeSuggestionFromList = ( suggestion: TagSuggestion ) => {
@@ -203,6 +250,7 @@ export function useContentClassification( taxonomy: string ): {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
+		minContentLength,
 	};
 }
 
@@ -296,7 +344,7 @@ async function findOrCreateTerm(
 
 		return newTerm?.id ?? null;
 	} catch ( error: any ) {
-		const { createErrorNotice } = dispatch( noticesStore ) as any;
+		const { createErrorNotice } = dispatch( noticesStore );
 		createErrorNotice(
 			error?.message ||
 				`Could not add term "${ termName }". Please try again.`,

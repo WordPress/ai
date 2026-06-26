@@ -3,6 +3,11 @@
  */
 
 /**
+ * WordPress dependencies
+ */
+import { __ } from '@wordpress/i18n';
+
+/**
  * Global dependencies
  */
 const { aiAbilityExplorer, navigator } = window;
@@ -241,7 +246,9 @@ import './index.scss';
 				'ability-input-schema'
 			);
 			if ( ! schemaElement ) {
-				this.showValidation( true, [ 'JSON syntax is valid' ] );
+				this.showValidation( true, [
+					__( 'JSON syntax is valid', 'ai' ),
+				] );
 				return;
 			}
 
@@ -251,7 +258,7 @@ import './index.scss';
 				schema = JSON.parse( schemaElement.textContent );
 			} catch {
 				this.showValidation( false, [
-					'Failed to parse input schema',
+					__( 'Failed to parse input schema', 'ai' ),
 				] );
 				return;
 			}
@@ -261,7 +268,7 @@ import './index.scss';
 
 			if ( errors.length === 0 ) {
 				this.showValidation( true, [
-					'Input is valid according to the schema',
+					__( 'Input is valid according to the schema', 'ai' ),
 				] );
 			} else {
 				this.showValidation( false, errors );
@@ -289,29 +296,70 @@ import './index.scss';
 				} );
 			}
 
-			// Check property types
+			// Check property types and constraints
 			if ( schema.properties ) {
 				Object.keys( schema.properties ).forEach(
 					function ( propName ) {
-						if ( propName in input ) {
-							const propSchema = schema.properties[ propName ];
-							const value = input[ propName ];
+						if ( ! ( propName in input ) ) {
+							return;
+						}
 
-							if ( propSchema.type ) {
-								const isValid = this.validateType(
-									value,
-									propSchema.type
+						const propSchema = schema.properties[ propName ];
+						const value = input[ propName ];
+
+						if ( propSchema.type ) {
+							const isValid = this.validateType(
+								value,
+								propSchema.type
+							);
+							if ( ! isValid ) {
+								errors.push(
+									'Field "' +
+										propName +
+										'" should be of type "' +
+										propSchema.type +
+										'"'
 								);
-								if ( ! isValid ) {
-									errors.push(
-										'Field "' +
-											propName +
-											'" should be of type "' +
-											propSchema.type +
-											'"'
-									);
-								}
+								return;
 							}
+						}
+
+						if (
+							Array.isArray( propSchema.enum ) &&
+							! propSchema.enum.includes( value )
+						) {
+							errors.push(
+								'Field "' +
+									propName +
+									'" must be one of: ' +
+									propSchema.enum.join( ', ' )
+							);
+						}
+
+						if (
+							typeof value === 'number' &&
+							typeof propSchema.minimum === 'number' &&
+							value < propSchema.minimum
+						) {
+							errors.push(
+								'Field "' +
+									propName +
+									'" must be at least ' +
+									propSchema.minimum
+							);
+						}
+
+						if (
+							typeof value === 'number' &&
+							typeof propSchema.maximum === 'number' &&
+							value > propSchema.maximum
+						) {
+							errors.push(
+								'Field "' +
+									propName +
+									'" must be at most ' +
+									propSchema.maximum
+							);
 						}
 					}.bind( this )
 				);
@@ -332,8 +380,11 @@ import './index.scss';
 				case 'string':
 					return typeof value === 'string';
 				case 'number':
+					return (
+						typeof value === 'number' && Number.isFinite( value )
+					);
 				case 'integer':
-					return typeof value === 'number';
+					return Number.isInteger( value );
 				case 'boolean':
 					return typeof value === 'boolean';
 				case 'array':
@@ -362,7 +413,9 @@ import './index.scss';
 			}
 
 			const iconHtml = isValid ? '✓' : '✗';
-			const titleText = isValid ? 'Valid' : 'Validation Errors';
+			const titleText = isValid
+				? __( 'Valid', 'ai' )
+				: __( 'Validation Errors', 'ai' );
 			const className = isValid
 				? 'validation-success'
 				: 'validation-error';

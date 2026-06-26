@@ -14,6 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -50,7 +52,7 @@ class Summarization extends Abstract_Feature {
 	public function register(): void {
 		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 	}
 
@@ -88,28 +90,32 @@ class Summarization extends Abstract_Feature {
 	}
 
 	/**
-	 * Enqueues and localizes the admin script.
+	 * Enqueues and localizes the block editor script.
 	 *
 	 * @since 0.3.0
-	 *
-	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
-	public function enqueue_assets( string $hook_suffix ): void {
-		// Load asset in new post and edit post screens only.
-		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
+	public function enqueue_assets(): void {
+		$screen = get_current_screen();
+		if ( ! $screen || 'post' !== $screen->base ) {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization' );
+		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization', array( 'include_core_abilities' => true ) );
 
 		/**
 		 * Filters the minimum content length required to enable summarization.
 		 *
-		 * @since x.x.x
+		 * @since 1.0.0
+		 * @deprecated x.x.x Use {@see 'wpai_min_content_length'} instead.
 		 *
-		 * @param int $min_content_length The minimum number of characters required. Default 100.
+		 * @param int $min_content_length The minimum number of words or characters required. Default 100.
 		 */
-		$min_content_length = (int) apply_filters( 'wpai_summarization_min_content_length', 100 );
+		$min_content_length = (int) apply_filters_deprecated(
+			'wpai_summarization_min_content_length',
+			array( get_min_content_length( 'summarization', 50 ) ),
+			'x.x.x',
+			'wpai_min_content_length'
+		);
 
 		Asset_Loader::localize_script(
 			'summarization',

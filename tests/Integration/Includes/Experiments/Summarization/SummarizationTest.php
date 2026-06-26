@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Experiments\Summarization;
 
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -37,6 +38,9 @@ class SummarizationTest extends WP_UnitTestCase {
 		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_summarization_enabled', true );
 
+		$experiments = new Experiments();
+		$experiments->init();
+
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
 		$loader->init();
@@ -56,6 +60,7 @@ class SummarizationTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_summarization_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		remove_filter( 'wpai_default_feature_classes', array( Experiments::class, 'register_default_experiment_classes' ), 9 );
 		parent::tearDown();
 	}
 
@@ -71,5 +76,98 @@ class SummarizationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Content Summarization', $experiment->get_label() );
 		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
+	}
+
+	/**
+	 * Tests that the editor assets are registered with the block editor assets hook.
+	 *
+	 * @since 1.0.2
+	 */
+	public function test_register_uses_block_editor_assets_hook() {
+		$experiment = new Summarization();
+
+		try {
+			$experiment->register();
+
+			$this->assertSame(
+				5,
+				has_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_assets' ) ),
+				'Summarization editor assets should load before other block editor controls.'
+			);
+			$this->assertFalse(
+				has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ),
+				'Summarization editor assets should not load through the general admin assets hook.'
+			);
+		} finally {
+			remove_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_assets' ), 5 );
+			remove_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) );
+			remove_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) );
+			remove_action( 'enqueue_block_assets', array( $experiment, 'enqueue_block_assets' ) );
+		}
+	}
+
+	/**
+	 * Tests that enqueue_assets() does not load outside the post editor.
+	 *
+	 * @since 1.0.2
+	 */
+	public function test_enqueue_assets_skips_non_post_screens() {
+		$experiment = new Summarization();
+
+		set_current_screen( 'dashboard' );
+
+		try {
+			$experiment->enqueue_assets();
+
+			$this->assertFalse(
+				wp_script_is( 'ai_summarization', 'enqueued' ),
+				'Summarization assets should not load outside post editor screens.'
+			);
+		} finally {
+			set_current_screen( 'front' );
+		}
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the default minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_default_min_content_length() {
+		set_current_screen( 'post' );
+
+		$experiment = new Summarization();
+		$experiment->enqueue_assets();
+
+		$this->assertTrue( wp_script_is( 'ai_summarization', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"50"',
+			(string) wp_scripts()->get_data( 'ai_summarization', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		set_current_screen( 'post' );
+
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+
+		$experiment = new Summarization();
+		$experiment->enqueue_assets();
+
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_summarization', 'data' )
+		);
 	}
 }

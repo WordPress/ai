@@ -38,4 +38,5 @@ export interface ContentClassificationData {
 	enabled: boolean;
 	strategy: string;
 	maxSuggestions: number;
+	minContentLength: number;
 }

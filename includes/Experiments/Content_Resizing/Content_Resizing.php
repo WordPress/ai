@@ -14,6 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -81,13 +83,14 @@ class Content_Resizing extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'content_resizing', 'experiments/content-resizing' );
+		Asset_Loader::enqueue_script( 'content_resizing', 'experiments/content-resizing', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'content_resizing', 'experiments/content-resizing' );
 		Asset_Loader::localize_script(
 			'content_resizing',
 			'ContentResizingData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => get_min_content_length( 'content-resizing', 5 ),
 			)
 		);
 	}

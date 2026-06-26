@@ -60,6 +60,13 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		unset( $_GET['wpai_bulk_alt_text'], $_GET['wpai_attachment_ids'] );
 		wp_dequeue_script( 'ai_alt_text_generation_bulk' );
 		wp_deregister_script( 'ai_alt_text_generation_bulk' );
+
+		// Gutenberg media editor experiment
+		wp_dequeue_script( 'ai_alt_text_generation_media_editor' );
+		wp_deregister_script( 'ai_alt_text_generation_media_editor' );
+		delete_option( 'gutenberg-experiments' );
+		delete_option( 'active_plugins' );
+
 		parent::tearDown();
 	}
 
@@ -132,12 +139,12 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		wp_set_current_user( $admin_id );
 
 		$image_id = self::factory()->attachment->create_upload_object(
-			dirname( __FILE__ ) . '/../../../../data/sample.png'
+			__DIR__ . '/../../../../data/sample.png'
 		);
 
-		$experiment   = new Alt_Text_Generation();
-		$redirect     = 'https://example.com/wp-admin/upload.php';
-		$result       = $experiment->handle_bulk_action( $redirect, 'wpai_generate_alt_text', array( $image_id ) );
+		$experiment = new Alt_Text_Generation();
+		$redirect   = 'https://example.com/wp-admin/upload.php';
+		$result     = $experiment->handle_bulk_action( $redirect, 'wpai_generate_alt_text', array( $image_id ) );
 
 		$this->assertStringContainsString( 'wpai_bulk_alt_text=1', $result );
 		$this->assertStringContainsString( 'wpai_attachment_ids=' . $image_id, $result );
@@ -280,5 +287,89 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
 
 		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
+	}
+
+	/**
+	 * Test that the media editor script is not enqueued when the Gutenberg plugin is inactive.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_maybe_enqueue_media_editor_script_skips_when_gutenberg_inactive(): void {
+		update_option( 'active_plugins', array() );
+
+		$this->invoke_maybe_enqueue_media_editor_script( new Alt_Text_Generation() );
+
+		$this->assertFalse(
+			wp_script_is( 'ai_alt_text_generation_media_editor', 'enqueued' ),
+			'Media editor script should not enqueue when Gutenberg is inactive.'
+		);
+	}
+
+	/**
+	 * Test that the media editor script is not enqueued when neither media-editor experiment key is set.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_maybe_enqueue_media_editor_script_skips_when_no_experiment_enabled(): void {
+		update_option( 'active_plugins', array( 'gutenberg/gutenberg.php' ) );
+		delete_option( 'gutenberg-experiments' );
+
+		$this->invoke_maybe_enqueue_media_editor_script( new Alt_Text_Generation() );
+
+		$this->assertFalse(
+			wp_script_is( 'ai_alt_text_generation_media_editor', 'enqueued' ),
+			'Media editor script should not enqueue without an active experiment key.'
+		);
+	}
+
+	/**
+	 * Test that the media editor script enqueues when the route-based experiment is enabled.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_maybe_enqueue_media_editor_script_enqueues_for_route_experiment(): void {
+		update_option( 'active_plugins', array( 'gutenberg/gutenberg.php' ) );
+		update_option( 'gutenberg-experiments', array( 'gutenberg-media-editor' => '1' ) );
+
+		$this->invoke_maybe_enqueue_media_editor_script( new Alt_Text_Generation() );
+
+		$enqueued = wp_script_is( 'ai_alt_text_generation_media_editor', 'enqueued' );
+
+		$this->assertTrue(
+			$enqueued,
+			'Media editor script should enqueue when the route-based experiment is enabled.'
+		);
+	}
+
+	/**
+	 * Test that the media editor script enqueues when the Modal experiment is enabled.
+	 *
+	 * @since 1.0.0
+	 */
+	public function test_maybe_enqueue_media_editor_script_enqueues_for_modal_experiment(): void {
+		update_option( 'active_plugins', array( 'gutenberg/gutenberg.php' ) );
+		update_option( 'gutenberg-experiments', array( 'gutenberg-media-editor-modal' => '1' ) );
+
+		$this->invoke_maybe_enqueue_media_editor_script( new Alt_Text_Generation() );
+
+		$enqueued = wp_script_is( 'ai_alt_text_generation_media_editor', 'enqueued' );
+
+		$this->assertTrue(
+			$enqueued,
+			'Media editor script should enqueue when the Modal experiment is enabled.'
+		);
+	}
+
+	/**
+	 * Invokes the private `maybe_enqueue_media_editor_script` method via reflection.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Alt_Text_Generation $experiment Experiment instance.
+	 */
+	private function invoke_maybe_enqueue_media_editor_script( Alt_Text_Generation $experiment ): void {
+		$method = new \ReflectionMethod( $experiment, 'maybe_enqueue_media_editor_script' );
+		$method->setAccessible( true );
+		$method->invoke( $experiment );
 	}
 }

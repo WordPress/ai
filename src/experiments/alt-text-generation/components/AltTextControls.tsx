@@ -8,7 +8,7 @@
 import { Button, TextareaControl, Notice } from '@wordpress/components';
 import { update } from '@wordpress/icons';
 import { InspectorControls } from '@wordpress/block-editor';
-import { useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { dispatch, select } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
@@ -36,7 +36,7 @@ interface AltTextControlsProps {
  * @param {boolean} isGenerating   Whether alt text is currently being generated.
  * @return {string} The button label.
  */
-function getButtonLabel(
+export function getButtonLabel(
 	hasExistingAlt: boolean,
 	isGenerating: boolean
 ): string {
@@ -47,6 +47,24 @@ function getButtonLabel(
 		return __( 'Regenerate Alt Text', 'ai' );
 	}
 	return __( 'Generate Alt Text', 'ai' );
+}
+
+/**
+ * Decorative notice component.
+ *
+ * Displays a notice when an image is decorative.
+ *
+ * @return {React.JSX.Element} The component.
+ */
+export function DecorativeNotice(): React.JSX.Element {
+	return (
+		<Notice status="info" isDismissible={ false }>
+			{ __(
+				'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
+				'ai'
+			) }
+		</Notice>
+	);
 }
 
 /**
@@ -71,13 +89,34 @@ export function AltTextControls( {
 	const [ generatedAlt, setGeneratedAlt ] = useState< string | null >( null );
 	const [ isDecorative, setIsDecorative ] = useState< boolean >( false );
 
+	const hasGeneratedAlt = generatedAlt !== null;
+
+	// Refs used to manage keyboard focus as the suggestion UI appears/disappears.
+	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
+	const applyButtonRef = useRef< HTMLButtonElement | null >( null );
+
+	// Set when Apply/Dismiss is clicked so focus returns to the generate button.
+	const shouldFocusGenerateRef = useRef< boolean >( false );
+
+	// Move focus when the suggestion UI appears (after generation) or
+	// disappears (after Apply/Dismiss).
+	useEffect( () => {
+		if ( hasGeneratedAlt || isDecorative ) {
+			// Generation complete: move focus to the Apply button.
+			applyButtonRef.current?.focus();
+		} else if ( shouldFocusGenerateRef.current ) {
+			// After Apply/Dismiss: return focus to the Generate/Regenerate button.
+			shouldFocusGenerateRef.current = false;
+			generateButtonRef.current?.focus();
+		}
+	}, [ hasGeneratedAlt, isDecorative ] );
+
 	// Don't show controls if there's no image.
 	if ( ! attachmentId && ! imageUrl ) {
 		return null;
 	}
 
 	const hasExistingAlt = alt && alt.trim().length > 0;
-	const hasGeneratedAlt = generatedAlt !== null;
 
 	/**
 	 * Handles the generate button click.
@@ -92,7 +131,7 @@ export function AltTextControls( {
 		setIsDecorative( false );
 
 		// Clear any previous notices.
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const content = select( editorStore ).getEditedPostContent();
@@ -122,13 +161,10 @@ export function AltTextControls( {
 			const errorMessage =
 				err?.message ||
 				__( 'An error occurred while generating alt text.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice(
-				errorMessage,
-				{
-					id: NOTICE_ID,
-					isDismissible: true,
-				}
-			);
+			dispatch( noticesStore ).createErrorNotice( errorMessage, {
+				id: NOTICE_ID,
+				isDismissible: true,
+			} );
 		} finally {
 			setIsGenerating( false );
 		}
@@ -143,6 +179,7 @@ export function AltTextControls( {
 		} else if ( generatedAlt ) {
 			setAttributes( { alt: generatedAlt } );
 		}
+		shouldFocusGenerateRef.current = true;
 		setGeneratedAlt( null );
 		setIsDecorative( false );
 	};
@@ -151,6 +188,7 @@ export function AltTextControls( {
 	 * Dismisses the generated alt text suggestion.
 	 */
 	const handleDismiss = () => {
+		shouldFocusGenerateRef.current = true;
 		setGeneratedAlt( null );
 		setIsDecorative( false );
 	};
@@ -170,7 +208,6 @@ export function AltTextControls( {
 							value={ generatedAlt || '' }
 							onChange={ ( value ) => setGeneratedAlt( value ) }
 							rows={ 3 }
-							__nextHasNoMarginBottom
 						/>
 						<div
 							style={ {
@@ -179,12 +216,18 @@ export function AltTextControls( {
 								marginTop: '8px',
 							} }
 						>
-							<Button variant="primary" onClick={ handleApply }>
+							<Button
+								ref={ applyButtonRef }
+								variant="primary"
+								onClick={ handleApply }
+								__next40pxDefaultSize
+							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								onClick={ handleDismiss }
+								__next40pxDefaultSize
 							>
 								{ __( 'Dismiss', 'ai' ) }
 							</Button>
@@ -195,12 +238,7 @@ export function AltTextControls( {
 				{ /* Decorative image notice */ }
 				{ isDecorative && (
 					<div style={ { marginBottom: '12px' } }>
-						<Notice status="info" isDismissible={ false }>
-							{ __(
-								'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
-								'ai'
-							) }
-						</Notice>
+						<DecorativeNotice />
 						<div
 							style={ {
 								display: 'flex',
@@ -208,12 +246,18 @@ export function AltTextControls( {
 								marginTop: '8px',
 							} }
 						>
-							<Button variant="primary" onClick={ handleApply }>
+							<Button
+								ref={ applyButtonRef }
+								variant="primary"
+								onClick={ handleApply }
+								__next40pxDefaultSize
+							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								onClick={ handleDismiss }
+								__next40pxDefaultSize
 							>
 								{ __( 'Dismiss', 'ai' ) }
 							</Button>
@@ -224,12 +268,15 @@ export function AltTextControls( {
 				{ /* Generate button */ }
 				{ ! hasGeneratedAlt && ! isDecorative && (
 					<Button
+						ref={ generateButtonRef }
 						variant="secondary"
 						onClick={ handleGenerate }
 						disabled={ isGenerating }
+						accessibleWhenDisabled
 						style={ { width: '100%', justifyContent: 'center' } }
 						isBusy={ isGenerating }
 						icon={ update }
+						__next40pxDefaultSize
 					>
 						{ getButtonLabel( !! hasExistingAlt, isGenerating ) }
 					</Button>

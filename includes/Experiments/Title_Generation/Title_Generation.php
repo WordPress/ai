@@ -14,6 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -93,13 +95,14 @@ class Title_Generation extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'title_generation', 'experiments/title-generation' );
+		Asset_Loader::enqueue_script( 'title_generation', 'experiments/title-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'title_generation', 'experiments/title-generation' );
 		Asset_Loader::localize_script(
 			'title_generation',
 			'TitleGenerationData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => get_min_content_length( 'title-generation', 50 ),
 			)
 		);
 	}

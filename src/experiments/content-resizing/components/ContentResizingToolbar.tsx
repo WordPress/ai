@@ -15,23 +15,40 @@ import {
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { useState, useCallback, useMemo } from '@wordpress/element';
+import {
+	useState,
+	useCallback,
+	useMemo,
+	useRef,
+	useLayoutEffect,
+} from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
-import { count } from '@wordpress/wordcount';
 
 /**
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import type { ContentResizingAction } from '../types';
+import { getBlockText } from '../../../utils/blocks';
+import type { ContentResizingAction, ContentResizingData } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
+import { getContentCount, getWordCountType } from '../../../utils/word-count';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
-const SHORTEN_MIN_WORDS = 5;
+const SHORTEN_MIN_CONTENT_LENGTH = 100;
 const NOTICE_ID = 'ai_content_resizing_error';
+
+const getSettings = (): ContentResizingData => {
+	const settings = ( window as any ).aiContentResizingData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		minContentLength:
+			settings.minContentLength ?? SHORTEN_MIN_CONTENT_LENGTH,
+	};
+};
 
 /**
  * Content resizing toolbar component.
@@ -54,13 +71,26 @@ export default function ContentResizingToolbar( {
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
 
+	const acceptButtonRef = useRef< HTMLDivElement | null >( null );
+
+	// Keep the modal scrolled to the action buttons when it opens or updates.
+	useLayoutEffect( () => {
+		if ( ! isModalOpen ) {
+			return;
+		}
+
+		acceptButtonRef.current?.scrollIntoView( {
+			block: 'start',
+			behavior: 'auto',
+		} );
+	}, [ isModalOpen, suggestedContent ] );
+
 	const { blockContent, isResized, postId } = useSelect(
 		( select ) => {
 			/* eslint-disable dot-notation */
 			const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
 			return {
-				blockContent:
-					( block?.attributes[ 'content' ] as string ) ?? '',
+				blockContent: block ? getBlockText( block ) : '',
 				isResized:
 					( block?.attributes[ 'aiResized' ] as boolean ) ?? false,
 				postId: select( editorStore )[ 'getCurrentPostId' ]() as number,
@@ -71,7 +101,7 @@ export default function ContentResizingToolbar( {
 	);
 
 	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
-	const noticesDispatch = useDispatch( noticesStore ) as any;
+	const noticesDispatch = useDispatch( noticesStore );
 
 	const handleAction = useCallback(
 		async ( action: ContentResizingAction ) => {
@@ -80,9 +110,9 @@ export default function ContentResizingToolbar( {
 			}
 
 			if ( action === 'shorten' ) {
-				const wordCount = count( blockContent, 'words', {} );
-				// We need at least 5 words to shorten the content.
-				if ( wordCount < SHORTEN_MIN_WORDS ) {
+				const contentCount = getContentCount( blockContent );
+				// We need at least the minimum content length to shorten.
+				if ( contentCount < getSettings().minContentLength ) {
 					noticesDispatch.createErrorNotice(
 						__( 'Text is too short to shorten further.', 'ai' ),
 						{
@@ -147,10 +177,10 @@ export default function ContentResizingToolbar( {
 	}, [] );
 
 	const handleRetry = useCallback( () => {
-		if ( lastAction ) {
+		if ( lastAction && ! isLoading ) {
 			handleAction( lastAction );
 		}
-	}, [ handleAction, lastAction ] );
+	}, [ handleAction, isLoading, lastAction ] );
 
 	// Calculate the word difference between the original and suggested content.
 	const wordDiff = useMemo( () => {
@@ -158,9 +188,10 @@ export default function ContentResizingToolbar( {
 			return null;
 		}
 
+		const isCharacterType = getWordCountType() !== 'words';
 		const delta =
-			count( suggestedContent, 'words', {} ) -
-			count( blockContent, 'words', {} );
+			getContentCount( suggestedContent ) -
+			getContentCount( blockContent );
 
 		if ( delta === 0 ) {
 			return {
@@ -173,33 +204,49 @@ export default function ContentResizingToolbar( {
 		const magnitude = Math.abs( delta );
 
 		if ( delta > 0 ) {
+			const label = isCharacterType
+				? /* translators: %d: Number of characters added. */
+				  _n( '+%d character', '+%d characters', magnitude, 'ai' )
+				: /* translators: %d: Number of words added. */
+				  _n( '+%d word', '+%d words', magnitude, 'ai' );
+			const ariaLabel = isCharacterType
+				? /* translators: %d: Number of characters added. */
+				  _n(
+						'%d character added',
+						'%d characters added',
+						magnitude,
+						'ai'
+				  )
+				: /* translators: %d: Number of words added. */
+				  _n( '%d word added', '%d words added', magnitude, 'ai' );
+
 			return {
 				modifier: 'positive' as const,
-				label: sprintf(
-					/* translators: %d: Number of words added. */
-					_n( '+%d word', '+%d words', magnitude, 'ai' ),
-					magnitude
-				),
-				ariaLabel: sprintf(
-					/* translators: %d: Number of words added. */
-					_n( '%d word added', '%d words added', magnitude, 'ai' ),
-					magnitude
-				),
+				label: sprintf( label, magnitude ),
+				ariaLabel: sprintf( ariaLabel, magnitude ),
 			};
 		}
 
+		const label = isCharacterType
+			? /* translators: %d: Number of characters removed. */
+			  _n( '−%d character', '−%d characters', magnitude, 'ai' )
+			: /* translators: %d: Number of words removed. */
+			  _n( '−%d word', '−%d words', magnitude, 'ai' );
+		const ariaLabel = isCharacterType
+			? /* translators: %d: Number of characters removed. */
+			  _n(
+					'%d character removed',
+					'%d characters removed',
+					magnitude,
+					'ai'
+			  )
+			: /* translators: %d: Number of words removed. */
+			  _n( '%d word removed', '%d words removed', magnitude, 'ai' );
+
 		return {
 			modifier: 'negative' as const,
-			label: sprintf(
-				/* translators: %d: Number of words removed. */
-				_n( '−%d word', '−%d words', magnitude, 'ai' ),
-				magnitude
-			),
-			ariaLabel: sprintf(
-				/* translators: %d: Number of words removed. */
-				_n( '%d word removed', '%d words removed', magnitude, 'ai' ),
-				magnitude
-			),
+			label: sprintf( label, magnitude ),
+			ariaLabel: sprintf( ariaLabel, magnitude ),
 		};
 	}, [ blockContent, suggestedContent ] );
 
@@ -247,70 +294,98 @@ export default function ContentResizingToolbar( {
 					isFullScreen={ false }
 					size="medium"
 					className="ai-content-resizing-modal"
+					focusOnMount="firstContentElement"
 				>
-					{ isLoading ? (
-						<div className="ai-content-resizing-modal__loading">
-							<Spinner />
-							<p>{ __( 'Generating…', 'ai' ) }</p>
+					<section
+						className="ai-content-resizing-modal__panel"
+						aria-label={ __( 'Original content', 'ai' ) }
+					>
+						<div className="ai-content-resizing-modal__label">
+							<span>{ __( 'Original', 'ai' ) }</span>
 						</div>
-					) : (
-						<>
-							<section
-								className="ai-content-resizing-modal__panel"
-								aria-label={ __( 'Original content', 'ai' ) }
+						<div
+							className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
+							dangerouslySetInnerHTML={ {
+								__html: blockContent,
+							} }
+						/>
+					</section>
+					<section
+						className="ai-content-resizing-modal__panel"
+						aria-label={ __( 'Suggested content', 'ai' ) }
+					>
+						<div className="ai-content-resizing-modal__label">
+							<span>{ __( 'Suggested', 'ai' ) }</span>
+							{ ! isLoading && wordDiff && (
+								<span
+									className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
+									aria-label={ wordDiff.ariaLabel }
+								>
+									{ wordDiff.label }
+								</span>
+							) }
+						</div>
+						{ isLoading ? (
+							<div
+								className="ai-content-resizing-modal__text ai-content-resizing-modal__loading"
+								role="status"
+								aria-live="polite"
 							>
-								<div className="ai-content-resizing-modal__label">
-									<span>{ __( 'Original', 'ai' ) }</span>
+								<div className="ai-content-resizing-modal__loading-status">
+									<Spinner />
+									<span>{ __( 'Generating…', 'ai' ) }</span>
 								</div>
 								<div
-									className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
-									dangerouslySetInnerHTML={ {
-										__html: blockContent,
-									} }
-								/>
-							</section>
-							<section
-								className="ai-content-resizing-modal__panel"
-								aria-label={ __( 'Suggested content', 'ai' ) }
-							>
-								<div className="ai-content-resizing-modal__label">
-									<span>{ __( 'Suggested', 'ai' ) }</span>
-									{ wordDiff && (
-										<span
-											className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
-											aria-label={ wordDiff.ariaLabel }
-										>
-											{ wordDiff.label }
-										</span>
+									className="ai-content-resizing-modal__loading-skeleton"
+									aria-hidden="true"
+								>
+									{ Array.from( { length: 3 } ).map(
+										( _, index ) => (
+											<span
+												key={ index }
+												className="ai-content-resizing-modal__loading-skeleton-line"
+											/>
+										)
 									) }
 								</div>
-								<div
-									className="ai-content-resizing-modal__text"
-									dangerouslySetInnerHTML={ {
-										__html: suggestedContent ?? '',
-									} }
-								/>
-							</section>
-							<Flex
-								justify="flex-start"
-								gap={ 2 }
-								className="ai-content-resizing-modal__actions"
-							>
-								<Button
-									variant="primary"
-									onClick={ handleAccept }
-								>
-									{ __( 'Accept', 'ai' ) }
-								</Button>
-								<Button
-									variant="secondary"
-									onClick={ handleRetry }
-								>
-									{ __( 'Regenerate', 'ai' ) }
-								</Button>
-							</Flex>
-						</>
-					) }
+							</div>
+						) : (
+							<div
+								className="ai-content-resizing-modal__text"
+								dangerouslySetInnerHTML={ {
+									__html: suggestedContent ?? '',
+								} }
+							/>
+						) }
+					</section>
+					<Flex
+						justify="flex-start"
+						gap={ 2 }
+						className="ai-content-resizing-modal__actions"
+					>
+						<Button
+							variant="primary"
+							onClick={ handleAccept }
+							disabled={ isLoading || suggestedContent === null }
+							accessibleWhenDisabled
+							ref={ acceptButtonRef }
+							__next40pxDefaultSize
+						>
+							{ __( 'Accept', 'ai' ) }
+						</Button>
+						<Button
+							variant="secondary"
+							onClick={ handleRetry }
+							disabled={ isLoading || lastAction === null }
+							isBusy={ isLoading }
+							accessibleWhenDisabled
+							__next40pxDefaultSize
+						>
+							{ isLoading
+								? __( 'Generating…', 'ai' )
+								: __( 'Regenerate', 'ai' ) }
+						</Button>
+					</Flex>
 				</Modal>
 			) }
 		</>

@@ -134,7 +134,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	/**
 	 * @since 0.8.0
 	 */
-	public function test_enqueue_script_falls_back_to_empty_deps_when_missing(): void {
+	public function test_enqueue_script_succeeds_when_asset_file_omits_dependencies(): void {
 		$this->create_asset_file(
 			'no-deps',
 			array( 'version' => '1.0.0' )
@@ -143,7 +143,8 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 		Asset_Loader::enqueue_script( 'no-deps', 'no-deps' );
 
 		$this->assertTrue( wp_script_is( 'ai_no-deps', 'enqueued' ) );
-		$this->assertSame( array(), wp_scripts()->registered['ai_no-deps']->deps );
+		// wp_set_script_translations() appends wp-i18n to the otherwise empty deps.
+		$this->assertSame( array( 'wp-i18n' ), wp_scripts()->registered['ai_no-deps']->deps );
 	}
 
 	/**
@@ -265,7 +266,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_add_global_data_is_output_as_inline_script(): void {
 		$this->create_asset_file(
@@ -289,7 +290,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_global_data_is_flushed_after_first_enqueue(): void {
 		$this->create_asset_file(
@@ -320,7 +321,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function test_enqueue_script_without_global_data_has_no_inline_script(): void {
 		$this->create_asset_file(

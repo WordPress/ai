@@ -46,6 +46,11 @@ class Guidelines_Test extends WP_UnitTestCase {
 		Guidelines::reset_cache();
 		remove_all_filters( 'wpai_use_guidelines' );
 		remove_all_filters( 'wpai_max_guideline_length' );
+
+		if ( taxonomy_exists( Guidelines::TAXONOMY ) ) {
+			unregister_taxonomy( Guidelines::TAXONOMY );
+		}
+
 		parent::tearDown();
 	}
 
@@ -380,6 +385,89 @@ class Guidelines_Test extends WP_UnitTestCase {
 			$this->service->get_block_guidelines( 'core/paragraph' ),
 			'Should return null when filter disables guidelines'
 		);
+	}
+
+	/**
+	 * Tests that get_guidelines() returns the content-typed post even when
+	 * a newer artifact-typed post exists.
+	 *
+	 * Regression test for the issue where Gutenberg 23.1's wp_guideline_type
+	 * taxonomy allows artifact guidelines to coexist with the content singleton,
+	 * and the service used to pick whichever was most recent.
+	 *
+	 * @since 1.0.1
+	 */
+	public function test_get_guidelines_prefers_content_type_over_newer_artifact(): void {
+		$this->register_guidelines_taxonomy();
+
+		$content_post_id = $this->create_guidelines_post(
+			array( 'site' => 'Content guideline.' ),
+			'publish',
+			Guidelines::TERM_CONTENT
+		);
+
+		// Bump the content post's date into the past so the artifact is strictly newer.
+		wp_update_post(
+			array(
+				'ID'            => $content_post_id,
+				'post_date'     => '2026-01-01 00:00:00',
+				'post_date_gmt' => '2026-01-01 00:00:00',
+			)
+		);
+
+		$this->create_guidelines_post(
+			array( 'site' => 'Artifact guideline.' ),
+			'publish',
+			'artifact'
+		);
+
+		Guidelines::reset_cache();
+
+		$result = $this->service->get_guidelines( 'site' );
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'Content guideline.', $result['site'] );
+	}
+
+	/**
+	 * Tests that get_guidelines() returns null when only artifact-typed
+	 * guidelines exist, since artifacts are not site-wide content guidelines.
+	 *
+	 * @since 1.0.1
+	 */
+	public function test_get_guidelines_returns_null_when_only_artifact_exists(): void {
+		$this->register_guidelines_taxonomy();
+		$this->create_guidelines_post(
+			array( 'site' => 'Artifact guideline.' ),
+			'publish',
+			'artifact'
+		);
+
+		$this->assertNull(
+			$this->service->get_guidelines(),
+			'Should ignore artifact-typed guidelines when looking up the content singleton'
+		);
+	}
+
+	/**
+	 * Tests that on older Gutenberg builds where the taxonomy is not registered,
+	 * the service still returns the most recent guideline post.
+	 *
+	 * @since 1.0.1
+	 */
+	public function test_get_guidelines_falls_back_to_latest_when_taxonomy_unavailable(): void {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post( array( 'site' => 'Legacy guideline.' ) );
+
+		$this->assertFalse(
+			taxonomy_exists( Guidelines::TAXONOMY ),
+			'Taxonomy must not be registered for this scenario'
+		);
+
+		$result = $this->service->get_guidelines( 'site' );
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'Legacy guideline.', $result['site'] );
 	}
 
 	/**

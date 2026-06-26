@@ -4,6 +4,9 @@
 import { Button, Modal, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { image } from '@wordpress/icons';
+import { useEffect, useRef } from '@wordpress/element';
+import { useFocusOnMount } from '@wordpress/compose';
+import { focus } from '@wordpress/dom';
 
 /**
  * Internal dependencies
@@ -74,6 +77,20 @@ export function GenerateImageInlineModal( {
 		comparisonRightLabel,
 	} = useImageGeneration();
 
+	const focusOnMountRef = useFocusOnMount( 'firstElement' );
+	const containerRef = useRef( null );
+
+	useEffect( () => {
+		// Entering the generating state can unmount the currently focused element;
+		// keep focus inside the modal by moving it to the first available focusable element.
+		if ( containerRef.current && state === 'generating' ) {
+			const [ firstFocusable ] = focus.focusable.find(
+				containerRef.current
+			);
+			firstFocusable?.focus();
+		}
+	}, [ state ] );
+
 	async function handleUseImage(): Promise< void > {
 		if ( ! activeEntry ) {
 			return;
@@ -109,12 +126,8 @@ export function GenerateImageInlineModal( {
 				insertIntoBlock( blockName, clientId, setAttributes, uploaded );
 			}
 			onClose();
-		} catch ( err: unknown ) {
-			setError(
-				err instanceof Error
-					? err.message
-					: __( 'Failed to upload image.', 'ai' )
-			);
+		} catch ( err: any ) {
+			setError( err?.message || __( 'Failed to upload image.', 'ai' ) );
 			setState( 'preview' );
 		}
 	}
@@ -126,6 +139,7 @@ export function GenerateImageInlineModal( {
 			icon={ image }
 			size="large"
 			className="ai-generate-image-inline-modal"
+			ref={ containerRef }
 		>
 			{ state === 'idle' && (
 				<PromptForm
@@ -133,6 +147,9 @@ export function GenerateImageInlineModal( {
 					onPromptChange={ setPrompt }
 					onGenerate={ () => generate( prompt.trim() ) }
 					error={ error }
+					hasImageGenerationSupport={ Boolean(
+						aiImageGenerationData?.hasImageGenerationSupport
+					) }
 				/>
 			) }
 
@@ -159,8 +176,15 @@ export function GenerateImageInlineModal( {
 						comparisonLeftLabel={ comparisonLeftLabel }
 						comparisonRightLabel={ comparisonRightLabel }
 					/>
-					<div className="ai-image-generation__actions">
-						<Button variant="primary" onClick={ handleUseImage }>
+					<div
+						className="ai-image-generation__actions"
+						ref={ focusOnMountRef }
+					>
+						<Button
+							variant="primary"
+							onClick={ handleUseImage }
+							__next40pxDefaultSize
+						>
 							{ __( 'Use Image', 'ai' ) }
 						</Button>
 						<Button
@@ -169,6 +193,7 @@ export function GenerateImageInlineModal( {
 								setRefinePrompt( '' );
 								setState( 'refining' );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
@@ -182,6 +207,7 @@ export function GenerateImageInlineModal( {
 									activeEntry?.referenceHistoryIndex
 								)
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
 						</Button>
@@ -192,6 +218,7 @@ export function GenerateImageInlineModal( {
 								setState( 'idle' );
 								setError( null );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Edit Prompt', 'ai' ) }
 						</Button>

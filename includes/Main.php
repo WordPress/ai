@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
+use WordPress\AI\Abilities\Settings\Settings as Settings_Ability;
+use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
@@ -131,6 +133,11 @@ final class Main {
 
 			// Register our post-related WordPress Abilities.
 			( new Posts() )->register();
+
+			// Expose curated core objects to the Abilities API, then register the
+			// `core/settings` ability (overriding any core-provided copy).
+			( new Show_In_Abilities() )->register();
+			( new Settings_Ability() )->init();
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,
@@ -176,7 +183,7 @@ final class Main {
 	/**
 	 * Registers provider availability data for frontend scripts.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function register_provider_data(): void {
 		Asset_Loader::add_global_data( 'ProviderData', get_provider_availability_data() );

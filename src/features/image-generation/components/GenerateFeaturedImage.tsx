@@ -13,6 +13,14 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateImage } from '../functions/generate-image';
 import { uploadImage } from '../functions/upload-image';
+import {
+	ensureProvider,
+	getProviderData,
+} from '../../../utils/provider-status';
+
+const NOTICE_ID = 'ai_image_generation_error';
+
+const { aiImageGenerationData } = window as any;
 
 /**
  * GenerateFeaturedImage component.
@@ -35,11 +43,35 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 	 * Handles the generate button click.
 	 */
 	const handleGenerate = async () => {
+		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
+		if ( ! aiImageGenerationData?.hasImageGenerationSupport ) {
+			dispatch( noticesStore ).createErrorNotice(
+				__(
+					'This feature requires an AI Connector that supports image generation. Review your Connectors to ensure you have a valid AI Connector configured.',
+					'ai'
+				),
+				{
+					id: NOTICE_ID,
+					isDismissible: true,
+					actions: getProviderData().connectorsUrl
+						? [
+								{
+									label: __( 'Manage Connectors', 'ai' ),
+									url: getProviderData().connectorsUrl,
+								},
+						  ]
+						: [],
+				}
+			);
+			return;
+		}
+
 		setIsGenerating( true );
 		setProgress( '' );
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_image_generation_error'
-		);
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedImageData = await generateImage( content, {
@@ -51,13 +83,12 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 			editPost( {
 				featured_media: importedImage.id,
 			} );
-		} catch ( error: unknown ) {
+		} catch ( error: any ) {
 			const message =
-				error instanceof Error
-					? error.message
-					: __( 'An error occurred during image generation.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
-				id: 'ai_image_generation_error',
+				error?.message ||
+				__( 'An error occurred during image generation.', 'ai' );
+			dispatch( noticesStore ).createErrorNotice( message, {
+				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
@@ -78,6 +109,7 @@ export default function GenerateFeaturedImage(): React.JSX.Element | null {
 					className="ai-generate-featured-image editor-post-featured-image__toggle"
 					onClick={ handleGenerate }
 					disabled={ isGenerating }
+					accessibleWhenDisabled
 					isBusy={ isGenerating }
 				>
 					{ isGenerating

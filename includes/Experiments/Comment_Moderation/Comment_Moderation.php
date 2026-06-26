@@ -13,6 +13,7 @@ use WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis as Comment_Analys
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Settings\Settings_Registration;
 
 use function WordPress\AI\get_provider_availability_data;
 use function WordPress\AI\has_ai_credentials;
@@ -129,9 +130,16 @@ class Comment_Moderation extends Abstract_Feature {
 	public const TOXICITY_HIGH = 'high';
 
 	/**
+	 * Default value for moderate guests setting.
+	 *
+	 * @var bool
+	 */
+	public const DEFAULT_MODERATE_GUESTS = true;
+
+	/**
 	 * Gets the configuration for sentiment levels.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string}> The sentiment configuration.
 	 */
@@ -161,7 +169,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Gets the configuration for toxicity levels.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> The toxicity configuration.
 	 */
@@ -285,6 +293,62 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
+	 * Registers experiment-specific settings.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_settings(): void {
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'moderate_guests' ),
+			array(
+				'type'              => 'boolean',
+				'default'           => self::DEFAULT_MODERATE_GUESTS,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'boolean',
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_settings_fields(): array {
+		return array(
+			array(
+				'id'      => 'moderate_guests',
+				'label'   => __( 'Automatically moderate guest comments', 'ai' ),
+				'type'    => 'boolean',
+				'default' => self::DEFAULT_MODERATE_GUESTS,
+			),
+		);
+	}
+
+	/**
+	 * Checks whether guest comments should be automatically moderated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Whether guest comments should be automatically moderated.
+	 */
+	public function should_moderate_guests(): bool {
+		$should_moderate = (bool) get_option( static::get_field_option_name( 'moderate_guests' ), self::DEFAULT_MODERATE_GUESTS );
+
+		/**
+		 * Filters whether to moderate guest comments.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool $should_moderate Whether guest comments should be moderated.
+		 */
+		return (bool) apply_filters( 'wpai_comment_moderation_moderate_guests', $should_moderate );
+	}
+
+	/**
 	 * Moderate newly added comments.
 	 *
 	 * @since 0.9.0
@@ -298,6 +362,16 @@ class Comment_Moderation extends Abstract_Feature {
 
 		$comment = get_comment( (int) $comment_id );
 		if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
+			return;
+		}
+
+		// Skip moderation if the comment is already marked as spam or trash.
+		if ( in_array( $comment->comment_approved, array( 'spam', 'trash' ), true ) ) {
+			return;
+		}
+
+		// Prevent running on anonymous comments if setting is disabled.
+		if ( 0 === (int) $comment->user_id && ! $this->should_moderate_guests() ) {
 			return;
 		}
 
@@ -382,7 +456,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds sentiment and toxicity pills to the dashboard recent comments widget.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param string      $comment_excerpt The comment excerpt.
 	 * @param string      $comment_id      The comment ID.
@@ -404,7 +478,7 @@ class Comment_Moderation extends Abstract_Feature {
 		/**
 		 * Filters whether to show AI sentiment and toxicity pills in the dashboard.
 		 *
-		 * @since x.x.x
+		 * @since 1.0.0
 		 *
 		 * @param bool        $show       Whether to show the pills. Default true.
 		 * @param int         $comment_id The comment ID.
@@ -440,7 +514,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds filter dropdowns for sentiment and toxicity.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	public function add_filter_dropdowns(): void {
 		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
@@ -487,7 +561,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds sortable columns to the comments list table.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param array<string, string> $columns The existing sortable columns.
 	 * @return array<string, string> The modified sortable columns.
@@ -501,7 +575,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Handles the custom sorting and filtering for comments.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 *
 	 * @param \WP_Comment_Query $query The comment query object.
 	 */
@@ -631,6 +705,8 @@ class Comment_Moderation extends Abstract_Feature {
 			$this->render_pending_badge( $comment_id );
 		} elseif ( self::STATUS_PROCESSING === $status ) {
 			$this->render_processing_badge( $comment_id );
+		} elseif ( self::STATUS_FAILED === $status ) {
+			$this->render_failed_badge();
 		} else {
 			// Empty or not analyzed - show dash.
 			echo '<span class="ai-badge ai-badge--empty">—</span>';
@@ -653,6 +729,8 @@ class Comment_Moderation extends Abstract_Feature {
 			$this->render_pending_badge( $comment_id );
 		} elseif ( self::STATUS_PROCESSING === $status ) {
 			$this->render_processing_badge( $comment_id );
+		} elseif ( self::STATUS_FAILED === $status ) {
+			$this->render_failed_badge();
 		} else {
 			// Empty or not analyzed - show dash.
 			echo '<span class="ai-badge ai-badge--empty">—</span>';
@@ -739,6 +817,18 @@ class Comment_Moderation extends Abstract_Feature {
 			'<span class="ai-badge ai-badge--processing" data-comment-id="%d" data-ai-status="processing">%s</span>',
 			absint( $comment_id ),
 			esc_html__( 'Analyzing…', 'ai' )
+		);
+	}
+
+	/**
+	 * Renders a failed analysis badge.
+	 *
+	 * @since 1.0.0
+	 */
+	private function render_failed_badge(): void {
+		printf(
+			'<span class="ai-badge ai-badge--failed">%s</span>',
+			esc_html__( 'Failed', 'ai' )
 		);
 	}
 
@@ -872,7 +962,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Shows an admin notice if the inline action is attempted without a provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.0
 	 */
 	private function show_missing_provider_notice(): void {
 		$connectors_url = get_provider_availability_data()['connectorsUrl'];
@@ -940,7 +1030,7 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'comment_moderation', 'experiments/comment-moderation' );
+		Asset_Loader::enqueue_script( 'comment_moderation', 'experiments/comment-moderation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'comment_moderation',
 			'CommentModerationData',

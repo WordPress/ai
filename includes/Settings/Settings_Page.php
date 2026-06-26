@@ -58,6 +58,7 @@ class Settings_Page {
 	public static function init( Registry $registry ): void {
 		add_action( 'admin_init', array( self::class, 'maybe_redirect_legacy_page' ), 1 );
 		add_action( 'admin_page_access_denied', array( self::class, 'maybe_redirect_legacy_page' ) );
+		add_action( 'ai-wp-admin_init', array( self::class, 'register_route_script_module_translations' ) );
 
 		if ( function_exists( 'ai_ai_wp_admin_render_page' ) ) {
 			add_action(
@@ -105,6 +106,22 @@ class Settings_Page {
 			);
 		}
 	}
+
+	/**
+	 * Registers the `ai` text domain for the route script modules.
+	 *
+	 * Pages built by wp-build enqueue their JS as script modules. Localizing the
+	 * strings in those modules requires `wp_set_script_module_translations()`
+	 * rather than `wp_set_script_translations()`.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @return void
+	 */
+	public static function register_route_script_module_translations(): void {
+		wp_set_script_module_translations( 'ai/routes/ai-home/content', 'ai' );
+	}
+
 
 	/**
 	 * Redirects legacy settings page slug to the current settings route.

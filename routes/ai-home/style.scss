@@ -1,3 +1,13 @@
+/**
+ * This file is bundled into JS via wp-build, so it does not go through the
+ * RTLCSS auto-flip and no -rtl version is generated. Use CSS logical
+ * properties in the source to support RTL. For example:
+ *
+ * - `padding-left`   -> `padding-inline-start`
+ * - `left`           -> `inset-inline-start`
+ * - `text-align: right` -> `text-align: end`
+ */
+
 .ai-settings-page {
 	box-sizing: border-box;
 	width: 100%;
@@ -8,6 +18,10 @@
 	@media (max-width: 480px) {
 		padding: 8px;
 	}
+}
+
+body:has(.ai-settings-page) .components-popover {
+	z-index: 2;
 }
 
 .ai-settings-page__infotip-trigger {
@@ -36,8 +50,8 @@
 
 
 .ai-feature-settings-form {
-	margin-top: var(--wpds-dimension-padding-xs);
-	padding-left: 40px;
+	margin-top: var(--wpds-dimension-padding-sm);
+	padding-inline-start: 40px;
 	max-width: 480px;
 }
 
@@ -70,7 +84,15 @@
 		line-height: 1.4;
 	}
 
-	.ai-developer-mode-fields__reset-button {
-		margin-top: var(--wpds-dimension-gap-lg, 12px);
+	.ai-developer-mode-fields__notice {
+		margin-bottom: var(--wpds-dimension-gap-lg, 16px);
+	}
+
+	.ai-developer-mode-fields__actions {
+		display: flex;
+		align-items: center;
+		gap: var(--wpds-dimension-gap-lg, 16px);
+		margin-top: var(--wpds-dimension-gap-lg, 16px);
+		padding-bottom: var(--wpds-dimension-gap-sm, 8px);
 	}
 }
