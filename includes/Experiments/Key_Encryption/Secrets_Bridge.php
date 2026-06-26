@@ -1,6 +1,6 @@
 <?php
 /**
- * Bridges WordPress connector option storage to displace-secrets-manager.
+ * Bridges WordPress connector option storage to the bundled Secrets API.
  *
  * @package WordPress\AI
  */
@@ -9,18 +9,27 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Key_Encryption;
 
+use WordPress\AI\Vendor\Secrets\Secrets;
+use WordPress\AI\Vendor\Secrets\Secrets_Manager;
+use WordPress\AI\Vendor\Secrets\Secrets_Provider;
+use WordPress\AI\Vendor\Secrets\Secrets_Provider_Encrypted_Options;
+
 use function WordPress\AI\get_ai_connectors;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Encrypts and decrypts connector API keys at rest via the displace-secrets-manager API.
+ * Encrypts and decrypts connector API keys at rest via the bundled Secrets API.
  *
  * Stateless filter handlers; safe to instantiate per request. The class never reaches into
  * connector internals — it relies only on the `authentication.setting_name` field exposed by
- * `get_ai_connectors()` and the global `set_secret()` / `get_secret()` / `delete_secret()`
- * functions provided by the displace-secrets-manager plugin.
+ * `get_ai_connectors()` and the vendored {@see \WordPress\AI\Vendor\Secrets\Secrets} facade.
+ *
+ * Secrets live under the `ai/` namespace and every call passes an explicit `['plugin' => 'ai']`
+ * context so the Secrets access-control layer grants self-namespace access regardless of the
+ * current user. This matters because these option filters run in unauthenticated contexts
+ * (cron, front-end, REST) where no user holds the `manage_secrets` capability.
  *
  * @since x.x.x
  */
@@ -113,13 +122,13 @@ final class Secrets_Bridge {
 
 			$secret_key = $this->secret_key( $connector_id );
 
-			$stored = set_secret( $secret_key, $plaintext );
+			$stored = Secrets::set( $secret_key, $plaintext, $this->secret_context() );
 			if ( ! $stored ) {
 				continue;
 			}
 
 			// Verify the secret actually persisted before we drop the plaintext.
-			if ( get_secret( $secret_key ) !== $plaintext ) {
+			if ( Secrets::get( $secret_key, $this->secret_context() ) !== $plaintext ) {
 				continue;
 			}
 
@@ -158,13 +167,13 @@ final class Secrets_Bridge {
 
 		$count = 0;
 		foreach ( $this->get_connector_setting_names() as $connector_id => $setting_name ) {
-			$plaintext = get_secret( $this->secret_key( $connector_id ) );
+			$plaintext = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
 			if ( null === $plaintext || '' === $plaintext ) {
 				continue;
 			}
 
 			update_option( $setting_name, $plaintext );
-			delete_secret( $this->secret_key( $connector_id ) );
+			Secrets::delete( $this->secret_key( $connector_id ), $this->secret_context() );
 			++$count;
 		}
 
@@ -200,7 +209,7 @@ final class Secrets_Bridge {
 			return $value;
 		}
 
-		set_secret( $this->secret_key( $connector_id ), $value );
+		Secrets::set( $this->secret_key( $connector_id ), $value, $this->secret_context() );
 		return '';
 	}
 
@@ -230,7 +239,7 @@ final class Secrets_Bridge {
 			return $value;
 		}
 
-		$secret = get_secret( $this->secret_key( $connector_id ) );
+		$secret = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
 		if ( null === $secret ) {
 			return $value;
 		}
@@ -239,16 +248,45 @@ final class Secrets_Bridge {
 	}
 
 	/**
-	 * Returns whether the displace-secrets-manager plugin is loaded.
+	 * Returns whether the bundled secrets backend can encrypt in this environment.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return bool Whether the displace-secrets-manager plugin is loaded.
+	 * @return bool Whether an encryption provider is available.
 	 */
 	public function is_secrets_manager_available(): bool {
-		return function_exists( 'set_secret' )
-			&& function_exists( 'get_secret' )
-			&& function_exists( 'delete_secret' );
+		return null !== $this->active_provider();
+	}
+
+	/**
+	 * Returns the explicit caller context passed to every Secrets operation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, string> The caller context.
+	 */
+	private function secret_context(): array {
+		return array( 'plugin' => self::SECRET_NAMESPACE );
+	}
+
+	/**
+	 * Lazily registers the bundled encryption provider and returns the active provider.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Vendor\Secrets\Secrets_Provider|null The active provider, or null.
+	 */
+	private function active_provider(): ?Secrets_Provider {
+		$manager = Secrets_Manager::get_instance();
+
+		if ( null === $manager->get_active_provider_id() ) {
+			if ( null === $manager->get_provider( 'encrypted-options' ) ) {
+				$manager->register_provider( new Secrets_Provider_Encrypted_Options() );
+			}
+			$manager->select_provider();
+		}
+
+		return $manager->get_active_provider();
 	}
 
 	/**
@@ -372,6 +410,6 @@ final class Secrets_Bridge {
 			return;
 		}
 
-		delete_secret( $this->secret_key( $connector_id ) );
+		Secrets::delete( $this->secret_key( $connector_id ), $this->secret_context() );
 	}
 }
