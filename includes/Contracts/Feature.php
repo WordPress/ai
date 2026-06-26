@@ -24,7 +24,7 @@ interface Feature {
 	 *
 	 * @since 0.6.0
 	 *
-	 * @return non-empty-string Feature ID.
+	 * @return non-empty-string&lowercase-string Feature ID.
 	 */
 	public static function get_id(): string;
 

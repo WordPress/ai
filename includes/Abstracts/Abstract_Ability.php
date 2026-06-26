@@ -314,6 +314,7 @@ abstract class Abstract_Ability extends WP_Ability {
 
 		if ( $provider && $model ) {
 			$prompt_builder->using_model(
+				/** @phpstan-ignore argument.type (@todo This can be removed when php-ai-client uses FQCN) */
 				AiClient::defaultRegistry()->getProviderModel( $provider, $model )
 			);
 		} else {

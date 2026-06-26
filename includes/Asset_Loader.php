@@ -102,6 +102,9 @@ final class Asset_Loader {
 		wp_enqueue_script(
 			self::HANDLE_PREFIX . $handle,
 			$script_url,
+			/**
+			 * @phpstan-ignore argument.type (@todo This is a type-error in WordPress 7.0)
+			 */
 			$asset_data['dependencies'],
 			$asset_data['version'],
 			$args

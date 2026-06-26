@@ -30,20 +30,10 @@ parameters:
 			- vendor/phpstan/php-8-stubs/stubs/ext/standard/str_starts_with.php
 		# Temporary while WP 7.0 beta AI Client migration is in progress.
 		ignoreErrors:
-			- '#Function wp_ai_client_prompt not found\.#'
-			- '#WP_AI_Client_[A-Za-z0-9_]+#'
-			- '#WordPress\\AiClient\\#'
-			- '#Function wp_get_connectors not found\.#'
-			- '#Function wp_is_connector_registered not found\.#'
-			- '#Function wp_get_connector not found\.#'
 			- '#class cli\\progress\\Bar#'
-			- '#Function wp_supports_ai not found\.#'
-			- '#Function wp_set_script_module_translations not found\.#'
 		excludePaths:
 			analyse:
 				- tests/
 				- vendor/
-				- includes/Logging/Logging_Integration.php
-				- includes/Logging/Logging_Http_Transporter.php
 			analyseAndScan:
 				- node_modules (?)

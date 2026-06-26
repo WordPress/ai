@@ -143,14 +143,29 @@ class AI_Capabilities_Widget {
 			try {
 				$provider_class = $registry->getProviderClassName( $provider_id );
 
-				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-				$metadata     = $provider_class::metadata();
-				$model_dir    = $provider_class::modelMetadataDirectory();
+				/**
+				 * @var class-string<\WordPress\AiClient\Providers\Contracts\ProviderInterface> $provider_class
+				 *
+				 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
+				 */
+				$metadata  = $provider_class::metadata();
+				$model_dir = $provider_class::modelMetadataDirectory();
+
+				/**
+				 * @var \WordPress\AiClient\Providers\Models\DTO\ModelMetadata[] $models
+				 *
+				 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
+				 */
 				$models       = $model_dir->listModelMetadata();
 				$capabilities = array();
 
 				foreach ( $models as $model ) {
 					foreach ( $model->getSupportedCapabilities() as $capability ) {
+						/**
+						 * @var \WordPress\AiClient\Providers\Models\Enums\CapabilityEnum $capability
+						 *
+						 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
+						 */
 						$capabilities[ $capability->value ] = true;
 					}
 				}

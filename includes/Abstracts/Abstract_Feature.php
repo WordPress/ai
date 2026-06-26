@@ -26,7 +26,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Feature identifier.
 	 *
 	 * @since 0.6.0
-	 * @var non-empty-string
+	 * @var non-empty-string&lowercase-string
 	 */
 	protected string $id;
 

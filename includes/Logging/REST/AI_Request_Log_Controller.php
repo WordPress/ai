@@ -24,6 +24,19 @@ defined( 'ABSPATH' ) || exit;
  * @since 1.0.0
  */
 class AI_Request_Log_Controller extends WP_REST_Controller {
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @var non-falsy-string
+	 */
+	protected $namespace;
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @var non-falsy-string
+	 */
+	protected $rest_base;
 
 	/**
 	 * Log manager instance.
