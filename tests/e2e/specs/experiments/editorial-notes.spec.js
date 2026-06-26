@@ -337,8 +337,10 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			resolveRequest = resolve;
 		} );
 
+		// Intercept the modern WP Abilities REST endpoint. This route was updated upstream from
+		// wp/abilities/v1/run to wp-abilities/v1/abilities. We target the run path specifically.
 		await page.route(
-			/wp-json\/wp\/abilities\/v1\/run\/ai\/editorial-notes/,
+			/wp-json\/wp-abilities\/v1\/abilities\/ai\/editorial-notes\/run/,
 			async ( route ) => {
 				await requestPromise;
 				await route.continue();
@@ -375,10 +377,12 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await paragraphs.nth( 1 ).click();
 		await editor.clickBlockToolbarButton( 'Options' );
 
-		// Verify block 2 displays the help text/info and no spinner
+		// Verify block 2 displays the help text/info and no spinner.
+		// We set exact: false here because Gutenberg renders the busy helper description text
+		// inside the menu item, which changes the computed accessible name of the element.
 		const menuitem2 = page.getByRole( 'menuitem', {
 			name: 'Generate Editorial Note',
-			exact: true,
+			exact: false,
 		} );
 		await expect( menuitem2 ).toBeVisible();
 		await expect( menuitem2 ).toBeDisabled();
