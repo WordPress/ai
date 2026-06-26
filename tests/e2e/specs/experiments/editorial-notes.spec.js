@@ -58,12 +58,9 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect( reviewButton ).toBeVisible();
 		await expect( reviewButton ).toBeDisabled();
 
-		await expect(
-			page.locator( '.description', {
-				hasText:
-					'Editorial Notes will be available when the post content has at least 15 words.',
-			} )
-		).toBeVisible();
+		await expect( reviewButton ).toHaveAccessibleDescription(
+			/Editorial Notes will be available when the post content has at least 15 words./
+		);
 	} );
 
 	test( 'Enables Editorial Notes once the post content meets the minimum length', async ( {
@@ -85,11 +82,9 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect( reviewButton ).toBeVisible();
 		await expect( reviewButton ).toBeEnabled();
 
-		await expect(
-			page.locator( '.description', {
-				hasText: 'at least 15 words.',
-			} )
-		).toHaveCount( 0 );
+		await expect( reviewButton ).not.toHaveAccessibleDescription(
+			/at least 15 words./
+		);
 	} );
 
 	test( 'Shows the "Review with AI" button in the block toolbar', async ( {
@@ -113,8 +108,9 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		// The button should be visible in the block toolbar.
 		await expect(
-			page.locator( 'button', {
-				hasText: 'Generate Editorial Note',
+			page.getByRole( 'menuitem', {
+				name: 'Generate Editorial Note',
+				exact: true,
 			} )
 		).toBeVisible();
 	} );
@@ -173,8 +169,8 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		// Wait for completion and check for suggestion count feedback.
 		await expect(
-			page.locator( '.description', {
-				hasText: '1 suggestion added',
+			page.getByRole( 'status' ).filter( {
+				hasText: /1 suggestion added/,
 			} )
 		).toBeVisible();
 	} );
@@ -202,8 +198,8 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		// Wait for completion and check for suggestion count feedback.
 		await expect(
-			page.locator( '.components-snackbar', {
-				hasText: '1 suggestion added',
+			page.getByTestId( 'snackbar' ).filter( {
+				hasText: /1 suggestion added/,
 			} )
 		).toBeVisible();
 	} );
@@ -225,12 +221,9 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect( reviewButton ).toBeDisabled();
 
 		// The descriptive text should explain when the button becomes available.
-		await expect(
-			page.locator( '.description', {
-				hasText:
-					'Editorial Notes will be available when the post content has at least 15 words.',
-			} )
-		).toBeVisible();
+		await expect( reviewButton ).toHaveAccessibleDescription(
+			/Editorial Notes will be available when the post content has at least 15 words./
+		);
 	} );
 
 	test( 'Button is hidden when experiments are globally disabled', async ( {
@@ -265,8 +258,9 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		// The button should not be visible in the block toolbar.
 		await expect(
-			page.locator( 'button', {
-				hasText: 'Generate Editorial Note',
+			page.getByRole( 'menuitem', {
+				name: 'Generate Editorial Note',
+				exact: true,
 			} )
 		).not.toBeVisible();
 	} );
@@ -303,8 +297,9 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		// The button should be visible in the block toolbar.
 		await expect(
-			page.locator( 'button', {
-				hasText: 'Generate Editorial Note',
+			page.getByRole( 'menuitem', {
+				name: 'Generate Editorial Note',
+				exact: true,
 			} )
 		).not.toBeVisible();
 	} );
