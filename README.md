@@ -63,6 +63,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
+* **[Type Ahead](docs/experiments/type-ahead.md)** – Contextual type-ahead assistance for suggestions while typing.
 
 ## Provider Setup
 
@@ -76,7 +77,6 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 Overview of planned features:
 
-* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
