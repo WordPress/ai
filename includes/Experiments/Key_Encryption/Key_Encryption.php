@@ -20,10 +20,9 @@ defined( 'ABSPATH' ) || exit;
  * Opt-in experiment that encrypts AI connector API keys at rest.
  *
  * While enabled, every `connectors_ai_*_api_key` option is transparently redirected through the
- * displace-secrets-manager plugin's `set_secret()` / `get_secret()` API, so the `wp_options` table
- * never contains a plaintext provider credential. Existing keys are migrated on opt-in and
- * restored on opt-out (or on plugin deactivation) so users are never locked out of their own
- * credentials.
+ * bundled secrets API so the `wp_options` table never contains a plaintext provider
+ * credential. Existing keys are migrated on opt-in and restored on opt-out (or on plugin
+ * deactivation) so users are never locked out of their own credentials.
  *
  * @since x.x.x
  */
@@ -87,7 +86,7 @@ class Key_Encryption extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Key Encryption', 'ai' ),
-			'description' => __( 'Encrypts AI provider API keys at rest using the Displace Secrets Manager plugin. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.', 'ai' ),
+			'description' => __( 'Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);
