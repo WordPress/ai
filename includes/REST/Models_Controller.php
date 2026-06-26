@@ -223,9 +223,9 @@ final class Models_Controller {
 				$provider_class = $registry->getProviderClassName( $connector_id );
 
 				/**
-				 * @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class
+				 * @var class-string<\WordPress\AiClient\Providers\Contracts\ProviderInterface> $provider_class
 				 *
-				 * @phpstan-ignore varTag.nativeType (@todo This can be removed when php-ai-client uses FQCN)
+				 * @phpstan-ignore varTag.type (@todo This can be removed when php-ai-client uses FQCN)
 				 */
 				$provider_name = $provider_class::metadata()->getName();
 
