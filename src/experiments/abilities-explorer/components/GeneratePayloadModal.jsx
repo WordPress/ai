@@ -3,13 +3,13 @@
  */
 import { useState } from '@wordpress/element';
 import { Modal, Button, TextareaControl, Notice } from '@wordpress/components';
+import { __ } from '@wordpress/i18n';
 
 /**
  * @param {Object}   props
  * @param {Function} props.onClose      Close/unmount callback.
  * @param {Function} props.onSuccess    Called with the generated JSON string on success.
  * @param {string}   props.abilitySlug  Slug of the ability being tested.
- * @param {Object}   props.strings      Localised string map from aiAbilityExplorer.
  * @param {string}   props.ajaxUrl      WordPress admin-ajax URL.
  * @param {string}   props.nonce        Nonce for ai_ability_explorer_generate_payload.
  */
@@ -17,7 +17,6 @@ export default function GeneratePayloadModal( {
 	onClose,
 	onSuccess,
 	abilitySlug,
-	strings,
 	ajaxUrl,
 	nonce,
 } ) {
@@ -27,7 +26,7 @@ export default function GeneratePayloadModal( {
 
 	async function handleGenerate() {
 		if ( ! command.trim() ) {
-			setError( strings.generateEmptyCommandError );
+			setError( __( 'Please enter a command.', 'ai' ) );
 			return;
 		}
 
@@ -52,10 +51,10 @@ export default function GeneratePayloadModal( {
 				onSuccess( data.data.payload );
 				onClose();
 			} else {
-				setError( data.data?.message || strings.generateError );
+				setError( data.data?.message || __( 'An error occurred while generating the payload. Please try again.', 'ai' ) );
 			}
 		} catch {
-			setError( strings.generateError );
+			setError( __( 'An error occurred while generating the payload. Please try again.', 'ai' ) );
 		} finally {
 			setIsGenerating( false );
 		}
@@ -63,16 +62,16 @@ export default function GeneratePayloadModal( {
 
 	return (
 		<Modal
-			title={ strings.generateModalTitle }
+			title={ __( 'Generate Payload', 'ai' ) }
 			onRequestClose={ onClose }
 			size="medium"
 		>
 			<TextareaControl
-				label={ strings.generateModalLabel }
+				label={ __( 'Describe what you want to test in natural language:', 'ai' ) }
 				value={ command }
 				onChange={ setCommand }
 				rows={ 4 }
-				placeholder={ strings.generateModalPlaceholder }
+				placeholder={ __( 'e.g. Query only the site URL information', 'ai' ) }
 			/>
 
 			<div className="ability-generate-modal-error">
@@ -91,10 +90,10 @@ export default function GeneratePayloadModal( {
 					isBusy={ isGenerating }
 					accessibleWhenDisabled
 				>
-					{ isGenerating ? strings.generating : strings.generateBtn }
+					{ isGenerating ? __( 'Generating...', 'ai' ) : __('Generate', 'ai') }
 				</Button>
 				<Button variant="tertiary" onClick={ onClose }>
-					{ strings.cancelBtn }
+					{ __( 'Cancel', 'ai' ) }
 				</Button>
 			</div>
 		</Modal>

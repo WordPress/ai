@@ -631,7 +631,6 @@ import GeneratePayloadModal from './components/GeneratePayloadModal';
 					onClose: close,
 					onSuccess: handleSuccess,
 					abilitySlug,
-					strings: aiAbilityExplorer.strings,
 					ajaxUrl: aiAbilityExplorer.ajaxUrl,
 					nonce: aiAbilityExplorer.generateNonce,
 				} )

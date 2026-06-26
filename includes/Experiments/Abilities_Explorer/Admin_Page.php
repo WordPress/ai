@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Admin Page Class
  *
@@ -328,7 +327,7 @@ class Admin_Page {
 					</button>
 					<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
 						<button type="button" id="ability-test-generate-ai" class="button">
-							<?php esc_html_e( 'Generate with AI', 'ai' ); ?>
+							<?php esc_html_e( 'Generate Payload', 'ai' ); ?>
 						</button>
 					<?php endif; ?>
 				</div>
@@ -494,7 +493,7 @@ class Admin_Page {
 	/**
 	 * AJAX handler for AI-assisted payload generation.
 	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 */
 	public function ajax_generate_payload(): void {
 		// Verify nonce.
@@ -540,31 +539,19 @@ class Admin_Page {
 			);
 		}
 
-		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
-			wp_send_json_error(
-				array(
-					'message' => __( 'AI provider is not available.', 'ai' ),
-				)
-			);
-		}
-
-		$schema_json = wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
-
-		$system_instruction = 'You are a JSON payload generator. Given an input schema and a user command, generate a valid JSON object that satisfies the schema and fulfills the command. Return ONLY valid JSON with no explanation, no markdown, and no code fences.';
-
 		$user_prompt = sprintf(
-			"Input Schema:\n%s\n\nUser Command: %s",
-			$schema_json,
+			/* translators: %s: user's natural-language command. */
+			__( 'User Command: %s', 'ai' ),
 			$command
 		);
 
 		$prompt_builder = wp_ai_client_prompt( $user_prompt )
-			->using_system_instruction( $system_instruction );
+			->as_json_response( self::normalize_schema_for_response( $ability['input_schema'] ) );
 
 		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
 			wp_send_json_error(
 				array(
-					'message' => __( 'No AI provider available. Please connect one in the plugin settings.', 'ai' ),
+					'message' => __( 'Generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' ),
 				)
 			);
 		}
@@ -579,13 +566,7 @@ class Admin_Page {
 			);
 		}
 
-		// Strip markdown code fences if the model includes them.
-		$raw = trim( (string) $result );
-		$raw = preg_replace( '/^```(?:json)?\s*/i', '', $raw ) ?? $raw;
-		$raw = preg_replace( '/\s*```$/', '', $raw ) ?? $raw;
-		$raw = trim( $raw );
-
-		$parsed = json_decode( $raw, true );
+		$parsed = json_decode( (string) $result, true );
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			wp_send_json_error(
 				array(
@@ -599,6 +580,33 @@ class Admin_Page {
 				'payload' => wp_json_encode( $parsed, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
 			)
 		);
+	}
+
+	/**
+	 * Recursively adds `additionalProperties: false` to all object-type nodes in a JSON schema.
+	 *
+	 * OpenAI's structured-output API requires this on every object in the schema tree.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array $schema JSON Schema array to normalize.
+	 * @return array Normalized schema.
+	 */
+	private static function normalize_schema_for_response( array $schema ): array {
+		if ( isset( $schema['type'] ) && 'object' === $schema['type'] ) {
+			$schema['additionalProperties'] = false;
+			if ( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+				foreach ( $schema['properties'] as $key => $property ) {
+					if ( is_array( $property ) ) {
+						$schema['properties'][ $key ] = self::normalize_schema_for_response( $property );
+					}
+				}
+			}
+		}
+		if ( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+			$schema['items'] = self::normalize_schema_for_response( $schema['items'] );
+		}
+		return $schema;
 	}
 
 	/**
@@ -656,7 +664,7 @@ class Admin_Page {
 
 		$screen->set_help_sidebar(
 			'<p><strong>' . esc_html__( 'For more information:', 'ai' ) . '</strong></p>' .
-				'<p><a href="https://developer.wordpress.org/apis/abilities/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Abilities API Documentation', 'ai' ) . '</a></p>'
+			'<p><a href="https://developer.wordpress.org/apis/abilities/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Abilities API Documentation', 'ai' ) . '</a></p>'
 		);
 	}
 }
