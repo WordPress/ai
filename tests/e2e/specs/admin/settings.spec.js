@@ -9,6 +9,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnectors,
 	seedCredentials,
+	clearCredentials,
 	disableExperiments,
 	disableExperiment,
 	enableExperiment,
@@ -130,6 +131,44 @@ test.describe( 'Plugin settings', () => {
 		await expect(
 			page.getByText( 'Admin Experiments', { exact: true } )
 		).toBeVisible();
+	} );
+
+	test( 'Provider features are gated without credentials; non-AI features stay usable (#197)', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await requestUtils.activatePlugin( 'e2e-testing' );
+
+		// Remove credentials so no valid AI Connector is configured.
+		await clearCredentials( requestUtils );
+
+		// The master AI switch itself is not credential-gated.
+		await enableExperiments( admin, page );
+
+		// A provider-backed experiment (Title Generation) is disabled and
+		// directs the user to set up a Connector, instead of letting them
+		// enable a feature that errors at runtime.
+		const titleToggle = page.getByLabel( 'Title Generation' );
+		await expect( titleToggle ).toBeVisible( { timeout: 10000 } );
+		await expect( titleToggle ).toBeDisabled();
+		await expect(
+			page
+				.getByText(
+					'Set up a valid AI Connector to enable this feature.'
+				)
+				.first()
+		).toBeVisible();
+
+		// A non-AI experiment (Abilities Explorer, capability 'none') stays
+		// interactive even without credentials — the key gap that closed
+		// the previous global-lockout attempt (#731).
+		const abilitiesToggle = page.getByLabel( 'Abilities Explorer' );
+		await expect( abilitiesToggle ).toBeVisible();
+		await expect( abilitiesToggle ).toBeEnabled();
+
+		// Restore credentials so later tests start from a valid state.
+		await seedCredentials( requestUtils );
 	} );
 
 	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {

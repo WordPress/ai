@@ -376,23 +376,85 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 	);
 }
 
+/**
+ * Returns whether a feature needs a configured AI provider to function.
+ *
+ * Features that declare a 'none' capability (e.g. the Abilities Explorer)
+ * do not call an AI provider and remain usable without credentials.
+ *
+ * @param capability The feature's declared AI capability.
+ */
+function requiresProvider( capability: string ): boolean {
+	return capability !== 'none';
+}
+
+/**
+ * Toggle shown for provider-backed features when no valid AI Connector is
+ * configured. It is disabled and points the user to the Connectors screen,
+ * preventing them from enabling a feature that would error at runtime.
+ */
+function CredentialRequiredToggle( {
+	field,
+	data,
+}: DataFormControlProps< AISettings > ) {
+	return (
+		<ToggleControl
+			label={ field.label }
+			checked={ !! field.getValue( { item: data } ) }
+			// No-op handler required to satisfy React's controlled-component warning; the toggle is disabled.
+			onChange={ noop }
+			disabled
+			help={
+				<>
+					{ __(
+						'Set up a valid AI Connector to enable this feature.',
+						'ai'
+					) }
+					{ PAGE_DATA.connectorsUrl && (
+						<>
+							{ ' ' }
+							<Link href={ PAGE_DATA.connectorsUrl }>
+								{ __( 'Manage Connectors', 'ai' ) }
+							</Link>
+						</>
+					) }
+				</>
+			}
+		/>
+	);
+}
+
 interface SectionActionsProps extends DataFormControlProps< AISettings > {
 	experimentSettings: string[];
+	blockedSettings: string[];
 	globalEnabled: boolean;
 	onBulkChange: ( edits: Record< string, boolean > ) => void;
 }
 
 function SectionActions( {
 	experimentSettings,
+	blockedSettings,
 	data,
 	globalEnabled,
 	onBulkChange,
 }: SectionActionsProps ) {
+	// Features without a valid AI Connector cannot be turned on, so "Enable all"
+	// must ignore them (otherwise it would enable features that error at runtime).
+	const enableableSettings = useMemo(
+		() =>
+			experimentSettings.filter(
+				( settingName ) => ! blockedSettings.includes( settingName )
+			),
+		[ experimentSettings, blockedSettings ]
+	);
+
 	const allEnabled = useMemo( () => {
-		return experimentSettings.every(
+		// Nothing left to enable when every eligible feature is already on (or
+		// there are no eligible features at all).
+		return enableableSettings.every(
 			( settingName ) => data[ settingName ]
 		);
-	}, [ experimentSettings, data ] );
+	}, [ enableableSettings, data ] );
 
 	const allDisabled = useMemo( () => {
 		return experimentSettings.every(
@@ -404,7 +466,7 @@ function SectionActions( {
 		const edits: Record< string, boolean > = {};
 		let enabledCount = 0;
 
-		for ( const settingName of experimentSettings ) {
+		for ( const settingName of enableableSettings ) {
 			if ( ! data[ settingName ] ) {
 				edits[ settingName ] = true;
 				enabledCount++;
@@ -414,7 +476,7 @@ function SectionActions( {
 		if ( enabledCount > 0 ) {
 			onBulkChange( edits );
 		}
-	}, [ experimentSettings, data, onBulkChange ] );
+	}, [ enableableSettings, data, onBulkChange ] );
 
 	const handleDisableAll = useCallback( () => {
 		const edits: Record< string, boolean > = {};
@@ -634,11 +696,17 @@ function VisualCardToggle( {
 	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const blockedByCredentials =
+		!! feature &&
+		! PAGE_DATA.hasValidCredentials &&
+		requiresProvider( feature.capability );
 
 	return (
 		<Card.Root
 			className={ `${
-				! globalEnabled ? ' ai-showcase-card--disabled' : ''
+				! globalEnabled || blockedByCredentials
+					? ' ai-showcase-card--disabled'
+					: ''
 			}` }
 		>
 			{ feature?.image && (
@@ -651,15 +719,38 @@ function VisualCardToggle( {
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
 					}
-					disabled={ ! globalEnabled }
-					help={ field.description }
+					disabled={ ! globalEnabled || blockedByCredentials }
+					help={
+						blockedByCredentials ? (
+							<>
+								{ __(
+									'Set up a valid AI Connector to enable this feature.',
+									'ai'
+								) }
+								{ PAGE_DATA.connectorsUrl && (
+									<>
+										{ ' ' }
+										<Link href={ PAGE_DATA.connectorsUrl }>
+											{ __( 'Manage Connectors', 'ai' ) }
+										</Link>
+									</>
+								) }
+							</>
+						) : (
+							field.description
+						)
+					}
 				/>
-				{ globalEnabled && checked && isDeveloperMode && feature && (
-					<DeveloperSettings
-						featureId={ feature.id }
-						capability={ feature.capability }
-					/>
-				) }
+				{ globalEnabled &&
+					! blockedByCredentials &&
+					checked &&
+					isDeveloperMode &&
+					feature && (
+						<DeveloperSettings
+							featureId={ feature.id }
+							capability={ feature.capability }
+						/>
+					) }
 			</Card.Content>
 		</Card.Root>
 	);
@@ -808,12 +899,28 @@ function AISettingsPage() {
 			groupedFields.set( category, categoryFields );
 		}
 
+		// Settings that cannot be enabled because they need a valid AI Connector
+		// that is not configured. Non-provider features are never blocked.
+		const blockedBySetting = new Set(
+			featureDefinitions
+				.filter(
+					( feature ) =>
+						! PAGE_DATA.hasValidCredentials &&
+						requiresProvider( feature.capability )
+				)
+				.map( ( feature ) => feature.settingName )
+		);
+
 		// Create section action fields for each group
 		for ( const group of featureGroups ) {
 			const experimentSettings = groupedFields.get( group.id ) ?? [];
 			if ( experimentSettings.length <= 1 ) {
 				continue;
 			}
+
+			const blockedSettings = experimentSettings.filter(
+				( settingName ) => blockedBySetting.has( settingName )
+			);
 
 			const actionFieldId = `section-actions-${ group.id }`;
 			sectionActionsFields.push( {
@@ -824,6 +931,7 @@ function AISettingsPage() {
 					<SectionActions
 						{ ...props }
 						experimentSettings={ experimentSettings }
+						blockedSettings={ blockedSettings }
 						globalEnabled={ globalEnabled }
 						onBulkChange={ handleChange }
 					/>
@@ -840,10 +948,16 @@ function AISettingsPage() {
 				type: 'boolean' as const,
 			};
 
+			const blockedByCredentials =
+				! PAGE_DATA.hasValidCredentials &&
+				requiresProvider( feature.capability );
+
 			if ( VISUAL_CARD_FEATURES.has( feature.settingName ) ) {
 				baseField.Edit = VisualCardToggle;
 			} else if ( ! globalEnabled ) {
 				baseField.Edit = DisabledToggle;
+			} else if ( blockedByCredentials ) {
+				baseField.Edit = CredentialRequiredToggle;
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
 			} else {
