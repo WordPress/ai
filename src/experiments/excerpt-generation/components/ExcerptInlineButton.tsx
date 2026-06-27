@@ -22,7 +22,13 @@ const { aiExcerptGenerationData } = window as any;
  * @return {React.JSX.Element | null} The inline button component.
  */
 export default function ExcerptInlineButton(): React.JSX.Element | null {
-	const { isGenerating, hasExcerpt, handleGenerate } = useExcerptGeneration();
+	const {
+		isGenerating,
+		hasExcerpt,
+		isContentTooShort,
+		tooShortLabel,
+		handleGenerate,
+	} = useExcerptGeneration();
 
 	// Don't render if disabled.
 	if ( ! aiExcerptGenerationData?.enabled ) {
@@ -43,11 +49,11 @@ export default function ExcerptInlineButton(): React.JSX.Element | null {
 			variant="link"
 			size="small"
 			onClick={ handleGenerate }
-			disabled={ isGenerating }
+			disabled={ isGenerating || isContentTooShort }
+			accessibleWhenDisabled
 			isBusy={ isGenerating }
 			className="ai-excerpt-inline-button"
-			label={ buttonLabel }
-			accessibleWhenDisabled
+			label={ isContentTooShort ? tooShortLabel : buttonLabel }
 			showTooltip
 		/>
 	);

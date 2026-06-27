@@ -16,9 +16,27 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
-import type { ExcerptGenerationAbilityInput } from '../types';
+import {
+	formatMinLengthLabel,
+	hasMinimumContent,
+} from '../../../utils/word-count';
+import type {
+	ExcerptGenerationAbilityInput,
+	ExcerptGenerationData,
+} from '../types';
 
 const NOTICE_ID = 'ai_excerpt_generation_error';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+
+const getSettings = (): ExcerptGenerationData => {
+	const settings = ( window as any ).aiExcerptGenerationData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		minContentLength:
+			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
+	};
+};
 
 /**
  * Generates an excerpt for the given post ID and content.
@@ -56,6 +74,9 @@ async function generateExcerpt(
 export function useExcerptGeneration(): {
 	isGenerating: boolean;
 	hasExcerpt: boolean;
+	isContentTooShort: boolean;
+	minContentLength: number;
+	tooShortLabel: string;
 	handleGenerate: () => Promise< void >;
 } {
 	const { postId, content, excerpt } = useSelect( ( select ) => {
@@ -68,13 +89,32 @@ export function useExcerptGeneration(): {
 	const { editPost } = useDispatch( editorStore );
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 
+	const { minContentLength } = getSettings();
+	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
+
+	// Minimum-length requirement message, surfaced as the button tooltip when
+	// the content is too short to generate from.
+	const tooShortLabel = formatMinLengthLabel(
+		/* translators: %d: minimum number of characters required */
+		__(
+			'Excerpt generation will be available when the post content has at least %d characters.',
+			'ai'
+		),
+		/* translators: %d: minimum number of words required */
+		__(
+			'Excerpt generation will be available when the post content has at least %d words.',
+			'ai'
+		),
+		minContentLength
+	);
+
 	const handleGenerate = async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
 
 		setIsGenerating( true );
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const generatedExcerpt = await generateExcerpt(
@@ -121,7 +161,7 @@ export function useExcerptGeneration(): {
 					? error
 					: error?.message ??
 					  __( 'Failed to generate excerpt.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice( message, {
+			dispatch( noticesStore ).createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );
@@ -133,6 +173,9 @@ export function useExcerptGeneration(): {
 	return {
 		isGenerating,
 		hasExcerpt: excerpt && excerpt.trim().length > 0,
+		isContentTooShort,
+		minContentLength,
+		tooShortLabel,
 		handleGenerate,
 	};
 }

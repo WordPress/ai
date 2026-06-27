@@ -61,9 +61,7 @@ export function MediaEditorAltTextControl( {
 		setShowDecorativeNotice( false );
 
 		// Clear any previous notices.
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_alt_text_generation_error'
-		);
+		dispatch( noticesStore ).removeNotice( 'ai_alt_text_generation_error' );
 
 		try {
 			const result = await generateAltText( attachmentId, imageUrl );
@@ -78,13 +76,10 @@ export function MediaEditorAltTextControl( {
 			const errorMessage =
 				err?.message ||
 				__( 'An error occurred while generating alt text.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice(
-				errorMessage,
-				{
-					id: 'ai_alt_text_generation_error',
-					isDismissible: true,
-				}
-			);
+			dispatch( noticesStore ).createErrorNotice( errorMessage, {
+				id: 'ai_alt_text_generation_error',
+				isDismissible: true,
+			} );
 		} finally {
 			setIsGenerating( false );
 		}
@@ -121,6 +116,7 @@ export function MediaEditorAltTextControl( {
 					} }
 					isBusy={ isGenerating }
 					icon={ update }
+					__next40pxDefaultSize
 				>
 					{ getButtonLabel( hasExistingAlt, isGenerating ) }
 				</Button>

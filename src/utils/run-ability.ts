@@ -24,6 +24,7 @@ type Method = 'GET' | 'POST' | 'DELETE';
 
 type RunAbilityOptions = {
 	method?: Method;
+	signal?: AbortSignal;
 };
 
 type AbilitiesModule = {
@@ -149,9 +150,10 @@ export async function runAbility< T = unknown >(
 
 	const method: Method = options?.method ?? 'POST';
 
-	const response = await apiFetch(
-		buildFetchOptions( ability, input, method )
-	);
+	const response = await apiFetch( {
+		...buildFetchOptions( ability, input, method ),
+		...( options?.signal ? { signal: options.signal } : {} ),
+	} );
 
 	return response as T;
 }

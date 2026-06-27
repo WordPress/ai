@@ -52,7 +52,7 @@ class Test_Alt_Text_Generation_Experiment extends Abstract_Feature {
 /**
  * Testable alt text generation ability.
  *
- * @since x.x.x
+ * @since 1.0.2
  */
 class Testable_Alt_Text_Generation extends Alt_Text_Generation {
 	/**
@@ -339,7 +339,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns false for non-decorative generated alt text.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_execute_callback_returns_decorative_flag_false_for_generated_alt_text() {
 		$ability    = new Testable_Alt_Text_Generation( 'A person writing in a notebook' );
@@ -363,7 +363,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() sanitizes image_url before resolving the image reference.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_execute_callback_sanitizes_image_url_before_resolving_reference(): void {
 		$ability    = new Testable_Alt_Text_Generation( 'A person writing in a notebook' );

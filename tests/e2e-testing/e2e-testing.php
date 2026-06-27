@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin name: E2E Test Request Mocking
- * Description: This plugin is used to mock the API requests when running E2E tests.
+ * Plugin name: E2E Testing
+ * Description: Support plugin for the E2E test suite. Mocks API requests and registers test fixtures, such as a setting flagged for the Abilities API.
  * Version: 0.1.0
  * Author: WordPress.org Contributors
  * Author URI: https://make.wordpress.org/ai/
@@ -17,6 +17,10 @@ add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
+
+// Register a sample setting flagged for the Abilities API, used by the core/settings E2E spec
+// to verify the ability exposes settings registered by other active plugins.
+add_action( 'init', 'ai_e2e_register_sample_setting' );
 
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
@@ -68,6 +72,26 @@ function ai_e2e_seed_credentials() {
 function ai_e2e_clear_credentials() {
 	delete_option( 'connectors_ai_openai_api_key' );
 	return new WP_REST_Response( array( 'cleared' => true ) );
+}
+
+/**
+ * Registers a sample setting exposed to the Abilities API.
+ *
+ * Used by the core/settings E2E spec to verify the ability exposes settings registered
+ * by other active plugins.
+ */
+function ai_e2e_register_sample_setting() {
+	register_setting(
+		'general',
+		'ai_e2e_sample_setting',
+		array(
+			'type'              => 'string',
+			'label'             => 'AI E2E Sample Setting',
+			'description'       => 'A sample setting exposed to the Abilities API for end-to-end testing.',
+			'show_in_abilities' => true,
+			'default'           => 'sample-default',
+		)
+	);
 }
 
 /**
@@ -129,6 +153,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'inline ghost text suggestions' ) ) {
+			// Route type-ahead text requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/type-ahead-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
 
