@@ -164,7 +164,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
 	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
+	const globalToggle = page.getByLabel( 'AI features enabled' );
 	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
 	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
 
@@ -190,7 +190,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
 	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
+	const globalToggle = page.getByLabel( 'AI features enabled' );
 	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
 	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
 
