@@ -11,6 +11,7 @@ namespace WordPress\AI\Abilities\Type_Ahead;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Experiments\Type_Ahead\Type_Ahead as Type_Ahead_Experiment;
 
 use function WordPress\AI\normalize_content;
 
@@ -39,6 +40,15 @@ class Type_Ahead extends Abstract_Ability {
 	 * Allowed completion modes.
 	 */
 	private const MODES = array( 'word', 'sentence', 'paragraph', 'smart' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -322,13 +332,18 @@ class Type_Ahead extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference(
+			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => 'core/paragraph' ) ) )
+			->as_json_response( $this->suggestion_schema() );
+
+		$prompt_builder = $this->set_provider_model_preference(
+			$prompt_builder,
+			Type_Ahead_Experiment::class,
+			array(
 				array( 'anthropic', 'claude-haiku-4-5' ),
 				array( 'google', 'gemini-2.5-flash' ),
-				array( 'openai', 'gpt-4.1-nano' )
+				array( 'openai', 'gpt-4.1-nano' ),
 			)
-			->as_json_response( $this->suggestion_schema() );
+		);
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
