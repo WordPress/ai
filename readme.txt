@@ -38,6 +38,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
+* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 
 **Provider Setup:**
 
@@ -49,7 +50,6 @@ Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-
 
 We're actively developing new features to enhance your WordPress workflow:
 
-* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
