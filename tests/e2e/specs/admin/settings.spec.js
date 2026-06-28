@@ -132,6 +132,36 @@ test.describe( 'Plugin settings', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Snackbar notifications do not cover the settings content (#800)', async ( {
+		admin,
+		page,
+	} ) => {
+		// Use a fixed desktop viewport so the admin menu is at full width and
+		// snackbar placement is deterministic.
+		await page.setViewportSize( { width: 1280, height: 800 } );
+		await visitSettingsPage( admin );
+
+		// Toggle the global setting to trigger a snackbar.
+		const globalToggle = page.getByLabel( 'Enable AI' );
+		await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
+		await globalToggle.click();
+
+		const snackbar = page.locator( '.components-snackbar' ).first();
+		await expect( snackbar ).toBeVisible();
+
+		// The snackbar must sit to the inline-start of the centered settings
+		// content, not on top of it (regression guard for #800).
+		const snackBox = await snackbar.boundingBox();
+		const contentBox = await page
+			.locator( '.ai-settings-page' )
+			.boundingBox();
+		expect( snackBox ).not.toBeNull();
+		expect( contentBox ).not.toBeNull();
+		expect( snackBox.x + snackBox.width ).toBeLessThanOrEqual(
+			contentBox.x
+		);
+	} );
+
 	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
 		admin,
 		page,
