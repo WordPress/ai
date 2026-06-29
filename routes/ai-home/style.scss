@@ -72,27 +72,13 @@ body:has(.ai-settings-page) .components-popover {
 .ai-developer-mode-fields {
 	margin-top: var(--wpds-dimension-gap-lg, 16px);
 
-	.ai-developer-mode-fields__loading-provider {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-
 	.ai-developer-mode-fields__loading-provider-label {
 		font-size: 11px;
 		font-weight: 499;
 		line-height: 1.4;
 	}
 
-	.ai-developer-mode-fields__notice {
-		margin-bottom: var(--wpds-dimension-gap-lg, 16px);
-	}
-
 	.ai-developer-mode-fields__actions {
-		display: flex;
-		align-items: center;
-		gap: var(--wpds-dimension-gap-lg, 16px);
-		margin-top: var(--wpds-dimension-gap-lg, 16px);
 		padding-bottom: var(--wpds-dimension-gap-sm, 8px);
 	}
 }

@@ -12,7 +12,7 @@ import {
 	useState,
 } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { Notice } from '@wordpress/ui';
+import { Notice, Stack } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -151,37 +151,42 @@ export function DeveloperSettings( {
 
 	if ( capability === 'none' ) {
 		return (
-			<div className="ai-developer-mode-fields ai-feature-settings-form">
+			<Stack
+				className="ai-developer-mode-fields ai-feature-settings-form"
+				direction="column"
+				gap="md"
+			>
 				<p>
 					{ __(
 						'This feature does not require an AI provider or model.',
 						'ai'
 					) }
 				</p>
-			</div>
+			</Stack>
 		);
 	}
 
 	return (
-		<div className="ai-developer-mode-fields ai-feature-settings-form">
+		<Stack
+			className="ai-developer-mode-fields ai-feature-settings-form"
+			direction="column"
+			gap="md"
+		>
 			{ isLoading && (
-				<div className="ai-developer-mode-fields__loading-provider">
+				<Stack direction="column" gap="xs">
 					<span className="ai-developer-mode-fields__loading-provider-label">
 						{ __( 'Provider', 'ai' ) }
 					</span>
 					<Spinner />
-				</div>
+				</Stack>
 			) }
 			{ ! isLoading && fetchError && (
 				<p className="ai-developer-mode-field__error">{ fetchError }</p>
 			) }
 			{ ! isLoading && ! fetchError && (
-				<>
+				<Stack direction="column" gap="md">
 					{ hasStaleProvider && (
-						<Notice.Root
-							className="ai-developer-mode-fields__notice"
-							intent="warning"
-						>
+						<Notice.Root intent="warning">
 							<Notice.Description>
 								{ __(
 									'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
@@ -198,7 +203,12 @@ export function DeveloperSettings( {
 							onChange={ handleChange }
 						/>
 					</div>
-					<div className="ai-developer-mode-fields__actions">
+					<Stack
+						align="center"
+						className="ai-developer-mode-fields__actions"
+						direction="row"
+						gap="lg"
+					>
 						{ ( hasUnsavedChanges || isSavingThis ) && (
 							<Button
 								variant="primary"
@@ -230,9 +240,9 @@ export function DeveloperSettings( {
 								{ __( 'Reset to default', 'ai' ) }
 							</Button>
 						) }
-					</div>
-				</>
+					</Stack>
+				</Stack>
 			) }
-		</div>
+		</Stack>
 	);
 }
