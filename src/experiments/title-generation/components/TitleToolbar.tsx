@@ -163,7 +163,7 @@ export default function TitleToolbar( {
 
 	if ( isGenerating || isRegenerating ) {
 		buttonLabel = __( 'Generating…', 'ai' );
-	} else if ( hasTitle ) {
+	} else if ( hasTitle || isOpen ) {
 		buttonLabel = __( 'Regenerate', 'ai' );
 	}
 
@@ -325,9 +325,7 @@ export default function TitleToolbar( {
 								isBusy={ isRegenerating }
 								__next40pxDefaultSize
 							>
-								{ isRegenerating
-									? __( 'Regenerating…', 'ai' )
-									: __( 'Regenerate', 'ai' ) }
+								{ buttonLabel }
 							</Button>
 						</FlexItem>
 						<FlexItem>
