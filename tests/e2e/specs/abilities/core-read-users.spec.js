@@ -12,7 +12,7 @@ const {
 } = require( '../../utils/helpers' );
 
 /**
- * Runs the `core/users` ability through the client-side Abilities API, exactly
+ * Runs the `core/read-users` ability through the client-side Abilities API, exactly
  * as a consumer would in the browser.
  *
  * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
@@ -42,8 +42,8 @@ async function runCoreUsers( page, input ) {
 
 			try {
 				const result = shouldPassInput
-					? await executeAbility( 'core/users', abilityInput )
-					: await executeAbility( 'core/users' );
+					? await executeAbility( 'core/read-users', abilityInput )
+					: await executeAbility( 'core/read-users' );
 				return { ok: true, result };
 			} catch ( e ) {
 				return { ok: false, code: e && e.code ? e.code : null };
@@ -53,7 +53,7 @@ async function runCoreUsers( page, input ) {
 	);
 }
 
-test.describe( 'core/users ability (client-side Abilities API)', () => {
+test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 	let currentUser;
 
 	test.beforeAll( async ( { requestUtils } ) => {
@@ -75,7 +75,7 @@ test.describe( 'core/users ability (client-side Abilities API)', () => {
 		// Run from the block editor, where the abilities client modules are available.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'core/users ability test',
+			title: 'core/read-users ability test',
 		} );
 	} );
 
