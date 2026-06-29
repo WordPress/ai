@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/users` WordPress Ability.
+ * The `core/read-users` WordPress Ability.
  *
  * @package WordPress\AI
  *
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Users
  *
- * Registers the read-only `core/users` ability, which retrieves one or more
+ * Registers the read-only `core/read-users` ability, which retrieves one or more
  * readable WordPress users. Supports fetching a single readable user by ID,
  * user email, user login, or user nicename, or querying a paginated collection optionally
  * filtered by roles or published-post authorship. Field-level access is enforced
@@ -153,20 +153,20 @@ final class Users {
 	}
 
 	/**
-	 * Registers the read-only `core/users` ability.
+	 * Registers the read-only `core/read-users` ability.
 	 *
 	 * @since x.x.x
 	 */
 	private function register_get_users(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/users' ) ) {
-			wp_unregister_ability( 'core/users' );
+		if ( wp_has_ability( 'core/read-users' ) ) {
+			wp_unregister_ability( 'core/read-users' );
 		}
 
 		wp_register_ability(
-			'core/users',
+			'core/read-users',
 			array(
-				'label'               => __( 'Get Users', 'ai' ),
+				'label'               => __( 'Read Users', 'ai' ),
 				'description'         => __( 'Retrieves one or more readable WordPress users. Fetch a single readable user by ID, user email, user login, or user nicename, or query a paginated collection optionally filtered by roles or published-post authorship.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_users_input_schema(),
@@ -187,7 +187,7 @@ final class Users {
 	}
 
 	/**
-	 * Permission callback for the `core/users` ability.
+	 * Permission callback for the `core/read-users` ability.
 	 *
 	 * Implements defense in depth: this gate decides whether the request may proceed at
 	 * all, while the per-user read checks in {@see self::execute_get_users()} are the
@@ -223,7 +223,7 @@ final class Users {
 	}
 
 	/**
-	 * Executes the `core/users` ability.
+	 * Executes the `core/read-users` ability.
 	 *
 	 * @since x.x.x
 	 *
@@ -623,7 +623,7 @@ final class Users {
 	}
 
 	/**
-	 * Builds the input schema for the `core/users` ability.
+	 * Builds the input schema for the `core/read-users` ability.
 	 *
 	 * The ability has five mutually exclusive modes, modeled as a `oneOf` so invalid
 	 * combinations are rejected rather than silently ignored:
@@ -756,7 +756,7 @@ final class Users {
 	}
 
 	/**
-	 * Builds the output schema for the `core/users` ability.
+	 * Builds the output schema for the `core/read-users` ability.
 	 *
 	 * No user field is marked required because the `fields` input lets the caller
 	 * request any subset, and restricted fields are omitted when unavailable.
