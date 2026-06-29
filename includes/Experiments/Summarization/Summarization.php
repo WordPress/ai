@@ -15,6 +15,7 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
 use function WordPress\AI\get_min_content_length;
+use function WordPress\AI\post_type_supports_bulk_ai_action;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -55,19 +56,29 @@ class Summarization extends Abstract_Feature {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 
-		/**
-		 * Filters the post types that support the bulk "Generate Summary" action.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string[] $post_types Post type slugs.
-		 */
-		$bulk_post_types = (array) apply_filters( 'wpai_summarization_bulk_post_types', array( 'post', 'page' ) );
-		foreach ( $bulk_post_types as $post_type ) {
-			add_filter( "bulk_actions-edit-{$post_type}", array( $this, 'register_bulk_action' ) );
-			add_filter( "handle_bulk_actions-edit-{$post_type}", array( $this, 'handle_bulk_action' ), 10, 3 );
-		}
+		add_action( 'load-edit.php', array( $this, 'register_bulk_action_hooks_for_screen' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_bulk_assets' ) );
+	}
+
+	/**
+	 * Registers the bulk action hooks for the current post list table screen.
+	 *
+	 * Hooked to load-edit.php so it only fires on post list tables. Reads the
+	 * requested post type from the query string and restricts bulk summarization
+	 * to post types exposed via the REST API.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_bulk_action_hooks_for_screen(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post';
+
+		if ( ! post_type_supports_bulk_ai_action( $post_type, $this->get_id() ) ) {
+			return;
+		}
+
+		add_filter( "bulk_actions-edit-{$post_type}", array( $this, 'register_bulk_action' ) );
+		add_filter( "handle_bulk_actions-edit-{$post_type}", array( $this, 'handle_bulk_action' ), 10, 3 );
 	}
 
 	/**

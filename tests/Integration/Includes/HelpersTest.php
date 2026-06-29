@@ -20,6 +20,8 @@ use WordPress\AiClient\Providers\Contracts\ProviderInterface;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
+use WordPress\AI\Experiments\Summarization\Summarization;
+use function WordPress\AI\post_type_supports_bulk_ai_action;
 
 /**
  * Stub provider availability used by helper tests.
@@ -1383,5 +1385,57 @@ class HelpersTest extends WP_UnitTestCase {
 				)
 			)
 		);
+	}
+
+	/**
+	 * Tests that built-in REST-enabled post types are supported for summarization.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_post_type_supports_bulk_ai_summarization_returns_true_for_rest_post_type(): void {
+		$this->assertTrue( post_type_supports_bulk_ai_action( 'post', Summarization::get_id() ) );
+		$this->assertTrue( post_type_supports_bulk_ai_action( 'page', Summarization::get_id() ) );
+	}
+
+	/**
+	 * Tests that post types with show_in_rest disabled are not supported for summarization.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_post_type_supports_bulk_ai_summarization_returns_false_when_not_in_rest(): void {
+		register_post_type(
+			'no_rest_cpt',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+				'show_ui'      => true,
+			)
+		);
+
+		try {
+			$this->assertFalse( post_type_supports_bulk_ai_action( 'no_rest_cpt', Summarization::get_id() ) );
+		} finally {
+			unregister_post_type( 'no_rest_cpt' );
+		}
+	}
+
+	/**
+	 * Tests that the attachment post type is not supported for summarization.
+	 *
+	 * Attachment is excluded at the feature level for summarization, not at the base level.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_attachment(): void {
+		$this->assertFalse( post_type_supports_bulk_ai_action( 'attachment', Summarization::get_id() ) );
+	}
+
+	/**
+	 * Tests that a non-existent post type is not supported.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
+		$this->assertFalse( post_type_supports_bulk_ai_action( 'does_not_exist', Summarization::get_id() ) );
 	}
 }

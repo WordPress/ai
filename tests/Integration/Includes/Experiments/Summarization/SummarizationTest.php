@@ -103,6 +103,8 @@ class SummarizationTest extends WP_UnitTestCase {
 			remove_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) );
 			remove_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) );
 			remove_action( 'enqueue_block_assets', array( $experiment, 'enqueue_block_assets' ) );
+			remove_action( 'load-edit.php', array( $experiment, 'register_bulk_action_hooks_for_screen' ) );
+			remove_action( 'admin_enqueue_scripts', array( $experiment, 'maybe_enqueue_bulk_assets' ) );
 		}
 	}
 
@@ -340,38 +342,106 @@ class SummarizationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that register() hooks the bulk action handlers for custom post types added via filter.
+	 * Tests that register() wires register_bulk_action_hooks_for_screen() onto load-edit.php.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_register_hooks_bulk_action_for_filtered_post_types(): void {
-		$custom_post_type = 'product';
-
-		$filter = static function ( array $types ) use ( $custom_post_type ): array {
-			$types[] = $custom_post_type;
-			return $types;
-		};
-		add_filter( 'wpai_summarization_bulk_post_types', $filter );
-
+	public function test_register_wires_bulk_action_hooks_via_load_edit(): void {
 		$experiment = new Summarization();
 
 		try {
 			$experiment->register();
 
 			$this->assertNotFalse(
-				has_filter( "bulk_actions-edit-{$custom_post_type}", array( $experiment, 'register_bulk_action' ) )
-			);
-			$this->assertNotFalse(
-				has_filter( "handle_bulk_actions-edit-{$custom_post_type}", array( $experiment, 'handle_bulk_action' ) )
+				has_action( 'load-edit.php', array( $experiment, 'register_bulk_action_hooks_for_screen' ) )
 			);
 		} finally {
-			remove_filter( 'wpai_summarization_bulk_post_types', $filter );
-			remove_filter( "bulk_actions-edit-{$custom_post_type}", array( $experiment, 'register_bulk_action' ) );
-			remove_filter( "handle_bulk_actions-edit-{$custom_post_type}", array( $experiment, 'handle_bulk_action' ) );
+			remove_action( 'load-edit.php', array( $experiment, 'register_bulk_action_hooks_for_screen' ) );
 			remove_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_assets' ), 5 );
 			remove_action( 'enqueue_block_assets', array( $experiment, 'enqueue_block_assets' ) );
 			remove_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) );
 			remove_action( 'admin_enqueue_scripts', array( $experiment, 'maybe_enqueue_bulk_assets' ) );
+		}
+	}
+
+	/**
+	 * Tests that register_bulk_action_hooks_for_screen() registers filters for REST-enabled post types.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_bulk_action_hooks_for_screen_registers_for_rest_post_type(): void {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		try {
+			$_GET['post_type'] = 'post';
+
+			$experiment = new Summarization();
+			$experiment->register_bulk_action_hooks_for_screen();
+
+			$this->assertNotFalse(
+				has_filter( 'bulk_actions-edit-post', array( $experiment, 'register_bulk_action' ) )
+			);
+			$this->assertNotFalse(
+				has_filter( 'handle_bulk_actions-edit-post', array( $experiment, 'handle_bulk_action' ) )
+			);
+		} finally {
+			remove_filter( 'bulk_actions-edit-post', array( $experiment, 'register_bulk_action' ) );
+			remove_filter( 'handle_bulk_actions-edit-post', array( $experiment, 'handle_bulk_action' ) );
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+	}
+
+	/**
+	 * Tests that register_bulk_action_hooks_for_screen() skips post types not exposed in REST.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_bulk_action_hooks_for_screen_skips_non_rest_post_types(): void {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		register_post_type(
+			'no_rest_cpt',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+				'show_ui'      => true,
+			)
+		);
+
+		try {
+			$_GET['post_type'] = 'no_rest_cpt';
+
+			$experiment = new Summarization();
+			$experiment->register_bulk_action_hooks_for_screen();
+
+			$this->assertFalse(
+				has_filter( 'bulk_actions-edit-no_rest_cpt', array( $experiment, 'register_bulk_action' ) )
+			);
+		} finally {
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			unregister_post_type( 'no_rest_cpt' );
+		}
+	}
+
+	/**
+	 * Tests that register_bulk_action_hooks_for_screen() skips the attachment post type for summarization.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_bulk_action_summarization_hooks_for_screen_skips_attachment(): void {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		try {
+			$_GET['post_type'] = 'attachment';
+
+			$experiment = new Summarization();
+			$experiment->register_bulk_action_hooks_for_screen();
+
+			$this->assertFalse(
+				has_filter( 'bulk_actions-edit-attachment', array( $experiment, 'register_bulk_action' ) )
+			);
+		} finally {
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
 	}
 }
