@@ -131,7 +131,7 @@ final class Show_In_Abilities {
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
 	 * reserved for enabling specific operations in the future. This matches the set
-	 * marked natively by the core `core/content` implementation (`post` and `page`).
+	 * marked natively by the core `core/read-content` implementation (`post` and `page`).
 	 *
 	 * @since x.x.x
 	 *

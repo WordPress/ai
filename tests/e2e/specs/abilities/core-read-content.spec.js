@@ -12,7 +12,7 @@ const {
 } = require( '../../utils/helpers' );
 
 /**
- * Runs the `core/content` ability through the client-side Abilities API, exactly
+ * Runs the `core/read-content` ability through the client-side Abilities API, exactly
  * as a consumer would in the browser.
  *
  * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
@@ -28,7 +28,7 @@ const {
  * @param {Object}                          input The ability input.
  * @return {Promise<Object>} `{ ok: true, result }` or `{ ok: false, code }`.
  */
-async function runCoreContent( page, input ) {
+async function runCoreReadContent( page, input ) {
 	return page.evaluate( async ( abilityInput ) => {
 		const { ready } = await import( '@wordpress/core-abilities' );
 		if ( ready ) {
@@ -38,7 +38,7 @@ async function runCoreContent( page, input ) {
 		const { executeAbility } = await import( '@wordpress/abilities' );
 
 		try {
-			const result = await executeAbility( 'core/content', abilityInput );
+			const result = await executeAbility( 'core/read-content', abilityInput );
 			return { ok: true, result };
 		} catch ( e ) {
 			return { ok: false, code: e && e.code ? e.code : null };
@@ -46,7 +46,7 @@ async function runCoreContent( page, input ) {
 	}, input );
 }
 
-test.describe( 'core/content ability (client-side Abilities API)', () => {
+test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	const seededPostIds = [];
 
 	test.beforeAll( async ( { requestUtils } ) => {
@@ -55,7 +55,7 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 		const posts = await Promise.all(
 			[ 'one', 'two', 'three' ].map( ( suffix ) =>
 				requestUtils.createPost( {
-					title: `core/content seeded post ${ suffix }`,
+					title: `core/read-content seeded post ${ suffix }`,
 					status: 'publish',
 				} )
 			)
@@ -87,14 +87,14 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 		// Run from the block editor, where the abilities client modules are available.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'core/content ability test',
+			title: 'core/read-content ability test',
 		} );
 	} );
 
 	test( 'returns a posts list of the requested post type', async ( {
 		page,
 	} ) => {
-		const outcome = await runCoreContent( page, { post_type: 'post' } );
+		const outcome = await runCoreReadContent( page, { post_type: 'post' } );
 
 		expect( outcome.ok ).toBe( true );
 		expect( Array.isArray( outcome.result.posts ) ).toBe( true );
@@ -108,7 +108,7 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'paginates with page and per_page', async ( { page } ) => {
-		const outcome = await runCoreContent( page, {
+		const outcome = await runCoreReadContent( page, {
 			post_type: 'post',
 			per_page: 1,
 			page: 1,
@@ -119,7 +119,7 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'limits each post to the requested fields', async ( { page } ) => {
-		const outcome = await runCoreContent( page, {
+		const outcome = await runCoreReadContent( page, {
 			post_type: 'post',
 			fields: [ 'id', 'title_rendered' ],
 		} );
@@ -135,7 +135,7 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'rejects a slug query without a post type', async ( { page } ) => {
-		const outcome = await runCoreContent( page, { slug: 'whatever' } );
+		const outcome = await runCoreReadContent( page, { slug: 'whatever' } );
 
 		expect( outcome.ok ).toBe( false );
 		expect( outcome.code ).toBe( 'ability_invalid_input' );
@@ -146,7 +146,7 @@ test.describe( 'core/content ability (client-side Abilities API)', () => {
 	} ) => {
 		// The `e2e-testing` plugin (mapped in .wp-env.test.json) registers the
 		// `ai_e2e_sample` post type with `show_in_abilities` and seeds a published post.
-		const outcome = await runCoreContent( page, {
+		const outcome = await runCoreReadContent( page, {
 			post_type: 'ai_e2e_sample',
 			slug: 'ai-e2e-sample-content',
 		} );

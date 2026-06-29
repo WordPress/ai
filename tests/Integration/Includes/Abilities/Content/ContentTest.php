@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the core/content Ability provided by the plugin.
+ * Integration tests for the core/read-content Ability provided by the plugin.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Content
  */
@@ -158,8 +158,8 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		if ( wp_has_ability( 'core/content' ) ) {
-			wp_unregister_ability( 'core/content' );
+		if ( wp_has_ability( 'core/read-content' ) ) {
+			wp_unregister_ability( 'core/read-content' );
 		}
 
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
@@ -207,7 +207,7 @@ class ContentTest extends WP_UnitTestCase {
 
 	/**
 	 * Ensures the `site` ability category exists, used by the plugin's `core/settings`
-	 * ability which registers on the same hook as `core/content`.
+	 * ability which registers on the same hook as `core/read-content`.
 	 *
 	 * @since x.x.x
 	 */
@@ -232,7 +232,7 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the plugin's core/content ability inside a faked init action.
+	 * Registers the plugin's core/read-content ability inside a faked init action.
 	 *
 	 * @since x.x.x
 	 */
@@ -282,13 +282,13 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_registers_core_content_ability(): void {
+	public function test_registers_core_read_content_ability(): void {
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/content' );
+		$ability = wp_get_ability( 'core/read-content' );
 
-		$this->assertNotNull( $ability, 'The core/content ability should be registered.' );
-		$this->assertSame( 'core/content', $ability->get_name(), 'The registered ability should use the expected name.' );
+		$this->assertNotNull( $ability, 'The core/read-content ability should be registered.' );
+		$this->assertSame( 'core/read-content', $ability->get_name(), 'The registered ability should use the expected name.' );
 		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
 
@@ -299,16 +299,16 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/content, the plugin's version replaces it.
+	 * When core already provides core/read-content, the plugin's version replaces it.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_override_replaces_existing_core_content(): void {
+	public function test_override_replaces_existing_core_read_content(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			wp_register_ability(
-				'core/content',
+				'core/read-content',
 				array(
 					'label'               => 'Core Provided',
 					'description'         => 'Core provided content ability.',
@@ -325,15 +325,15 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertSame(
 			'Core Provided',
-			wp_get_ability( 'core/content' )->get_label(),
+			wp_get_ability( 'core/read-content' )->get_label(),
 			'The core-provided ability should be registered before the plugin override.'
 		);
 
 		$this->register_ability();
 
 		$this->assertSame(
-			'Get Content',
-			wp_get_ability( 'core/content' )->get_label(),
+			'Read Content',
+			wp_get_ability( 'core/read-content' )->get_label(),
 			'The plugin-provided content ability should replace the existing one.'
 		);
 	}
@@ -347,7 +347,7 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_input_schema_models_mutually_exclusive_modes(): void {
 		$this->register_ability();
 
-		$schema = wp_get_ability( 'core/content' )->get_input_schema();
+		$schema = wp_get_ability( 'core/read-content' )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
 		$this->assertCount( 2, $schema['oneOf'], 'The input schema should expose exactly two modes.' );
@@ -384,7 +384,7 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_input_schema_omits_oneof_branch_defaults(): void {
 		$this->register_ability();
 
-		$schema  = wp_get_ability( 'core/content' )->get_input_schema();
+		$schema  = wp_get_ability( 'core/read-content' )->get_input_schema();
 		$by_type = $schema['oneOf'][1];
 
 		$this->assertArrayNotHasKey( 'default', $by_type['properties']['status'], 'Status should rely on runtime defaults, not schema defaults.' );
@@ -402,7 +402,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'       => 1,
 				'per_page' => 10,
@@ -424,7 +424,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published'];
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'        => $post_id,
 				'post_type' => 'post',
@@ -443,7 +443,7 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_output_schema_has_no_required_post_fields(): void {
 		$this->register_ability();
 
-		$schema    = wp_get_ability( 'core/content' )->get_output_schema();
+		$schema    = wp_get_ability( 'core/read-content' )->get_output_schema();
 		$post_item = $schema['properties']['posts']['items'];
 
 		$this->assertSame( array( 'posts', 'total', 'total_pages' ), $schema['required'], 'The response wrapper should require all top-level properties.' );
@@ -476,7 +476,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		// Query mode is the second `oneOf` branch; its `post_type` enum lists exposed types.
-		$enum = wp_get_ability( 'core/content' )->get_input_schema()['oneOf'][1]['properties']['post_type']['enum'];
+		$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][1]['properties']['post_type']['enum'];
 		$this->assertContains( 'wpai_content_cpt', $enum, 'Custom post types marked show_in_abilities should appear in the query enum.' );
 
 		$post_id = self::factory()->post->create(
@@ -486,7 +486,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'wpai_content_cpt' ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'wpai_content_cpt' ) );
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
 		$this->assertContains( $post_id, $ids, 'The custom post type should be queryable through the content ability.' );
@@ -505,7 +505,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published_content'];
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'The by-ID lookup should return a response array.' );
 		$this->assertCount( 1, $result['posts'], 'The by-ID lookup should return exactly one post.' );
@@ -525,7 +525,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => 999999 ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => 999999 ) );
 
 		$this->assertWPError( $result, 'Missing posts should be denied before execution probes object details.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Missing posts should fail closed as a permission error.' );
@@ -542,7 +542,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published'];
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'        => $post_id,
 				'post_type' => 'page',
@@ -581,7 +581,7 @@ class ContentTest extends WP_UnitTestCase {
 
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
 			$this->assertWPError( $result, 'Posts from unexposed post types should be denied.' );
 			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Unexposed post types should fail closed as a permission error.' );
@@ -602,7 +602,7 @@ class ContentTest extends WP_UnitTestCase {
 		$published = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$draft     = self::factory()->post->create( array( 'post_status' => 'draft' ) );
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'post' ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'post' ) );
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
 		$this->assertContains( $published, $ids, 'Published posts should be returned by default.' );
@@ -618,7 +618,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'slug' => 'whatever' ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'slug' => 'whatever' ) );
 
 		$this->assertWPError( $result, 'Slug queries without a post type should fail validation.' );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Invalid slug queries should return an input error.' );
@@ -635,7 +635,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published_content'];
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'title_rendered' ),
@@ -658,7 +658,7 @@ class ContentTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'post_type' => 'post' ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'post' ) );
 
 		$this->assertWPError( $result, 'Logged-out users should not be allowed to run the content ability.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Logged-out users should receive a permission error.' );
@@ -675,7 +675,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'post_type' => 'post',
 				'fields'    => array( 'id', 'title_rendered', 'content_rendered' ),
@@ -703,7 +703,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'Subscribers should be able to fetch a readable published post by ID.' );
 		$this->assertSame( 'Readable single', $result['posts'][0]['title_rendered'], 'Subscribers should receive the rendered title.' );
@@ -721,7 +721,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'post_type' => 'post',
 				'fields'    => array( 'content_raw' ),
@@ -743,7 +743,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'content_raw' ),
@@ -767,7 +767,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( $role );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'The readable published post should be returned.' );
 		$this->assertSame( 'Readable title', $result['posts'][0]['title_rendered'], 'Rendered title should remain visible.' );
@@ -790,7 +790,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( $role );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'content_raw' ),
@@ -810,7 +810,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'draft' ),
@@ -830,7 +830,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'private' ),
@@ -866,7 +866,7 @@ class ContentTest extends WP_UnitTestCase {
 		wp_set_current_user( $author_b );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'draft' ),
@@ -889,7 +889,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'content_raw' ),
@@ -914,7 +914,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'content_raw', 'content_rendered' ),
@@ -946,7 +946,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( $role );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content' )->execute(
+		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'content_rendered', 'content_protected' ),
@@ -968,7 +968,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
 
-		$page1 = wp_get_ability( 'core/content' )->execute(
+		$page1 = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'post_type' => 'post',
 				'per_page'  => 2,
@@ -980,7 +980,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual( 3, $page1['total'], 'The query should report the total matching post count.' );
 		$this->assertSame( (int) ceil( $page1['total'] / 2 ), $page1['total_pages'], 'The query should report the computed total page count.' );
 
-		$page2 = wp_get_ability( 'core/content' )->execute(
+		$page2 = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'post_type' => 'post',
 				'per_page'  => 2,
@@ -1003,7 +1003,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published'];
 
-		$result = wp_get_ability( 'core/content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertSame( 1, $result['total'], 'Single-post responses should report one total result.' );
 		$this->assertSame( 1, $result['total_pages'], 'Single-post responses should report one total page.' );
