@@ -8,36 +8,17 @@
 /**
  * WordPress dependencies
  */
-import { _x, sprintf } from '@wordpress/i18n';
-import { count as wordCount, type Strategy } from '@wordpress/wordcount';
+import { count as wordCount } from '@wordpress/wordcount';
 
 /**
- * Returns the word count type based on the user's locale.
- *
- * Uses the default (core) text domain so the word count type stays consistent
- * with WordPress core's behavior.
- *
- * @return {Strategy} The word count strategy.
- */
-export function getWordCountType(): Strategy {
-	/*
-	 * translators: If your word count is based on single characters (e.g. East Asian characters),
-	 * enter 'characters_excluding_spaces' or 'characters_including_spaces'. Otherwise, enter 'words'.
-	 * Do not translate into your own language.
-	 */
-	// eslint-disable-next-line @wordpress/i18n-text-domain
-	return _x( 'words', 'Word count type. Do not translate!' ) as Strategy;
-}
-
-/**
- * Counts the content length using the locale-appropriate strategy.
+ * Counts the content length in characters excluding spaces.
  *
  * @param {string} content The content to count.
  *
- * @return {number} The content count (words or characters based on locale).
+ * @return {number} The content count in characters excluding spaces.
  */
 export function getContentCount( content: string ): number {
-	return wordCount( content, getWordCountType() );
+	return wordCount( content, 'characters_excluding_spaces' );
 }
 
 /**
@@ -53,28 +34,4 @@ export function hasMinimumContent(
 	minCount: number
 ): boolean {
 	return getContentCount( content ) >= minCount;
-}
-
-/**
- * Formats a minimum-length tooltip label for AI feature buttons.
- *
- * Picks between a characters-based and a words-based message depending on
- * the active word-count strategy, then interpolates the minimum count.
- *
- * @param {string} characterMessage Already-translated message for character-count locales. Must contain one %d placeholder.
- * @param {string} wordMessage      Already-translated message for word-count locales. Must contain one %d placeholder.
- * @param {number} minCount         The minimum count to interpolate into the message.
- *
- * @return {string} The formatted label.
- */
-export function formatMinLengthLabel(
-	characterMessage: string,
-	wordMessage: string,
-	minCount: number
-): string {
-	// eslint-disable-next-line @wordpress/valid-sprintf
-	return sprintf(
-		getWordCountType() !== 'words' ? characterMessage : wordMessage,
-		minCount
-	);
 }

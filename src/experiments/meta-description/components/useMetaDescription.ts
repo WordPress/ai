@@ -8,7 +8,7 @@
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -16,10 +16,7 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
-import {
-	formatMinLengthLabel,
-	hasMinimumContent,
-} from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/word-count';
 import type {
 	MetaDescriptionAbilityInput,
 	MetaDescriptionAbilityResponse,
@@ -89,15 +86,10 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 
 	// Minimum-length requirement message, surfaced as the button tooltip when
 	// the content is too short to generate from.
-	const tooShortLabel = formatMinLengthLabel(
-		/* translators: %d: minimum number of characters required */
+	const tooShortLabel = sprintf(
+		/* translators: %d: minimum number of characters required. */
 		__(
 			'Meta Description generation will be available when the post content has at least %d characters.',
-			'ai'
-		),
-		/* translators: %d: minimum number of words required */
-		__(
-			'Meta Description generation will be available when the post content has at least %d words.',
 			'ai'
 		),
 		minContentLength
