@@ -163,7 +163,7 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		// The descriptive text should explain when the button will be enabled.
 		await expect( generateButton ).toHaveAccessibleDescription(
-			/50 words?/i
+			/250 characters?/i
 		);
 	} );
 

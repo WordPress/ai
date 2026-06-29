@@ -59,7 +59,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect( reviewButton ).toBeDisabled();
 
 		await expect( reviewButton ).toHaveAccessibleDescription(
-			/Editorial Notes will be available when the post content has at least 15 words./
+			/Editorial Notes will be available when the post content has at least 75 characters./
 		);
 	} );
 
@@ -222,7 +222,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		// The descriptive text should explain when the button becomes available.
 		await expect( reviewButton ).toHaveAccessibleDescription(
-			/Editorial Notes will be available when the post content has at least 15 words./
+			/Editorial Notes will be available when the post content has at least 75 characters./
 		);
 	} );
 

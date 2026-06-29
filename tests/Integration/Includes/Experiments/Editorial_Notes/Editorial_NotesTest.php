@@ -136,7 +136,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_editorial_notes', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"15"',
+			'"minContentLength":"75"',
 			(string) wp_scripts()->get_data( 'ai_editorial_notes', 'data' )
 		);
 	}
@@ -243,10 +243,10 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		wp_set_current_user( $user_id );
 
 		$prepared = array(
-			'comment_author' => 'Test User',
+			'comment_author'  => 'Test User',
 			'comment_post_ID' => $post_id,
-			'comment_type'   => 'comment',
-			'user_id'        => 99,
+			'comment_type'    => 'comment',
+			'user_id'         => 99,
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );

@@ -157,7 +157,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_content_resizing', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"5"',
+			'"minContentLength":"25"',
 			(string) wp_scripts()->get_data( 'ai_content_resizing', 'data' )
 		);
 	}

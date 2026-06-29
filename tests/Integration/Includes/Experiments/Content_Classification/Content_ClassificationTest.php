@@ -8,8 +8,8 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Content_Classification;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Content_Classification\Content_Classification;
+use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 
@@ -343,7 +343,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_content_classification', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"50"',
+			'"minContentLength":"250"',
 			(string) wp_scripts()->get_data( 'ai_content_classification', 'data' )
 		);
 	}

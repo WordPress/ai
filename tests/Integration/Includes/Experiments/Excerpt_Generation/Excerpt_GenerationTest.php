@@ -101,7 +101,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_excerpt_generation', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"50"',
+			'"minContentLength":"250"',
 			(string) wp_scripts()->get_data( 'ai_excerpt_generation', 'data' )
 		);
 	}

@@ -99,7 +99,9 @@ function count_characters_excluding_spaces( string $text ): int {
 		return 0;
 	}
 
-	return mb_strlen( $text, $charset );
+	$length = mb_strlen( $text, $charset );
+
+	return false === $length ? 0 : $length;
 }
 
 /**
