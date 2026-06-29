@@ -133,7 +133,7 @@ final class Main {
 			( new Posts() )->register();
 
 			// Expose curated core objects to the Abilities API, then register the
-			// `core/settings` ability (overriding any core-provided copy).
+			// `core/read-settings` ability (overriding any core-provided copy).
 			( new Show_In_Abilities() )->register();
 			( new Settings_Ability() )->init();
 		} catch ( \Throwable $e ) {
