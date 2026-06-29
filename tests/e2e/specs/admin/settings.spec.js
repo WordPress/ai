@@ -132,7 +132,7 @@ test.describe( 'Plugin settings', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Snackbar notifications do not cover the settings content (#800)', async ( {
+	test( 'Snackbar notifications do not cover the settings content', async ( {
 		admin,
 		page,
 	} ) => {

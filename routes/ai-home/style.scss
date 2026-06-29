@@ -102,7 +102,7 @@ body:has(.ai-settings-page) .components-popover {
  * default, centered over the (centered) settings content, where they obscure
  * the controls the user is interacting with. Pin them to the bottom
  * inline-start of the content area instead, offsetting by the WordPress admin
- * menu width so they clear both the menu and the settings cards. See #800.
+ * menu width so they clear both the menu and the settings cards.
  */
 body.settings_page_ai-wp-admin {
 	.components-snackbar-list {
