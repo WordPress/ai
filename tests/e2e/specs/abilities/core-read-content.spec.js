@@ -105,15 +105,15 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		expect( typeof outcome.result.total ).toBe( 'number' );
 		expect( typeof outcome.result.total_pages ).toBe( 'number' );
 		for ( const post of outcome.result.posts ) {
-			expect( post.type ).toBe( 'post' );
+			expect( post.post_type ).toBe( 'post' );
 			expect( post.status ).toBe( 'publish' );
 			expect( Object.keys( post ).sort() ).toEqual( [
 				'date',
 				'id',
+				'post_type',
 				'slug',
 				'status',
 				'title_rendered',
-				'type',
 			] );
 		}
 	} );
