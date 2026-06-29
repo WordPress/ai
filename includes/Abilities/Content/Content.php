@@ -91,7 +91,7 @@ final class Content {
 	 */
 	private array $fields = array(
 		'id',
-		'type',
+		'post_type',
 		'status',
 		'date',
 		'date_gmt',
@@ -119,7 +119,7 @@ final class Content {
 	 */
 	private array $default_fields = array(
 		'id',
-		'type',
+		'post_type',
 		'status',
 		'date',
 		'slug',
@@ -712,7 +712,7 @@ final class Content {
 				),
 				// Mode 3: query a set of readable posts by post type and filters.
 				array(
-					'title'                => __( 'Query readable posts by type and filters', 'ai' ),
+					'title'                => __( 'Query readable posts by post type and filters', 'ai' ),
 					'required'             => array( 'post_type' ),
 					'additionalProperties' => false,
 					'properties'           => array(
@@ -779,7 +779,7 @@ final class Content {
 					'type'        => 'integer',
 					'description' => __( 'The post ID.', 'ai' ),
 				),
-				'type'              => array(
+				'post_type'         => array(
 					'type'        => 'string',
 					'description' => __( 'The post type.', 'ai' ),
 				),
@@ -922,8 +922,8 @@ final class Content {
 		if ( $fields_requested( 'id' ) ) {
 			$data['id'] = (int) $post->ID;
 		}
-		if ( $fields_requested( 'type' ) ) {
-			$data['type'] = $post_type;
+		if ( $fields_requested( 'post_type' ) ) {
+			$data['post_type'] = $post_type;
 		}
 		if ( $fields_requested( 'status' ) ) {
 			$data['status'] = $post->post_status;

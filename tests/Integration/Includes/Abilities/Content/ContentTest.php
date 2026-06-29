@@ -380,6 +380,8 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertSame( 1, $query['properties']['include']['items']['minimum'], 'The include option should contain positive post IDs.' );
 
 		$fields_enum = $query['properties']['fields']['items']['enum'];
+		$this->assertContains( 'post_type', $fields_enum, 'The fields enum should expose the post type as post_type.' );
+		$this->assertNotContains( 'type', $fields_enum, 'The fields enum should not expose the post type as type.' );
 		$this->assertContains( 'content_raw', $fields_enum, 'The fields enum should include raw content.' );
 		$this->assertContains( 'content_rendered', $fields_enum, 'The fields enum should include rendered content.' );
 		$this->assertContains( 'title_raw', $fields_enum, 'The fields enum should include raw titles.' );
@@ -455,7 +457,9 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_output_schema_describes_single_post_and_query_responses(): void {
 		$this->register_ability();
 
-		$schema       = wp_get_ability( 'core/read-content' )->get_output_schema();
+		$ability      = wp_get_ability( 'core/read-content' );
+		$input_schema = $ability->get_input_schema();
+		$schema       = $ability->get_output_schema();
 		$post_schema  = $schema['oneOf'][0];
 		$query_schema = $schema['oneOf'][1];
 
@@ -464,6 +468,13 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertSame( 'object', $post_schema['type'], 'The single-post response should be described as an object.' );
 		$this->assertArrayNotHasKey( 'required', $post_schema, 'Individual post fields should remain optional.' );
 		$this->assertFalse( $post_schema['additionalProperties'], 'Returned posts should not allow unknown properties.' );
+		$this->assertArrayHasKey( 'post_type', $post_schema['properties'], 'The post schema should describe the post type as post_type.' );
+		$this->assertArrayNotHasKey( 'type', $post_schema['properties'], 'The post schema should not expose the post type as type.' );
+		$this->assertSame(
+			$input_schema['oneOf'][2]['properties']['fields']['items']['enum'],
+			array_keys( $post_schema['properties'] ),
+			'The fields enum should match the post output schema properties.'
+		);
 		$this->assertArrayHasKey( 'content_raw', $post_schema['properties'], 'The post schema should describe raw content.' );
 		$this->assertArrayHasKey( 'content_rendered', $post_schema['properties'], 'The post schema should describe rendered content.' );
 		$this->assertSame( array( 'posts', 'total', 'total_pages' ), $query_schema['required'], 'The query wrapper should require all top-level properties.' );
@@ -526,7 +537,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertSame( $post_id, $result['id'], 'The by-ID lookup should return the requested post directly.' );
 		$this->assertSame( 'Hello Content', $result['title_rendered'], 'Rendered titles should be returned by default.' );
 		$this->assertSame(
-			array( 'id', 'type', 'status', 'date', 'slug', 'title_rendered' ),
+			array( 'id', 'post_type', 'status', 'date', 'slug', 'title_rendered' ),
 			array_keys( $result ),
 			'Omitted fields should return the lean default field set.'
 		);
@@ -596,7 +607,7 @@ class ContentTest extends WP_UnitTestCase {
 			);
 			$this->assertGreaterThan( 0, $post_id, 'The hidden custom post should be created for the denial check.' );
 
-			$this->register_ability();
+		$this->register_ability();
 
 			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
