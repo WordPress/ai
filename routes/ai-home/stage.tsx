@@ -970,7 +970,7 @@ function AISettingsPage() {
 					<>
 						<Stack align="center" gap="xs">
 							<ToggleControl
-								label={ __( 'Enable AI', 'ai' ) }
+								label={ __( 'AI features enabled', 'ai' ) }
 								checked={ globalEnabled }
 								onChange={ ( checked ) => {
 									void handleChange( {

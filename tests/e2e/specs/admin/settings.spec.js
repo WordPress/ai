@@ -104,7 +104,9 @@ test.describe( 'Plugin settings', () => {
 		await disableExperiments( admin, page );
 
 		// Ensure global AI setting is disabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
+		await expect(
+			page.getByLabel( 'AI features enabled' )
+		).not.toBeChecked();
 
 		// Ensure feature toggles are disabled when AI is disabled.
 		await expect(
@@ -119,7 +121,7 @@ test.describe( 'Plugin settings', () => {
 		await enableExperiments( admin, page );
 
 		// Ensure global AI setting is enabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked();
+		await expect( page.getByLabel( 'AI features enabled' ) ).toBeChecked();
 
 		// Ensure we see the editor experiments section.
 		await expect(
@@ -130,6 +132,26 @@ test.describe( 'Plugin settings', () => {
 		await expect(
 			page.getByText( 'Admin Experiments', { exact: true } )
 		).toBeVisible();
+	} );
+
+	test( 'Global AI toggle reads as a master switch, not an aggregate (#600)', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiments( admin, page );
+
+		// The control is labeled as a state ("AI features enabled"), not the
+		// imperative "Enable AI" that implied an aggregate/all-on meaning.
+		const masterToggle = page.getByLabel( 'AI features enabled' );
+		await expect( masterToggle ).toBeVisible();
+		await expect( masterToggle ).toBeChecked();
+
+		// Turning a single feature off must not change the master toggle: it is
+		// a master switch, not a summary of individual feature states. This is
+		// the regression guard for the misleading solid-on toggle (#600).
+		await disableExperiment( admin, page, 'Title Generation' );
+		await expect( masterToggle ).toBeChecked();
+		await expect( page.getByLabel( 'Title Generation' ) ).not.toBeChecked();
 	} );
 
 	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
