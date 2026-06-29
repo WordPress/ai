@@ -86,13 +86,28 @@ test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.users ).toHaveLength( 1 );
-		expect( outcome.result.users[ 0 ].id ).toBe( currentUser.id );
-		expect( outcome.result.users[ 0 ].user_email ).toBe(
-			currentUser.email
-		);
-		expect( typeof outcome.result.total ).toBe( 'number' );
-		expect( typeof outcome.result.total_pages ).toBe( 'number' );
+		expect( outcome.result.id ).toBe( currentUser.id );
+		expect( outcome.result.user_email ).toBe( currentUser.email );
+		expect( outcome.result.users ).toBeUndefined();
+		expect( outcome.result.total ).toBeUndefined();
+		expect( outcome.result.total_pages ).toBeUndefined();
+	} );
+
+	test( 'returns lean fields by default for a single user', async ( {
+		page,
+	} ) => {
+		const outcome = await runCoreUsers( page, {
+			id: currentUser.id,
+		} );
+
+		expect( outcome.ok ).toBe( true );
+		expect( Object.keys( outcome.result ).sort() ).toEqual( [
+			'avatar_urls',
+			'display_name',
+			'id',
+			'link',
+			'user_nicename',
+		] );
 	} );
 
 	test( 'returns a users collection for an empty request', async ( {

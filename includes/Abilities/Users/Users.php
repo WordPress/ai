@@ -96,6 +96,19 @@ final class Users {
 	);
 
 	/**
+	 * Default fields returned when the caller does not request a field subset.
+	 *
+	 * @since x.x.x
+	 * @var string[]
+	 */
+	private array $default_fields = array(
+		'id',
+		'display_name',
+		'link',
+		'user_nicename',
+	);
+
+	/**
 	 * Cached public post type names.
 	 *
 	 * @since x.x.x
@@ -228,7 +241,7 @@ final class Users {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\WP_Error A map with a `users` list, or a WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error A user object in single-user mode, a map with a `users` list in collection mode, or a WP_Error on failure.
 	 */
 	public function execute_get_users( $input = array() ) {
 		$input  = is_array( $input ) ? $input : array();
@@ -244,11 +257,7 @@ final class Users {
 				return $this->not_found_error();
 			}
 
-			return array(
-				'users'       => array( $this->format_user( $user, $fields ) ),
-				'total'       => 1,
-				'total_pages' => 1,
-			);
+			return $this->format_user( $user, $fields );
 		}
 
 		$per_page = $this->normalize_per_page( $input );
@@ -495,10 +504,10 @@ final class Users {
 	}
 
 	/**
-	 * Normalizes the requested fields to the supported set, defaulting to all fields.
+	 * Normalizes the requested fields to the supported set, defaulting to a lean field set.
 	 *
-	 * An empty or absent `fields` value selects every field. Restricted fields are
-	 * still omitted per user when the current user cannot access them.
+	 * An empty or absent `fields` value selects common read-context fields. Restricted
+	 * fields are still omitted per user when the current user cannot access them.
 	 *
 	 * @since x.x.x
 	 *
@@ -509,13 +518,13 @@ final class Users {
 		$available_fields = $this->get_fields();
 
 		if ( empty( $input['fields'] ) || ! is_array( $input['fields'] ) ) {
-			return $available_fields;
+			return $this->get_default_fields();
 		}
 
 		$requested_fields = array_filter( $input['fields'], 'is_string' );
 		$fields           = array_intersect( $available_fields, $requested_fields );
 
-		return array() === $fields ? $available_fields : array_values( $fields );
+		return array() === $fields ? $this->get_default_fields() : array_values( $fields );
 	}
 
 	/**
@@ -542,6 +551,23 @@ final class Users {
 		$this->fields_include_avatars = $include_avatars;
 
 		return $this->fields;
+	}
+
+	/**
+	 * Returns the default field list in output order.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string[] Default field names.
+	 */
+	private function get_default_fields(): array {
+		$fields = $this->default_fields;
+
+		if ( get_option( 'show_avatars' ) ) {
+			$fields[] = 'avatar_urls';
+		}
+
+		return $fields;
 	}
 
 	/**
@@ -648,7 +674,7 @@ final class Users {
 				'type' => 'string',
 				'enum' => $this->get_fields(),
 			),
-			'description' => __( 'Limit each returned user to these fields. If omitted, all fields visible to the current user are returned.', 'ai' ),
+			'description' => __( 'Limit each returned user to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
 		);
 
 		return array(
@@ -760,6 +786,8 @@ final class Users {
 	 *
 	 * No user field is marked required because the `fields` input lets the caller
 	 * request any subset, and restricted fields are omitted when unavailable.
+	 * Single-user mode returns the user object directly, while collection mode returns
+	 * a paginated wrapper.
 	 *
 	 * @since x.x.x
 	 *
@@ -841,19 +869,21 @@ final class Users {
 			);
 		}
 
-		return array(
+		$user_schema = array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => $user_properties,
+		);
+
+		$collection_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
 			'required'             => array( 'users', 'total', 'total_pages' ),
 			'properties'           => array(
 				'users'       => array(
 					'type'        => 'array',
-					'description' => __( 'The readable users matching the request. A single-element list when requested by a unique identifier.', 'ai' ),
-					'items'       => array(
-						'type'                 => 'object',
-						'additionalProperties' => false,
-						'properties'           => $user_properties,
-					),
+					'description' => __( 'The readable users matching the collection request.', 'ai' ),
+					'items'       => $user_schema,
 				),
 				'total'       => array(
 					'type'        => 'integer',
@@ -863,6 +893,13 @@ final class Users {
 					'type'        => 'integer',
 					'description' => __( 'Total number of query result pages available after applying the permission filter to the query. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
 				),
+			),
+		);
+
+		return array(
+			'oneOf' => array(
+				$user_schema,
+				$collection_schema,
 			),
 		);
 	}
