@@ -508,48 +508,62 @@ function has_ai_credentials(): bool {
  *
  * @since 1.0.2
  *
- * @return bool True if at least one configured connector has an image-generation-capable model.
+ * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
+ * @return bool True if at least one connector supports image generation.
  */
-function has_image_generation_support(): bool {
+function has_image_generation_support( bool $reset_cache = false ): bool {
 	static $result = null;
 
-	if ( null !== $result ) {
+	if ( ! $reset_cache && null !== $result ) {
 		return $result;
 	}
 
-	if ( ! class_exists( AiClient::class ) ) {
-		$result = false;
-		return $result;
-	}
+	$connectors  = array();
+	$has_support = false;
 
-	$registry   = AiClient::defaultRegistry();
-	$connectors = get_ai_connectors();
+	if ( class_exists( AiClient::class ) ) {
+		$registry   = AiClient::defaultRegistry();
+		$connectors = get_ai_connectors();
 
-	foreach ( array_keys( $connectors ) as $connector_id ) {
-		if ( ! has_connector_authentication( $connector_id ) ) {
-			continue;
-		}
+		foreach ( array_keys( $connectors ) as $connector_id ) {
+			if ( ! has_connector_authentication( $connector_id ) ) {
+				continue;
+			}
 
-		try {
-			$provider_class = $registry->getProviderClassName( $connector_id );
+			try {
+				$provider_class = $registry->getProviderClassName( $connector_id );
 
-			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-			$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
 
-			foreach ( $models as $model ) {
-				foreach ( $model->getSupportedCapabilities() as $capability ) {
-					if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
-						$result = true;
-						return $result;
+				foreach ( $models as $model ) {
+					foreach ( $model->getSupportedCapabilities() as $capability ) {
+						if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
+							$has_support = true;
+							break 3;
+						}
 					}
 				}
+			} catch ( Throwable $e ) {
+				continue;
 			}
-		} catch ( Throwable $e ) {
-			continue;
 		}
 	}
 
-	$result = false;
+	/**
+	 * Filters whether image generation is supported.
+	 *
+	 * Allows third-party plugins to declare image generation support for
+	 * connectors that do not rely on API key settings (e.g. OAuth), without
+	 * triggering a live API request.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool  $has_support Whether image generation is supported.
+	 * @param array $connectors  The registered connectors.
+	 */
+	$result = (bool) apply_filters( 'wpai_has_image_generation_support', $has_support, $connectors );
+
 	return $result;
 }
 

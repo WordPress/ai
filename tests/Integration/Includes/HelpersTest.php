@@ -20,6 +20,7 @@ use WordPress\AiClient\Providers\Contracts\ProviderInterface;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
+use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 use WordPress\AI\Experiments\Summarization\Summarization;
 use function WordPress\AI\post_type_supports_bulk_ai_action;
 
@@ -96,6 +97,110 @@ final class Helper_Test_Provider implements ProviderInterface {
 }
 
 /**
+ * Stub model metadata used by image generation support tests.
+ *
+ * @since x.x.x
+ */
+final class Image_Generation_Test_Model_Metadata {
+
+	/**
+	 * Whether the stub model advertises image-generation support.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	public static bool $supports_image_generation = true;
+
+	/**
+	 * Returns the stub model's supported capabilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<object{value:string}> Supported capabilities.
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client model metadata API.
+	public function getSupportedCapabilities(): array {
+		return array(
+			(object) array(
+				'value' => self::$supports_image_generation
+					? CapabilityEnum::IMAGE_GENERATION
+					: CapabilityEnum::TEXT_GENERATION,
+			),
+		);
+	}
+}
+
+/**
+ * Stub model metadata directory used by image generation support tests.
+ *
+ * @since x.x.x
+ */
+final class Image_Generation_Test_Model_Metadata_Directory {
+
+	/**
+	 * Whether listing model metadata should throw to simulate a provider failure.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	public static bool $should_throw = false;
+
+	/**
+	 * Lists the stub model metadata.
+	 *
+	 * @since x.x.x
+	 *
+	 * @throws \RuntimeException When $should_throw is set, to exercise the support-detection guard.
+	 *
+	 * @return list<\WordPress\AI\Tests\Integration\Includes\Image_Generation_Test_Model_Metadata> Stub model metadata.
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client model metadata directory API.
+	public function listModelMetadata(): array {
+		if ( self::$should_throw ) {
+			throw new \RuntimeException( 'Simulated provider failure.' );
+		}
+
+		return array( new Image_Generation_Test_Model_Metadata() );
+	}
+}
+
+/**
+ * Stub provider exposing image-generation model metadata for support tests.
+ *
+ * Mirrors only the static methods that has_image_generation_support() and the AI
+ * client registry invoke, so it intentionally does not implement ProviderInterface.
+ *
+ * @since x.x.x
+ */
+final class Image_Generation_Test_Provider {
+
+	/**
+	 * Returns the stub provider availability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Tests\Integration\Includes\Helper_Test_Provider_Availability Stub availability reporting configured state.
+	 */
+	public static function availability(): Helper_Test_Provider_Availability {
+		return new Helper_Test_Provider_Availability();
+	}
+
+	/**
+	 * Returns the stub model metadata directory.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Tests\Integration\Includes\Image_Generation_Test_Model_Metadata_Directory Stub model metadata directory.
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client provider API.
+	public static function modelMetadataDirectory(): Image_Generation_Test_Model_Metadata_Directory {
+		return new Image_Generation_Test_Model_Metadata_Directory();
+	}
+}
+
+/**
  * Helper functions test case.
  *
  * @since 0.1.0
@@ -112,6 +217,15 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @var string
 	 */
 	private const TEST_AI_PROVIDER_ID = 'wpai_helper_test_provider';
+
+	/**
+	 * Stub provider ID used for image generation support tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const TEST_IMAGE_PROVIDER_ID = 'wpai_helper_test_image_provider';
 
 	/**
 	 * Registered test connector IDs.
@@ -166,8 +280,17 @@ class HelpersTest extends WP_UnitTestCase {
 		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_feature_test-feature_field_developer' );
-		Helper_Test_Provider_Availability::$is_configured = false;
+		Helper_Test_Provider_Availability::$is_configured                = false;
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+		Image_Generation_Test_Model_Metadata_Directory::$should_throw    = false;
 		$this->unregister_test_ai_provider();
+		$this->unregister_test_image_provider();
+
+		// Recompute against the cleaned-up environment so the memoized result does
+		// not leak the stub state into other test cases.
+		if ( class_exists( AiClient::class ) ) {
+			\WordPress\AI\has_image_generation_support( true );
+		}
 		parent::tearDown();
 	}
 
@@ -1069,6 +1192,244 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that a connector can advertise image generation support through the filter.
+	 *
+	 * Regression test: connectors that authenticate without an API key (e.g. OAuth) are
+	 * not picked up by has_connector_authentication(), so they advertise support through
+	 * the wpai_has_image_generation_support filter, which is request-free.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_image_generation_support_detects_connector_via_filter(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+			)
+		);
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+
+		$this->assertFalse(
+			\WordPress\AI\has_connector_authentication( self::TEST_IMAGE_PROVIDER_ID ),
+			'A non-API-key connector should not report API-key authentication.'
+		);
+		$this->assertFalse(
+			\WordPress\AI\has_image_generation_support( true ),
+			'A non-API-key connector is not detected until it advertises support.'
+		);
+
+		add_filter( 'wpai_has_image_generation_support', '__return_true' );
+
+		try {
+			$this->assertTrue(
+				\WordPress\AI\has_image_generation_support( true ),
+				'A connector advertising support through the filter should be detected.'
+			);
+		} finally {
+			remove_filter( 'wpai_has_image_generation_support', '__return_true' );
+		}
+	}
+
+	/**
+	 * Test that has_image_generation_support() still detects API-key connectors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_image_generation_support_detects_api_key_connector(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+
+		try {
+			$this->assertTrue( \WordPress\AI\has_image_generation_support( true ) );
+		} finally {
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
+	 * Test that has_image_generation_support() returns false when a connector's models lack the capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_image_generation_support_returns_false_when_models_lack_capability(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = false;
+
+		try {
+			$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+		} finally {
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
+	 * Test that has_image_generation_support() skips connectors without credentials.
+	 *
+	 * A non-API-key connector that does not advertise support through the
+	 * wpai_has_image_generation_support filter must not be detected.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_image_generation_support_skips_connector_without_credentials(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+			)
+		);
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+
+		$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+	}
+
+	/**
+	 * Test that the filter can suppress support for an otherwise-qualifying connector.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_image_generation_support_filter_can_suppress(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+
+		add_filter( 'wpai_has_image_generation_support', '__return_false' );
+
+		try {
+			$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+		} finally {
+			remove_filter( 'wpai_has_image_generation_support', '__return_false' );
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
+	 * Test that has_image_generation_support() memoizes its result until the cache is reset.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_image_generation_support_memoizes_result(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		add_filter( 'wpai_has_image_generation_support', '__return_true' );
+
+		try {
+			$computed = \WordPress\AI\has_image_generation_support( true );
+			remove_filter( 'wpai_has_image_generation_support', '__return_true' );
+
+			// Without a cache reset the memoized result is returned, even though the
+			// filter that produced it has since been removed.
+			$this->assertTrue( $computed );
+			$this->assertSame( $computed, \WordPress\AI\has_image_generation_support() );
+		} finally {
+			remove_filter( 'wpai_has_image_generation_support', '__return_true' );
+		}
+	}
+
+	/**
+	 * Test that has_image_generation_support() skips a connector whose provider throws.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_image_generation_support_skips_connector_that_throws(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata_Directory::$should_throw = true;
+
+		try {
+			$this->assertFalse( \WordPress\AI\has_image_generation_support( true ) );
+		} finally {
+			Image_Generation_Test_Model_Metadata_Directory::$should_throw = false;
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
 	 * Test that connector plugin metadata is optional.
 	 *
 	 * @since 0.9.0
@@ -1224,6 +1585,52 @@ class HelpersTest extends WP_UnitTestCase {
 		$classes_to_ids->setAccessible( true );
 		$class_map = (array) $classes_to_ids->getValue( $registry );
 		unset( $class_map[ Helper_Test_Provider::class ] );
+		$classes_to_ids->setValue( $registry, $class_map );
+	}
+
+	/**
+	 * Registers the image generation stub provider in the AI client registry.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_test_image_provider(): void {
+		$registry = AiClient::defaultRegistry();
+
+		$ids_to_classes = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map                                 = (array) $ids_to_classes->getValue( $registry );
+		$id_map[ self::TEST_IMAGE_PROVIDER_ID ] = Image_Generation_Test_Provider::class;
+		$ids_to_classes->setValue( $registry, $id_map );
+
+		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
+		$classes_to_ids->setAccessible( true );
+		$class_map = (array) $classes_to_ids->getValue( $registry );
+		$class_map[ Image_Generation_Test_Provider::class ] = self::TEST_IMAGE_PROVIDER_ID;
+		$classes_to_ids->setValue( $registry, $class_map );
+	}
+
+	/**
+	 * Unregisters the image generation stub provider from the AI client registry.
+	 *
+	 * @since x.x.x
+	 */
+	private function unregister_test_image_provider(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			return;
+		}
+
+		$registry = AiClient::defaultRegistry();
+
+		$ids_to_classes = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map = (array) $ids_to_classes->getValue( $registry );
+		unset( $id_map[ self::TEST_IMAGE_PROVIDER_ID ] );
+		$ids_to_classes->setValue( $registry, $id_map );
+
+		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
+		$classes_to_ids->setAccessible( true );
+		$class_map = (array) $classes_to_ids->getValue( $registry );
+		unset( $class_map[ Image_Generation_Test_Provider::class ] );
 		$classes_to_ids->setValue( $registry, $class_map );
 	}
 

@@ -4,7 +4,13 @@
 import { Button, Spinner } from '@wordpress/components';
 import { DataForm } from '@wordpress/dataviews';
 import type { Field, Form } from '@wordpress/dataviews';
-import { useCallback, useMemo, useRef } from '@wordpress/element';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Notice } from '@wordpress/ui';
 
@@ -46,8 +52,26 @@ export function DeveloperSettings( {
 	const { settings, update, clear, isSaving } =
 		useDeveloperFeatureSettings( featureId );
 
+	const [ draftSettings, setDraftSettings ] =
+		useState< DeveloperSelection | null >( null );
+	const [ isSavingThis, setIsSavingThis ] = useState( false );
+
+	useEffect( () => {
+		if ( ! isSaving ) {
+			setIsSavingThis( false );
+		}
+	}, [ isSaving ] );
+
+	useEffect( () => {
+		setDraftSettings( null );
+	}, [ settings.provider, settings.model ] );
+
+	const currentSettings = draftSettings ?? settings;
+
 	const getModelElements = useCallback( () => {
-		const provider = providers.find( ( p ) => p.id === settings.provider );
+		const provider = providers.find(
+			( p ) => p.id === currentSettings.provider
+		);
 		if ( ! provider ) {
 			return Promise.resolve( [] );
 		}
@@ -58,7 +82,7 @@ export function DeveloperSettings( {
 				label: m.name,
 			} ) ),
 		] );
-	}, [ settings.provider, providers ] );
+	}, [ currentSettings.provider, providers ] );
 
 	const fields = useMemo< Field< DeveloperSelection >[] >(
 		() => [
@@ -97,18 +121,33 @@ export function DeveloperSettings( {
 	const handleChange = useCallback(
 		( changes: Partial< DeveloperSelection > ) => {
 			if ( 'provider' in changes ) {
-				void update( { provider: changes.provider ?? '', model: '' } );
+				setDraftSettings( {
+					provider: changes.provider ?? '',
+					model: '',
+				} );
 			} else {
-				void update( { ...settings, ...changes } );
+				setDraftSettings( { ...currentSettings, ...changes } );
 			}
 		},
-		[ update, settings ]
+		[ currentSettings ]
 	);
 
+	const handleSave = useCallback( () => {
+		if ( draftSettings ) {
+			setIsSavingThis( true );
+			void update( draftSettings );
+		}
+	}, [ draftSettings, update ] );
+
 	const hasSavedSelection = settings.provider !== '' || settings.model !== '';
+	const hasUnsavedChanges =
+		draftSettings !== null &&
+		( draftSettings.provider !== settings.provider ||
+			draftSettings.model !== settings.model );
+
 	const hasStaleProvider =
-		!! settings.provider &&
-		! providers.find( ( p ) => p.id === settings.provider );
+		!! currentSettings.provider &&
+		! providers.find( ( p ) => p.id === currentSettings.provider );
 
 	if ( capability === 'none' ) {
 		return (
@@ -153,30 +192,45 @@ export function DeveloperSettings( {
 					) }
 					<div ref={ formWrapperRef }>
 						<DataForm< DeveloperSelection >
-							data={ settings }
+							data={ currentSettings }
 							fields={ fields }
 							form={ form }
 							onChange={ handleChange }
 						/>
 					</div>
-					{ hasSavedSelection && (
-						<Button
-							variant="link"
-							className="ai-developer-mode-fields__reset-button"
-							onClick={ () => {
-								formWrapperRef.current
-									?.querySelector< HTMLSelectElement >(
-										'select'
-									)
-									?.focus();
-								void clear();
-							} }
-							disabled={ isSaving }
-							accessibleWhenDisabled
-						>
-							{ __( 'Reset to default', 'ai' ) }
-						</Button>
-					) }
+					<div className="ai-developer-mode-fields__actions">
+						{ ( hasUnsavedChanges || isSavingThis ) && (
+							<Button
+								variant="primary"
+								onClick={ handleSave }
+								disabled={ isSavingThis || ! hasUnsavedChanges }
+								isBusy={ isSavingThis }
+								accessibleWhenDisabled
+								__next40pxDefaultSize
+							>
+								{ __( 'Save', 'ai' ) }
+							</Button>
+						) }
+						{ hasSavedSelection && (
+							<Button
+								variant="link"
+								className="ai-developer-mode-fields__reset-button"
+								onClick={ () => {
+									formWrapperRef.current
+										?.querySelector< HTMLSelectElement >(
+											'select'
+										)
+										?.focus();
+									setDraftSettings( null );
+									void clear();
+								} }
+								disabled={ isSavingThis }
+								accessibleWhenDisabled
+							>
+								{ __( 'Reset to default', 'ai' ) }
+							</Button>
+						) }
+					</div>
 				</>
 			) }
 		</div>
