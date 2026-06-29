@@ -331,13 +331,12 @@ class UsersTest extends WP_UnitTestCase {
 
 		$collection_properties = $schema['oneOf'][4]['properties'];
 		$this->assertEqualSets(
-			array( 'roles', 'has_published_posts', 'fields', 'page', 'per_page' ),
+			array( 'roles', 'has_published_posts', 'include', 'fields', 'page', 'per_page' ),
 			array_keys( $collection_properties ),
 			'Collection mode should expose only the supported query parameters.'
 		);
 		$excluded_properties = array(
 			'search',
-			'include',
 			'exclude',
 			'email',
 			'username',
@@ -367,6 +366,11 @@ class UsersTest extends WP_UnitTestCase {
 		$post_type_names = $schema['oneOf'][4]['properties']['has_published_posts']['oneOf'][1]['items']['enum'];
 		$this->assertContains( 'post', $post_type_names, 'The has_published_posts enum should expose public post types.' );
 		$this->assertNotContains( 'revision', $post_type_names, 'The has_published_posts enum should omit non-public post types.' );
+
+		$this->assertSame( 1, $collection_properties['include']['minItems'], 'The include option should require at least one user ID.' );
+		$this->assertTrue( $collection_properties['include']['uniqueItems'], 'The include option should reject duplicate user IDs.' );
+		$this->assertSame( 'integer', $collection_properties['include']['items']['type'], 'The include option should contain user IDs.' );
+		$this->assertSame( 1, $collection_properties['include']['items']['minimum'], 'The include option should contain positive user IDs.' );
 
 		$output_schema     = wp_get_ability( 'core/read-users' )->get_output_schema();
 		$user_schema       = $output_schema['oneOf'][0];
@@ -583,6 +587,86 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertNotContains( $this->subscriber_id, wp_list_pluck( $result['users'], 'id' ), 'Collection mode should omit subscribers for users without list_users.' );
 		$this->assertIsInt( $result['total'], 'Collection mode should include an integer total.' );
 		$this->assertIsInt( $result['total_pages'], 'Collection mode should include an integer total_pages value.' );
+	}
+
+	/**
+	 * Collection include limits results and preserves requested order.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_collection_include_limits_results_and_preserves_order(): void {
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'include'  => array( $this->public_author_id, $this->subscriber_id ),
+				'fields'   => array( 'id' ),
+				'per_page' => 100,
+			)
+		);
+
+		$this->assertIsArray( $result, 'An included user query should return an array.' );
+		$this->assertSame(
+			array( $this->public_author_id, $this->subscriber_id ),
+			wp_list_pluck( $result['users'], 'id' ),
+			'Included user queries should preserve the requested order.'
+		);
+		$this->assertSame( 2, $result['total'], 'Included user queries should report the matching included total.' );
+	}
+
+	/**
+	 * Collection include still respects row-level read permissions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_collection_include_respects_read_permissions(): void {
+		wp_set_current_user( $this->subscriber_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'include'  => array( $this->admin_id, $this->public_author_id ),
+				'fields'   => array( 'id' ),
+				'per_page' => 100,
+			)
+		);
+
+		$this->assertIsArray( $result, 'An included user query should return an array.' );
+		$this->assertSame(
+			array( $this->public_author_id ),
+			wp_list_pluck( $result['users'], 'id' ),
+			'Included user queries should omit users the current user cannot read.'
+		);
+	}
+
+	/**
+	 * Include is a collection-only option.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_include_cannot_be_combined_with_single_user_modes(): void {
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$by_id = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'id'      => $this->subscriber_id,
+				'include' => array( $this->subscriber_id ),
+			)
+		);
+
+		$by_login = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'user_login' => 'users_ability_subscriber',
+				'include'    => array( $this->subscriber_id ),
+			)
+		);
+
+		$this->assertWPError( $by_id, 'ID plus include should fail validation.' );
+		$this->assertWPError( $by_login, 'Login plus include should fail validation.' );
+		$this->assertSame( 'ability_invalid_input', $by_id->get_error_code(), 'ID plus include should return an input error.' );
+		$this->assertSame( 'ability_invalid_input', $by_login->get_error_code(), 'Login plus include should return an input error.' );
 	}
 
 	/**
