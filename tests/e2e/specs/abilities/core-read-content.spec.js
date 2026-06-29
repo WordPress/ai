@@ -104,6 +104,14 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		for ( const post of outcome.result.posts ) {
 			expect( post.type ).toBe( 'post' );
 			expect( post.status ).toBe( 'publish' );
+			expect( Object.keys( post ).sort() ).toEqual( [
+				'date',
+				'id',
+				'slug',
+				'status',
+				'title_rendered',
+				'type',
+			] );
 		}
 	} );
 
@@ -134,8 +142,51 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		}
 	} );
 
+	test( 'limits query results to included posts', async ( { page } ) => {
+		const include = [ seededPostIds[ 2 ], seededPostIds[ 0 ] ];
+		const outcome = await runCoreReadContent( page, {
+			post_type: 'post',
+			include,
+			fields: [ 'id' ],
+		} );
+
+		expect( outcome.ok ).toBe( true );
+		expect( outcome.result.posts.map( ( post ) => post.id ) ).toEqual(
+			include
+		);
+		expect( typeof outcome.result.total ).toBe( 'number' );
+		expect( typeof outcome.result.total_pages ).toBe( 'number' );
+	} );
+
+	test( 'returns a single post directly by ID', async ( { page } ) => {
+		const outcome = await runCoreReadContent( page, {
+			id: seededPostIds[ 0 ],
+			fields: [ 'id', 'title_rendered' ],
+		} );
+
+		expect( outcome.ok ).toBe( true );
+		expect( outcome.result.id ).toBe( seededPostIds[ 0 ] );
+		expect( outcome.result.title_rendered ).toBe(
+			'core/read-content seeded post one'
+		);
+		expect( outcome.result.posts ).toBeUndefined();
+		expect( outcome.result.total ).toBeUndefined();
+		expect( outcome.result.total_pages ).toBeUndefined();
+	} );
+
 	test( 'rejects a slug query without a post type', async ( { page } ) => {
 		const outcome = await runCoreReadContent( page, { slug: 'whatever' } );
+
+		expect( outcome.ok ).toBe( false );
+		expect( outcome.code ).toBe( 'ability_invalid_input' );
+	} );
+
+	test( 'rejects slug mode with query-only params', async ( { page } ) => {
+		const outcome = await runCoreReadContent( page, {
+			post_type: 'post',
+			slug: 'whatever',
+			page: 1,
+		} );
 
 		expect( outcome.ok ).toBe( false );
 		expect( outcome.code ).toBe( 'ability_invalid_input' );
@@ -152,12 +203,9 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.posts ).toHaveLength( 1 );
-		expect( outcome.result.posts[ 0 ].title_rendered ).toBe(
-			'AI E2E Sample Content'
-		);
-		expect( outcome.result.posts[ 0 ].slug ).toBe(
-			'ai-e2e-sample-content'
-		);
+		expect( outcome.result.title_rendered ).toBe( 'AI E2E Sample Content' );
+		expect( outcome.result.slug ).toBe( 'ai-e2e-sample-content' );
+		expect( outcome.result.posts ).toBeUndefined();
+		expect( outcome.result.total ).toBeUndefined();
 	} );
 } );
