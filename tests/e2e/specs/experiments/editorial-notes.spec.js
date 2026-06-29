@@ -303,4 +303,98 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			} )
 		).not.toBeVisible();
 	} );
+
+	test( 'Only shows reviewing spinner on the block currently being reviewed, and shows busy notice on others', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Multi-Block Editorial Notes Test',
+		} );
+
+		// Insert Paragraph Block 1
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is paragraph number one. It contains enough content for AI review to run.',
+			},
+		} );
+
+		// Insert Paragraph Block 2
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is paragraph number two. It also contains enough content for AI review.',
+			},
+		} );
+
+		// Set up a deferred promise to intercept and hold the Ability request.
+		let resolveRequest;
+		const requestPromise = new Promise( ( resolve ) => {
+			resolveRequest = resolve;
+		} );
+
+		// Intercept the modern WP Abilities REST endpoint.
+		await page.route(
+			/wp-json\/wp-abilities\/v1\/abilities\/ai\/editorial-notes\/run/,
+			async ( route ) => {
+				await requestPromise;
+				await route.continue();
+			}
+		);
+
+		// Select the first block and open options menu
+		const paragraphs = editor.canvas.locator( '.wp-block-paragraph' );
+		await paragraphs.nth( 0 ).click();
+		// Click into the more menu for the block.
+		await editor.clickBlockToolbarButton( 'Options' );
+
+		// Trigger editorial note generation on block 1
+		await page
+			.getByRole( 'menuitem', {
+				name: 'Generate Editorial Note',
+				exact: true,
+			} )
+			.click();
+
+		// Verify it shows "Reviewing..." with a spinner.
+		const menuitem1 = page.getByRole( 'menuitem', {
+			name: 'Reviewing…',
+			exact: true,
+		} );
+
+		await expect( menuitem1 ).toBeVisible();
+		await expect( menuitem1 ).toBeDisabled();
+		await expect(
+			menuitem1.locator( '.components-spinner' )
+		).toBeVisible();
+
+		// Select second block and open options menu
+		await paragraphs.nth( 1 ).click();
+		await editor.clickBlockToolbarButton( 'Options' );
+
+		// Verify block 2 displays the help text/info and no spinner.
+		// We set exact: false here because Gutenberg renders the busy helper description text
+		// inside the menu item, which changes the computed accessible name of the element.
+		const menuitem2 = page.getByRole( 'menuitem', {
+			name: 'Generate Editorial Note',
+			exact: false,
+		} );
+		await expect( menuitem2 ).toBeVisible();
+		await expect( menuitem2 ).toBeDisabled();
+		await expect( menuitem2.locator( '.components-spinner' ) ).toHaveCount(
+			0
+		);
+		await expect(
+			page.locator( '.components-menu-item__info', {
+				hasText: 'Another block is currently being reviewed.',
+			} )
+		).toBeVisible();
+
+		// Finish the pending request
+		resolveRequest();
+	} );
 } );

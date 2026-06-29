@@ -52,7 +52,8 @@ export default function EditorialNotesPlugin() {
 		runReview,
 	} = useEditorialNotes();
 	const {
-		isReviewing: isReviewingBlock,
+		isReviewing: isAnyBlockReviewing,
+		reviewingClientId,
 		reviewBlock,
 		isContentTooShort: isBlockReviewDisabled,
 	} = useEditorialBlock();
@@ -177,22 +178,34 @@ export default function EditorialNotesPlugin() {
 					}
 
 					const clientId = selectedClientIds[ 0 ] ?? null;
+					const isThisBlockReviewing = reviewingClientId === clientId;
 
 					return (
 						<MenuItem
 							icon={
-								isReviewingBlock ? <Spinner /> : commentContent
+								isThisBlockReviewing ? (
+									<Spinner />
+								) : (
+									commentContent
+								)
 							}
 							disabled={
-								isReviewingBlock || isBlockReviewDisabled
+								isAnyBlockReviewing || isBlockReviewDisabled
 							}
 							onClick={ () => {
 								if ( clientId ) {
 									reviewBlock( clientId );
 								}
 							} }
+							{ ...( isAnyBlockReviewing &&
+								! isThisBlockReviewing && {
+									info: __(
+										'Another block is currently being reviewed.',
+										'ai'
+									),
+								} ) }
 						>
-							{ isReviewingBlock
+							{ isThisBlockReviewing
 								? __( 'Reviewing…', 'ai' )
 								: __( 'Generate Editorial Note', 'ai' ) }
 						</MenuItem>

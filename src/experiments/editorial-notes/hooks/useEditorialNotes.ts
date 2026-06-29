@@ -341,11 +341,14 @@ export function useEditorialNotes(): {
  */
 export function useEditorialBlock(): {
 	isReviewing: boolean;
+	reviewingClientId: string | null;
 	isContentTooShort: boolean;
 	minContentLength: number;
 	reviewBlock: ( clientId: string ) => Promise< void >;
 } {
-	const [ isReviewing, setIsReviewing ] = useState< boolean >( false );
+	const [ reviewingClientId, setReviewingClientId ] = useState<
+		string | null
+	>( null );
 	const { content, isContentTooShort, minContentLength } =
 		useEditorialNotesAvailability();
 
@@ -354,7 +357,7 @@ export function useEditorialBlock(): {
 			return;
 		}
 
-		setIsReviewing( true );
+		setReviewingClientId( clientId );
 
 		dispatch( noticesStore ).removeNotice( 'ai_editorial_block_error' );
 
@@ -430,11 +433,17 @@ export function useEditorialBlock(): {
 				}
 			);
 		} finally {
-			setIsReviewing( false );
+			setReviewingClientId( null );
 		}
 	};
 
-	return { isReviewing, isContentTooShort, minContentLength, reviewBlock };
+	return {
+		isReviewing: !! reviewingClientId,
+		reviewingClientId,
+		isContentTooShort,
+		minContentLength,
+		reviewBlock,
+	};
 }
 
 /**
