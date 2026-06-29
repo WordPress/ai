@@ -209,21 +209,29 @@ function injectSuggestReplyControls(): void {
 		return;
 	}
 
-	const replySubmit = document.querySelector< HTMLElement >( '#replysubmit' );
+	const buttonArea = document.querySelector< HTMLElement >(
+		'#replysubmit .reply-submit-buttons'
+	);
 
-	if ( ! replySubmit ) {
+	if ( ! buttonArea ) {
 		return;
 	}
 
-	const wrapper = document.createElement( 'p' );
+	const wrapper = document.createElement( 'span' );
 	wrapper.id = CONTROLS_WRAPPER_ID;
 	wrapper.style.cssText =
-		'display:flex; align-items:center; gap:6px; margin:6px 0 0;';
+		'display:inline-flex; align-items:center; gap:6px; margin-left:12px; border-left:1px solid #ddd; padding-left:12px;';
 
 	wrapper.appendChild( createSuggestReplyButton() );
 	wrapper.appendChild( createToneControl() );
 
-	replySubmit.appendChild( wrapper );
+	const spinner = buttonArea.querySelector( '.waiting.spinner' );
+
+	if ( spinner ) {
+		buttonArea.insertBefore( wrapper, spinner );
+	} else {
+		buttonArea.appendChild( wrapper );
+	}
 }
 
 /**
