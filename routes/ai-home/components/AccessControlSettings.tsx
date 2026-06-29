@@ -132,7 +132,7 @@ export function AccessControlSettings( {
 	return (
 		<div
 			className="ai-access-control-mode-fields ai-feature-settings-form"
-			style={ { marginTop: '16px' } }
+			style={ { marginTop: 'var(--wpds-dimension-gap-md, 12px)' } }
 		>
 			{ isLoading && <Spinner /> }
 			{ ! isLoading && fetchError && (
@@ -156,24 +156,30 @@ export function AccessControlSettings( {
 								>
 									{ __( 'Roles', 'ai' ) }
 								</legend>
-								<Flex direction="column" gap={ 1 }>
+								<div
+									style={ {
+										display: 'grid',
+										gridTemplateColumns:
+											'repeat(3, 1fr)',
+										gap: '12px',
+									} }
+								>
 									{ roles.map( ( role ) => (
-										<FlexItem key={ role.id }>
-											<CheckboxControl
-												label={ role.name }
-												checked={ effectiveRoles.includes(
-													role.id
-												) }
-												onChange={ ( checked ) =>
-													handleRoleToggle(
-														role.id,
-														checked
-													)
-												}
-											/>
-										</FlexItem>
+										<CheckboxControl
+											key={ role.id }
+											label={ role.name }
+											checked={ effectiveRoles.includes(
+												role.id
+											) }
+											onChange={ ( checked ) =>
+												handleRoleToggle(
+													role.id,
+													checked
+												)
+											}
+										/>
 									) ) }
-								</Flex>
+								</div>
 							</fieldset>
 						</FlexItem>
 						<FlexItem>
