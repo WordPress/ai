@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
  * Registers the read-only `core/read-users` ability, which retrieves one or more
  * readable WordPress users. Supports fetching a single readable user by ID,
  * user email, user login, or user nicename, or querying a paginated collection optionally
- * filtered by roles or published-post authorship. Field-level access is enforced
+ * filtered by roles, published-post authorship, or included IDs. Field-level access is enforced
  * per user by omitting fields the current user cannot view.
  *
  * This class is kept almost identical to the WordPress core class `WP_Users_Abilities`
@@ -180,7 +180,7 @@ final class Users {
 			'core/read-users',
 			array(
 				'label'               => __( 'Read Users', 'ai' ),
-				'description'         => __( 'Retrieves one or more readable WordPress users. Fetch a single readable user by ID, user email, user login, or user nicename, or query a paginated collection optionally filtered by roles or published-post authorship.', 'ai' ),
+				'description'         => __( 'Retrieves one or more readable WordPress users. Fetch a single readable user by ID, user email, user login, or user nicename, or query a paginated collection optionally filtered by roles, published-post authorship, or included IDs.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_users_input_schema(),
 				'output_schema'       => $this->get_users_output_schema(),
@@ -268,6 +268,12 @@ final class Users {
 			'offset'      => ( $page - 1 ) * $per_page,
 			'count_total' => true,
 		);
+
+		$include = $this->normalize_include( $input );
+		if ( array() !== $include ) {
+			$query_args['include'] = $include;
+			$query_args['orderby'] = 'include';
+		}
 
 		if ( ! empty( $input['roles'] ) && current_user_can( 'list_users' ) ) {
 			$query_args['role__in'] = $this->normalize_string_list( $input['roles'] );
@@ -627,6 +633,25 @@ final class Users {
 	}
 
 	/**
+	 * Normalizes collection-mode included user IDs.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return int[] User IDs.
+	 */
+	private function normalize_include( array $input ): array {
+		if ( empty( $input['include'] ) || ! is_array( $input['include'] ) ) {
+			return array();
+		}
+
+		$ids = array_map( array( $this, 'input_int' ), $input['include'] );
+		$ids = array_filter( $ids );
+
+		return array_values( array_unique( $ids ) );
+	}
+
+	/**
 	 * Normalizes the `has_published_posts` collection input.
 	 *
 	 * @since x.x.x
@@ -675,6 +700,16 @@ final class Users {
 				'enum' => $this->get_fields(),
 			),
 			'description' => __( 'Limit each returned user to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
+		);
+		$include           = array(
+			'type'        => 'array',
+			'uniqueItems' => true,
+			'minItems'    => 1,
+			'items'       => array(
+				'type'    => 'integer',
+				'minimum' => 1,
+			),
+			'description' => __( 'Limit the query to these user IDs. Results preserve this order where possible and still respect read permissions.', 'ai' ),
 		);
 
 		return array(
@@ -763,6 +798,7 @@ final class Users {
 							),
 							'description' => __( 'Limit results to users with published posts. Use true for all post types, or provide post type names.', 'ai' ),
 						),
+						'include'             => $include,
 						'fields'              => $fields,
 						'page'                => array(
 							'type'        => 'integer',

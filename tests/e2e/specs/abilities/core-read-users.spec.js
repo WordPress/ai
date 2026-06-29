@@ -151,6 +151,18 @@ test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 		}
 	} );
 
+	test( 'limits collection results to included users', async ( { page } ) => {
+		const outcome = await runCoreUsers( page, {
+			include: [ currentUser.id ],
+			fields: [ 'id' ],
+		} );
+
+		expect( outcome.ok ).toBe( true );
+		expect( outcome.result.users ).toEqual( [ { id: currentUser.id } ] );
+		expect( typeof outcome.result.total ).toBe( 'number' );
+		expect( typeof outcome.result.total_pages ).toBe( 'number' );
+	} );
+
 	test( 'filters collection mode by role', async ( { page } ) => {
 		const outcome = await runCoreUsers( page, {
 			roles: [ 'administrator' ],
