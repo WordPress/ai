@@ -30,7 +30,7 @@ import {
 } from '../../../utils/notes';
 import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
-import { hasMinimumContent } from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 

@@ -1,8 +1,8 @@
 /**
- * Shared word count utilities.
+ * Shared character count utilities.
  *
- * Provides a standardized way to count content length across all features,
- * respecting the user's locale for word/character-based counting.
+ * Provides a standardized way to count content length across all features
+ * in characters excluding spaces.
  */
 
 /**
@@ -11,11 +11,11 @@
 import { count as wordCount } from '@wordpress/wordcount';
 
 /**
- * Counts the content length in characters excluding spaces.
+ * Counts the content length in characters.
  *
  * @param {string} content The content to count.
  *
- * @return {number} The content count in characters excluding spaces.
+ * @return {number} The content count in characters.
  */
 export function getContentCount( content: string ): number {
 	return wordCount( content, 'characters_excluding_spaces' );

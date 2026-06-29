@@ -18,7 +18,7 @@ import apiFetch from '@wordpress/api-fetch';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
-import { hasMinimumContent } from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 import type {
 	ContentClassificationAbilityInput,
 	ContentClassificationResponse,
@@ -175,7 +175,7 @@ export function useContentClassification( taxonomy: string ): {
 
 	const { minContentLength } = getSettings();
 
-	// Check if content has enough words.
+	// Check if content has enough characters.
 	const hasEnoughContent = hasMinimumContent(
 		content || '',
 		minContentLength

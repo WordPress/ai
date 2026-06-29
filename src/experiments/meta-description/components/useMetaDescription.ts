@@ -16,7 +16,7 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
-import { hasMinimumContent } from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 import type {
 	MetaDescriptionAbilityInput,
 	MetaDescriptionAbilityResponse,
