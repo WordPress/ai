@@ -79,29 +79,33 @@ function normalize_content( string $content ): string {
 /**
  * Counts characters excluding whitespace, with Unicode support.
  *
+ * This approximately mirrors @wordpress/wordcount's
+ * `characters_excluding_spaces` strategy used in the editor.
+ *
  * @since x.x.x
  *
  * @param string $text The text to count characters in.
  * @return int The number of non-whitespace characters.
  */
 function count_characters_excluding_spaces( string $text ): int {
-	$text    = wp_strip_all_tags( $text );
-	$charset = get_bloginfo( 'charset' );
+	// Strip all HTML tags including comments.
+	$text = wp_strip_all_tags( $text );
 
-	if ( empty( $charset ) ) {
-		$charset = 'UTF-8';
-	}
+	// Normalize NBSP entities to whitespace.
+	$text = preg_replace( '/&nbsp;|&#160;/i', ' ', $text ) ?? $text;
 
-	$text = html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, $charset );
-	$text = preg_replace( '/[\s\p{Z}]+/u', '', $text );
+	// Transpose HTML entities to countable characters.
+	$text = preg_replace( '/&\S+?;/u', 'a', $text ) ?? $text;
 
-	if ( null === $text ) {
-		return 0;
-	}
+	/*
+	 * Count non-whitespace code points using a class that mirrors JavaScript's
+	 * \s semantics, so full-width CJK spaces and similar separators match the
+	 * editor's @wordpress/wordcount result.
+	 */
+	$whitespace = '\x{0009}\x{000A}\x{000B}\x{000C}\x{000D}\x{0020}\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
+	$count      = preg_match_all( sprintf( '/[^%s]/u', $whitespace ), $text );
 
-	$length = mb_strlen( $text, $charset );
-
-	return false === $length ? 0 : $length;
+	return false === $count ? 0 : $count;
 }
 
 /**

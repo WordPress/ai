@@ -37,7 +37,7 @@ import { ensureProvider } from '../../../utils/provider-status';
 import { getContentCount } from '../../../utils/character-count';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
-const SHORTEN_MIN_CONTENT_LENGTH = 100;
+const SHORTEN_MIN_CONTENT_LENGTH = 25;
 const NOTICE_ID = 'ai_content_resizing_error';
 
 const getSettings = (): ContentResizingData => {
