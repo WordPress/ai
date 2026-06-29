@@ -145,12 +145,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$schema = $method->invoke( $this->ability );
 
 		$this->assertIsArray( $schema );
-		$this->assertSame( 'object', $schema['type'] );
-		$this->assertArrayHasKey( 'properties', $schema );
-		$this->assertArrayHasKey( 'comment_id', $schema['properties'] );
-		$this->assertSame( 'integer', $schema['properties']['comment_id']['type'] );
-		$this->assertArrayHasKey( 'reply', $schema['properties'] );
-		$this->assertSame( 'string', $schema['properties']['reply']['type'] );
+		$this->assertSame( 'string', $schema['type'] );
 	}
 
 	/**
@@ -290,11 +285,11 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		);
 
 		$this->assertIsString( $context );
-		$this->assertStringContainsString( 'Post Title: Test Post Title', $context );
-		$this->assertStringContainsString( 'Post Context:', $context );
-		$this->assertStringContainsString( 'Comment Author: Jane Doe', $context );
-		$this->assertStringContainsString( 'Comment: """This is a great article!"""', $context );
-		$this->assertStringContainsString( 'Requested Tone: professional', $context );
+		$this->assertStringContainsString( '<post-title>Test Post Title</post-title>', $context );
+		$this->assertStringContainsString( '<post-context>', $context );
+		$this->assertStringContainsString( '<comment-author>Jane Doe</comment-author>', $context );
+		$this->assertStringContainsString( '<comment>This is a great article!</comment>', $context );
+		$this->assertStringContainsString( '<requested-tone>professional</requested-tone>', $context );
 	}
 
 	/**
@@ -324,10 +319,10 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 			'casual'
 		);
 
-		$this->assertStringNotContainsString( 'Post Title:', $context );
-		$this->assertStringNotContainsString( 'Post Context:', $context );
-		$this->assertStringContainsString( 'Comment Author: John Smith', $context );
-		$this->assertStringContainsString( 'Requested Tone: casual', $context );
+		$this->assertStringNotContainsString( '<post-title>', $context );
+		$this->assertStringNotContainsString( '<post-context>', $context );
+		$this->assertStringContainsString( '<comment-author>John Smith</comment-author>', $context );
+		$this->assertStringContainsString( '<requested-tone>casual</requested-tone>', $context );
 	}
 
 	/**

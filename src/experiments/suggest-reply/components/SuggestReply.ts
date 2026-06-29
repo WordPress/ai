@@ -14,11 +14,6 @@ import { runAbility } from '../../../utils/run-ability';
 
 type Tone = 'friendly' | 'professional' | 'casual';
 
-type ReplySuggestionResult = {
-	comment_id: number;
-	reply: string;
-};
-
 const LOADING_TEXT = __( 'Generating…', 'ai' );
 const ORIGINAL_LINK_TEXT = __( 'Suggest reply', 'ai' );
 const SUGGEST_BTN_TEXT = __( 'Suggest Reply', 'ai' );
@@ -245,13 +240,13 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 	setReplyFormDisabled( true );
 
 	try {
-		const result = await runAbility< ReplySuggestionResult >(
-			'ai/reply-suggestion',
-			{ comment_id: commentId, tone }
-		);
+		const result = await runAbility< string >( 'ai/reply-suggestion', {
+			comment_id: commentId,
+			tone,
+		} );
 
 		setTextareaPlaceholder( '' );
-		populateReplyTextarea( result.reply ?? '' );
+		populateReplyTextarea( result ?? '' );
 	} catch ( err: any ) {
 		setTextareaPlaceholder( '' );
 

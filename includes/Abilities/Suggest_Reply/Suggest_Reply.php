@@ -64,17 +64,8 @@ class Suggest_Reply extends Abstract_Ability {
 	 */
 	protected function output_schema(): array {
 		return array(
-			'type'       => 'object',
-			'properties' => array(
-				'comment_id' => array(
-					'type'        => 'integer',
-					'description' => esc_html__( 'The comment ID.', 'ai' ),
-				),
-				'reply'      => array(
-					'type'        => 'string',
-					'description' => esc_html__( 'The generated reply suggestion.', 'ai' ),
-				),
-			),
+			'type'        => 'string',
+			'description' => esc_html__( 'The generated reply suggestion.', 'ai' ),
 		);
 	}
 
@@ -83,7 +74,7 @@ class Suggest_Reply extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array{comment_id: int, reply: string}|\WP_Error The result of the ability execution.
+	 * @return string|\WP_Error The generated reply suggestion.
 	 */
 	protected function execute_callback( $input ) {
 		$input = wp_parse_args(
@@ -117,11 +108,14 @@ class Suggest_Reply extends Abstract_Ability {
 		}
 
 		// Fetch post context.
-		$post         = get_post( (int) $comment->comment_post_ID );
-		$post_title   = $post instanceof \WP_Post ? $post->post_title : '';
-		$post_excerpt = $post instanceof \WP_Post
-			? wp_trim_words( wp_strip_all_tags( $post->post_content ), 50 )
-			: '';
+		$post = get_post( (int) $comment->comment_post_ID );
+
+		if ( ! $post instanceof \WP_Post ) {
+			return new WP_Error( 'post_not_found', esc_html__( 'Post not found.', 'ai' ) );
+		}
+
+		$post_title   = $post->post_title;
+		$post_excerpt = get_the_excerpt( $post );
 
 		$tone = in_array( $input['tone'], array( 'professional', 'friendly', 'casual' ), true )
 			? $input['tone']
@@ -137,10 +131,7 @@ class Suggest_Reply extends Abstract_Ability {
 			return $reply;
 		}
 
-		return array(
-			'comment_id' => $comment_id,
-			'reply'      => $reply,
-		);
+		return $reply;
 	}
 
 	/**
@@ -190,16 +181,16 @@ class Suggest_Reply extends Abstract_Ability {
 		$parts = array();
 
 		if ( '' !== $post_title ) {
-			$parts[] = sprintf( 'Post Title: %s', $post_title );
+			$parts[] = sprintf( '<post-title>%s</post-title>', $post_title );
 		}
 
 		if ( '' !== $post_excerpt ) {
-			$parts[] = sprintf( 'Post Context: %s', $post_excerpt );
+			$parts[] = sprintf( '<post-context>%s</post-context>', $post_excerpt );
 		}
 
-		$parts[] = sprintf( 'Comment Author: %s', $comment->comment_author );
-		$parts[] = sprintf( 'Comment: """%s"""', $comment->comment_content );
-		$parts[] = sprintf( 'Requested Tone: %s', $tone );
+		$parts[] = sprintf( '<comment-author>%s</comment-author>', $comment->comment_author );
+		$parts[] = sprintf( '<comment>%s</comment>', $comment->comment_content );
+		$parts[] = sprintf( '<requested-tone>%s</requested-tone>', $tone );
 
 		return implode( "\n", $parts );
 	}
