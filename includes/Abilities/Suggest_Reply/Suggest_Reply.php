@@ -18,11 +18,11 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Ability that generates AI-powered reply suggestions for a comment.
+ * Ability that generates reply suggestions for a comment.
  *
  * @since x.x.x
  */
-class Reply_Suggestion extends Abstract_Ability {
+class Suggest_Reply extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}

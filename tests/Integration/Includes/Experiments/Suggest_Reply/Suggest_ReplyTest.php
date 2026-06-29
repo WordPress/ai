@@ -101,11 +101,11 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that register_abilities() registers the reply suggestion ability.
+	 * Test that register_abilities() registers the suggest reply ability.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_register_abilities_registers_reply_suggestion() {
+	public function test_register_abilities_registers_suggest_reply() {
 		$experiment = new Suggest_Reply();
 		$experiment->register();
 

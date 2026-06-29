@@ -9,7 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Suggest_Reply;
 
-use WordPress\AI\Abilities\Suggest_Reply\Reply_Suggestion as Reply_Suggestion_Ability;
+use WordPress\AI\Abilities\Suggest_Reply\Suggest_Reply as Suggest_Reply_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
@@ -43,7 +43,7 @@ class Suggest_Reply extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Suggest Reply', 'ai' ),
-			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to generate and insert AI-powered reply suggestions.', 'ai' ),
+			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to generate and insert reply suggestions.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
@@ -71,8 +71,8 @@ class Suggest_Reply extends Abstract_Feature {
 			'ai/reply-suggestion',
 			array(
 				'label'         => __( 'Reply Suggestion', 'ai' ),
-				'description'   => __( 'Generates AI-powered reply suggestions for a comment.', 'ai' ),
-				'ability_class' => Reply_Suggestion_Ability::class,
+				'description'   => __( 'Generates reply suggestions for a comment.', 'ai' ),
+				'ability_class' => Suggest_Reply_Ability::class,
 			)
 		);
 	}

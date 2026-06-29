@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the Reply_Suggestion Ability class.
+ * Integration tests for the Suggest_Reply Ability class.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities
  */
@@ -9,11 +9,11 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
 use WP_Error;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Suggest_Reply\Reply_Suggestion;
+use WordPress\AI\Abilities\Suggest_Reply\Suggest_Reply;
 use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
- * Test experiment for Reply_Suggestion Ability tests.
+ * Test experiment for Suggest_Reply Ability tests.
  *
  * @since x.x.x
  */
@@ -46,15 +46,15 @@ class Test_Suggest_Reply_Experiment extends Abstract_Feature {
 }
 
 /**
- * Reply_Suggestion Ability test case.
+ * Suggest_Reply Ability test case.
  *
  * @since x.x.x
  */
 class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
-	 * Reply_Suggestion ability instance.
+	 * Suggest_Reply ability instance.
 	 *
-	 * @var \WordPress\AI\Abilities\Suggest_Reply\Reply_Suggestion
+	 * @var \WordPress\AI\Abilities\Suggest_Reply\Suggest_Reply
 	 */
 	private $ability;
 
@@ -74,7 +74,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->experiment = new Test_Suggest_Reply_Experiment();
-		$this->ability    = new Reply_Suggestion(
+		$this->ability    = new Suggest_Reply(
 			'ai/reply-suggestion',
 			array(
 				'label'       => $this->experiment->get_label(),
