@@ -105,7 +105,7 @@ function count_characters_excluding_spaces( string $text ): int {
 	$whitespace = '\x{0009}\x{000A}\x{000B}\x{000C}\x{000D}\x{0020}\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
 	$count      = preg_match_all( sprintf( '/[^%s]/u', $whitespace ), $text );
 
-	return false === $count ? 0 : $count;
+	return is_int( $count ) ? $count : 0;
 }
 
 /**
