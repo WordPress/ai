@@ -159,8 +159,7 @@ export function AccessControlSettings( {
 								<div
 									style={ {
 										display: 'grid',
-										gridTemplateColumns:
-											'repeat(3, 1fr)',
+										gridTemplateColumns: 'repeat(3, 1fr)',
 										gap: '12px',
 									} }
 								>
