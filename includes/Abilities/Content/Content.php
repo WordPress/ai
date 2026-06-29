@@ -649,7 +649,7 @@ final class Content {
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
 	private function get_content_input_schema( array $post_types, array $statuses ): array {
-		$fields = array(
+		$fields  = array(
 			'type'        => 'array',
 			'uniqueItems' => true,
 			'items'       => array(
