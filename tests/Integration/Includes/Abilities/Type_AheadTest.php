@@ -108,6 +108,22 @@ class Type_AheadTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that guideline_categories() returns site and copy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_guideline_categories_returns_site_and_copy(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'guideline_categories' );
+		$method->setAccessible( true );
+
+		$this->assertSame(
+			array( 'site', 'copy' ),
+			$method->invoke( $this->ability )
+		);
+	}
+
+	/**
 	 * Tests input schema structure.
 	 *
 	 * @since x.x.x
