@@ -545,6 +545,31 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A single post fetched by ID can return explicitly requested rendered and raw content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_single_published_post_by_id_can_return_content_fields(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::$post_ids['published_content'];
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'post_type', 'content_rendered', 'content_raw' ),
+			)
+		);
+
+		$this->assertSame( $post_id, $result['id'], 'The by-ID lookup should return the requested post.' );
+		$this->assertSame( 'post', $result['post_type'], 'The by-ID lookup should return the post type as post_type.' );
+		$this->assertStringContainsString( 'Body here.', $result['content_rendered'], 'Explicit content fields should include rendered content.' );
+		$this->assertSame( 'Body here.', $result['content_raw'], 'Explicit content fields should include raw content.' );
+		$this->assertArrayNotHasKey( 'posts', $result, 'The by-ID lookup should not return the query wrapper.' );
+	}
+
+	/**
 	 * A missing post ID is denied before execution can probe the requested object.
 	 *
 	 * @since x.x.x
@@ -607,7 +632,7 @@ class ContentTest extends WP_UnitTestCase {
 			);
 			$this->assertGreaterThan( 0, $post_id, 'The hidden custom post should be created for the denial check.' );
 
-		$this->register_ability();
+			$this->register_ability();
 
 			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
@@ -729,6 +754,39 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Query mode can return included drafts with explicitly requested rendered and raw content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_draft_include_can_return_content_fields(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$draft = self::factory()->post->create(
+			array(
+				'post_title'   => 'Draft content fields',
+				'post_content' => 'Draft body for content fields.',
+				'post_status'  => 'draft',
+			)
+		);
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'status'    => array( 'draft' ),
+				'include'   => array( $draft ),
+				'fields'    => array( 'id', 'post_type', 'status', 'content_rendered', 'content_raw' ),
+			)
+		);
+
+		$this->assertSame( array( $draft ), wp_list_pluck( $result['posts'], 'id' ), 'The draft query should return only the included draft.' );
+		$this->assertSame( 'post', $result['posts'][0]['post_type'], 'Query responses should return the post type as post_type.' );
+		$this->assertSame( 'draft', $result['posts'][0]['status'], 'The draft query should expose the requested draft status.' );
+		$this->assertStringContainsString( 'Draft body for content fields.', $result['posts'][0]['content_rendered'], 'Draft query results should include rendered content when requested.' );
+		$this->assertSame( 'Draft body for content fields.', $result['posts'][0]['content_raw'], 'Draft query results should include raw content when requested.' );
+	}
+
+	/**
 	 * Querying by slug without a post type is rejected by the input schema.
 	 *
 	 * @since x.x.x
@@ -775,6 +833,40 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A single post fetched by slug can return explicitly requested rendered and raw content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_single_published_post_by_slug_can_return_content_fields(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_name'    => 'content-slug-fields',
+				'post_title'   => 'Content Slug Fields',
+				'post_content' => 'Slug body for content fields.',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'slug'      => 'content-slug-fields',
+				'fields'    => array( 'id', 'post_type', 'slug', 'content_rendered', 'content_raw' ),
+			)
+		);
+
+		$this->assertSame( $post_id, $result['id'], 'The slug lookup should return the requested post.' );
+		$this->assertSame( 'post', $result['post_type'], 'The slug lookup should return the post type as post_type.' );
+		$this->assertSame( 'content-slug-fields', $result['slug'], 'The slug lookup should return the matching slug.' );
+		$this->assertStringContainsString( 'Slug body for content fields.', $result['content_rendered'], 'Slug lookups should include rendered content when requested.' );
+		$this->assertSame( 'Slug body for content fields.', $result['content_raw'], 'Slug lookups should include raw content when requested.' );
+		$this->assertArrayNotHasKey( 'posts', $result, 'The slug lookup should not return the query wrapper.' );
+	}
+
+	/**
 	 * Query-only filters cannot be combined with slug mode.
 	 *
 	 * @since x.x.x
@@ -804,7 +896,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$by_id = wp_get_ability( 'core/read-content' )->execute(
+		$by_id   = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'      => self::$post_ids['published'],
 				'include' => array( self::$post_ids['published'] ),
