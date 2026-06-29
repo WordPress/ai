@@ -292,6 +292,41 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Reproduces the production fresh-site path: the connector setting is registered with a
+	 * default of '' (as core's `_wp_register_default_connector_settings()` does). Because a
+	 * brand-new site has no `wp_options` row for the key, the first encrypted write makes
+	 * `update_option()` short-circuit (filtered value '' equals the default ''), so the row is
+	 * never created — and `option_{$name}` (the read filter) only fires for options that exist.
+	 * The decrypted key must still be readable on the very first save.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_first_write_surfaces_key_when_setting_has_empty_default() {
+		// Mirror core: register the setting with a '' default so a missing option reads as ''.
+		register_setting(
+			'connectors',
+			self::SETTING_NAME,
+			array(
+				'type'    => 'string',
+				'default' => '',
+			)
+		);
+
+		try {
+			update_option( self::TOGGLE, true );
+
+			// Brand-new site: there is no wp_options row for this key yet.
+			update_option( self::SETTING_NAME, 'sk-fresh-key' );
+
+			// The decrypted key must be readable even though no plaintext row was created.
+			$this->assertSame( 'sk-fresh-key', get_option( self::SETTING_NAME ) );
+			$this->assertSame( 'sk-fresh-key', $this->secret_value() );
+		} finally {
+			unregister_setting( 'connectors', self::SETTING_NAME );
+		}
+	}
+
+	/**
 	 * @since x.x.x
 	 */
 	public function test_read_passthrough_when_no_secret_stored() {
@@ -335,8 +370,10 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	private function raw_option( string $option ): string {
 		$bridge = Key_Encryption::get_bridge();
 		remove_filter( "option_{$option}", array( $bridge, 'on_read' ), 10 );
+		remove_filter( "default_option_{$option}", array( $bridge, 'on_read_default' ), 11 );
 		$value = get_option( $option, '' );
 		add_filter( "option_{$option}", array( $bridge, 'on_read' ), 10, 2 );
+		add_filter( "default_option_{$option}", array( $bridge, 'on_read_default' ), 11, 2 );
 		return is_string( $value ) ? $value : '';
 	}
 

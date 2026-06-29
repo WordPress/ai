@@ -61,18 +61,23 @@ final class Secrets_Bridge {
 	 */
 	public function register_option_filters(): void {
 		foreach ( $this->get_connector_setting_names() as $setting_name ) {
-			$write_hook = "pre_update_option_{$setting_name}";
-			$read_hook  = "option_{$setting_name}";
+			$write_hook   = "pre_update_option_{$setting_name}";
+			$read_hook    = "option_{$setting_name}";
+			$default_hook = "default_option_{$setting_name}";
 
 			if ( false === has_filter( $write_hook, array( $this, 'on_write' ) ) ) {
 				add_filter( $write_hook, array( $this, 'on_write' ), 10, 1 );
 			}
 
-			if ( false !== has_filter( $read_hook, array( $this, 'on_read' ) ) ) {
+			if ( false === has_filter( $read_hook, array( $this, 'on_read' ) ) ) {
+				add_filter( $read_hook, array( $this, 'on_read' ), 10, 2 );
+			}
+
+			if ( false !== has_filter( $default_hook, array( $this, 'on_read_default' ) ) ) {
 				continue;
 			}
 
-			add_filter( $read_hook, array( $this, 'on_read' ), 10, 2 );
+			add_filter( $default_hook, array( $this, 'on_read_default' ), 11, 2 );
 		}
 	}
 
@@ -88,6 +93,7 @@ final class Secrets_Bridge {
 		foreach ( $this->get_connector_setting_names() as $setting_name ) {
 			remove_filter( "pre_update_option_{$setting_name}", array( $this, 'on_write' ), 10 );
 			remove_filter( "option_{$setting_name}", array( $this, 'on_read' ), 10 );
+			remove_filter( "default_option_{$setting_name}", array( $this, 'on_read_default' ), 11 );
 		}
 	}
 
@@ -242,6 +248,41 @@ final class Secrets_Bridge {
 		$secret = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
 		if ( null === $secret ) {
 			return $value;
+		}
+
+		return $secret;
+	}
+
+	/**
+	 * Filter callback for `default_option_{$setting_name}`.
+	 *
+	 * Fires when `get_option()` finds no stored row for the key. Returns the decrypted
+	 * secret if one is stored so the key is readable without a backing row; otherwise passes the
+	 * default through untouched.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed  $default_value The default value WordPress would return.
+	 * @param string $option        Option name.
+	 * @return mixed The decrypted secret, or the original default value.
+	 */
+	public function on_read_default( $default_value, string $option ) {
+		if ( $this->bypass_read_filter ) {
+			return $default_value;
+		}
+
+		if ( ! $this->is_secrets_manager_available() ) {
+			return $default_value;
+		}
+
+		$connector_id = $this->connector_id_from_setting_name( $option );
+		if ( null === $connector_id ) {
+			return $default_value;
+		}
+
+		$secret = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
+		if ( null === $secret || '' === $secret ) {
+			return $default_value;
 		}
 
 		return $secret;
