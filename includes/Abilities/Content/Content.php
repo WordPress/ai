@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/content` WordPress Ability.
+ * The `core/read-content` WordPress Ability.
  *
  * @package WordPress\AI
  *
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Content
  *
- * Registers the read-only `core/content` ability, which retrieves one or more readable
+ * Registers the read-only `core/read-content` ability, which retrieves one or more readable
  * posts of a post type exposed to abilities via `show_in_abilities`. Supports fetching a
  * single readable post by ID or by slug, or querying multiple readable posts filtered by
  * post type, status, author, or parent, returning a basic, support-aware set of fields
@@ -181,14 +181,14 @@ final class Content {
 	}
 
 	/**
-	 * Registers the read-only `core/content` ability.
+	 * Registers the read-only `core/read-content` ability.
 	 *
 	 * @since x.x.x
 	 */
 	private function register_get_content(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/content' ) ) {
-			wp_unregister_ability( 'core/content' );
+		if ( wp_has_ability( 'core/read-content' ) ) {
+			wp_unregister_ability( 'core/read-content' );
 		}
 
 		// Plugin: compute once; check_permission()/execute_get_content() reuse this set.
@@ -198,9 +198,9 @@ final class Content {
 		$statuses   = array_values( get_post_stati( array( 'internal' => false ) ) );
 
 		wp_register_ability(
-			'core/content',
+			'core/read-content',
 			array(
-				'label'               => __( 'Get Content', 'ai' ),
+				'label'               => __( 'Read Content', 'ai' ),
 				'description'         => __( 'Retrieves one or more readable posts of a post type exposed to abilities. Fetch a single readable post by ID or by slug, or query multiple readable posts filtered by post type, status, author, or parent. Returns a basic, support-aware set of fields per post, with raw fields limited to users who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_input_schema( $post_types, $statuses ),
@@ -224,7 +224,7 @@ final class Content {
 	}
 
 	/**
-	 * Permission callback for the `core/content` ability.
+	 * Permission callback for the `core/read-content` ability.
 	 *
 	 * Implements defense in depth: this gate decides whether the request may proceed at
 	 * all, while the per-post read/edit checks in {@see self::execute_get_content()}
@@ -379,7 +379,7 @@ final class Content {
 	}
 
 	/**
-	 * Executes the `core/content` ability.
+	 * Executes the `core/read-content` ability.
 	 *
 	 * @since x.x.x
 	 *
@@ -544,7 +544,7 @@ final class Content {
 	}
 
 	/**
-	 * Builds the input schema for the `core/content` ability.
+	 * Builds the input schema for the `core/read-content` ability.
 	 *
 	 * The ability has two mutually exclusive modes, modeled as a `oneOf` so invalid
 	 * combinations are rejected rather than silently ignored:
@@ -648,7 +648,7 @@ final class Content {
 	}
 
 	/**
-	 * Builds the output schema for the `core/content` ability.
+	 * Builds the output schema for the `core/read-content` ability.
 	 *
 	 * No field is marked required because the `fields` input lets the caller request any
 	 * subset, and a field is only present when its post type supports it.
