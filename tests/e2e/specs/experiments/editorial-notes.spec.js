@@ -337,8 +337,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			resolveRequest = resolve;
 		} );
 
-		// Intercept the modern WP Abilities REST endpoint. This route was updated upstream from
-		// wp/abilities/v1/run to wp-abilities/v1/abilities. We target the run path specifically.
+		// Intercept the modern WP Abilities REST endpoint.
 		await page.route(
 			/wp-json\/wp-abilities\/v1\/abilities\/ai\/editorial-notes\/run/,
 			async ( route ) => {
