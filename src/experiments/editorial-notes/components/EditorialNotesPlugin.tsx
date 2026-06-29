@@ -197,14 +197,13 @@ export default function EditorialNotesPlugin() {
 									reviewBlock( clientId );
 								}
 							} }
-							{ ...( isAnyBlockReviewing && ! isThisBlockReviewing
-								? {
-										info: __(
-											'Another block is currently being reviewed.',
-											'ai'
-										),
-								  }
-								: {} ) }
+							{ ...( isAnyBlockReviewing &&
+								! isThisBlockReviewing && {
+									info: __(
+										'Another block is currently being reviewed.',
+										'ai'
+									),
+								} ) }
 						>
 							{ isThisBlockReviewing
 								? __( 'Reviewing…', 'ai' )
