@@ -6,12 +6,11 @@
  * WordPress dependencies
  */
 import domReady from '@wordpress/dom-ready';
-import { createRoot } from '@wordpress/element';
 
 /**
  * Internal dependencies
  */
-import { ReplyModalController } from './components/ReplyModalController';
+import { init } from './components/SuggestReply';
 
 declare global {
 	interface Window {
@@ -22,18 +21,12 @@ declare global {
 	}
 }
 
-function init(): void {
+domReady( () => {
 	const data = window.aiSuggestReplyData;
 
 	if ( ! data?.enabled ) {
 		return;
 	}
 
-	const container = document.createElement( 'div' );
-	container.id = 'wpai-suggest-reply-root';
-	document.body.appendChild( container );
-
-	createRoot( container ).render( <ReplyModalController /> );
-}
-
-domReady( init );
+	init();
+} );
