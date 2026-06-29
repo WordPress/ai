@@ -29,6 +29,15 @@ class Reply_Suggestion extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
 	protected function input_schema(): array {
 		return array(
 			'type'       => 'object',
@@ -42,11 +51,6 @@ class Reply_Suggestion extends Abstract_Ability {
 					'enum'        => array( 'professional', 'friendly', 'casual' ),
 					'default'     => 'friendly',
 					'description' => esc_html__( 'The tone for the reply.', 'ai' ),
-				),
-				'guidelines' => array(
-					'type'        => 'string',
-					'default'     => '',
-					'description' => esc_html__( 'Optional free-text editorial guidelines to apply when writing the reply.', 'ai' ),
 				),
 			),
 			'required'   => array( 'comment_id' ),
@@ -87,7 +91,6 @@ class Reply_Suggestion extends Abstract_Ability {
 			array(
 				'comment_id' => 0,
 				'tone'       => 'friendly',
-				'guidelines' => '',
 			)
 		);
 
@@ -120,13 +123,12 @@ class Reply_Suggestion extends Abstract_Ability {
 			? wp_trim_words( wp_strip_all_tags( $post->post_content ), 50 )
 			: '';
 
-		$tone       = in_array( $input['tone'], array( 'professional', 'friendly', 'casual' ), true )
+		$tone = in_array( $input['tone'], array( 'professional', 'friendly', 'casual' ), true )
 			? $input['tone']
 			: 'friendly';
-		$guidelines = sanitize_textarea_field( (string) $input['guidelines'] );
 
 		// Build the prompt context.
-		$context = $this->build_context( $comment, $post_title, $post_excerpt, $tone, $guidelines );
+		$context = $this->build_context( $comment, $post_title, $post_excerpt, $tone );
 
 		// Generate the reply.
 		$reply = $this->generate_reply( $context );
@@ -177,15 +179,13 @@ class Reply_Suggestion extends Abstract_Ability {
 	 * @param string      $post_title   The title of the parent post.
 	 * @param string      $post_excerpt A short excerpt of the parent post content.
 	 * @param string      $tone         The desired reply tone (e.g. 'friendly', 'professional').
-	 * @param string      $guidelines   Optional editorial guidelines to apply.
 	 * @return string The assembled prompt context.
 	 */
 	private function build_context(
 		\WP_Comment $comment,
 		string $post_title,
 		string $post_excerpt,
-		string $tone,
-		string $guidelines = ''
+		string $tone
 	): string {
 		$parts = array();
 
@@ -200,10 +200,6 @@ class Reply_Suggestion extends Abstract_Ability {
 		$parts[] = sprintf( 'Comment Author: %s', $comment->comment_author );
 		$parts[] = sprintf( 'Comment: """%s"""', $comment->comment_content );
 		$parts[] = sprintf( 'Requested Tone: %s', $tone );
-
-		if ( '' !== $guidelines ) {
-			$parts[] = sprintf( 'Editorial Guidelines: %s', $guidelines );
-		}
 
 		return implode( "\n", $parts );
 	}

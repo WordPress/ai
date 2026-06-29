@@ -5,6 +5,7 @@
 /**
  * WordPress dependencies
  */
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -18,20 +19,28 @@ type ReplySuggestionResult = {
 	reply: string;
 };
 
-const LOADING_TEXT = 'Generating…';
-const ORIGINAL_LINK_TEXT = 'Suggest reply';
-const SUGGEST_BTN_TEXT = 'Suggest Reply';
-const LOADING_PLACEHOLDER = 'Generating AI reply…';
+const LOADING_TEXT = __( 'Generating…', 'ai' );
+const ORIGINAL_LINK_TEXT = __( 'Suggest reply', 'ai' );
+const SUGGEST_BTN_TEXT = __( 'Suggest Reply', 'ai' );
+const LOADING_PLACEHOLDER = __( 'Generating AI reply…', 'ai' );
+const GENERIC_ERROR_MESSAGE = __(
+	'Failed to generate a reply suggestion. Please try again.',
+	'ai'
+);
+const TONE_LABEL = __( 'Tone:', 'ai' );
 const ERROR_NOTICE_ID = 'wpai-suggest-reply-error';
 const CONTROLS_WRAPPER_ID = 'wpai-suggest-reply-controls';
 const SUGGEST_BTN_ID = 'wpai-suggest-reply-btn';
 const TONE_SELECT_ID = 'wpai-tone-select';
 const DEFAULT_TONE: Tone = 'friendly';
+const REPLY_FORM_POLL_INTERVAL = 30;
+const REPLY_FORM_POLL_TIMEOUT = 1000;
+const INIT_FLAG_ATTR = 'data-wpai-suggest-reply-initialized';
 
 const TONE_OPTIONS: { label: string; value: Tone }[] = [
-	{ label: 'Friendly', value: 'friendly' },
-	{ label: 'Professional', value: 'professional' },
-	{ label: 'Casual', value: 'casual' },
+	{ label: __( 'Friendly', 'ai' ), value: 'friendly' },
+	{ label: __( 'Professional', 'ai' ), value: 'professional' },
+	{ label: __( 'Casual', 'ai' ), value: 'casual' },
 ];
 
 /** Writes text into the inline reply textarea and focuses it. */
@@ -171,7 +180,7 @@ function createToneControl(): DocumentFragment {
 
 	const label = document.createElement( 'label' );
 	label.htmlFor = TONE_SELECT_ID;
-	label.textContent = 'Tone:';
+	label.textContent = TONE_LABEL;
 	label.style.cssText = 'font-size:13px; margin:0;';
 
 	const select = document.createElement( 'select' );
@@ -193,41 +202,34 @@ function createToneControl(): DocumentFragment {
 
 /**
  * Injects the Suggest Reply button and Tone dropdown into the WP inline reply
- * form alongside the existing Reply and Cancel buttons.
+ * form as a dedicated row below the native Reply / Cancel buttons.
  */
 function injectSuggestReplyControls(): void {
 	if ( document.getElementById( CONTROLS_WRAPPER_ID ) ) {
 		return;
 	}
 
-	const buttonArea = document.querySelector< HTMLElement >(
-		'#replysubmit .reply-submit-buttons'
-	);
+	const replySubmit = document.querySelector< HTMLElement >( '#replysubmit' );
 
-	if ( ! buttonArea ) {
+	if ( ! replySubmit ) {
 		return;
 	}
 
-	const wrapper = document.createElement( 'span' );
+	const wrapper = document.createElement( 'p' );
 	wrapper.id = CONTROLS_WRAPPER_ID;
 	wrapper.style.cssText =
-		'display:inline-flex; align-items:center; gap:6px; margin-left:12px; border-left:1px solid #ddd; padding-left:12px;';
+		'display:flex; align-items:center; gap:6px; margin:6px 0 0;';
 
 	wrapper.appendChild( createSuggestReplyButton() );
 	wrapper.appendChild( createToneControl() );
 
-	const spinner = buttonArea.querySelector( '.waiting.spinner' );
-
-	if ( spinner ) {
-		buttonArea.insertBefore( wrapper, spinner );
-	} else {
-		buttonArea.appendChild( wrapper );
-	}
+	replySubmit.appendChild( wrapper );
 }
 
 /**
- * Shared generation logic: calls the REST ability and populates the textarea.
- * Returns an error notice on failure.
+ * Shared generation logic for both entry points: clears any previous error,
+ * shows a loading placeholder, disables the form, calls the REST ability,
+ * then populates the textarea with the result (or shows an error notice).
  */
 async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 	clearErrorNotice();
@@ -245,9 +247,7 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 	} catch ( err: any ) {
 		setTextareaPlaceholder( '' );
 
-		const message = err.message
-			? err.message
-			: 'Failed to generate a reply suggestion. Please try again.';
+		const message = err.message ? err.message : GENERIC_ERROR_MESSAGE;
 
 		showErrorNotice( message );
 	} finally {
@@ -271,15 +271,14 @@ async function runGenerationFromEditor( commentId: number ): Promise< void > {
 
 /**
  * Triggered by the "Suggest reply" row action link.
- * Opens the inline form, injects editor controls, then generates with the
- * default 'friendly' tone.
+ * Opens the inline reply form (if not already open) for the given comment,
+ * then generates a reply using the currently selected Tone.
  */
 async function generateAndInsertReply(
 	commentId: number,
 	link: HTMLElement
 ): Promise< void > {
 	const tone = getSelectedTone();
-	console.log( tone );
 
 	setLinkLoading( link, true );
 
@@ -329,8 +328,23 @@ function openReplyFormThen( commentId: number, callback: () => void ): void {
 		replyButton.click();
 	}
 
-	// Defer so WordPress has time to render the inline reply row.
-	window.setTimeout( callback, 150 );
+	const startTime = Date.now();
+
+	const poll = () => {
+		if ( isInlineReplyOpenForComment( commentId ) ) {
+			callback();
+			return;
+		}
+
+		if ( Date.now() - startTime >= REPLY_FORM_POLL_TIMEOUT ) {
+			showErrorNotice( GENERIC_ERROR_MESSAGE );
+			return;
+		}
+
+		window.setTimeout( poll, REPLY_FORM_POLL_INTERVAL );
+	};
+
+	window.setTimeout( poll, REPLY_FORM_POLL_INTERVAL );
 }
 
 /**
@@ -346,6 +360,12 @@ export function init(): void {
 	}
 
 	injectSuggestReplyControls();
+
+	if ( commentList.hasAttribute( INIT_FLAG_ATTR ) ) {
+		return;
+	}
+
+	commentList.setAttribute( INIT_FLAG_ATTR, 'true' );
 
 	commentList.addEventListener( 'click', ( event: Event ) => {
 		const target = event.target as HTMLElement;

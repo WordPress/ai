@@ -129,8 +129,6 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$this->assertSame( 'string', $schema['properties']['tone']['type'] );
 		$this->assertSame( array( 'professional', 'friendly', 'casual' ), $schema['properties']['tone']['enum'] );
 		$this->assertSame( 'friendly', $schema['properties']['tone']['default'] );
-		$this->assertArrayHasKey( 'guidelines', $schema['properties'] );
-		$this->assertSame( 'string', $schema['properties']['guidelines']['type'] );
 		$this->assertContains( 'comment_id', $schema['required'] );
 	}
 
@@ -288,8 +286,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 			$comment,
 			'Test Post Title',
 			'This is the test post content for the reply suggestion.',
-			'professional',
-			'Be concise.'
+			'professional'
 		);
 
 		$this->assertIsString( $context );
@@ -298,7 +295,6 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Comment Author: Jane Doe', $context );
 		$this->assertStringContainsString( 'Comment: """This is a great article!"""', $context );
 		$this->assertStringContainsString( 'Requested Tone: professional', $context );
-		$this->assertStringContainsString( 'Editorial Guidelines: Be concise.', $context );
 	}
 
 	/**
@@ -323,8 +319,8 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$context = $method->invoke(
 			$this->ability,
 			$comment,
-			'', 
-			'', 
+			'',
+			'',
 			'casual'
 		);
 
@@ -332,37 +328,6 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'Post Context:', $context );
 		$this->assertStringContainsString( 'Comment Author: John Smith', $context );
 		$this->assertStringContainsString( 'Requested Tone: casual', $context );
-	}
-
-	/**
-	 * Test that build_context() omits the guidelines line when no guidelines are provided.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_build_context_omits_empty_guidelines() {
-		$comment_id = self::factory()->comment->create(
-			array(
-				'comment_author'  => 'Alice',
-				'comment_content' => 'Great post!',
-			)
-		);
-
-		$comment = get_comment( $comment_id );
-
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'build_context' );
-		$method->setAccessible( true );
-
-		$context = $method->invoke(
-			$this->ability,
-			$comment,
-			'My Post',
-			'Some excerpt.',
-			'friendly',
-			'' 
-		);
-
-		$this->assertStringNotContainsString( 'Editorial Guidelines:', $context );
 	}
 
 	/**
@@ -395,7 +360,6 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 			array(
 				'comment_id' => $comment_id,
 				'tone'       => 'friendly',
-				'guidelines' => '',
 			)
 		);
 
