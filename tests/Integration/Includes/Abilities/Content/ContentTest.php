@@ -339,8 +339,8 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The input schema models two mutually exclusive modes (by `id` or by `post_type`),
-	 * each rejecting the other's properties, and exposes only marked types.
+	 * The input schema models mutually exclusive ID, slug, and query modes, each
+	 * rejecting the other modes' properties and exposing only marked types.
 	 *
 	 * @since x.x.x
 	 */
@@ -350,25 +350,36 @@ class ContentTest extends WP_UnitTestCase {
 		$schema = wp_get_ability( 'core/read-content' )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
-		$this->assertCount( 2, $schema['oneOf'], 'The input schema should expose exactly two modes.' );
+		$this->assertCount( 3, $schema['oneOf'], 'The input schema should expose exactly three modes.' );
 
-		[ $by_id, $by_type ] = $schema['oneOf'];
+		[ $by_id, $by_slug, $query ] = $schema['oneOf'];
 
-		// Mode 1 requires `id`; Mode 2 requires `post_type`. Both reject extra properties.
+		// All modes reject properties from the other modes.
 		$this->assertSame( array( 'id' ), $by_id['required'], 'The by-ID mode should require an ID.' );
-		$this->assertSame( array( 'post_type' ), $by_type['required'], 'The query mode should require a post type.' );
+		$this->assertSame( array( 'post_type', 'slug' ), $by_slug['required'], 'The slug mode should require post type and slug.' );
+		$this->assertSame( array( 'post_type' ), $query['required'], 'The query mode should require a post type.' );
 		$this->assertFalse( $by_id['additionalProperties'], 'The by-ID mode should reject unrelated properties.' );
-		$this->assertFalse( $by_type['additionalProperties'], 'The query mode should reject unrelated properties.' );
+		$this->assertFalse( $by_slug['additionalProperties'], 'The slug mode should reject unrelated properties.' );
+		$this->assertFalse( $query['additionalProperties'], 'The query mode should reject unrelated properties.' );
 
-		// Query-only filters live only in the query mode, not the by-ID mode.
-		$this->assertArrayHasKey( 'per_page', $by_type['properties'], 'The query mode should support pagination.' );
+		// Query-only filters live only in the query mode, not the single-post modes.
+		$this->assertArrayHasKey( 'include', $query['properties'], 'The query mode should support included post IDs.' );
+		$this->assertArrayHasKey( 'per_page', $query['properties'], 'The query mode should support pagination.' );
 		$this->assertArrayNotHasKey( 'per_page', $by_id['properties'], 'The by-ID mode should not accept query-only pagination.' );
+		$this->assertArrayNotHasKey( 'include', $by_slug['properties'], 'The slug mode should not accept query-only included IDs.' );
+		$this->assertArrayNotHasKey( 'slug', $query['properties'], 'The query mode should not accept slug; slug is a single-post mode.' );
 
-		// Exposed post types appear in both modes' `post_type` enum.
-		$this->assertContains( 'post', $by_type['properties']['post_type']['enum'], 'The query mode should include exposed posts.' );
+		// Exposed post types appear in all modes that accept `post_type`.
+		$this->assertContains( 'post', $query['properties']['post_type']['enum'], 'The query mode should include exposed posts.' );
 		$this->assertContains( 'page', $by_id['properties']['post_type']['enum'], 'The by-ID guard should include exposed pages.' );
+		$this->assertContains( 'page', $by_slug['properties']['post_type']['enum'], 'The slug mode should include exposed pages.' );
 
-		$fields_enum = $by_type['properties']['fields']['items']['enum'];
+		$this->assertSame( 1, $query['properties']['include']['minItems'], 'The include option should require at least one post ID.' );
+		$this->assertTrue( $query['properties']['include']['uniqueItems'], 'The include option should reject duplicate post IDs.' );
+		$this->assertSame( 'integer', $query['properties']['include']['items']['type'], 'The include option should contain post IDs.' );
+		$this->assertSame( 1, $query['properties']['include']['items']['minimum'], 'The include option should contain positive post IDs.' );
+
+		$fields_enum = $query['properties']['fields']['items']['enum'];
 		$this->assertContains( 'content_raw', $fields_enum, 'The fields enum should include raw content.' );
 		$this->assertContains( 'content_rendered', $fields_enum, 'The fields enum should include rendered content.' );
 		$this->assertContains( 'title_raw', $fields_enum, 'The fields enum should include raw titles.' );
@@ -384,12 +395,12 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_input_schema_omits_oneof_branch_defaults(): void {
 		$this->register_ability();
 
-		$schema  = wp_get_ability( 'core/read-content' )->get_input_schema();
-		$by_type = $schema['oneOf'][1];
+		$schema = wp_get_ability( 'core/read-content' )->get_input_schema();
+		$query  = $schema['oneOf'][2];
 
-		$this->assertArrayNotHasKey( 'default', $by_type['properties']['status'], 'Status should rely on runtime defaults, not schema defaults.' );
-		$this->assertArrayNotHasKey( 'default', $by_type['properties']['page'], 'Page should rely on runtime defaults, not schema defaults.' );
-		$this->assertArrayNotHasKey( 'default', $by_type['properties']['per_page'], 'Per-page should rely on runtime defaults, not schema defaults.' );
+		$this->assertArrayNotHasKey( 'default', $query['properties']['status'], 'Status should rely on runtime defaults, not schema defaults.' );
+		$this->assertArrayNotHasKey( 'default', $query['properties']['page'], 'Page should rely on runtime defaults, not schema defaults.' );
+		$this->assertArrayNotHasKey( 'default', $query['properties']['per_page'], 'Per-page should rely on runtime defaults, not schema defaults.' );
 	}
 
 	/**
@@ -432,28 +443,32 @@ class ContentTest extends WP_UnitTestCase {
 		);
 
 		$this->assertIsArray( $result, 'A matching post type guard should allow the by-ID lookup.' );
-		$this->assertSame( $post_id, $result['posts'][0]['id'], 'The guarded by-ID lookup should return the requested post.' );
+		$this->assertSame( $post_id, $result['id'], 'The guarded by-ID lookup should return the requested post directly.' );
+		$this->assertArrayNotHasKey( 'posts', $result, 'The guarded by-ID lookup should not return the query wrapper.' );
 	}
 
 	/**
-	 * The output schema describes each post as an object with no required fields.
+	 * The output schema describes single-post and query response shapes.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_output_schema_has_no_required_post_fields(): void {
+	public function test_output_schema_describes_single_post_and_query_responses(): void {
 		$this->register_ability();
 
-		$schema    = wp_get_ability( 'core/read-content' )->get_output_schema();
-		$post_item = $schema['properties']['posts']['items'];
+		$schema       = wp_get_ability( 'core/read-content' )->get_output_schema();
+		$post_schema  = $schema['oneOf'][0];
+		$query_schema = $schema['oneOf'][1];
 
-		$this->assertSame( array( 'posts', 'total', 'total_pages' ), $schema['required'], 'The response wrapper should require all top-level properties.' );
-		$this->assertSame( 'object', $post_item['type'], 'Each returned post should be described as an object.' );
-		$this->assertArrayNotHasKey( 'required', $post_item, 'Individual post fields should remain optional.' );
-		$this->assertFalse( $post_item['additionalProperties'], 'Returned posts should not allow unknown properties.' );
-		$this->assertArrayHasKey( 'content_raw', $post_item['properties'], 'The post schema should describe raw content.' );
-		$this->assertArrayHasKey( 'content_rendered', $post_item['properties'], 'The post schema should describe rendered content.' );
-		$this->assertArrayHasKey( 'total', $schema['properties'], 'The response schema should describe the total count.' );
-		$this->assertArrayHasKey( 'total_pages', $schema['properties'], 'The response schema should describe page count.' );
+		$this->assertSame( 'object', $schema['type'], 'The output schema should describe object responses.' );
+		$this->assertCount( 2, $schema['oneOf'], 'The output schema should describe single-post and query responses.' );
+		$this->assertSame( 'object', $post_schema['type'], 'The single-post response should be described as an object.' );
+		$this->assertArrayNotHasKey( 'required', $post_schema, 'Individual post fields should remain optional.' );
+		$this->assertFalse( $post_schema['additionalProperties'], 'Returned posts should not allow unknown properties.' );
+		$this->assertArrayHasKey( 'content_raw', $post_schema['properties'], 'The post schema should describe raw content.' );
+		$this->assertArrayHasKey( 'content_rendered', $post_schema['properties'], 'The post schema should describe rendered content.' );
+		$this->assertSame( array( 'posts', 'total', 'total_pages' ), $query_schema['required'], 'The query wrapper should require all top-level properties.' );
+		$this->assertArrayHasKey( 'total', $query_schema['properties'], 'The query schema should describe the total count.' );
+		$this->assertArrayHasKey( 'total_pages', $query_schema['properties'], 'The query schema should describe page count.' );
 	}
 
 	/**
@@ -475,8 +490,8 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		// Query mode is the second `oneOf` branch; its `post_type` enum lists exposed types.
-		$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][1]['properties']['post_type']['enum'];
+		// Query mode is the third `oneOf` branch; its `post_type` enum lists exposed types.
+		$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
 		$this->assertContains( 'wpai_content_cpt', $enum, 'Custom post types marked show_in_abilities should appear in the query enum.' );
 
 		$post_id = self::factory()->post->create(
@@ -507,13 +522,15 @@ class ContentTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
-		$this->assertIsArray( $result, 'The by-ID lookup should return a response array.' );
-		$this->assertCount( 1, $result['posts'], 'The by-ID lookup should return exactly one post.' );
-		$this->assertSame( $post_id, $result['posts'][0]['id'], 'The by-ID lookup should return the requested post.' );
-		$this->assertSame( 'Hello Content', $result['posts'][0]['title_raw'], 'Editable users should receive raw titles by default.' );
-		$this->assertSame( 'Hello Content', $result['posts'][0]['title_rendered'], 'Rendered titles should be returned by default.' );
-		$this->assertSame( 'Body here.', $result['posts'][0]['content_raw'], 'Editable users should receive raw content by default.' );
-		$this->assertStringContainsString( 'Body here.', $result['posts'][0]['content_rendered'], 'Rendered content should be returned by default.' );
+		$this->assertIsArray( $result, 'The by-ID lookup should return a post array.' );
+		$this->assertSame( $post_id, $result['id'], 'The by-ID lookup should return the requested post directly.' );
+		$this->assertSame( 'Hello Content', $result['title_rendered'], 'Rendered titles should be returned by default.' );
+		$this->assertSame(
+			array( 'id', 'type', 'status', 'date', 'slug', 'title_rendered' ),
+			array_keys( $result ),
+			'Omitted fields should return the lean default field set.'
+		);
+		$this->assertArrayNotHasKey( 'posts', $result, 'The by-ID lookup should not return the query wrapper.' );
 	}
 
 	/**
@@ -610,11 +627,102 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Query mode can limit results to included IDs while preserving the requested order.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_include_limits_results_and_preserves_order(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$first  = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$second = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$third  = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => array( $third, $first ),
+				'fields'    => array( 'id' ),
+			)
+		);
+		$ids    = wp_list_pluck( $result['posts'], 'id' );
+
+		$this->assertSame( array( $third, $first ), $ids, 'Included post IDs should limit results and preserve caller order.' );
+		$this->assertNotContains( $second, $ids, 'Posts outside include should not be returned.' );
+	}
+
+	/**
+	 * Query include still respects the requested post type.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_include_respects_requested_post_type(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$page_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+			)
+		);
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => array( $page_id, $post_id ),
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertSame( array( $post_id ), wp_list_pluck( $result['posts'], 'id' ), 'Include should not leak posts from other post types.' );
+	}
+
+	/**
+	 * Query include still respects row-level permissions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_include_respects_row_level_permissions(): void {
+		$author_a = self::$user_ids['author'];
+		$author_b = self::$user_ids['author_secondary'];
+
+		$draft_a = self::factory()->post->create(
+			array(
+				'post_author' => $author_a,
+				'post_status' => 'draft',
+			)
+		);
+		$draft_b = self::factory()->post->create(
+			array(
+				'post_author' => $author_b,
+				'post_status' => 'draft',
+			)
+		);
+
+		wp_set_current_user( $author_b );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'status'    => array( 'draft' ),
+				'include'   => array( $draft_a, $draft_b ),
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertSame( array( $draft_b ), wp_list_pluck( $result['posts'], 'id' ), 'Include should not bypass row-level draft permissions.' );
+	}
+
+	/**
 	 * Querying by slug without a post type is rejected by the input schema.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_query_by_slug_requires_post_type(): void {
+	public function test_slug_mode_requires_post_type(): void {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
@@ -622,6 +730,87 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result, 'Slug queries without a post type should fail validation.' );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Invalid slug queries should return an input error.' );
+	}
+
+	/**
+	 * Slug mode returns a single post directly when paired with a post type.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_single_published_post_by_slug(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_name'   => 'content-slug-mode',
+				'post_title'  => 'Content Slug Mode',
+				'post_status' => 'publish',
+			)
+		);
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'slug'      => 'content-slug-mode',
+			)
+		);
+
+		$this->assertIsArray( $result, 'The slug lookup should return a post array.' );
+		$this->assertSame( $post_id, $result['id'], 'The slug lookup should return the requested post directly.' );
+		$this->assertSame( 'content-slug-mode', $result['slug'], 'The slug lookup should return the matching slug.' );
+		$this->assertArrayNotHasKey( 'posts', $result, 'The slug lookup should not return the query wrapper.' );
+		$this->assertArrayNotHasKey( 'total', $result, 'The slug lookup should not return query totals.' );
+	}
+
+	/**
+	 * Query-only filters cannot be combined with slug mode.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_slug_mode_rejects_query_only_params(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'slug'      => 'content-slug-mode',
+				'per_page'  => 10,
+			)
+		);
+
+		$this->assertWPError( $result, 'Combining slug mode with query-only params should fail validation.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Invalid slug mode combinations should return an input error.' );
+	}
+
+	/**
+	 * Include is a query-only option and cannot be combined with single-post modes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_include_cannot_be_combined_with_single_post_modes(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$by_id = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'      => self::$post_ids['published'],
+				'include' => array( self::$post_ids['published'] ),
+			)
+		);
+		$by_slug = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'slug'      => 'whatever',
+				'include'   => array( self::$post_ids['published'] ),
+			)
+		);
+
+		$this->assertWPError( $by_id, 'Include should fail validation in ID mode.' );
+		$this->assertSame( 'ability_invalid_input', $by_id->get_error_code(), 'ID plus include should return an input error.' );
+		$this->assertWPError( $by_slug, 'Include should fail validation in slug mode.' );
+		$this->assertSame( 'ability_invalid_input', $by_slug->get_error_code(), 'Slug plus include should return an input error.' );
 	}
 
 	/**
@@ -644,7 +833,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertSame(
 			array( 'id', 'title_rendered' ),
-			array_keys( $result['posts'][0] ),
+			array_keys( $result ),
 			'The fields filter should limit the response to exactly the requested keys.'
 		);
 	}
@@ -706,10 +895,10 @@ class ContentTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'Subscribers should be able to fetch a readable published post by ID.' );
-		$this->assertSame( 'Readable single', $result['posts'][0]['title_rendered'], 'Subscribers should receive the rendered title.' );
-		$this->assertStringContainsString( 'Readable single body.', $result['posts'][0]['content_rendered'], 'Subscribers should receive rendered content.' );
-		$this->assertArrayNotHasKey( 'title_raw', $result['posts'][0], 'Subscribers should not receive raw titles without edit access.' );
-		$this->assertArrayNotHasKey( 'content_raw', $result['posts'][0], 'Subscribers should not receive raw content without edit access.' );
+		$this->assertSame( 'Readable single', $result['title_rendered'], 'Subscribers should receive the rendered title.' );
+		$this->assertArrayNotHasKey( 'title_raw', $result, 'Subscribers should not receive raw titles without edit access.' );
+		$this->assertArrayNotHasKey( 'content_raw', $result, 'Subscribers should not receive raw content without edit access.' );
+		$this->assertArrayNotHasKey( 'content_rendered', $result, 'Rendered content should require an explicit field request.' );
 	}
 
 	/**
@@ -770,11 +959,11 @@ class ContentTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'The readable published post should be returned.' );
-		$this->assertSame( 'Readable title', $result['posts'][0]['title_rendered'], 'Rendered title should remain visible.' );
-		$this->assertStringContainsString( 'Readable body for limited role.', $result['posts'][0]['content_rendered'], 'Rendered content should remain visible.' );
-		$this->assertArrayNotHasKey( 'title_raw', $result['posts'][0], 'Raw title should be omitted.' );
-		$this->assertArrayNotHasKey( 'excerpt_raw', $result['posts'][0], 'Raw excerpt should be omitted.' );
-		$this->assertArrayNotHasKey( 'content_raw', $result['posts'][0], 'Raw content should be omitted.' );
+		$this->assertSame( 'Readable title', $result['title_rendered'], 'Rendered title should remain visible.' );
+		$this->assertArrayNotHasKey( 'title_raw', $result, 'Raw title should be omitted.' );
+		$this->assertArrayNotHasKey( 'excerpt_raw', $result, 'Raw excerpt should be omitted.' );
+		$this->assertArrayNotHasKey( 'content_raw', $result, 'Raw content should be omitted.' );
+		$this->assertArrayNotHasKey( 'content_rendered', $result, 'Rendered content should be omitted from the lean default field set.' );
 	}
 
 	/**
@@ -898,7 +1087,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertSame(
 			'Public body with raw block markup.',
-			$result['posts'][0]['content_raw'],
+			$result['content_raw'],
 			'Editors should receive explicitly requested raw content.'
 		);
 	}
@@ -923,12 +1112,12 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertSame(
 			'Top secret body.',
-			$result['posts'][0]['content_raw'],
+			$result['content_raw'],
 			'Editors should receive raw password-protected content.'
 		);
 		$this->assertStringContainsString(
 			'Top secret body.',
-			$result['posts'][0]['content_rendered'],
+			$result['content_rendered'],
 			'Editors should receive rendered password-protected content.'
 		);
 	}
@@ -953,8 +1142,8 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( '', $result['posts'][0]['content_rendered'], 'Password-protected rendered content should be withheld.' );
-		$this->assertTrue( $result['posts'][0]['content_protected'], 'The protected flag should reveal the field is password-protected.' );
+		$this->assertSame( '', $result['content_rendered'], 'Password-protected rendered content should be withheld.' );
+		$this->assertTrue( $result['content_protected'], 'The protected flag should reveal the field is password-protected.' );
 	}
 
 	/**
@@ -993,11 +1182,11 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A single post fetched by ID still reports pagination totals of one.
+	 * A single post fetched by ID is returned directly without query totals.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_single_post_reports_totals(): void {
+	public function test_single_post_returns_direct_post_object(): void {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
@@ -1005,7 +1194,9 @@ class ContentTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
 
-		$this->assertSame( 1, $result['total'], 'Single-post responses should report one total result.' );
-		$this->assertSame( 1, $result['total_pages'], 'Single-post responses should report one total page.' );
+		$this->assertSame( $post_id, $result['id'], 'Single-post responses should include the requested post ID.' );
+		$this->assertArrayNotHasKey( 'posts', $result, 'Single-post responses should not include the query posts wrapper.' );
+		$this->assertArrayNotHasKey( 'total', $result, 'Single-post responses should not include query totals.' );
+		$this->assertArrayNotHasKey( 'total_pages', $result, 'Single-post responses should not include query page totals.' );
 	}
 }
