@@ -38,7 +38,10 @@ async function runCoreReadContent( page, input ) {
 		const { executeAbility } = await import( '@wordpress/abilities' );
 
 		try {
-			const result = await executeAbility( 'core/read-content', abilityInput );
+			const result = await executeAbility(
+				'core/read-content',
+				abilityInput
+			);
 			return { ok: true, result };
 		} catch ( e ) {
 			return { ok: false, code: e && e.code ? e.code : null };
