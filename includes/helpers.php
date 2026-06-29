@@ -88,6 +88,10 @@ function normalize_content( string $content ): string {
  * @return int The number of non-whitespace characters.
  */
 function count_characters_excluding_spaces( string $text ): int {
+	if ( empty( $text ) ) {
+		return 0;
+	}
+
 	// Strip all HTML tags including comments.
 	$text = wp_strip_all_tags( $text );
 
