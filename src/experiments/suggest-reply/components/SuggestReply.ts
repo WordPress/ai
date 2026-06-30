@@ -11,6 +11,7 @@ import { __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
+import './index.scss';
 
 type Tone = 'friendly' | 'professional' | 'casual';
 
@@ -101,9 +102,9 @@ function showErrorNotice( message: string ): void {
 
 	const notice = document.createElement( 'div' );
 	notice.id = ERROR_NOTICE_ID;
-	notice.className = 'notice notice-error notice-alt inline';
-	notice.style.cssText = 'margin: 8px 0 0; padding: 8px 12px;';
-	notice.innerHTML = `<p style='margin-block-end: 0 !important'>${ message }</p>`;
+	notice.className =
+		'notice notice-error notice-alt inline wpai-suggest-reply-error';
+	notice.innerHTML = `<p>${ message }</p>`;
 
 	container.appendChild( notice );
 }
@@ -113,13 +114,11 @@ function setLinkLoading( link: HTMLElement, loading: boolean ): void {
 	if ( loading ) {
 		link.textContent = LOADING_TEXT;
 		link.setAttribute( 'aria-disabled', 'true' );
-		link.style.pointerEvents = 'none';
-		link.style.opacity = '0.6';
+		link.classList.add( 'wpai-suggest-reply-link-loading' );
 	} else {
 		link.textContent = ORIGINAL_LINK_TEXT;
 		link.removeAttribute( 'aria-disabled' );
-		link.style.pointerEvents = '';
-		link.style.opacity = '';
+		link.classList.remove( 'wpai-suggest-reply-link-loading' );
 	}
 }
 
@@ -176,11 +175,9 @@ function createToneControl(): DocumentFragment {
 	const label = document.createElement( 'label' );
 	label.htmlFor = TONE_SELECT_ID;
 	label.textContent = TONE_LABEL;
-	label.style.cssText = 'font-size:13px; margin:0;';
 
 	const select = document.createElement( 'select' );
 	select.id = TONE_SELECT_ID;
-	select.style.cssText = 'font-size:13px;';
 
 	TONE_OPTIONS.forEach( ( { label: optLabel, value } ) => {
 		const option = document.createElement( 'option' );
@@ -214,8 +211,7 @@ function injectSuggestReplyControls(): void {
 
 	const wrapper = document.createElement( 'span' );
 	wrapper.id = CONTROLS_WRAPPER_ID;
-	wrapper.style.cssText =
-		'display:inline-flex; align-items:center; gap:6px; margin-left:12px; border-left:1px solid #ddd; padding-left:12px;';
+	wrapper.className = 'wpai-suggest-reply-controls';
 
 	wrapper.appendChild( createSuggestReplyButton() );
 	wrapper.appendChild( createToneControl() );
