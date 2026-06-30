@@ -380,6 +380,10 @@ final class Content {
 		if ( ! $post_type instanceof \WP_Post_Type || empty( $post_type->show_in_abilities ) ) {
 			return false;
 		}
+		
+		if ( is_post_publicly_viewable( $post ) ) {
+				return true;
+		}
 
 		if ( 'publish' === $post->post_status || current_user_can( 'read_post', $post->ID ) ) {
 			return true;
