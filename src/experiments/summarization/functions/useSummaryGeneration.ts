@@ -35,6 +35,30 @@ const getSettings = (): SummarizationData => {
 };
 
 /**
+ * Recursively searches a list of blocks to find the Summary block.
+ *
+ * @param {any[]} blocks List of blocks to search.
+ * @return {any|null} The found block or null.
+ */
+function findSummaryBlock( blocks: any[] ): any {
+	for ( const block of blocks ) {
+		if (
+			'core/group' === block.name &&
+			true === block.attributes[ 'aiGeneratedSummary' ] // eslint-disable-line dot-notation
+		) {
+			return block;
+		}
+		if ( block.innerBlocks && block.innerBlocks.length > 0 ) {
+			const found = findSummaryBlock( block.innerBlocks );
+			if ( found ) {
+				return found;
+			}
+		}
+	}
+	return null;
+}
+
+/**
  * Summary generation hook.
  */
 export function useSummaryGeneration() {
@@ -52,11 +76,7 @@ export function useSummaryGeneration() {
 
 	// Check if a summary group block exists and update state accordingly.
 	useEffect( () => {
-		const summaryGroup = allBlocks.find(
-			( block ) =>
-				block.name === 'core/group' &&
-				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
-		);
+		const summaryGroup = findSummaryBlock( allBlocks );
 		setSummary( summaryGroup ? 'exists' : '' );
 	}, [ allBlocks ] );
 
@@ -95,11 +115,7 @@ export function useSummaryGeneration() {
 			);
 
 			// Check if an existing Content Summary group block exists.
-			const existingSummaryBlock = allBlocks.find(
-				( block ) =>
-					block.name === 'core/group' &&
-					block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
-			);
+			const existingSummaryBlock = findSummaryBlock( allBlocks );
 
 			if ( existingSummaryBlock ) {
 				// Replace inner blocks of the existing group to preserve its attributes.
