@@ -307,7 +307,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Checks if any configured connector is unapproved and returns a corresponding WP_Error if so.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $message The fallback error message.
 	 * @return \WP_Error|null A WP_Error if an unapproved connector is found, null otherwise.
