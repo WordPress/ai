@@ -125,6 +125,11 @@ module.exports = {
 			'src/experiments/alt-text-generation',
 			'bulk.ts'
 		),
+		'experiments/content-translation': path.resolve(
+			process.cwd(),
+			'src/experiments/content-translation',
+			'index.tsx'
+		)
 	},
 
 	plugins: [
