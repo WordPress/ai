@@ -83,7 +83,7 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect( reviewButton ).toBeEnabled();
 
 		await expect( reviewButton ).not.toHaveAccessibleDescription(
-			/at least 15 words./
+			/at least 75 characters./
 		);
 	} );
 
