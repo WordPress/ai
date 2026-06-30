@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/settings` WordPress Ability.
+ * The `core/read-settings` WordPress Ability.
  *
  * @package WordPress\AI
  *
@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Settings
  *
- * Registers the read-only `core/settings` ability, which returns WordPress settings as a
+ * Registers the read-only `core/read-settings` ability, which returns WordPress settings as a
  * flat map of setting name to value. Only settings flagged with `show_in_abilities` are
  * exposed. It is structured to also back a future write-oriented `core/manage-settings`
  * ability via the shared helpers (get_exposed_settings(), value_schema(), cast_value()).
@@ -84,14 +84,14 @@ final class Settings {
 	}
 
 	/**
-	 * Registers the read-only `core/settings` ability.
+	 * Registers the read-only `core/read-settings` ability.
 	 *
 	 * @since x.x.x
 	 */
 	private function register_get_settings(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/settings' ) ) {
-			wp_unregister_ability( 'core/settings' );
+		if ( wp_has_ability( 'core/read-settings' ) ) {
+			wp_unregister_ability( 'core/read-settings' );
 		}
 
 		// Compute once; execute_get_settings() reuses this exact structure.
@@ -110,9 +110,9 @@ final class Settings {
 		}
 
 		wp_register_ability(
-			'core/settings',
+			'core/read-settings',
 			array(
-				'label'               => __( 'Get Settings', 'ai' ),
+				'label'               => __( 'Read Settings', 'ai' ),
 				'description'         => __( 'Returns WordPress settings as a flat map of setting name to value. By default returns all settings exposed to abilities, or optionally a subset filtered by settings group, by setting name, or both.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_settings_input_schema( $groups, $field_names ),
@@ -137,7 +137,7 @@ final class Settings {
 	}
 
 	/**
-	 * Executes the `core/settings` ability.
+	 * Executes the `core/read-settings` ability.
 	 *
 	 * @since x.x.x
 	 *

@@ -18,14 +18,14 @@ defined( 'ABSPATH' ) || exit;
  * Class - Show_In_Abilities
  *
  * WordPress core does not yet ship the `show_in_abilities` flag consumed by the
- * `core/settings` ability (and, in the future, post type and meta abilities). This
+ * `core/read-settings` ability (and, in the future, post type and meta abilities). This
  * component polyfills that flag onto a curated set of core objects so the abilities
  * return data on a stock site, before/without the equivalent core change.
  *
  * It is intentionally object-type-agnostic: today it marks settings; post types and
  * meta can be marked here the same way when those abilities land.
  *
- * Timing: the `core/settings` ability snapshots the exposed settings when it registers
+ * Timing: the `core/read-settings` ability snapshots the exposed settings when it registers
  * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
  * before that hook fires — i.e. its `register_setting()` call must run before abilities
  * init — for the ability to pick it up.
