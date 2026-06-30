@@ -34,6 +34,14 @@ const MAX_SUGGESTIONS = 10;
 
 const suggestionsCache: Record< string, TagSuggestion[] > = {};
 
+/**
+ * Tracks the current suggestions generation cycle count for each taxonomy.
+ *
+ * Incremented on suggestion regeneration or dismissal.
+ * Prevents race conditions from stale request failures trying to restore pills.
+ */
+const generationCounts: Record< string, number > = {};
+
 const normalizeMaxSuggestions = ( value: unknown ): number => {
 	const parsedValue = Number.parseInt(
 		String( value ?? DEFAULT_MAX_SUGGESTIONS ),
@@ -178,6 +186,9 @@ export function useContentClassification( taxonomy: string ): {
 			return;
 		}
 
+		generationCounts[ taxonomy ] =
+			( generationCounts[ taxonomy ] || 0 ) + 1;
+
 		const settings = getSettings();
 		setIsGenerating( true );
 		setSuggestions( [] );
@@ -226,8 +237,32 @@ export function useContentClassification( taxonomy: string ): {
 	// Handle accepting a suggestion.
 	const handleAccept = useCallback(
 		( suggestion: TagSuggestion ) => {
-			removeSuggestionFromList( suggestion );
-			addTermToPost( taxonomy, suggestion );
+			// Obtain original position of the suggestion before removal.
+			let originalIndex = -1;
+			setSuggestions( ( prev ) => {
+				originalIndex = prev.findIndex(
+					( s ) => s.term === suggestion.term
+				);
+				return prev.filter( ( s ) => s.term !== suggestion.term );
+			} );
+
+			const clickGenerationCount = generationCounts[ taxonomy ] || 0;
+
+			addTermToPost( taxonomy, suggestion ).then( ( success ) => {
+				if ( success ) {
+					return;
+				}
+
+				// Ensure to not add suggestion back if a new generation/clear has been triggered.
+				if (
+					( generationCounts[ taxonomy ] || 0 ) ===
+					clickGenerationCount
+				) {
+					setSuggestions( ( prev ) =>
+						insertSuggestionAt( prev, suggestion, originalIndex )
+					);
+				}
+			} );
 		},
 		[ taxonomy ]
 	);
@@ -239,8 +274,10 @@ export function useContentClassification( taxonomy: string ): {
 
 	// Handle dismissing all suggestions.
 	const handleDismissAll = useCallback( () => {
+		generationCounts[ taxonomy ] =
+			( generationCounts[ taxonomy ] || 0 ) + 1;
 		setSuggestions( [] );
-	}, [] );
+	}, [ taxonomy ] );
 
 	return {
 		isGenerating,
@@ -255,18 +292,45 @@ export function useContentClassification( taxonomy: string ): {
 }
 
 /**
+ * Inserts a suggestion back into a list at the specified index, preventing duplicates.
+ *
+ * @param list       The current list of suggestions.
+ * @param suggestion The suggestion to insert.
+ * @param index      The index to insert the suggestion at.
+ * @return The updated list of suggestions.
+ */
+function insertSuggestionAt(
+	list: TagSuggestion[],
+	suggestion: TagSuggestion,
+	index: number
+): TagSuggestion[] {
+	// Skip if already present.
+	if ( list.some( ( s ) => s.term === suggestion.term ) ) {
+		return list;
+	}
+
+	// If original index is invalid, push to the end.
+	if ( index < 0 || index > list.length ) {
+		return [ ...list, suggestion ];
+	}
+
+	// Otherwise, insert at the correct position.
+	const newList = [ ...list ];
+	newList.splice( index, 0, suggestion );
+	return newList;
+}
+
+/**
  * Adds a term to the current post.
  *
  * @param taxonomy   The taxonomy slug.
  * @param suggestion The suggestion to add.
+ * @return Promise resolving to true if successful, false otherwise.
  */
 async function addTermToPost(
 	taxonomy: string,
 	suggestion: TagSuggestion
-): Promise< void > {
-	const { editPost }: any = dispatch( editorStore );
-	const { getEditedPostAttribute } = select( editorStore );
-
+): Promise< boolean > {
 	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
 	const restBase = taxonomyObject?.rest_base ?? taxonomy;
 
@@ -280,8 +344,13 @@ async function addTermToPost(
 		);
 		if ( resolvedParent ) {
 			parentId = resolvedParent;
+		} else {
+			return false;
 		}
 	}
+
+	const { editPost }: any = dispatch( editorStore );
+	const { getEditedPostAttribute } = select( editorStore );
 
 	const currentTerms: number[] = getEditedPostAttribute( restBase ) ?? [];
 	const termId = await findOrCreateTerm(
@@ -291,11 +360,16 @@ async function addTermToPost(
 		parentId
 	);
 
-	if ( termId && ! currentTerms.includes( termId ) ) {
-		editPost( {
-			[ restBase ]: [ ...currentTerms, termId ],
-		} );
+	if ( termId ) {
+		if ( ! currentTerms.includes( termId ) ) {
+			editPost( {
+				[ restBase ]: [ ...currentTerms, termId ],
+			} );
+		}
+		return true;
 	}
+
+	return false;
 }
 
 /**

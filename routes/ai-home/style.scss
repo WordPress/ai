@@ -72,27 +72,52 @@ body:has(.ai-settings-page) .components-popover {
 .ai-developer-mode-fields {
 	margin-top: var(--wpds-dimension-gap-lg, 16px);
 
-	.ai-developer-mode-fields__loading-provider {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-
 	.ai-developer-mode-fields__loading-provider-label {
 		font-size: 11px;
 		font-weight: 499;
 		line-height: 1.4;
 	}
 
-	.ai-developer-mode-fields__notice {
-		margin-bottom: var(--wpds-dimension-gap-lg, 16px);
+	.ai-developer-mode-fields__actions {
+		padding-bottom: var(--wpds-dimension-gap-sm, 8px);
+	}
+}
+
+/**
+ * Snackbar notifications are rendered full-width by the route shell and, by
+ * default, centered over the (centered) settings content, where they obscure
+ * the controls the user is interacting with. Pin them to the bottom
+ * inline-start of the content area instead, offsetting by the WordPress admin
+ * menu width so they clear both the menu and the settings cards.
+ */
+body.settings_page_ai-wp-admin {
+	.components-snackbar-list {
+		box-sizing: border-box;
+		// Full admin menu width (160px) plus a gutter.
+		padding-inline-start: 184px;
+
+		.components-snackbar {
+			// Align to inline-start instead of the default centered margins.
+			margin-inline: 0 auto;
+		}
 	}
 
-	.ai-developer-mode-fields__actions {
-		display: flex;
-		align-items: center;
-		gap: var(--wpds-dimension-gap-lg, 16px);
-		margin-top: var(--wpds-dimension-gap-lg, 16px);
-		padding-bottom: var(--wpds-dimension-gap-sm, 8px);
+	// Collapsed admin menu (manually folded) shrinks to 36px.
+	&.folded .components-snackbar-list {
+		padding-inline-start: 60px;
+	}
+
+	// auto-fold collapses the menu to 36px at this breakpoint.
+	@media screen and (max-width: 960px) {
+		.components-snackbar-list {
+			padding-inline-start: 60px;
+		}
+	}
+
+	// The admin menu moves off-canvas; align toasts to the content edge.
+	@media screen and (max-width: 782px) {
+		.components-snackbar-list {
+			padding-inline-start: 24px;
+		}
 	}
 }

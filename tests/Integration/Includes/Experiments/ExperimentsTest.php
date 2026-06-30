@@ -13,6 +13,7 @@ use WordPress\AI\Experiments\Connector_Approval\Connector_Approval;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply;
 use WordPress\AI\Experiments\Experiments;
+use WordPress\AI\Experiments\Type_Ahead\Type_Ahead;
 
 /**
  * Tests for the Experiments class.
@@ -38,6 +39,7 @@ class ExperimentsTest extends WP_UnitTestCase {
 
 		// Test a random experiment to ensure it's registered as a default experiment.
 		$this->assertContains( Abilities_Explorer::class, $results, 'Abilities_Explorer should be registered as a default experiment.' );
+		$this->assertContains( Type_Ahead::class, $results, 'Type_Ahead should be registered as a default experiment.' );
 		$this->assertContains( Connector_Approval::class, $results, 'Connector_Approval should be registered as a default experiment.' );
 		$this->assertContains( Comment_Moderation::class, $results, 'Comment_Moderation should be registered as a default experiment.' );
 		$this->assertContains( Suggest_Reply::class, $results, 'Suggest_Reply should be registered as a default experiment.' );
