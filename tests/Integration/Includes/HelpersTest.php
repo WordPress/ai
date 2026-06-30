@@ -403,6 +403,46 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that count_characters_excluding_spaces() counts characters excluding spaces.
+	 *
+	 * @dataProvider data_count_characters_excluding_spaces
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text The text to count characters in.
+	 * @param int    $expected_count The expected count of characters excluding spaces.
+	 */
+	public function test_count_characters_excluding_spaces( string $text, int $expected_count ) {
+		$this->assertSame( $expected_count, \WordPress\AI\count_characters_excluding_spaces( $text ) );
+	}
+
+	/**
+	 * Data provider for count_characters_excluding_spaces() test.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string, int}>
+	 */
+	public function data_count_characters_excluding_spaces(): array {
+		return array(
+			'empty string'                              => array( '', 0 ),
+			'only spaces'                               => array( '   ', 0 ),
+			'basic text'                                => array( 'Hello world', 10 ),
+			'tabs and newlines'                         => array( "Hello\tworld\nagain", 15 ),
+			'html tags are ignored'                     => array( '<p>Hello <strong>world</strong></p>', 10 ),
+			'html comments are ignored'                 => array( 'Hello <!-- hidden --> world', 10 ),
+			'nbsp entities are spaces'                  => array( 'Hello&nbsp;world&#160;', 10 ),
+			'entities count as one'                     => array( 'Hello &amp; world', 11 ),
+			'unicode letters'                           => array( 'こんにちは 世界', 7 ),
+			'full-width cjk space'                      => array( 'こんにちは　世界', 7 ),
+			'narrow no-break space'                     => array( "Hello\u{202F}world", 10 ),
+			'literal non-breaking space'                => array( "Hello\u{00A0}world", 10 ),
+			'multiple html entities count individually' => array( '&copy; &reg; &trade;', 3 ),
+			'mixed unicode whitespace only'             => array( " \t\n\u{00A0}\u{202F}\u{3000}", 0 ),
+		);
+	}
+
+	/**
 	 * Test that get_post_context() returns empty array for non-existent post.
 	 *
 	 * @since 0.1.0
