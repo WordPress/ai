@@ -194,7 +194,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 - Ensure scalar input schemas are allowed in the Abilities Explorer validation ([#787](https://github.com/WordPress/ai/pull/787)).
 - Standardize the Title Generation button text ([#790](https://github.com/WordPress/ai/pull/790)).
 - Scope the Editorial Note generation loading spinner only to the block currently being reviewed ([#794](https://github.com/WordPress/ai/pull/794)).
-- Snackbar notifications no longer overlap the settings content; they are pinned to the bottom-left of the content area ([#800](https://github.com/WordPress/ai/issues/800)).
+- Snackbar notifications no longer overlap the settings content; they are pinned to the bottom-left of the content area ([#801](https://github.com/WordPress/ai/issues/801)).
 
 = 1.0.2 - 2026-06-15 =
 

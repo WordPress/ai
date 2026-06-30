@@ -39,7 +39,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 - Ensure scalar input schemas are allowed in the Abilities Explorer validation ([#787](https://github.com/WordPress/ai/pull/787)).
 - Standardize the Title Generation button text ([#790](https://github.com/WordPress/ai/pull/790)).
 - Scope the Editorial Note generation loading spinner only to the block currently being reviewed ([#794](https://github.com/WordPress/ai/pull/794)).
-- Snackbar notifications no longer overlap the settings content; they are pinned to the bottom-left of the content area ([#800](https://github.com/WordPress/ai/issues/800)).
+- Snackbar notifications no longer overlap the settings content; they are pinned to the bottom-left of the content area ([#801](https://github.com/WordPress/ai/issues/801)).
 
 ### Developer
 - Skip push-triggered CI workflows on forks ([#722](https://github.com/WordPress/ai/pull/722)).
