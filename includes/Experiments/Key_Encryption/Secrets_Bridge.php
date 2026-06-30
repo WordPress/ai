@@ -31,14 +31,14 @@ defined( 'ABSPATH' ) || exit;
  * current user. This matters because these option filters run in unauthenticated contexts
  * (cron, front-end, REST) where no user holds the `manage_secrets` capability.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class Secrets_Bridge {
 
 	/**
 	 * Secret-key namespace used for every AI connector API key.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public const SECRET_NAMESPACE = 'ai';
 
@@ -49,7 +49,7 @@ final class Secrets_Bridge {
 	 * without being intercepted by the read filter (which would otherwise short-circuit and
 	 * return the empty placeholder).
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 * @var bool
 	 */
 	private bool $bypass_read_filter = false;
@@ -57,7 +57,7 @@ final class Secrets_Bridge {
 	/**
 	 * Registers transparent read/write filters for every connector API key option.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function register_option_filters(): void {
 		foreach ( $this->get_connector_setting_names() as $setting_name ) {
@@ -87,7 +87,7 @@ final class Secrets_Bridge {
 	 * Called before `decrypt_all()` so the plaintext writes during
 	 * reversal are not re-encrypted by the very filters we are tearing down.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function unregister_option_filters(): void {
 		foreach ( $this->get_connector_setting_names() as $setting_name ) {
@@ -105,7 +105,7 @@ final class Secrets_Bridge {
 	 * After completion, registers the read filter so subsequent reads in
 	 * the same request return the decrypted value.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return int Number of keys encrypted.
 	 */
@@ -158,7 +158,7 @@ final class Secrets_Bridge {
 	 * plugin while the experiment is enabled, so the user is never locked out
 	 * of their own credentials.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return int Number of keys restored.
 	 */
@@ -193,7 +193,7 @@ final class Secrets_Bridge {
 	 *
 	 * Stores the secret out-of-band and forces the wp_options row to remain empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed $value New value being written.
 	 * @return string Always empty — the real value lives in the secrets store.
@@ -225,7 +225,7 @@ final class Secrets_Bridge {
 	 * Returns the decrypted secret if one is stored; otherwise passes
 	 * through to the stored value (which may be a not-yet-migrated plaintext key).
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed  $value  Stored option value.
 	 * @param string $option Option name.
@@ -260,7 +260,7 @@ final class Secrets_Bridge {
 	 * secret if one is stored so the key is readable without a backing row; otherwise passes the
 	 * default through untouched.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed  $default_value The default value WordPress would return.
 	 * @param string $option        Option name.
@@ -291,7 +291,7 @@ final class Secrets_Bridge {
 	/**
 	 * Returns whether the bundled secrets backend can encrypt in this environment.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return bool Whether an encryption provider is available.
 	 */
@@ -302,7 +302,7 @@ final class Secrets_Bridge {
 	/**
 	 * Returns the explicit caller context passed to every Secrets operation.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return array<string, string> The caller context.
 	 */
@@ -313,7 +313,7 @@ final class Secrets_Bridge {
 	/**
 	 * Lazily registers the bundled encryption provider and returns the active provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return \WordPress\AI\Vendor\Secrets\Secrets_Provider|null The active provider, or null.
 	 */
@@ -336,7 +336,7 @@ final class Secrets_Bridge {
 	 * Includes inactive connectors so we can clean up keys stored by
 	 * previously-active connectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return array<string, string>
 	 */
@@ -368,7 +368,7 @@ final class Secrets_Bridge {
 	/**
 	 * Reads a wp_option without triggering our read filter (returns the actual stored value).
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string $option_name The wp_option name.
 	 * @return string The raw option value.
@@ -387,7 +387,7 @@ final class Secrets_Bridge {
 	/**
 	 * Builds the namespaced secret key for a given connector id.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string $connector_id The connector id.
 	 * @return string The namespaced secret key.
@@ -399,7 +399,7 @@ final class Secrets_Bridge {
 	/**
 	 * Reverse-lookup: given the wp_option name from the current filter context, find the connector id.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string $setting_name The wp_option name.
 	 * @return string|null The connector id, or null if not found.
@@ -420,7 +420,7 @@ final class Secrets_Bridge {
 	 * recover the option name from `current_filter()` and then map it
 	 * to a connector id.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return string|null The connector id, or null if not found.
 	 */
@@ -439,7 +439,7 @@ final class Secrets_Bridge {
 	 *
 	 * Called when an empty value is being written (treat as "clear the key").
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function delete_secret_for_current_filter(): void {
 		if ( ! $this->is_secrets_manager_available() ) {

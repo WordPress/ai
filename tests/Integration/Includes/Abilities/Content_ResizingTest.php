@@ -403,7 +403,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns false for post type without show_in_rest.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_permission_callback_with_post_type_without_show_in_rest() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -473,7 +473,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that the shorten character count validation strips HTML tags before counting.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_execute_callback_shorten_character_count_ignores_html_tags() {
 		$reflection = new \ReflectionClass( $this->ability );

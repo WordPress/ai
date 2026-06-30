@@ -22,7 +22,7 @@ use WordPress\AI\Vendor\Secrets\Secrets_Manager;
 /**
  * Test case for the Key_Encryption experiment.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class Key_EncryptionTest extends WP_UnitTestCase {
 
@@ -44,7 +44,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	private Key_Encryption $experiment;
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -75,7 +75,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function tearDown(): void {
 		delete_option( self::GLOBAL_TOGGLE );
@@ -87,7 +87,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_round_trip_when_enabled() {
 		update_option( self::TOGGLE, true );
@@ -105,7 +105,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_opt_in_encrypts_existing_plaintext_keys() {
 		update_option( self::SETTING_NAME, 'sk-plaintext' );
@@ -119,7 +119,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_opt_out_restores_plaintext() {
 		update_option( self::TOGGLE, true );
@@ -132,7 +132,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_deactivation_restores_plaintext() {
 		update_option( self::TOGGLE, true );
@@ -145,7 +145,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_deactivation_with_experiment_disabled_is_noop() {
 		update_option( self::SETTING_NAME, 'sk-plaintext' );
@@ -156,7 +156,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_write_with_empty_string_clears_secret() {
 		update_option( self::TOGGLE, true );
@@ -173,7 +173,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * The user globally disables AI features while Key Encryption is on. Existing encrypted
 	 * keys must be restored to plaintext so the user is not locked out.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_global_toggle_off_decrypts_existing_keys() {
 		update_option( self::TOGGLE, true );
@@ -190,7 +190,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * Re-enabling the global toggle (with the experiment still individually on) re-encrypts
 	 * the plaintext keys that were restored when the global toggle was flipped off.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_global_toggle_on_re_encrypts() {
 		update_option( self::TOGGLE, true );
@@ -209,7 +209,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * Toggling the experiment on while AI is globally disabled is a no-op for migration —
 	 * there is no point encrypting if the read filter will not run on the next request.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_individual_toggle_on_while_global_off_is_noop() {
 		update_option( self::GLOBAL_TOGGLE, false );
@@ -225,7 +225,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * Deactivation reads the *effective* state. If the global toggle is already off the secrets
 	 * have already been restored, so deactivation has nothing to do.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_deactivation_noop_when_globally_disabled() {
 		update_option( self::TOGGLE, true );
@@ -240,7 +240,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	/**
 	 * Plugin lifecycle: deactivate decrypts; reactivate (via the deferred resume flag) re-encrypts.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_reactivation_re_encrypts_plaintext_keys() {
 		update_option( self::TOGGLE, true );
@@ -278,7 +278,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * Fresh activation with the experiment never enabled is a no-op: the flag is consumed but
 	 * no migration runs.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_resume_migration_noop_when_not_effectively_enabled() {
 		update_option( self::SETTING_NAME, 'sk-plaintext' );
@@ -299,7 +299,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * never created — and `option_{$name}` (the read filter) only fires for options that exist.
 	 * The decrypted key must still be readable on the very first save.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_first_write_surfaces_key_when_setting_has_empty_default() {
 		// Mirror core: register the setting with a '' default so a missing option reads as ''.
@@ -327,7 +327,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_read_passthrough_when_no_secret_stored() {
 		// Experiment enabled but no migration ever ran for this key — the read filter should
@@ -347,7 +347,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	/**
 	 * Returns the decrypted secret value for the test connector, or null if none is stored.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function secret_value(): ?string {
 		return Secrets::get( self::SECRET_KEY, self::SECRET_CONTEXT );
@@ -356,7 +356,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	/**
 	 * Returns whether an encrypted secret is stored for the test connector.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function secret_stored(): bool {
 		return Secrets::exists( self::SECRET_KEY, self::SECRET_CONTEXT );
@@ -365,7 +365,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	/**
 	 * Reads a wp_option directly without our read filter intercepting.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function raw_option( string $option ): string {
 		$bridge = Key_Encryption::get_bridge();
@@ -380,7 +380,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	/**
 	 * Writes a raw value to wp_options bypassing our write filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function set_raw_option( string $option, string $value ): void {
 		$bridge = Key_Encryption::get_bridge();
@@ -392,7 +392,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	/**
 	 * Registers a fake AI connector in the WP 7.0 connector registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function register_test_connector(): void {
 		$registry = \WP_Connector_Registry::get_instance();

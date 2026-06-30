@@ -35,7 +35,7 @@ class Content_Resizing extends Abstract_Ability {
 	/**
 	 * The default minimum content length in characters for the shorten action.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var int
 	 */
