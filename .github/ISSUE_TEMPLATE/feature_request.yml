@@ -6,7 +6,6 @@ body:
     attributes:
       value: |
         Thanks for taking the time to suggest an improvement! Please fill out the fields below to help us understand your idea.
-
   - type: textarea
     attributes:
       label: What problem does this address?
