@@ -630,6 +630,76 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A status that is public but not viewable is not exposed to read-only users.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_public_non_viewable_status_is_denied_for_read_only_users(): void {
+		register_post_status(
+			'wpai_public_hidden',
+			array(
+				'label'              => 'Public hidden',
+				'public'             => true,
+				'publicly_queryable' => false,
+			)
+		);
+
+		try {
+			$post_id = self::factory()->post->create(
+				array(
+					'post_status' => 'wpai_public_hidden',
+				)
+			);
+
+			$this->login_as( 'subscriber' );
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+
+			$this->assertWPError( $result, 'Read-only users should not receive public statuses that are not viewable.' );
+			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Non-viewable public statuses should fail closed for read-only users.' );
+		} finally {
+			unset( $GLOBALS['wp_post_statuses']['wpai_public_hidden'] );
+		}
+	}
+
+	/**
+	 * A status that is public but not viewable remains available to users who can edit it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_public_non_viewable_status_is_readable_with_edit_access(): void {
+		register_post_status(
+			'wpai_public_hidden',
+			array(
+				'label'              => 'Public hidden',
+				'public'             => true,
+				'publicly_queryable' => false,
+			)
+		);
+
+		try {
+			$post_id = self::factory()->post->create(
+				array(
+					'post_title'  => 'Hidden public status',
+					'post_status' => 'wpai_public_hidden',
+				)
+			);
+
+			$this->login_as( 'administrator' );
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+
+			$this->assertIsArray( $result, 'Editors should be able to access posts they can edit even when the status is not publicly viewable.' );
+			$this->assertSame( $post_id, $result['id'], 'The editable post should be returned.' );
+			$this->assertSame( 'Hidden public status', $result['title_rendered'], 'The editable post should include normal default fields.' );
+		} finally {
+			unset( $GLOBALS['wp_post_statuses']['wpai_public_hidden'] );
+		}
+	}
+
+	/**
 	 * Query mode returns only published posts by default.
 	 *
 	 * @since x.x.x
