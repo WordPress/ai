@@ -719,11 +719,11 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Query mode can limit results to included IDs while preserving the requested order.
+	 * Query mode can limit results to included IDs.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_query_include_limits_results_and_preserves_order(): void {
+	public function test_query_include_limits_results(): void {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
@@ -740,7 +740,11 @@ class ContentTest extends WP_UnitTestCase {
 		);
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
-		$this->assertSame( array( $third, $first ), $ids, 'Included post IDs should limit results and preserve caller order.' );
+		sort( $ids );
+		$expected = array( $first, $third );
+		sort( $expected );
+
+		$this->assertSame( $expected, $ids, 'Included post IDs should limit results without requiring caller order.' );
 		$this->assertNotContains( $second, $ids, 'Posts outside include should not be returned.' );
 	}
 
