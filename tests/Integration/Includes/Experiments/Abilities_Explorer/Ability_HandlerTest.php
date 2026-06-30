@@ -309,6 +309,28 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test validate_input accepts a scalar top-level schema and input.
+	 *
+	 * The Abilities API permits non-object input schemas (e.g. a bare
+	 * integer). The handler must accept a scalar input value rather than
+	 * requiring an array.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_validate_input_accepts_scalar_input() {
+		$schema = array(
+			'type'        => 'integer',
+			'description' => 'The ID of the item to be analysed',
+			'required'    => true,
+		);
+
+		$result = Ability_Handler::validate_input( $schema, 42 );
+
+		$this->assertTrue( $result['valid'] );
+		$this->assertEmpty( $result['errors'] );
+	}
+
+	/**
 	 * Test get_statistics returns expected structure.
 	 *
 	 * @since 0.2.0
@@ -324,6 +346,86 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'Core', $stats['by_provider'] );
 		$this->assertArrayHasKey( 'Plugin', $stats['by_provider'] );
 		$this->assertArrayHasKey( 'Theme', $stats['by_provider'] );
+	}
+
+	/**
+	 * Test invoke_ability accepts a scalar input value.
+	 *
+	 * Abilities may declare a non-object input schema (e.g. a bare integer),
+	 * in which case the value passed to execute() is a scalar rather than an
+	 * array. The handler must forward the scalar through unchanged.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_invoke_ability_accepts_scalar_input() {
+		global $wp_current_filter;
+
+		// Built-in plugin abilities registered during init use the "site"
+		// category; ensure it exists so triggering init stays quiet.
+		$this->ensure_site_category();
+
+		$slug = 'ai/scalar-input-ability';
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+
+		try {
+			wp_register_ability(
+				$slug,
+				array(
+					'label'               => 'Scalar Input Ability',
+					'description'         => 'Test ability accepting a bare integer.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'input_schema'        => array(
+						'type'        => 'integer',
+						'description' => 'The ID of the item to be analysed',
+						'required'    => true,
+					),
+					'output_schema'       => array( 'type' => 'integer' ),
+					'execute_callback'    => static function ( $input ) {
+						return $input;
+					},
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$result = Ability_Handler::invoke_ability( $slug, 42 );
+
+		wp_unregister_ability( $slug );
+
+		$this->assertTrue( $result['success'] );
+		$this->assertSame( 42, $result['data'] );
+	}
+
+	/**
+	 * Ensures the "site" ability category is registered.
+	 *
+	 * Built-in plugin abilities declare the "site" category. When a test
+	 * triggers the abilities API init those abilities register, so the
+	 * category must exist first to avoid an incorrect-usage notice.
+	 *
+	 * @since x.x.x
+	 */
+	private function ensure_site_category(): void {
+		if ( wp_has_ability_category( 'site' ) ) {
+			return;
+		}
+
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			wp_register_ability_category(
+				'site',
+				array(
+					'label'       => 'Site',
+					'description' => 'Site.',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
 	}
 
 	/**

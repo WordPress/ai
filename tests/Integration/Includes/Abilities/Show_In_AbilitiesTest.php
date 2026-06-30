@@ -120,6 +120,41 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Non-array arguments are returned untouched rather than fataling.
+	 *
+	 * Core applies the `register_setting_args` filter before `wp_parse_args()` normalizes the
+	 * arguments, so a plugin that calls `register_setting()` with a non-array (e.g. WPBakery
+	 * Page Builder passing `null`) reaches the filter unchanged. The callback must hand it back
+	 * as-is for core to normalize, not blow up on a strict array type.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_non_array_args
+	 *
+	 * @param mixed $args A non-array value passed through the filter.
+	 */
+	public function test_passes_through_non_array_args( $args ): void {
+		$filtered = $this->show_in_abilities->mark_setting( $args, array(), 'general', 'blogname' );
+
+		$this->assertSame( $args, $filtered );
+	}
+
+	/**
+	 * Non-array argument values for the pass-through test.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: mixed}> Data sets keyed by description.
+	 */
+	public function data_non_array_args(): array {
+		return array(
+			'null'   => array( null ),
+			'string' => array( 'sanitize_me' ),
+			'false'  => array( false ),
+		);
+	}
+
+	/**
 	 * An explicit `show_in_abilities` value already on the setting is preserved.
 	 *
 	 * @since x.x.x

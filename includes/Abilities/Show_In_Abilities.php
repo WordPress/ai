@@ -53,13 +53,17 @@ final class Show_In_Abilities {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $args         The setting registration arguments.
+	 * @param mixed                $args         The setting registration arguments.
 	 * @param array<string, mixed> $defaults     The default registration arguments.
 	 * @param string               $option_group The settings group.
 	 * @param string               $option_name  The option name.
-	 * @return array<string, mixed> The (possibly amended) registration arguments.
+	 * @return mixed The (possibly amended) registration arguments.
 	 */
-	public function mark_setting( array $args, array $defaults, string $option_group, string $option_name ): array {
+	public function mark_setting( $args, $defaults, $option_group, $option_name ) {
+		if ( ! is_array( $args ) ) {
+			return $args;
+		}
+
 		$settings = $this->settings_map();
 
 		if ( isset( $settings[ $option_name ] ) && empty( $args['show_in_abilities'] ) ) {
