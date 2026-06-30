@@ -29,6 +29,7 @@ const DEFAULT_TONE: Tone = 'friendly';
 const REPLY_FORM_POLL_INTERVAL = 30;
 const REPLY_FORM_POLL_TIMEOUT = 1000;
 const INIT_FLAG_ATTR = 'data-wpai-suggest-reply-initialized';
+const TONE_ATTR = 'data-tone';
 
 const TONE_OPTIONS: { label: string; value: Tone }[] = [
 	{ label: __( 'Friendly', 'ai' ), value: 'friendly' },
@@ -107,7 +108,7 @@ function showErrorNotice( message: string ): void {
 	notice.id = ERROR_NOTICE_ID;
 	notice.className =
 		'notice notice-error notice-alt inline wpai-suggest-reply-error';
-	
+
 	const p = document.createElement( 'p' );
 	p.textContent = message;
 	notice.appendChild( p );
@@ -116,7 +117,15 @@ function showErrorNotice( message: string ): void {
 }
 
 /** Sets the row-action link into a loading/idle state. */
-function setLinkLoading( link: HTMLElement, loading: boolean ): void {
+function setLinkLoading( commentId: number, loading: boolean ): void {
+	const link = document.querySelector< HTMLElement >(
+		`.wpai-suggest-reply[data-comment-id="${ commentId }"]`
+	);
+
+	if ( ! link ) {
+		return;
+	}
+
 	if ( loading ) {
 		link.textContent = LOADING_TEXT;
 		link.setAttribute( 'aria-disabled', 'true' );
@@ -147,7 +156,7 @@ function setSuggestBtnLoading( loading: boolean ): void {
 		const toggleBtn = document.querySelector< HTMLButtonElement >(
 			'.wpai-split-button__toggle'
 		);
-		
+
 		if ( dropdownMenu ) {
 			dropdownMenu.hidden = true;
 		}
@@ -162,7 +171,7 @@ function getSelectedTone(): Tone {
 	const container =
 		document.querySelector< HTMLElement >( '.wpai-split-button' );
 
-	return ( container?.dataset['tone'] as Tone ) ?? DEFAULT_TONE;
+	return ( container?.getAttribute( TONE_ATTR ) as Tone ) ?? DEFAULT_TONE;
 }
 
 /** Creates the Suggest Reply Button. */
@@ -171,7 +180,7 @@ function createSplitButtonControls(): HTMLElement {
 
 	const container = document.createElement( 'div' );
 	container.className = 'wpai-split-button';
-	container.dataset['tone'] = currentTone;
+	container.setAttribute( TONE_ATTR, currentTone );
 
 	const actionBtn = document.createElement( 'button' );
 	actionBtn.id = SUGGEST_BTN_ID;
@@ -207,7 +216,7 @@ function createSplitButtonControls(): HTMLElement {
 		dropdownMenu
 			.querySelectorAll( '.wpai-dropdown-item' )
 			.forEach( ( item ) => {
-				if ( ( item as HTMLElement ).dataset['tone'] === currentTone ) {
+				if ( item.getAttribute( TONE_ATTR ) === currentTone ) {
 					item.classList.add( 'is-selected' );
 					item.setAttribute( 'aria-selected', 'true' );
 				} else {
@@ -216,14 +225,14 @@ function createSplitButtonControls(): HTMLElement {
 				}
 			} );
 
-		container.dataset['tone'] = currentTone;
+		container.setAttribute( TONE_ATTR, currentTone );
 	};
 
 	TONE_OPTIONS.forEach( ( { label, value } ) => {
 		const itemBtn = document.createElement( 'button' );
 		itemBtn.type = 'button';
 		itemBtn.className = 'wpai-dropdown-item';
-		itemBtn.dataset['tone'] = value;
+		itemBtn.setAttribute( TONE_ATTR, value );
 		itemBtn.innerHTML = `<span class="dashicons dashicons-yes wpai-selected-icon"></span> ${ label }`;
 
 		itemBtn.addEventListener( 'click', () => {
@@ -305,6 +314,8 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 	clearErrorNotice();
 	setTextareaPlaceholder( LOADING_PLACEHOLDER );
 	setReplyFormDisabled( true );
+	setLinkLoading( commentId, true );
+	setSuggestBtnLoading( true );
 
 	try {
 		const result = await runAbility< string >( 'ai/suggest-reply', {
@@ -322,6 +333,8 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 		showErrorNotice( message );
 	} finally {
 		setReplyFormDisabled( false );
+		setLinkLoading( commentId, false );
+		setSuggestBtnLoading( false );
 	}
 }
 
@@ -331,12 +344,7 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
  */
 async function runGenerationFromEditor( commentId: number ): Promise< void > {
 	const tone = getSelectedTone();
-
-	setSuggestBtnLoading( true );
-
 	await runGeneration( commentId, tone );
-
-	setSuggestBtnLoading( false );
 }
 
 /**
@@ -344,18 +352,11 @@ async function runGenerationFromEditor( commentId: number ): Promise< void > {
  * Opens the inline reply form (if not already open) for the given comment,
  * then generates a reply using the currently selected Tone.
  */
-async function generateAndInsertReply(
-	commentId: number,
-	link: HTMLElement
-): Promise< void > {
+async function generateAndInsertReply( commentId: number ): Promise< void > {
 	const tone = getSelectedTone();
-
-	setLinkLoading( link, true );
 
 	openReplyFormThen( commentId, async () => {
 		await runGeneration( commentId, tone );
-
-		setLinkLoading( link, false );
 	} );
 }
 
@@ -456,7 +457,7 @@ export function init(): void {
 		);
 
 		if ( commentId > 0 ) {
-			void generateAndInsertReply( commentId, target );
+			void generateAndInsertReply( commentId );
 		}
 	} );
 }
