@@ -34,7 +34,7 @@ import type {
 } from '../types';
 
 const NOTICE_ID = 'ai_title_generation_error';
-const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 
 const getSettings = (): TitleGenerationData => {
 	const settings = ( window as any ).aiTitleGenerationData ?? {};

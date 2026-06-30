@@ -25,7 +25,7 @@ import type {
 } from '../types';
 
 const NOTICE_ID = 'ai_meta_description_error';
-const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 
 const getLocalized = (): MetaDescriptionData | undefined =>
 	( window as any ).aiMetaDescriptionData as MetaDescriptionData | undefined;

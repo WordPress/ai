@@ -26,7 +26,7 @@ import type {
 	ContentClassificationData,
 } from '../types';
 
-const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 const NOTICE_ID = 'ai_content_classification_error';
 const DEFAULT_MAX_SUGGESTIONS = 5;
 const MIN_SUGGESTIONS = 1;

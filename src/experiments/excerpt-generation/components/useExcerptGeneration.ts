@@ -23,7 +23,7 @@ import type {
 } from '../types';
 
 const NOTICE_ID = 'ai_excerpt_generation_error';
-const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 
 const getSettings = (): ExcerptGenerationData => {
 	const settings = ( window as any ).aiExcerptGenerationData ?? {};

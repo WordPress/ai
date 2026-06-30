@@ -36,7 +36,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content that meets the minimum length requirement (>= 100 words).
+		// Create a new post with content that meets the minimum length requirement (>= 250 characters).
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Content Summarization Experiment',
@@ -139,7 +139,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content shorter than 100 words.
+		// Create a new post with content shorter than 250 characters.
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Short Content',
@@ -178,7 +178,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content that is at least 100 words.
+		// Create a new post with content that is at least 250 characters.
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Sufficient Content',
