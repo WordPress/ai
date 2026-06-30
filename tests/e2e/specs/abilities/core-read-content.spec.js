@@ -154,9 +154,11 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.posts.map( ( post ) => post.id ) ).toEqual(
-			include
-		);
+		expect(
+			outcome.result.posts
+				.map( ( post ) => post.id )
+				.sort( ( a, b ) => a - b )
+		).toEqual( [ ...include ].sort( ( a, b ) => a - b ) );
 		expect( typeof outcome.result.total ).toBe( 'number' );
 		expect( typeof outcome.result.total_pages ).toBe( 'number' );
 	} );

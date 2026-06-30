@@ -468,7 +468,6 @@ final class Content {
 
 		if ( array() !== $include ) {
 			$query_args['post__in'] = $include;
-			$query_args['orderby']  = 'post__in';
 		}
 
 		if ( ! empty( $input['author'] ) ) {
@@ -590,7 +589,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return int[] Unique positive post IDs in caller-provided order.
+		 * @return int[] Unique positive post IDs.
 	 */
 	private function normalize_include( array $input ): array {
 		if ( empty( $input['include'] ) || ! is_array( $input['include'] ) ) {
@@ -668,7 +667,7 @@ final class Content {
 				'type'    => 'integer',
 				'minimum' => 1,
 			),
-			'description' => __( 'Limit the query to these post IDs. Results preserve this order where possible and still respect post type and read permissions.', 'ai' ),
+			'description' => __( 'Limit the query to these post IDs. Results still respect post type, read permissions, and the query ordering.', 'ai' ),
 		);
 
 		return array(
