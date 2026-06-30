@@ -240,4 +240,83 @@ test.describe( 'Content Summarization Experiment', () => {
 			} )
 		).not.toBeVisible();
 	} );
+
+	test( 'Can find and regenerate a nested summary block without creating a duplicate', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// Create a new post containing a nested summary block inside columns, with enough content.
+		const nestedContent =
+			// Content
+			'<!-- wp:paragraph -->' +
+			'<p>This is some test content for the Content Summarization Experiment. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a minimum amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful.</p>' +
+			'<!-- /wp:paragraph -->' +
+			// Columns
+			'<!-- wp:columns -->' +
+			'<div class="wp-block-columns">' +
+			'<!-- wp:column -->' +
+			'<div class="wp-block-column">' +
+			'<!-- wp:group {"className":"ai-summarization-summary","aiGeneratedSummary":true} -->' +
+			'<div class="wp-block-group ai-summarization-summary">' +
+			'<!-- wp:paragraph -->' +
+			'<p>Original generated nested summary text.</p>' +
+			'<!-- /wp:paragraph -->' +
+			'</div>' +
+			'<!-- /wp:group -->' +
+			'</div>' +
+			'<!-- /wp:column -->' +
+			'</div>' +
+			'<!-- /wp:columns -->';
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Nested Summarization Experiment',
+		} );
+		await editor.setContent( nestedContent );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		// The button should display "Regenerate Summary" (implies it successfully found the nested block).
+		const regenerateButton = page.getByRole( 'button', {
+			name: 'Regenerate Summary',
+			exact: true,
+		} );
+		await expect( regenerateButton ).toBeVisible();
+
+		// Click the Regenerate Summary button.
+		await regenerateButton.click();
+
+		// Wait for the generation to complete (button changes from "Generating..." back to "Regenerate Summary").
+		await expect(
+			page.getByRole( 'button', {
+				name: 'Generating…',
+				exact: true,
+			} )
+		).not.toBeVisible();
+
+		// Ensure only 1 Content Summary block exists on the page.
+		const summaryBlocks = editor.canvas.getByRole( 'document', {
+			name: 'Block: Content Summary',
+		} );
+		await expect( summaryBlocks ).toHaveCount( 1 );
+
+		// Ensure the nested summary block content was updated with the mock response.
+		await expect(
+			summaryBlocks.locator( 'p', {
+				hasText:
+					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			} )
+		).toBeVisible();
+	} );
 } );
