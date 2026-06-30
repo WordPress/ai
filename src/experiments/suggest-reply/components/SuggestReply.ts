@@ -22,11 +22,9 @@ const GENERIC_ERROR_MESSAGE = __(
 	'Failed to generate a reply suggestion. Please try again.',
 	'ai'
 );
-const TONE_LABEL = __( 'Tone:', 'ai' );
 const ERROR_NOTICE_ID = 'wpai-suggest-reply-error';
 const CONTROLS_WRAPPER_ID = 'wpai-suggest-reply-controls';
 const SUGGEST_BTN_ID = 'wpai-suggest-reply-btn';
-const TONE_SELECT_ID = 'wpai-tone-select';
 const DEFAULT_TONE: Tone = 'friendly';
 const REPLY_FORM_POLL_INTERVAL = 30;
 const REPLY_FORM_POLL_TIMEOUT = 1000;
@@ -74,8 +72,14 @@ function setReplyFormDisabled( disabled: boolean ): void {
 		document.querySelector< HTMLButtonElement >( '#replysubmit .save' ),
 		document.querySelector< HTMLButtonElement >( '#replysubmit .cancel' ),
 		document.getElementById( SUGGEST_BTN_ID ) as HTMLButtonElement | null,
-		document.getElementById( TONE_SELECT_ID ) as HTMLSelectElement | null,
+		document.querySelector< HTMLButtonElement >(
+			'.wpai-split-button__toggle'
+		),
 	];
+
+	document
+		.querySelectorAll< HTMLButtonElement >( '.wpai-dropdown-item' )
+		.forEach( ( item ) => elements.push( item ) );
 
 	elements.forEach( ( el ) => {
 		if ( el ) {
@@ -103,7 +107,10 @@ function showErrorNotice( message: string ): void {
 	notice.id = ERROR_NOTICE_ID;
 	notice.className =
 		'notice notice-error notice-alt inline wpai-suggest-reply-error';
-	notice.innerHTML = `<p>${ message }</p>`;
+	
+	const p = document.createElement( 'p' );
+	p.textContent = message;
+	notice.appendChild( p );
 
 	container.appendChild( notice );
 }
@@ -133,24 +140,29 @@ function setSuggestBtnLoading( loading: boolean ): void {
 	}
 }
 
-/** Returns the tone currently selected in the inline Tone dropdown. */
+/** Returns the tone currently selected in the button dropdown. */
 function getSelectedTone(): Tone {
-	const select = document.getElementById(
-		TONE_SELECT_ID
-	) as HTMLSelectElement | null;
+	const container =
+		document.querySelector< HTMLElement >( '.wpai-split-button' );
 
-	return ( select?.value as Tone ) ?? DEFAULT_TONE;
+	return ( container?.dataset['tone'] as Tone ) ?? DEFAULT_TONE;
 }
 
-/** Creates the Suggest Reply button. */
-function createSuggestReplyButton(): HTMLButtonElement {
-	const btn = document.createElement( 'button' );
-	btn.id = SUGGEST_BTN_ID;
-	btn.type = 'button';
-	btn.className = 'button';
-	btn.textContent = SUGGEST_BTN_TEXT;
+/** Creates the Suggest Reply Button. */
+function createSplitButtonControls(): HTMLElement {
+	let currentTone: Tone = DEFAULT_TONE;
 
-	btn.addEventListener( 'click', () => {
+	const container = document.createElement( 'div' );
+	container.className = 'wpai-split-button';
+	container.dataset['tone'] = currentTone;
+
+	const actionBtn = document.createElement( 'button' );
+	actionBtn.id = SUGGEST_BTN_ID;
+	actionBtn.type = 'button';
+	actionBtn.className = 'button wpai-split-button__action';
+	actionBtn.textContent = SUGGEST_BTN_TEXT;
+
+	actionBtn.addEventListener( 'click', () => {
 		const commentIdInput = document.querySelector< HTMLInputElement >(
 			'#replyrow #comment_ID'
 		);
@@ -161,34 +173,78 @@ function createSuggestReplyButton(): HTMLButtonElement {
 		}
 	} );
 
-	return btn;
-}
+	const toggleBtn = document.createElement( 'button' );
+	toggleBtn.type = 'button';
+	toggleBtn.className = 'button wpai-split-button__toggle';
+	toggleBtn.setAttribute( 'aria-expanded', 'false' );
+	toggleBtn.setAttribute( 'aria-haspopup', 'true' );
+	toggleBtn.setAttribute( 'aria-label', __( 'Change reply tone', 'ai' ) );
+	toggleBtn.innerHTML =
+		'<span class="dashicons dashicons-arrow-down-alt2"></span>';
 
-/**
- * Creates a DocumentFragment containing the "Tone:" label and the tone
- * dropdown, ready to be appended together.
- */
-function createToneControl(): DocumentFragment {
-	const fragment = document.createDocumentFragment();
+	const dropdownMenu = document.createElement( 'div' );
+	dropdownMenu.className = 'wpai-split-button__dropdown';
+	dropdownMenu.hidden = true;
 
-	const label = document.createElement( 'label' );
-	label.htmlFor = TONE_SELECT_ID;
-	label.textContent = TONE_LABEL;
+	const updateSelectionUI = () => {
+		dropdownMenu
+			.querySelectorAll( '.wpai-dropdown-item' )
+			.forEach( ( item ) => {
+				if ( ( item as HTMLElement ).dataset['tone'] === currentTone ) {
+					item.classList.add( 'is-selected' );
+					item.setAttribute( 'aria-selected', 'true' );
+				} else {
+					item.classList.remove( 'is-selected' );
+					item.setAttribute( 'aria-selected', 'false' );
+				}
+			} );
 
-	const select = document.createElement( 'select' );
-	select.id = TONE_SELECT_ID;
+		container.dataset['tone'] = currentTone;
+	};
 
-	TONE_OPTIONS.forEach( ( { label: optLabel, value } ) => {
-		const option = document.createElement( 'option' );
-		option.value = value;
-		option.textContent = optLabel;
-		select.appendChild( option );
+	TONE_OPTIONS.forEach( ( { label, value } ) => {
+		const itemBtn = document.createElement( 'button' );
+		itemBtn.type = 'button';
+		itemBtn.className = 'wpai-dropdown-item';
+		itemBtn.dataset['tone'] = value;
+		itemBtn.innerHTML = `<span class="dashicons dashicons-yes wpai-selected-icon"></span> ${ label }`;
+
+		itemBtn.addEventListener( 'click', () => {
+			currentTone = value as Tone;
+			updateSelectionUI();
+			dropdownMenu.hidden = true;
+			toggleBtn.setAttribute( 'aria-expanded', 'false' );
+		} );
+
+		dropdownMenu.appendChild( itemBtn );
 	} );
 
-	fragment.appendChild( label );
-	fragment.appendChild( select );
+	updateSelectionUI();
 
-	return fragment;
+	// Open and Close the dropdown menu
+	toggleBtn.addEventListener( 'click', () => {
+		const isExpanded = toggleBtn.getAttribute( 'aria-expanded' ) === 'true';
+		toggleBtn.setAttribute(
+			'aria-expanded',
+			isExpanded ? 'false' : 'true'
+		);
+
+		dropdownMenu.hidden = isExpanded;
+	} );
+
+	// Close dropdown when clicking outside
+	document.addEventListener( 'click', ( e ) => {
+		if ( ! container.contains( e.target as Node ) ) {
+			dropdownMenu.hidden = true;
+			toggleBtn.setAttribute( 'aria-expanded', 'false' );
+		}
+	} );
+
+	container.appendChild( actionBtn );
+	container.appendChild( toggleBtn );
+	container.appendChild( dropdownMenu );
+
+	return container;
 }
 
 /**
@@ -212,8 +268,7 @@ function injectSuggestReplyControls(): void {
 	wrapper.id = CONTROLS_WRAPPER_ID;
 	wrapper.className = 'wpai-suggest-reply-controls';
 
-	wrapper.appendChild( createSuggestReplyButton() );
-	wrapper.appendChild( createToneControl() );
+	wrapper.appendChild( createSplitButtonControls() );
 
 	const spinner = buttonArea.querySelector( '.waiting.spinner' );
 

@@ -15,17 +15,96 @@
 .wpai-suggest-reply-controls {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
 	margin-left: 12px;
 	border-left: 1px solid #ddd;
 	padding-left: 12px;
+}
 
-	label {
-		font-size: 13px;
-		margin: 0;
+/* Override WordPress core overflow:hidden which clips the dropdown */
+#replysubmit {
+	overflow: visible !important;
+}
+
+#wpai-suggest-reply-btn {
+	margin-right: 0 !important;
+}
+
+.wpai-split-button {
+	display: inline-flex;
+	position: relative;
+
+	.wpai-split-button__action {
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
+		border-right: 0;
 	}
 
-	select {
+	.wpai-split-button__toggle {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+		padding: 0 6px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+
+		.dashicons {
+			font-size: 16px;
+			width: 16px;
+			height: 16px;
+			line-height: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			margin: 0;
+		}
+	}
+
+	.wpai-split-button__dropdown {
+		position: absolute;
+		top: 100%;
+		right: 0;
+		margin-top: 4px;
+		background: #fff;
+		border: 1px solid #c3c4c7;
+		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		border-radius: 3px;
+		z-index: 99999;
+		min-width: 160px;
+		padding: 4px 0;
+	}
+
+	.wpai-dropdown-item {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		border: none;
+		background: none;
+		text-align: left;
+		padding: 6px 12px;
 		font-size: 13px;
+		cursor: pointer;
+		color: #2c3338;
+
+		&:hover,
+		&:focus {
+			background: #f0f0f1;
+			color: var(--wp-admin-theme-color, #3858e9);
+		}
+
+		.wpai-selected-icon {
+			visibility: hidden;
+			margin-right: 6px;
+			font-size: 16px;
+			width: 16px;
+			height: 16px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		&.is-selected .wpai-selected-icon {
+			visibility: visible;
+			color: var(--wp-admin-theme-color, #3858e9);
+		}
 	}
 }
