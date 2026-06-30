@@ -163,7 +163,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 - New Experiment: Type Ahead; automatically suggests ghost text at the end of paragraphs, can be manually triggered within a paragraph ([#151](https://github.com/WordPress/ai/pull/151), [#776](https://github.com/WordPress/ai/pull/776)).
 - New Experiment: Key Encryption; encrypts AI Connector API keys before storing them in the database ([#560](https://github.com/WordPress/ai/pull/560)).
 - Ensure all Features that rely on utilizing content are disabled until minimum content thresholds are met ([#581](https://github.com/WordPress/ai/pull/581)).
-- New `core/settings` Ability ([#691](https://github.com/WordPress/ai/pull/691)).
+- New `core/read-settings` Ability ([#691](https://github.com/WordPress/ai/pull/691), [#806](https://github.com/WordPress/ai/pull/806)).
 - New `wpai_has_image_generation_support` filter that allows 3rd parties to claim support for Image Generation, for example if authenticating without an API key ([#748](https://github.com/WordPress/ai/pull/748)).
 - New setting to choose if guest comments should be moderated or not, defaulting to `yes` ([#751](https://github.com/WordPress/ai/pull/751)).
 - Explicit save button to developer settings panel, requiring a user to click save before the Provider and Model settings are saved ([#761](https://github.com/WordPress/ai/pull/761)).
@@ -177,7 +177,6 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 - Replace developer mode settings CSS with Stack component ([#785](https://github.com/WordPress/ai/pull/785)).
 - Use character-based count instead of word-based to determine when features are available to use ([#802](https://github.com/WordPress/ai/pull/802)).
 - Use `Notice` component to display warnings within experiment modals ([#803](https://github.com/WordPress/ai/pull/803)).
-- Rename the read-only settings Ability from `core/settings` to `core/read-settings` ([#806](https://github.com/WordPress/ai/pull/806)).
 - Added success snackbar when saving or resetting developer settings ([#807](https://github.com/WordPress/ai/pull/807)).
 
 **Fixed**
