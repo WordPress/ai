@@ -138,6 +138,23 @@ function setSuggestBtnLoading( loading: boolean ): void {
 		btn.disabled = loading;
 		btn.textContent = loading ? LOADING_TEXT : SUGGEST_BTN_TEXT;
 	}
+
+	if ( loading ) {
+		// Close the dropdown menu when generation starts
+		const dropdownMenu = document.querySelector< HTMLElement >(
+			'.wpai-split-button__dropdown'
+		);
+		const toggleBtn = document.querySelector< HTMLButtonElement >(
+			'.wpai-split-button__toggle'
+		);
+		
+		if ( dropdownMenu ) {
+			dropdownMenu.hidden = true;
+		}
+		if ( toggleBtn ) {
+			toggleBtn.setAttribute( 'aria-expanded', 'false' );
+		}
+	}
 }
 
 /** Returns the tone currently selected in the button dropdown. */
