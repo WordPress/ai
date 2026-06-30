@@ -119,20 +119,6 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Deletes shared posts created for the content ability tests.
-	 *
-	 * @since x.x.x
-	 */
-	public static function wpTearDownAfterClass(): void {
-		foreach ( self::$post_ids as $post_id ) {
-			wp_delete_post( $post_id, true );
-		}
-
-		self::$post_ids = array();
-		self::$user_ids = array();
-	}
-
-	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
