@@ -35,6 +35,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
+* **Key Encryption** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
