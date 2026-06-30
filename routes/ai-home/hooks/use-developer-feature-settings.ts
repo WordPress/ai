@@ -48,7 +48,8 @@ export function useDeveloperFeatureSettings(
 	const { editEntityRecord } = useDispatch( coreStore );
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
-	const { createErrorNotice, createSuccessNotice } = useDispatch( noticesStore );
+	const { createErrorNotice, createSuccessNotice } =
+		useDispatch( noticesStore );
 
 	const rawValue = editedRecord?.[ fieldKey ];
 	const settings: DeveloperFeatureSettings =
@@ -94,7 +95,13 @@ export function useDeveloperFeatureSettings(
 				);
 			}
 		},
-		[ fieldKey, editEntityRecord, saveSpecifiedEdits, createErrorNotice ]
+		[
+			fieldKey,
+			editEntityRecord,
+			saveSpecifiedEdits,
+			createErrorNotice,
+			createSuccessNotice,
+		]
 	);
 
 	const update = useCallback(
