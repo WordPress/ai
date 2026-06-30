@@ -8,7 +8,7 @@
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -16,17 +16,14 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
-import {
-	formatMinLengthLabel,
-	hasMinimumContent,
-} from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 import type {
 	ExcerptGenerationAbilityInput,
 	ExcerptGenerationData,
 } from '../types';
 
 const NOTICE_ID = 'ai_excerpt_generation_error';
-const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 
 const getSettings = (): ExcerptGenerationData => {
 	const settings = ( window as any ).aiExcerptGenerationData ?? {};
@@ -94,15 +91,10 @@ export function useExcerptGeneration(): {
 
 	// Minimum-length requirement message, surfaced as the button tooltip when
 	// the content is too short to generate from.
-	const tooShortLabel = formatMinLengthLabel(
+	const tooShortLabel = sprintf(
 		/* translators: %d: minimum number of characters required */
 		__(
 			'Excerpt generation will be available when the post content has at least %d characters.',
-			'ai'
-		),
-		/* translators: %d: minimum number of words required */
-		__(
-			'Excerpt generation will be available when the post content has at least %d words.',
 			'ai'
 		),
 		minContentLength

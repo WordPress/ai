@@ -15,7 +15,7 @@ import {
 
 const EXPERIMENT_LABEL = 'Content Classification';
 
-// Content Classification has a 150 word minimum requirement.
+// Content Classification has a 250 character minimum requirement.
 const LONG_CONTENT =
 	'Artificial intelligence is transforming the technology landscape at an unprecedented pace. ' +
 	'From machine learning algorithms that power recommendation engines to natural language processing ' +
@@ -164,7 +164,7 @@ test.describe( 'Content Classification Experiment', () => {
 			title: 'Content Classification Hint Test',
 		} );
 
-		// Add a short paragraph (well under 150 words).
+		// Add a short paragraph (well under 250 characters).
 		await editor.insertBlock( {
 			name: 'core/paragraph',
 			attributes: { content: 'This is a short paragraph.' },
@@ -177,7 +177,7 @@ test.describe( 'Content Classification Experiment', () => {
 		await expect(
 			page.locator( '.ai-content-classification__hint', {
 				hasText:
-					'Content Classification will be available when the post content has at least 50 words.',
+					'Content Classification will be available when the post content has at least 250 characters.',
 			} )
 		).toBeVisible();
 
@@ -198,7 +198,7 @@ test.describe( 'Content Classification Experiment', () => {
 			title: 'Content Classification Minimum Length Test',
 		} );
 
-		// Start with content well under the 150-word minimum.
+		// Start with content well under the 250-character minimum.
 		await editor.insertBlock( {
 			name: 'core/paragraph',
 			attributes: { content: 'This is a short paragraph.' },
@@ -212,7 +212,7 @@ test.describe( 'Content Classification Experiment', () => {
 		await expect(
 			page.locator( '.ai-content-classification__hint' ).first()
 		).toHaveText(
-			'Content Classification will be available when the post content has at least 50 words.'
+			'Content Classification will be available when the post content has at least 250 characters.'
 		);
 		await expect(
 			page

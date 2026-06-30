@@ -90,7 +90,10 @@ class Content_Resizing extends Abstract_Feature {
 			'ContentResizingData',
 			array(
 				'enabled'          => $this->is_enabled(),
-				'minContentLength' => get_min_content_length( 'content-resizing', 5 ),
+				'minContentLength' => get_min_content_length(
+					'content-resizing',
+					Content_Resizing_Ability::DEFAULT_MIN_CONTENT_LENGTH
+				),
 			)
 		);
 	}

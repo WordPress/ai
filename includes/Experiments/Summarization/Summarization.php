@@ -108,11 +108,11 @@ class Summarization extends Abstract_Feature {
 		 * @since 1.0.0
 		 * @deprecated x.x.x Use {@see 'wpai_min_content_length'} instead.
 		 *
-		 * @param int $min_content_length The minimum number of words or characters required. Default 100.
+		 * @param int $min_content_length The minimum number of characters required. Default 250.
 		 */
 		$min_content_length = (int) apply_filters_deprecated(
 			'wpai_summarization_min_content_length',
-			array( get_min_content_length( 'summarization', 50 ) ),
+			array( get_min_content_length( 'summarization', 250 ) ),
 			'x.x.x',
 			'wpai_min_content_length'
 		);

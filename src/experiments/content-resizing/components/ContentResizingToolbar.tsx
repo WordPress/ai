@@ -34,10 +34,10 @@ import { getBlockText } from '../../../utils/blocks';
 import type { ContentResizingAction, ContentResizingData } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
-import { getContentCount, getWordCountType } from '../../../utils/word-count';
+import { getContentCount } from '../../../utils/character-count';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
-const SHORTEN_MIN_CONTENT_LENGTH = 100;
+const SHORTEN_MIN_CONTENT_LENGTH = 25;
 const NOTICE_ID = 'ai_content_resizing_error';
 
 const getSettings = (): ContentResizingData => {
@@ -182,13 +182,12 @@ export default function ContentResizingToolbar( {
 		}
 	}, [ handleAction, isLoading, lastAction ] );
 
-	// Calculate the word difference between the original and suggested content.
-	const wordDiff = useMemo( () => {
+	// Calculate the character difference between the original and suggested content.
+	const characterDiff = useMemo( () => {
 		if ( suggestedContent === null ) {
 			return null;
 		}
 
-		const isCharacterType = getWordCountType() !== 'words';
 		const delta =
 			getContentCount( suggestedContent ) -
 			getContentCount( blockContent );
@@ -197,56 +196,58 @@ export default function ContentResizingToolbar( {
 			return {
 				modifier: 'neutral' as const,
 				label: __( 'No change', 'ai' ),
-				ariaLabel: __( 'No change in word count', 'ai' ),
+				ariaLabel: __( 'No change in character count', 'ai' ),
 			};
 		}
 
 		const magnitude = Math.abs( delta );
 
 		if ( delta > 0 ) {
-			const label = isCharacterType
-				? /* translators: %d: Number of characters added. */
-				  _n( '+%d character', '+%d characters', magnitude, 'ai' )
-				: /* translators: %d: Number of words added. */
-				  _n( '+%d word', '+%d words', magnitude, 'ai' );
-			const ariaLabel = isCharacterType
-				? /* translators: %d: Number of characters added. */
-				  _n(
-						'%d character added',
-						'%d characters added',
-						magnitude,
-						'ai'
-				  )
-				: /* translators: %d: Number of words added. */
-				  _n( '%d word added', '%d words added', magnitude, 'ai' );
+			const label = sprintf(
+				/* translators: %d: Number of characters added. */
+				_n( '+%d character', '+%d characters', magnitude, 'ai' ),
+				magnitude
+			);
+
+			const ariaLabel = sprintf(
+				/* translators: %d: Number of characters added. */
+				_n(
+					'%d character added',
+					'%d characters added',
+					magnitude,
+					'ai'
+				),
+				magnitude
+			);
 
 			return {
 				modifier: 'positive' as const,
-				label: sprintf( label, magnitude ),
-				ariaLabel: sprintf( ariaLabel, magnitude ),
+				label,
+				ariaLabel,
 			};
 		}
 
-		const label = isCharacterType
-			? /* translators: %d: Number of characters removed. */
-			  _n( '−%d character', '−%d characters', magnitude, 'ai' )
-			: /* translators: %d: Number of words removed. */
-			  _n( '−%d word', '−%d words', magnitude, 'ai' );
-		const ariaLabel = isCharacterType
-			? /* translators: %d: Number of characters removed. */
-			  _n(
-					'%d character removed',
-					'%d characters removed',
-					magnitude,
-					'ai'
-			  )
-			: /* translators: %d: Number of words removed. */
-			  _n( '%d word removed', '%d words removed', magnitude, 'ai' );
+		const label = sprintf(
+			/* translators: %d: Number of characters removed. */
+			_n( '−%d character', '−%d characters', magnitude, 'ai' ),
+			magnitude
+		);
+
+		const ariaLabel = sprintf(
+			/* translators: %d: Number of characters removed. */
+			_n(
+				'%d character removed',
+				'%d characters removed',
+				magnitude,
+				'ai'
+			),
+			magnitude
+		);
 
 		return {
 			modifier: 'negative' as const,
-			label: sprintf( label, magnitude ),
-			ariaLabel: sprintf( ariaLabel, magnitude ),
+			label,
+			ariaLabel,
 		};
 	}, [ blockContent, suggestedContent ] );
 
@@ -316,12 +317,12 @@ export default function ContentResizingToolbar( {
 					>
 						<div className="ai-content-resizing-modal__label">
 							<span>{ __( 'Suggested', 'ai' ) }</span>
-							{ ! isLoading && wordDiff && (
+							{ ! isLoading && characterDiff && (
 								<span
-									className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
-									aria-label={ wordDiff.ariaLabel }
+									className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ characterDiff.modifier }` }
+									aria-label={ characterDiff.ariaLabel }
 								>
-									{ wordDiff.label }
+									{ characterDiff.label }
 								</span>
 							) }
 						</div>
