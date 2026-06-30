@@ -126,6 +126,43 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		$this->assertTrue( $registered['ai_note']['show_in_rest'], 'ai_note meta should have show_in_rest enabled' );
 	}
 
+	/**
+	 * Tests that enqueue_assets() localizes the default minimum content length.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_enqueue_assets_localizes_default_min_content_length() {
+		$this->experiment->enqueue_assets();
+
+		$this->assertTrue( wp_script_is( 'ai_editorial_notes', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"75"',
+			(string) wp_scripts()->get_data( 'ai_editorial_notes', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+
+		$this->experiment->enqueue_assets();
+
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_editorial_notes', 'data' )
+		);
+	}
+
 	// -------------------------------------------------------------------------
 	// maybe_set_ai_author()
 	// -------------------------------------------------------------------------
@@ -171,7 +208,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	 * low-privileged user could create a comment attributed to the "WordPress AI"
 	 * identity (the comment is committed before the later meta save is rejected).
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_maybe_set_ai_author_returns_error_for_unauthorized_user() {
 		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -198,7 +235,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	 * The AI identity is reserved for Notes; a regular comment must remain attributed
 	 * to its actual author.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_maybe_set_ai_author_passes_through_non_note_comment() {
 		$post_id = self::factory()->post->create();
@@ -206,10 +243,10 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		wp_set_current_user( $user_id );
 
 		$prepared = array(
-			'comment_author' => 'Test User',
+			'comment_author'  => 'Test User',
 			'comment_post_ID' => $post_id,
-			'comment_type'   => 'comment',
-			'user_id'        => 99,
+			'comment_type'    => 'comment',
+			'user_id'         => 99,
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
@@ -292,7 +329,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	 * gated the meta would still leave an orphaned, spoofed comment in the database.
 	 * Aborting in the rest_pre_insert_comment filter must prevent the row entirely.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_subscriber_ai_note_request_is_rejected_and_persists_no_comment() {
 		do_action( 'rest_api_init', rest_get_server() );
@@ -321,7 +358,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	 * Tests that an editor posting a comment with meta.ai_note = true succeeds and the
 	 * persisted comment is attributed to the AI identity rather than the editor.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_editor_ai_note_request_creates_ai_attributed_comment() {
 		do_action( 'rest_api_init', rest_get_server() );
@@ -373,7 +410,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	 * Tests that the ai_note meta auth_callback checks whether the user can edit the
 	 * comment's post.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_ai_note_meta_auth_callback_returns_true_when_user_can_edit_comment_post() {
 		$user_id    = self::factory()->user->create( array( 'role' => 'author' ) );
@@ -392,7 +429,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	 * Tests that the ai_note meta auth_callback returns false when the user cannot
 	 * edit the comment's post.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_ai_note_meta_auth_callback_returns_false_when_user_cannot_edit_comment_post() {
 		$author_id  = self::factory()->user->create( array( 'role' => 'author' ) );

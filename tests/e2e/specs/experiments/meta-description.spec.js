@@ -19,6 +19,9 @@ const EXPERIMENT_LABEL = 'Meta Description Generation';
 const MOCK_DESCRIPTION_PATTERN =
 	/Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure/;
 
+const LONG_CONTENT =
+	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough characters for the meta description experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new description for the post.';
+
 /**
  * Opens the Post sidebar and expands the Meta Description panel.
  *
@@ -67,8 +70,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Button Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -84,6 +86,33 @@ test.describe( 'Meta Description Experiment', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Generate Meta Description button is disabled when there is not enough content', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Create a new post with content well below the minimum length.
+		await admin.createNewPost( {
+			title: 'Meta Description Minimum Length Test',
+			content: 'Too short.',
+		} );
+
+		await editor.saveDraft();
+
+		// Open the Meta Description panel.
+		await openMetaDescriptionPanel( editor, page );
+
+		const generateButton = page.locator(
+			'.ai-meta-description-panel button',
+			{ hasText: 'Generate Meta Description' }
+		);
+		await expect( generateButton ).toBeVisible();
+		await expect( generateButton ).toHaveAttribute(
+			'aria-disabled',
+			'true'
+		);
+	} );
+
 	test( 'Generates and applies a meta description', async ( {
 		admin,
 		editor,
@@ -91,8 +120,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Generate Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -160,8 +188,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Regenerate Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -235,8 +262,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Edit Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -310,8 +336,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Meta Description Cancel Regenerate Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -392,8 +417,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Copy Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -433,8 +457,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Meta Description Globally Disabled Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -456,8 +479,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Meta Description Disabled Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();

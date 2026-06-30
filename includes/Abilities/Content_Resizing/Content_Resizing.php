@@ -13,7 +13,8 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Content_Resizing\Content_Resizing as Content_Resizing_Experiment;
 
-use function WordPress\AI\count_words;
+use function WordPress\AI\count_characters_excluding_spaces;
+use function WordPress\AI\get_min_content_length;
 
 /**
  * Content resizing WordPress Ability.
@@ -32,13 +33,13 @@ class Content_Resizing extends Abstract_Ability {
 	protected const ACTION_DEFAULT = 'rephrase';
 
 	/**
-	 * The minimum word count for the shorten action.
+	 * The default minimum content length in characters for the shorten action.
 	 *
-	 * @since 0.9.0
+	 * @since 1.1.0
 	 *
 	 * @var int
 	 */
-	protected const SHORTEN_MIN_WORDS = 5;
+	public const DEFAULT_MIN_CONTENT_LENGTH = 25;
 
 	/**
 	 * {@inheritDoc}
@@ -105,17 +106,22 @@ class Content_Resizing extends Abstract_Ability {
 			);
 		}
 
-		// "shorten" action requires a minimum word count.
+		$min_content_length = get_min_content_length(
+			'content-resizing',
+			self::DEFAULT_MIN_CONTENT_LENGTH
+		);
+
+		// "shorten" action requires a minimum character count.
 		if (
 			'shorten' === $args['action'] &&
-			count_words( wp_strip_all_tags( $content ) ) < self::SHORTEN_MIN_WORDS
+			count_characters_excluding_spaces( $content ) < $min_content_length
 		) {
 			return new WP_Error(
 				'content_too_short',
 				sprintf(
-					/* translators: %d: Minimum word count. */
-					esc_html__( 'A minimum of %d words is required to shorten the content.', 'ai' ),
-					self::SHORTEN_MIN_WORDS
+					/* translators: %d: Minimum content length in characters. */
+					esc_html__( 'A minimum of %d characters is required to shorten the content.', 'ai' ),
+					$min_content_length
 				)
 			);
 		}
@@ -168,6 +174,13 @@ class Content_Resizing extends Abstract_Ability {
 					'insufficient_capabilities',
 					esc_html__( 'You do not have permission to run AI refinements on this post.', 'ai' )
 				);
+			}
+
+			// Ensure the post type is allowed in REST endpoints.
+			$post_type_obj = get_post_type_object( $post->post_type );
+
+			if ( ! $post_type_obj || empty( $post_type_obj->show_in_rest ) ) {
+				return false;
 			}
 		} elseif ( ! current_user_can( 'edit_posts' ) ) {
 			return new WP_Error(

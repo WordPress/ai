@@ -1,0 +1,36 @@
+.ai-type-ahead-block {
+	position: relative;
+}
+
+.ai-type-ahead-overlay {
+	position: absolute;
+	display: block;
+	pointer-events: none;
+	color: var(--ai-type-ahead-ghost-color, #8a8f98);
+	opacity: 1;
+	font-style: normal;
+	font-size: inherit;
+	line-height: inherit;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.ai-type-ahead-inline-ghost {
+	pointer-events: none;
+	user-select: none;
+	color: var(--ai-type-ahead-ghost-color, #8a8f98);
+	opacity: 1;
+	font-style: normal;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.ai-type-ahead-block [contenteditable='true'] .ai-type-ahead-inline-ghost {
+	color: var(--ai-type-ahead-ghost-color, #8a8f98) !important;
+	opacity: 0.72;
+}
+
+/* Hide Gutenberg placeholder only while an empty block has active ghost text. */
+.ai-type-ahead-hide-placeholder [data-rich-text-placeholder] {
+	display: none !important;
+}

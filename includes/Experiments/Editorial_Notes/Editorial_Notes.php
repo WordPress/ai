@@ -14,6 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -151,7 +153,8 @@ class Editorial_Notes extends Abstract_Feature {
 			'editorial_notes',
 			'EditorialNotesData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => get_min_content_length( 'editorial-notes', 75 ),
 			)
 		);
 	}

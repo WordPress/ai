@@ -22,6 +22,7 @@ import { PluginPostStatusInfo } from '@wordpress/editor';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { commentContent } from '@wordpress/icons';
+import { useInstanceId } from '@wordpress/compose';
 
 /**
  * Internal dependencies
@@ -40,9 +41,21 @@ import {
  * reviewable blocks.
  */
 export default function EditorialNotesPlugin() {
-	const { isReviewing, progress, total, lastRunCount, runReview } =
-		useEditorialNotes();
-	const { isReviewing: isReviewingBlock, reviewBlock } = useEditorialBlock();
+	const {
+		isReviewing,
+		progress,
+		total,
+		lastRunCount,
+		isContentTooShort,
+		minContentLength,
+		runReview,
+	} = useEditorialNotes();
+	const {
+		isReviewing: isAnyBlockReviewing,
+		reviewingClientId,
+		reviewBlock,
+		isContentTooShort: isBlockReviewDisabled,
+	} = useEditorialBlock();
 	const { openGeneralSidebar } = useDispatch( editPostStore );
 	const openNotesPanel = () =>
 		openGeneralSidebar?.( 'edit-post/collab-sidebar' );
@@ -51,6 +64,11 @@ export default function EditorialNotesPlugin() {
 		return ( select( blockEditorStore ) as any ).getSettings()
 			.isPreviewMode;
 	}, [] );
+
+	const descriptionId = useInstanceId(
+		EditorialNotesPlugin,
+		'editorial-notes-plugin-description'
+	);
 
 	if ( ! ( window as any ).aiEditorialNotesData?.enabled ) {
 		return null;
@@ -65,10 +83,19 @@ export default function EditorialNotesPlugin() {
 	const buttonLabel = isReviewing
 		? reviewingLabel
 		: __( 'Generate Editorial Notes', 'ai' );
-	const buttonDescription = __(
-		'This analyzes the content of this post block-by-block and adds editorial Notes with suggestions on each block.',
-		'ai'
-	);
+	const buttonDescription = isContentTooShort
+		? sprintf(
+				/* translators: %d: minimum number of characters required. */
+				__(
+					'Editorial Notes will be available when the post content has at least %d characters.',
+					'ai'
+				),
+				minContentLength
+		  )
+		: __(
+				'This analyzes the content of this post block-by-block and adds editorial Notes with suggestions on each block.',
+				'ai'
+		  );
 
 	return (
 		<>
@@ -76,23 +103,25 @@ export default function EditorialNotesPlugin() {
 				<Flex direction="column" gap={ 2 }>
 					<FlexItem>
 						<Button
+							accessibleWhenDisabled
 							variant="secondary"
 							icon={ commentContent }
 							onClick={ runReview }
 							isBusy={ isReviewing }
-							disabled={ isReviewing }
+							disabled={ isReviewing || isContentTooShort }
 							style={ {
 								justifyContent: 'center',
 								width: '100%',
 							} }
 							__next40pxDefaultSize
+							aria-describedby={ descriptionId }
 						>
 							{ buttonLabel }
 						</Button>
 					</FlexItem>
 					{ lastRunCount !== null && (
 						<FlexItem>
-							<span className="description">
+							<span className="description" role="status">
 								{ lastRunCount === 0
 									? __( 'No new suggestions found.', 'ai' )
 									: createInterpolateElement(
@@ -122,6 +151,7 @@ export default function EditorialNotesPlugin() {
 					) }
 					<FlexItem>
 						<span
+							id={ descriptionId }
 							className="description"
 							style={ { color: '#757575' } }
 						>
@@ -142,20 +172,34 @@ export default function EditorialNotesPlugin() {
 					}
 
 					const clientId = selectedClientIds[ 0 ] ?? null;
+					const isThisBlockReviewing = reviewingClientId === clientId;
 
 					return (
 						<MenuItem
 							icon={
-								isReviewingBlock ? <Spinner /> : commentContent
+								isThisBlockReviewing ? (
+									<Spinner />
+								) : (
+									commentContent
+								)
 							}
-							disabled={ isReviewingBlock }
+							disabled={
+								isAnyBlockReviewing || isBlockReviewDisabled
+							}
 							onClick={ () => {
 								if ( clientId ) {
 									reviewBlock( clientId );
 								}
 							} }
+							{ ...( isAnyBlockReviewing &&
+								! isThisBlockReviewing && {
+									info: __(
+										'Another block is currently being reviewed.',
+										'ai'
+									),
+								} ) }
 						>
-							{ isReviewingBlock
+							{ isThisBlockReviewing
 								? __( 'Reviewing…', 'ai' )
 								: __( 'Generate Editorial Note', 'ai' ) }
 						</MenuItem>

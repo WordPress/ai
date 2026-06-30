@@ -25,20 +25,30 @@ import {
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
-import { count } from '@wordpress/wordcount';
 
 /**
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
 import { getBlockText } from '../../../utils/blocks';
-import type { ContentResizingAction } from '../types';
+import type { ContentResizingAction, ContentResizingData } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
+import { getContentCount } from '../../../utils/character-count';
 import AIIcon from '../../../../routes/ai-home/ai-icon';
 
-const SHORTEN_MIN_WORDS = 5;
+const SHORTEN_MIN_CONTENT_LENGTH = 25;
 const NOTICE_ID = 'ai_content_resizing_error';
+
+const getSettings = (): ContentResizingData => {
+	const settings = ( window as any ).aiContentResizingData ?? {};
+
+	return {
+		enabled: settings.enabled ?? false,
+		minContentLength:
+			settings.minContentLength ?? SHORTEN_MIN_CONTENT_LENGTH,
+	};
+};
 
 /**
  * Content resizing toolbar component.
@@ -91,7 +101,7 @@ export default function ContentResizingToolbar( {
 	);
 
 	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
-	const noticesDispatch = useDispatch( noticesStore ) as any;
+	const noticesDispatch = useDispatch( noticesStore );
 
 	const handleAction = useCallback(
 		async ( action: ContentResizingAction ) => {
@@ -100,9 +110,9 @@ export default function ContentResizingToolbar( {
 			}
 
 			if ( action === 'shorten' ) {
-				const wordCount = count( blockContent, 'words', {} );
-				// We need at least 5 words to shorten the content.
-				if ( wordCount < SHORTEN_MIN_WORDS ) {
+				const contentCount = getContentCount( blockContent );
+				// We need at least the minimum content length to shorten.
+				if ( contentCount < getSettings().minContentLength ) {
 					noticesDispatch.createErrorNotice(
 						__( 'Text is too short to shorten further.', 'ai' ),
 						{
@@ -172,54 +182,72 @@ export default function ContentResizingToolbar( {
 		}
 	}, [ handleAction, isLoading, lastAction ] );
 
-	// Calculate the word difference between the original and suggested content.
-	const wordDiff = useMemo( () => {
+	// Calculate the character difference between the original and suggested content.
+	const characterDiff = useMemo( () => {
 		if ( suggestedContent === null ) {
 			return null;
 		}
 
 		const delta =
-			count( suggestedContent, 'words', {} ) -
-			count( blockContent, 'words', {} );
+			getContentCount( suggestedContent ) -
+			getContentCount( blockContent );
 
 		if ( delta === 0 ) {
 			return {
 				modifier: 'neutral' as const,
 				label: __( 'No change', 'ai' ),
-				ariaLabel: __( 'No change in word count', 'ai' ),
+				ariaLabel: __( 'No change in character count', 'ai' ),
 			};
 		}
 
 		const magnitude = Math.abs( delta );
 
 		if ( delta > 0 ) {
+			const label = sprintf(
+				/* translators: %d: Number of characters added. */
+				_n( '+%d character', '+%d characters', magnitude, 'ai' ),
+				magnitude
+			);
+
+			const ariaLabel = sprintf(
+				/* translators: %d: Number of characters added. */
+				_n(
+					'%d character added',
+					'%d characters added',
+					magnitude,
+					'ai'
+				),
+				magnitude
+			);
+
 			return {
 				modifier: 'positive' as const,
-				label: sprintf(
-					/* translators: %d: Number of words added. */
-					_n( '+%d word', '+%d words', magnitude, 'ai' ),
-					magnitude
-				),
-				ariaLabel: sprintf(
-					/* translators: %d: Number of words added. */
-					_n( '%d word added', '%d words added', magnitude, 'ai' ),
-					magnitude
-				),
+				label,
+				ariaLabel,
 			};
 		}
 
+		const label = sprintf(
+			/* translators: %d: Number of characters removed. */
+			_n( '−%d character', '−%d characters', magnitude, 'ai' ),
+			magnitude
+		);
+
+		const ariaLabel = sprintf(
+			/* translators: %d: Number of characters removed. */
+			_n(
+				'%d character removed',
+				'%d characters removed',
+				magnitude,
+				'ai'
+			),
+			magnitude
+		);
+
 		return {
 			modifier: 'negative' as const,
-			label: sprintf(
-				/* translators: %d: Number of words removed. */
-				_n( '−%d word', '−%d words', magnitude, 'ai' ),
-				magnitude
-			),
-			ariaLabel: sprintf(
-				/* translators: %d: Number of words removed. */
-				_n( '%d word removed', '%d words removed', magnitude, 'ai' ),
-				magnitude
-			),
+			label,
+			ariaLabel,
 		};
 	}, [ blockContent, suggestedContent ] );
 
@@ -289,12 +317,12 @@ export default function ContentResizingToolbar( {
 					>
 						<div className="ai-content-resizing-modal__label">
 							<span>{ __( 'Suggested', 'ai' ) }</span>
-							{ ! isLoading && wordDiff && (
+							{ ! isLoading && characterDiff && (
 								<span
-									className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ wordDiff.modifier }` }
-									aria-label={ wordDiff.ariaLabel }
+									className={ `ai-content-resizing-modal__diff ai-content-resizing-modal__diff--${ characterDiff.modifier }` }
+									aria-label={ characterDiff.ariaLabel }
 								>
-									{ wordDiff.label }
+									{ characterDiff.label }
 								</span>
 							) }
 						</div>
@@ -342,6 +370,7 @@ export default function ContentResizingToolbar( {
 							disabled={ isLoading || suggestedContent === null }
 							accessibleWhenDisabled
 							ref={ acceptButtonRef }
+							__next40pxDefaultSize
 						>
 							{ __( 'Accept', 'ai' ) }
 						</Button>
@@ -351,6 +380,7 @@ export default function ContentResizingToolbar( {
 							disabled={ isLoading || lastAction === null }
 							isBusy={ isLoading }
 							accessibleWhenDisabled
+							__next40pxDefaultSize
 						>
 							{ isLoading
 								? __( 'Generating…', 'ai' )
