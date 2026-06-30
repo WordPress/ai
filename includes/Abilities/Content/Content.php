@@ -380,28 +380,26 @@ final class Content {
 		if ( ! $post_type instanceof \WP_Post_Type || empty( $post_type->show_in_abilities ) ) {
 			return false;
 		}
-		
+
 		if ( is_post_publicly_viewable( $post ) ) {
-				return true;
-		}
-
-		if ( 'publish' === $post->post_status || current_user_can( 'read_post', $post->ID ) ) {
 			return true;
 		}
 
-		$post_status_object = get_post_status_object( $post->post_status );
-		if ( $post_status_object && $post_status_object->public ) {
-			return true;
+		$post_status = get_post_status( $post );
+		if ( ! is_string( $post_status ) ) {
+			return false;
 		}
 
-		if ( 'inherit' === $post->post_status && $post->post_parent > 0 ) {
-			$parent = get_post( $post->post_parent );
-			if ( $parent instanceof WP_Post ) {
-				return $this->check_read_permission( $parent );
-			}
+		$post_status_object = get_post_status_object( $post_status );
+		if ( ! $post_status_object instanceof \stdClass ) {
+			return false;
 		}
 
-		return 'inherit' === $post->post_status;
+		if ( $post_status_object->public ) {
+			return current_user_can( 'edit_post', $post->ID );
+		}
+
+		return current_user_can( 'read_post', $post->ID );
 	}
 
 	/**
