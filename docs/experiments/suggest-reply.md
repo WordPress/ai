@@ -2,18 +2,16 @@
 
 ## Summary
 
-The Suggest Reply experiment adds an AI-powered "Suggest reply" action to the classic Comments admin screen and the Activity widget on the Dashboard. When activated, moderators can generate AI-suggested replies to comments, customize the tone, and provide specific guidelines for the reply. The experiment exposes one WordPress Ability (`ai/reply-suggestion`) that can be used from the UI or via REST API.
+The Suggest Reply experiment adds an AI-powered "Suggest reply" action to the classic Comments admin screen and the Activity widget on the Dashboard. When activated, moderators can generate AI-suggested replies to comments and customize the tone. The ability also automatically applies any site-wide editorial guidelines. The experiment exposes one WordPress Ability (`ai/reply-suggestion`) that can be used from the UI or via REST API.
 
 ## Overview
 
-When enabled, each comment in the Comments list table and the Dashboard Activity widget gets an additional **Suggest reply** action link. Clicking it opens a modal overlay allowing users to generate context-aware replies.
+When enabled, each comment in the Comments list table and the Dashboard Activity widget gets an additional **Suggest reply** action link. Clicking it automatically opens the inline reply editor, generates a context-aware reply, and inserts it into the textarea.
 
 **Key Features:**
 
 - Adds a "Suggest reply" action to comments in the list table and the Dashboard Activity widget
-- Provides a modal interface to set the desired Tone (friendly, professional, casual) and optional editorial Guidelines
-- Generates a single, relevant reply based on the comment text and parent post context
-- Automatically populates the inline WordPress reply form when the generated reply is selected
+- Injects in-editor controls for regenerating replies with a different Tone (friendly, professional, casual)
 - Uses one shared ability (`ai/reply-suggestion`) exposed via REST API
 
 ### Input Schema
@@ -35,11 +33,6 @@ array(
             'default'     => 'friendly',
             'description' => 'The tone for the reply.',
         ),
-        'guidelines' => array(
-            'type'        => 'string',
-            'default'     => '',
-            'description' => 'Optional free-text editorial guidelines to apply when writing the reply.',
-        ),
     ),
     'required'   => array( 'comment_id' ),
 )
@@ -51,17 +44,8 @@ The ability returns:
 
 ```php
 array(
-    'type'       => 'object',
-    'properties' => array(
-        'comment_id' => array(
-            'type'        => 'integer',
-            'description' => 'The comment ID.',
-        ),
-        'reply'      => array(
-            'type'        => 'string',
-            'description' => 'The generated reply suggestion.',
-        ),
-    ),
+    'type'        => 'string',
+    'description' => 'The generated reply suggestion.',
 )
 ```
 
@@ -95,8 +79,7 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/reply-su
   -d '{
     "input": {
       "comment_id": 1,
-      "tone": "professional",
-      "guidelines": "Thank the user for their feedback."
+      "tone": "professional"
     }
   }'
 ```
@@ -104,10 +87,7 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/reply-su
 **Response:**
 
 ```json
-{
-  "comment_id": 1,
-  "reply": "Thank you for your valuable feedback! We appreciate you taking the time to share your thoughts."
-}
+"Thank you for your valuable feedback! We appreciate you taking the time to share your thoughts."
 ```
 
 ### Error Responses
@@ -117,6 +97,7 @@ The ability may return:
 - `missing_comment_id`: `comment_id` was not provided
 - `comment_not_found`: no comment exists for the given ID
 - `insufficient_capabilities`: current user lacks moderation permissions
+- `post_not_found`: post of the comment is not found
 
 ## Testing
 
@@ -127,12 +108,11 @@ The ability may return:
    - Enable global AI features and toggle **Suggest Reply**
    - Ensure valid AI connector credentials are configured
 
-2. **Suggest reply modal:**
+2. **Suggest reply:**
    - Go to `Comments -> All Comments`
-   - Hover over an comment and click **Suggest reply**
-   - Select a Tone, enter Guidelines, and click **Generate**
-   - Verify that the AI generates a reply
-   - Click **Use this reply** and verify the inline comment reply textarea is populated with the text
+   - Hover over a comment and click **Suggest reply**
+   - Verify that the inline reply form opens, disables temporarily, and populates with the AI-generated reply
+   - Use the Tone dropdown to change the tone and Suggest Reply button in the inline reply form to regenerate the reply.
 
 3. **REST API:**
    - Call `POST /wp-json/wp-abilities/v1/abilities/ai/reply-suggestion/run` with a valid `comment_id`

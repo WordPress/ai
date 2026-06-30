@@ -11,8 +11,7 @@ namespace WordPress\AI\Abilities\Suggest_Reply;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-
-use function WordPress\AI\get_preferred_models_for_text_generation;
+use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply as Suggest_Reply_Experiment;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -204,17 +203,10 @@ class Suggest_Reply extends Abstract_Ability {
 	 * @return string|\WP_Error The sanitized reply text, or a WP_Error on failure.
 	 */
 	private function generate_reply( string $context ) {
-		$prompt_builder = wp_ai_client_prompt( $context )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference( ...get_preferred_models_for_text_generation() );
+		$prompt_builder = $this->get_prompt_builder( $context );
 
-		$is_supported = $this->ensure_text_generation_supported(
-			$prompt_builder,
-			esc_html__( 'Reply suggestion could not be generated. Please ensure you have a connected provider that supports text generation.', 'ai' )
-		);
-
-		if ( is_wp_error( $is_supported ) ) {
-			return $is_supported;
+		if ( is_wp_error( $prompt_builder ) ) {
+			return $prompt_builder;
 		}
 
 		$result = $prompt_builder->generate_text();
@@ -224,5 +216,25 @@ class Suggest_Reply extends Abstract_Ability {
 		}
 
 		return sanitize_textarea_field( trim( (string) $result ) );
+	}
+
+	/**
+	 * Gets a prompt builder for generating reply suggestions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $context The prompt context string.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
+	 */
+	private function get_prompt_builder( string $context ) {
+		$prompt_builder = wp_ai_client_prompt( $context )
+			->using_system_instruction( $this->get_system_instruction() );
+
+		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Suggest_Reply_Experiment::class );
+
+		return $this->ensure_text_generation_supported(
+			$prompt_builder,
+			esc_html__( 'Reply suggestion could not be generated. Please ensure you have a connected provider that supports text generation.', 'ai' )
+		);
 	}
 }

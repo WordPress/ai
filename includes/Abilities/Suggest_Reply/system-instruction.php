@@ -18,6 +18,7 @@ Your task is to write a single, natural reply to the comment provided (in the <c
 
 - Directly address the commenter by name if one is provided (in the <comment-author> tag).
 - Be relevant to the comment content and the post context (in the <post-title> and <post-context> tags).
+- Match the language of the comment text.
 - Match the requested tone exactly (in the <requested-tone> tag):
   - "professional": formal, authoritative, clear — suitable for a business or editorial context.
   - "friendly": warm, approachable, conversational — suitable for community or personal blogs.

@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Suggest reply experiment.
  *
- * Generates reply suggestions for a comment using AI.
+ * Generates reply suggestions for a comment.
  *
  * @since x.x.x
  */
@@ -43,7 +43,7 @@ class Suggest_Reply extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Suggest Reply', 'ai' ),
-			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to generate and insert reply suggestions.', 'ai' ),
+			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate reply suggestions.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
@@ -55,9 +55,7 @@ class Suggest_Reply extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-
 		add_filter( 'comment_row_actions', array( $this, 'add_row_action' ), 10, 2 );
-
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
@@ -126,10 +124,7 @@ class Suggest_Reply extends Abstract_Feature {
 		Asset_Loader::localize_script(
 			'suggest_reply',
 			'SuggestReplyData',
-			array(
-				'enabled' => $this->is_enabled(),
-				'nonce'   => wp_create_nonce( 'wp_rest' ),
-			)
+			array( 'enabled' => $this->is_enabled() )
 		);
 	}
 }

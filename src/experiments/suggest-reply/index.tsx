@@ -16,7 +16,6 @@ declare global {
 	interface Window {
 		aiSuggestReplyData?: {
 			enabled: boolean;
-			nonce: string;
 		};
 	}
 }
