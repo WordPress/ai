@@ -75,7 +75,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 
 		$this->experiment = new Test_Suggest_Reply_Experiment();
 		$this->ability    = new Suggest_Reply(
-			'ai/reply-suggestion',
+			'ai/suggest-reply',
 			array(
 				'label'       => $this->experiment->get_label(),
 				'description' => $this->experiment->get_description(),

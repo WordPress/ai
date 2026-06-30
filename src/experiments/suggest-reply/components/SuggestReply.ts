@@ -236,7 +236,7 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 	setReplyFormDisabled( true );
 
 	try {
-		const result = await runAbility< string >( 'ai/reply-suggestion', {
+		const result = await runAbility< string >( 'ai/suggest-reply', {
 			comment_id: commentId,
 			tone,
 		} );

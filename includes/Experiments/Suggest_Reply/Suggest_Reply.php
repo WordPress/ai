@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Suggest_Reply;
 
@@ -66,7 +66,7 @@ class Suggest_Reply extends Abstract_Feature {
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
-			'ai/reply-suggestion',
+			'ai/suggest-reply',
 			array(
 				'label'         => __( 'Reply Suggestion', 'ai' ),
 				'description'   => __( 'Generates reply suggestions for a comment.', 'ai' ),

@@ -2,21 +2,21 @@
 
 ## Summary
 
-The Suggest Reply experiment adds an AI-powered "Suggest reply" action to the classic Comments admin screen and the Activity widget on the Dashboard. When activated, moderators can generate AI-suggested replies to comments and customize the tone. The ability also automatically applies any site-wide editorial guidelines. The experiment exposes one WordPress Ability (`ai/reply-suggestion`) that can be used from the UI or via REST API.
+The Suggest Reply experiment adds a "Suggest reply" action to the classic Comments admin screen and the Activity widget on the Dashboard. When activated, moderators can generate AI-suggested replies to comments and customize the tone. The ability also automatically applies any site-wide editorial guidelines. The experiment exposes one WordPress Ability (`ai/suggest-reply`) that can be used from the UI or via REST API.
 
 ## Overview
 
-When enabled, each comment in the Comments list table and the Dashboard Activity widget gets an additional **Suggest reply** action link. Clicking it automatically opens the inline reply editor, generates a context-aware reply, and inserts it into the textarea.
+When enabled, each comment in the Comments list and the Dashboard Activity widget gets an additional **Suggest reply** action link. Clicking it automatically opens the inline reply editor, generates a context-aware reply, and inserts it into the textarea.
 
 **Key Features:**
 
 - Adds a "Suggest reply" action to comments in the list table and the Dashboard Activity widget
 - Injects in-editor controls for regenerating replies with a different Tone (friendly, professional, casual)
-- Uses one shared ability (`ai/reply-suggestion`) exposed via REST API
+- Uses one shared ability (`ai/suggest-reply`) exposed via REST API
 
 ### Input Schema
 
-The `ai/reply-suggestion` ability accepts:
+The `ai/suggest-reply` ability accepts:
 
 ```php
 array(
@@ -51,14 +51,14 @@ array(
 
 ### Permissions
 
-- `ai/reply-suggestion` requires `current_user_can( 'moderate_comments' )`
+- `ai/suggest-reply` requires `current_user_can( 'moderate_comments' )`
 
 ## Using the Ability via REST API
 
 ### Endpoint
 
 ```text
-POST /wp-json/wp-abilities/v1/abilities/ai/reply-suggestion/run
+POST /wp-json/wp-abilities/v1/abilities/ai/suggest-reply/run
 ```
 
 ### Authentication
@@ -73,7 +73,7 @@ See [TESTING_REST_API.md](../TESTING_REST_API.md) for detailed authentication in
 ### Request Example
 
 ```bash
-curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/reply-suggestion/run" \
+curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/suggest-reply/run" \
   -u "username:application-password" \
   -H "Content-Type: application/json" \
   -d '{
@@ -109,13 +109,13 @@ The ability may return:
    - Ensure valid AI connector credentials are configured
 
 2. **Suggest reply:**
-   - Go to `Comments -> All Comments`
+   - Go to `Comments` admin page.
    - Hover over a comment and click **Suggest reply**
    - Verify that the inline reply form opens, disables temporarily, and populates with the AI-generated reply
    - Use the Tone dropdown to change the tone and Suggest Reply button in the inline reply form to regenerate the reply.
 
 3. **REST API:**
-   - Call `POST /wp-json/wp-abilities/v1/abilities/ai/reply-suggestion/run` with a valid `comment_id`
+   - Call `POST /wp-json/wp-abilities/v1/abilities/ai/suggest-reply/run` with a valid `comment_id`
    - Verify response shape and error handling for invalid IDs or insufficient permissions
 
 ## Notes & Considerations
@@ -127,4 +127,4 @@ The ability may return:
 
 ### Limitations
 
-- Works on the classic comments list table and the Dashboard Activity widget (no block-based comments UI integration here)
+- Works on the classic comments list and the Dashboard Activity widget (no block-based comments UI integration here)
