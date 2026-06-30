@@ -16,6 +16,7 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
+use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
@@ -128,6 +129,9 @@ final class Main {
 
 				( new Dashboard_Widgets( $registry ) )->init();
 			}
+
+			// Register Site Health integration (always, not just in admin).
+			( new Site_Health() )->init();
 
 			// Register our post-related WordPress Abilities.
 			( new Posts() )->register();

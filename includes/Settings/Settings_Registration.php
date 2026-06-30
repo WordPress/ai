@@ -13,6 +13,7 @@ namespace WordPress\AI\Settings;
 
 use WordPress\AI\Features\Registry;
 use WordPress\AI\REST\Models_Controller;
+use WordPress\AI\REST\Settings_IO_Controller;
 
 /**
  * Handles registration of settings for the AI plugin.
@@ -71,6 +72,9 @@ class Settings_Registration {
 
 		// Initialize the provider/model discovery REST endpoint.
 		( new Models_Controller() )->init();
+
+		// Initialize the settings import/export REST endpoints.
+		( new Settings_IO_Controller() )->init();
 	}
 
 	/**
