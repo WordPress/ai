@@ -22,6 +22,7 @@ import { PluginPostStatusInfo } from '@wordpress/editor';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { commentContent } from '@wordpress/icons';
+import { useInstanceId } from '@wordpress/compose';
 
 /**
  * Internal dependencies
@@ -51,7 +52,8 @@ export default function EditorialNotesPlugin() {
 		runReview,
 	} = useEditorialNotes();
 	const {
-		isReviewing: isReviewingBlock,
+		isReviewing: isAnyBlockReviewing,
+		reviewingClientId,
 		reviewBlock,
 		isContentTooShort: isBlockReviewDisabled,
 	} = useEditorialBlock();
@@ -63,6 +65,11 @@ export default function EditorialNotesPlugin() {
 		return ( select( blockEditorStore ) as any ).getSettings()
 			.isPreviewMode;
 	}, [] );
+
+	const descriptionId = useInstanceId(
+		EditorialNotesPlugin,
+		'editorial-notes-plugin-description'
+	);
 
 	if ( ! ( window as any ).aiEditorialNotesData?.enabled ) {
 		return null;
@@ -113,13 +120,14 @@ export default function EditorialNotesPlugin() {
 								width: '100%',
 							} }
 							__next40pxDefaultSize
+							aria-describedby={ descriptionId }
 						>
 							{ buttonLabel }
 						</Button>
 					</FlexItem>
 					{ lastRunCount !== null && (
 						<FlexItem>
-							<span className="description">
+							<span className="description" role="status">
 								{ lastRunCount === 0
 									? __( 'No new suggestions found.', 'ai' )
 									: createInterpolateElement(
@@ -149,6 +157,7 @@ export default function EditorialNotesPlugin() {
 					) }
 					<FlexItem>
 						<span
+							id={ descriptionId }
 							className="description"
 							style={ { color: '#757575' } }
 						>
@@ -169,22 +178,34 @@ export default function EditorialNotesPlugin() {
 					}
 
 					const clientId = selectedClientIds[ 0 ] ?? null;
+					const isThisBlockReviewing = reviewingClientId === clientId;
 
 					return (
 						<MenuItem
 							icon={
-								isReviewingBlock ? <Spinner /> : commentContent
+								isThisBlockReviewing ? (
+									<Spinner />
+								) : (
+									commentContent
+								)
 							}
 							disabled={
-								isReviewingBlock || isBlockReviewDisabled
+								isAnyBlockReviewing || isBlockReviewDisabled
 							}
 							onClick={ () => {
 								if ( clientId ) {
 									reviewBlock( clientId );
 								}
 							} }
+							{ ...( isAnyBlockReviewing &&
+								! isThisBlockReviewing && {
+									info: __(
+										'Another block is currently being reviewed.',
+										'ai'
+									),
+								} ) }
 						>
-							{ isReviewingBlock
+							{ isThisBlockReviewing
 								? __( 'Reviewing…', 'ai' )
 								: __( 'Generate Editorial Note', 'ai' ) }
 						</MenuItem>

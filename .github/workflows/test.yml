@@ -33,13 +33,14 @@ jobs:
   phpcs:
     name: Run PHPCS coding standards checks
     runs-on: ubuntu-24.04
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     permissions:
       contents: read
     timeout-minutes: 20
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
           persist-credentials: false
@@ -89,13 +90,14 @@ jobs:
   phpstan:
     name: Run PHP static analysis
     runs-on: ubuntu-24.04
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     permissions:
       contents: read
     timeout-minutes: 20
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
           persist-credentials: false
@@ -167,6 +169,7 @@ jobs:
   phpunit:
     name: Test PHP ${{ matrix.php }} WP ${{ matrix.wp }}${{ matrix.coverage && ' with coverage' || '' }}
     runs-on: ubuntu-24.04
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     strategy:
       fail-fast: false
       matrix:
@@ -188,7 +191,7 @@ jobs:
           echo "PHP_FPM_GID=$(id -g)" >> "$GITHUB_ENV"
 
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
           persist-credentials: false
@@ -272,13 +275,14 @@ jobs:
   jslint:
     name: Run JavaScript code quality checks
     runs-on: ubuntu-24.04
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     permissions:
       contents: read
     timeout-minutes: 20
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
           persist-credentials: false
@@ -319,7 +323,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
           persist-credentials: false

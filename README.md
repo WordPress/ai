@@ -14,6 +14,9 @@
 
 The AI plugin provides a set of opt-in AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
 
+> [!NOTE]
+> This plugin is experimental.  Features may change, move, or break.  Use on Production sites at your own risk.  It is recommended to test in a non-Production environment and follow the plugin’s development closely if adopting early.
+
 ## Overview
 
 * **Purpose:** Demonstrate and deliver AI features by combining the AI Building Blocks ([PHP AI Client SDK](https://github.com/WordPress/php-ai-client), [Abilities API](https://github.com/WordPress/abilities-api)) into a unified WordPress experience.
@@ -22,7 +25,16 @@ The AI plugin provides a set of opt-in AI features for authors, editors, and adm
 
 This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plugins-revisited/) is built following the [Features as Plugins model](https://make.wordpress.org/core/handbook/about/release-cycle/features-as-plugins/). The community will help evaluate which features could evolve toward inclusion in WordPress core based on testing, feedback, and adoption.
 
-*Note: This plugin is experimental.  Features may change, move, or break.  Use on Production sites at your own risk.  It is recommended to test in a non-Production environment and follow the plugin’s development closely if adopting early.*
+### Editor Support
+
+> [!IMPORTANT]  
+> The AI plugin is built exclusively for the Block Editor (aka Gutenberg).
+
+The AI plugin does not currently support the Classic Editor plugin or other non-Block Editor editing experiences.
+
+This is an intentional project decision.  The Block Editor has been the default WordPress editing experience since WordPress 5.0, released in December 2018, and continues to be the primary editor actively developed by the WordPress project.  Focusing on a single editing experience allows contributors to move faster, explore new AI-powered workflows, and build deeper integrations without the overhead of maintaining multiple editor implementations.
+
+While the Classic Editor plugin remains widely used, the AI plugin is focused on the future direction of WordPress editing and content creation.  Contributors interested in bringing AI functionality to the Classic Editor are welcome to explore and maintain those integrations, but support for Classic Editor is not currently planned by the plugin's maintainers.
 
 ## Design Goals
 
@@ -51,6 +63,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
+* **[Type Ahead](docs/experiments/type-ahead.md)** – Contextual type-ahead assistance for suggestions while typing.
 
 ## Provider Setup
 
@@ -64,7 +77,6 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 Overview of planned features:
 
-* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.

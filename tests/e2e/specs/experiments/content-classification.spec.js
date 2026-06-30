@@ -409,4 +409,209 @@ test.describe( 'Content Classification Experiment', () => {
 			page.locator( '.ai-content-classification' )
 		).toHaveCount( 0 );
 	} );
+
+	test( 'Suggested pills persist when switching sidebar tabs', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Set strategy to allow_new so mock suggestions (new terms) pass through.
+		await setStrategy( admin, page, 'allow_new' );
+
+		await admin.createNewPost( {
+			title: 'Content Classification Cache Persistence Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: LONG_CONTENT },
+		} );
+
+		// Open the Tags panel
+		await openTaxonomyPanel( editor, page, 'Tags' );
+
+		// Click the Suggest Tags button.
+		await page
+			.locator( '.ai-content-classification button', {
+				hasText: 'Suggest Tags',
+			} )
+			.first()
+			.click();
+
+		// Wait for suggestions to appear.
+		await expect(
+			page.locator( '.ai-content-classification__suggestions' ).first()
+		).toBeVisible();
+
+		// Verify suggestion pills are rendered.
+		await expect(
+			page.locator( '.ai-content-classification__pill' ).first()
+		).toBeVisible();
+
+		// Switch to the Block tab.
+		const blockTab = page.getByRole( 'tab', { name: 'Block' } );
+		await blockTab.click();
+
+		// Open the Tags panel again (this switches back to the Post tab and expands Tags).
+		await openTaxonomyPanel( editor, page, 'Tags' );
+
+		// Verify suggestion pills are STILL rendered and visible.
+		await expect(
+			page.locator( '.ai-content-classification__pill' ).first()
+		).toBeVisible();
+	} );
+
+	test( 'Restores suggestion pill to original position if tag addition fails', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await setStrategy( admin, page, 'allow_new' );
+
+		await admin.createNewPost( {
+			title: 'Content Classification Pill Restoration Failure Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: LONG_CONTENT },
+		} );
+
+		// Open the Tags panel and suggest.
+		await openTaxonomyPanel( editor, page, 'Tags' );
+		await page
+			.locator( '.ai-content-classification button', {
+				hasText: 'Suggest Tags',
+			} )
+			.first()
+			.click();
+
+		await expect(
+			page.locator( '.ai-content-classification__pill' ).first()
+		).toBeVisible();
+
+		let resolveRoute;
+		const routePromise = new Promise( ( resolve ) => {
+			resolveRoute = resolve;
+		} );
+
+		// Intercept tag creation/search REST calls to fail.
+		await page.route( /\/wp\/v2\/tags/, async ( route ) => {
+			await routePromise;
+			await route.fulfill( {
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					code: 'internal_server_error',
+					message: 'Database connection failed.',
+				} ),
+			} );
+		} );
+
+		const firstPill = page
+			.locator( '.ai-content-classification__pill' )
+			.first();
+		const pillText = await firstPill
+			.locator( '.ai-content-classification__pill-accept' )
+			.textContent();
+
+		// Click to accept a term.
+		await firstPill
+			.locator( '.ai-content-classification__pill-accept' )
+			.click();
+
+		// Pill should disappear immediately.
+		await expect(
+			page.locator( '.ai-content-classification__pill-accept' ).first()
+		).not.toHaveText( pillText );
+
+		// Resolve the promise to return the failure response.
+		resolveRoute();
+
+		// Since request fails, the pill should be restored to its original (first) position.
+		await expect(
+			page.locator( '.ai-content-classification__pill-accept' ).first()
+		).toHaveText( pillText );
+	} );
+
+	test( 'Does not restore suggestion pill if it belongs to a stale generation session', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await setStrategy( admin, page, 'allow_new' );
+
+		await admin.createNewPost( {
+			title: 'Content Classification Stale Generation Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: LONG_CONTENT },
+		} );
+
+		// Open the Tags panel and suggest.
+		await openTaxonomyPanel( editor, page, 'Tags' );
+		await page
+			.locator( '.ai-content-classification button', {
+				hasText: 'Suggest Tags',
+			} )
+			.first()
+			.click();
+
+		await expect(
+			page.locator( '.ai-content-classification__pill' ).first()
+		).toBeVisible();
+
+		let resolveRoute;
+		const routePromise = new Promise( ( resolve ) => {
+			resolveRoute = resolve;
+		} );
+
+		// Intercept tag creation/search REST calls to fail.
+		await page.route( /\/wp\/v2\/tags/, async ( route ) => {
+			await routePromise;
+			await route.fulfill( {
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					code: 'internal_server_error',
+					message: 'Database connection failed.',
+				} ),
+			} );
+		} );
+
+		const firstPill = page
+			.locator( '.ai-content-classification__pill' )
+			.first();
+		const pillText = await firstPill
+			.locator( '.ai-content-classification__pill-accept' )
+			.textContent();
+
+		// Click to accept a term.
+		await firstPill
+			.locator( '.ai-content-classification__pill-accept' )
+			.click();
+
+		// Pill should disappear immediately.
+		await expect(
+			page.locator( '.ai-content-classification__pill-accept' ).first()
+		).not.toHaveText( pillText );
+
+		// While API call is pending, click "Dismiss all" to clear suggestions and increment session count.
+		await page
+			.locator( '.ai-content-classification__actions button', {
+				hasText: 'Dismiss all',
+			} )
+			.first()
+			.click();
+
+		// Resolve the promise to return the failure response.
+		resolveRoute();
+
+		// Since the session is now stale, the suggestions UI should remain cleared/empty.
+		await expect(
+			page.locator( '.ai-content-classification__suggestions' ).first()
+		).not.toBeVisible();
+	} );
 } );
