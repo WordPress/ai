@@ -45,7 +45,7 @@ export function useSummaryGeneration() {
 			content: select( editorStore ).getEditedPostContent(),
 			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
 		};
-	} );
+	}, [] );
 	const { editPost } = useDispatch( editorStore );
 	const [ isSummarizing, setIsSummarizing ] = useState( false );
 	const [ summary, setSummary ] = useState( '' );
