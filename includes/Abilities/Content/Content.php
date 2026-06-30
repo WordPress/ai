@@ -372,19 +372,35 @@ final class Content {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WP_Post $post Post object.
+	 * @param \WP_Post         $post             Post object.
+	 * @param array<int, true> $checked_post_ids Post IDs already checked while walking inherited parents.
 	 * @return bool Whether the post can be read.
 	 */
-	private function check_read_permission( WP_Post $post ): bool {
+	private function check_read_permission( WP_Post $post, array $checked_post_ids = array() ): bool {
+		if ( isset( $checked_post_ids[ $post->ID ] ) ) {
+			return false;
+		}
+
+		$checked_post_ids[ $post->ID ] = true;
+
 		$post_type = get_post_type_object( $post->post_type );
 		if ( ! $post_type instanceof \WP_Post_Type || empty( $post_type->show_in_abilities ) ) {
 			return false;
 		}
 
+		/*
+		 * Treat publicly viewable posts as readable. This checks both the post type
+		 * and post status using Core's viewability helpers, which is stricter than
+		 * checking the status object's `public` flag alone.
+		 */
 		if ( is_post_publicly_viewable( $post ) ) {
 			return true;
 		}
 
+		/*
+		 * Use the normalized status for the status object lookup. For attachments,
+		 * get_post_status() resolves `inherit` through the parent before returning.
+		 */
 		$post_status = get_post_status( $post );
 		if ( ! is_string( $post_status ) ) {
 			return false;
@@ -395,11 +411,39 @@ final class Content {
 			return false;
 		}
 
+		/*
+		 * Core maps `read_post` for public statuses to the post type's plain `read`
+		 * capability. Publicly viewable posts already returned above, so a remaining
+		 * public status is public but not viewable and should require edit access.
+		 */
 		if ( $post_status_object->public ) {
 			return current_user_can( 'edit_post', $post->ID );
 		}
 
-		return current_user_can( 'read_post', $post->ID );
+		/*
+		 * For non-public statuses, defer to Core's meta-capability mapping. This
+		 * handles own drafts, private posts, and statuses that require edit access.
+		 */
+		if ( current_user_can( 'read_post', $post->ID ) ) {
+			return true;
+		}
+
+		/*
+		 * Mirror the REST posts controller's inherited-parent behavior, but keep the
+		 * ability fail-closed for missing parents or parent loops.
+		 */
+		if (
+			'inherit' === $post->post_status &&
+			$post->post_parent > 0 &&
+			(int) $post->post_parent !== (int) $post->ID
+		) {
+			$parent = get_post( $post->post_parent );
+			if ( $parent instanceof WP_Post ) {
+				return $this->check_read_permission( $parent, $checked_post_ids );
+			}
+		}
+
+		return false;
 	}
 
 	/**

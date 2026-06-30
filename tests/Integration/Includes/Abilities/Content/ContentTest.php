@@ -687,6 +687,88 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A post that inherits its status from a readable parent is readable.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_inherited_post_is_readable_when_parent_is_readable(): void {
+		register_post_type(
+			'wpai_inherit_cpt',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title', 'editor' ),
+			)
+		);
+
+		try {
+			$parent_id = self::factory()->post->create(
+				array(
+					'post_author' => self::$user_ids['administrator'],
+					'post_type'   => 'wpai_inherit_cpt',
+					'post_status' => 'publish',
+				)
+			);
+			$child_id  = self::factory()->post->create(
+				array(
+					'post_author' => self::$user_ids['administrator'],
+					'post_type'   => 'wpai_inherit_cpt',
+					'post_parent' => $parent_id,
+					'post_status' => 'inherit',
+					'post_title'  => 'Inherited child',
+				)
+			);
+
+			$this->login_as( 'subscriber' );
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $child_id ) );
+
+			$this->assertIsArray( $result, 'Inherited posts should be readable when their parent is readable.' );
+			$this->assertSame( $child_id, $result['id'], 'The inherited child should be returned.' );
+			$this->assertSame( 'Inherited child', $result['title_rendered'], 'The inherited child should include normal default fields.' );
+		} finally {
+			unregister_post_type( 'wpai_inherit_cpt' );
+		}
+	}
+
+	/**
+	 * A post with an inherited status but no readable parent is denied.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_inherited_post_without_parent_is_denied_for_read_only_users(): void {
+		register_post_type(
+			'wpai_inherit_cpt',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title', 'editor' ),
+			)
+		);
+
+		try {
+			$post_id = self::factory()->post->create(
+				array(
+					'post_author' => self::$user_ids['administrator'],
+					'post_type'   => 'wpai_inherit_cpt',
+					'post_status' => 'inherit',
+				)
+			);
+
+			$this->login_as( 'subscriber' );
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+
+			$this->assertWPError( $result, 'Inherited posts without a readable parent should be denied.' );
+			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Orphaned inherited posts should fail closed.' );
+		} finally {
+			unregister_post_type( 'wpai_inherit_cpt' );
+		}
+	}
+
+	/**
 	 * Query mode returns only published posts by default.
 	 *
 	 * @since x.x.x
