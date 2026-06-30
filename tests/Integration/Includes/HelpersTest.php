@@ -22,7 +22,7 @@ use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 use WordPress\AI\Experiments\Summarization\Summarization;
-use function WordPress\AI\post_type_supports_bulk_ai_action;
+use function WordPress\AI\post_type_supports_bulk_action;
 
 /**
  * Stub provider availability used by helper tests.
@@ -1800,8 +1800,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_true_for_rest_post_type(): void {
-		$this->assertTrue( post_type_supports_bulk_ai_action( 'post', Summarization::get_id() ) );
-		$this->assertTrue( post_type_supports_bulk_ai_action( 'page', Summarization::get_id() ) );
+		$this->assertTrue( post_type_supports_bulk_action( 'post', Summarization::get_id() ) );
+		$this->assertTrue( post_type_supports_bulk_action( 'page', Summarization::get_id() ) );
 	}
 
 	/**
@@ -1820,7 +1820,7 @@ class HelpersTest extends WP_UnitTestCase {
 		);
 
 		try {
-			$this->assertFalse( post_type_supports_bulk_ai_action( 'no_rest_cpt', Summarization::get_id() ) );
+			$this->assertFalse( post_type_supports_bulk_action( 'no_rest_cpt', Summarization::get_id() ) );
 		} finally {
 			unregister_post_type( 'no_rest_cpt' );
 		}
@@ -1834,7 +1834,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_attachment(): void {
-		$this->assertFalse( post_type_supports_bulk_ai_action( 'attachment', Summarization::get_id() ) );
+		$this->assertFalse( post_type_supports_bulk_action( 'attachment', Summarization::get_id() ) );
 	}
 
 	/**
@@ -1843,6 +1843,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
-		$this->assertFalse( post_type_supports_bulk_ai_action( 'does_not_exist', Summarization::get_id() ) );
+		$this->assertFalse( post_type_supports_bulk_action( 'does_not_exist', Summarization::get_id() ) );
 	}
 }

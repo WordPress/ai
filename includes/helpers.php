@@ -696,7 +696,7 @@ function is_connector_plugin_active( array $connector_data ): bool {
  * @param string $feature_id The feature identifier (e.g. 'summarization').
  * @return bool True if the post type supports bulk AI actions for the feature.
  */
-function post_type_supports_bulk_ai_action( string $post_type, string $feature_id ): bool {
+function post_type_supports_bulk_action( string $post_type, string $feature_id ): bool {
 	$post_type_obj = get_post_type_object( $post_type );
 
 	// Check if the post type is registered and supports REST API and UI.
@@ -708,7 +708,7 @@ function post_type_supports_bulk_ai_action( string $post_type, string $feature_i
 		case Summarization::get_id():
 			return $base_supported && 'attachment' !== $post_type;
 		default:
-			return false;
+			return $base_supported;
 	}
 }
 

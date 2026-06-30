@@ -15,7 +15,7 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
 use function WordPress\AI\get_min_content_length;
-use function WordPress\AI\post_type_supports_bulk_ai_action;
+use function WordPress\AI\post_type_supports_bulk_action;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -73,7 +73,7 @@ class Summarization extends Abstract_Feature {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post';
 
-		if ( ! post_type_supports_bulk_ai_action( $post_type, $this->get_id() ) ) {
+		if ( ! post_type_supports_bulk_action( $post_type, $this->get_id() ) ) {
 			return;
 		}
 
