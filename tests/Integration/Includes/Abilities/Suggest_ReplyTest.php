@@ -339,8 +339,16 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'A test post',
+				'post_content' => 'Test content',
+			)
+		);
+
 		$comment_id = self::factory()->comment->create(
 			array(
+				'comment_post_ID' => $post_id,
 				'comment_author'  => 'Carol',
 				'comment_content' => 'Interesting read.',
 			)
@@ -360,5 +368,34 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'unsupported_model', $result->get_error_code() );
+	}
+
+	/**
+	 * Test that execute_callback() returns a WP_Error when the associated post is not found.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_returns_error_when_post_not_found() {
+		$comment_id = self::factory()->comment->create(
+			array(
+				'comment_author'  => 'Dave',
+				'comment_content' => 'Nice article.',
+			)
+		);
+
+		$reflection  = new \ReflectionClass( $this->ability );
+		$exec_method = $reflection->getMethod( 'execute_callback' );
+		$exec_method->setAccessible( true );
+
+		$result = $exec_method->invoke(
+			$this->ability,
+			array(
+				'comment_id' => $comment_id,
+				'tone'       => 'friendly',
+			)
+		);
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'post_not_found', $result->get_error_code() );
 	}
 }
