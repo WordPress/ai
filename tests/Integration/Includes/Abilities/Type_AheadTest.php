@@ -15,7 +15,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 /**
  * Test experiment for Type_Ahead Ability tests.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class Test_Type_Ahead_Experiment extends Abstract_Feature {
 	/**
@@ -28,7 +28,7 @@ class Test_Type_Ahead_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return array{label: string, description: string}
 	 */
@@ -42,7 +42,7 @@ class Test_Type_Ahead_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -52,13 +52,13 @@ class Test_Type_Ahead_Experiment extends Abstract_Feature {
 /**
  * Type_Ahead Ability test case.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Ability instance.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var Type_Ahead
 	 */
@@ -67,7 +67,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Sets up the test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -85,7 +85,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tears down the test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -95,7 +95,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Returns an accessible reflection method.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string $name Method name.
 	 * @return \ReflectionMethod
@@ -110,7 +110,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Test that guideline_categories() returns site and copy.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_guideline_categories_returns_site_and_copy(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -126,7 +126,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests input schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$schema = $this->get_method( 'input_schema' )->invoke( $this->ability );
@@ -148,7 +148,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests output schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$schema = $this->get_method( 'output_schema' )->invoke( $this->ability );
@@ -164,7 +164,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests meta schema.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$meta = $this->get_method( 'meta' )->invoke( $this->ability );
@@ -177,7 +177,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests system instruction loading.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_get_system_instruction_returns_string() {
 		$instruction = $this->ability->get_system_instruction();
@@ -188,7 +188,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests private suggestion schema.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_suggestion_schema_returns_expected_structure() {
 		$schema = $this->get_method( 'suggestion_schema' )->invoke( $this->ability );
@@ -204,7 +204,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests prompt context composition.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_prepare_prompt_context_returns_expected_payload() {
 		$context = $this->get_method( 'prepare_prompt_context' )->invoke(
@@ -229,7 +229,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests text truncation behavior.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_truncate_text_respects_context_limit() {
 		$long_text = str_repeat( 'a', 5500 );
@@ -242,7 +242,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests cache key generation changes by mode.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_build_cache_key_changes_when_mode_changes() {
 		$method = $this->get_method( 'build_cache_key' );
@@ -258,7 +258,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests permission callback for edit_posts users.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_permission_callback_with_edit_posts_capability() {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
@@ -272,7 +272,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests permission callback for users without edit_posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_permission_callback_without_edit_posts_capability() {
 		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
@@ -287,7 +287,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests permission callback for valid post_id.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_permission_callback_returns_true_for_editor_with_valid_post() {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
@@ -302,7 +302,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests permission callback for missing post_id.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_permission_callback_returns_error_for_missing_post() {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
@@ -317,7 +317,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests permission callback for non-REST post types.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_permission_callback_returns_false_for_non_rest_post_type() {
 		register_post_type(
@@ -348,7 +348,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests execute_callback() returns cached value when present.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_execute_callback_returns_cached_result() {
 		$key_method     = $this->get_method( 'build_cache_key' );
@@ -378,7 +378,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests empty block content can still execute through cached path.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_execute_callback_allows_empty_block_content() {
 		$key_method     = $this->get_method( 'build_cache_key' );

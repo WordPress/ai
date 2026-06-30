@@ -82,7 +82,7 @@ function normalize_content( string $content ): string {
  * This approximately mirrors @wordpress/wordcount's
  * `characters_excluding_spaces` strategy used in the editor.
  *
- * @since x.x.x
+ * @since 1.1.0
  *
  * @param string $text The text to count characters in.
  * @return int The number of non-whitespace characters.
@@ -564,7 +564,7 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 	 * connectors that do not rely on API key settings (e.g. OAuth), without
 	 * triggering a live API request.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param bool  $has_support Whether image generation is supported.
 	 * @param array $connectors  The registered connectors.
@@ -697,7 +697,7 @@ function is_connector_plugin_active( array $connector_data ): bool {
 /**
  * Returns the minimum content length in characters required for a given feature.
  *
- * @since x.x.x
+ * @since 1.1.0
  *
  * @param string $feature_id     The feature identifier (e.g. 'content-resizing', 'content-classification', 'summarization').
  * @param int    $content_length The default minimum content length in characters for the feature.
@@ -707,7 +707,7 @@ function get_min_content_length( string $feature_id, int $content_length = 250 )
 	/**
 	 * Filters the minimum content length required for a feature.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int    $content_length The minimum content length in characters for the feature.
 	 * @param string $feature_id     The feature identifier.

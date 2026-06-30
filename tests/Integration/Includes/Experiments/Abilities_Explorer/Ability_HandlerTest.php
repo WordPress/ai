@@ -315,7 +315,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	 * integer). The handler must accept a scalar input value rather than
 	 * requiring an array.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_validate_input_accepts_scalar_input() {
 		$schema = array(
@@ -355,7 +355,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	 * in which case the value passed to execute() is a scalar rather than an
 	 * array. The handler must forward the scalar through unchanged.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_invoke_ability_accepts_scalar_input() {
 		global $wp_current_filter;
@@ -406,7 +406,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	 * triggers the abilities API init those abilities register, so the
 	 * category must exist first to avoid an incorrect-usage notice.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function ensure_site_category(): void {
 		if ( wp_has_ability_category( 'site' ) ) {

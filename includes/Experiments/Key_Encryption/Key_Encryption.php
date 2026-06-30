@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
  * credential. Existing keys are migrated on opt-in and restored on opt-out (or on plugin
  * deactivation) so users are never locked out of their own credentials.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class Key_Encryption extends Abstract_Feature {
 
@@ -34,7 +34,7 @@ class Key_Encryption extends Abstract_Feature {
 	 * Set by `Activation::activation_callback()` so re-activating the plugin while the experiment
 	 * is still toggled on re-encrypts the plaintext keys that the previous deactivation restored.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public const RESUME_MIGRATION_OPTION = 'wpai_key_encryption_resume_migration';
 
@@ -45,7 +45,7 @@ class Key_Encryption extends Abstract_Feature {
 	 * (in tests or in code that calls `register_settings()` multiple times) does not produce
 	 * duplicate callbacks.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 * @var \WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge|null
 	 */
 	private static ?Secrets_Bridge $bridge = null;
@@ -53,7 +53,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Returns the process-wide Secrets_Bridge singleton.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get_bridge(): Secrets_Bridge {
 		if ( null === self::$bridge ) {
@@ -65,7 +65,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Resets the cached bridge.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @internal
 	 */
@@ -95,7 +95,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function register(): void {
 		self::get_bridge()->register_option_filters();
@@ -104,7 +104,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Returns the option name for this experiment's individual toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get_toggle_option_name(): string {
 		return 'wpai_feature_' . self::get_id() . '_enabled';
@@ -117,7 +117,7 @@ class Key_Encryption extends Abstract_Feature {
 	 * method caches per-instance, which would be stale immediately after
 	 * a toggle change inside the same request.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function is_effectively_enabled(): bool {
 		$global     = self::coerce_bool( get_option( Settings_Registration::GLOBAL_OPTION, false ) );
@@ -128,7 +128,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function register_settings(): void {
 		$individual = self::get_toggle_option_name();
@@ -151,7 +151,7 @@ class Key_Encryption extends Abstract_Feature {
 	 * Called from the plugin activation hook so the migration runs
 	 * on the next request, when the connector registry has been populated.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function flag_resume_migration(): void {
 		update_option( self::RESUME_MIGRATION_OPTION, '1', false );
@@ -160,7 +160,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Consumes the deferred-migration flag and re-encrypts plaintext keys if effectively enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function maybe_resume_migration(): void {
 		if ( '1' !== get_option( self::RESUME_MIGRATION_OPTION, '' ) ) {
@@ -179,7 +179,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Idempotent `add_action` wrapper used for the toggle hooks.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string   $hook          Hook name.
 	 * @param callable $callback      Callback to register.
@@ -196,7 +196,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Handles updates to this experiment's individual toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed $old_value Previous option value.
 	 * @param mixed $new_value New option value.
@@ -211,7 +211,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Handles the first-time write of this experiment's individual toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string $option    Option name.
 	 * @param mixed  $new_value New option value.
@@ -226,7 +226,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Handles updates to the global features toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed $old_value Previous option value.
 	 * @param mixed $new_value New option value.
@@ -241,7 +241,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Handles the first-time write of the global features toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string $option    Option name.
 	 * @param mixed  $new_value New option value.
@@ -256,7 +256,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Drives encrypt/decrypt migration when the effective enabled state transitions.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param bool $was_enabled Previous effective state.
 	 * @param bool $is_enabled  New effective state.
@@ -280,7 +280,7 @@ class Key_Encryption extends Abstract_Feature {
 	 * Settings stored via the REST API can arrive as
 	 * `'1'`, `'0'`, `''`, `true`, `false`, etc.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed $value Raw option value.
 	 * @return bool The coerced boolean value.

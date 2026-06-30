@@ -293,7 +293,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test moderate_comment() skips comments flagged as spam in pre_comment_approved.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_moderate_comment_skips_spam_comments() {
 		// Simulate a spam filter.
@@ -333,7 +333,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test moderate_comment() skips guest comments automatically on creation when moderate_guests is disabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_moderate_comment_skips_anonymous_comments_when_moderate_guests_disabled() {
 		update_option( 'wpai_feature_comment-moderation_field_moderate_guests', false );
@@ -387,7 +387,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test moderate_comment() analyzes guest comments automatically on creation when moderate_guests is enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_moderate_comment_analyzes_anonymous_comments_when_moderate_guests_enabled() {
 		update_option( 'wpai_feature_comment-moderation_field_moderate_guests', true );

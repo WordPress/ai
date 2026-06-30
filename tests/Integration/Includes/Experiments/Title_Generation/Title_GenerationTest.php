@@ -128,7 +128,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() localizes the default minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length() {
 		set_current_screen( 'post' );
@@ -146,7 +146,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() localizes the filtered minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_enqueue_assets_localizes_filtered_min_content_length() {
 		set_current_screen( 'post' );

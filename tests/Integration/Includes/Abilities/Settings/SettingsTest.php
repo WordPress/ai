@@ -15,14 +15,14 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Settings ability test case.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class SettingsTest extends WP_UnitTestCase {
 
 	/**
 	 * The settings exposure component. Held so the same instance can detach its filter on tear down.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var \WordPress\AI\Abilities\Show_In_Abilities
 	 */
@@ -31,7 +31,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -61,7 +61,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function tearDown(): void {
 		if ( wp_has_ability( 'core/read-settings' ) ) {
@@ -78,7 +78,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Ensures the `site` ability category exists for the ability to attach to.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function ensure_site_category(): void {
 		if ( wp_has_ability_category( 'site' ) ) {
@@ -103,7 +103,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Registers the plugin's core/read-settings ability inside a faked init action.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function register_ability(): void {
 		global $wp_current_filter;
@@ -118,7 +118,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Logs in as an administrator so the ability's permission check passes.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function become_admin(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -127,7 +127,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * The ability is registered in the `site` category and flagged read-only.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_core_read_settings_ability_is_registered(): void {
 		$this->register_ability();
@@ -147,7 +147,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * When core already provides core/read-settings, the plugin's version replaces it.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_override_replaces_existing_core_read_settings(): void {
 		// Simulate a core-provided ability with a different (minimal) shape.
@@ -183,7 +183,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * The input schema exposes optional `group` and `fields` filters.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_core_read_settings_input_schema_exposes_group_and_fields_filters(): void {
 		$this->register_ability();
@@ -204,7 +204,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Without input the ability returns a flat map of correctly typed setting values.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_core_read_settings_returns_flat_typed_values(): void {
 		$this->become_admin();
@@ -225,7 +225,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * The `group` filter narrows the response to a single settings group.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_core_read_settings_filters_by_group(): void {
 		$this->become_admin();
@@ -240,7 +240,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * The `fields` filter narrows the response to the requested setting names.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_core_read_settings_filters_by_fields(): void {
 		$this->become_admin();
@@ -254,7 +254,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Supplying both `group` and `fields` narrows the response to their intersection.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_core_read_settings_combines_group_and_fields_filters(): void {
 		$this->become_admin();
@@ -275,7 +275,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Users without `manage_options` cannot run the ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_core_read_settings_requires_manage_options(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
@@ -290,7 +290,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * A setting registered with `show_in_abilities` (for example by a plugin) is exposed by the ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_core_read_settings_exposes_a_custom_registered_setting(): void {
 		$this->register_ability();

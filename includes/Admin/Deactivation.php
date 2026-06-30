@@ -3,7 +3,7 @@
  * Runs on plugin deactivation.
  *
  * @package WordPress\AI\Admin
- * @since x.x.x
+ * @since 1.1.0
  */
 
 declare( strict_types=1 );
@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class Deactivation {
 	/**
@@ -30,7 +30,7 @@ final class Deactivation {
 	 * currently enabled so the user is never locked out of
 	 * their API keys after deactivating the plugin.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function deactivation_callback(): void {
 		if ( ! Key_Encryption::is_effectively_enabled() ) {
