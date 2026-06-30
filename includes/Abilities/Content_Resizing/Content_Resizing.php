@@ -111,7 +111,7 @@ class Content_Resizing extends Abstract_Ability {
 			self::DEFAULT_MIN_CONTENT_LENGTH
 		);
 
-		// "shorten" action requires a minimum word count.
+		// "shorten" action requires a minimum character count.
 		if (
 			'shorten' === $args['action'] &&
 			count_characters_excluding_spaces( $content ) < $min_content_length
