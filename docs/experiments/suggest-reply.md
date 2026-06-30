@@ -25,7 +25,6 @@ array(
         'comment_id' => array(
             'type'        => 'integer',
             'description' => 'The ID of the comment to generate a reply for.',
-            'required'    => true,
         ),
         'tone'       => array(
             'type'        => 'string',

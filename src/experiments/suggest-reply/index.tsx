@@ -11,6 +11,7 @@ import domReady from '@wordpress/dom-ready';
  * Internal dependencies
  */
 import { init } from './components/SuggestReply';
+import './index.scss';
 
 declare global {
 	interface Window {

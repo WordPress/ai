@@ -11,7 +11,6 @@ import { __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import './index.scss';
 
 type Tone = 'friendly' | 'professional' | 'casual';
 
