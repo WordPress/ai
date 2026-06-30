@@ -98,6 +98,10 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 
 			// @phpstan-ignore argument.type (array shape is built incrementally)
 			$this->log_manager->log( $log_data );
+
+			// Signal the event-based fallback that this generation was already logged,
+			// so Logging_Event_Listener does not write a duplicate row.
+			Logging_Event_Listener::mark_transporter_logged();
 		}
 	}
 

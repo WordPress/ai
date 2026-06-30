@@ -52,6 +52,10 @@ class Logging_Integration {
 
 		self::$log_manager = $log_manager;
 
+		// Provider-agnostic fallback: log generations that bypass the SDK HTTP
+		// transporter (e.g. custom-transport or localhost sidecar providers).
+		( new Logging_Event_Listener( $log_manager ) )->register();
+
 		// Check if the AiClient SDK is available.
 		if ( ! class_exists( AiClient::class ) ) {
 			return;
