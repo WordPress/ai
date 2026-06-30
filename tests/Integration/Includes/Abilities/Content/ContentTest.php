@@ -19,15 +19,6 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 class ContentTest extends WP_UnitTestCase {
 
 	/**
-	 * The exposure component. Held so the same instance can detach its filters on tear down.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var \WordPress\AI\Abilities\Show_In_Abilities
-	 */
-	private $show_in_abilities;
-
-	/**
 	 * Shared user IDs keyed by role or fixture name.
 	 *
 	 * @since x.x.x
@@ -127,8 +118,7 @@ class ContentTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		// Mark the curated core post types (post, page) as exposed to abilities.
-		$this->show_in_abilities = new Show_In_Abilities();
-		$this->show_in_abilities->register();
+		( new Show_In_Abilities() )->register();
 
 		$this->ensure_content_category();
 
@@ -147,9 +137,6 @@ class ContentTest extends WP_UnitTestCase {
 		if ( wp_has_ability( 'core/read-content' ) ) {
 			wp_unregister_ability( 'core/read-content' );
 		}
-
-		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
-		remove_filter( 'register_post_type_args', array( $this->show_in_abilities, 'mark_post_type' ), 10 );
 
 		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
 		foreach ( array( 'post', 'page' ) as $post_type ) {

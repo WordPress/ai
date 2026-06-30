@@ -589,7 +589,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-		 * @return int[] Unique positive post IDs.
+	 * @return int[] Unique positive post IDs.
 	 */
 	private function normalize_include( array $input ): array {
 		if ( empty( $input['include'] ) || ! is_array( $input['include'] ) ) {
@@ -597,12 +597,7 @@ final class Content {
 		}
 
 		$ids = array_map( array( $this, 'input_int' ), $input['include'] );
-		$ids = array_filter(
-			$ids,
-			static function ( int $id ): bool {
-				return $id > 0;
-			}
-		);
+		$ids = array_filter( $ids );
 
 		return array_values( array_unique( $ids ) );
 	}
@@ -1065,10 +1060,10 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post  The post object.
-	 * @param string   $field Either 'date' or 'modified'.
+	 * @param string   $field Either 'date' or 'modified'. Default 'date'.
 	 * @return string The ISO 8601 date, or an empty string if unavailable.
 	 */
-	private function format_local_date( WP_Post $post, string $field ): string {
+	private function format_local_date( WP_Post $post, string $field = 'date' ): string {
 		$field    = 'modified' === $field ? 'modified' : 'date';
 		$datetime = get_post_datetime( $post, $field, 'local' );
 		if ( $datetime ) {
@@ -1090,10 +1085,10 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post  The post object.
-	 * @param string   $field Either 'date' or 'modified'.
+	 * @param string   $field Either 'date' or 'modified'. Default 'date'.
 	 * @return string The ISO 8601 date, or an empty string if unavailable.
 	 */
-	private function format_gmt_date( WP_Post $post, string $field ): string {
+	private function format_gmt_date( WP_Post $post, string $field = 'date' ): string {
 		$field    = 'modified' === $field ? 'modified' : 'date';
 		$datetime = get_post_datetime( $post, $field, 'gmt' );
 		if ( $datetime ) {
