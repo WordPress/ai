@@ -120,9 +120,7 @@ class Suggest_Reply extends Abstract_Feature {
 			'experiments/suggest-reply',
 			array( 'include_core_abilities' => true )
 		);
-
 		Asset_Loader::enqueue_style( 'suggest_reply', 'experiments/suggest-reply' );
-
 		Asset_Loader::localize_script(
 			'suggest_reply',
 			'SuggestReplyData',
