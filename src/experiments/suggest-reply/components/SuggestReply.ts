@@ -68,7 +68,9 @@ function setTextareaPlaceholder( message: string ): void {
  * in-editor Suggest Reply button + Tone select during generation.
  */
 function setReplyFormDisabled( disabled: boolean ): void {
-	const elements = [
+	const elements: Array<
+		HTMLTextAreaElement | HTMLButtonElement | HTMLInputElement | null
+	> = [
 		document.querySelector< HTMLTextAreaElement >( '#replycontent' ),
 		document.querySelector< HTMLButtonElement >( '#replysubmit .save' ),
 		document.querySelector< HTMLButtonElement >( '#replysubmit .cancel' ),
@@ -81,6 +83,16 @@ function setReplyFormDisabled( disabled: boolean ): void {
 	document
 		.querySelectorAll< HTMLButtonElement >( '.wpai-dropdown-item' )
 		.forEach( ( item ) => elements.push( item ) );
+
+	document
+		.querySelectorAll< HTMLInputElement >(
+			'#qt_replycontent_toolbar .ed_button'
+		)
+		.forEach( ( item ) => {
+			if ( item instanceof HTMLInputElement ) {
+				elements.push( item );
+			}
+		} );
 
 	elements.forEach( ( el ) => {
 		if ( el ) {
