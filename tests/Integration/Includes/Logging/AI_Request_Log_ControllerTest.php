@@ -294,6 +294,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 			'type',
 			'status',
 			'provider',
+			'operation',
 			'user_id',
 			'date_from',
 			'date_to',
@@ -310,5 +311,49 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		foreach ( $expected_keys as $key ) {
 			$this->assertArrayHasKey( $key, $params );
 		}
+	}
+
+	/**
+	 * Tests that the operation filter returns only matching logs.
+	 *
+	 * @since 1.0.1
+	 */
+	public function test_get_logs_filters_by_operation(): void {
+		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$this->insert_log( array( 'operation' => 'openai:completions' ) );
+		$this->insert_log( array( 'operation' => 'google:generateContent' ) );
+
+		$request = new WP_REST_Request( 'GET', '/ai/v1/logs' );
+		$request->set_param( 'operation', 'google:generateContent' );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$data = $response->get_data();
+		$this->assertCount( 1, $data );
+		$this->assertSame( 'google:generateContent', $data[0]['operation'] );
+	}
+
+	/**
+	 * Tests that a non-string operation parameter is handled without a fatal error.
+	 *
+	 * The operation filter is parsed server-side with explode(), which requires a
+	 * string. Registering the parameter lets the REST framework reject non-string
+	 * input instead of letting it reach explode() and raise a TypeError.
+	 *
+	 * @since 1.0.1
+	 */
+	public function test_get_logs_rejects_non_string_operation(): void {
+		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$this->insert_log();
+
+		$request = new WP_REST_Request( 'GET', '/ai/v1/logs' );
+		$request->set_param( 'operation', array( 'openai:completions', 'google:generateContent' ) );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 400, $response->get_status() );
 	}
 }
