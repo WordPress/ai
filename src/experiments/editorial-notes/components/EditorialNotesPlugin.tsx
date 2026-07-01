@@ -28,7 +28,6 @@ import { useInstanceId } from '@wordpress/compose';
  * Internal dependencies
  */
 import { REVIEWABLE_BLOCK_TYPES } from '../../../utils/notes';
-import { formatMinLengthLabel } from '../../../utils/word-count';
 import {
 	useEditorialBlock,
 	useEditorialNotes,
@@ -52,7 +51,8 @@ export default function EditorialNotesPlugin() {
 		runReview,
 	} = useEditorialNotes();
 	const {
-		isReviewing: isReviewingBlock,
+		isReviewing: isAnyBlockReviewing,
+		reviewingClientId,
 		reviewBlock,
 		isContentTooShort: isBlockReviewDisabled,
 	} = useEditorialBlock();
@@ -84,15 +84,10 @@ export default function EditorialNotesPlugin() {
 		? reviewingLabel
 		: __( 'Generate Editorial Notes', 'ai' );
 	const buttonDescription = isContentTooShort
-		? formatMinLengthLabel(
+		? sprintf(
 				/* translators: %d: minimum number of characters required. */
 				__(
 					'Editorial Notes will be available when the post content has at least %d characters.',
-					'ai'
-				),
-				/* translators: %d: minimum number of words required. */
-				__(
-					'Editorial Notes will be available when the post content has at least %d words.',
 					'ai'
 				),
 				minContentLength
@@ -177,22 +172,34 @@ export default function EditorialNotesPlugin() {
 					}
 
 					const clientId = selectedClientIds[ 0 ] ?? null;
+					const isThisBlockReviewing = reviewingClientId === clientId;
 
 					return (
 						<MenuItem
 							icon={
-								isReviewingBlock ? <Spinner /> : commentContent
+								isThisBlockReviewing ? (
+									<Spinner />
+								) : (
+									commentContent
+								)
 							}
 							disabled={
-								isReviewingBlock || isBlockReviewDisabled
+								isAnyBlockReviewing || isBlockReviewDisabled
 							}
 							onClick={ () => {
 								if ( clientId ) {
 									reviewBlock( clientId );
 								}
 							} }
+							{ ...( isAnyBlockReviewing &&
+								! isThisBlockReviewing && {
+									info: __(
+										'Another block is currently being reviewed.',
+										'ai'
+									),
+								} ) }
 						>
-							{ isReviewingBlock
+							{ isThisBlockReviewing
 								? __( 'Reviewing…', 'ai' )
 								: __( 'Generate Editorial Note', 'ai' ) }
 						</MenuItem>

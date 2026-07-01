@@ -99,14 +99,14 @@ final class Helper_Test_Provider implements ProviderInterface {
 /**
  * Stub model metadata used by image generation support tests.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class Image_Generation_Test_Model_Metadata {
 
 	/**
 	 * Whether the stub model advertises image-generation support.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var bool
 	 */
@@ -115,7 +115,7 @@ final class Image_Generation_Test_Model_Metadata {
 	/**
 	 * Returns the stub model's supported capabilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return list<object{value:string}> Supported capabilities.
 	 */
@@ -134,14 +134,14 @@ final class Image_Generation_Test_Model_Metadata {
 /**
  * Stub model metadata directory used by image generation support tests.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class Image_Generation_Test_Model_Metadata_Directory {
 
 	/**
 	 * Whether listing model metadata should throw to simulate a provider failure.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var bool
 	 */
@@ -150,7 +150,7 @@ final class Image_Generation_Test_Model_Metadata_Directory {
 	/**
 	 * Lists the stub model metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @throws \RuntimeException When $should_throw is set, to exercise the support-detection guard.
 	 *
@@ -172,14 +172,14 @@ final class Image_Generation_Test_Model_Metadata_Directory {
  * Mirrors only the static methods that has_image_generation_support() and the AI
  * client registry invoke, so it intentionally does not implement ProviderInterface.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class Image_Generation_Test_Provider {
 
 	/**
 	 * Returns the stub provider availability.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return \WordPress\AI\Tests\Integration\Includes\Helper_Test_Provider_Availability Stub availability reporting configured state.
 	 */
@@ -190,7 +190,7 @@ final class Image_Generation_Test_Provider {
 	/**
 	 * Returns the stub model metadata directory.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return \WordPress\AI\Tests\Integration\Includes\Image_Generation_Test_Model_Metadata_Directory Stub model metadata directory.
 	 */
@@ -221,7 +221,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Stub provider ID used for image generation support tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var string
 	 */
@@ -402,6 +402,46 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Filtered:', $result, 'Should apply pre-normalize filter' );
 
 		remove_all_filters( 'wpai_pre_normalize_content' );
+	}
+
+	/**
+	 * Test that count_characters_excluding_spaces() counts characters excluding spaces.
+	 *
+	 * @dataProvider data_count_characters_excluding_spaces
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $text The text to count characters in.
+	 * @param int    $expected_count The expected count of characters excluding spaces.
+	 */
+	public function test_count_characters_excluding_spaces( string $text, int $expected_count ) {
+		$this->assertSame( $expected_count, \WordPress\AI\count_characters_excluding_spaces( $text ) );
+	}
+
+	/**
+	 * Data provider for count_characters_excluding_spaces() test.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return array<string, array{string, int}>
+	 */
+	public function data_count_characters_excluding_spaces(): array {
+		return array(
+			'empty string'                              => array( '', 0 ),
+			'only spaces'                               => array( '   ', 0 ),
+			'basic text'                                => array( 'Hello world', 10 ),
+			'tabs and newlines'                         => array( "Hello\tworld\nagain", 15 ),
+			'html tags are ignored'                     => array( '<p>Hello <strong>world</strong></p>', 10 ),
+			'html comments are ignored'                 => array( 'Hello <!-- hidden --> world', 10 ),
+			'nbsp entities are spaces'                  => array( 'Hello&nbsp;world&#160;', 10 ),
+			'entities count as one'                     => array( 'Hello &amp; world', 11 ),
+			'unicode letters'                           => array( 'こんにちは 世界', 7 ),
+			'full-width cjk space'                      => array( 'こんにちは　世界', 7 ),
+			'narrow no-break space'                     => array( "Hello\u{202F}world", 10 ),
+			'literal non-breaking space'                => array( "Hello\u{00A0}world", 10 ),
+			'multiple html entities count individually' => array( '&copy; &reg; &trade;', 3 ),
+			'mixed unicode whitespace only'             => array( " \t\n\u{00A0}\u{202F}\u{3000}", 0 ),
+		);
 	}
 
 	/**
@@ -1198,7 +1238,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * not picked up by has_connector_authentication(), so they advertise support through
 	 * the wpai_has_image_generation_support filter, which is request-free.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_has_image_generation_support_detects_connector_via_filter(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1242,7 +1282,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_image_generation_support() still detects API-key connectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_has_image_generation_support_detects_api_key_connector(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1275,7 +1315,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_image_generation_support() returns false when a connector's models lack the capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_has_image_generation_support_returns_false_when_models_lack_capability(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1311,7 +1351,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * A non-API-key connector that does not advertise support through the
 	 * wpai_has_image_generation_support filter must not be detected.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_has_image_generation_support_skips_connector_without_credentials(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1337,7 +1377,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the filter can suppress support for an otherwise-qualifying connector.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_has_image_generation_support_filter_can_suppress(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1373,7 +1413,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_image_generation_support() memoizes its result until the cache is reset.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_has_image_generation_support_memoizes_result(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1398,7 +1438,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_image_generation_support() skips a connector whose provider throws.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_has_image_generation_support_skips_connector_that_throws(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1591,7 +1631,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Registers the image generation stub provider in the AI client registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function register_test_image_provider(): void {
 		$registry = AiClient::defaultRegistry();
@@ -1612,7 +1652,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Unregisters the image generation stub provider from the AI client registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function unregister_test_image_provider(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -1651,7 +1691,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_min_content_length() returns the default value when no filter is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_get_min_content_length_returns_default_value(): void {
 		$result = \WordPress\AI\get_min_content_length( 'summarization', 100 );
@@ -1662,7 +1702,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_min_content_length() returns a custom value when filtered.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_get_min_content_length_returns_filtered_value(): void {
 		$filter = static function () {
@@ -1679,7 +1719,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the wpai_min_content_length filter receives the feature ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_get_min_content_length_filter_receives_feature_id(): void {
 		$received_feature_id = null;

@@ -18,7 +18,7 @@ add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
-// Register a sample setting flagged for the Abilities API, used by the core/settings E2E spec
+// Register a sample setting flagged for the Abilities API, used by the core/read-settings E2E spec
 // to verify the ability exposes settings registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_setting' );
 
@@ -77,7 +77,7 @@ function ai_e2e_clear_credentials() {
 /**
  * Registers a sample setting exposed to the Abilities API.
  *
- * Used by the core/settings E2E spec to verify the ability exposes settings registered
+ * Used by the core/read-settings E2E spec to verify the ability exposes settings registered
  * by other active plugins.
  */
 function ai_e2e_register_sample_setting() {

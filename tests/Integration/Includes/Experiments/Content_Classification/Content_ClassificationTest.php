@@ -8,8 +8,8 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Content_Classification;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Content_Classification\Content_Classification;
+use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 
@@ -329,7 +329,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() localizes the default minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length() {
 		set_current_screen( 'post' );
@@ -343,7 +343,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_content_classification', 'enqueued' ) );
 		$this->assertStringContainsString(
-			'"minContentLength":"50"',
+			'"minContentLength":"250"',
 			(string) wp_scripts()->get_data( 'ai_content_classification', 'data' )
 		);
 	}
@@ -351,7 +351,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() localizes the filtered minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_enqueue_assets_localizes_filtered_min_content_length() {
 		set_current_screen( 'post' );

@@ -78,31 +78,39 @@ function normalize_content( string $content ): string {
 }
 
 /**
- * Counts the number of words in a string with Unicode support.
- * Handles non-Latin scripts including; CJK (Chinese, Japanese, Korean), Arabic, Cyrillic, etc.
- * This approach mirrors the approach used by WordPress's JavaScript word counter.
+ * Counts characters excluding whitespace, with Unicode support.
  *
- * @since 0.9.0
+ * This approximately mirrors @wordpress/wordcount's
+ * `characters_excluding_spaces` strategy used in the editor.
  *
- * @param string $text The text to count words in.
- * @return int The number of words.
+ * @since 1.1.0
+ *
+ * @param string $text The text to count characters in.
+ * @return int The number of non-whitespace characters.
  */
-function count_words( string $text ): int {
-	$text = trim( $text );
-	if ( '' === $text ) {
+function count_characters_excluding_spaces( string $text ): int {
+	if ( empty( $text ) ) {
 		return 0;
 	}
 
-	/*
-	 * Insert spaces around CJK ideographs and Japanese kana so each
-	 * character is counted individually.
-	 */
-	$cjk_pattern = '/([\x{2E80}-\x{9FFF}\x{F900}-\x{FAFF}\x{FE30}-\x{FE4F}\x{20000}-\x{2FA1F}\x{3040}-\x{309F}\x{30A0}-\x{30FF}])/u';
-	$text        = preg_replace( $cjk_pattern, ' $1 ', $text ) ?? $text;
-	$text        = trim( preg_replace( '/\s+/u', ' ', $text ) ?? $text );
-	$words       = preg_split( '/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY );
+	// Strip all HTML tags including comments.
+	$text = wp_strip_all_tags( $text );
 
-	return is_array( $words ) ? count( $words ) : 0;
+	// Normalize NBSP entities to whitespace.
+	$text = preg_replace( '/&nbsp;|&#160;/i', ' ', $text ) ?? $text;
+
+	// Transpose HTML entities to countable characters.
+	$text = preg_replace( '/&\S+?;/u', 'a', $text ) ?? $text;
+
+	/*
+	 * Count non-whitespace code points using a class that mirrors JavaScript's
+	 * \s semantics, so full-width CJK spaces and similar separators match the
+	 * editor's @wordpress/wordcount result.
+	 */
+	$whitespace = '\x{0009}\x{000A}\x{000B}\x{000C}\x{000D}\x{0020}\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
+	$count      = preg_match_all( sprintf( '/[^%s]/u', $whitespace ), $text );
+
+	return is_int( $count ) ? $count : 0;
 }
 
 /**
@@ -557,7 +565,7 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 	 * connectors that do not rely on API key settings (e.g. OAuth), without
 	 * triggering a live API request.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param bool  $has_support Whether image generation is supported.
 	 * @param array $connectors  The registered connectors.
@@ -688,6 +696,27 @@ function is_connector_plugin_active( array $connector_data ): bool {
 }
 
 /**
+ * Returns the minimum content length in characters required for a given feature.
+ *
+ * @since 1.1.0
+ *
+ * @param string $feature_id     The feature identifier (e.g. 'content-resizing', 'content-classification', 'summarization').
+ * @param int    $content_length The default minimum content length in characters for the feature.
+ * @return int The minimum content length in characters.
+ */
+function get_min_content_length( string $feature_id, int $content_length = 250 ): int {
+	/**
+	 * Filters the minimum content length required for a feature.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param int    $content_length The minimum content length in characters for the feature.
+	 * @param string $feature_id     The feature identifier.
+	 */
+	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
+}
+
+/**
  * Determines whether a post type supports bulk AI actions for a given feature.
  *
  * @since x.x.x
@@ -710,25 +739,4 @@ function post_type_supports_bulk_action( string $post_type, string $feature_id )
 		default:
 			return $base_supported;
 	}
-}
-
-/**
- * Returns the minimum content length required for a given feature.
- *
- * @since x.x.x
- *
- * @param string $feature_id     The feature identifier (e.g. 'content-resizing', 'content-classification', 'summarization').
- * @param int    $content_length The default minimum content length.
- * @return int The minimum content length.
- */
-function get_min_content_length( string $feature_id, int $content_length = 100 ): int {
-	/**
-	 * Filters the minimum content length required for a feature.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int    $content_length The minimum content length. Default 100.
-	 * @param string $feature_id     The feature identifier.
-	 */
-	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
 }

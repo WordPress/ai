@@ -19,7 +19,7 @@ When enabled, the Content Classification experiment adds "Suggest Tags" and "Sug
 - Configurable strategy: suggest only existing terms or allow new ones
 - Configurable maximum number of suggestions (1-10, default 5)
 - Regenerate suggestions for different results
-- Requires approximately 150 words of content before enabling
+- Requires approximately 250 characters of content before enabling
 
 ### For Developers
 
@@ -51,7 +51,7 @@ The ability can be called directly via REST API, making it useful for automation
    - `SuggestionPanel` component renders a generate button and suggestion pills for each supported taxonomy
    - `useContentClassification` hook:
      - Gets current post ID and content from the editor store
-     - Checks word count using `@wordpress/wordcount` (minimum 150 words)
+     - Checks character count using `@wordpress/wordcount` (minimum 250 characters)
      - Calls the ability via `runAbility()` when the button is clicked
      - Manages suggestion state (accept, dismiss, regenerate)
      - Adds accepted terms to the post via `editPost()` and REST API
@@ -323,7 +323,7 @@ add_filter( 'wpai_experiments_normalize_content', function( $content ) {
    - Ensure you have valid AI credentials configured
 
 2. **Test in the editor:**
-   - Create or edit a post with at least 150 words of content
+   - Create or edit a post with at least 250 characters of content
    - Scroll to the Tags or Categories panel in the sidebar
    - Click the "Suggest Tags" or "Suggest Categories" button
    - Verify suggestions appear as clickable pills
@@ -367,7 +367,7 @@ npm run test:php
 - The experiment only works for post types that support the editor (`post_type_supports( $post_type, 'editor' )`)
 - The experiment does not load for attachment post types
 - Users must have `edit_posts` capability (or `edit_post` for specific posts when using post ID)
-- Post content must contain approximately 150 words before suggestions can be generated
+- Post content must contain approximately 250 characters before suggestions can be generated
 
 ### AI Model Selection
 

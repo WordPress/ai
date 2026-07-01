@@ -14,6 +14,8 @@
 	<exclude-pattern>**/build/**</exclude-pattern>
 	<exclude-pattern>**/node_modules/**</exclude-pattern>
 	<exclude-pattern>**/vendor/**</exclude-pattern>
+	<!-- Vendored third-party code; kept close to upstream -->
+	<exclude-pattern>*/includes/Vendor/*</exclude-pattern>
 
 	<!-- How to scan: include CLI args so you don't need to pass them manually -->
 	<!-- Usage instructions: https://github.com/PHPCSStandards/PHP_CodeSniffer/wiki/Usage -->

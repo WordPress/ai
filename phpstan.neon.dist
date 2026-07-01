@@ -43,6 +43,9 @@ parameters:
 			analyse:
 				- tests/
 				- vendor/
+				# Vendored third-party SDK. Scanned for symbol resolution
+				# but exempt from our coding-standard/analysis rules.
+				- includes/Vendor/
 				- includes/Logging/Logging_Integration.php
 				- includes/Logging/Logging_Http_Transporter.php
 			analyseAndScan:

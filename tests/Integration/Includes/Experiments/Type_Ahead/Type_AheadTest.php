@@ -16,13 +16,13 @@ use WordPress\AI\Features\Registry;
 /**
  * Type_Ahead experiment test case.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -44,7 +44,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -63,7 +63,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests experiment metadata and registration.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Type_Ahead();
@@ -77,7 +77,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests experiment can be disabled via filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_experiment_can_be_disabled_via_filter() {
 		add_filter( 'wpai_feature_type-ahead_enabled', '__return_false' );
@@ -91,7 +91,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests register() hooks expected actions.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_register_hooks_actions() {
 		$experiment = new Type_Ahead();

@@ -264,7 +264,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Tests that execute_callback() does not save arbitrary attachment meta.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_execute_callback_ignores_arbitrary_meta() {
 		$reflection = new \ReflectionClass( $this->ability );
