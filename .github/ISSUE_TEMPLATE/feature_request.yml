@@ -4,7 +4,8 @@ labels: ['[Type] Enhancement']
 body:
   - type: markdown
     attributes:
-      value: "Thanks for taking the time to suggest an improvement! Please fill out the fields below to help us understand your idea."
+      value: |
+        Thanks for taking the time to suggest an improvement! Please fill out the fields below to help us understand your idea.
   - type: textarea
     attributes:
       label: What problem does this address?
@@ -34,5 +35,5 @@ body:
       label: I have searched existing issues and this is not a duplicate.
       description: Search the [issue tracker](https://github.com/WordPress/ai/issues) before submitting.
       options:
-        - label: Yes
+        - label: 'Yes'
           required: true
