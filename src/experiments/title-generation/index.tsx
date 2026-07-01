@@ -16,6 +16,13 @@ import { registerPlugin } from '@wordpress/plugins';
 import './index.scss';
 import TitleToolbar from './components/TitleToolbar';
 import { TitleToolbarWrapper } from './components/TitleToolbarWrapper';
+import { exposeToDevTools } from '../../utils/devtools';
+
+exposeToDevTools( {
+	name: 'Title Generation',
+	description: 'Generates a post title from the post content using AI.',
+	abilitySlug: 'ai/title-generation',
+} );
 
 // For template preview mode (when title is a block)
 // Use filter to add toolbar to post-title block

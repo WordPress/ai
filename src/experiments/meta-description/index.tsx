@@ -14,6 +14,13 @@ import { __ } from '@wordpress/i18n';
  */
 import MetaDescriptionPanel from './components/MetaDescriptionPanel';
 import './index.scss';
+import { exposeToDevTools } from '../../utils/devtools';
+
+exposeToDevTools( {
+	name: 'Meta Description',
+	description: 'Generates an SEO meta description for the post using AI.',
+	abilitySlug: 'ai/meta-description',
+} );
 
 import type { MetaDescriptionData } from './types';
 

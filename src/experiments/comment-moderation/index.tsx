@@ -14,6 +14,13 @@ import { createRoot } from '@wordpress/element';
  * Internal dependencies
  */
 import { LazyAnalysisController } from './components/LazyAnalysisController';
+import { exposeToDevTools } from '../../utils/devtools';
+
+exposeToDevTools( {
+	name: 'Comment Moderation',
+	description: 'Analyses pending comments for spam and quality using AI.',
+	abilitySlug: 'ai/comment-analysis',
+} );
 
 /**
  * Initialize the comment moderation experiment.

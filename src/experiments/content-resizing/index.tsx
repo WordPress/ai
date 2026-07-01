@@ -14,6 +14,13 @@ import { addFilter } from '@wordpress/hooks';
  */
 import ContentResizingToolbar from './components/ContentResizingToolbar';
 import './index.scss';
+import { exposeToDevTools } from '../../utils/devtools';
+
+exposeToDevTools( {
+	name: 'Content Resizing',
+	description: 'Expands or condenses selected paragraph content using AI.',
+	abilitySlug: 'ai/content-resizing',
+} );
 
 const { aiContentResizingData } = window as any;
 

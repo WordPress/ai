@@ -11,6 +11,11 @@
 import apiFetch from '@wordpress/api-fetch';
 import { addQueryArgs } from '@wordpress/url';
 
+/**
+ * Internal dependencies
+ */
+import { recordStart, recordComplete, recordError } from './devtools/store';
+
 type AbilityInput =
 	| Record< string, unknown >
 	| Array< unknown >
@@ -130,6 +135,26 @@ const buildFetchOptions = (
 };
 
 export async function runAbility< T = unknown >(
+	ability: string,
+	input?: AbilityInput,
+	options?: RunAbilityOptions
+): Promise< T > {
+	const recordId = recordStart( ability, input );
+
+	try {
+		const result = await runAbilityInternal< T >( ability, input, options );
+		recordComplete( recordId, result );
+		return result;
+	} catch ( error ) {
+		recordError(
+			recordId,
+			error instanceof Error ? error.message : String( error )
+		);
+		throw error;
+	}
+}
+
+async function runAbilityInternal< T = unknown >(
 	ability: string,
 	input?: AbilityInput,
 	options?: RunAbilityOptions

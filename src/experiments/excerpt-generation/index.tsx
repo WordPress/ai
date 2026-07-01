@@ -19,6 +19,13 @@ import { registerPlugin } from '@wordpress/plugins';
  */
 import ExcerptGeneration from './components/ExcerptGeneration';
 import ExcerptInlineWrapper from './components/ExcerptInlineWrapper';
+import { exposeToDevTools } from '../../utils/devtools';
+
+exposeToDevTools( {
+	name: 'Excerpt Generation',
+	description: 'Generates a post excerpt from the post body using AI.',
+	abilitySlug: 'ai/excerpt-generation',
+} );
 
 /**
  * Plugin component that adds a generate button to the excerpt panel.

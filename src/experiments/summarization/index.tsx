@@ -16,6 +16,13 @@ import { registerPlugin } from '@wordpress/plugins';
 import SummarizationPlugin from './components/SummarizationPlugin';
 import SummarizationBlockControls from './components/SummarizationBlockControls';
 import './index.scss';
+import { exposeToDevTools } from '../../utils/devtools';
+
+exposeToDevTools( {
+	name: 'Summarization',
+	description: 'Generates a summary of the current post content using AI.',
+	abilitySlug: 'ai/summarization',
+} );
 
 // Register the plugin.
 registerPlugin( 'classifai-plugin-summarization', {
