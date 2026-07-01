@@ -66,7 +66,10 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		).toBeVisible();
 
 		// Click the generate excerpt button.
-		await page.getByRole( 'button', { name: 'Generate excerpt' } ).last().click();
+		await page
+			.getByRole( 'button', { name: 'Generate excerpt' } )
+			.last()
+			.click();
 
 		// Ensure the excerpt is updated.
 		await expect(
@@ -86,7 +89,9 @@ test.describe( 'Excerpt Generation Experiment', () => {
 			.fill( '' );
 
 		// Close the modal.
-		await page.getByRole( 'button', { name: 'Close', exact: true } ).click();
+		await page
+			.getByRole( 'button', { name: 'Close', exact: true } )
+			.click();
 
 		// Click the generate excerpt inline button.
 		await page
@@ -126,14 +131,22 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		const inlineButton = page.getByRole( 'button', { name: /Excerpt generation will be available when the post content has at least/i } ).first();
+		const inlineButton = page
+			.getByRole( 'button', {
+				name: /Excerpt generation will be available when the post content has at least/i,
+			} )
+			.first();
 		await expect( inlineButton ).toBeVisible();
 		await expect( inlineButton ).toBeDisabled();
 
 		// The panel button inside the excerpt dropdown is also disabled.
 		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
 		await expect(
-			page.getByRole( 'button', { name: /Excerpt generation will be available when the post content has at least/i } ).last()
+			page
+				.getByRole( 'button', {
+					name: /Excerpt generation will be available when the post content has at least/i,
+				} )
+				.last()
 		).toBeDisabled();
 	} );
 
