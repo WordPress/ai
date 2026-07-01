@@ -56,6 +56,20 @@ export function DeveloperSettings( {
 		useState< DeveloperSelection | null >( null );
 	const [ isSavingThis, setIsSavingThis ] = useState( false );
 
+	const focusResetButtonRef = useRef( false );
+
+	const moveFocusToResetButton = ( node: HTMLButtonElement | null ) => {
+		if (
+			focusResetButtonRef.current &&
+			node &&
+			! isSavingThis &&
+			! hasUnsavedChanges
+		) {
+			node.focus();
+			focusResetButtonRef.current = false;
+		}
+	};
+
 	useEffect( () => {
 		if ( ! isSaving ) {
 			setIsSavingThis( false );
@@ -212,7 +226,10 @@ export function DeveloperSettings( {
 						{ ( hasUnsavedChanges || isSavingThis ) && (
 							<Button
 								variant="primary"
-								onClick={ handleSave }
+								onClick={ () => {
+									handleSave();
+									focusResetButtonRef.current = true;
+								} }
 								disabled={ isSavingThis || ! hasUnsavedChanges }
 								isBusy={ isSavingThis }
 								accessibleWhenDisabled
@@ -236,6 +253,7 @@ export function DeveloperSettings( {
 								} }
 								disabled={ isSavingThis }
 								accessibleWhenDisabled
+								ref={ moveFocusToResetButton }
 							>
 								{ __( 'Reset to default', 'ai' ) }
 							</Button>
