@@ -125,6 +125,11 @@ module.exports = {
 			'src/experiments/alt-text-generation',
 			'bulk.ts'
 		),
+		'experiments/summarization-bulk': path.resolve(
+			process.cwd(),
+			'src/experiments/summarization',
+			'bulk.ts'
+		),
 	},
 
 	plugins: [
