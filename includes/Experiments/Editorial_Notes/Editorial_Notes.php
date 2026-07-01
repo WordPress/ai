@@ -53,6 +53,10 @@ class Editorial_Notes extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
+		if ( ! \WordPress\AI\ai_current_user_can_access_feature( $this->get_id() ) ) {
+			return;
+		}
+
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 		add_filter( 'rest_pre_insert_comment', array( $this, 'maybe_set_ai_author' ), 10, 2 );

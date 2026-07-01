@@ -8,13 +8,16 @@ import type { DataFormControlProps } from '@wordpress/dataviews';
  * Internal dependencies
  */
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
+import { useAccessControlModeContext } from '../hooks/use-access-control-mode';
 import { DeveloperSettings } from './DeveloperSettings';
+import { AccessControlSettings } from './AccessControlSettings';
 
 type AISettings = Record< string, boolean >;
 
 type FeatureToggleProps = DataFormControlProps< AISettings > & {
 	featureId?: string;
 	capability?: string;
+	category?: string;
 };
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
@@ -36,9 +39,12 @@ export function FeatureToggle( {
 	onChange,
 	featureId,
 	capability = 'text_generation',
+	category,
 }: FeatureToggleProps ): React.JSX.Element {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isAccessControlMode = useAccessControlModeContext();
+	const isEditorExperiment = category !== 'admin';
 
 	const resolvedFeatureId =
 		featureId ??
@@ -55,6 +61,9 @@ export function FeatureToggle( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
+			{ checked && isAccessControlMode && isEditorExperiment && (
+				<AccessControlSettings featureId={ resolvedFeatureId } />
+			) }
 			{ checked && isDeveloperMode && (
 				<DeveloperSettings
 					featureId={ resolvedFeatureId }

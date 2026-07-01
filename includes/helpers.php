@@ -714,3 +714,31 @@ function get_min_content_length( string $feature_id, int $content_length = 250 )
 	 */
 	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
 }
+
+/**
+ * Checks whether the current user has access to a given feature based on access control settings.
+ *
+ * If no roles or users are explicitly configured for the feature, it allows access by default.
+ * If there are configured roles/users, the current user must match at least one role or be explicitly listed.
+ *
+ * @since 0.1.0
+ *
+ * @param string $feature_id The ID of the feature/experiment.
+ * @return bool True if the user has access, false otherwise.
+ */
+function ai_current_user_can_access_feature( string $feature_id ): bool {
+	$roles = get_option( "wpai_feature_{$feature_id}_roles", array() );
+	$users = get_option( "wpai_feature_{$feature_id}_users", array() );
+
+	if ( empty( $roles ) && empty( $users ) ) {
+		return true;
+	}
+
+	$current_user = wp_get_current_user();
+
+	if ( in_array( $current_user->ID, $users, true ) ) {
+		return true;
+	}
+
+	return (bool) array_intersect( $current_user->roles, $roles );
+}
