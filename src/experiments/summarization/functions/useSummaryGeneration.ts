@@ -46,8 +46,8 @@ function findSummaryBlock( blocks: Block[] ): Block | null {
 	return (
 		flattenBlocks( blocks ).find(
 			( block ) =>
-				'core/group' === block.name &&
-				true === block.attributes[ 'aiGeneratedSummary' ] // eslint-disable-line dot-notation
+				block.name === 'core/group' &&
+				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
 		) ?? null
 	);
 }
