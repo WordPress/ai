@@ -6,6 +6,7 @@
  * WordPress dependencies
  */
 import { createBlock } from '@wordpress/blocks';
+import type { Block } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
@@ -38,10 +39,10 @@ const getSettings = (): SummarizationData => {
 /**
  * Searches a flattened list of blocks to find the Summary block.
  *
- * @param {any[]} blocks List of blocks to search.
- * @return {any|null} The found block or null.
+ * @param {Block[]} blocks List of blocks to search.
+ * @return {Block|null} The found block or null.
  */
-function findSummaryBlock( blocks: any[] ): any {
+function findSummaryBlock( blocks: Block[] ): Block | null {
 	return (
 		flattenBlocks( blocks ).find(
 			( block ) =>
