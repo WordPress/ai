@@ -6,6 +6,7 @@
  * WordPress dependencies
  */
 import { createBlock } from '@wordpress/blocks';
+import type { Block } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
@@ -19,6 +20,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
+import { flattenBlocks } from '../../../utils/blocks';
 import type { SummarizationData } from '../types';
 
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
@@ -35,6 +37,22 @@ const getSettings = (): SummarizationData => {
 };
 
 /**
+ * Searches a flattened list of blocks to find the Summary block.
+ *
+ * @param {Block[]} blocks List of blocks to search.
+ * @return {Block|null} The found block or null.
+ */
+function findSummaryBlock( blocks: Block[] ): Block | null {
+	return (
+		flattenBlocks( blocks ).find(
+			( block ) =>
+				block.name === 'core/group' &&
+				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
+		) ?? null
+	);
+}
+
+/**
  * Summary generation hook.
  */
 export function useSummaryGeneration() {
@@ -45,18 +63,14 @@ export function useSummaryGeneration() {
 			content: select( editorStore ).getEditedPostContent(),
 			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
 		};
-	} );
+	}, [] );
 	const { editPost } = useDispatch( editorStore );
 	const [ isSummarizing, setIsSummarizing ] = useState( false );
 	const [ summary, setSummary ] = useState( '' );
 
 	// Check if a summary group block exists and update state accordingly.
 	useEffect( () => {
-		const summaryGroup = allBlocks.find(
-			( block ) =>
-				block.name === 'core/group' &&
-				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
-		);
+		const summaryGroup = findSummaryBlock( allBlocks );
 		setSummary( summaryGroup ? 'exists' : '' );
 	}, [ allBlocks ] );
 
@@ -95,11 +109,7 @@ export function useSummaryGeneration() {
 			);
 
 			// Check if an existing Content Summary group block exists.
-			const existingSummaryBlock = allBlocks.find(
-				( block ) =>
-					block.name === 'core/group' &&
-					block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
-			);
+			const existingSummaryBlock = findSummaryBlock( allBlocks );
 
 			if ( existingSummaryBlock ) {
 				// Replace inner blocks of the existing group to preserve its attributes.
