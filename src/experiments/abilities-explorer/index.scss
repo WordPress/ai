@@ -252,15 +252,21 @@
 }
 
 .ability-test-validation.validation-success {
-	background: #edfaef; /* WP green-50 */
-	border-color: #00a32a; /* WP green-600 */
-	color: #00761e; /* WP green-700 */
+	background: #edfaef;
+	/* WP green-50 */
+	border-color: #00a32a;
+	/* WP green-600 */
+	color: #00761e;
+	/* WP green-700 */
 }
 
 .ability-test-validation.validation-error {
-	background: #fcf0f1; /* WP red-50 */
-	border-color: #d63638; /* WP red-600 */
-	color: #b32d2e; /* WP red-700 */
+	background: #fcf0f1;
+	/* WP red-50 */
+	border-color: #d63638;
+	/* WP red-600 */
+	color: #b32d2e;
+	/* WP red-700 */
 }
 
 .ability-test-validation h4 {
@@ -374,8 +380,13 @@
 }
 
 @keyframes spin {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
 }
 
 /* Responsive */
@@ -414,4 +425,16 @@
 .ability-explorer-wrap .description {
 	color: var(--wp--preset--color--foreground, #646970);
 	font-size: 13px;
+}
+
+/* AI Generate Payload Modal */
+.ability-generate-modal-footer {
+	display: flex;
+	gap: 8px;
+	margin-top: 16px;
+}
+
+.ability-generate-modal-error {
+	flex: 1;
+	margin-top: 16px;
 }

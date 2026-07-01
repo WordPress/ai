@@ -5,6 +5,9 @@
 /**
  * WordPress dependencies
  */
+/**
+ * WordPress dependencies
+ */
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -15,7 +18,12 @@ const { aiAbilityExplorer, navigator } = window;
 /**
  * Internal dependencies
  */
+/**
+ * Internal dependencies
+ */
 import './index.scss';
+import { createRoot, createElement } from '@wordpress/element';
+import GeneratePayloadModal from './components/GeneratePayloadModal';
 
 ( function () {
 	'use strict';
@@ -88,6 +96,16 @@ import './index.scss';
 					if ( validation ) {
 						validation.style.display = 'none';
 					}
+				} );
+			}
+
+			// Generate with AI button
+			const generateAiButton = document.getElementById(
+				'ability-test-generate-ai'
+			);
+			if ( generateAiButton ) {
+				generateAiButton.addEventListener( 'click', function () {
+					self.openGenerateModal();
 				} );
 			}
 
@@ -571,6 +589,53 @@ import './index.scss';
 			setTimeout( function () {
 				button.innerHTML = originalHTML;
 			}, 1500 );
+		},
+
+		/**
+		 * Open the AI payload generation modal (rendered via wp.components.Modal).
+		 */
+		openGenerateModal() {
+			const invokeButton = document.getElementById(
+				'ability-test-invoke'
+			);
+			const abilitySlug = invokeButton
+				? invokeButton.dataset.ability
+				: '';
+
+			if ( ! abilitySlug ) {
+				return;
+			}
+
+			const container = document.createElement( 'div' );
+			document.body.appendChild( container );
+
+			const root = createRoot( container );
+
+			const close = () => {
+				root.unmount();
+				document.body.removeChild( container );
+			};
+
+			const handleSuccess = ( payload ) => {
+				const payloadTextarea = document.getElementById(
+					'ability-test-payload'
+				);
+				if ( payloadTextarea ) {
+					payloadTextarea.value = payload;
+					payloadTextarea.dispatchEvent( new Event( 'input' ) );
+				}
+			};
+
+			root.render(
+				createElement( GeneratePayloadModal, {
+					onClose: close,
+					onSuccess: handleSuccess,
+					abilitySlug,
+					strings: aiAbilityExplorer.strings,
+					ajaxUrl: aiAbilityExplorer.ajaxUrl,
+					nonce: aiAbilityExplorer.generateNonce,
+				} )
+			);
 		},
 
 		/**

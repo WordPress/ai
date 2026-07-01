@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Admin Page Class
  *
@@ -8,7 +9,7 @@
  * @since 0.2.0
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
@@ -25,6 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Admin_Page {
 
+
 	/**
 	 * Initialize admin functionality.
 	 *
@@ -33,6 +35,7 @@ class Admin_Page {
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'wp_ajax_ai_ability_explorer_invoke', array( $this, 'ajax_invoke_ability' ) );
+		add_action( 'wp_ajax_ai_ability_explorer_generate_payload', array( $this, 'ajax_generate_payload' ) );
 	}
 
 	/**
@@ -300,12 +303,12 @@ class Admin_Page {
 					<div class="notice notice-info inline" style="margin: 10px 0;">
 						<p>
 							<strong><?php esc_html_e( 'How to test:', 'ai' ); ?></strong><br>
-							<ol>
-								<li><?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?></li>
-								<li><?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?></li>
-								<li><?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?></li>
-								<li><?php esc_html_e( 'View the results below', 'ai' ); ?></li>
-							</ol>
+						<ol>
+							<li><?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?></li>
+							<li><?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?></li>
+							<li><?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?></li>
+							<li><?php esc_html_e( 'View the results below', 'ai' ); ?></li>
+						</ol>
 						</p>
 					</div>
 				<?php endif; ?>
@@ -323,6 +326,11 @@ class Admin_Page {
 					<button type="button" id="ability-test-clear" class="button">
 						<?php esc_html_e( 'Clear Result', 'ai' ); ?>
 					</button>
+					<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
+						<button type="button" id="ability-test-generate-ai" class="button">
+							<?php esc_html_e( 'Generate with AI', 'ai' ); ?>
+						</button>
+					<?php endif; ?>
 				</div>
 
 				<div id="ability-test-validation" class="ability-test-validation" style="display: none;"></div>
@@ -484,6 +492,116 @@ class Admin_Page {
 	}
 
 	/**
+	 * AJAX handler for AI-assisted payload generation.
+	 *
+	 * @since 1.0.1
+	 */
+	public function ajax_generate_payload(): void {
+		// Verify nonce.
+		check_ajax_referer( 'ai_ability_explorer_generate_payload', 'nonce' );
+
+		// Check user capabilities.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Insufficient permissions.', 'ai' ),
+				)
+			);
+		}
+
+		// Get parameters.
+		$ability_slug = isset( $_POST['ability'] ) ? sanitize_text_field( wp_unslash( $_POST['ability'] ) ) : '';
+		$command      = isset( $_POST['command'] ) ? sanitize_textarea_field( wp_unslash( $_POST['command'] ) ) : '';
+
+		if ( empty( $ability_slug ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Ability slug is required.', 'ai' ),
+				)
+			);
+		}
+
+		if ( empty( $command ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'A command is required.', 'ai' ),
+				)
+			);
+		}
+
+		// Get ability to retrieve its input schema.
+		$ability = Ability_Handler::get_ability( $ability_slug );
+
+		if ( ! $ability ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Ability not found.', 'ai' ),
+				)
+			);
+		}
+
+		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'AI provider is not available.', 'ai' ),
+				)
+			);
+		}
+
+		$schema_json = wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+
+		$system_instruction = 'You are a JSON payload generator. Given an input schema and a user command, generate a valid JSON object that satisfies the schema and fulfills the command. Return ONLY valid JSON with no explanation, no markdown, and no code fences.';
+
+		$user_prompt = sprintf(
+			"Input Schema:\n%s\n\nUser Command: %s",
+			$schema_json,
+			$command
+		);
+
+		$prompt_builder = wp_ai_client_prompt( $user_prompt )
+			->using_system_instruction( $system_instruction );
+
+		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'No AI provider available. Please connect one in the plugin settings.', 'ai' ),
+				)
+			);
+		}
+
+		$result = $prompt_builder->generate_text();
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error(
+				array(
+					'message' => $result->get_error_message(),
+				)
+			);
+		}
+
+		// Strip markdown code fences if the model includes them.
+		$raw = trim( (string) $result );
+		$raw = preg_replace( '/^```(?:json)?\s*/i', '', $raw ) ?? $raw;
+		$raw = preg_replace( '/\s*```$/', '', $raw ) ?? $raw;
+		$raw = trim( $raw );
+
+		$parsed = json_decode( $raw, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'The AI returned a response that could not be parsed as JSON. Please try again or rephrase your command.', 'ai' ),
+				)
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'payload' => wp_json_encode( $parsed, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+			)
+		);
+	}
+
+	/**
 	 * Add contextual help tabs to the screen.
 	 *
 	 * @since 0.4.0
@@ -500,7 +618,7 @@ class Admin_Page {
 				'id'      => 'abilities-overview',
 				'title'   => __( 'Overview', 'ai' ),
 				'content' =>
-					'<p>' . esc_html__( 'Abilities are a standardized way for WordPress core, plugins, and themes to expose discrete units of functionality. Each ability has a name, optional input/output schemas, and can be invoked programmatically.', 'ai' ) . '</p>' .
+				'<p>' . esc_html__( 'Abilities are a standardized way for WordPress core, plugins, and themes to expose discrete units of functionality. Each ability has a name, optional input/output schemas, and can be invoked programmatically.', 'ai' ) . '</p>' .
 					'<p>' . esc_html__( 'The Abilities Explorer lets you browse every registered ability, inspect its schemas, and test it with custom input right from the admin.', 'ai' ) . '</p>',
 			)
 		);
@@ -512,11 +630,11 @@ class Admin_Page {
 				'id'      => 'abilities-providers',
 				'title'   => esc_html__( 'Providers', 'ai' ),
 				'content' =>
-					'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
+				'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
 					'<ul>' .
-						'<li>' . wp_kses( __( '<strong>Core</strong>: Built into WordPress itself.', 'ai' ), $provider_tags ) . '</li>' .
-						'<li>' . wp_kses( __( '<strong>Plugin</strong>: Registered by an active plugin.', 'ai' ), $provider_tags ) . '</li>' .
-						'<li>' . wp_kses( __( '<strong>Theme</strong>: Registered by the active theme.', 'ai' ), $provider_tags ) . '</li>' .
+					'<li>' . wp_kses( __( '<strong>Core</strong>: Built into WordPress itself.', 'ai' ), $provider_tags ) . '</li>' .
+					'<li>' . wp_kses( __( '<strong>Plugin</strong>: Registered by an active plugin.', 'ai' ), $provider_tags ) . '</li>' .
+					'<li>' . wp_kses( __( '<strong>Theme</strong>: Registered by the active theme.', 'ai' ), $provider_tags ) . '</li>' .
 					'</ul>',
 			)
 		);
@@ -526,19 +644,19 @@ class Admin_Page {
 				'id'      => 'abilities-testing',
 				'title'   => esc_html__( 'Testing', 'ai' ),
 				'content' =>
-					'<p>' . esc_html__( 'You can test any ability directly from this screen:', 'ai' ) . '</p>' .
+				'<p>' . esc_html__( 'You can test any ability directly from this screen:', 'ai' ) . '</p>' .
 					'<ol>' .
-						'<li>' . __( 'Click "Test" next to an ability in the list.', 'ai' ) . '</li>' .
-						'<li>' . __( 'Edit the pre-filled Input Data if the ability accepts JSON parameters.', 'ai' ) . '</li>' .
-						'<li>' . __( 'Use "Validate Input" to check your JSON against the schema.', 'ai' ) . '</li>' .
-						'<li>' . __( 'Click "Invoke Ability" to execute it and see the result.', 'ai' ) . '</li>' .
+					'<li>' . __( 'Click "Test" next to an ability in the list.', 'ai' ) . '</li>' .
+					'<li>' . __( 'Edit the pre-filled Input Data if the ability accepts JSON parameters.', 'ai' ) . '</li>' .
+					'<li>' . __( 'Use "Validate Input" to check your JSON against the schema.', 'ai' ) . '</li>' .
+					'<li>' . __( 'Click "Invoke Ability" to execute it and see the result.', 'ai' ) . '</li>' .
 					'</ol>',
 			)
 		);
 
 		$screen->set_help_sidebar(
 			'<p><strong>' . esc_html__( 'For more information:', 'ai' ) . '</strong></p>' .
-			'<p><a href="https://developer.wordpress.org/apis/abilities/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Abilities API Documentation', 'ai' ) . '</a></p>'
+				'<p><a href="https://developer.wordpress.org/apis/abilities/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Abilities API Documentation', 'ai' ) . '</a></p>'
 		);
 	}
 }
