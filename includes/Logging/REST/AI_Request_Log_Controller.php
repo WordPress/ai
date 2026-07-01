@@ -61,6 +61,14 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'purge_logs' ),
 					'permission_callback' => array( $this, 'permissions_check' ),
+					'args'                => array(
+						'before_days' => array(
+							'description' => __( 'Delete logs older than this many days. 0 deletes all logs.', 'ai' ),
+							'type'        => 'integer',
+							'minimum'     => 0,
+							'default'     => 0,
+						),
+					),
 				),
 			)
 		);
@@ -215,13 +223,17 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Purges all logs.
+	 * Deletes logs, optionally limiting to entries older than a given number of days.
+	 *
+	 * When before_days is 0 (the default), all logs are purged. When before_days
+	 * is a positive integer, only logs older than that many days are removed.
 	 *
 	 * @param \WP_REST_Request $request Request.
 	 * @return \WP_REST_Response
 	 */
 	public function purge_logs( WP_REST_Request $request ): WP_REST_Response {
-		$deleted = $this->manager->purge_all_logs();
+		$before_days = (int) $request->get_param( 'before_days' );
+		$deleted     = $this->manager->delete_logs_older_than( $before_days );
 
 		return rest_ensure_response(
 			array(
@@ -229,7 +241,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 				'deleted' => $deleted,
 				'message' => sprintf(
 					/* translators: %d: Number of deleted logs. */
-					__( 'Successfully purged %d log entries.', 'ai' ),
+					__( 'Successfully deleted %d log entries.', 'ai' ),
 					$deleted
 				),
 			)

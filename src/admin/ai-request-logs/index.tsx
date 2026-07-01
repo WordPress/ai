@@ -283,24 +283,23 @@ const App: React.FC = () => {
 		setLogsQuery( ( previous ) => ( { ...previous, page: 1 } ) );
 	};
 
-	const handlePurge = async () => {
+	const handleDeleteLogs = async ( days: number ) => {
 		setPurging( true );
 
 		try {
 			await apiFetch( {
 				path: settings.rest.routes.logs,
 				method: 'DELETE',
+				data: { before_days: days },
 			} );
 
-			setLogs( [] );
-			setTotal( 0 );
-			setTotalPages( 1 );
-			setLogsQuery( ( previous ) => ( {
-				...previous,
-				page: 1,
-			} ) );
-
-			showNotice( 'success', __( 'All logs have been purged.', 'ai' ) );
+			showNotice(
+				'success',
+				days > 0
+					? __( 'Logs have been deleted.', 'ai' )
+					: __( 'All logs have been purged.', 'ai' )
+			);
+			fetchLogs();
 			fetchSummary( summaryPeriod );
 			fetchFilters();
 		} catch ( apiError ) {
@@ -356,7 +355,7 @@ const App: React.FC = () => {
 
 					<SettingsPanel
 						hasLogs={ total > 0 }
-						onPurgeLogs={ handlePurge }
+						onDeleteLogs={ handleDeleteLogs }
 						purging={ purging }
 					/>
 				</div>
