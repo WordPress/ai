@@ -17,7 +17,9 @@ import {
 	createSummaryBlock,
 	createSummaryInnerBlocks,
 	findSummaryBlock,
+	registerSummaryBlockAttribute,
 } from './utils';
+import { registerCoreBlocks } from '@wordpress/block-library';
 import { parse, serialize } from '@wordpress/blocks';
 
 type BulkData = {
@@ -95,6 +97,11 @@ async function processBulkSummary(): Promise< void > {
 		return;
 	}
 
+	// Must run before registerCoreBlocks() so core/group picks up the
+	// aiGeneratedSummary attribute when it registers.
+	registerSummaryBlockAttribute();
+	registerCoreBlocks();
+
 	const { postIds, restBase } = data;
 	const total = postIds.length;
 	let processed = 0;
@@ -133,13 +140,12 @@ async function processBulkSummary(): Promise< void > {
 
 			if ( existingSummaryBlock ) {
 				// Replace inner blocks of the existing group to preserve its attributes.
-				existingSummaryBlock.innerBlocks = createSummaryInnerBlocks(
-					summary,
-					false
-				);
+				existingSummaryBlock.innerBlocks =
+					createSummaryInnerBlocks( summary );
 			} else {
 				// Prepend a new summary group block at the top.
-				blocks.unshift( createSummaryBlock( summary, false ) );
+				const summaryBlock = createSummaryBlock( summary );
+				blocks.unshift( summaryBlock );
 			}
 
 			const newContent = serialize( blocks );

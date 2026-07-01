@@ -8,38 +8,56 @@
 /**
  * WordPress dependencies
  */
-import type { Block } from '@wordpress/blocks';
-import { parse } from '@wordpress/blocks';
+import { type Block, createBlock } from '@wordpress/blocks';
+import { addFilter } from '@wordpress/hooks';
+
+/**
+ * Registers the `aiGeneratedSummary` attribute on `core/group`.
+ *
+ * Must run before `core/group` itself is registered (i.e. before
+ * `registerBlockType()`/`registerCoreBlocks()` executes), otherwise the
+ * attribute is missing from the block's schema and gets stripped whenever
+ * the block is parsed or serialized.
+ *
+ * @since x.x.x
+ */
+export function registerSummaryBlockAttribute(): void {
+	addFilter(
+		'blocks.registerBlockType',
+		'ai/summarization-attribute',
+		( settings, name ) => {
+			if ( name !== 'core/group' ) {
+				return settings;
+			}
+
+			return {
+				...settings,
+				attributes: {
+					...settings.attributes,
+					aiGeneratedSummary: {
+						type: 'boolean',
+						default: false,
+					},
+				},
+			};
+		}
+	);
+}
 
 /**
  * Creates the inner paragraph blocks for a summary string.
  *
  * @since x.x.x
  *
- * @param summary  Plain-text summary from the AI.
- * @param asString When true, returns serialized block markup. When false, returns an array of Block objects.
- * @return Serialized inner blocks or an array of Block objects for the summary group block.
+ * @param summary Plain-text summary from the AI.
+ * @return Array of Block objects for the summary group block.
  */
-export function createSummaryInnerBlocks(
-	summary: string,
-	asString: true
-): string;
-export function createSummaryInnerBlocks(
-	summary: string,
-	asString: false
-): Block< Record< string, unknown > >[];
-export function createSummaryInnerBlocks(
-	summary: string,
-	asString: boolean
-): string | Block< Record< string, unknown > >[] {
-	const paragraphs = summary.split( /\n\n+/ ).filter( ( p ) => p.trim() );
-	const innerBlocks = paragraphs
-		.map(
-			( text ) =>
-				`<!-- wp:paragraph -->\n<p>${ text }</p>\n<!-- /wp:paragraph -->`
-		)
-		.join( '\n\n' );
-	return asString ? innerBlocks : parse( innerBlocks );
+export function createSummaryInnerBlocks( summary: string ): Block[] {
+	return summary
+		.split( /\n\n+/ )
+		.map( ( paragraph ) => paragraph.trim() )
+		.filter( Boolean )
+		.map( ( text ) => createBlock( 'core/paragraph', { content: text } ) );
 }
 
 /**
@@ -65,29 +83,18 @@ export function findSummaryBlock(
  *
  * @since x.x.x
  *
- * @param summary  Plain-text summary from the AI.
- * @param asString When true, returns serialized block markup. When false, returns a parsed Block object.
- * @return Serialized summary block or Block object of the summary.
+ * @param summary Plain-text summary from the AI.
+ * @return Block object of the summary.
  */
-export function createSummaryBlock( summary: string, asString: true ): string;
-export function createSummaryBlock(
-	summary: string,
-	asString: false
-): Block< Record< string, unknown > >;
-export function createSummaryBlock(
-	summary: string,
-	asString: boolean
-): string | Block< Record< string, unknown > > {
-	const innerBlocks = createSummaryInnerBlocks( summary, true );
+export function createSummaryBlock( summary: string ): Block {
+	const innerBlocks = createSummaryInnerBlocks( summary );
 
-	const summaryBlockSerialized =
-		`<!-- wp:group {"className":"ai-summarization-summary","aiGeneratedSummary":true} -->\n` +
-		`<div class="wp-block-group ai-summarization-summary">` +
-		innerBlocks +
-		`</div>\n` +
-		`<!-- /wp:group -->`;
-
-	return asString
-		? summaryBlockSerialized
-		: parse( summaryBlockSerialized )[ 0 ]!;
+	return createBlock(
+		'core/group',
+		{
+			className: 'ai-summarization-summary',
+			aiGeneratedSummary: true,
+		},
+		innerBlocks
+	);
 }

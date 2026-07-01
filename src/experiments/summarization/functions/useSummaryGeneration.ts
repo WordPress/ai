@@ -90,10 +90,8 @@ export function useSummaryGeneration() {
 			const existingSummaryBlock = findSummaryBlock( allBlocks );
 
 			if ( existingSummaryBlock ) {
-				const innerBlocks = createSummaryInnerBlocks(
-					generatedSummary,
-					false
-				);
+				const innerBlocks =
+					createSummaryInnerBlocks( generatedSummary );
 				// Replace inner blocks of the existing group to preserve its attributes.
 				// eslint-disable-next-line dot-notation
 				( dispatch( blockEditorStore ) as any )[ 'replaceInnerBlocks' ](
@@ -103,10 +101,7 @@ export function useSummaryGeneration() {
 				);
 			} else {
 				// Insert a new summary group block at the top.
-				const summaryBlock = createSummaryBlock(
-					generatedSummary,
-					false
-				);
+				const summaryBlock = createSummaryBlock( generatedSummary );
 				// eslint-disable-next-line dot-notation
 				( dispatch( blockEditorStore ) as any )[ 'insertBlock' ](
 					summaryBlock,
