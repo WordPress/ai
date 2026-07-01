@@ -19,6 +19,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
+import { flattenBlocks } from '../../../utils/blocks';
 import type { SummarizationData } from '../types';
 
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
@@ -35,27 +36,19 @@ const getSettings = (): SummarizationData => {
 };
 
 /**
- * Recursively searches a list of blocks to find the Summary block.
+ * Searches a flattened list of blocks to find the Summary block.
  *
  * @param {any[]} blocks List of blocks to search.
  * @return {any|null} The found block or null.
  */
 function findSummaryBlock( blocks: any[] ): any {
-	for ( const block of blocks ) {
-		if (
-			'core/group' === block.name &&
-			true === block.attributes[ 'aiGeneratedSummary' ] // eslint-disable-line dot-notation
-		) {
-			return block;
-		}
-		if ( block.innerBlocks && block.innerBlocks.length > 0 ) {
-			const found = findSummaryBlock( block.innerBlocks );
-			if ( found ) {
-				return found;
-			}
-		}
-	}
-	return null;
+	return (
+		flattenBlocks( blocks ).find(
+			( block ) =>
+				'core/group' === block.name &&
+				true === block.attributes[ 'aiGeneratedSummary' ] // eslint-disable-line dot-notation
+		) ?? null
+	);
 }
 
 /**
