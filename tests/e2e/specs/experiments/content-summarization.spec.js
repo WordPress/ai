@@ -287,6 +287,11 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
+		// Get the specific summary block before regenerating.
+		const summaryBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Content Summary',
+		} );
+
 		// The button should display "Regenerate Summary" (implies it successfully found the nested block).
 		const regenerateButton = page.getByRole( 'button', {
 			name: 'Regenerate Summary',
@@ -297,26 +302,19 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Click the Regenerate Summary button.
 		await regenerateButton.click();
 
-		// Wait for the generation to complete (button changes from "Generating..." back to "Regenerate Summary").
+		// Ensure the specific summary block's content was updated with the mock response.
 		await expect(
-			page.getByRole( 'button', {
-				name: 'Generating…',
-				exact: true,
-			} )
-		).not.toBeVisible();
-
-		// Ensure only 1 Content Summary block exists on the page.
-		const summaryBlocks = editor.canvas.getByRole( 'document', {
-			name: 'Block: Content Summary',
-		} );
-		await expect( summaryBlocks ).toHaveCount( 1 );
-
-		// Ensure the nested summary block content was updated with the mock response.
-		await expect(
-			summaryBlocks.locator( 'p', {
+			summaryBlock.locator( 'p', {
 				hasText:
 					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
 			} )
 		).toBeVisible();
+
+		// Ensure only 1 Content Summary block exists on the page (verifying no duplicate was created).
+		await expect(
+			editor.canvas.getByRole( 'document', {
+				name: 'Block: Content Summary',
+			} )
+		).toHaveCount( 1 );
 	} );
 } );
