@@ -301,6 +301,17 @@ class Editorial_Notes extends Abstract_Ability {
 	) {
 		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
+		/**
+		 * Filters the assembled user prompt for editorial notes (block review).
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string       $prompt       The assembled prompt string.
+		 * @param string       $block_type   The block type identifier.
+		 * @param list<string> $review_types The review types being performed.
+		 */
+		$prompt = (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $prompt, $block_type, $review_types );
+
 		$prompt_builder = $this->get_prompt_builder( $prompt, $block_type );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -375,6 +386,22 @@ class Editorial_Notes extends Abstract_Ability {
 			->as_json_response( $this->suggestions_schema() );
 
 		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Editorial_Notes_Experiment::class );
+
+		/**
+		 * Filters the configured prompt builder for editorial notes (block review).
+		 *
+		 * Runs after the model preference is applied and before text-generation
+		 * support is verified. This ability configures structured JSON output, so
+		 * extend the builder rather than replacing it, and always return a
+		 * WP_AI_Client_Prompt_Builder.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+		 * @param string                       $prompt         The user prompt string.
+		 * @param string                       $block_type     The block type identifier.
+		 */
+		$prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, $prompt, $block_type );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

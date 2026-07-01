@@ -213,6 +213,16 @@ class Content_Resizing extends Abstract_Ability {
 	 * @return string|\WP_Error The resized content, or a WP_Error if there was an error.
 	 */
 	protected function generate_resized_content( string $prompt, string $action = self::ACTION_DEFAULT ) {
+		/**
+		 * Filters the assembled user prompt for content resizing.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $prompt The assembled prompt string.
+		 * @param string $action The resizing action being performed.
+		 */
+		$prompt = (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $prompt, $action );
+
 		$builder = $this->get_prompt_builder( $prompt, $action );
 		if ( is_wp_error( $builder ) ) {
 			return $builder;
@@ -238,6 +248,21 @@ class Content_Resizing extends Abstract_Ability {
 			->using_temperature( 0.7 );
 
 		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Content_Resizing_Experiment::class );
+
+		/**
+		 * Filters the configured prompt builder for content resizing.
+		 *
+		 * Runs after the model preference is applied and before text-generation
+		 * support is verified. Extend the builder rather than replacing it, and
+		 * always return a WP_AI_Client_Prompt_Builder.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+		 * @param string                       $prompt         The user prompt string.
+		 * @param string                       $action         The resizing action being performed.
+		 */
+		$prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, $prompt, $action );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

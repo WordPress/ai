@@ -312,6 +312,20 @@ class Meta_Description extends Abstract_Ability {
 
 		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Meta_Description_Experiment::class );
 
+		/**
+		 * Filters the configured prompt builder for meta description generation.
+		 *
+		 * Runs after the temperature and model preference are applied and before
+		 * text-generation support is verified. Extend the builder rather than
+		 * replacing it, and always return a WP_AI_Client_Prompt_Builder.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+		 * @param string                       $prompt         The user prompt string.
+		 */
+		$prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, $prompt );
+
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
 			esc_html__( 'Meta description generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )

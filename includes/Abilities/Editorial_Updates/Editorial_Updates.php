@@ -215,7 +215,19 @@ class Editorial_Updates extends Abstract_Ability {
 		array $notes,
 		string $context
 	) {
-		$prompt         = $this->create_prompt( $block_type, $block_content, $notes, $context );
+		$prompt = $this->create_prompt( $block_type, $block_content, $notes, $context );
+
+		/**
+		 * Filters the assembled user prompt for editorial updates (block refinement).
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string       $prompt     The assembled prompt string.
+		 * @param string       $block_type The block type identifier.
+		 * @param list<string> $notes      The editorial feedback notes being applied.
+		 */
+		$prompt = (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $prompt, $block_type, $notes );
+
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -248,6 +260,20 @@ class Editorial_Updates extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction() );
 
 		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Editorial_Updates_Experiment::class );
+
+		/**
+		 * Filters the configured prompt builder for editorial updates (block refinement).
+		 *
+		 * Runs after the model preference is applied and before text-generation
+		 * support is verified. Extend the builder rather than replacing it, and
+		 * always return a WP_AI_Client_Prompt_Builder.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+		 * @param string                       $prompt         The user prompt string.
+		 */
+		$prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
