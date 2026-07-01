@@ -133,7 +133,24 @@ class Admin_Page {
 	 * @since 0.2.0
 	 */
 	private function render_list_view(): void {
-		$table = new Ability_Table();
+		/**
+		 * Filters the class used to render the Abilities Explorer list table.
+		 *
+		 * Allows plugins to extend the Ability_Table class, e.g. to add custom
+		 * columns. The filtered class must be a subclass of Ability_Table
+		 * (or Ability_Table itself); anything else is ignored.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $table_class Fully qualified class name of the list table.
+		 */
+		$table_class = apply_filters( 'wpai_abilities_explorer_table_class', Ability_Table::class );
+
+		if ( ! is_string( $table_class ) || ! is_a( $table_class, Ability_Table::class, true ) ) {
+			$table_class = Ability_Table::class;
+		}
+
+		$table = new $table_class();
 		$table->prepare_items();
 
 		?>

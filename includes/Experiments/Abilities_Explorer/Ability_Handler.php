@@ -98,6 +98,7 @@ class Ability_Handler {
 			'category'      => self::get_ability_category( $ability ),
 			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
+			'meta'          => $meta,
 			'raw_data'      => array(
 				'name'          => $name,
 				'label'         => $ability->get_label(),
