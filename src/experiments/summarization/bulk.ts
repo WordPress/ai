@@ -13,6 +13,12 @@ import apiFetch from '@wordpress/api-fetch';
  */
 import { runAbility } from '../../utils/run-ability';
 import { isProviderAvailable } from '../../utils/provider-status';
+import {
+	createSummaryBlock,
+	createSummaryInnerBlocks,
+	findSummaryBlock,
+} from './utils';
+import { parse, serialize } from '@wordpress/blocks';
 
 type BulkData = {
 	postIds: number[];
@@ -69,53 +75,6 @@ function createNotice(
 }
 
 /**
- * Serializes a summary string into a WordPress block markup string.
- *
- * Mirrors the block the editor inserts: a core/group block with the
- * aiGeneratedSummary attribute set to true, containing one core/paragraph
- * block per non-empty paragraph in the summary.
- *
- * @param summary The plain-text summary from the AI.
- * @return Serialized block markup.
- */
-function serializeSummaryBlock( summary: string ): string {
-	const paragraphs = summary
-		.split( /\n\n+/ )
-		.map( ( p ) => p.trim() )
-		.filter( Boolean );
-
-	const innerBlocks = paragraphs
-		.map(
-			( text ) =>
-				`<!-- wp:paragraph -->\n<p>${ text }</p>\n<!-- /wp:paragraph -->`
-		)
-		.join( '\n\n' );
-
-	return (
-		`<!-- wp:group {"className":"ai-summarization-summary","aiGeneratedSummary":true} -->\n` +
-		`<div class="wp-block-group ai-summarization-summary">` +
-		innerBlocks +
-		`</div>\n` +
-		`<!-- /wp:group -->`
-	);
-}
-
-/**
- * Removes any existing AI-generated summary group block from serialized post content.
- *
- * @param content Serialized block content.
- * @return Content with the summary block removed.
- */
-function removeExistingSummaryBlock( content: string ): string {
-	return content
-		.replace(
-			/<!-- wp:group \{[^}]*"aiGeneratedSummary":true[^}]*\} -->[\s\S]*?<!-- \/wp:group -->\n*/,
-			''
-		)
-		.trimStart();
-}
-
-/**
  * Processes bulk summary generation for all selected posts.
  */
 async function processBulkSummary(): Promise< void > {
@@ -162,19 +121,28 @@ async function processBulkSummary(): Promise< void > {
 				throw new Error( __( 'Invalid response from API.', 'ai' ) );
 			}
 
-			// Fetch the current raw post content so we can splice in the summary block.
+			// Fetch the current raw post content so we can update the summary block within it.
 			const post = await apiFetch< PostResponse >( {
 				path: `/wp/v2/${ restBase }/${ id }?context=edit`,
 				method: 'GET',
 			} );
 
 			const existingContent = post?.content?.raw ?? '';
-			const contentWithoutSummary =
-				removeExistingSummaryBlock( existingContent );
-			const summaryBlock = serializeSummaryBlock( summary );
-			const newContent =
-				summaryBlock +
-				( contentWithoutSummary ? '\n' + contentWithoutSummary : '' );
+			const blocks = parse( existingContent );
+			const existingSummaryBlock = findSummaryBlock( blocks );
+
+			if ( existingSummaryBlock ) {
+				// Replace inner blocks of the existing group to preserve its attributes.
+				existingSummaryBlock.innerBlocks = createSummaryInnerBlocks(
+					summary,
+					false
+				);
+			} else {
+				// Prepend a new summary group block at the top.
+				blocks.unshift( createSummaryBlock( summary, false ) );
+			}
+
+			const newContent = serialize( blocks );
 
 			// Persist: save to both post content and post meta in a single request.
 			await apiFetch( {
