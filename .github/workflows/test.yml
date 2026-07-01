@@ -357,6 +357,9 @@ jobs:
           command: |
             npm run wp-env:test start
 
+      - name: Install Playwright system dependencies
+        run: npx playwright install-deps
+
       - name: Run E2E tests
         run: npm run test:e2e
 
