@@ -14,6 +14,8 @@ import { parse } from '@wordpress/blocks';
 /**
  * Creates the inner paragraph blocks for a summary string.
  *
+ * @since x.x.x
+ *
  * @param summary  Plain-text summary from the AI.
  * @param asString When true, returns serialized block markup. When false, returns an array of Block objects.
  * @return Serialized inner blocks or an array of Block objects for the summary group block.
@@ -42,6 +44,11 @@ export function createSummaryInnerBlocks(
 
 /**
  * Finds the AI-generated summary group block within a list of blocks.
+ *
+ * @since x.x.x
+ *
+ * @param blocks List of blocks to search.
+ * @return The AI-generated summary group block, or undefined if not found.
  */
 export function findSummaryBlock(
 	blocks: Block< Record< string, unknown > >[]
@@ -56,8 +63,11 @@ export function findSummaryBlock(
 /**
  * Creates a full AI-generated summary group block from a summary string.
  *
+ * @since x.x.x
+ *
  * @param summary  Plain-text summary from the AI.
  * @param asString When true, returns serialized block markup. When false, returns a parsed Block object.
+ * @return Serialized summary block or Block object of the summary.
  */
 export function createSummaryBlock( summary: string, asString: true ): string;
 export function createSummaryBlock(
