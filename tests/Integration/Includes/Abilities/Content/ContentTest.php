@@ -471,26 +471,28 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->login_as( 'administrator' );
-		$this->register_ability();
+		try {
+			$this->login_as( 'administrator' );
+			$this->register_ability();
 
-		// Query mode is the third `oneOf` branch; its `post_type` enum lists exposed types.
-		$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
-		$this->assertContains( 'wpai_content_cpt', $enum, 'Custom post types marked show_in_abilities should appear in the query enum.' );
+			// Query mode is the third `oneOf` branch; its `post_type` enum lists exposed types.
+			$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
+			$this->assertContains( 'wpai_content_cpt', $enum, 'Custom post types marked show_in_abilities should appear in the query enum.' );
 
-		$post_id = self::factory()->post->create(
-			array(
-				'post_type'   => 'wpai_content_cpt',
-				'post_status' => 'publish',
-			)
-		);
+			$post_id = self::factory()->post->create(
+				array(
+					'post_type'   => 'wpai_content_cpt',
+					'post_status' => 'publish',
+				)
+			);
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'wpai_content_cpt' ) );
-		$ids    = wp_list_pluck( $result['posts'], 'id' );
+			$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'wpai_content_cpt' ) );
+			$ids    = wp_list_pluck( $result['posts'], 'id' );
 
-		$this->assertContains( $post_id, $ids, 'The custom post type should be queryable through the content ability.' );
-
-		unregister_post_type( 'wpai_content_cpt' );
+			$this->assertContains( $post_id, $ids, 'The custom post type should be queryable through the content ability.' );
+		} finally {
+			unregister_post_type( 'wpai_content_cpt' );
+		}
 	}
 
 	/**
