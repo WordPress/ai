@@ -242,7 +242,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		$result = $method->invoke(
 			$this->ability,
 			array(
-				'content' => 'Too few words.',
+				'content' => 'Too few characters.',
 				'action'  => 'shorten',
 			)
 		);
@@ -403,7 +403,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns false for post type without show_in_rest.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_permission_callback_with_post_type_without_show_in_rest() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -471,11 +471,11 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the shorten word count validation strips HTML tags before counting.
+	 * Test that the shorten character count validation strips HTML tags before counting.
 	 *
-	 * @since 0.9.0
+	 * @since 1.1.0
 	 */
-	public function test_execute_callback_shorten_word_count_ignores_html_tags() {
+	public function test_execute_callback_shorten_character_count_ignores_html_tags() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
@@ -488,7 +488,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error when HTML-wrapped content has fewer than 5 words' );
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error when HTML-wrapped content has fewer than 25 characters' );
 		$this->assertEquals( 'content_too_short', $result->get_error_code(), 'Error code should be content_too_short' );
 	}
 }

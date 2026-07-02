@@ -13,14 +13,14 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Show_In_Abilities test case.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class Show_In_AbilitiesTest extends WP_UnitTestCase {
 
 	/**
 	 * Option names registered during a test, cleaned up on tear down.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var array<string>
 	 */
@@ -29,7 +29,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * The component under test. Held so the same instance can detach its filter on tear down.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var \WordPress\AI\Abilities\Show_In_Abilities
 	 */
@@ -38,7 +38,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -50,7 +50,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function tearDown(): void {
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
@@ -66,7 +66,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Registers a setting and tracks it for cleanup.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string               $group  The settings group.
 	 * @param string               $option The option name.
@@ -80,7 +80,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * A curated setting is flagged with `show_in_abilities => true`.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_marks_curated_boolean_setting(): void {
 		$this->register_setting( 'general', 'blogname', array( 'type' => 'string' ) );
@@ -93,7 +93,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * A curated setting that maps to an array value receives that array verbatim.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_marks_curated_array_setting(): void {
 		$this->register_setting( 'discussion', 'default_comment_status', array( 'type' => 'string' ) );
@@ -109,7 +109,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * A setting that is not in the curated map is left untouched.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_does_not_mark_uncurated_setting(): void {
 		$this->register_setting( 'general', 'wpai_not_curated_option', array( 'type' => 'string' ) );
@@ -120,9 +120,44 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Non-array arguments are returned untouched rather than fataling.
+	 *
+	 * Core applies the `register_setting_args` filter before `wp_parse_args()` normalizes the
+	 * arguments, so a plugin that calls `register_setting()` with a non-array (e.g. WPBakery
+	 * Page Builder passing `null`) reaches the filter unchanged. The callback must hand it back
+	 * as-is for core to normalize, not blow up on a strict array type.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @dataProvider data_non_array_args
+	 *
+	 * @param mixed $args A non-array value passed through the filter.
+	 */
+	public function test_passes_through_non_array_args( $args ): void {
+		$filtered = $this->show_in_abilities->mark_setting( $args, array(), 'general', 'blogname' );
+
+		$this->assertSame( $args, $filtered );
+	}
+
+	/**
+	 * Non-array argument values for the pass-through test.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return array<string, array{0: mixed}> Data sets keyed by description.
+	 */
+	public function data_non_array_args(): array {
+		return array(
+			'null'   => array( null ),
+			'string' => array( 'sanitize_me' ),
+			'false'  => array( false ),
+		);
+	}
+
+	/**
 	 * An explicit `show_in_abilities` value already on the setting is preserved.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function test_respects_existing_value(): void {
 		$this->register_setting(

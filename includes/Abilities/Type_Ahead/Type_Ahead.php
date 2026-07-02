@@ -18,7 +18,7 @@ use function WordPress\AI\normalize_content;
 /**
  * Generates inline completion suggestions for block content.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class Type_Ahead extends Abstract_Ability {
 	/**
@@ -44,7 +44,7 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	protected function guideline_categories(): array {
 		return array( 'site', 'copy' );
@@ -53,7 +53,7 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -102,7 +102,7 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -126,7 +126,7 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return array{suggestion: string, confidence: float, cursor_position: int}|\WP_Error
 	 */
@@ -184,7 +184,7 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
@@ -232,7 +232,7 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -243,7 +243,7 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * Returns the JSON schema used for structured output generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return array<string, mixed> JSON schema for a type-ahead suggestion.
 	 */
@@ -325,7 +325,7 @@ class Type_Ahead extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating type-ahead suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param string $prompt The prompt to generate type-ahead suggestions from.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
