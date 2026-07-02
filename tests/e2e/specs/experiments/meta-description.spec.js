@@ -20,7 +20,7 @@ const MOCK_DESCRIPTION_PATTERN =
 	/Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure/;
 
 const LONG_CONTENT =
-	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough words for the meta description experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new description for the post.';
+	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough characters for the meta description experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new description for the post.';
 
 /**
  * Opens the Post sidebar and expands the Meta Description panel.
