@@ -102,8 +102,8 @@ class Type_AheadTest extends WP_UnitTestCase {
 			'register_abilities should be hooked to wp_abilities_api_init'
 		);
 		$this->assertNotFalse(
-			has_action( 'enqueue_block_assets', array( $experiment, 'enqueue_assets' ) ),
-			'enqueue_assets should be hooked to enqueue_block_assets'
+			has_action( 'enqueue_block_editor_assets', array( $experiment, 'enqueue_assets' ) ),
+			'enqueue_assets should be hooked to enqueue_block_editor_assets'
 		);
 	}
 }
