@@ -54,75 +54,57 @@ test.describe( 'Excerpt Generation Experiment', () => {
 
 		// Ensure the generate excerpt inline button exists.
 		await expect(
-			page.locator(
-				'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-			)
+			page.getByRole( 'button', { name: 'Generate excerpt' } ).first()
 		).toBeVisible();
 
 		// Click the Add excerpt button.
-		await page
-			.locator( '.editor-post-excerpt__dropdown button' )
-			.first()
-			.click();
+		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
 
 		// Ensure the generate excerpt button shows in the modal.
 		await expect(
-			page.locator( '.ai-excerpt-generation button' )
+			page.getByRole( 'button', { name: 'Generate excerpt' } ).last()
 		).toBeVisible();
 
 		// Click the generate excerpt button.
-		await page.locator( '.ai-excerpt-generation button' ).click();
+		await page
+			.getByRole( 'button', { name: 'Generate excerpt' } )
+			.last()
+			.click();
 
 		// Ensure the excerpt is updated.
 		await expect(
-			page.locator(
-				'.editor-post-excerpt .editor-post-excerpt__textarea textarea'
-			)
+			page.getByRole( 'textbox', { name: 'Write an excerpt (optional)' } )
 		).toHaveValue(
 			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
 		);
 
 		// Ensure the excerpt button text is updated.
 		await expect(
-			page.locator( '.ai-excerpt-generation button' )
-		).toHaveText( 'Regenerate excerpt' );
+			page.getByRole( 'button', { name: 'Regenerate excerpt' } ).last()
+		).toBeVisible();
 
 		// Delete the excerpt.
 		await page
-			.locator(
-				'.editor-post-excerpt .editor-post-excerpt__textarea textarea'
-			)
+			.getByRole( 'textbox', { name: 'Write an excerpt (optional)' } )
 			.fill( '' );
 
 		// Close the modal.
 		await page
-			.locator(
-				'.editor-post-excerpt__dropdown__content .block-editor-inspector-popover-header button'
-			)
+			.getByRole( 'button', { name: 'Close', exact: true } )
 			.click();
 
 		// Click the generate excerpt inline button.
 		await page
-			.locator(
-				'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-			)
+			.getByRole( 'button', { name: 'Generate excerpt' } )
+			.first()
 			.click();
 
 		// Ensure the excerpt is updated.
-		const excerptDropdownLocator = page.locator(
-			'.editor-post-excerpt__dropdown'
-		);
-		const excerptParentLocator = page
-			.locator(
-				'.editor-post-panel__section .components-h-stack .components-h-stack'
-			)
-			.filter( { has: excerptDropdownLocator } );
-
 		await expect(
-			excerptParentLocator.locator( '.components-text' ).first()
-		).toHaveText(
-			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
-		);
+			page.getByText(
+				'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
+			)
+		).toBeVisible();
 
 		// Save the post.
 		await editor.saveDraft();
@@ -149,20 +131,23 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		const inlineButton = page.locator(
-			'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-		);
+		const inlineButton = page
+			.getByRole( 'button', {
+				name: /Excerpt generation will be available when the post content has at least/i,
+			} )
+			.first();
 		await expect( inlineButton ).toBeVisible();
-		await expect( inlineButton ).toHaveAttribute( 'aria-disabled', 'true' );
+		await expect( inlineButton ).toBeDisabled();
 
 		// The panel button inside the excerpt dropdown is also disabled.
-		await page
-			.locator( '.editor-post-excerpt__dropdown button' )
-			.first()
-			.click();
+		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
 		await expect(
-			page.locator( '.ai-excerpt-generation button' )
-		).toHaveAttribute( 'aria-disabled', 'true' );
+			page
+				.getByRole( 'button', {
+					name: /Excerpt generation will be available when the post content has at least/i,
+				} )
+				.last()
+		).toBeDisabled();
 	} );
 
 	test( 'Ensure the Excerpt Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
@@ -192,20 +177,15 @@ test.describe( 'Excerpt Generation Experiment', () => {
 
 		// Ensure the generate excerpt inline button doesn't exist.
 		await expect(
-			page.locator(
-				'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-			)
+			page.getByRole( 'button', { name: 'Generate excerpt' } ).first()
 		).not.toBeVisible();
 
 		// Click the Add excerpt button.
-		await page
-			.locator( '.editor-post-excerpt__dropdown button' )
-			.first()
-			.click();
+		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
 
 		// Ensure the generate excerpt button doesn't show in the modal.
 		await expect(
-			page.locator( '.ai-excerpt-generation button' )
+			page.getByRole( 'button', { name: 'Generate excerpt' } ).last()
 		).not.toBeVisible();
 	} );
 
@@ -236,20 +216,15 @@ test.describe( 'Excerpt Generation Experiment', () => {
 
 		// Ensure the generate excerpt inline button doesn't exist.
 		await expect(
-			page.locator(
-				'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-			)
+			page.getByRole( 'button', { name: 'Generate excerpt' } ).first()
 		).not.toBeVisible();
 
 		// Click the Add excerpt button.
-		await page
-			.locator( '.editor-post-excerpt__dropdown button' )
-			.first()
-			.click();
+		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
 
 		// Ensure the generate excerpt button doesn't show in the modal.
 		await expect(
-			page.locator( '.ai-excerpt-generation button' )
+			page.getByRole( 'button', { name: 'Generate excerpt' } ).last()
 		).not.toBeVisible();
 	} );
 } );

@@ -23,7 +23,7 @@ import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
@@ -486,6 +486,16 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
 
+	const dataFormRef = useRef< HTMLDivElement >( null );
+
+	const moveFocusToLastFormElement = () => {
+		const elements =
+			dataFormRef.current?.querySelectorAll< HTMLElement >(
+				'select, input, textarea'
+			) ?? [];
+		elements[ elements.length - 1 ]?.focus();
+	};
+
 	const data = useMemo( () => {
 		const base: Record< string, unknown > = {};
 		for ( const field of feature.settingsFields ) {
@@ -532,6 +542,8 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 				),
 				{ type: 'snackbar' }
 			);
+
+			moveFocusToLastFormElement();
 		} catch {
 			// Edits remain in the store — user can retry or adjust values.
 			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
@@ -550,12 +562,14 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 
 	return (
 		<Stack direction="column" gap="md" className="ai-feature-settings-form">
-			<DataForm< Record< string, unknown > >
-				data={ data }
-				fields={ fields }
-				form={ form }
-				onChange={ handleChange }
-			/>
+			<div ref={ dataFormRef }>
+				<DataForm< Record< string, unknown > >
+					data={ data }
+					fields={ fields }
+					form={ form }
+					onChange={ handleChange }
+				/>
+			</div>
 			{ isDirty && (
 				<Stack align="flex-end" direction="row">
 					<Button
