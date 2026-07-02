@@ -8,16 +8,16 @@ The Content Resizing experiment lets editors transform the content of an individ
 
 ### For End Users
 
-When enabled, the Content Resizing experiment adds a dropdown to the block toolbar of every selected paragraph block. Users pick **Shorten**, **Expand**, or **Rephrase**, and the experiment opens a modal showing the original text alongside the AI-generated replacement, with a word-count delta badge. Users can **Accept** the suggestion (which replaces the block content and visually flags the block as AI-resized), **Regenerate** for another pass, or close the modal to discard.
+When enabled, the Content Resizing experiment adds a dropdown to the block toolbar of every selected paragraph block. Users pick **Shorten**, **Expand**, or **Rephrase**, and the experiment opens a modal showing the original text alongside the AI-generated replacement, with a character-count delta badge. Users can **Accept** the suggestion (which replaces the block content and visually flags the block as AI-resized), **Regenerate** for another pass, or close the modal to discard.
 
 **Key Features:**
 
 - Toolbar control on every `core/paragraph` block
 - Three actions: shorten (~50% of original), expand (~150–200% of original), rephrase (same length)
-- Side-by-side original vs. suggested preview with word-count delta
+- Side-by-side original vs. suggested preview with character-count delta
 - Inline HTML preservation — links, `<strong>`, `<em>`, etc. survive the round-trip
 - Visual flag (`aiResized` block attribute) on accepted suggestions
-- Shorten action requires the block to contain at least 5 words
+- Shorten action requires the block to contain at least 25 characters
 
 ### For Developers
 
@@ -145,7 +145,7 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/content-
   }'
 ```
 
-> **Note:** the **shorten** action requires at least 5 words (HTML stripped) in the input. Shorter inputs return `content_too_short`. The 5-word floor does not apply to **expand** or **rephrase**.
+> **Note:** the **shorten** action requires at least 25 characters (HTML stripped) in the input. Shorter inputs return `content_too_short`. The 25-character floor does not apply to **expand** or **rephrase**.
 
 #### Example 4: Using the JS helper inside the editor
 
@@ -164,7 +164,7 @@ const resized = await runAbility< string >( 'ai/content-resizing', {
 The ability may return the following error codes:
 
 - `content_not_provided` — `content` was missing or empty.
-- `content_too_short` — `action: 'shorten'` was requested on input shorter than 5 words.
+- `content_too_short` — `action: 'shorten'` was requested on input shorter than 25 characters.
 - `post_not_found` — A `post_id` was supplied but the post doesn't exist.
 - `insufficient_capabilities` — Caller lacks `edit_post` (with `post_id`) or `edit_posts` (without).
 - `no_results` — The AI client did not return any text.
@@ -175,7 +175,7 @@ Example:
 ```json
 {
   "code": "content_too_short",
-  "message": "A minimum of 5 words is required to shorten the content.",
+  "message": "A minimum of 25 characters is required to shorten the content.",
   "data": { "status": 400 }
 }
 ```
@@ -227,20 +227,20 @@ The shipping experiment only adds the toolbar to `core/paragraph` (and only regi
    - Create or edit a post and add a paragraph block with at least one full sentence
    - Select the block; the AI dropdown appears in the block toolbar
    - Try each of **Shorten**, **Expand**, **Rephrase**
-   - Verify the modal shows original vs. suggested with the correct word-delta badge
+   - Verify the modal shows original vs. suggested with the correct character-count delta badge
    - Click **Accept** and verify the block content updates
    - Click **Regenerate** and verify a fresh suggestion replaces the previous one
    - Add a `<a>` link or `<strong>` to the block and verify they survive a rephrase
 
-3. **Test the 5-word floor:**
-   - With a paragraph of fewer than 5 words, click **Shorten**
+3. **Test the 25-character floor:**
+   - With a paragraph of fewer than 25 characters, click **Shorten**
    - Verify a "Text is too short to shorten further" notice appears and no API call is made
 
 4. **Test REST API:**
    - Use curl or Postman to test the REST endpoint
    - Verify authentication works
    - Test with each of the three actions
-   - Verify `content_too_short` is returned for `shorten` on inputs with fewer than 5 words
+   - Verify `content_too_short` is returned for `shorten` on inputs with fewer than 25 characters
 
 ## Notes & Considerations
 

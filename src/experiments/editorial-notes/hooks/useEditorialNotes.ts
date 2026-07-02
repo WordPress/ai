@@ -30,13 +30,14 @@ import {
 } from '../../../utils/notes';
 import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
-import { hasMinimumContent } from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 
 const BATCH_SIZE = 4;
 const NOTICE_ID = 'ai_editorial_notes_error';
 const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
 
 interface BlockAttributes {
 	content?: string;
@@ -86,7 +87,8 @@ function useEditorialNotesAvailability(): {
 			return ( selectStore( editorStore ) as any ).getEditedPostContent();
 		}, [] ) ?? '';
 	const minContentLength: number =
-		( window as any ).aiEditorialNotesData?.minContentLength ?? 100;
+		( window as any ).aiEditorialNotesData?.minContentLength ??
+		MINIMUM_CONTENT_COUNT_DEFAULT;
 
 	return {
 		content,

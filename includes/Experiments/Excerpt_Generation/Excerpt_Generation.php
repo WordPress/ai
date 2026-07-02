@@ -99,7 +99,7 @@ class Excerpt_Generation extends Abstract_Feature {
 			'ExcerptGenerationData',
 			array(
 				'enabled'          => $this->is_enabled(),
-				'minContentLength' => get_min_content_length( 'excerpt-generation', 50 ),
+				'minContentLength' => get_min_content_length( 'excerpt-generation', 250 ),
 			)
 		);
 	}
