@@ -65,6 +65,14 @@ final class Users {
 	private const MAX_PER_PAGE = 100;
 
 	/**
+	 * Lookup type returned for collection requests.
+	 *
+	 * @since x.x.x
+	 * @var string
+	 */
+	private const LOOKUP_COLLECTION = 'collection';
+
+	/**
 	 * Public/read-context user fields.
 	 *
 	 * @since x.x.x
@@ -77,6 +85,7 @@ final class Users {
 		'user_url',
 		'link',
 		'user_nicename',
+		'avatar_urls',
 	);
 
 	/**
@@ -106,6 +115,7 @@ final class Users {
 		'display_name',
 		'link',
 		'user_nicename',
+		'avatar_urls',
 	);
 
 	/**
@@ -123,14 +133,6 @@ final class Users {
 	 * @var string[]|null
 	 */
 	private ?array $fields = null;
-
-	/**
-	 * Whether the cached supported field list includes avatars.
-	 *
-	 * @since x.x.x
-	 * @var bool|null
-	 */
-	private ?bool $fields_include_avatars = null;
 
 	/**
 	 * Cached role names.
@@ -202,9 +204,9 @@ final class Users {
 	/**
 	 * Permission callback for the `core/read-users` ability.
 	 *
-	 * Implements defense in depth: this gate decides whether the request may proceed at
-	 * all, while the per-user read checks in {@see self::execute_get_users()} are the
-	 * authoritative, row-level enforcement.
+	 * Performs request-level checks. Single-user requests are checked against
+	 * the target user, while collection requests rely on query arguments in
+	 * {@see self::execute_get_users()} for row-level access.
 	 *
 	 * @since x.x.x
 	 *
@@ -223,7 +225,7 @@ final class Users {
 		}
 
 		$lookup_type = $this->get_lookup_type( $input );
-		if ( '' === $lookup_type ) {
+		if ( self::LOOKUP_COLLECTION === $lookup_type ) {
 			return true;
 		}
 
@@ -241,14 +243,14 @@ final class Users {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\WP_Error A user object in single-user mode, a map with a `users` list in collection mode, or a WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error User data, paginated collection data, or a WP_Error on failure.
 	 */
 	public function execute_get_users( $input = array() ) {
 		$input  = is_array( $input ) ? $input : array();
 		$fields = $this->normalize_fields( $input );
 
 		$lookup_type = $this->get_lookup_type( $input );
-		if ( '' !== $lookup_type ) {
+		if ( self::LOOKUP_COLLECTION !== $lookup_type ) {
 			$user = $this->find_user( $input );
 			if ( ! $user instanceof WP_User
 				|| ! $this->is_user_member_of_site( $user )
@@ -307,7 +309,8 @@ final class Users {
 
 		$users = array();
 		foreach ( $query->get_results() as $user ) {
-			if ( ! $user instanceof WP_User || ! $this->is_user_member_of_site( $user ) || ! $this->can_read_user( $user ) ) {
+			// Collection queries enforce read access through query arguments.
+			if ( ! $user instanceof WP_User || ! $this->is_user_member_of_site( $user ) ) {
 				continue;
 			}
 
@@ -341,7 +344,7 @@ final class Users {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return string The lookup type, or an empty string for collection mode.
+	 * @return string The lookup type, or {@see self::LOOKUP_COLLECTION}.
 	 */
 	private function get_lookup_type( array $input ): string {
 		foreach ( array( 'id', 'user_email', 'user_login', 'user_nicename' ) as $key ) {
@@ -350,7 +353,7 @@ final class Users {
 			}
 		}
 
-		return '';
+		return self::LOOKUP_COLLECTION;
 	}
 
 	/**
@@ -435,21 +438,6 @@ final class Users {
 		}
 
 		return $this->is_public_author( $user );
-	}
-
-	/**
-	 * Checks whether a user may be included in collection results.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_User $user User object.
-	 * @return bool Whether the user can be read.
-	 */
-	private function can_read_user( WP_User $user ): bool {
-		return $this->is_current_user( $user )
-			|| current_user_can( 'edit_user', $user->ID )
-			|| current_user_can( 'list_users' )
-			|| $this->is_public_author( $user );
 	}
 
 	/**
@@ -541,20 +529,17 @@ final class Users {
 	 * @return string[] Supported field names.
 	 */
 	private function get_fields(): array {
-		$include_avatars = (bool) get_option( 'show_avatars' );
-
-		if ( null !== $this->fields && $include_avatars === $this->fields_include_avatars ) {
+		if ( null !== $this->fields ) {
 			return $this->fields;
 		}
 
 		$fields = $this->read_fields;
 
-		if ( $include_avatars ) {
-			$fields[] = 'avatar_urls';
+		if ( ! get_option( 'show_avatars' ) ) {
+			$fields = array_diff( $fields, array( 'avatar_urls' ) );
 		}
 
-		$this->fields                 = array_merge( $fields, $this->sensitive_fields, array( 'roles' ) );
-		$this->fields_include_avatars = $include_avatars;
+		$this->fields = array_merge( array_values( $fields ), $this->sensitive_fields, array( 'roles' ) );
 
 		return $this->fields;
 	}
@@ -562,18 +547,14 @@ final class Users {
 	/**
 	 * Returns the default field list in output order.
 	 *
+	 * Unavailable fields are dropped through {@see self::get_fields()}.
+	 *
 	 * @since x.x.x
 	 *
 	 * @return string[] Default field names.
 	 */
 	private function get_default_fields(): array {
-		$fields = $this->default_fields;
-
-		if ( get_option( 'show_avatars' ) ) {
-			$fields[] = 'avatar_urls';
-		}
-
-		return $fields;
+		return array_values( array_intersect( $this->get_fields(), $this->default_fields ) );
 	}
 
 	/**
@@ -855,6 +836,13 @@ final class Users {
 				'type'        => 'string',
 				'description' => __( 'An alphanumeric identifier for the user.', 'ai' ),
 			),
+			'avatar_urls'     => array(
+				'type'                 => 'object',
+				'description'          => __( 'Avatar URLs for the user at various sizes.', 'ai' ),
+				'additionalProperties' => array(
+					'type' => 'string',
+				),
+			),
 			'user_login'      => array(
 				'type'        => 'string',
 				'description' => __( 'Login name for the user. Present when the current user can view it.', 'ai' ),
@@ -895,14 +883,8 @@ final class Users {
 			),
 		);
 
-		if ( get_option( 'show_avatars' ) ) {
-			$user_properties['avatar_urls'] = array(
-				'type'                 => 'object',
-				'description'          => __( 'Avatar URLs for the user at various sizes.', 'ai' ),
-				'additionalProperties' => array(
-					'type' => 'string',
-				),
-			);
+		if ( ! in_array( 'avatar_urls', $this->get_fields(), true ) ) {
+			unset( $user_properties['avatar_urls'] );
 		}
 
 		$user_schema = array(
@@ -923,11 +905,11 @@ final class Users {
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of users matching the query, across all pages, after applying the permission filter to the query. Surfaced over REST as the X-WP-Total header.', 'ai' ),
+					'description' => __( 'Total number of users matching the query, across all pages.', 'ai' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of query result pages available after applying the permission filter to the query. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
+					'description' => __( 'Total number of result pages available for the query.', 'ai' ),
 				),
 			),
 		);
@@ -980,7 +962,7 @@ final class Users {
 		if ( $fields_requested( 'user_nicename' ) ) {
 			$data['user_nicename'] = (string) $user->user_nicename;
 		}
-		if ( $fields_requested( 'avatar_urls' ) && get_option( 'show_avatars' ) ) {
+		if ( $fields_requested( 'avatar_urls' ) ) {
 			$data['avatar_urls'] = rest_get_avatar_urls( $user );
 		}
 
