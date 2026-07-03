@@ -163,7 +163,6 @@ final class Users {
 						'idempotent'  => true,
 					),
 					'show_in_rest' => true,
-					'pagination'   => true,
 				),
 			)
 		);
@@ -257,7 +256,7 @@ final class Users {
 		} else {
 			// Callers who cannot list users only see public authors in a collection,
 			// matching core. This intentionally excludes the caller's own account when
-			// they have no published posts; self is read through a single-user lookup
+			// they have no published posts. Self is read through a single-user lookup
 			// (like the REST `/users/me` endpoint) instead.
 			$public_post_types   = $this->get_public_post_types();
 			$has_published_posts = $this->normalize_has_published_posts( $input );
@@ -684,7 +683,7 @@ final class Users {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return bool|string[]|null Normalized query value, or null when absent/invalid.
+	 * @return bool|string[]|null Normalized query value, or null when omitted.
 	 */
 	private function normalize_has_published_posts( array $input ) {
 		if ( ! array_key_exists( 'has_published_posts', $input ) ) {
