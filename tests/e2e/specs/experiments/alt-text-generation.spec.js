@@ -196,7 +196,9 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await page.getByRole( 'button', { name: 'Dismiss' } ).click();
 
 		// Ensure the generated alt text is not visible.
-		await expect( page.getByLabel( 'Generated Alt Text' ) ).not.toBeVisible();
+		await expect(
+			page.getByLabel( 'Generated Alt Text' )
+		).not.toBeVisible();
 
 		// Save the post.
 		await editor.saveDraft();
