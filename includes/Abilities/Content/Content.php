@@ -80,36 +80,12 @@ final class Content {
 	);
 
 	/**
-	 * The fields a post object may expose, in output order.
-	 *
-	 * Read-context fields are returned for readable posts. Edit-context fields are
-	 * returned only when explicitly requested by a user with edit access, or when
-	 * fields are omitted and the user can edit the post.
+	 * Cached post field definitions, keyed by field name in output order.
 	 *
 	 * @since x.x.x
-	 * @var string[]
+	 * @var array<string, mixed>|null
 	 */
-	private array $fields = array(
-		'id',
-		'post_type',
-		'status',
-		'date',
-		'date_gmt',
-		'modified',
-		'modified_gmt',
-		'slug',
-		'link',
-		'title_raw',
-		'title_rendered',
-		'excerpt_raw',
-		'excerpt_rendered',
-		'excerpt_protected',
-		'content_raw',
-		'content_rendered',
-		'content_protected',
-		'author',
-		'parent',
-	);
+	private ?array $post_properties = null;
 
 	/**
 	 * Default fields returned when the caller does not request a field subset.
@@ -666,6 +642,116 @@ final class Content {
 	}
 
 	/**
+	 * Returns the post field definitions, keyed by field name in output order.
+	 *
+	 * This is the single source of truth for the ability's post fields: the output
+	 * schema uses the definitions directly, while the input schema fields enum uses
+	 * the keys. Read-context fields are returned for readable posts; the edit-context
+	 * fields listed in {@see self::$edit_fields} additionally require edit access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> Post field definitions.
+	 */
+	private function get_post_properties(): array {
+		if ( null !== $this->post_properties ) {
+			return $this->post_properties;
+		}
+
+		$this->post_properties = array(
+			'id'                => array(
+				'type'        => 'integer',
+				'description' => __( 'The post ID.', 'ai' ),
+			),
+			'post_type'         => array(
+				'type'        => 'string',
+				'description' => __( 'The post type.', 'ai' ),
+			),
+			'status'            => array(
+				'type'        => 'string',
+				'description' => __( 'The post status.', 'ai' ),
+			),
+			'date'              => array(
+				'type'        => 'string',
+				'description' => __( "The publication date, in ISO 8601 format using the site's timezone.", 'ai' ),
+			),
+			'date_gmt'          => array(
+				'type'        => 'string',
+				'description' => __( 'The publication date, in ISO 8601 format as GMT.', 'ai' ),
+			),
+			'modified'          => array(
+				'type'        => 'string',
+				'description' => __( "The last modified date, in ISO 8601 format using the site's timezone.", 'ai' ),
+			),
+			'modified_gmt'      => array(
+				'type'        => 'string',
+				'description' => __( 'The last modified date, in ISO 8601 format as GMT.', 'ai' ),
+			),
+			'slug'              => array(
+				'type'        => 'string',
+				'description' => __( 'The post slug.', 'ai' ),
+			),
+			'link'              => array(
+				'type'        => 'string',
+				'description' => __( 'The permalink URL.', 'ai' ),
+			),
+			'title_raw'         => array(
+				'type'        => 'string',
+				'description' => __( 'The raw post title. Present when the post type supports titles and the current user can edit the post.', 'ai' ),
+			),
+			'title_rendered'    => array(
+				'type'        => 'string',
+				'description' => __( 'The rendered post title. Present when the post type supports titles.', 'ai' ),
+			),
+			'excerpt_raw'       => array(
+				'type'        => 'string',
+				'description' => __( 'The raw post excerpt. Present when the post type supports excerpts and the current user can edit the post.', 'ai' ),
+			),
+			'excerpt_rendered'  => array(
+				'type'        => 'string',
+				'description' => __( 'The rendered post excerpt. Present when the post type supports excerpts. Empty when withheld for a password-protected post.', 'ai' ),
+			),
+			'excerpt_protected' => array(
+				'type'        => 'boolean',
+				'description' => __( 'Whether the excerpt is protected with a password. Present when the post type supports excerpts.', 'ai' ),
+			),
+			'content_raw'       => array(
+				'type'        => 'string',
+				'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor and the current user can edit the post.', 'ai' ),
+			),
+			'content_rendered'  => array(
+				'type'        => 'string',
+				'description' => __( 'The rendered post content. Present when the post type supports the editor. Empty when withheld for a password-protected post.', 'ai' ),
+			),
+			'content_protected' => array(
+				'type'        => 'boolean',
+				'description' => __( 'Whether the content is protected with a password. Present when the post type supports the editor.', 'ai' ),
+			),
+			'author'            => array(
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'properties'           => array(
+					'id'           => array(
+						'type'        => 'integer',
+						'description' => __( 'The author user ID.', 'ai' ),
+					),
+					'display_name' => array(
+						'type'        => 'string',
+						'description' => __( 'The author display name.', 'ai' ),
+					),
+				),
+				'description'          => __( 'The post author. Present when the post type supports authors.', 'ai' ),
+			),
+			'parent'            => array(
+				'type'        => 'integer',
+				'description' => __( 'The parent post ID. Present for hierarchical post types.', 'ai' ),
+			),
+		);
+
+		return $this->post_properties;
+	}
+
+	/**
 	 * Builds the input schema for the `core/read-content` ability.
 	 *
 	 * The ability has three mutually exclusive modes, modeled as a `oneOf` so invalid
@@ -691,7 +777,7 @@ final class Content {
 			'uniqueItems' => true,
 			'items'       => array(
 				'type' => 'string',
-				'enum' => $this->fields,
+				'enum' => array_keys( $this->get_post_properties() ),
 			),
 			'description' => __( 'Limit each returned post to these fields. If omitted, a lean set of common read fields is returned. Explicit raw field requests require edit access.', 'ai' ),
 		);
@@ -811,95 +897,7 @@ final class Content {
 		$post_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'properties'           => array(
-				'id'                => array(
-					'type'        => 'integer',
-					'description' => __( 'The post ID.', 'ai' ),
-				),
-				'post_type'         => array(
-					'type'        => 'string',
-					'description' => __( 'The post type.', 'ai' ),
-				),
-				'status'            => array(
-					'type'        => 'string',
-					'description' => __( 'The post status.', 'ai' ),
-				),
-				'date'              => array(
-					'type'        => 'string',
-					'description' => __( "The publication date, in ISO 8601 format using the site's timezone.", 'ai' ),
-				),
-				'date_gmt'          => array(
-					'type'        => 'string',
-					'description' => __( 'The publication date, in ISO 8601 format as GMT.', 'ai' ),
-				),
-				'modified'          => array(
-					'type'        => 'string',
-					'description' => __( "The last modified date, in ISO 8601 format using the site's timezone.", 'ai' ),
-				),
-				'modified_gmt'      => array(
-					'type'        => 'string',
-					'description' => __( 'The last modified date, in ISO 8601 format as GMT.', 'ai' ),
-				),
-				'slug'              => array(
-					'type'        => 'string',
-					'description' => __( 'The post slug.', 'ai' ),
-				),
-				'link'              => array(
-					'type'        => 'string',
-					'description' => __( 'The permalink URL.', 'ai' ),
-				),
-				'title_raw'         => array(
-					'type'        => 'string',
-					'description' => __( 'The raw post title. Present when the post type supports titles and the current user can edit the post.', 'ai' ),
-				),
-				'title_rendered'    => array(
-					'type'        => 'string',
-					'description' => __( 'The rendered post title. Present when the post type supports titles.', 'ai' ),
-				),
-				'excerpt_raw'       => array(
-					'type'        => 'string',
-					'description' => __( 'The raw post excerpt. Present when the post type supports excerpts and the current user can edit the post.', 'ai' ),
-				),
-				'excerpt_rendered'  => array(
-					'type'        => 'string',
-					'description' => __( 'The rendered post excerpt. Present when the post type supports excerpts. Empty when withheld for a password-protected post.', 'ai' ),
-				),
-				'excerpt_protected' => array(
-					'type'        => 'boolean',
-					'description' => __( 'Whether the excerpt is protected with a password. Present when the post type supports excerpts.', 'ai' ),
-				),
-				'content_raw'       => array(
-					'type'        => 'string',
-					'description' => __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor and the current user can edit the post.', 'ai' ),
-				),
-				'content_rendered'  => array(
-					'type'        => 'string',
-					'description' => __( 'The rendered post content. Present when the post type supports the editor. Empty when withheld for a password-protected post.', 'ai' ),
-				),
-				'content_protected' => array(
-					'type'        => 'boolean',
-					'description' => __( 'Whether the content is protected with a password. Present when the post type supports the editor.', 'ai' ),
-				),
-				'author'            => array(
-					'type'                 => 'object',
-					'additionalProperties' => false,
-					'properties'           => array(
-						'id'           => array(
-							'type'        => 'integer',
-							'description' => __( 'The author user ID.', 'ai' ),
-						),
-						'display_name' => array(
-							'type'        => 'string',
-							'description' => __( 'The author display name.', 'ai' ),
-						),
-					),
-					'description'          => __( 'The post author. Present when the post type supports authors.', 'ai' ),
-				),
-				'parent'            => array(
-					'type'        => 'integer',
-					'description' => __( 'The parent post ID. Present for hierarchical post types.', 'ai' ),
-				),
-			),
+			'properties'           => $this->get_post_properties(),
 		);
 
 		$query_schema = array(
