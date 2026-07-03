@@ -73,38 +73,6 @@ final class Users {
 	private const LOOKUP_COLLECTION = 'collection';
 
 	/**
-	 * Public/read-context user fields.
-	 *
-	 * @since x.x.x
-	 * @var string[]
-	 */
-	private array $read_fields = array(
-		'id',
-		'display_name',
-		'description',
-		'user_url',
-		'link',
-		'user_nicename',
-		'avatar_urls',
-	);
-
-	/**
-	 * Fields that expose edit-context user data.
-	 *
-	 * @since x.x.x
-	 * @var string[]
-	 */
-	private array $sensitive_fields = array(
-		'user_login',
-		'user_email',
-		'first_name',
-		'last_name',
-		'nickname',
-		'locale',
-		'user_registered',
-	);
-
-	/**
 	 * Default fields returned when the caller does not request a field subset.
 	 *
 	 * @since x.x.x
@@ -127,12 +95,12 @@ final class Users {
 	private ?array $public_post_types = null;
 
 	/**
-	 * Cached supported field list.
+	 * Cached user field definitions, keyed by field name in output order.
 	 *
 	 * @since x.x.x
-	 * @var string[]|null
+	 * @var array<string, mixed>|null
 	 */
-	private ?array $fields = null;
+	private ?array $user_properties = null;
 
 	/**
 	 * Cached role names.
@@ -509,7 +477,7 @@ final class Users {
 	 * @return string[] List of requested field names.
 	 */
 	private function normalize_fields( array $input ): array {
-		$available_fields = $this->get_fields();
+		$available_fields = array_keys( $this->get_user_properties() );
 
 		if ( empty( $input['fields'] ) || ! is_array( $input['fields'] ) ) {
 			return $this->get_default_fields();
@@ -522,39 +490,114 @@ final class Users {
 	}
 
 	/**
-	 * Returns the supported field list in output order.
+	 * Returns the user field definitions, keyed by field name in output order.
+	 *
+	 * This is the single source of truth for the ability's user fields: the output
+	 * schema uses the definitions directly, while the input schema and field
+	 * normalization use the keys. The `avatar_urls` field is dropped when the
+	 * `show_avatars` option is disabled.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string[] Supported field names.
+	 * @return array<string, mixed> User field definitions.
 	 */
-	private function get_fields(): array {
-		if ( null !== $this->fields ) {
-			return $this->fields;
+	private function get_user_properties(): array {
+		if ( null !== $this->user_properties ) {
+			return $this->user_properties;
 		}
 
-		$fields = $this->read_fields;
+		$user_properties = array(
+			'id'              => array(
+				'type'        => 'integer',
+				'description' => __( 'The user ID.', 'ai' ),
+			),
+			'display_name'    => array(
+				'type'        => 'string',
+				'description' => __( 'The display name for the user.', 'ai' ),
+			),
+			'description'     => array(
+				'type'        => 'string',
+				'description' => __( 'Description of the user.', 'ai' ),
+			),
+			'user_url'        => array(
+				'type'        => 'string',
+				'description' => __( 'URL of the user.', 'ai' ),
+			),
+			'link'            => array(
+				'type'        => 'string',
+				'description' => __( 'Author archive URL for the user.', 'ai' ),
+			),
+			'user_nicename'   => array(
+				'type'        => 'string',
+				'description' => __( 'An alphanumeric identifier for the user.', 'ai' ),
+			),
+			'avatar_urls'     => array(
+				'type'                 => 'object',
+				'description'          => __( 'Avatar URLs for the user at various sizes.', 'ai' ),
+				'additionalProperties' => array(
+					'type' => 'string',
+				),
+			),
+			'user_login'      => array(
+				'type'        => 'string',
+				'description' => __( 'Login name for the user. Present when the current user can view it.', 'ai' ),
+			),
+			'user_email'      => array(
+				'type'        => 'string',
+				'format'      => 'email',
+				'description' => __( 'The email address for the user. Present when the current user can view it.', 'ai' ),
+			),
+			'first_name'      => array(
+				'type'        => 'string',
+				'description' => __( 'First name for the user. Present when the current user can view it.', 'ai' ),
+			),
+			'last_name'       => array(
+				'type'        => 'string',
+				'description' => __( 'Last name for the user. Present when the current user can view it.', 'ai' ),
+			),
+			'nickname'        => array(
+				'type'        => 'string',
+				'description' => __( 'The nickname for the user. Present when the current user can view it.', 'ai' ),
+			),
+			'locale'          => array(
+				'type'        => 'string',
+				'description' => __( 'Locale for the user. Present when the current user can view it.', 'ai' ),
+			),
+			'user_registered' => array(
+				'type'        => 'string',
+				'format'      => 'date-time',
+				'description' => __( 'Registration date for the user. Present when the current user can view it.', 'ai' ),
+			),
+			'roles'           => array(
+				'type'        => 'array',
+				'description' => __( 'Roles assigned to the user. Present when the current user can view them.', 'ai' ),
+				'items'       => array(
+					'type' => 'string',
+					'enum' => $this->get_role_names(),
+				),
+			),
+		);
 
 		if ( ! get_option( 'show_avatars' ) ) {
-			$fields = array_diff( $fields, array( 'avatar_urls' ) );
+			unset( $user_properties['avatar_urls'] );
 		}
 
-		$this->fields = array_merge( array_values( $fields ), $this->sensitive_fields, array( 'roles' ) );
+		$this->user_properties = $user_properties;
 
-		return $this->fields;
+		return $this->user_properties;
 	}
 
 	/**
 	 * Returns the default field list in output order.
 	 *
-	 * Unavailable fields are dropped through {@see self::get_fields()}.
+	 * Unavailable fields are dropped through {@see self::get_user_properties()}.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return string[] Default field names.
 	 */
 	private function get_default_fields(): array {
-		return array_values( array_intersect( $this->get_fields(), $this->default_fields ) );
+		return array_values( array_intersect( array_keys( $this->get_user_properties() ), $this->default_fields ) );
 	}
 
 	/**
@@ -678,7 +721,7 @@ final class Users {
 			'uniqueItems' => true,
 			'items'       => array(
 				'type' => 'string',
-				'enum' => $this->get_fields(),
+				'enum' => array_keys( $this->get_user_properties() ),
 			),
 			'description' => __( 'Limit each returned user to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
 		);
@@ -811,86 +854,10 @@ final class Users {
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
 	private function get_users_output_schema(): array {
-		$user_properties = array(
-			'id'              => array(
-				'type'        => 'integer',
-				'description' => __( 'The user ID.', 'ai' ),
-			),
-			'display_name'    => array(
-				'type'        => 'string',
-				'description' => __( 'The display name for the user.', 'ai' ),
-			),
-			'description'     => array(
-				'type'        => 'string',
-				'description' => __( 'Description of the user.', 'ai' ),
-			),
-			'user_url'        => array(
-				'type'        => 'string',
-				'description' => __( 'URL of the user.', 'ai' ),
-			),
-			'link'            => array(
-				'type'        => 'string',
-				'description' => __( 'Author archive URL for the user.', 'ai' ),
-			),
-			'user_nicename'   => array(
-				'type'        => 'string',
-				'description' => __( 'An alphanumeric identifier for the user.', 'ai' ),
-			),
-			'avatar_urls'     => array(
-				'type'                 => 'object',
-				'description'          => __( 'Avatar URLs for the user at various sizes.', 'ai' ),
-				'additionalProperties' => array(
-					'type' => 'string',
-				),
-			),
-			'user_login'      => array(
-				'type'        => 'string',
-				'description' => __( 'Login name for the user. Present when the current user can view it.', 'ai' ),
-			),
-			'user_email'      => array(
-				'type'        => 'string',
-				'format'      => 'email',
-				'description' => __( 'The email address for the user. Present when the current user can view it.', 'ai' ),
-			),
-			'first_name'      => array(
-				'type'        => 'string',
-				'description' => __( 'First name for the user. Present when the current user can view it.', 'ai' ),
-			),
-			'last_name'       => array(
-				'type'        => 'string',
-				'description' => __( 'Last name for the user. Present when the current user can view it.', 'ai' ),
-			),
-			'nickname'        => array(
-				'type'        => 'string',
-				'description' => __( 'The nickname for the user. Present when the current user can view it.', 'ai' ),
-			),
-			'locale'          => array(
-				'type'        => 'string',
-				'description' => __( 'Locale for the user. Present when the current user can view it.', 'ai' ),
-			),
-			'user_registered' => array(
-				'type'        => 'string',
-				'format'      => 'date-time',
-				'description' => __( 'Registration date for the user. Present when the current user can view it.', 'ai' ),
-			),
-			'roles'           => array(
-				'type'        => 'array',
-				'description' => __( 'Roles assigned to the user. Present when the current user can view them.', 'ai' ),
-				'items'       => array(
-					'type' => 'string',
-					'enum' => $this->get_role_names(),
-				),
-			),
-		);
-
-		if ( ! in_array( 'avatar_urls', $this->get_fields(), true ) ) {
-			unset( $user_properties['avatar_urls'] );
-		}
-
 		$user_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'properties'           => $user_properties,
+			'properties'           => $this->get_user_properties(),
 		);
 
 		$collection_schema = array(
