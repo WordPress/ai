@@ -232,7 +232,9 @@ function getPageData(): PageData {
 			hasCredentials: Boolean( pageData.hasCredentials ),
 			hasValidCredentials: Boolean( pageData.hasValidCredentials ),
 			connectorsUrl: toStringValue( pageData.connectorsUrl ),
-			connectorApprovalUrl: toStringValue( pageData.connectorApprovalUrl ),
+			connectorApprovalUrl: toStringValue(
+				pageData.connectorApprovalUrl
+			),
 			hasApprovedConnector: Boolean( pageData.hasApprovedConnector ),
 			featureGroups,
 			features,
