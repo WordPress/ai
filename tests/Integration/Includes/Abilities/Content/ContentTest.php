@@ -1499,6 +1499,100 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The password gate is suspended only for posts the current user can edit.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_allow_password_content_only_unlocks_editable_posts(): void {
+		$owned_id = self::factory()->post->create(
+			array(
+				'post_author'   => self::$user_ids['author'],
+				'post_status'   => 'publish',
+				'post_password' => 'secret',
+			)
+		);
+		$other_id = self::$post_ids['password_protected_limited'];
+
+		$this->login_as( 'author' );
+
+		$ability = new Content();
+
+		$this->assertFalse(
+			$ability->allow_password_content( true, get_post( $owned_id ) ),
+			'The filter should unlock a protected post the current user can edit.'
+		);
+		$this->assertTrue(
+			$ability->allow_password_content( true, get_post( $other_id ) ),
+			'The filter should keep the gate on a protected post the current user cannot edit.'
+		);
+		$this->assertFalse(
+			$ability->allow_password_content( false, get_post( $other_id ) ),
+			'The filter should leave posts that do not require a password ungated.'
+		);
+	}
+
+	/**
+	 * Rendering an editable protected post must not unlock other protected posts embedded in
+	 * its content (e.g. through a shortcode or Query Loop block).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_password_filter_does_not_leak_other_protected_posts(): void {
+		$hidden_id = self::factory()->post->create(
+			array(
+				'post_author'   => self::$user_ids['administrator'],
+				'post_status'   => 'publish',
+				'post_password' => 'secret',
+				'post_content'  => 'NESTED_SECRET_MARKER',
+			)
+		);
+
+		$author_id = $this->login_as( 'author' );
+
+		$owned_id = self::factory()->post->create(
+			array(
+				'post_author'   => $author_id,
+				'post_status'   => 'publish',
+				'post_password' => 'secret',
+				'post_content'  => '[read_content_nested id="' . $hidden_id . '"]',
+			)
+		);
+
+		add_shortcode(
+			'read_content_nested',
+			static function ( $atts ): string {
+				$id = is_array( $atts ) && isset( $atts['id'] ) ? (int) $atts['id'] : 0;
+
+				return post_password_required( $id ) ? 'GATED' : (string) get_post_field( 'post_content', $id );
+			}
+		);
+
+		$this->register_ability();
+
+		try {
+			$result = wp_get_ability( 'core/read-content' )->execute(
+				array(
+					'id'     => $owned_id,
+					'fields' => array( 'id', 'content_rendered' ),
+				)
+			);
+		} finally {
+			remove_shortcode( 'read_content_nested' );
+		}
+
+		$this->assertStringNotContainsString(
+			'NESTED_SECRET_MARKER',
+			$result['content_rendered'],
+			'Rendering an editable protected post must not unlock another protected post it embeds.'
+		);
+		$this->assertStringContainsString(
+			'GATED',
+			$result['content_rendered'],
+			'The embedded protected post should still report as password-gated.'
+		);
+	}
+
+	/**
 	 * Query mode paginates with `page`/`per_page` and reports totals.
 	 *
 	 * @since x.x.x

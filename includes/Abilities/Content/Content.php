@@ -956,12 +956,10 @@ final class Content {
 	/**
 	 * Formats a post into the ability output shape.
 	 *
-	 * Only the requested fields that the post type supports and the current user can see
-	 * are included. Raw fields are edit-context fields; rendered fields are read-context
-	 * fields and are withheld for password-protected posts unless the current user can edit
-	 * the post, mirroring the REST API behavior. For users who can edit a password-protected
-	 * post, the cookie-based password gate is suspended while rendering so rendered fields
-	 * resolve to the real values.
+	 * For an editor of a password-protected post, the cookie-based password gate is suspended
+	 * while the fields are built so rendered fields resolve to real values instead of
+	 * protected-post placeholders. The field projection itself is delegated to
+	 * {@see self::build_post_fields()}.
 	 *
 	 * @since x.x.x
 	 *
@@ -970,22 +968,53 @@ final class Content {
 	 * @return array<string, mixed> The formatted post data.
 	 */
 	private function format_post( WP_Post $post, array $fields ): array {
-		$post_type         = $post->post_type;
-		$fields_requested  = static function ( string $field ) use ( $fields ): bool {
-			return in_array( $field, $fields, true );
-		};
 		$can_edit          = current_user_can( 'edit_post', $post->ID );
 		$password_required = post_password_required( $post );
 		$protected         = $password_required && ! $can_edit;
 
-		// Suspend the cookie-based password gate for editors while rendering, so helpers
-		// with their own gate (e.g. get_the_excerpt()) resolve the real values instead of
-		// returning protected-post placeholders. Mirrors the REST posts controller.
-		$has_password_filter = false;
+		/*
+		 * Suspend the cookie-based password gate for an editor of this protected post, so
+		 * helpers with their own gate (e.g. get_the_excerpt()) resolve the real values. The
+		 * filter unlocks only posts the current user can edit, mirroring the REST posts
+		 * controller's check_password_required(): an unconditional bypass (e.g. __return_false)
+		 * would also expose other protected posts that the content filter may render, such as
+		 * posts pulled in by a Query Loop block. The filter is removed in a finally block so a
+		 * throw mid-render cannot leave the gate globally disabled for the rest of the request.
+		 */
 		if ( $password_required && $can_edit ) {
-			add_filter( 'post_password_required', '__return_false' );
-			$has_password_filter = true;
+			add_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10, 2 );
+
+			try {
+				return $this->build_post_fields( $post, $fields, $can_edit, $protected );
+			} finally {
+				remove_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10 );
+			}
 		}
+
+		return $this->build_post_fields( $post, $fields, $can_edit, $protected );
+	}
+
+	/**
+	 * Builds the requested field projection for a post.
+	 *
+	 * Only the requested fields that the post type supports and the current user can see are
+	 * included. Raw fields are edit-context fields; rendered fields are read-context fields and
+	 * are withheld for password-protected posts unless the current user can edit the post,
+	 * mirroring the REST API behavior.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post         The post object.
+	 * @param string[] $fields       The requested field names.
+	 * @param bool     $can_edit     Whether the current user can edit the post.
+	 * @param bool     $is_protected Whether rendered fields must be withheld as password-protected.
+	 * @return array<string, mixed> The formatted post data.
+	 */
+	private function build_post_fields( WP_Post $post, array $fields, bool $can_edit, bool $is_protected ): array {
+		$post_type        = $post->post_type;
+		$fields_requested = static function ( string $field ) use ( $fields ): bool {
+			return in_array( $field, $fields, true );
+		};
 
 		$data = array();
 
@@ -1030,7 +1059,7 @@ final class Content {
 		}
 
 		if ( $fields_requested( 'excerpt_rendered' ) && post_type_supports( $post_type, 'excerpt' ) ) {
-			$data['excerpt_rendered'] = $protected ? '' : (string) get_the_excerpt( $post );
+			$data['excerpt_rendered'] = $is_protected ? '' : (string) get_the_excerpt( $post );
 		}
 
 		if ( $fields_requested( 'excerpt_protected' ) && post_type_supports( $post_type, 'excerpt' ) ) {
@@ -1042,7 +1071,7 @@ final class Content {
 		}
 
 		if ( $fields_requested( 'content_rendered' ) && post_type_supports( $post_type, 'editor' ) ) {
-			$data['content_rendered'] = $protected ? '' : $this->get_rendered_content( $post );
+			$data['content_rendered'] = $is_protected ? '' : $this->get_rendered_content( $post );
 		}
 
 		if ( $fields_requested( 'content_protected' ) && post_type_supports( $post_type, 'editor' ) ) {
@@ -1061,11 +1090,29 @@ final class Content {
 			$data['parent'] = (int) $post->post_parent;
 		}
 
-		if ( $has_password_filter ) {
-			remove_filter( 'post_password_required', '__return_false' );
+		return $data;
+	}
+
+	/**
+	 * Filters {@see post_password_required()} to unlock only posts the current user can edit.
+	 *
+	 * Added by {@see self::format_post()} while formatting a password-protected post the
+	 * current user can edit, so rendered fields resolve to real values without also unlocking
+	 * other protected posts that the content filter may render. Mirrors the REST posts
+	 * controller's check_password_required().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $required Whether the post currently requires a password.
+	 * @param mixed $post     The post being checked; a WP_Post when invoked by the core filter.
+	 * @return bool Whether the post still requires a password.
+	 */
+	public function allow_password_content( $required, $post ): bool {
+		if ( ! $required || ! $post instanceof WP_Post ) {
+			return (bool) $required;
 		}
 
-		return $data;
+		return ! current_user_can( 'edit_post', $post->ID );
 	}
 
 	/**
