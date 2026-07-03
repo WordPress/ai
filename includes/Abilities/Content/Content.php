@@ -184,7 +184,13 @@ final class Content {
 		$this->exposed_post_types = $this->get_exposed_post_types();
 
 		$post_types = array_keys( $this->exposed_post_types );
-		$statuses   = array_values( get_post_stati( array( 'internal' => false ) ) );
+
+		/*
+		 * Internal statuses (e.g. `inherit`) are excluded, so post types that rely on
+		 * them (attachments) are only reachable by ID. Revisit if such a post type is
+		 * ever exposed via `show_in_abilities`.
+		 */
+		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
 		wp_register_ability(
 			'core/read-content',
@@ -488,6 +494,27 @@ final class Content {
 			}
 
 			return $this->format_post( $post, $fields );
+		}
+
+		/*
+		 * REST only registers the equivalent collection filters for post types that
+		 * support them; a shared input schema cannot express that per post type, so
+		 * reject unsupported filters loudly instead of silently ignoring them.
+		 */
+		if ( isset( $input['parent'] ) && ! is_post_type_hierarchical( $post_type ) ) {
+			return new WP_Error(
+				'content_invalid_filter',
+				__( 'The parent filter is only supported for hierarchical post types.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! empty( $input['author'] ) && ! post_type_supports( $post_type, 'author' ) ) {
+			return new WP_Error(
+				'content_invalid_filter',
+				__( 'The author filter is only supported for post types that support authors.', 'ai' ),
+				array( 'status' => 400 )
+			);
 		}
 
 		$per_page = $this->normalize_per_page( $input );
@@ -910,12 +937,12 @@ final class Content {
 						'author'    => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
-							'description' => __( 'Filter by author user ID.', 'ai' ),
+							'description' => __( 'Filter by author user ID. Only supported for post types that support authors.', 'ai' ),
 						),
 						'parent'    => array(
 							'type'        => 'integer',
 							'minimum'     => 0,
-							'description' => __( 'Filter by parent post ID, for hierarchical post types. Use 0 for top-level posts.', 'ai' ),
+							'description' => __( 'Filter by parent post ID. Only supported for hierarchical post types. Use 0 for top-level posts.', 'ai' ),
 						),
 						'include'   => $include,
 						'fields'    => $fields,

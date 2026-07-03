@@ -1441,6 +1441,128 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The parent filter is rejected for non-hierarchical post types, mirroring REST.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_mode_rejects_parent_filter_for_non_hierarchical_post_type(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'parent'    => 0,
+			)
+		);
+
+		$this->assertWPError( $result, 'The parent filter should be rejected for non-hierarchical post types.' );
+		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'Unsupported parent filters should return a filter error.' );
+	}
+
+	/**
+	 * The parent filter narrows hierarchical queries to children of the given post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_mode_filters_pages_by_parent(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$parent_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+			)
+		);
+		$child_id  = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+				'post_status' => 'publish',
+			)
+		);
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'page',
+				'parent'    => $parent_id,
+			)
+		);
+		$ids    = wp_list_pluck( $result['posts'], 'id' );
+
+		$this->assertSame( array( $child_id ), $ids, 'The parent filter should return only the children of the given page.' );
+	}
+
+	/**
+	 * The author filter is rejected for post types without author support, mirroring REST.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_mode_rejects_author_filter_for_post_type_without_author_support(): void {
+		register_post_type(
+			'wpai_no_author_cpt',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title' ),
+			)
+		);
+
+		try {
+			$this->login_as( 'administrator' );
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/read-content' )->execute(
+				array(
+					'post_type' => 'wpai_no_author_cpt',
+					'author'    => self::$user_ids['author'],
+				)
+			);
+
+			$this->assertWPError( $result, 'The author filter should be rejected for post types without author support.' );
+			$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'Unsupported author filters should return a filter error.' );
+		} finally {
+			unregister_post_type( 'wpai_no_author_cpt' );
+		}
+	}
+
+	/**
+	 * The author filter narrows queries to posts by the given author.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_mode_filters_posts_by_author(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$mine_id  = self::factory()->post->create(
+			array(
+				'post_author' => self::$user_ids['author'],
+				'post_status' => 'publish',
+			)
+		);
+		$other_id = self::factory()->post->create(
+			array(
+				'post_author' => self::$user_ids['author_secondary'],
+				'post_status' => 'publish',
+			)
+		);
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'author'    => self::$user_ids['author'],
+				'per_page'  => 100,
+			)
+		);
+		$ids    = wp_list_pluck( $result['posts'], 'id' );
+
+		$this->assertContains( $mine_id, $ids, 'The author filter should include the author\'s posts.' );
+		$this->assertNotContains( $other_id, $ids, 'The author filter should exclude other authors\' posts.' );
+	}
+
+	/**
 	 * Raw content is available to users who can edit the post.
 	 *
 	 * @since x.x.x
