@@ -78,6 +78,8 @@ interface PageData {
 	hasCredentials: boolean;
 	hasValidCredentials: boolean;
 	connectorsUrl: string;
+	connectorApprovalUrl: string;
+	hasApprovedConnector: boolean;
 	featureGroups: FeatureGroupData[];
 	features: FeatureData[];
 }
@@ -199,6 +201,8 @@ function getPageData(): PageData {
 		hasCredentials: false,
 		hasValidCredentials: false,
 		connectorsUrl: '',
+		connectorApprovalUrl: '',
+		hasApprovedConnector: false,
 		featureGroups: [],
 		features: [],
 	};
@@ -228,6 +232,8 @@ function getPageData(): PageData {
 			hasCredentials: Boolean( pageData.hasCredentials ),
 			hasValidCredentials: Boolean( pageData.hasValidCredentials ),
 			connectorsUrl: toStringValue( pageData.connectorsUrl ),
+			connectorApprovalUrl: toStringValue( pageData.connectorApprovalUrl ),
+			hasApprovedConnector: Boolean( pageData.hasApprovedConnector ),
 			featureGroups,
 			features,
 		};
@@ -868,6 +874,8 @@ function AISettingsPage() {
 						{ ...props }
 						featureId={ featureId }
 						capability={ featureCapability }
+						connectorApprovalUrl={ PAGE_DATA.connectorApprovalUrl }
+						hasApprovedConnector={ PAGE_DATA.hasApprovedConnector }
 					/>
 				);
 			}

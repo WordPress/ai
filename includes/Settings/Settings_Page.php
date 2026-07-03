@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Settings;
 
+use WordPress\AI\Connector_Approval\Approvals_Store;
+use WordPress\AI\Experiments\Connector_Approval\Admin_Page as Connector_Approval_Admin_Page;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
@@ -79,12 +81,15 @@ class Settings_Page {
 			add_filter(
 				'script_module_data_' . self::PAGE_SLUG,
 				static function ( array $data ) use ( $registry ): array {
-					$feature_metadata            = self::get_settings_feature_metadata( $registry );
-					$data['hasCredentials']      = has_ai_credentials();
-					$data['hasValidCredentials'] = has_valid_ai_credentials();
-					$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
-					$data['featureGroups']       = $feature_metadata['groups'] ?? array();
-					$data['features']            = $feature_metadata['features'] ?? array();
+					$feature_metadata              = self::get_settings_feature_metadata( $registry );
+					$ai_approvals                  = ( new Approvals_Store() )->get_approvals()[ plugin_basename( WPAI_PLUGIN_FILE ) ] ?? array();
+					$data['hasCredentials']        = has_ai_credentials();
+					$data['hasValidCredentials']   = has_valid_ai_credentials();
+					$data['connectorsUrl']         = admin_url( 'options-connectors.php' );
+					$data['connectorApprovalUrl']  = Connector_Approval_Admin_Page::url();
+					$data['hasApprovedConnector']  = ! empty( $ai_approvals );
+					$data['featureGroups']         = $feature_metadata['groups'] ?? array();
+					$data['features']              = $feature_metadata['features'] ?? array();
 					return $data;
 				}
 			);
