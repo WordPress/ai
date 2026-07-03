@@ -1416,6 +1416,54 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Query mode reports a total that matches the returned posts for an uncapped query.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_total_matches_returned_posts_when_uncapped(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'per_page'  => 100,
+			)
+		);
+
+		$this->assertNotEmpty( $result['posts'], 'An uncapped query should return the readable posts.' );
+		$this->assertSame( count( $result['posts'] ), $result['total'], 'An uncapped query should report a total equal to the number of returned posts.' );
+		$this->assertSame( 1, $result['total_pages'], 'An uncapped query should fit on a single page.' );
+	}
+
+	/**
+	 * Query rows are kept, not dropped, when the requested fields project to nothing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_keeps_posts_with_empty_field_projection(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		// `parent` never applies to the non-hierarchical `post` type, so every row
+		// projects to an empty object.
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'per_page'  => 100,
+				'fields'    => array( 'parent' ),
+			)
+		);
+
+		$this->assertNotEmpty( $result['posts'], 'Posts with an empty field projection should still be returned.' );
+		$this->assertSame( count( $result['posts'] ), $result['total'], 'The reported total should match the returned posts when projections are empty.' );
+
+		foreach ( $result['posts'] as $post_entry ) {
+			$this->assertEquals( (object) array(), $post_entry, 'A post whose requested fields do not apply should be returned as an empty object.' );
+		}
+	}
+
+	/**
 	 * A single post fetched by ID is returned directly without query totals.
 	 *
 	 * @since x.x.x

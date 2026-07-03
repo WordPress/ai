@@ -536,10 +536,10 @@ final class Content {
 				continue;
 			}
 			$formatted = $this->format_post( $post, $fields );
-			if ( array() === $formatted ) {
-				continue;
-			}
-			$posts[] = $formatted;
+
+			// Keep rows whose field projection is empty so `posts` stays in sync with
+			// `total`; cast so an empty projection serializes as `{}` rather than `[]`.
+			$posts[] = array() === $formatted ? (object) array() : $formatted;
 		}
 
 		return array(
@@ -912,12 +912,12 @@ final class Content {
 			'properties'           => array(
 				'posts'       => array(
 					'type'        => 'array',
-					'description' => __( 'The readable posts matching the query.', 'ai' ),
+					'description' => __( 'The readable posts matching the query. A post appears as an empty object when none of the requested fields apply to it.', 'ai' ),
 					'items'       => $post_schema,
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of posts matching the query, across all pages, after applying the permission filter to the query. Surfaced over REST as the X-WP-Total header.', 'ai' ),
+					'description' => __( 'Total number of posts matching the query, across all pages, after applying the permission filter to the query. May exceed the number of returned posts when row-level permission checks withhold some of them. Surfaced over REST as the X-WP-Total header.', 'ai' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',
