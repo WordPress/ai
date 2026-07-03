@@ -255,6 +255,10 @@ final class Users {
 				$query_args['has_published_posts'] = $has_published_posts;
 			}
 		} else {
+			// Callers who cannot list users only see public authors in a collection,
+			// matching core. This intentionally excludes the caller's own account when
+			// they have no published posts; self is read through a single-user lookup
+			// (like the REST `/users/me` endpoint) instead.
 			$public_post_types   = $this->get_public_post_types();
 			$has_published_posts = $this->normalize_has_published_posts( $input );
 
@@ -732,7 +736,7 @@ final class Users {
 				'type'    => 'integer',
 				'minimum' => 1,
 			),
-			'description' => __( 'Limit the query to these user IDs. Results preserve this order where possible and still respect read permissions.', 'ai' ),
+			'description' => __( 'Limit the query to these user IDs, preserving this order where possible. Collection results are limited to users the caller can read, which for callers without permission to list users means only public authors. To read your own account, use a single-user lookup by ID.', 'ai' ),
 		);
 
 		return array(

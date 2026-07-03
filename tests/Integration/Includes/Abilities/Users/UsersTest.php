@@ -641,6 +641,45 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Collection mode excludes a caller with no published posts, even via include,
+	 * while single-user mode still lets them read themselves.
+	 *
+	 * This mirrors WordPress core: a caller without permission to list users only sees
+	 * public authors in a collection, and reads their own account through a single-user
+	 * lookup (like the REST `/users/me` endpoint) rather than the collection.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_collection_mode_excludes_self_without_published_posts(): void {
+		wp_set_current_user( $this->subscriber_id );
+		$this->register_ability();
+
+		$ability = wp_get_ability( 'core/read-users' );
+
+		$collection = $ability->execute(
+			array(
+				'include'  => array( $this->subscriber_id ),
+				'fields'   => array( 'id' ),
+				'per_page' => 100,
+			)
+		);
+
+		$this->assertIsArray( $collection, 'A collection include query should return an array.' );
+		$this->assertSame( array(), $collection['users'], 'Collection mode should exclude a caller with no published posts, even when they include their own ID.' );
+		$this->assertSame( 0, $collection['total'], 'The excluded self should not be counted in the collection total.' );
+
+		$single = $ability->execute(
+			array(
+				'id'     => $this->subscriber_id,
+				'fields' => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $single, 'A single-user self lookup should return an array.' );
+		$this->assertSame( $this->subscriber_id, $single['id'], 'Single-user mode should still let the caller read themselves.' );
+	}
+
+	/**
 	 * Include is a collection-only option.
 	 *
 	 * @since x.x.x
