@@ -74,7 +74,7 @@
 		"@wordpress/core-abilities": "^0.10.0",
 		"@wordpress/core-data": "^7.44.0",
 		"@wordpress/data": "^10.44.0",
-		"@wordpress/dataviews": "^14.1.0",
+		"@wordpress/dataviews": "^15.0.0",
 		"@wordpress/date": "^5.44.0",
 		"@wordpress/dom": "^4.47.0",
 		"@wordpress/dom-ready": "^4.44.0",
