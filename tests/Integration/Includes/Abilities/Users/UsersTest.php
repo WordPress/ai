@@ -868,6 +868,53 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An unknown requested field name fails schema validation.
+	 *
+	 * Unlike inaccessible fields, which are omitted per user, a field name that is
+	 * not part of the supported set is rejected before the ability executes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unknown_requested_field_fails_schema_validation(): void {
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'id'     => $this->admin_id,
+				'fields' => array( 'id', 'bogus_field' ),
+			)
+		);
+
+		$this->assertWPError( $result, 'An unknown requested field should fail the request.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Unknown fields should use the invalid input error.' );
+	}
+
+	/**
+	 * Requesting an unavailable field fails schema validation.
+	 *
+	 * When avatars are disabled, avatar_urls is not part of the supported set, so
+	 * requesting it is rejected before the ability executes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unavailable_requested_field_fails_schema_validation(): void {
+		update_option( 'show_avatars', 0 );
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'id'     => $this->admin_id,
+				'fields' => array( 'id', 'avatar_urls' ),
+			)
+		);
+
+		$this->assertWPError( $result, 'Requesting avatar_urls while avatars are disabled should fail the request.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Unavailable fields should use the invalid input error.' );
+	}
+
+	/**
 	 * Missing or inaccessible single-user lookups fail closed.
 	 *
 	 * @since x.x.x

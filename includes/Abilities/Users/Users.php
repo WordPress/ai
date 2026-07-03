@@ -466,10 +466,11 @@ final class Users {
 	}
 
 	/**
-	 * Normalizes the requested fields to the supported set, defaulting to a lean field set.
+	 * Returns the requested fields, or a lean default set when none are given.
 	 *
-	 * An empty or absent `fields` value selects common read-context fields. Restricted
-	 * fields are still omitted per user when the current user cannot access them.
+	 * An empty or absent `fields` value selects a lean set of common read fields.
+	 * Otherwise the requested fields are returned as-is. The input schema has already
+	 * validated them against the supported set before the ability executes.
 	 *
 	 * @since x.x.x
 	 *
@@ -477,16 +478,14 @@ final class Users {
 	 * @return string[] List of requested field names.
 	 */
 	private function normalize_fields( array $input ): array {
-		$available_fields = array_keys( $this->get_user_properties() );
-
 		if ( empty( $input['fields'] ) || ! is_array( $input['fields'] ) ) {
 			return $this->get_default_fields();
 		}
 
-		$requested_fields = array_filter( $input['fields'], 'is_string' );
-		$fields           = array_intersect( $available_fields, $requested_fields );
+		/** @var string[] $fields */
+		$fields = $input['fields'];
 
-		return array() === $fields ? $this->get_default_fields() : array_values( $fields );
+		return $fields;
 	}
 
 	/**
