@@ -193,7 +193,9 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await page.getByRole( 'button', { name: 'Generate Alt Text' } ).click();
 
 		// Click the Dismiss button.
-		await page.getByRole( 'button', { name: 'Dismiss' } ).click();
+		await page
+			.locator( '.ai-alt-text-controls button', { hasText: 'Dismiss' } )
+			.click();
 
 		// Ensure the generated alt text is not visible.
 		await expect(
