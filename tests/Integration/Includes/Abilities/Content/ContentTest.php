@@ -269,6 +269,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertTrue( $annotations['readonly'], 'The ability should be marked read-only.' );
 		$this->assertFalse( $annotations['destructive'], 'The ability should be marked non-destructive.' );
 		$this->assertTrue( $annotations['idempotent'], 'The ability should be marked idempotent.' );
+		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only reads the local database.' );
 	}
 
 	/**
@@ -998,6 +999,39 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A post whose slug is the literal string "0" is fetched in single-post slug mode.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_single_post_by_slug_zero(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		// Core regenerates an "empty" post_name from the title, so a post titled "0"
+		// ends up with the literal slug "0".
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'  => '0',
+				'post_name'   => '0',
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->assertSame( '0', get_post( $post_id )->post_name, 'Precondition: the post slug should be the literal string "0".' );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'slug'      => '0',
+			)
+		);
+
+		$this->assertIsArray( $result, 'The slug lookup should return a post array.' );
+		$this->assertSame( $post_id, $result['id'], 'Slug mode should resolve the literal "0" slug to the post.' );
+		$this->assertArrayNotHasKey( 'posts', $result, 'A "0" slug should not fall through to the query wrapper.' );
+	}
+
+	/**
 	 * Query-only filters cannot be combined with slug mode.
 	 *
 	 * @since x.x.x
@@ -1404,6 +1438,67 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Password-protected excerpts render for users who can edit the post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_password_protected_excerpt_visible_to_editor(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status'   => 'publish',
+				'post_password' => 'secret',
+				'post_excerpt'  => 'Top secret excerpt.',
+			)
+		);
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'excerpt_rendered', 'excerpt_protected' ),
+			)
+		);
+
+		$this->assertSame(
+			'Top secret excerpt.',
+			$result['excerpt_rendered'],
+			'Editors should receive the real rendered excerpt for password-protected posts.'
+		);
+		$this->assertTrue( $result['excerpt_protected'], 'The protected flag should reveal the excerpt is password-protected.' );
+	}
+
+	/**
+	 * Password-protected rendered excerpts are withheld from users who cannot edit the post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_password_protected_rendered_excerpt_is_empty_for_subscriber(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author'   => self::$user_ids['administrator'],
+				'post_status'   => 'publish',
+				'post_password' => 'secret',
+				'post_excerpt'  => 'Hidden excerpt.',
+			)
+		);
+
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'excerpt_rendered', 'excerpt_protected' ),
+			)
+		);
+
+		$this->assertSame( '', $result['excerpt_rendered'], 'Password-protected rendered excerpts should be withheld.' );
+		$this->assertTrue( $result['excerpt_protected'], 'The protected flag should reveal the excerpt is password-protected.' );
+	}
+
+	/**
 	 * Query mode paginates with `page`/`per_page` and reports totals.
 	 *
 	 * @since x.x.x
@@ -1503,5 +1598,109 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertArrayNotHasKey( 'posts', $result, 'Single-post responses should not include the query posts wrapper.' );
 		$this->assertArrayNotHasKey( 'total', $result, 'Single-post responses should not include query totals.' );
 		$this->assertArrayNotHasKey( 'total_pages', $result, 'Single-post responses should not include query page totals.' );
+	}
+
+	/**
+	 * GMT date fields report the correct UTC instant and offset on non-UTC sites.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_gmt_dates_are_utc_on_non_utc_sites(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		update_option( 'timezone_string', 'America/New_York' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2026-01-15 10:00:00',
+			)
+		);
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'date', 'date_gmt' ),
+			)
+		);
+
+		$this->assertSame( '2026-01-15T10:00:00-05:00', $result['date'], 'The local date should carry the site timezone offset.' );
+		$this->assertSame( '2026-01-15T15:00:00+00:00', $result['date_gmt'], 'The GMT date should be the UTC instant with a UTC offset.' );
+	}
+
+	/**
+	 * Drafts without a stored GMT date derive it from the local date and the site timezone.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_gmt_date_is_derived_from_local_date_for_drafts(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		update_option( 'timezone_string', 'America/New_York' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status' => 'draft',
+				'post_date'   => '2026-01-15 10:00:00',
+			)
+		);
+
+		$this->assertSame(
+			'0000-00-00 00:00:00',
+			get_post( $post_id )->post_date_gmt,
+			'Precondition: drafts should have no stored GMT date.'
+		);
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'date_gmt' ),
+			)
+		);
+
+		$this->assertSame(
+			'2026-01-15T15:00:00+00:00',
+			$result['date_gmt'],
+			'The GMT date should be derived from the local date using the site timezone, not read the local wall-clock as UTC.'
+		);
+	}
+
+	/**
+	 * The execute callback re-validates the lookup structurally when invoked directly.
+	 *
+	 * Gated transports never reach these branches: check_permission() resolves and
+	 * denies the same lookups first. The callback still fails closed on structural
+	 * lookup errors so it stays self-contained when invoked directly.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_returns_not_found_for_structural_lookup_failures(): void {
+		$this->login_as( 'administrator' );
+
+		$ability = new Content();
+
+		$missing = $ability->execute_get_content( array( 'id' => 999999 ) );
+		$this->assertWPError( $missing, 'A nonexistent post ID should fail the lookup.' );
+		$this->assertSame( 'content_not_found', $missing->get_error_code(), 'Missing posts should map to the uniform not-found error.' );
+
+		$mismatched = $ability->execute_get_content(
+			array(
+				'id'        => self::$post_ids['published'],
+				'post_type' => 'page',
+			)
+		);
+		$this->assertWPError( $mismatched, 'A post type mismatch should fail the lookup.' );
+		$this->assertSame( 'content_not_found', $mismatched->get_error_code(), 'Mismatched post types should map to the uniform not-found error.' );
+
+		$missing_slug = $ability->execute_get_content(
+			array(
+				'post_type' => 'post',
+				'slug'      => 'no-such-slug',
+			)
+		);
+		$this->assertWPError( $missing_slug, 'An unmatched slug should fail the lookup.' );
+		$this->assertSame( 'content_not_found', $missing_slug->get_error_code(), 'Unmatched slugs should map to the uniform not-found error.' );
 	}
 }

@@ -190,7 +190,7 @@ final class Content {
 			'core/read-content',
 			array(
 				'label'               => __( 'Read Content', 'ai' ),
-				'description'         => __( 'Reads content from post types exposed to abilities. Single-post lookups by ID or by post type and slug return the post object directly. Query mode returns readable posts filtered by post type, status, author, parent, or included IDs.', 'ai' ),
+				'description'         => __( 'Reads content from post types exposed to abilities. Single-post lookups by ID or by post type and slug return the post object directly. Query mode returns readable posts filtered by post type, status, author, parent, or included IDs. Requires an authenticated user. Lookups and filters are exact-match only; the ability does not perform full-text search.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_input_schema( $post_types, $statuses ),
 				'output_schema'       => $this->get_content_output_schema(),
@@ -201,6 +201,9 @@ final class Content {
 						'readonly'    => true,
 						'destructive' => false,
 						'idempotent'  => true,
+						// MCP clients assume open-world (may reach external systems) when the
+						// hint is absent; this ability only reads the local database.
+						'open_world'  => false,
 					),
 					'show_in_rest' => true,
 				),
@@ -211,10 +214,12 @@ final class Content {
 	/**
 	 * Permission callback for the `core/read-content` ability.
 	 *
-	 * Implements defense in depth: this gate decides whether the request may proceed at
-	 * all, while the per-post read/edit checks in {@see self::execute_get_content()}
-	 * are the authoritative, row-level enforcement. Requests that explicitly ask for
-	 * edit-context fields require edit access before execution.
+	 * This gate is the authoritative permission decision for single-post modes: it
+	 * resolves the requested post and denies missing, mismatched, or unreadable posts
+	 * before execution. Query mode is only gated coarsely here (collection status
+	 * capabilities); {@see self::execute_get_content()} enforces row-level read/edit
+	 * permissions, since individual rows are unknown until the query runs. Requests
+	 * that explicitly ask for edit-context fields require edit access before execution.
 	 *
 	 * @since x.x.x
 	 *
@@ -251,7 +256,7 @@ final class Content {
 			return false;
 		}
 
-		if ( ! empty( $input['slug'] ) && is_string( $input['slug'] ) ) {
+		if ( isset( $input['slug'] ) && is_string( $input['slug'] ) && '' !== $input['slug'] ) {
 			$post = $this->get_post_by_slug( $post_type, $input['slug'] );
 			if ( ! $post ) {
 				return false;
@@ -262,7 +267,7 @@ final class Content {
 
 		$post_type_object = $exposed[ $post_type ];
 		if ( $requires_edit ) {
-			return current_user_can( $post_type_object->cap->edit_posts ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+			return current_user_can( $this->post_type_cap( $post_type_object, 'edit_posts' ) ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		}
 
 		return $this->can_query_statuses( $input, $post_type_object );
@@ -278,6 +283,24 @@ final class Content {
 	 */
 	private function input_int( $value ): int {
 		return is_scalar( $value ) ? absint( $value ) : 0;
+	}
+
+	/**
+	 * Resolves a capability name from a post type's capability map.
+	 *
+	 * The capability map is a plain object with untyped properties, so guard the
+	 * lookup and fail closed with `do_not_allow` when the name cannot be resolved.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post_Type $post_type_object The post type object.
+	 * @param string        $capability       The capability key, e.g. 'edit_posts'.
+	 * @return string The resolved capability name, or 'do_not_allow' when unresolved.
+	 */
+	private function post_type_cap( \WP_Post_Type $post_type_object, string $capability ): string {
+		$cap = $post_type_object->cap->$capability ?? null;
+
+		return is_string( $cap ) && '' !== $cap ? $cap : 'do_not_allow';
 	}
 
 	/**
@@ -321,12 +344,12 @@ final class Content {
 			}
 
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-			if ( 'private' === $status && current_user_can( $post_type_object->cap->read_private_posts ) ) {
+			if ( 'private' === $status && current_user_can( $this->post_type_cap( $post_type_object, 'read_private_posts' ) ) ) {
 				continue;
 			}
 
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-			if ( current_user_can( $post_type_object->cap->edit_posts ) ) {
+			if ( current_user_can( $this->post_type_cap( $post_type_object, 'edit_posts' ) ) ) {
 				continue;
 			}
 
@@ -421,6 +444,11 @@ final class Content {
 	/**
 	 * Executes the `core/read-content` ability.
 	 *
+	 * Permissions are enforced by {@see self::check_permission()}, which every
+	 * transport runs before execution. Single-post modes therefore only re-validate
+	 * the lookup itself (existence, exposure, post type match); query mode filters
+	 * result rows by read/edit permission because the gate cannot resolve them.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
@@ -439,8 +467,6 @@ final class Content {
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
 				|| ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] )
-				|| ( $requires_edit && ! current_user_can( 'edit_post', $post->ID ) )
-				|| ( ! $requires_edit && ! $this->check_read_permission( $post ) )
 			) {
 				return $this->not_found_error();
 			}
@@ -454,13 +480,10 @@ final class Content {
 			return $this->not_found_error();
 		}
 
-		if ( ! empty( $input['slug'] ) && is_string( $input['slug'] ) ) {
+		if ( isset( $input['slug'] ) && is_string( $input['slug'] ) && '' !== $input['slug'] ) {
 			$post = $this->get_post_by_slug( $post_type, $input['slug'] );
 
-			if ( ! $post
-				|| ( $requires_edit && ! current_user_can( 'edit_post', $post->ID ) )
-				|| ( ! $requires_edit && ! $this->check_read_permission( $post ) )
-			) {
+			if ( ! $post ) {
 				return $this->not_found_error();
 			}
 
@@ -673,19 +696,19 @@ final class Content {
 			),
 			'date'              => array(
 				'type'        => 'string',
-				'description' => __( "The publication date, in ISO 8601 format using the site's timezone.", 'ai' ),
+				'description' => __( "The publication date, in ISO 8601 format using the site's timezone. Empty string when the date cannot be resolved.", 'ai' ),
 			),
 			'date_gmt'          => array(
 				'type'        => 'string',
-				'description' => __( 'The publication date, in ISO 8601 format as GMT.', 'ai' ),
+				'description' => __( 'The publication date, in ISO 8601 format as GMT. Empty string when the date cannot be resolved.', 'ai' ),
 			),
 			'modified'          => array(
 				'type'        => 'string',
-				'description' => __( "The last modified date, in ISO 8601 format using the site's timezone.", 'ai' ),
+				'description' => __( "The last modified date, in ISO 8601 format using the site's timezone. Empty string when the date cannot be resolved.", 'ai' ),
 			),
 			'modified_gmt'      => array(
 				'type'        => 'string',
-				'description' => __( 'The last modified date, in ISO 8601 format as GMT.', 'ai' ),
+				'description' => __( 'The last modified date, in ISO 8601 format as GMT. Empty string when the date cannot be resolved.', 'ai' ),
 			),
 			'slug'              => array(
 				'type'        => 'string',
@@ -936,7 +959,9 @@ final class Content {
 	 * Only the requested fields that the post type supports and the current user can see
 	 * are included. Raw fields are edit-context fields; rendered fields are read-context
 	 * fields and are withheld for password-protected posts unless the current user can edit
-	 * the post, mirroring the REST API behavior.
+	 * the post, mirroring the REST API behavior. For users who can edit a password-protected
+	 * post, the cookie-based password gate is suspended while rendering so rendered fields
+	 * resolve to the real values.
 	 *
 	 * @since x.x.x
 	 *
@@ -945,12 +970,22 @@ final class Content {
 	 * @return array<string, mixed> The formatted post data.
 	 */
 	private function format_post( WP_Post $post, array $fields ): array {
-		$post_type        = $post->post_type;
-		$fields_requested = static function ( string $field ) use ( $fields ): bool {
+		$post_type         = $post->post_type;
+		$fields_requested  = static function ( string $field ) use ( $fields ): bool {
 			return in_array( $field, $fields, true );
 		};
-		$can_edit         = current_user_can( 'edit_post', $post->ID );
-		$protected        = post_password_required( $post ) && ! $can_edit;
+		$can_edit          = current_user_can( 'edit_post', $post->ID );
+		$password_required = post_password_required( $post );
+		$protected         = $password_required && ! $can_edit;
+
+		// Suspend the cookie-based password gate for editors while rendering, so helpers
+		// with their own gate (e.g. get_the_excerpt()) resolve the real values instead of
+		// returning protected-post placeholders. Mirrors the REST posts controller.
+		$has_password_filter = false;
+		if ( $password_required && $can_edit ) {
+			add_filter( 'post_password_required', '__return_false' );
+			$has_password_filter = true;
+		}
 
 		$data = array();
 
@@ -1026,6 +1061,10 @@ final class Content {
 			$data['parent'] = (int) $post->post_parent;
 		}
 
+		if ( $has_password_filter ) {
+			remove_filter( 'post_password_required', '__return_false' );
+		}
+
 		return $data;
 	}
 
@@ -1090,7 +1129,7 @@ final class Content {
 			wp_reset_postdata();
 		}
 
-		return (string) $content;
+		return is_string( $content ) ? $content : '';
 	}
 
 	/**
@@ -1105,21 +1144,17 @@ final class Content {
 	private function format_local_date( WP_Post $post, string $field = 'date' ): string {
 		$field    = 'modified' === $field ? 'modified' : 'date';
 		$datetime = get_post_datetime( $post, $field, 'local' );
-		if ( $datetime ) {
-			return $datetime->format( 'c' );
-		}
 
-		$local     = 'modified' === $field ? $post->post_modified : $post->post_date;
-		$timestamp = mysql2date( 'U', $local, false );
-
-		return $timestamp ? (string) wp_date( 'c', (int) $timestamp ) : '';
+		return $datetime ? $datetime->format( 'c' ) : '';
 	}
 
 	/**
 	 * Formats a post date field as an ISO 8601 string in GMT.
 	 *
-	 * Uses get_post_datetime() so that posts without a GMT timestamp (e.g. some drafts)
-	 * still resolve to a valid date.
+	 * Reads the stored GMT date directly, deriving it from the local date when missing
+	 * (e.g. drafts), mirroring the REST posts controller. get_post_datetime() is avoided
+	 * here because it reprojects even GMT-sourced dates into the site timezone, which
+	 * would label the returned instant with the site offset instead of UTC.
 	 *
 	 * @since x.x.x
 	 *
@@ -1128,21 +1163,25 @@ final class Content {
 	 * @return string The ISO 8601 date, or an empty string if unavailable.
 	 */
 	private function format_gmt_date( WP_Post $post, string $field = 'date' ): string {
-		$field    = 'modified' === $field ? 'modified' : 'date';
-		$datetime = get_post_datetime( $post, $field, 'gmt' );
-		if ( $datetime ) {
-			return $datetime->format( 'c' );
+		$field = 'modified' === $field ? 'modified' : 'date';
+		$gmt   = 'modified' === $field ? $post->post_modified_gmt : $post->post_date_gmt;
+
+		if ( '' === $gmt || '0000-00-00 00:00:00' === $gmt ) {
+			$local = 'modified' === $field ? $post->post_modified : $post->post_date;
+			$gmt   = get_gmt_from_date( $local );
 		}
 
-		// Fallback for posts without a resolvable timestamp.
-		$local     = 'modified' === $field ? $post->post_modified : $post->post_date;
-		$timestamp = mysql2date( 'U', $local, false );
+		$timestamp = strtotime( $gmt . ' UTC' );
 
-		return $timestamp ? gmdate( 'c', (int) $timestamp ) : '';
+		return false === $timestamp ? '' : gmdate( 'c', $timestamp );
 	}
 
 	/**
 	 * Builds the uniform not-found error.
+	 *
+	 * Unreachable through gated transports, which run {@see self::check_permission()}
+	 * first and deny the same lookups; kept so the execute callback stays
+	 * self-contained when invoked directly.
 	 *
 	 * @since x.x.x
 	 *
