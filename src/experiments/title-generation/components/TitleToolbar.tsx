@@ -24,6 +24,7 @@ import { store as noticesStore } from '@wordpress/notices';
 /**
  * Internal dependencies
  */
+import { useCopyToClipboardFeedback } from '../../../hooks/use-copy-to-clipboard-feedback';
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
@@ -111,6 +112,12 @@ export default function TitleToolbar( {
 	const [ isRegenerating, setIsRegenerating ] = useState< boolean >( false );
 	const [ isOpen, setOpen ] = useState< boolean >( false );
 	const [ generatedTitle, setGeneratedTitle ] = useState< string >( '' );
+
+	const { ref: copyButtonRef, hasCopied } =
+		useCopyToClipboardFeedback< HTMLButtonElement >( {
+			text: generatedTitle,
+			announcement: __( 'Title copied to clipboard.', 'ai' ),
+		} );
 
 	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
 
@@ -308,6 +315,18 @@ export default function TitleToolbar( {
 						gap="3"
 						className="ai-title-generation-actions"
 					>
+						<FlexItem>
+							<Button
+								ref={ copyButtonRef }
+								variant="tertiary"
+								disabled={ isRegenerating || ! generatedTitle }
+								__next40pxDefaultSize
+							>
+								{ hasCopied
+									? __( 'Copied!', 'ai' )
+									: __( 'Copy', 'ai' ) }
+							</Button>
+						</FlexItem>
 						<FlexItem>
 							<Button
 								accessibleWhenDisabled
