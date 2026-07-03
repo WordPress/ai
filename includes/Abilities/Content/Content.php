@@ -227,10 +227,6 @@ final class Content {
 						'idempotent'  => true,
 					),
 					'show_in_rest' => true,
-					// Opt into REST-level pagination: query mode accepts `page`/`per_page`
-					// and returns `total`/`total_pages`, which the run controller turns into
-					// the standard X-WP-Total / X-WP-TotalPages response headers.
-					'pagination'   => true,
 				),
 			)
 		);
@@ -912,16 +908,16 @@ final class Content {
 			'properties'           => array(
 				'posts'       => array(
 					'type'        => 'array',
-					'description' => __( 'The readable posts matching the query. A post appears as an empty object when none of the requested fields apply to it.', 'ai' ),
+					'description' => __( 'The readable posts matching the query.', 'ai' ),
 					'items'       => $post_schema,
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of posts matching the query, across all pages, after applying the permission filter to the query. May exceed the number of returned posts when row-level permission checks withhold some of them. Surfaced over REST as the X-WP-Total header.', 'ai' ),
+					'description' => __( 'Total number of posts matching the query, across all pages, after applying the permission filter to the query. May exceed the number of returned posts when row-level permission checks withhold some of them.', 'ai' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of query result pages available after applying the permission filter to the query. Surfaced over REST as the X-WP-TotalPages header.', 'ai' ),
+					'description' => __( 'Total number of query result pages available after applying the permission filter to the query.', 'ai' ),
 				),
 			),
 		);

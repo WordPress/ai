@@ -101,7 +101,6 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 
 		expect( outcome.ok ).toBe( true );
 		expect( Array.isArray( outcome.result.posts ) ).toBe( true );
-		// Pagination totals travel in the body (and as X-WP-Total headers when core supports it).
 		expect( typeof outcome.result.total ).toBe( 'number' );
 		expect( typeof outcome.result.total_pages ).toBe( 'number' );
 		for ( const post of outcome.result.posts ) {
