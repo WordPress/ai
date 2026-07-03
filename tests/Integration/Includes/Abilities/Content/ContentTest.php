@@ -1544,7 +1544,7 @@ class ContentTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame(
-			'Top secret excerpt.',
+			"<p>Top secret excerpt.</p>\n",
 			$result['excerpt_rendered'],
 			'Editors should receive the real rendered excerpt for password-protected posts.'
 		);
@@ -1578,6 +1578,29 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertSame( '', $result['excerpt_rendered'], 'Password-protected rendered excerpts should be withheld.' );
 		$this->assertTrue( $result['excerpt_protected'], 'The protected flag should reveal the excerpt is password-protected.' );
+	}
+
+	/**
+	 * Rendered excerpts carry the REST API's `the_excerpt` markup (paragraph wrapping).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_excerpt_rendered_applies_the_excerpt_filters(): void {
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => self::$post_ids['limited_role_content'],
+				'fields' => array( 'id', 'excerpt_rendered' ),
+			)
+		);
+
+		$this->assertSame(
+			"<p>Readable excerpt.</p>\n",
+			$result['excerpt_rendered'],
+			'Rendered excerpts should match the REST API excerpt filter output.'
+		);
 	}
 
 	/**

@@ -763,7 +763,7 @@ final class Content {
 			),
 			'excerpt_rendered'  => array(
 				'type'        => 'string',
-				'description' => __( 'The rendered post excerpt. Present when the post type supports excerpts. Empty when withheld for a password-protected post.', 'ai' ),
+				'description' => __( 'The rendered post excerpt (HTML). Present when the post type supports excerpts. Empty when withheld for a password-protected post.', 'ai' ),
 			),
 			'excerpt_protected' => array(
 				'type'        => 'boolean',
@@ -1090,7 +1090,7 @@ final class Content {
 		}
 
 		if ( $fields_requested( 'excerpt_rendered' ) && post_type_supports( $post_type, 'excerpt' ) ) {
-			$data['excerpt_rendered'] = $is_protected ? '' : (string) get_the_excerpt( $post );
+			$data['excerpt_rendered'] = $is_protected ? '' : $this->get_rendered_excerpt( $post );
 		}
 
 		if ( $fields_requested( 'excerpt_protected' ) && post_type_supports( $post_type, 'excerpt' ) ) {
@@ -1174,6 +1174,30 @@ final class Content {
 	 */
 	public function return_raw_title_format(): string {
 		return '%s';
+	}
+
+	/**
+	 * Returns the post excerpt transformed for display.
+	 *
+	 * Mirrors the REST posts controller by applying the `get_the_excerpt` and
+	 * `the_excerpt` filter chains, so the result carries the same markup as the
+	 * REST API's rendered excerpt (paragraph wrapping, texturization, and so on).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post The post object.
+	 * @return string Rendered post excerpt.
+	 */
+	private function get_rendered_excerpt( WP_Post $post ): string {
+		/** This filter is documented in wp-includes/post-template.php. */
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
+		$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post );
+
+		/** This filter is documented in wp-includes/post-template.php. */
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
+		$excerpt = apply_filters( 'the_excerpt', $excerpt );
+
+		return is_string( $excerpt ) ? $excerpt : '';
 	}
 
 	/**
