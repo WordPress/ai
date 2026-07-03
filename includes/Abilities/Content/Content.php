@@ -643,10 +643,11 @@ final class Content {
 	}
 
 	/**
-	 * Normalizes the requested fields to the supported set, defaulting to a lean field set.
+	 * Returns the requested fields, or a lean default set when none are given.
 	 *
-	 * An empty or absent `fields` value selects common read-context fields. Edit-context
-	 * fields remain available when explicitly requested by a user who can edit the post.
+	 * An empty or absent `fields` value selects a lean set of common read fields.
+	 * Otherwise the requested fields are returned as-is. The input schema has already
+	 * validated them against the supported set before the ability executes.
 	 *
 	 * @since x.x.x
 	 *
@@ -658,10 +659,10 @@ final class Content {
 			return $this->default_fields;
 		}
 
-		$requested_fields = array_filter( $input['fields'], 'is_string' );
-		$fields           = array_intersect( $this->fields, $requested_fields );
+		/** @var string[] $fields */
+		$fields = $input['fields'];
 
-		return array() === $fields ? $this->default_fields : array_values( $fields );
+		return $fields;
 	}
 
 	/**

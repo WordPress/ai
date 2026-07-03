@@ -1073,6 +1073,29 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An unknown requested field name fails schema validation.
+	 *
+	 * Unlike fields a post type does not support, which are omitted per post, a field
+	 * name that is not part of the supported set is rejected before the ability executes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unknown_requested_field_fails_schema_validation(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => self::$post_ids['published_content'],
+				'fields' => array( 'id', 'bogus_field' ),
+			)
+		);
+
+		$this->assertWPError( $result, 'An unknown requested field should fail the request.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Unknown fields should use the invalid input error.' );
+	}
+
+	/**
 	 * Logged-out users cannot run the ability.
 	 *
 	 * @since x.x.x
