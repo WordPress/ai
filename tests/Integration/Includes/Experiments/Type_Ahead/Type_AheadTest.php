@@ -106,4 +106,20 @@ class Type_AheadTest extends WP_UnitTestCase {
 			'enqueue_assets should be hooked to enqueue_block_editor_assets'
 		);
 	}
+
+	/**
+	 * Tests enqueue_assets() bails when experiment is disabled.
+	 *
+	 * @since 1.1.1
+	 */
+	public function test_enqueue_assets_bails_when_disabled() {
+		add_filter( 'wpai_feature_type-ahead_enabled', '__return_false' );
+
+		$experiment = new Type_Ahead();
+		$experiment->enqueue_assets();
+
+		$this->assertFalse( wp_script_is( 'ai_type_ahead', 'enqueued' ) );
+
+		remove_all_filters( 'wpai_feature_type-ahead_enabled' );
+	}
 }
