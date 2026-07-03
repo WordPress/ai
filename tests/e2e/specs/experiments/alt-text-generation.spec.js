@@ -197,7 +197,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 
 		// Ensure the generated alt text is not visible.
 		await expect(
-			page.getByLabel( 'Generated Alt Text' )
+			page.locator( '.ai-alt-text-controls textarea' )
 		).not.toBeVisible();
 
 		// Save the post.
