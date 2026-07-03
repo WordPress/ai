@@ -1053,6 +1053,88 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A newer draft sharing a published post's slug does not shadow the published post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_slug_lookup_prefers_published_post_over_newer_draft(): void {
+		$published_id = self::factory()->post->create(
+			array(
+				'post_name'   => 'shadowed-slug',
+				'post_status' => 'publish',
+				'post_date'   => '2026-01-01 10:00:00',
+			)
+		);
+		// Drafts skip slug uniqueness, so a newer draft can share the published slug.
+		$draft_id = self::factory()->post->create(
+			array(
+				'post_author' => self::$user_ids['administrator'],
+				'post_name'   => 'shadowed-slug',
+				'post_status' => 'draft',
+				'post_date'   => '2026-06-01 10:00:00',
+			)
+		);
+
+		$this->assertSame( 'shadowed-slug', get_post( $draft_id )->post_name, 'Precondition: the draft should share the published slug.' );
+
+		foreach ( array( 'subscriber', 'editor' ) as $role ) {
+			$this->login_as( $role );
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/read-content' )->execute(
+				array(
+					'post_type' => 'post',
+					'slug'      => 'shadowed-slug',
+				)
+			);
+
+			$this->assertIsArray( $result, "The slug lookup should succeed for a {$role}." );
+			$this->assertSame( $published_id, $result['id'], "The slug lookup should resolve to the published post for a {$role}." );
+		}
+	}
+
+	/**
+	 * A slug held only by a draft resolves for its author and stays denied for readers.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_slug_lookup_resolves_draft_only_slug_by_readability(): void {
+		$author_id = self::$user_ids['author'];
+		$draft_id  = self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_name'   => 'draft-only-slug',
+				'post_status' => 'draft',
+			)
+		);
+
+		wp_set_current_user( $author_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'slug'      => 'draft-only-slug',
+			)
+		);
+
+		$this->assertIsArray( $result, 'The draft author should resolve their own draft by slug.' );
+		$this->assertSame( $draft_id, $result['id'], 'The draft author should receive their own draft.' );
+
+		$this->login_as( 'subscriber' );
+
+		$denied = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'slug'      => 'draft-only-slug',
+			)
+		);
+
+		$this->assertWPError( $denied, 'Readers should not resolve a slug held only by an unreadable draft.' );
+		$this->assertSame( 'ability_invalid_permissions', $denied->get_error_code(), 'Unreadable slug lookups should fail closed as a permission error.' );
+	}
+
+	/**
 	 * Include is a query-only option and cannot be combined with single-post modes.
 	 *
 	 * @since x.x.x

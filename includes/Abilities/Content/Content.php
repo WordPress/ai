@@ -559,13 +559,21 @@ final class Content {
 	}
 
 	/**
-	 * Looks up a single post by post type and slug.
+	 * Looks up the single post a slug request resolves to.
+	 *
+	 * Slugs are not unique across statuses (drafts skip slug uniqueness), so the
+	 * lookup returns the newest match the current user can read, preferring
+	 * publicly viewable posts — a newer draft sharing the slug cannot shadow a
+	 * published post. This mirrors the REST API, where slug queries default to
+	 * the `publish` status. Which post a slug resolves to is independent of the
+	 * requested fields; edit-field requests are gated afterwards on the resolved
+	 * post by {@see self::check_permission()}.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $post_type The post type.
 	 * @param string $slug      The post slug.
-	 * @return \WP_Post|null The matching post, or null when none exists.
+	 * @return \WP_Post|null The matching readable post, or null when none exists.
 	 */
 	private function get_post_by_slug( string $post_type, string $slug ): ?WP_Post {
 		$query = new WP_Query(
@@ -573,7 +581,8 @@ final class Content {
 				'post_type'              => $post_type,
 				'name'                   => sanitize_title( $slug ),
 				'post_status'            => array_values( get_post_stati( array( 'internal' => false ) ) ),
-				'posts_per_page'         => 1,
+				// Exact-match slug collisions are inherently few; the cap is defensive.
+				'posts_per_page'         => self::MAX_PER_PAGE,
 				'no_found_rows'          => true,
 				'ignore_sticky_posts'    => true,
 				'update_post_meta_cache' => false,
@@ -581,9 +590,31 @@ final class Content {
 			)
 		);
 
-		$post = $query->posts[0] ?? null;
+		$viewable = array();
+		$hidden   = array();
+		foreach ( $query->posts as $candidate ) {
+			if ( ! $candidate instanceof WP_Post ) {
+				continue;
+			}
 
-		return $post instanceof WP_Post ? $post : null;
+			if ( is_post_publicly_viewable( $candidate ) ) {
+				$viewable[] = $candidate;
+				continue;
+			}
+
+			$hidden[] = $candidate;
+		}
+
+		// Both groups keep the query's newest-first ordering.
+		foreach ( array_merge( $viewable, $hidden ) as $candidate ) {
+			if ( ! $this->check_read_permission( $candidate ) ) {
+				continue;
+			}
+
+			return $candidate;
+		}
+
+		return null;
 	}
 
 	/**
@@ -851,7 +882,7 @@ final class Content {
 						'slug'      => array(
 							'type'        => 'string',
 							'minLength'   => 1,
-							'description' => __( 'Retrieve a single readable post by slug.', 'ai' ),
+							'description' => __( 'Retrieve a single readable post by slug. Resolves to the newest readable match, preferring published posts.', 'ai' ),
 						),
 						'fields'    => $fields,
 					),
