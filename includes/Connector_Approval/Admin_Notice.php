@@ -30,15 +30,6 @@ final class Admin_Notice {
 	private const DISMISS_META = 'wpai_connector_approval_notice_dismissed';
 
 	/**
-	 * Option key tracking checked connectors for the AI plugin.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private const CHECKED_CONNECTORS_OPTION = 'wpai_connector_approval_checked_connectors';
-
-	/**
 	 * Query argument used to trigger dismissal.
 	 *
 	 * @since 1.0.0
@@ -94,7 +85,6 @@ final class Admin_Notice {
 	 */
 	public function register(): void {
 		add_action( 'admin_init', array( $this, 'maybe_handle_dismiss' ) );
-		add_action( 'admin_init', array( $this, 'flag_any_active_connectors' ) );
 		add_action( 'admin_notices', array( $this, 'render' ) );
 	}
 
@@ -120,20 +110,7 @@ final class Admin_Notice {
 		$ai_basename = plugin_basename( WPAI_PLUGIN_FILE );
 		$name        = __( 'AI', 'ai' );
 
-		$checked = get_option( self::CHECKED_CONNECTORS_OPTION, array() );
-		if ( ! is_array( $checked ) ) {
-			$checked = array();
-		}
-
-		$updated = false;
-
 		foreach ( array_keys( $connectors ) as $connector_id ) {
-			// Skip connectors we have already provided a notice to anytime before.
-			if ( isset( $checked[ $connector_id ] ) ) {
-				continue;
-			}
-
-			// If not approved, record as pending.
 			if ( ! $this->store->is_approved( $ai_basename, $connector_id ) ) {
 				$this->store->record_pending(
 					array(
@@ -144,15 +121,7 @@ final class Admin_Notice {
 					$connector_id
 				);
 			}
-
-			$checked[ $connector_id ] = true;
-			$updated                  = true;
 		}
-
-		if ( $updated ) {
-			update_option( self::CHECKED_CONNECTORS_OPTION, $checked, true );
-		}
-
 	}
 
 	/**

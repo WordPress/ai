@@ -103,6 +103,10 @@ final class Main {
 
 		// Register the default ability category.
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_ability_category' ) );
+
+		// Hook when the connector approval experiment is enabled.
+		add_action( 'add_option_wpai_feature_connector-approval_enabled', array( $this, 'flag_connectors_on_enable' ), 10, 2 );
+		add_action( 'update_option_wpai_feature_connector-approval_enabled', array( $this, 'flag_connectors_on_enable' ), 10, 3 );
 	}
 
 	/**
@@ -240,5 +244,24 @@ final class Main {
 			),
 			'0.8.0'
 		);
+	}
+
+	/**
+	 * Flags all active connectors when the connector approval experiment is enabled.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $old_value_or_option Option name (for add) or old value (for update).
+	 * @param mixed $value New value being saved.
+	 * @return void
+	 */
+	public function flag_connectors_on_enable( $old_value_or_option, $value = null ): void {
+		if ( ! $value ) {
+			return;
+		}
+
+		$store  = new \WordPress\AI\Connector_Approval\Approvals_Store();
+		$notice = new \WordPress\AI\Connector_Approval\Admin_Notice( $store, '__return_empty_string' );
+		$notice->flag_any_active_connectors();
 	}
 }

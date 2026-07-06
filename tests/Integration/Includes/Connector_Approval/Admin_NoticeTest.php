@@ -35,7 +35,6 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->store = new Approvals_Store();
-		delete_option( 'wpai_connector_approval_checked_connectors' );
 	}
 
 	/**
@@ -47,7 +46,6 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		delete_option( Approvals_Store::OPTION_APPROVALS );
 		delete_option( Approvals_Store::OPTION_PENDING );
-		delete_option( 'wpai_connector_approval_checked_connectors' );
 		parent::tearDown();
 	}
 
