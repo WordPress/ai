@@ -45,7 +45,7 @@ final class Admin_Notice {
 	 *
 	 * @var string
 	 */
-	private const DISMISS_QUERY_ARG = 'wpai_ca_notice_dismiss';
+	public const DISMISS_QUERY_ARG = 'wpai_ca_notice_dismiss';
 
 	/**
 	 * Nonce action for dismissal.
@@ -54,7 +54,7 @@ final class Admin_Notice {
 	 *
 	 * @var string
 	 */
-	private const DISMISS_NONCE = 'wpai_ca_notice';
+	public const DISMISS_NONCE = 'wpai_ca_notice';
 
 	/**
 	 * Approvals store.
@@ -184,6 +184,27 @@ final class Admin_Notice {
 	}
 
 	/**
+	 * Returns whether the pending requests notice has been dismissed by the user.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, array<string, mixed>> $pending Array of pending approval requests.
+	 * @return bool
+	 */
+	public static function is_dismissed( array $pending ): bool {
+		if ( empty( $pending ) ) {
+			return true;
+		}
+
+		$keys = array_keys( $pending );
+		sort( $keys );
+		$signature = md5( implode( '|', $keys ) );
+		$dismissed = (string) get_user_meta( get_current_user_id(), self::DISMISS_META, true );
+
+		return $signature === $dismissed;
+	}
+
+	/**
 	 * Renders the notice.
 	 *
 	 * @since 1.0.0
@@ -194,18 +215,12 @@ final class Admin_Notice {
 		}
 
 		$screen = get_current_screen();
-		if ( $screen && 'tools_page_ai-connector-approval' === $screen->id ) {
+		if ( $screen && in_array( $screen->id, array( 'tools_page_ai-connector-approval', 'settings_page_ai-wp-admin' ), true ) ) {
 			return;
 		}
 
 		$pending = $this->store->get_pending();
-		if ( empty( $pending ) ) {
-			return;
-		}
-
-		$signature = $this->signature();
-		$dismissed = (string) get_user_meta( get_current_user_id(), self::DISMISS_META, true );
-		if ( $signature === $dismissed ) {
+		if ( self::is_dismissed( $pending ) ) {
 			return;
 		}
 

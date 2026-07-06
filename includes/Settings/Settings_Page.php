@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Settings;
 
+use WordPress\AI\Connector_Approval\Admin_Notice;
+use WordPress\AI\Connector_Approval\Approvals_Store;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
@@ -85,6 +87,24 @@ class Settings_Page {
 					$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
 					$data['featureGroups']       = $feature_metadata['groups'] ?? array();
 					$data['features']            = $feature_metadata['features'] ?? array();
+
+					$connector_approval                   = $registry->get_feature( 'connector-approval' );
+					$connector_approval_enabled           = $connector_approval && $connector_approval->is_enabled();
+					$data['hasPendingConnectorApprovals'] = false;
+					$data['connectorApprovalsUrl']        = esc_url_raw( admin_url( 'tools.php?page=ai-connector-approval' ) );
+					$data['dismissNoticeUrl']             = '';
+					if ( $connector_approval_enabled && class_exists( 'WordPress\AI\Connector_Approval\Approvals_Store' ) && class_exists( 'WordPress\AI\Connector_Approval\Admin_Notice' ) ) {
+						$store                                = new Approvals_Store();
+						$pending                              = $store->get_pending();
+						$data['hasPendingConnectorApprovals'] = ! Admin_Notice::is_dismissed( $pending );
+						$data['dismissNoticeUrl']             = esc_url_raw( add_query_arg(
+							array(
+								Admin_Notice::DISMISS_QUERY_ARG => '1',
+								'_wpnonce'                      => wp_create_nonce( Admin_Notice::DISMISS_NONCE ),
+							),
+							admin_url( 'options-general.php?page=ai-wp-admin' )
+						) );
+					}
 					return $data;
 				}
 			);
