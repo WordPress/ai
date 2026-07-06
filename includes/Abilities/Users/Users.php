@@ -87,30 +87,6 @@ final class Users {
 	);
 
 	/**
-	 * Cached public post type names.
-	 *
-	 * @since x.x.x
-	 * @var string[]|null
-	 */
-	private ?array $public_post_types = null;
-
-	/**
-	 * Cached user field definitions, keyed by field name in output order.
-	 *
-	 * @since x.x.x
-	 * @var array<string, mixed>|null
-	 */
-	private ?array $user_properties = null;
-
-	/**
-	 * Cached role names.
-	 *
-	 * @since x.x.x
-	 * @var string[]|null
-	 */
-	private ?array $role_names = null;
-
-	/**
 	 * Hooks the ability into the Abilities API.
 	 *
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
@@ -424,7 +400,7 @@ final class Users {
 	}
 
 	/**
-	 * Checks whether a user has published posts in public post types.
+	 * Checks whether a user has published posts in publicly viewable post types.
 	 *
 	 * @since x.x.x
 	 *
@@ -437,35 +413,25 @@ final class Users {
 			return false;
 		}
 
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.count_user_posts_count_user_posts -- Public-author checks only consider public post types.
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.count_user_posts_count_user_posts -- Public-author checks only consider publicly viewable post types.
 		return count_user_posts( (int) $user->ID, $post_types ) > 0;
 	}
 
 	/**
-	 * Returns public post types.
+	 * Returns publicly viewable post types.
+	 *
+	 * Uses {@see is_post_type_viewable()} rather than the `public` registration
+	 * argument, since `public` alone does not guarantee a post type is viewable
+	 * on the front end. Deliberately resolved on every call rather than cached:
+	 * post types can be unregistered or re-registered with different arguments
+	 * between the ability being registered and the ability being used.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string[] Public post type names.
+	 * @return string[] Publicly viewable post type names.
 	 */
 	private function get_public_post_types(): array {
-		if ( null !== $this->public_post_types ) {
-			return $this->public_post_types;
-		}
-
-		$post_types = array();
-
-		foreach ( get_post_types( array( 'public' => true ), 'names' ) as $post_type ) {
-			if ( ! is_string( $post_type ) ) {
-				continue;
-			}
-
-			$post_types[] = $post_type;
-		}
-
-		$this->public_post_types = $post_types;
-
-		return $this->public_post_types;
+		return array_values( array_filter( get_post_types(), 'is_post_type_viewable' ) );
 	}
 
 	/**
@@ -497,17 +463,15 @@ final class Users {
 	 * This is the single source of truth for the ability's user fields: the output
 	 * schema uses the definitions directly, while the input schema and field
 	 * normalization use the keys. The `avatar_urls` field is dropped when the
-	 * `show_avatars` option is disabled.
+	 * `show_avatars` option is disabled. Deliberately resolved on every call rather
+	 * than cached, since the option and the registered roles can change between the
+	 * ability being registered and the ability being used.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> User field definitions.
 	 */
 	private function get_user_properties(): array {
-		if ( null !== $this->user_properties ) {
-			return $this->user_properties;
-		}
-
 		$user_properties = array(
 			'id'              => array(
 				'type'        => 'integer',
@@ -584,9 +548,7 @@ final class Users {
 			unset( $user_properties['avatar_urls'] );
 		}
 
-		$this->user_properties = $user_properties;
-
-		return $this->user_properties;
+		return $user_properties;
 	}
 
 	/**
@@ -605,18 +567,15 @@ final class Users {
 	/**
 	 * Returns registered role names.
 	 *
+	 * Deliberately resolved on every call rather than cached, since roles can be
+	 * registered or unregistered at runtime.
+	 *
 	 * @since x.x.x
 	 *
 	 * @return string[] Role names.
 	 */
 	private function get_role_names(): array {
-		if ( null !== $this->role_names ) {
-			return $this->role_names;
-		}
-
-		$this->role_names = array_keys( wp_roles()->roles );
-
-		return $this->role_names;
+		return array_keys( wp_roles()->roles );
 	}
 
 	/**
@@ -716,6 +675,11 @@ final class Users {
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
 	private function get_users_input_schema(): array {
+		/*
+		 * The schema enums reflect the roles and post types available at registration
+		 * time; the permission/execute callbacks re-resolve these sets at call time,
+		 * since both can change in between.
+		 */
 		$role_names        = $this->get_role_names();
 		$public_post_types = $this->get_public_post_types();
 		$fields            = array(
