@@ -103,17 +103,6 @@ final class Content {
 	);
 
 	/**
-	 * Post types exposed through the Abilities API, computed once at registration.
-	 *
-	 * Plugin: cached so the input schema and the permission/execute callbacks derive from
-	 * the exact same set, and the post type list is only walked once per request.
-	 *
-	 * @since x.x.x
-	 * @var array<string, \WP_Post_Type>|null
-	 */
-	private ?array $exposed_post_types = null;
-
-	/**
 	 * Hooks the ability into the Abilities API.
 	 *
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
@@ -180,10 +169,12 @@ final class Content {
 			wp_unregister_ability( 'core/read-content' );
 		}
 
-		// Plugin: compute once; check_permission()/execute_get_content() reuse this set.
-		$this->exposed_post_types = $this->get_exposed_post_types();
-
-		$post_types = array_keys( $this->exposed_post_types );
+		/*
+		 * The schema enum reflects the post types exposed at registration time; the
+		 * permission/execute callbacks re-resolve the set at call time, since post
+		 * types can be (un)registered in between.
+		 */
+		$post_types = array_keys( $this->get_exposed_post_types() );
 
 		/*
 		 * Internal statuses (e.g. `inherit`) are excluded, so post types that rely on
@@ -234,7 +225,7 @@ final class Content {
 	 */
 	public function check_permission( $input = array() ): bool {
 		$input   = is_array( $input ) ? $input : array();
-		$exposed = $this->exposed_post_types ?? $this->get_exposed_post_types();
+		$exposed = $this->get_exposed_post_types();
 
 		if ( ! is_user_logged_in() ) {
 			return false;
@@ -462,7 +453,7 @@ final class Content {
 	 */
 	public function execute_get_content( $input = array() ) {
 		$input         = is_array( $input ) ? $input : array();
-		$exposed       = $this->exposed_post_types ?? $this->get_exposed_post_types();
+		$exposed       = $this->get_exposed_post_types();
 		$fields        = $this->normalize_fields( $input );
 		$requires_edit = $this->has_explicit_edit_fields( $input );
 
@@ -646,6 +637,10 @@ final class Content {
 
 	/**
 	 * Returns the post types exposed through the Abilities API, keyed by name.
+	 *
+	 * Deliberately resolved on every call rather than cached: post types can be
+	 * unregistered or re-registered with different arguments between the ability
+	 * being registered and the ability being used.
 	 *
 	 * @since x.x.x
 	 *
