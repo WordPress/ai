@@ -80,6 +80,9 @@ interface PageData {
 	connectorsUrl: string;
 	featureGroups: FeatureGroupData[];
 	features: FeatureData[];
+	hasPendingConnectorApprovals: boolean;
+	connectorApprovalsUrl: string;
+	dismissNoticeUrl: string;
 }
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
@@ -201,6 +204,9 @@ function getPageData(): PageData {
 		connectorsUrl: '',
 		featureGroups: [],
 		features: [],
+		hasPendingConnectorApprovals: false,
+		connectorApprovalsUrl: '',
+		dismissNoticeUrl: '',
 	};
 
 	try {
@@ -230,6 +236,13 @@ function getPageData(): PageData {
 			connectorsUrl: toStringValue( pageData.connectorsUrl ),
 			featureGroups,
 			features,
+			hasPendingConnectorApprovals: Boolean(
+				pageData.hasPendingConnectorApprovals
+			),
+			connectorApprovalsUrl: toStringValue(
+				pageData.connectorApprovalsUrl
+			),
+			dismissNoticeUrl: toStringValue( pageData.dismissNoticeUrl ),
 		};
 	} catch {
 		return fallback;
@@ -693,10 +706,15 @@ function AISettingsPage() {
 		};
 	}, [] );
 
+	const isConnectorApprovalEnabled =
+		!! editedRecord?.[ 'wpai_feature_connector-approval_enabled' ];
+	const showConnectorApprovalNotice =
+		PAGE_DATA.hasPendingConnectorApprovals && isConnectorApprovalEnabled;
+
 	const { editEntityRecord } = useDispatch( coreStore );
 	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
 		useDispatch( coreStore ) as any;
-	const { createSuccessNotice, createErrorNotice } =
+	const { createSuccessNotice, createErrorNotice, createInfoNotice } =
 		useDispatch( noticesStore );
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
@@ -782,6 +800,17 @@ function AISettingsPage() {
 					throwOnError: true,
 				} );
 				createSuccessNotice( message, { type: 'snackbar' } );
+				if (
+					edits[ 'wpai_feature_connector-approval_enabled' ] === true
+				) {
+					createInfoNotice(
+						__(
+							'Note: AI features require connector approval under Tools.',
+							'ai'
+						),
+						{ type: 'snackbar' }
+					);
+				}
 			} catch {
 				// Revert only the toggled keys to their server-side values.
 				const serverRecord = ( registry as any )
@@ -805,6 +834,7 @@ function AISettingsPage() {
 			saveSpecifiedEdits,
 			createSuccessNotice,
 			createErrorNotice,
+			createInfoNotice,
 			featureDefinitions,
 			registry,
 		]
@@ -1060,6 +1090,42 @@ function AISettingsPage() {
 									</Notice.ActionLink>
 								</Notice.Actions>
 							) }
+						</Notice.Root>
+					) }
+					{ showConnectorApprovalNotice && (
+						<Notice.Root intent="warning">
+							<Notice.Description>
+								{ __(
+									'One or more plugins or themes are requesting access to AI connectors.',
+									'ai'
+								) }
+							</Notice.Description>
+							{ ( PAGE_DATA.connectorApprovalsUrl || PAGE_DATA.dismissNoticeUrl ) && (
+								<Notice.Actions>
+									{ PAGE_DATA.connectorApprovalsUrl && (
+										<Notice.ActionLink
+											href={ PAGE_DATA.connectorApprovalsUrl }
+										>
+											{ __( 'Review requests', 'ai' ) }
+										</Notice.ActionLink>
+									) }
+									{ PAGE_DATA.dismissNoticeUrl && (
+										<Notice.ActionLink
+											href={ PAGE_DATA.dismissNoticeUrl }
+										>
+											{ __( 'Dismiss', 'ai' ) }
+										</Notice.ActionLink>
+									) }
+								</Notice.Actions>
+							) }
+							<Notice.CloseIcon
+								onClick={ () => {
+									if ( PAGE_DATA.dismissNoticeUrl ) {
+										window.location.href =
+											PAGE_DATA.dismissNoticeUrl;
+									}
+								} }
+							/>
 						</Notice.Root>
 					) }
 					{ isLoading ? (
