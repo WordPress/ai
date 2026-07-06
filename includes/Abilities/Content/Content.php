@@ -807,11 +807,11 @@ final class Content {
 				'type'                 => 'object',
 				'additionalProperties' => false,
 				'properties'           => array(
-					'id'           => array(
+					'id'   => array(
 						'type'        => 'integer',
 						'description' => __( 'The author user ID.', 'ai' ),
 					),
-					'display_name' => array(
+					'name' => array(
 						'type'        => 'string',
 						'description' => __( 'The author display name.', 'ai' ),
 					),
@@ -1134,8 +1134,8 @@ final class Content {
 		if ( $fields_requested( 'author' ) && post_type_supports( $post_type, 'author' ) ) {
 			$author         = get_userdata( (int) $post->post_author );
 			$data['author'] = array(
-				'id'           => (int) $post->post_author,
-				'display_name' => $author ? $author->display_name : '',
+				'id'   => (int) $post->post_author,
+				'name' => $author ? $author->display_name : '',
 			);
 		}
 
