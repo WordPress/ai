@@ -110,4 +110,28 @@ class Type_AheadTest extends WP_UnitTestCase {
 			'enqueue_block_assets should be hooked to enqueue_block_assets'
 		);
 	}
+
+	/**
+	 * Tests enqueue_assets() enqueues scripts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_enqueues_scripts() {
+		$experiment = new Type_Ahead();
+		$experiment->enqueue_assets();
+
+		$this->assertTrue( wp_script_is( 'ai_type_ahead', 'enqueued' ) );
+	}
+
+	/**
+	 * Tests enqueue_block_assets() enqueues styles.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_block_assets_enqueues_styles() {
+		$experiment = new Type_Ahead();
+		$experiment->enqueue_block_assets();
+
+		$this->assertTrue( wp_style_is( 'ai_type_ahead', 'enqueued' ) );
+	}
 }

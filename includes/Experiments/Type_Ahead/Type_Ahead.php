@@ -116,7 +116,7 @@ class Type_Ahead extends Abstract_Feature {
 	/**
 	 * Enqueues the block stylesheet for the editor iframe and the front end.
 	 *
-	 * @since 1.1.1
+	 * @since x.x.x
 	 */
 	public function enqueue_block_assets(): void {
 		Asset_Loader::enqueue_style( 'type_ahead', 'experiments/type-ahead' );
