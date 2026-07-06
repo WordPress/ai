@@ -12,6 +12,8 @@ namespace WordPress\AI\Connector_Approval;
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
+use function WordPress\AI\get_ai_connectors;
+
 /**
  * Renders a dismissible admin notice when there are pending approval requests.
  *
@@ -26,6 +28,15 @@ final class Admin_Notice {
 	 * @var string
 	 */
 	private const DISMISS_META = 'wpai_connector_approval_notice_dismissed';
+
+	/**
+	 * Option key tracking checked connectors for the AI plugin.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const CHECKED_CONNECTORS_OPTION = 'wpai_connector_approval_checked_connectors';
 
 	/**
 	 * Query argument used to trigger dismissal.
@@ -83,7 +94,65 @@ final class Admin_Notice {
 	 */
 	public function register(): void {
 		add_action( 'admin_init', array( $this, 'maybe_handle_dismiss' ) );
+		add_action( 'admin_init', array( $this, 'flag_any_active_connectors' ) );
 		add_action( 'admin_notices', array( $this, 'render' ) );
+	}
+
+	/**
+	 * Checks for any active/newly configured connectors and registers a pending request
+	 * for the AI plugin itself if the connector is not already approved for it.
+	 *
+	 * This ensures administrators are immediately flagged that the AI plugin needs
+	 * access to the connected providers when Connector Approvals is enabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function flag_any_active_connectors(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$connectors = get_ai_connectors();
+		if ( empty( $connectors ) ) {
+			return;
+		}
+
+		$ai_basename = plugin_basename( WPAI_PLUGIN_FILE );
+		$name        = __( 'AI', 'ai' );
+
+		$checked = get_option( self::CHECKED_CONNECTORS_OPTION, array() );
+		if ( ! is_array( $checked ) ) {
+			$checked = array();
+		}
+
+		$updated = false;
+
+		foreach ( array_keys( $connectors ) as $connector_id ) {
+			// Skip connectors we have already provided a notice to anytime before.
+			if ( isset( $checked[ $connector_id ] ) ) {
+				continue;
+			}
+
+			// If not approved, record as pending.
+			if ( ! $this->store->is_approved( $ai_basename, $connector_id ) ) {
+				$this->store->record_pending(
+					array(
+						'type'     => 'plugin',
+						'basename' => $ai_basename,
+						'name'     => $name,
+					),
+					$connector_id
+				);
+			}
+
+			$checked[ $connector_id ] = true;
+			$updated                  = true;
+		}
+
+		if ( $updated ) {
+			update_option( self::CHECKED_CONNECTORS_OPTION, $checked, true );
+		}
+
 	}
 
 	/**
