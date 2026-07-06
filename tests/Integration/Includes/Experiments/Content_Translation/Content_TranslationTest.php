@@ -211,7 +211,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 			wp_script_is( 'ai_content_translation', 'enqueued' )
 		);
 		$this->assertStringContainsString(
-			'"minContentLength":"15"',
+			'"minContentLength":"5"',
 			(string) wp_scripts()->get_data( 'ai_content_translation', 'data' ),
 			'Data should contain the default minimum content length'
 		);

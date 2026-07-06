@@ -152,7 +152,7 @@ test.describe( 'Content Translation Experiment', () => {
 		await editor.insertBlock( {
 			name: 'core/paragraph',
 			attributes: {
-				content: 'Too short.',
+				content: 'A',
 			},
 		} );
 
