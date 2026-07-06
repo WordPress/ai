@@ -35,6 +35,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->store = new Approvals_Store();
+		delete_option( 'wpai_connector_approval_checked_connectors' );
 	}
 
 	/**
@@ -46,6 +47,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		delete_option( Approvals_Store::OPTION_APPROVALS );
 		delete_option( Approvals_Store::OPTION_PENDING );
+		delete_option( 'wpai_connector_approval_checked_connectors' );
 		parent::tearDown();
 	}
 
@@ -150,5 +152,51 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'class="notice notice-warning ai-connector-approval-notice inline"', $output );
+	}
+
+	/**
+	 * Tests that flag_any_active_connectors flags unapproved active connectors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_flag_any_active_connectors(): void {
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		// Register a dummy connector.
+		$registry = \WP_Connector_Registry::get_instance();
+		$registry->register(
+			'wpai_test_notice_provider',
+			array(
+				'name'           => 'Test Notice Provider',
+				'description'    => 'Test provider.',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method'       => 'api_key',
+					'setting_name' => 'wpai_test_notice_key',
+				),
+			)
+		);
+		update_option( 'wpai_test_notice_key', 'some-credential' );
+
+		$ai_basename = plugin_basename( WPAI_PLUGIN_FILE );
+
+		$notice = new Admin_Notice(
+			$this->store,
+			static function (): string {
+				return admin_url( 'tools.php?page=ai-connector-approval' );
+			}
+		);
+		$notice->flag_any_active_connectors();
+
+		$pending     = $this->store->get_pending();
+		$key         = $this->store->pending_key( $ai_basename, 'wpai_test_notice_provider' );
+
+		$this->assertArrayHasKey( $key, $pending );
+		$this->assertSame( 'wpai_test_notice_provider', $pending[ $key ]['connector_id'] );
+
+		// Clean up connector registry.
+		$registry->unregister( 'wpai_test_notice_provider' );
+		delete_option( 'wpai_test_notice_key' );
 	}
 }
