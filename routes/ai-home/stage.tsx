@@ -1050,7 +1050,7 @@ function AISettingsPage() {
 												advancedExperimentSettings.isAdvancedExperimentSettingsEnabled
 											}
 											info={ __(
-												'Show advanced configuration options for AI experiments.',
+												'Show advanced configuration options for experiments.',
 												'ai'
 											) }
 											icon={
