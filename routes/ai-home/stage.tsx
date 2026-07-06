@@ -656,7 +656,11 @@ function VisualCardToggle( {
 			}` }
 		>
 			{ feature?.image && (
-				<img alt="" loading="lazy" src={ feature.image } />
+				<img
+					alt={ feature.label }
+					loading="lazy"
+					src={ feature.image }
+				/>
 			) }
 			<Card.Content>
 				<ToggleControl
