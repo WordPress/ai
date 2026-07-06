@@ -82,12 +82,12 @@ test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 	test( 'returns the current user by ID', async ( { page } ) => {
 		const outcome = await runCoreUsers( page, {
 			id: currentUser.id,
-			fields: [ 'id', 'display_name', 'user_email' ],
+			fields: [ 'id', 'name', 'email' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result.id ).toBe( currentUser.id );
-		expect( outcome.result.user_email ).toBe( currentUser.email );
+		expect( outcome.result.email ).toBe( currentUser.email );
 		expect( outcome.result.users ).toBeUndefined();
 		expect( outcome.result.total ).toBeUndefined();
 		expect( outcome.result.total_pages ).toBeUndefined();
@@ -103,10 +103,10 @@ test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 		expect( outcome.ok ).toBe( true );
 		expect( Object.keys( outcome.result ).sort() ).toEqual( [
 			'avatar_urls',
-			'display_name',
 			'id',
 			'link',
-			'user_nicename',
+			'name',
+			'slug',
 		] );
 	} );
 
@@ -138,15 +138,15 @@ test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 
 	test( 'limits each user to the requested fields', async ( { page } ) => {
 		const outcome = await runCoreUsers( page, {
-			fields: [ 'id', 'display_name' ],
+			fields: [ 'id', 'name' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result.users.length ).toBeGreaterThan( 0 );
 		for ( const user of outcome.result.users ) {
 			expect( Object.keys( user ).sort() ).toEqual( [
-				'display_name',
 				'id',
+				'name',
 			] );
 		}
 	} );

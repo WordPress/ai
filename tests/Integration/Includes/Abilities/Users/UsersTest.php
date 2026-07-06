@@ -323,9 +323,9 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertCount( 5, $schema['oneOf'], 'The users ability input schema should expose four lookup modes and collection mode.' );
 
 		$this->assertSame( array( 'id' ), $schema['oneOf'][0]['required'], 'The first input mode should require an ID.' );
-		$this->assertSame( array( 'user_email' ), $schema['oneOf'][1]['required'], 'The second input mode should require a user email.' );
-		$this->assertSame( array( 'user_login' ), $schema['oneOf'][2]['required'], 'The third input mode should require a user login.' );
-		$this->assertSame( array( 'user_nicename' ), $schema['oneOf'][3]['required'], 'The fourth input mode should require a user nicename.' );
+		$this->assertSame( array( 'email' ), $schema['oneOf'][1]['required'], 'The second input mode should require an email.' );
+		$this->assertSame( array( 'username' ), $schema['oneOf'][2]['required'], 'The third input mode should require a username.' );
+		$this->assertSame( array( 'slug' ), $schema['oneOf'][3]['required'], 'The fourth input mode should require a slug.' );
 		$this->assertArrayNotHasKey( 'required', $schema['oneOf'][4], 'Collection mode should allow an empty request.' );
 
 		$collection_properties = $schema['oneOf'][4]['properties'];
@@ -379,7 +379,7 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertCount( 2, $output_schema['oneOf'], 'The output schema should describe single-user and collection responses.' );
 		$this->assertArrayNotHasKey( 'required', $user_schema, 'Single-user fields should remain optional.' );
 		$this->assertSame( array( 'users', 'total', 'total_pages' ), $collection_schema['required'], 'Collection responses should require the wrapper fields.' );
-		$this->assertSame( 'date-time', $user_properties['user_registered']['format'], 'The user_registered output schema should use date-time format.' );
+		$this->assertSame( 'date-time', $user_properties['registered_date']['format'], 'The registered_date output schema should use date-time format.' );
 		$this->assertEqualSets( array_keys( wp_roles()->roles ), $user_properties['roles']['items']['enum'], 'The roles output enum should expose registered role names.' );
 	}
 
@@ -419,11 +419,11 @@ class UsersTest extends WP_UnitTestCase {
 
 		$this->assertIsArray( $result, 'A current-user lookup should return an array.' );
 		$this->assertSame(
-			array( 'id', 'display_name', 'link', 'user_nicename', 'avatar_urls' ),
+			array( 'id', 'name', 'link', 'slug', 'avatar_urls' ),
 			array_keys( $result ),
 			'Omitted fields should return the lean default field set.'
 		);
-		$this->assertArrayNotHasKey( 'user_email', $result, 'Default fields should not include sensitive user fields.' );
+		$this->assertArrayNotHasKey( 'email', $result, 'Default fields should not include sensitive user fields.' );
 		$this->assertArrayNotHasKey( 'description', $result, 'Default fields should omit less common read-context fields.' );
 	}
 
@@ -442,7 +442,7 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The current user can read themselves by ID, user email, and user login.
+	 * The current user can read themselves by ID, email, and username.
 	 *
 	 * @since x.x.x
 	 */
@@ -455,44 +455,44 @@ class UsersTest extends WP_UnitTestCase {
 		$result = $ability->execute(
 			array(
 				'id'     => $this->subscriber_id,
-				'fields' => array( 'id', 'user_email', 'user_login', 'roles' ),
+				'fields' => array( 'id', 'email', 'username', 'roles' ),
 			)
 		);
 
 		$this->assertIsArray( $result, 'A user should be able to read themselves by ID.' );
 		$this->assertSame( $this->subscriber_id, $result['id'], 'The ID lookup should return the current user.' );
-		$this->assertSame( 'users-ability-subscriber@example.com', $result['user_email'], 'The current user should receive their own email.' );
-		$this->assertSame( 'users_ability_subscriber', $result['user_login'], 'The current user should receive their own login.' );
+		$this->assertSame( 'users-ability-subscriber@example.com', $result['email'], 'The current user should receive their own email.' );
+		$this->assertSame( 'users_ability_subscriber', $result['username'], 'The current user should receive their own username.' );
 		$this->assertContains( 'subscriber', $result['roles'], 'The current user should receive their own roles.' );
 
-		$result = $ability->execute( array( 'user_email' => 'users-ability-subscriber@example.com' ) );
+		$result = $ability->execute( array( 'email' => 'users-ability-subscriber@example.com' ) );
 		$this->assertIsArray( $result, 'A user should be able to read themselves by email.' );
 		$this->assertSame( $this->subscriber_id, $result['id'], 'The email lookup should return the current user.' );
 
-		$result = $ability->execute( array( 'user_login' => 'users_ability_subscriber' ) );
-		$this->assertIsArray( $result, 'A user should be able to read themselves by login.' );
-		$this->assertSame( $this->subscriber_id, $result['id'], 'The login lookup should return the current user.' );
+		$result = $ability->execute( array( 'username' => 'users_ability_subscriber' ) );
+		$this->assertIsArray( $result, 'A user should be able to read themselves by username.' );
+		$this->assertSame( $this->subscriber_id, $result['id'], 'The username lookup should return the current user.' );
 
 		$result = $ability->execute(
 			array(
 				'id'     => $this->subscriber_id,
-				'fields' => array( 'id', 'user_registered' ),
+				'fields' => array( 'id', 'registered_date' ),
 			)
 		);
 		$this->assertIsArray( $result, 'A user should be able to request their registration date.' );
 		$this->assertSame(
 			gmdate( 'c', strtotime( get_userdata( $this->subscriber_id )->user_registered ) ),
-			$result['user_registered'],
+			$result['registered_date'],
 			'The registration date should be formatted as an ISO 8601 date-time string.'
 		);
 	}
 
 	/**
-	 * Public-author users can be read by ID or user nicename by logged-in users.
+	 * Public-author users can be read by ID or slug by logged-in users.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_public_author_can_be_read_by_id_and_user_nicename(): void {
+	public function test_public_author_can_be_read_by_id_and_slug(): void {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
@@ -501,23 +501,23 @@ class UsersTest extends WP_UnitTestCase {
 		$result = $ability->execute(
 			array(
 				'id'     => $this->public_author_id,
-				'fields' => array( 'id', 'user_nicename', 'user_email' ),
+				'fields' => array( 'id', 'slug', 'email' ),
 			)
 		);
 
 		$this->assertIsArray( $result, 'A logged-in user should be able to read a public author by ID.' );
 		$this->assertSame( $this->public_author_id, $result['id'], 'The ID lookup should return the public author.' );
-		$this->assertSame( 'users-ability-author', $result['user_nicename'], 'The public author nicename should be returned.' );
-		$this->assertArrayNotHasKey( 'user_email', $result, 'Public-author access should not expose another user email.' );
+		$this->assertSame( 'users-ability-author', $result['slug'], 'The public author slug should be returned.' );
+		$this->assertArrayNotHasKey( 'email', $result, 'Public-author access should not expose another user email.' );
 
-		$result = $ability->execute( array( 'user_nicename' => 'users-ability-author' ) );
+		$result = $ability->execute( array( 'slug' => 'users-ability-author' ) );
 
-		$this->assertIsArray( $result, 'A logged-in user should be able to read a public author by nicename.' );
-		$this->assertSame( $this->public_author_id, $result['id'], 'The nicename lookup should return the public author.' );
+		$this->assertIsArray( $result, 'A logged-in user should be able to read a public author by slug.' );
+		$this->assertSame( $this->public_author_id, $result['id'], 'The slug lookup should return the public author.' );
 	}
 
 	/**
-	 * User email and login lookups for another user require list or edit permissions across roles.
+	 * Email and username lookups for another user require list or edit permissions across roles.
 	 *
 	 * @since x.x.x
 	 *
@@ -532,7 +532,7 @@ class UsersTest extends WP_UnitTestCase {
 
 		$ability = wp_get_ability( 'core/read-users' );
 
-		$result = $ability->execute( array( 'user_email' => 'users-ability-author@example.com' ) );
+		$result = $ability->execute( array( 'email' => 'users-ability-author@example.com' ) );
 		if ( $can_resolve ) {
 			$this->assertIsArray( $result, sprintf( 'The %s role should be able to resolve another user by email.', $role ) );
 			$this->assertSame( $this->public_author_id, $result['id'], sprintf( 'The email lookup should return the public author for the %s role.', $role ) );
@@ -541,15 +541,15 @@ class UsersTest extends WP_UnitTestCase {
 			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), sprintf( 'Email lookup denial for the %s role should use the invalid permissions error.', $role ) );
 		}
 
-		$result = $ability->execute( array( 'user_login' => 'users_ability_author' ) );
+		$result = $ability->execute( array( 'username' => 'users_ability_author' ) );
 		if ( $can_resolve ) {
-			$this->assertIsArray( $result, sprintf( 'The %s role should be able to resolve another user by login.', $role ) );
-			$this->assertSame( $this->public_author_id, $result['id'], sprintf( 'The login lookup should return the public author for the %s role.', $role ) );
+			$this->assertIsArray( $result, sprintf( 'The %s role should be able to resolve another user by username.', $role ) );
+			$this->assertSame( $this->public_author_id, $result['id'], sprintf( 'The username lookup should return the public author for the %s role.', $role ) );
 			return;
 		}
 
-		$this->assertWPError( $result, sprintf( 'The %s role should not be able to resolve another user by login.', $role ) );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), sprintf( 'Login lookup denial for the %s role should use the invalid permissions error.', $role ) );
+		$this->assertWPError( $result, sprintf( 'The %s role should not be able to resolve another user by username.', $role ) );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), sprintf( 'Username lookup denial for the %s role should use the invalid permissions error.', $role ) );
 	}
 
 	/**
@@ -694,17 +694,17 @@ class UsersTest extends WP_UnitTestCase {
 			)
 		);
 
-		$by_login = wp_get_ability( 'core/read-users' )->execute(
+		$by_username = wp_get_ability( 'core/read-users' )->execute(
 			array(
-				'user_login' => 'users_ability_subscriber',
-				'include'    => array( $this->subscriber_id ),
+				'username' => 'users_ability_subscriber',
+				'include'  => array( $this->subscriber_id ),
 			)
 		);
 
 		$this->assertWPError( $by_id, 'ID plus include should fail validation.' );
-		$this->assertWPError( $by_login, 'Login plus include should fail validation.' );
+		$this->assertWPError( $by_username, 'Username plus include should fail validation.' );
 		$this->assertSame( 'ability_invalid_input', $by_id->get_error_code(), 'ID plus include should return an input error.' );
-		$this->assertSame( 'ability_invalid_input', $by_login->get_error_code(), 'Login plus include should return an input error.' );
+		$this->assertSame( 'ability_invalid_input', $by_username->get_error_code(), 'Username plus include should return an input error.' );
 	}
 
 	/**
@@ -832,17 +832,17 @@ class UsersTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/read-users' )->execute(
 			array(
 				'id'     => $this->public_author_id,
-				'fields' => array( 'id', 'user_email', 'roles' ),
+				'fields' => array( 'id', 'email', 'roles' ),
 			)
 		);
 
 		$this->assertIsArray( $result, sprintf( 'The %s role should be able to execute a public-author lookup.', $role ) );
 		$this->assertSame( $this->public_author_id, $result['id'], sprintf( 'The %s role should receive the requested public author.', $role ) );
-		$this->assertSame( $can_view_sensitive, array_key_exists( 'user_email', $result ), sprintf( 'The %s role email visibility should match expectations.', $role ) );
+		$this->assertSame( $can_view_sensitive, array_key_exists( 'email', $result ), sprintf( 'The %s role email visibility should match expectations.', $role ) );
 		$this->assertSame( $can_view_roles, array_key_exists( 'roles', $result ), sprintf( 'The %s role roles visibility should match expectations.', $role ) );
 
 		if ( $can_view_sensitive ) {
-			$this->assertSame( 'users-ability-author@example.com', $result['user_email'], sprintf( 'The %s role should receive the public author email when allowed.', $role ) );
+			$this->assertSame( 'users-ability-author@example.com', $result['email'], sprintf( 'The %s role should receive the public author email when allowed.', $role ) );
 		}
 
 		if ( ! $can_view_roles ) {
@@ -896,7 +896,7 @@ class UsersTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/read-users' )->execute(
 			array(
 				'id'     => $this->public_author_id,
-				'fields' => array( 'id', 'user_email', 'roles' ),
+				'fields' => array( 'id', 'email', 'roles' ),
 			)
 		);
 
