@@ -358,6 +358,7 @@ class UsersTest extends WP_UnitTestCase {
 		$fields = $schema['oneOf'][4]['properties']['fields']['items']['enum'];
 		$this->assertContains( 'roles', $fields, 'The fields enum should expose the roles field.' );
 		$this->assertContains( 'avatar_urls', $fields, 'The fields enum should expose avatar_urls when avatars are enabled.' );
+		$this->assertSame( 1, $schema['oneOf'][4]['properties']['fields']['minItems'], 'The fields option should require at least one field when provided.' );
 
 		$role_names = $schema['oneOf'][4]['properties']['roles']['items']['enum'];
 		$this->assertEqualSets( array_keys( wp_roles()->roles ), $role_names, 'The roles query enum should expose registered role names.' );

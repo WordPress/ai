@@ -27,8 +27,8 @@ defined( 'ABSPATH' ) || exit;
  * filtered by roles, published-post authorship, or included IDs. Field-level access is enforced
  * per user by omitting fields the current user cannot view.
  *
- * This class is kept almost identical to the WordPress core class `WP_Users_Abilities`
- * so the two implementations stay in sync. Most differences from the core class are marked with
+ * This class is kept almost identical to the proposed WordPress core implementation
+ * so the two implementations stay in sync. Most differences from the core version are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
  * Plugin: the class is final and instance-based (with private helpers), matching the
@@ -78,7 +78,7 @@ final class Users {
 	 * @since x.x.x
 	 * @var string[]
 	 */
-	private array $default_fields = array(
+	private const DEFAULT_FIELDS = array(
 		'id',
 		'name',
 		'link',
@@ -199,7 +199,10 @@ final class Users {
 				|| ! $this->is_user_member_of_site( $user )
 				|| ! $this->can_read_user_for_lookup( $user, $lookup_type )
 			) {
-				return $this->not_found_error();
+				return new WP_Error(
+					'ability_invalid_permissions',
+					__( 'The requested user cannot be read.', 'ai' )
+				);
 			}
 
 			return $this->format_user( $user, $fields );
@@ -257,7 +260,8 @@ final class Users {
 
 		$users = array();
 		foreach ( $query->get_results() as $user ) {
-			// Collection queries enforce read access through query arguments.
+			// WP_User_Query already scopes multisite collections to current-site members.
+			// Keep this as a defensive guard for filtered/custom query results.
 			if ( ! $user instanceof WP_User || ! $this->is_user_member_of_site( $user ) ) {
 				continue;
 			}
@@ -270,7 +274,7 @@ final class Users {
 		return array(
 			'users'       => $users,
 			'total'       => $total_users,
-			'total_pages' => $per_page > 0 ? (int) ceil( $total_users / $per_page ) : 0,
+			'total_pages' => (int) ceil( $total_users / $per_page ),
 		);
 	}
 
@@ -562,7 +566,7 @@ final class Users {
 	 * @return string[] Default field names.
 	 */
 	private function get_default_fields(): array {
-		return array_values( array_intersect( array_keys( $this->get_user_properties() ), $this->default_fields ) );
+		return array_values( array_intersect( array_keys( $this->get_user_properties() ), self::DEFAULT_FIELDS ) );
 	}
 
 	/**
@@ -686,6 +690,7 @@ final class Users {
 		$fields            = array(
 			'type'        => 'array',
 			'uniqueItems' => true,
+			'minItems'    => 1,
 			'items'       => array(
 				'type' => 'string',
 				'enum' => array_keys( $this->get_user_properties() ),
@@ -932,20 +937,5 @@ final class Users {
 		}
 
 		return $data;
-	}
-
-	/**
-	 * Returns a generic not-found error for missing or inaccessible user lookups.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return \WP_Error Not found error.
-	 */
-	private function not_found_error(): WP_Error {
-		return new WP_Error(
-			'user_not_found',
-			__( 'The requested user was not found.', 'ai' ),
-			array( 'status' => 404 )
-		);
 	}
 }
