@@ -13,7 +13,8 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Content_Translation\Content_Translation as Content_Translation_Experiment;
 
-use function WordPress\AI\count_words;
+use function WordPress\AI\count_characters_excluding_spaces;
+use function WordPress\AI\get_min_content_length;
 
 /**
  * Content Translation WordPress Ability.
@@ -23,13 +24,14 @@ use function WordPress\AI\count_words;
 class Content_Translation extends Abstract_Ability {
 
 	/**
-	 * The minimum word count for translation.
+	 * The default minimum content length for translation.
+	 * One word (~5 characters) is the minimum length for translation.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var int
 	 */
-	protected const MIN_WORDS = 1;
+	public const DEFAULT_MIN_CONTENT_LENGTH = 5;
 
 	/**
 	 * {@inheritDoc}
@@ -107,13 +109,18 @@ class Content_Translation extends Abstract_Ability {
 			);
 		}
 
-		if ( count_words( wp_strip_all_tags( $content ) ) < self::MIN_WORDS ) {
+		$min_content_length = get_min_content_length(
+			'content-translation',
+			self::DEFAULT_MIN_CONTENT_LENGTH
+		);
+
+		if ( count_characters_excluding_spaces( $content ) < $min_content_length ) {
 			return new WP_Error(
 				'content_too_short',
 				sprintf(
-					/* translators: %d: minimum number of words required for translation */
-					esc_html__( 'A minimum of %d words is required for translation.', 'ai' ),
-					self::MIN_WORDS
+					/* translators: %d: minimum number of characters required for translation */
+					esc_html__( 'A minimum of %d characters is required for translation.', 'ai' ),
+					$min_content_length
 				)
 			);
 		}

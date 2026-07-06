@@ -13,7 +13,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
  */
 import { ensureProvider } from '../../../utils/provider-status';
 import { flattenBlocks } from '../../../utils/blocks';
-import { hasMinimumContent } from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 import {
 	getErrorMessage,
 	getSettings,

@@ -12,7 +12,6 @@ import { useState } from '@wordpress/element';
  */
 import TranslationModal from './TranslationModal';
 import { useContentTranslation } from '../hooks/useContentTranslation';
-import { formatMinLengthLabel } from '../../../utils/word-count';
 import { getSettings } from '../utils';
 
 export default function ContentTranslationPlugin() {
@@ -40,15 +39,10 @@ export default function ContentTranslationPlugin() {
 		: __( 'Generate Translation', 'ai' );
 
 	const buttonDescription = isContentTooShort
-		? formatMinLengthLabel(
+		? sprintf(
 				/* translators: %d: minimum number of characters required */
 				__(
 					'Content translation will be available when the post content has at least %d characters.',
-					'ai'
-				),
-				/* translators: %d: minimum number of words required */
-				__(
-					'Content translation will be available when the post content has at least %d words.',
 					'ai'
 				),
 				minContentLength

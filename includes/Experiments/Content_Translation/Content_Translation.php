@@ -109,8 +109,11 @@ class Content_Translation extends Abstract_Feature {
 			'ContentTranslationData',
 			array(
 				'enabled'          => $this->is_enabled(),
-				'minContentLength' => get_min_content_length( 'content-translation', 15 ),
 				'languages'        => Languages::get_supported_languages_for_js(),
+				'minContentLength' => get_min_content_length(
+					'content-translation',
+					Content_Translation_Ability::DEFAULT_MIN_CONTENT_LENGTH
+				),
 			)
 		);
 	}
