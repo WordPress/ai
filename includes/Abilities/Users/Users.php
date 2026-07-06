@@ -216,8 +216,9 @@ final class Users {
 
 		$include = $this->normalize_include( $input );
 		if ( array() !== $include ) {
+			// Default ordering is kept so queries with the same include set can
+			// share the WP_User_Query cache regardless of the requested order.
 			$query_args['include'] = $include;
-			$query_args['orderby'] = 'include';
 		}
 
 		if ( ! empty( $input['roles'] ) && current_user_can( 'list_users' ) ) {
@@ -699,7 +700,7 @@ final class Users {
 				'type'    => 'integer',
 				'minimum' => 1,
 			),
-			'description' => __( 'Limit the query to these user IDs, preserving this order where possible. Collection results are limited to users the caller can read, which for callers without permission to list users means only public authors. To read your own account, use a single-user lookup by ID.', 'ai' ),
+			'description' => __( 'Limit the query to these user IDs. Collection results are limited to users the caller can read, which for callers without permission to list users means only public authors. To read your own account, use a single-user lookup by ID.', 'ai' ),
 		);
 
 		return array(

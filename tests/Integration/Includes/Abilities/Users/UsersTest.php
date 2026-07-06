@@ -589,11 +589,11 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Collection include limits results and preserves requested order.
+	 * Collection include limits results to the requested users.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_collection_include_limits_results_and_preserves_order(): void {
+	public function test_collection_include_limits_results(): void {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
@@ -606,10 +606,10 @@ class UsersTest extends WP_UnitTestCase {
 		);
 
 		$this->assertIsArray( $result, 'An included user query should return an array.' );
-		$this->assertSame(
+		$this->assertEqualSets(
 			array( $this->public_author_id, $this->subscriber_id ),
 			wp_list_pluck( $result['users'], 'id' ),
-			'Included user queries should preserve the requested order.'
+			'Included user queries should return exactly the readable included users.'
 		);
 		$this->assertSame( 2, $result['total'], 'Included user queries should report the matching included total.' );
 	}
