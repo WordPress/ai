@@ -691,11 +691,13 @@ final class Content {
 	 */
 	private function normalize_statuses( array $input ): array {
 		$statuses = $input['status'] ?? array( 'publish' );
-		if ( ! is_array( $statuses ) ) {
+		if ( ! is_array( $statuses ) && ! is_string( $statuses ) ) {
 			return array( 'publish' );
 		}
 
-		$statuses = array_values( array_filter( $statuses, 'is_string' ) );
+		// A GET request delivers list inputs as scalar/CSV strings; parse them the
+		// same way schema validation did (rest_is_array) rather than discarding them.
+		$statuses = array_values( array_filter( wp_parse_list( $statuses ), 'is_string' ) );
 
 		return array() === $statuses ? array( 'publish' ) : array_map( 'sanitize_key', $statuses );
 	}
@@ -709,14 +711,14 @@ final class Content {
 	 * @return int[] Unique positive post IDs.
 	 */
 	private function normalize_include( array $input ): array {
-		if ( empty( $input['include'] ) || ! is_array( $input['include'] ) ) {
+		$include = $input['include'] ?? null;
+		if ( ! is_array( $include ) && ! is_string( $include ) ) {
 			return array();
 		}
 
-		$ids = array_map( array( $this, 'input_int' ), $input['include'] );
-		$ids = array_filter( $ids );
-
-		return array_values( array_unique( $ids ) );
+		// A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
+		// accepts both and yields unique positive IDs, matching schema validation.
+		return array_values( array_filter( wp_parse_id_list( $include ) ) );
 	}
 
 	/**
@@ -732,14 +734,16 @@ final class Content {
 	 * @return string[] List of requested field names.
 	 */
 	private function normalize_fields( array $input ): array {
-		if ( empty( $input['fields'] ) || ! is_array( $input['fields'] ) ) {
+		$fields = $input['fields'] ?? null;
+		if ( ! is_array( $fields ) && ! is_string( $fields ) ) {
 			return $this->default_fields;
 		}
 
-		/** @var string[] $fields */
-		$fields = $input['fields'];
+		// A GET request delivers list inputs as scalar/CSV strings; parse them the
+		// same way schema validation did (rest_is_array) rather than discarding them.
+		$fields = array_values( array_filter( wp_parse_list( $fields ), 'is_string' ) );
 
-		return $fields;
+		return array() === $fields ? $this->default_fields : $fields;
 	}
 
 	/**
