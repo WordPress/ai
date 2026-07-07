@@ -1050,7 +1050,7 @@ function AISettingsPage() {
 												advancedExperimentSettings.isAdvancedExperimentSettingsEnabled
 											}
 											info={ __(
-												'Show advanced configuration options for experiments.',
+												'Show advanced configuration options for features.',
 												'ai'
 											) }
 											icon={
@@ -1064,10 +1064,7 @@ function AISettingsPage() {
 												);
 											} }
 										>
-											{ __(
-												'Advanced experiment settings',
-												'ai'
-											) }
+											{ __( 'Advanced settings', 'ai' ) }
 										</MenuItem>
 									</MenuGroup>
 								) }
