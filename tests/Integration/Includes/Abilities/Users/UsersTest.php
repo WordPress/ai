@@ -11,7 +11,6 @@ use WP_Ability;
 use WP_UnitTestCase;
 use WP_UnitTest_Factory;
 use WordPress\AI\Abilities\Users\Users;
-use stdClass;
 
 /**
  * Users ability test case.
@@ -920,14 +919,17 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A fully redacted user is returned as an empty object, not an empty array.
+	 * A fully redacted field request still returns the user's ID.
 	 *
-	 * When every requested field is inaccessible, the result must still
-	 * serialize as a JSON object (`{}`) to honor the declared output type.
+	 * The `id` field is always included, matching the REST users controller
+	 * where `id` is present in every context. This also guarantees the result
+	 * serializes as a JSON object (`{}`-shaped, never `[]`), honoring the
+	 * declared output type without returning a top-level empty object, which
+	 * REST post-processing (`_fields`) cannot handle.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_fully_redacted_user_returns_empty_object(): void {
+	public function test_fully_redacted_field_request_still_returns_id(): void {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
@@ -940,8 +942,13 @@ class UsersTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertInstanceOf( stdClass::class, $result, 'A fully redacted user should be returned as an object.' );
-		$this->assertSame( '{}', wp_json_encode( $result ), 'A fully redacted user should serialize as a JSON object.' );
+		$this->assertIsArray( $result, 'A fully redacted field request should still succeed.' );
+		$this->assertSame( array( 'id' => $this->public_author_id ), $result, 'A fully redacted field request should return only the user ID.' );
+		$this->assertSame(
+			sprintf( '{"id":%d}', $this->public_author_id ),
+			wp_json_encode( $result ),
+			'A fully redacted field request should serialize as a JSON object.'
+		);
 
 		$collection = $ability->execute(
 			array(
@@ -951,16 +958,46 @@ class UsersTest extends WP_UnitTestCase {
 		);
 
 		$this->assertIsArray( $collection, 'A collection with redacted fields should return the wrapper.' );
-		$this->assertSame( '{}', wp_json_encode( $collection['users'][0] ), 'Redacted collection entries should serialize as JSON objects.' );
+		$this->assertSame(
+			array( 'id' => $this->public_author_id ),
+			$collection['users'][0],
+			'Redacted collection entries should still contain the user ID.'
+		);
 	}
 
 	/**
-	 * REST-style string input is sanitized against the schema before use.
+	 * Schema-valid object input behaves like its array form.
+	 *
+	 * Schema validation accepts `stdClass` input (the input schema's own
+	 * `default` is one), so it must not be discarded and silently turned into
+	 * an unrestricted collection query.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_object_input_behaves_like_array_input(): void {
+		wp_set_current_user( $this->subscriber_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			(object) array(
+				'id'     => $this->subscriber_id,
+				'fields' => array( 'id', 'email' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Object input should execute the single-user lookup.' );
+		$this->assertSame( $this->subscriber_id, $result['id'], 'Object input must resolve the requested user, not fall back to collection mode.' );
+		$this->assertSame( 'users-ability-subscriber@example.com', $result['email'], 'Object input should honor the requested fields.' );
+	}
+
+	/**
+	 * REST-style string input is coerced by the normalizers.
 	 *
 	 * Read-only abilities run over REST `GET`, where booleans arrive as the
-	 * string 'true' and arrays may arrive as CSV strings. Those values pass
-	 * schema validation, which coerces only for the check, so the ability must
-	 * sanitize them itself before its strict normalizers run.
+	 * string 'true', arrays may arrive as CSV strings, and integers arrive as
+	 * numeric strings. Those values pass schema validation, which coerces only
+	 * for the check, so the normalizers must accept the string forms instead
+	 * of silently dropping the filters they carry.
 	 *
 	 * @since x.x.x
 	 */
@@ -1006,6 +1043,42 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'A CSV include filter should execute.' );
 		$this->assertSame( array( $this->subscriber_id ), wp_list_pluck( $result['users'], 'id' ), 'A string include value must limit the query to the included IDs.' );
 		$this->assertSame( 'users-ability-subscriber@example.com', $result['users'][0]['email'], 'A CSV fields value must select the requested fields.' );
+
+		// IDs that are distinct as strings but equal as integers ('7' vs '07')
+		// pass schema validation; they must still collapse to one filtered ID.
+		$result = $ability->execute(
+			array(
+				'include' => array( (string) $this->subscriber_id, '0' . $this->subscriber_id ),
+				'fields'  => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'A string-duplicate include filter should execute.' );
+		$this->assertSame( array( $this->subscriber_id ), wp_list_pluck( $result['users'], 'id' ), 'String-duplicate IDs must be deduplicated, not silently drop the include filter.' );
+		$this->assertSame( 1, $result['total'], 'String-duplicate IDs should count as one included user.' );
+
+		// Scalars arrive as numeric strings over GET.
+		$result = $ability->execute(
+			array(
+				'id'     => (string) $this->subscriber_id,
+				'fields' => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'A numeric-string ID lookup should execute.' );
+		$this->assertSame( $this->subscriber_id, $result['id'], 'A numeric-string ID must resolve the single-user lookup.' );
+
+		$result = $ability->execute(
+			array(
+				'per_page' => '1',
+				'page'     => '2',
+				'fields'   => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Numeric-string pagination should execute.' );
+		$this->assertCount( 1, $result['users'], 'A numeric-string per_page must limit the page size.' );
+		$this->assertGreaterThan( 1, $result['total_pages'], 'A numeric-string per_page must be reflected in total_pages.' );
 	}
 
 	/**

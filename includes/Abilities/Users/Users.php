@@ -14,6 +14,7 @@ namespace WordPress\AI\Abilities\Users;
 use WP_Error;
 use WP_User;
 use WP_User_Query;
+use stdClass;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -157,7 +158,7 @@ final class Users {
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
 	public function check_permission( $input = array() ): bool {
-		$input = $this->sanitize_input( $input );
+		$input = $this->to_input_array( $input );
 
 		if ( ! is_user_logged_in() ) {
 			return false;
@@ -184,7 +185,7 @@ final class Users {
 	 * @return array<string, mixed>|\stdClass|\WP_Error User data, paginated collection data, or a WP_Error on failure.
 	 */
 	public function execute_get_users( $input = array() ) {
-		$input  = $this->sanitize_input( $input );
+		$input  = $this->to_input_array( $input );
 		$fields = $this->normalize_fields( $input );
 
 		$lookup_type = $this->get_lookup_type( $input );
@@ -271,33 +272,30 @@ final class Users {
 	}
 
 	/**
-	 * Sanitizes raw ability input against the input schema.
+	 * Casts raw ability input to an array.
+	 *
+	 * Schema validation accepts object input (`rest_is_object()` allows a
+	 * `stdClass`, and the input schema's own `default` is one), so it must be
+	 * treated as equivalent to its array form rather than discarded. Any other
+	 * non-array input is replaced with an empty array.
 	 *
 	 * The Abilities API validates input against the schema but does not coerce
 	 * it, and REST `GET` requests (the only method for read-only abilities)
-	 * deliver every scalar as a string. Sanitizing applies the coercions that
-	 * validation already accepted (`'true'` to `true`, CSV strings to arrays,
-	 * numeric strings to integers) before the values reach the strict
-	 * normalizers.
+	 * deliver every scalar as a string. Each normalizer below therefore accepts
+	 * the string forms validation accepted (`'true'` for `true`, CSV strings
+	 * for arrays, numeric strings for integers).
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input The raw ability input.
-	 * @return array<mixed> The sanitized input.
+	 * @return array<mixed> The input as an array.
 	 */
-	private function sanitize_input( $input ): array {
-		if ( ! is_array( $input ) ) {
-			return array();
+	private function to_input_array( $input ): array {
+		if ( $input instanceof stdClass ) {
+			$input = (array) $input;
 		}
 
-		$sanitized = rest_sanitize_value_from_schema( $input, $this->get_users_input_schema(), 'input' );
-		if ( is_wp_error( $sanitized ) || ! is_array( $sanitized ) ) {
-			// Input that does not match the schema is left as-is; it has either
-			// already passed validation or will be rejected by it.
-			return $input;
-		}
-
-		return $sanitized;
+		return is_array( $input ) ? $input : array();
 	}
 
 	/**
@@ -486,8 +484,13 @@ final class Users {
 	 * Returns the requested fields, or a lean default set when none are given.
 	 *
 	 * An empty or absent `fields` value selects a lean set of common read fields.
-	 * Otherwise the requested fields are returned as-is. The input schema has already
-	 * validated them against the supported set before the ability executes.
+	 * Otherwise the requested fields are returned; REST `GET` requests may
+	 * deliver the list as a CSV string. The input schema has already validated
+	 * the names against the supported set before the ability executes.
+	 *
+	 * The `id` field is always included, matching the REST users controller
+	 * where `id` is present in every context. This also guarantees the result
+	 * is never empty, so it always serializes as a JSON object.
 	 *
 	 * @since x.x.x
 	 *
@@ -495,12 +498,14 @@ final class Users {
 	 * @return string[] List of requested field names.
 	 */
 	private function normalize_fields( array $input ): array {
-		if ( empty( $input['fields'] ) || ! is_array( $input['fields'] ) ) {
-			return $this->get_default_fields();
+		$fields = isset( $input['fields'] ) ? $this->normalize_string_list( $input['fields'] ) : array();
+		if ( array() === $fields ) {
+			$fields = $this->get_default_fields();
 		}
 
-		/** @var string[] $fields */
-		$fields = $input['fields'];
+		if ( ! in_array( 'id', $fields, true ) ) {
+			array_unshift( $fields, 'id' );
+		}
 
 		return $fields;
 	}
@@ -638,12 +643,19 @@ final class Users {
 	/**
 	 * Normalizes a mixed value into a list of non-empty strings.
 	 *
+	 * Accepts arrays and CSV strings, since REST `GET` requests deliver list
+	 * input as strings that schema validation coerces only for the check.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $value Raw value.
 	 * @return string[] Normalized strings.
 	 */
 	private function normalize_string_list( $value ): array {
+		if ( is_string( $value ) ) {
+			$value = wp_parse_list( $value );
+		}
+
 		if ( ! is_array( $value ) ) {
 			return array();
 		}
@@ -663,24 +675,34 @@ final class Users {
 	/**
 	 * Normalizes collection-mode included user IDs.
 	 *
+	 * Accepts arrays and CSV strings via {@see wp_parse_id_list()}, which also
+	 * deduplicates IDs that only differ as strings (e.g. `'1'` and `'01'`).
+	 *
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @return int[] User IDs.
 	 */
 	private function normalize_include( array $input ): array {
-		if ( empty( $input['include'] ) || ! is_array( $input['include'] ) ) {
+		if ( empty( $input['include'] ) ) {
 			return array();
 		}
 
-		$ids = array_map( array( $this, 'input_int' ), $input['include'] );
-		$ids = array_filter( $ids );
+		$include = $input['include'];
+		if ( is_scalar( $include ) ) {
+			$include = (string) $include;
+		} elseif ( ! is_array( $include ) ) {
+			return array();
+		}
 
-		return array_values( array_unique( $ids ) );
+		return array_values( array_filter( wp_parse_id_list( $include ) ) );
 	}
 
 	/**
 	 * Normalizes the `has_published_posts` collection input.
+	 *
+	 * Accepts the string and integer forms of `true` that schema validation
+	 * accepts for REST `GET` input, alongside the native boolean.
 	 *
 	 * @since x.x.x
 	 *
@@ -692,11 +714,15 @@ final class Users {
 			return null;
 		}
 
-		if ( true === $input['has_published_posts'] ) {
+		$value = $input['has_published_posts'];
+
+		if ( true === $value || 1 === $value
+			|| ( is_string( $value ) && in_array( strtolower( $value ), array( 'true', '1' ), true ) )
+		) {
 			return true;
 		}
 
-		$post_types = $this->normalize_string_list( $input['has_published_posts'] );
+		$post_types = $this->normalize_string_list( $value );
 
 		return array() === $post_types ? null : $post_types;
 	}
@@ -902,16 +928,20 @@ final class Users {
 	/**
 	 * Formats a user into the ability output shape.
 	 *
-	 * Only the requested fields the current user can see are included.
+	 * Only the requested fields the current user can see are included, except
+	 * `id`, which {@see self::normalize_fields()} always requests.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_User $user   The user object.
 	 * @param string[] $fields The requested field names.
-	 * @return array<string, mixed>|\stdClass The formatted user data. A fully
-	 *                                        redacted user is returned as an
-	 *                                        object so it serializes as `{}`
-	 *                                        rather than `[]`.
+	 * @return array<string, mixed>|\stdClass The formatted user data. An empty
+	 *                                        result is returned as an object so
+	 *                                        it serializes as `{}` rather than
+	 *                                        `[]`; unreachable while `id` is
+	 *                                        ungated, since REST post-processing
+	 *                                        (`_fields`) cannot handle a
+	 *                                        top-level object response.
 	 */
 	private function format_user( WP_User $user, array $fields ) {
 		$fields_requested = static function ( string $field ) use ( $fields ): bool {
