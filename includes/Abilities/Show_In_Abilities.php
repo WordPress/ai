@@ -110,9 +110,9 @@ final class Show_In_Abilities {
 	/**
 	 * Adds the `show_in_abilities` flag to curated core post types as they are registered.
 	 *
-	 * Mirrors {@see self::mark_setting()}: respects an explicit `show_in_abilities` value
-	 * already present on the post type (for example once core ships it natively), only
-	 * filling it in when absent.
+	 * Respects an explicit `show_in_abilities` value already present on the post type —
+	 * including an explicit `false` opt-out (for example once core ships it natively) —
+	 * only filling it in when the key is absent entirely.
 	 *
 	 * @since x.x.x
 	 *
@@ -123,7 +123,7 @@ final class Show_In_Abilities {
 	public function mark_post_type( array $args, string $post_type ): array {
 		$post_types = $this->post_types_map();
 
-		if ( isset( $post_types[ $post_type ] ) && empty( $args['show_in_abilities'] ) ) {
+		if ( isset( $post_types[ $post_type ] ) && ! array_key_exists( 'show_in_abilities', $args ) ) {
 			$args['show_in_abilities'] = $post_types[ $post_type ];
 		}
 
@@ -137,13 +137,15 @@ final class Show_In_Abilities {
 	 * added, but core post types are registered during bootstrap. This patches the existing
 	 * post type objects directly so the polyfill works regardless of when it runs.
 	 * {@see WP_Post_Type} allows dynamic properties, so this is safe on stock WordPress.
+	 * An existing `show_in_abilities` property — including an explicit `false` opt-out —
+	 * is left untouched.
 	 *
 	 * @since x.x.x
 	 */
 	public function mark_registered_post_types(): void {
 		foreach ( $this->post_types_map() as $post_type => $show ) {
 			$object = get_post_type_object( $post_type );
-			if ( ! ( $object instanceof \WP_Post_Type ) || ! empty( $object->show_in_abilities ) ) {
+			if ( ! ( $object instanceof \WP_Post_Type ) || property_exists( $object, 'show_in_abilities' ) ) {
 				continue;
 			}
 

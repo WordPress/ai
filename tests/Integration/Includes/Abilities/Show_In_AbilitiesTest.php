@@ -309,4 +309,31 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 
 		$this->assertSame( array( 'custom' => true ), $args['show_in_abilities'] );
 	}
+
+	/**
+	 * An explicit `show_in_abilities => false` opt-out passed to the filter is preserved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filter_respects_explicit_false_post_type_value(): void {
+		$args = $this->show_in_abilities->mark_post_type(
+			array( 'show_in_abilities' => false ),
+			'page'
+		);
+
+		$this->assertFalse( $args['show_in_abilities'] );
+	}
+
+	/**
+	 * An explicit `show_in_abilities => false` opt-out on a registered post type object is preserved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_direct_patch_respects_explicit_false(): void {
+		get_post_type_object( 'page' )->show_in_abilities = false;
+
+		$this->show_in_abilities->mark_registered_post_types();
+
+		$this->assertFalse( get_post_type_object( 'page' )->show_in_abilities );
+	}
 }
