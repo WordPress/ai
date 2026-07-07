@@ -237,7 +237,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		 * @param string $context    Optional context about the image.
 		 * @param string $image_meta Optional metadata about how the image block is used.
 		 */
-		$prompt = (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $prompt, $context, $image_meta );
+		$prompt = $this->filter_prompt( $prompt, $context, $image_meta );
 
 		$prompt_builder = $this->get_prompt_builder( $prompt, $image_reference['reference'] );
 
@@ -425,23 +425,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
 			->using_temperature( 0.3 );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Alt_Text_Generation_Experiment::class, get_preferred_vision_models() );
-
-		/**
-		 * Filters the configured prompt builder for alt text generation.
-		 *
-		 * Runs after the model preference is applied and before text-generation
-		 * support is verified. The builder already has the reference image attached;
-		 * extend it rather than replacing it, and always return a
-		 * WP_AI_Client_Prompt_Builder.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
-		 * @param string                       $prompt         The user prompt string.
-		 * @param string                       $reference      The reference image data URI.
-		 */
-		$prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, $prompt, $reference );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Alt_Text_Generation_Experiment::class, get_preferred_vision_models(), $prompt, $reference );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

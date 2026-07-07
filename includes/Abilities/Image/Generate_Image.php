@@ -195,7 +195,7 @@ class Generate_Image extends Abstract_Ability {
 		 * @param string      $prompt          The image generation prompt.
 		 * @param string|null $reference_image Optional base64-encoded reference image for edits.
 		 */
-		$prompt = (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $prompt, $reference_image );
+		$prompt = $this->filter_prompt( $prompt, $reference_image );
 
 		$prompt_builder = $this->get_prompt_builder( $prompt, $reference_image );
 
@@ -274,8 +274,6 @@ class Generate_Image extends Abstract_Ability {
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Image_Generation_Feature::class, get_preferred_image_models() );
-
 		if ( null !== $reference_image ) {
 			try {
 				$file           = new File( $reference_image );
@@ -294,20 +292,7 @@ class Generate_Image extends Abstract_Ability {
 			$error_message = esc_html__( 'Image refinement failed. Please ensure you have a connected provider that supports image refinement, not just image generation.', 'ai' );
 		}
 
-		/**
-		 * Filters the configured prompt builder for image generation.
-		 *
-		 * Runs after the model preference and reference image (if any) are applied
-		 * and before image-generation support is verified. Extend the builder rather
-		 * than replacing it, and always return a WP_AI_Client_Prompt_Builder.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder  The configured prompt builder.
-		 * @param string                       $prompt          The image generation prompt (with guidelines).
-		 * @param string|null                  $reference_image Optional base64-encoded reference image.
-		 */
-		$prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, $prompt, $reference_image );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Image_Generation_Feature::class, get_preferred_image_models(), $prompt, $reference_image );
 
 		return $this->ensure_image_generation_supported( $prompt_builder, $error_message );
 	}

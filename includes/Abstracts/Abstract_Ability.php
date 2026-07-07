@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Abstract Ability base class.
  *
  * @package WordPress\AI\Abstracts
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Abstracts;
 
@@ -25,6 +26,7 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
  * @since 0.1.0
  */
 abstract class Abstract_Ability extends WP_Ability {
+
 
 	/**
 	 * Constructor.
@@ -363,5 +365,57 @@ abstract class Abstract_Ability extends WP_Ability {
 		}
 
 		return $prompt_builder;
+	}
+
+	/**
+	 * Filters the assembled user prompt.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prompt       The prompt string.
+	 * @param mixed  ...$filter_args Additional arguments to pass to the filter.
+	 * @return string The filtered prompt string.
+	 */
+	protected function filter_prompt( string $prompt, ...$filter_args ): string {
+		return (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $prompt, ...$filter_args );
+	}
+
+	/**
+	 * Configures a prompt builder with model preferences and applies the builder filter.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder      $prompt_builder  The configured prompt builder.
+	 * @param class-string<\WordPress\AI\Contracts\Feature>|null $feature_class The feature class to read settings from, if any.
+	 * @param array<int, array{string, string}> $fallback_models Optional fallback models for the developer override.
+	 * @param mixed                             ...$filter_args  Additional arguments to pass to the builder filter.
+	 * @return \WP_AI_Client_Prompt_Builder The prompt builder.
+	 */
+	protected function filter_prompt_builder( \WP_AI_Client_Prompt_Builder $prompt_builder, ?string $feature_class = null, array $fallback_models = array(), ...$filter_args ): \WP_AI_Client_Prompt_Builder {
+		if ( $feature_class ) {
+			$prompt_builder = $this->set_provider_model_preference( $prompt_builder, $feature_class, $fallback_models );
+		} elseif ( ! empty( $fallback_models ) ) {
+			$prompt_builder->using_model_preference( ...$fallback_models );
+		}
+
+		/**
+		 * Filters the configured prompt builder for the ability.
+		 *
+		 * Runs after the model preference is applied and before generation
+		 * support is verified. Extend the builder rather than replacing it, and
+		 * always return a WP_AI_Client_Prompt_Builder.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+		 * @param mixed                        ...$filter_args Additional context arguments.
+		 */
+		$filtered_prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, ...$filter_args );
+
+		if ( ! $filtered_prompt_builder instanceof \WP_AI_Client_Prompt_Builder ) {
+			return $prompt_builder;
+		}
+
+		return $filtered_prompt_builder;
 	}
 }
