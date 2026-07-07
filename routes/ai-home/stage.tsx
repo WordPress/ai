@@ -1055,9 +1055,9 @@ function AISettingsPage() {
 													? checkIcon
 													: null
 											}
-											onClick={ () => {
-												advancedSettings.toggleAdvancedSettings();
-											} }
+											onClick={
+												advancedSettings.toggleAdvancedSettings
+											}
 										>
 											{ __( 'Advanced settings', 'ai' ) }
 										</MenuItem>
