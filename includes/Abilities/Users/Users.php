@@ -79,7 +79,7 @@ final class Users {
 	 * @since x.x.x
 	 * @var string[]
 	 */
-	private const DEFAULT_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+	private const DEFAULT_FIELDS = array(
 		'id',
 		'name',
 		'link',
@@ -264,6 +264,14 @@ final class Users {
 
 		$total_users = (int) $query->get_total();
 
+		/*
+		 * `total`/`total_pages` reflect the underlying WP_User_Query count. The
+		 * defensive guard above can skip individual rows (e.g. non-site members
+		 * surfaced by a custom query filter on multisite), so the returned
+		 * `users` array may contain fewer entries than `total` implies for the
+		 * page. Consumers should treat `total` as the query-wide count rather
+		 * than assume `count( users ) === per_page` on a full page.
+		 */
 		return array(
 			'users'       => $users,
 			'total'       => $total_users,
@@ -377,7 +385,7 @@ final class Users {
 				return null;
 			}
 
-			$user = get_user_by( 'login', $input['username'] );
+			$user = get_user_by( 'login', sanitize_user( $input['username'] ) );
 			return $user instanceof WP_User ? $user : null;
 		}
 
@@ -386,7 +394,11 @@ final class Users {
 				return null;
 			}
 
-			$user = get_user_by( 'slug', sanitize_title( $input['slug'] ) );
+			// Query the raw nicename, matching the REST users controller. Applying
+			// sanitize_title() here would miss users whose stored user_nicename is
+			// not a sanitize_title() fixed point (e.g. set via the pre_user_nicename
+			// filter or an import).
+			$user = get_user_by( 'slug', $input['slug'] );
 			return $user instanceof WP_User ? $user : null;
 		}
 
@@ -627,15 +639,87 @@ final class Users {
 	}
 
 	/**
-	 * Reads the validated `has_published_posts` collection input.
-	 *
-	 * The value is `true` (all post types) or a list of post type names; the
-	 * input schema has already validated the shape before the ability runs.
+	 * Normalizes the requested per-page value to the supported bounds.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return bool|string[]|null Query value, or null when omitted or empty.
+	 * @return int The clamped per-page value.
+	 */
+	private function normalize_per_page( array $input ): int {
+		$per_page = isset( $input['per_page'] ) ? $this->input_int( $input['per_page'] ) : self::DEFAULT_PER_PAGE;
+
+		return max( 1, min( self::MAX_PER_PAGE, $per_page ) );
+	}
+
+	/**
+	 * Normalizes a mixed value into a list of non-empty strings.
+	 *
+	 * Accepts arrays and CSV strings, since REST `GET` requests deliver list
+	 * input as strings that schema validation coerces only for the check.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value Raw value.
+	 * @return string[] Normalized strings.
+	 */
+	private function normalize_string_list( $value ): array {
+		if ( is_string( $value ) ) {
+			$value = wp_parse_list( $value );
+		}
+
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+
+		$strings = array();
+		foreach ( $value as $item ) {
+			if ( ! is_string( $item ) || '' === $item ) {
+				continue;
+			}
+
+			$strings[] = $item;
+		}
+
+		return array_values( array_unique( $strings ) );
+	}
+
+	/**
+	 * Normalizes collection-mode included user IDs.
+	 *
+	 * Accepts arrays and CSV strings via {@see wp_parse_id_list()}, which also
+	 * deduplicates IDs that only differ as strings (e.g. `'1'` and `'01'`).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return int[] User IDs.
+	 */
+	private function normalize_include( array $input ): array {
+		if ( empty( $input['include'] ) ) {
+			return array();
+		}
+
+		$include = $input['include'];
+		if ( is_scalar( $include ) ) {
+			$include = (string) $include;
+		} elseif ( ! is_array( $include ) ) {
+			return array();
+		}
+
+		return array_values( array_filter( wp_parse_id_list( $include ) ) );
+	}
+
+	/**
+	 * Normalizes the `has_published_posts` collection input.
+	 *
+	 * Accepts the string and integer forms of `true` that schema validation
+	 * accepts for REST `GET` input, alongside the native boolean.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return bool|string[]|null Normalized query value, or null when omitted.
 	 */
 	private function normalize_has_published_posts( array $input ) {
 		if ( ! array_key_exists( 'has_published_posts', $input ) ) {
@@ -644,15 +728,15 @@ final class Users {
 
 		$value = $input['has_published_posts'];
 
-		if ( true === $value ) {
+		if ( true === $value || 1 === $value
+			|| ( is_string( $value ) && in_array( strtolower( $value ), array( 'true', '1' ), true ) )
+		) {
 			return true;
 		}
 
-		if ( is_array( $value ) && array() !== $value ) {
-			return array_values( $value );
-		}
+		$post_types = $this->normalize_string_list( $value );
 
-		return null;
+		return array() === $post_types ? null : $post_types;
 	}
 
 	/**
