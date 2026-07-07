@@ -63,16 +63,20 @@ final class Settings_IO_Controller {
 	public const SCHEMA_VERSION = 1;
 
 	/**
-	 * Substrings that indicate a sensitive option name.
+	 * Option name segments that indicate a sensitive option.
 	 *
-	 * Any setting whose name contains one of these strings (case-insensitive)
-	 * is excluded from exports and rejected during imports.
+	 * Option names in this plugin are snake_case (e.g. `wpai_openai_api_key`),
+	 * so each pattern is matched as a whole underscore-delimited segment
+	 * rather than as a raw substring. This avoids false positives such as
+	 * `auth` matching an unrelated option like `wpai_default_author`, while
+	 * still catching multi-segment names like `wpai_openai_api_key` because
+	 * `key` matches its trailing `_key` segment on its own.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var list<string>
 	 */
-	private const SENSITIVE_PATTERNS = array( 'api_key', 'token', 'secret', 'credential', 'password', 'auth' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition
+	private const SENSITIVE_PATTERNS = array( 'key', 'token', 'secret', 'credential', 'password', 'auth' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition
 
 	/**
 	 * Initializes the REST routes.
@@ -288,6 +292,11 @@ final class Settings_IO_Controller {
 	/**
 	 * Checks whether an option name contains a sensitive keyword.
 	 *
+	 * Each pattern in {@see self::SENSITIVE_PATTERNS} is matched as a whole
+	 * underscore-delimited segment (or sequence of segments), not as a raw
+	 * substring, so names like `wpai_default_author` are not mistakenly
+	 * flagged just because they contain the letters "auth".
+	 *
 	 * @since x.x.x
 	 *
 	 * @param string $option_name The option name to inspect.
@@ -297,7 +306,9 @@ final class Settings_IO_Controller {
 		$lower = strtolower( $option_name );
 
 		foreach ( self::SENSITIVE_PATTERNS as $pattern ) {
-			if ( false !== strpos( $lower, $pattern ) ) {
+			// Allow an optional trailing "s" so plural segments (e.g. "credentials")
+			// are also caught, without resorting to a raw substring match.
+			if ( 1 === preg_match( '/(?:^|_)' . preg_quote( $pattern, '/' ) . 's?(?:_|$)/', $lower ) ) {
 				return true;
 			}
 		}
