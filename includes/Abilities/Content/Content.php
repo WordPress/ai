@@ -301,6 +301,28 @@ final class Content {
 	}
 
 	/**
+	 * Parses a raw list input into a list of strings.
+	 *
+	 * A GET request delivers list inputs as scalar/CSV strings; this parses them the
+	 * same way schema validation did (wp_parse_list) so they are honored regardless of
+	 * transport, until core sanitizes ability input itself.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @param string       $key   The input key holding the list.
+	 * @return string[] The parsed string values; empty when absent or unparseable.
+	 */
+	private function parse_list_input( array $input, string $key ): array {
+		$value = $input[ $key ] ?? null;
+		if ( ! is_array( $value ) && ! is_string( $value ) ) {
+			return array();
+		}
+
+		return array_values( array_filter( wp_parse_list( $value ), 'is_string' ) );
+	}
+
+	/**
 	 * Checks whether the input explicitly requests edit-context fields.
 	 *
 	 * Omitted fields are not treated as edit-intent: default responses include the
@@ -312,17 +334,7 @@ final class Content {
 	 * @return bool True if edit-context fields were explicitly requested.
 	 */
 	private function has_explicit_edit_fields( array $input ): bool {
-		$fields = $input['fields'] ?? null;
-		if ( ! is_array( $fields ) && ! is_string( $fields ) ) {
-			return false;
-		}
-
-		// A GET request delivers list inputs as scalar/CSV strings; parse them the same
-		// way normalize_fields() does (wp_parse_list) so an explicit raw-field request is
-		// recognized regardless of transport, until core sanitizes ability input itself.
-		$requested_fields = array_filter( wp_parse_list( $fields ), 'is_string' );
-
-		return array() !== array_intersect( $this->edit_fields, $requested_fields );
+		return array() !== array_intersect( $this->edit_fields, $this->parse_list_input( $input, 'fields' ) );
 	}
 
 	/**
@@ -694,14 +706,7 @@ final class Content {
 	 * @return string[] Normalized list of post status slugs.
 	 */
 	private function normalize_statuses( array $input ): array {
-		$statuses = $input['status'] ?? array( 'publish' );
-		if ( ! is_array( $statuses ) && ! is_string( $statuses ) ) {
-			return array( 'publish' );
-		}
-
-		// A GET request delivers list inputs as scalar/CSV strings; parse them the
-		// same way schema validation did (rest_is_array) rather than discarding them.
-		$statuses = array_values( array_filter( wp_parse_list( $statuses ), 'is_string' ) );
+		$statuses = $this->parse_list_input( $input, 'status' );
 
 		return array() === $statuses ? array( 'publish' ) : array_map( 'sanitize_key', $statuses );
 	}
@@ -738,14 +743,7 @@ final class Content {
 	 * @return string[] List of requested field names.
 	 */
 	private function normalize_fields( array $input ): array {
-		$fields = $input['fields'] ?? null;
-		if ( ! is_array( $fields ) && ! is_string( $fields ) ) {
-			return $this->default_fields;
-		}
-
-		// A GET request delivers list inputs as scalar/CSV strings; parse them the
-		// same way schema validation did (rest_is_array) rather than discarding them.
-		$fields = array_values( array_filter( wp_parse_list( $fields ), 'is_string' ) );
+		$fields = $this->parse_list_input( $input, 'fields' );
 
 		return array() === $fields ? $this->default_fields : $fields;
 	}
@@ -1097,74 +1095,77 @@ final class Content {
 	 * @return array<string, mixed> The formatted post data.
 	 */
 	private function build_post_fields( WP_Post $post, array $fields, bool $can_edit, bool $is_protected ): array {
-		$post_type        = $post->post_type;
-		$fields_requested = static function ( string $field ) use ( $fields ): bool {
-			return in_array( $field, $fields, true );
-		};
+		$post_type = $post->post_type;
 
-		$data = array();
+		// Edit-context fields require edit access; drop them so $edit_fields is the single gate.
+		if ( ! $can_edit ) {
+			$fields = array_diff( $fields, $this->edit_fields );
+		}
 
-		if ( $fields_requested( 'id' ) ) {
+		$requested = array_flip( $fields );
+		$data      = array();
+
+		if ( isset( $requested['id'] ) ) {
 			$data['id'] = (int) $post->ID;
 		}
-		if ( $fields_requested( 'post_type' ) ) {
+		if ( isset( $requested['post_type'] ) ) {
 			$data['post_type'] = $post_type;
 		}
-		if ( $fields_requested( 'status' ) ) {
+		if ( isset( $requested['status'] ) ) {
 			$data['status'] = $post->post_status;
 		}
-		if ( $fields_requested( 'date' ) ) {
+		if ( isset( $requested['date'] ) ) {
 			$data['date'] = $this->format_local_date( $post, 'date' );
 		}
-		if ( $fields_requested( 'date_gmt' ) ) {
+		if ( isset( $requested['date_gmt'] ) ) {
 			$data['date_gmt'] = $this->format_gmt_date( $post, 'date' );
 		}
-		if ( $fields_requested( 'modified' ) ) {
+		if ( isset( $requested['modified'] ) ) {
 			$data['modified'] = $this->format_local_date( $post, 'modified' );
 		}
-		if ( $fields_requested( 'modified_gmt' ) ) {
+		if ( isset( $requested['modified_gmt'] ) ) {
 			$data['modified_gmt'] = $this->format_gmt_date( $post, 'modified' );
 		}
-		if ( $fields_requested( 'slug' ) ) {
+		if ( isset( $requested['slug'] ) ) {
 			$data['slug'] = $post->post_name;
 		}
-		if ( $fields_requested( 'link' ) ) {
+		if ( isset( $requested['link'] ) ) {
 			$data['link'] = (string) get_permalink( $post );
 		}
 
-		if ( $fields_requested( 'title_raw' ) && post_type_supports( $post_type, 'title' ) && $can_edit ) {
+		if ( isset( $requested['title_raw'] ) && post_type_supports( $post_type, 'title' ) ) {
 			$data['title_raw'] = $post->post_title;
 		}
 
-		if ( $fields_requested( 'title_rendered' ) && post_type_supports( $post_type, 'title' ) ) {
+		if ( isset( $requested['title_rendered'] ) && post_type_supports( $post_type, 'title' ) ) {
 			$data['title_rendered'] = $this->get_title( $post );
 		}
 
-		if ( $fields_requested( 'excerpt_raw' ) && post_type_supports( $post_type, 'excerpt' ) && $can_edit ) {
+		if ( isset( $requested['excerpt_raw'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
 			$data['excerpt_raw'] = $post->post_excerpt;
 		}
 
-		if ( $fields_requested( 'excerpt_rendered' ) && post_type_supports( $post_type, 'excerpt' ) ) {
+		if ( isset( $requested['excerpt_rendered'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
 			$data['excerpt_rendered'] = $is_protected ? '' : $this->get_rendered_excerpt( $post );
 		}
 
-		if ( $fields_requested( 'excerpt_protected' ) && post_type_supports( $post_type, 'excerpt' ) ) {
+		if ( isset( $requested['excerpt_protected'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
 			$data['excerpt_protected'] = (bool) $post->post_password;
 		}
 
-		if ( $fields_requested( 'content_raw' ) && post_type_supports( $post_type, 'editor' ) && $can_edit ) {
+		if ( isset( $requested['content_raw'] ) && post_type_supports( $post_type, 'editor' ) ) {
 			$data['content_raw'] = $post->post_content;
 		}
 
-		if ( $fields_requested( 'content_rendered' ) && post_type_supports( $post_type, 'editor' ) ) {
+		if ( isset( $requested['content_rendered'] ) && post_type_supports( $post_type, 'editor' ) ) {
 			$data['content_rendered'] = $is_protected ? '' : $this->get_rendered_content( $post );
 		}
 
-		if ( $fields_requested( 'content_protected' ) && post_type_supports( $post_type, 'editor' ) ) {
+		if ( isset( $requested['content_protected'] ) && post_type_supports( $post_type, 'editor' ) ) {
 			$data['content_protected'] = (bool) $post->post_password;
 		}
 
-		if ( $fields_requested( 'author' ) && post_type_supports( $post_type, 'author' ) ) {
+		if ( isset( $requested['author'] ) && post_type_supports( $post_type, 'author' ) ) {
 			$author         = get_userdata( (int) $post->post_author );
 			$data['author'] = array(
 				'id'   => (int) $post->post_author,
@@ -1172,7 +1173,7 @@ final class Content {
 			);
 		}
 
-		if ( $fields_requested( 'parent' ) && is_post_type_hierarchical( $post_type ) ) {
+		if ( isset( $requested['parent'] ) && is_post_type_hierarchical( $post_type ) ) {
 			$data['parent'] = (int) $post->post_parent;
 		}
 
@@ -1338,10 +1339,10 @@ final class Content {
 
 		if ( '' === $gmt || '0000-00-00 00:00:00' === $gmt ) {
 			$local = 'modified' === $field ? $post->post_modified : $post->post_date;
-			$gmt   = get_gmt_from_date( $local );
+			$gmt   = '' === $local || '0000-00-00 00:00:00' === $local ? '' : get_gmt_from_date( $local );
 		}
 
-		$timestamp = strtotime( $gmt . ' UTC' );
+		$timestamp = '' === $gmt ? false : strtotime( $gmt . ' UTC' );
 
 		return false === $timestamp ? '' : gmdate( 'c', $timestamp );
 	}
