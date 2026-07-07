@@ -312,11 +312,15 @@ final class Content {
 	 * @return bool True if edit-context fields were explicitly requested.
 	 */
 	private function has_explicit_edit_fields( array $input ): bool {
-		if ( empty( $input['fields'] ) || ! is_array( $input['fields'] ) ) {
+		$fields = $input['fields'] ?? null;
+		if ( ! is_array( $fields ) && ! is_string( $fields ) ) {
 			return false;
 		}
 
-		$requested_fields = array_filter( $input['fields'], 'is_string' );
+		// A GET request delivers list inputs as scalar/CSV strings; parse them the same
+		// way normalize_fields() does (wp_parse_list) so an explicit raw-field request is
+		// recognized regardless of transport, until core sanitizes ability input itself.
+		$requested_fields = array_filter( wp_parse_list( $fields ), 'is_string' );
 
 		return array() !== array_intersect( $this->edit_fields, $requested_fields );
 	}
