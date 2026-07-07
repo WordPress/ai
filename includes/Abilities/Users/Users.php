@@ -962,7 +962,6 @@ final class Users {
 
 		$user_id            = (int) $user->ID;
 		$can_view_sensitive = $this->is_current_user( $user ) || current_user_can( 'edit_user', $user_id );
-		$can_view_roles     = current_user_can( 'list_users' ) || current_user_can( 'edit_user', $user_id );
 
 		$data = array();
 
@@ -1017,7 +1016,12 @@ final class Users {
 			}
 		}
 
-		if ( $fields_requested( 'roles' ) && $can_view_roles ) {
+		// Roles reveal a user's privilege level, so they are gated like the other
+		// sensitive fields: visible only for the current user or a user the caller
+		// can edit. `list_users` alone (which grants no edit rights) is not enough,
+		// matching the REST users controller, where `roles` is an edit-context
+		// field and rows the caller cannot edit are dropped from collections.
+		if ( $fields_requested( 'roles' ) && $can_view_sensitive ) {
 			$data['roles'] = $this->normalize_string_list( $user->roles );
 		}
 

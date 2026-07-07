@@ -883,6 +883,47 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A caller who can list users but not edit them does not receive another
+	 * user's roles.
+	 *
+	 * `list_users` grants no edit rights, so it must not disclose a user's roles,
+	 * matching the REST users controller, which confines `roles` to users the
+	 * caller can edit.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_users_without_edit_does_not_expose_other_users_roles(): void {
+		add_role( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- Registering a throwaway role in an integration test.
+			'users_ability_list_only',
+			'List Only',
+			array(
+				'read'       => true,
+				'list_users' => true,
+			)
+		);
+
+		$lister_id = self::factory()->user->create( array( 'role' => 'users_ability_list_only' ) );
+
+		try {
+			wp_set_current_user( $lister_id );
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/read-users' )->execute(
+				array(
+					'id'     => $this->public_author_id,
+					'fields' => array( 'id', 'roles' ),
+				)
+			);
+
+			$this->assertIsArray( $result, 'A list-only caller should still resolve a public author.' );
+			$this->assertArrayNotHasKey( 'roles', $result, 'A caller who cannot edit a user must not receive that user\'s roles.' );
+		} finally {
+			wp_delete_user( $lister_id );
+			remove_role( 'users_ability_list_only' );
+		}
+	}
+
+	/**
 	 * Role filtering requires list_users.
 	 *
 	 * @since x.x.x
