@@ -253,25 +253,25 @@ final class Users {
 
 		$users = array();
 		foreach ( $query->get_results() as $user ) {
-			// WP_User_Query already scopes multisite collections to current-site members.
-			// Keep this as a defensive guard for filtered/custom query results.
-			if ( ! $user instanceof WP_User || ! $this->is_user_member_of_site( $user ) ) {
+			if ( ! $user instanceof WP_User ) {
 				continue;
 			}
 
 			$users[] = $this->format_user( $user, $fields );
 		}
 
+		// `users` and `total`/`total_pages` all derive from the same WP_User_Query,
+		// so the row count and the reported totals stay in agreement. Collections
+		// are not post-filtered by site membership, matching the REST users
+		// controller, whose collection endpoint applies no per-row membership check
+		// and reports `get_total()` directly. On multisite a bare collection query
+		// (no roles/has_published_posts) is network-wide for callers who can list
+		// users; callers who cannot are scoped to the current site because the
+		// forced `has_published_posts` joins the current blog's posts table.
+		// Single-user lookups remain site-scoped via {@see self::is_user_member_of_site()},
+		// matching the controller's single-user membership check.
 		$total_users = (int) $query->get_total();
 
-		/*
-		 * `total`/`total_pages` reflect the underlying WP_User_Query count. The
-		 * defensive guard above can skip individual rows (e.g. non-site members
-		 * surfaced by a custom query filter on multisite), so the returned
-		 * `users` array may contain fewer entries than `total` implies for the
-		 * page. Consumers should treat `total` as the query-wide count rather
-		 * than assume `count( users ) === per_page` on a full page.
-		 */
 		return array(
 			'users'       => $users,
 			'total'       => $total_users,
