@@ -30,13 +30,14 @@ import {
 } from '../../../utils/notes';
 import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
-import { hasMinimumContent } from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 
 const BATCH_SIZE = 4;
 const NOTICE_ID = 'ai_editorial_notes_error';
 const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
 
 interface BlockAttributes {
 	content?: string;
@@ -86,7 +87,8 @@ function useEditorialNotesAvailability(): {
 			return ( selectStore( editorStore ) as any ).getEditedPostContent();
 		}, [] ) ?? '';
 	const minContentLength: number =
-		( window as any ).aiEditorialNotesData?.minContentLength ?? 100;
+		( window as any ).aiEditorialNotesData?.minContentLength ??
+		MINIMUM_CONTENT_COUNT_DEFAULT;
 
 	return {
 		content,
@@ -341,11 +343,14 @@ export function useEditorialNotes(): {
  */
 export function useEditorialBlock(): {
 	isReviewing: boolean;
+	reviewingClientId: string | null;
 	isContentTooShort: boolean;
 	minContentLength: number;
 	reviewBlock: ( clientId: string ) => Promise< void >;
 } {
-	const [ isReviewing, setIsReviewing ] = useState< boolean >( false );
+	const [ reviewingClientId, setReviewingClientId ] = useState<
+		string | null
+	>( null );
 	const { content, isContentTooShort, minContentLength } =
 		useEditorialNotesAvailability();
 
@@ -354,7 +359,7 @@ export function useEditorialBlock(): {
 			return;
 		}
 
-		setIsReviewing( true );
+		setReviewingClientId( clientId );
 
 		dispatch( noticesStore ).removeNotice( 'ai_editorial_block_error' );
 
@@ -430,11 +435,17 @@ export function useEditorialBlock(): {
 				}
 			);
 		} finally {
-			setIsReviewing( false );
+			setReviewingClientId( null );
 		}
 	};
 
-	return { isReviewing, isContentTooShort, minContentLength, reviewBlock };
+	return {
+		isReviewing: !! reviewingClientId,
+		reviewingClientId,
+		isContentTooShort,
+		minContentLength,
+		reviewBlock,
+	};
 }
 
 /**

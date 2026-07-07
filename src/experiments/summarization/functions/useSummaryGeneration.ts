@@ -18,10 +18,10 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
-import { hasMinimumContent } from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 import type { SummarizationData } from '../types';
 
-const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 const NOTICE_ID = 'ai_summarization_error';
 
 const getSettings = (): SummarizationData => {

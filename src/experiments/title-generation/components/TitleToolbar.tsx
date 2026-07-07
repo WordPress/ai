@@ -18,7 +18,7 @@ import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore, PostTypeSupportCheck } from '@wordpress/editor';
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { update } from '@wordpress/icons';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -26,10 +26,7 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
-import {
-	formatMinLengthLabel,
-	hasMinimumContent,
-} from '../../../utils/word-count';
+import { hasMinimumContent } from '../../../utils/character-count';
 import type {
 	TitleGenerationAbilityInput,
 	GeneratedTitleData,
@@ -37,7 +34,7 @@ import type {
 } from '../types';
 
 const NOTICE_ID = 'ai_title_generation_error';
-const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 
 const getSettings = (): TitleGenerationData => {
 	const settings = ( window as any ).aiTitleGenerationData ?? {};
@@ -163,21 +160,16 @@ export default function TitleToolbar( {
 
 	if ( isGenerating || isRegenerating ) {
 		buttonLabel = __( 'Generating…', 'ai' );
-	} else if ( hasTitle ) {
+	} else if ( hasTitle || isOpen ) {
 		buttonLabel = __( 'Regenerate', 'ai' );
 	}
 
 	// When the post content is too short, disable the button and surface the
 	// minimum-length requirement as its accessible tooltip.
-	const tooShortLabel = formatMinLengthLabel(
-		/* translators: %d: minimum number of characters required */
+	const tooShortLabel = sprintf(
+		/* translators: %d: minimum number of characters required. */
 		__(
 			'Title generation will be available when the post content has at least %d characters.',
-			'ai'
-		),
-		/* translators: %d: minimum number of words required */
-		__(
-			'Title generation will be available when the post content has at least %d words.',
 			'ai'
 		),
 		minContentLength

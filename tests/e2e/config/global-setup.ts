@@ -28,7 +28,7 @@ async function globalSetup( config: FullConfig ) {
 	// Reset the test environment before running the tests.
 	await Promise.all( [
 		requestUtils.activateTheme( 'twentytwentyone' ),
-		requestUtils.activatePlugin( 'e2e-test-request-mocking' ),
+		requestUtils.activatePlugin( 'e2e-testing' ),
 		requestUtils.deleteAllPosts(),
 		requestUtils.deleteAllBlocks(),
 		requestUtils.resetPreferences(),

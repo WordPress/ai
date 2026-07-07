@@ -95,6 +95,11 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'experiments/type-ahead': path.resolve(
+			process.cwd(),
+			'src/experiments/type-ahead',
+			'index.tsx'
+		),
 		'experiments/comment-moderation': path.resolve(
 			process.cwd(),
 			'src/experiments/comment-moderation',

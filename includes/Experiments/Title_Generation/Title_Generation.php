@@ -102,7 +102,7 @@ class Title_Generation extends Abstract_Feature {
 			'TitleGenerationData',
 			array(
 				'enabled'          => $this->is_enabled(),
-				'minContentLength' => get_min_content_length( 'title-generation', 50 ),
+				'minContentLength' => get_min_content_length( 'title-generation', 250 ),
 			)
 		);
 	}
