@@ -614,10 +614,15 @@ final class Content {
 	 * @return \WP_Post|null The matching readable post, or null when none exists.
 	 */
 	private function get_post_by_slug( string $post_type, string $slug ): ?WP_Post {
+		$name = sanitize_title( $slug );
+		if ( '' === $name ) {
+			return null;
+		}
+
 		$query = new WP_Query(
 			array(
 				'post_type'              => $post_type,
-				'name'                   => sanitize_title( $slug ),
+				'name'                   => $name,
 				'post_status'            => array_values( get_post_stati( array( 'internal' => false ) ) ),
 				// Exact-match slug collisions are inherently few; the cap is defensive.
 				'posts_per_page'         => self::MAX_PER_PAGE,
