@@ -1186,11 +1186,17 @@ final class Content {
 		$strip = array( $this, 'return_raw_title_format' );
 		add_filter( 'protected_title_format', $strip );
 		add_filter( 'private_title_format', $strip );
-		$title = get_the_title( $post );
-		remove_filter( 'protected_title_format', $strip );
-		remove_filter( 'private_title_format', $strip );
 
-		return $title;
+		/*
+		 * The format filters are removed in a finally block so a throw from a title
+		 * filter cannot leave them attached for the rest of the request.
+		 */
+		try {
+			return get_the_title( $post );
+		} finally {
+			remove_filter( 'protected_title_format', $strip );
+			remove_filter( 'private_title_format', $strip );
+		}
 	}
 
 	/**
