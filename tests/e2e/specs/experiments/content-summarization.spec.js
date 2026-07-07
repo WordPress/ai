@@ -36,12 +36,12 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content that meets the minimum length requirement (>= 100 words).
+		// Create a new post with content that meets the minimum length requirement (>= 250 characters).
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Content Summarization Experiment',
 			content:
-				'This is some test content for the Content Summarization Experiment. It needs to have enough words to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a substantial amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful and provides value to readers who want a quick overview of what the full article contains. Adding more words here to make sure we exceed the minimum threshold that is configured for this experiment in the plugin settings and server side filters.',
+				'This is some test content for the Content Summarization Experiment. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a substantial amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful and provides value to readers who want a quick overview of what the full article contains. Adding more characters here to make sure we exceed the minimum threshold that is configured for this experiment in the plugin settings and server side filters.',
 		} );
 
 		// Save the post.
@@ -139,7 +139,7 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content shorter than 100 words.
+		// Create a new post with content shorter than 250 characters.
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Short Content',
@@ -163,7 +163,7 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		// The descriptive text should explain when the button will be enabled.
 		await expect( generateButton ).toHaveAccessibleDescription(
-			/50 words?/i
+			/250 characters?/i
 		);
 	} );
 
@@ -178,12 +178,12 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content that is at least 100 words.
+		// Create a new post with content that is at least 250 characters.
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Sufficient Content',
 			content:
-				'This post has enough content to meet the minimum word count requirement for the summarization feature to be enabled. The content needs to contain at least one hundred words so that the summarization experiment can generate a meaningful summary of the text. By including multiple sentences with various topics and ideas, we ensure that the AI has sufficient material to work with when creating a concise overview. This paragraph continues to add more words to reach the necessary threshold for testing purposes and to verify the feature works correctly.',
+				'This post has enough content to meet the minimum character count requirement for the summarization feature to be enabled. The content needs to contain at least 250 characters so that the summarization experiment can generate a meaningful summary of the text. By including multiple sentences with various topics and ideas, we ensure that the AI has sufficient material to work with when creating a concise overview. This paragraph continues to add more characters to reach the necessary threshold for testing purposes and to verify the feature works correctly.',
 		} );
 
 		// Save the post.
@@ -201,9 +201,9 @@ test.describe( 'Content Summarization Experiment', () => {
 		await expect( generateButton ).toBeVisible();
 		await expect( generateButton ).toBeEnabled();
 
-		// The descriptive text should NOT mention the minimum word requirement.
+		// The descriptive text should NOT mention the minimum character requirement.
 		await expect( generateButton ).not.toHaveAccessibleDescription(
-			/words?/i
+			/characters?/i
 		);
 	} );
 

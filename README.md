@@ -59,10 +59,12 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **[Experiment Framework](docs/experiments/experiment-framework.md)** - Opt-in system that lets you enable only the AI features you want to use.
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
+* **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
+* **[Type Ahead](docs/experiments/type-ahead.md)** – Contextual type-ahead assistance for suggestions while typing.
 
 ## Provider Setup
 
@@ -76,7 +78,6 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 
 Overview of planned features:
 
-* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
