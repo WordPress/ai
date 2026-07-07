@@ -283,6 +283,36 @@ final class Content {
 	}
 
 	/**
+	 * Parses a raw filter value into an integer of at least a minimum, or null when invalid.
+	 *
+	 * Unlike {@see self::input_int()}, which coerces any non-integer to 0, this rejects
+	 * values that are not integers so a filter whose value cannot be honored can fail
+	 * loudly instead of silently widening the query: `author => 0` drops the author
+	 * filter (matching every author) and `post_parent => 0` becomes a top-level query.
+	 * Accepts native integers and unsigned integer strings, mirroring how the JSON
+	 * Schema `integer` type and the query-string transport respectively deliver them.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The raw input value.
+	 * @param int   $min   The smallest acceptable value.
+	 * @return int|null The parsed integer, or null when the value is not an integer >= $min.
+	 */
+	private function parse_filter_int( $value, int $min ): ?int {
+		if ( is_int( $value ) ) {
+			return $value >= $min ? $value : null;
+		}
+
+		if ( is_string( $value ) && '' !== $value && ctype_digit( $value ) ) {
+			$int = (int) $value;
+
+			return $int >= $min ? $int : null;
+		}
+
+		return null;
+	}
+
+	/**
 	 * Resolves a capability name from a post type's capability map.
 	 *
 	 * The capability map is a plain object with untyped properties, so guard the
@@ -511,28 +541,69 @@ final class Content {
 
 		/*
 		 * REST only registers the equivalent collection filters for post types that
-		 * support them; a shared input schema cannot express that per post type, so
-		 * reject unsupported filters loudly instead of silently ignoring them.
+		 * support them; a shared input schema cannot express that per post type. On
+		 * transports that skip schema validation a malformed value would otherwise
+		 * coerce to a benign default and silently *widen* the query (`author => 0`
+		 * drops the author filter, an empty `post__in` is ignored, `post_parent => 0`
+		 * becomes a top-level query). Reject unsupported filters and invalid filter
+		 * values loudly so a filter that cannot be honored fails closed instead.
 		 */
-		if ( isset( $input['parent'] ) && ! is_post_type_hierarchical( $post_type ) ) {
-			return new WP_Error(
-				'content_invalid_filter',
-				__( 'The parent filter is only supported for hierarchical post types.', 'ai' ),
-				array( 'status' => 400 )
-			);
+		$parent = null;
+		if ( isset( $input['parent'] ) ) {
+			if ( ! is_post_type_hierarchical( $post_type ) ) {
+				return new WP_Error(
+					'content_invalid_filter',
+					__( 'The parent filter is only supported for hierarchical post types.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$parent = $this->parse_filter_int( $input['parent'], 0 );
+			if ( null === $parent ) {
+				return new WP_Error(
+					'content_invalid_filter',
+					__( 'The parent filter must be a non-negative integer.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
 		}
 
-		if ( ! empty( $input['author'] ) && ! post_type_supports( $post_type, 'author' ) ) {
-			return new WP_Error(
-				'content_invalid_filter',
-				__( 'The author filter is only supported for post types that support authors.', 'ai' ),
-				array( 'status' => 400 )
-			);
+		$author = null;
+		if ( isset( $input['author'] ) ) {
+			if ( ! post_type_supports( $post_type, 'author' ) ) {
+				return new WP_Error(
+					'content_invalid_filter',
+					__( 'The author filter is only supported for post types that support authors.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$author = $this->parse_filter_int( $input['author'], 1 );
+			if ( null === $author ) {
+				return new WP_Error(
+					'content_invalid_filter',
+					__( 'The author filter must be a positive integer.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
 		}
 
 		$per_page = $this->normalize_per_page( $input );
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 		$include  = $this->normalize_include( $input );
+
+		/*
+		 * An include filter that was supplied but parsed to no valid IDs must not fall
+		 * through to an unrestricted query: WP_Query ignores an empty `post__in`, which
+		 * would return every post of the type — the opposite of the caller's intent.
+		 */
+		if ( isset( $input['include'] ) && array() === $include ) {
+			return new WP_Error(
+				'content_invalid_filter',
+				__( 'The include filter must list one or more valid post IDs.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
 
 		$query_args = array(
 			'post_type'              => $post_type,
@@ -549,12 +620,12 @@ final class Content {
 			$query_args['post__in'] = $include;
 		}
 
-		if ( ! empty( $input['author'] ) ) {
-			$query_args['author'] = $this->input_int( $input['author'] );
+		if ( null !== $author ) {
+			$query_args['author'] = $author;
 		}
 
-		if ( isset( $input['parent'] ) ) {
-			$query_args['post_parent'] = $this->input_int( $input['parent'] );
+		if ( null !== $parent ) {
+			$query_args['post_parent'] = $parent;
 		}
 
 		$query = new WP_Query( $query_args );

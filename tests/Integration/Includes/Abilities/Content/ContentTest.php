@@ -2044,4 +2044,118 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertWPError( $missing_slug, 'An unmatched slug should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $missing_slug->get_error_code(), 'Unmatched slugs should map to the uniform not-found error.' );
 	}
+
+	/**
+	 * An author filter that does not resolve to a positive integer is rejected
+	 * rather than silently dropped.
+	 *
+	 * On transports that skip schema validation a non-integer `author` would coerce
+	 * to 0, which WP_Query treats as "no author filter" — returning every author's
+	 * posts. The filter must fail closed instead of widening the result set.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_rejects_non_integer_author_filter(): void {
+		$this->login_as( 'administrator' );
+
+		$result = ( new Content() )->execute_get_content(
+			array(
+				'post_type' => 'post',
+				'author'    => 'not-a-number',
+			)
+		);
+
+		$this->assertWPError( $result, 'A non-integer author filter must not silently widen the query to all authors.' );
+		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'An unhonorable author filter should fail closed as an invalid filter.' );
+	}
+
+	/**
+	 * A parent filter that is not a non-negative integer is rejected rather than
+	 * coerced to 0 (top-level).
+	 *
+	 * Because 0 is a legitimate parent value (top-level posts), a non-integer value
+	 * cannot be detected by a numeric bound; it must be rejected on the raw value so
+	 * garbage does not silently become a top-level query.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_rejects_non_integer_parent_filter(): void {
+		$this->login_as( 'administrator' );
+
+		$result = ( new Content() )->execute_get_content(
+			array(
+				'post_type' => 'page',
+				'parent'    => 'not-a-number',
+			)
+		);
+
+		$this->assertWPError( $result, 'A non-integer parent filter must not silently coerce to a top-level (0) query.' );
+		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'An unhonorable parent filter should fail closed as an invalid filter.' );
+	}
+
+	/**
+	 * An include filter that parses to no valid IDs is rejected rather than
+	 * returning an unrestricted result set.
+	 *
+	 * WP_Query ignores an empty `post__in`, so an include list with no valid IDs
+	 * would otherwise return every post of the type — the opposite of the caller's
+	 * intent. The filter must fail closed instead.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_rejects_include_with_no_valid_ids(): void {
+		$this->login_as( 'administrator' );
+
+		self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$result = ( new Content() )->execute_get_content(
+			array(
+				'post_type' => 'post',
+				'include'   => array( 0 ),
+			)
+		);
+
+		$this->assertWPError( $result, 'An include filter with no valid IDs must not fall through to an unrestricted query.' );
+		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'An empty-after-parsing include should fail closed as an invalid filter.' );
+	}
+
+	/**
+	 * Valid filter values delivered as strings are still honored.
+	 *
+	 * The schema-less query-string transport delivers integers as strings; the
+	 * stricter filter parsing must accept those so it only rejects genuinely
+	 * unhonorable values, not well-formed ones.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_honors_string_author_filter(): void {
+		$author_a = self::$user_ids['author'];
+		$author_b = self::$user_ids['author_secondary'];
+
+		$post_a = self::factory()->post->create(
+			array(
+				'post_author' => $author_a,
+				'post_status' => 'publish',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_author' => $author_b,
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->login_as( 'administrator' );
+
+		$result = ( new Content() )->execute_get_content(
+			array(
+				'post_type' => 'post',
+				'author'    => (string) $author_a,
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'A valid numeric-string author filter should be honored, not rejected.' );
+		$this->assertSame( array( $post_a ), wp_list_pluck( $result['posts'], 'id' ), 'The author filter should restrict results to the requested author.' );
+	}
 }
