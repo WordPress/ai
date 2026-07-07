@@ -12,12 +12,10 @@ import {
 	Stack,
 	VisuallyHidden,
 } from '@wordpress/ui';
-import apiFetch from '@wordpress/api-fetch';
 import {
 	DropdownMenu,
 	MenuGroup,
 	MenuItem,
-	Modal,
 	Spinner,
 	ToggleControl,
 } from '@wordpress/components';
@@ -25,7 +23,7 @@ import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
+import { useCallback, useMemo, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
@@ -42,11 +40,13 @@ import { store as noticesStore } from '@wordpress/notices';
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import { ImportConfirmModal } from './components/ImportConfirmModal';
 import {
 	DeveloperModeContext,
 	useDeveloperMode,
 	useDeveloperModeContext,
 } from './hooks/use-developer-mode';
+import { useSettingsImportExport } from './hooks/use-settings-import-export';
 import './style.scss';
 
 type AISettings = Record< string, boolean >;
@@ -260,73 +260,6 @@ const STABLE_FEATURE_DEFINITIONS: FeatureData[] = ( () => {
 
 interface InfoTipProps {
 	content: string;
-}
-
-/** Shape of an AI settings export payload (matches the PHP schema). */
-interface ExportPayload {
-	version: number;
-	exported_at: string;
-	plugin_version: string;
-	providers: Record< string, unknown >;
-	settings: Record< string, unknown >;
-}
-
-function isExportPayload( value: unknown ): value is ExportPayload {
-	if ( ! isRecord( value ) ) {
-		return false;
-	}
-	return (
-		// eslint-disable-next-line dot-notation
-		typeof value[ 'version' ] === 'number' && // eslint-disable-next-line dot-notation
-		isRecord( value[ 'providers' ] ) && // eslint-disable-next-line dot-notation
-		isRecord( value[ 'settings' ] )
-	);
-}
-
-/** Modal displayed to ask the user to confirm before overwriting settings. */
-function ImportConfirmModal( {
-	onConfirm,
-	onCancel,
-	isImporting,
-}: {
-	onConfirm: () => void;
-	onCancel: () => void;
-	isImporting: boolean;
-} ) {
-	return (
-		<Modal
-			title={ __( 'Import AI Settings', 'ai' ) }
-			onRequestClose={ onCancel }
-			size="medium"
-		>
-			<p>
-				{ __(
-					'This will overwrite your existing AI settings. Are you sure?',
-					'ai'
-				) }
-			</p>
-			<Stack direction="row" gap="sm" justify="flex-end">
-				<Button
-					variant="outline"
-					onClick={ onCancel }
-					disabled={ isImporting }
-				>
-					{ __( 'Cancel', 'ai' ) }
-				</Button>
-				<Button
-					variant="solid"
-					onClick={ onConfirm }
-					disabled={ isImporting }
-					loading={ isImporting }
-					loadingAnnouncement={
-						isImporting ? __( 'Importing settings…', 'ai' ) : ''
-					}
-				>
-					{ __( 'Import', 'ai' ) }
-				</Button>
-			</Stack>
-		</Modal>
-	);
 }
 
 function InfoTip( { content }: InfoTipProps ) {
@@ -756,127 +689,22 @@ function AISettingsPage() {
 	}, [] );
 
 	const { editEntityRecord } = useDispatch( coreStore );
-	const {
-		__experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits,
-		invalidateResolution,
-	} = useDispatch( coreStore ) as any;
+	const { __experimentalSaveSpecifiedEntityEdits: saveSpecifiedEdits } =
+		useDispatch( coreStore ) as any;
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
 
-	const fileInputRef = useRef< HTMLInputElement >( null );
-	const [ pendingImport, setPendingImport ] =
-		useState< ExportPayload | null >( null );
-	const [ isImporting, setIsImporting ] = useState( false );
-
-	const handleExport = useCallback( async () => {
-		try {
-			const data = await apiFetch< ExportPayload >( {
-				path: '/ai/v1/settings/export',
-				method: 'GET',
-			} );
-
-			const blob = new Blob( [ JSON.stringify( data, null, 2 ) ], {
-				type: 'application/json',
-			} );
-			const url = URL.createObjectURL( blob );
-			const anchor = document.createElement( 'a' );
-			anchor.href = url;
-			anchor.download = 'ai-settings-export.json';
-			anchor.click();
-			URL.revokeObjectURL( url );
-		} catch {
-			createErrorNotice( __( 'Failed to export settings.', 'ai' ), {
-				type: 'snackbar',
-			} );
-		}
-	}, [ createErrorNotice ] );
-
-	const handleImportFileSelect = useCallback(
-		( event: React.ChangeEvent< HTMLInputElement > ) => {
-			const file = event.target.files?.[ 0 ];
-			if ( ! file ) {
-				return;
-			}
-
-			// Reset value so the same file can be re-selected after cancel.
-			event.target.value = '';
-
-			const reader = new FileReader();
-			reader.onload = ( e ) => {
-				try {
-					const parsed: unknown = JSON.parse(
-						( e.target?.result as string ) ?? ''
-					);
-
-					if ( ! isExportPayload( parsed ) ) {
-						createErrorNotice(
-							__(
-								'The selected file is not a valid AI settings export.',
-								'ai'
-							),
-							{ type: 'snackbar' }
-						);
-						return;
-					}
-
-					setPendingImport( parsed );
-				} catch {
-					createErrorNotice(
-						__(
-							'The selected file could not be read. Please choose a valid JSON file.',
-							'ai'
-						),
-						{ type: 'snackbar' }
-					);
-				}
-			};
-			reader.readAsText( file );
-		},
-		[ createErrorNotice ]
-	);
-
-	const handleImportConfirm = useCallback( async () => {
-		if ( ! pendingImport ) {
-			return;
-		}
-
-		setIsImporting( true );
-		try {
-			await apiFetch( {
-				path: '/ai/v1/settings/import',
-				method: 'POST',
-				data: pendingImport,
-			} );
-			setPendingImport( null );
-			// Invalidate the cached site entity so the store immediately
-			// re-fetches the new values from the server, updating the UI
-			// without requiring a manual page refresh.
-			invalidateResolution( 'getEntityRecord', [ 'root', 'site' ] );
-			createSuccessNotice(
-				__( 'Settings imported successfully.', 'ai' ),
-				{
-					type: 'snackbar',
-				}
-			);
-		} catch {
-			createErrorNotice( __( 'Failed to import settings.', 'ai' ), {
-				type: 'snackbar',
-			} );
-		} finally {
-			setIsImporting( false );
-		}
-	}, [
+	const {
+		fileInputRef,
 		pendingImport,
-		createSuccessNotice,
-		createErrorNotice,
-		invalidateResolution,
-	] );
-
-	const handleImportCancel = useCallback( () => {
-		setPendingImport( null );
-	}, [] );
+		isImporting,
+		handleExport,
+		handleImportFileSelect,
+		handleImportConfirm,
+		handleImportCancel,
+	} = useSettingsImportExport();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		// Return the stable module-level reference when page data is available so
