@@ -13,12 +13,12 @@ const STORAGE_KEY = 'ai_advanced_settings';
 
 export interface AdvancedSettingsContextValue {
 	isAdvancedSettingsEnabled: boolean;
-	setAdvancedSettingsEnabled: ( enabled: boolean ) => void;
+	toggleAdvancedSettings: () => void;
 }
 
 const defaultContextValue: AdvancedSettingsContextValue = {
 	isAdvancedSettingsEnabled: false,
-	setAdvancedSettingsEnabled: () => {},
+	toggleAdvancedSettings: () => {},
 };
 
 export const AdvancedSettingsContext =
@@ -66,12 +66,12 @@ export function useAdvancedSettings(): AdvancedSettingsContextValue {
 		} catch {}
 	}, [ isAdvancedSettingsEnabled ] );
 
-	const setAdvancedSettingsEnabled = useCallback( ( enabled: boolean ) => {
-		setEnabled( enabled );
+	const toggleAdvancedSettings = useCallback( () => {
+		setEnabled( ( prev ) => ! prev );
 	}, [] );
 
 	return {
 		isAdvancedSettingsEnabled,
-		setAdvancedSettingsEnabled,
+		toggleAdvancedSettings,
 	};
 }

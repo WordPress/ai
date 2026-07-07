@@ -1056,9 +1056,7 @@ function AISettingsPage() {
 													: null
 											}
 											onClick={ () => {
-												advancedSettings.setAdvancedSettingsEnabled(
-													! advancedSettings.isAdvancedSettingsEnabled
-												);
+												advancedSettings.toggleAdvancedSettings();
 											} }
 										>
 											{ __( 'Advanced settings', 'ai' ) }
