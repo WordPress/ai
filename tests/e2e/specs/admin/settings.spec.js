@@ -20,6 +20,8 @@ const {
 	getExperimentTogglesInGroup,
 	getEnableAllButton,
 	getDisableAllButton,
+	enableAdvancedSettings,
+	disableAdvancedSettings,
 	enableModelSelection,
 	disableModelSelection,
 } = require( '../../utils/helpers' );
@@ -178,6 +180,9 @@ test.describe( 'Plugin settings', () => {
 		// Visit settings page fresh to ensure no stale snackbars.
 		await visitSettingsPage( admin );
 
+		// Enable Advanced Settings.
+		await enableAdvancedSettings( page );
+
 		// Wait for Content Classification inline settings to render.
 		const strategySelect = page.getByLabel( 'Taxonomy strategy' );
 		await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
@@ -208,6 +213,9 @@ test.describe( 'Plugin settings', () => {
 		// Assert: inline settings must still show the pending edit (not reset).
 		await expect( strategySelect ).toHaveValue( newValue );
 		await expect( saveButton ).toBeVisible();
+
+		// Cleanup: disable Advanced Settings.
+		await disableAdvancedSettings( page );	
 	} );
 
 	test( 'Can turn on all experiments in a group', async ( {
