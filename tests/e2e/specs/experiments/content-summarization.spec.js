@@ -253,39 +253,53 @@ test.describe( 'Content Summarization Experiment', () => {
 		await enableExperiment( admin, page, 'Content Summarization' );
 
 		// Create a new post containing a nested summary block inside columns, with enough content.
-		const nestedContent =
-			// Content
-			'<!-- wp:paragraph -->' +
-			'<p>This is some test content for the Content Summarization Experiment. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a minimum amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful.</p>' +
-			'<!-- /wp:paragraph -->' +
-			// Columns
-			'<!-- wp:columns -->' +
-			'<div class="wp-block-columns">' +
-			'<!-- wp:column -->' +
-			'<div class="wp-block-column">' +
-			'<!-- wp:group {"className":"ai-summarization-summary","aiGeneratedSummary":true} -->' +
-			'<div class="wp-block-group ai-summarization-summary">' +
-			'<!-- wp:paragraph -->' +
-			'<p>Original generated nested summary text.</p>' +
-			'<!-- /wp:paragraph -->' +
-			'</div>' +
-			'<!-- /wp:group -->' +
-			'</div>' +
-			'<!-- /wp:column -->' +
-			'</div>' +
-			'<!-- /wp:columns -->';
-
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Nested Summarization Experiment',
 		} );
-		await editor.setContent( nestedContent );
+		// Content.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is some test content for the Content Summarization Experiment. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a minimum amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful.',
+			},
+		} );
+
+		// Columns.
+		await editor.insertBlock( {
+			name: 'core/columns',
+			innerBlocks: [
+				{
+					name: 'core/column',
+					innerBlocks: [
+						{
+							name: 'core/group',
+							attributes: {
+								className: 'ai-summarization-summary',
+								aiGeneratedSummary: true,
+							},
+							innerBlocks: [
+								{
+									name: 'core/paragraph',
+									attributes: {
+										content:
+											'Original generated nested summary text.',
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		} );
 
 		// Save the post.
 		await editor.saveDraft();
 
-		// Ensure the sidebar is visible.
+		// Ensure the sidebar is visible and on the Post tab.
 		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
 
 		// Get the specific summary block before regenerating.
 		const summaryBlock = editor.canvas.getByRole( 'document', {
