@@ -11,6 +11,7 @@ use WP_Ability;
 use WP_UnitTestCase;
 use WP_UnitTest_Factory;
 use WordPress\AI\Abilities\Users\Users;
+use stdClass;
 
 /**
  * Users ability test case.
@@ -385,7 +386,11 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Avatar fields are not requestable when avatars are disabled.
+	 * Avatar availability is enforced when formatting, not in the schemas.
+	 *
+	 * The registered schemas are a registration-time snapshot, so they always
+	 * declare avatar_urls; the show_avatars option is honored per call instead,
+	 * even when it changes after the ability is registered.
 	 *
 	 * @since x.x.x
 	 */
@@ -397,14 +402,22 @@ class UsersTest extends WP_UnitTestCase {
 		$input_schema  = $ability->get_input_schema();
 		$output_schema = $ability->get_output_schema();
 
-		$this->assertNotContains( 'avatar_urls', $input_schema['oneOf'][0]['properties']['fields']['items']['enum'], 'The fields enum should omit avatar_urls when avatars are disabled.' );
-		$this->assertArrayNotHasKey( 'avatar_urls', $output_schema['oneOf'][0]['properties'], 'The output schema should omit avatar_urls when avatars are disabled.' );
+		$this->assertContains( 'avatar_urls', $input_schema['oneOf'][0]['properties']['fields']['items']['enum'], 'The fields enum should keep declaring avatar_urls when avatars are disabled.' );
+		$this->assertArrayHasKey( 'avatar_urls', $output_schema['oneOf'][0]['properties'], 'The output schema should keep declaring avatar_urls when avatars are disabled.' );
 
 		wp_set_current_user( $this->subscriber_id );
 		$result = $ability->execute( array( 'id' => $this->subscriber_id ) );
 
 		$this->assertIsArray( $result, 'The current user should still be readable when avatars are disabled.' );
 		$this->assertArrayNotHasKey( 'avatar_urls', $result, 'The ability result should omit avatar_urls when avatars are disabled.' );
+
+		// Enabling the option after registration takes effect immediately; the
+		// registration-time schema must not reject the field.
+		update_option( 'show_avatars', 1 );
+		$result = $ability->execute( array( 'id' => $this->subscriber_id ) );
+
+		$this->assertIsArray( $result, 'Default-fields lookups should succeed after avatars are enabled post-registration.' );
+		$this->assertArrayHasKey( 'avatar_urls', $result, 'The ability result should include avatar_urls once avatars are enabled.' );
 	}
 
 	/**
@@ -907,6 +920,95 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A fully redacted user is returned as an empty object, not an empty array.
+	 *
+	 * When every requested field is inaccessible, the result must still
+	 * serialize as a JSON object (`{}`) to honor the declared output type.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_fully_redacted_user_returns_empty_object(): void {
+		wp_set_current_user( $this->subscriber_id );
+		$this->register_ability();
+
+		$ability = wp_get_ability( 'core/read-users' );
+
+		$result = $ability->execute(
+			array(
+				'id'     => $this->public_author_id,
+				'fields' => array( 'email', 'roles' ),
+			)
+		);
+
+		$this->assertInstanceOf( stdClass::class, $result, 'A fully redacted user should be returned as an object.' );
+		$this->assertSame( '{}', wp_json_encode( $result ), 'A fully redacted user should serialize as a JSON object.' );
+
+		$collection = $ability->execute(
+			array(
+				'include' => array( $this->public_author_id ),
+				'fields'  => array( 'email' ),
+			)
+		);
+
+		$this->assertIsArray( $collection, 'A collection with redacted fields should return the wrapper.' );
+		$this->assertSame( '{}', wp_json_encode( $collection['users'][0] ), 'Redacted collection entries should serialize as JSON objects.' );
+	}
+
+	/**
+	 * REST-style string input is sanitized against the schema before use.
+	 *
+	 * Read-only abilities run over REST `GET`, where booleans arrive as the
+	 * string 'true' and arrays may arrive as CSV strings. Those values pass
+	 * schema validation, which coerces only for the check, so the ability must
+	 * sanitize them itself before its strict normalizers run.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rest_style_string_input_is_coerced(): void {
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$ability = wp_get_ability( 'core/read-users' );
+
+		$result = $ability->execute(
+			array(
+				'has_published_posts' => 'true',
+				'fields'              => array( 'id' ),
+				'per_page'            => 100,
+			)
+		);
+
+		$this->assertIsArray( $result, 'A string boolean published-posts filter should execute.' );
+		$ids = wp_list_pluck( $result['users'], 'id' );
+		$this->assertContains( $this->public_author_id, $ids, 'The published-posts filter should include public authors.' );
+		$this->assertNotContains( $this->subscriber_id, $ids, 'A string "true" must enable the published-posts filter rather than being silently dropped.' );
+
+		$result = $ability->execute(
+			array(
+				'roles'    => 'editor',
+				'fields'   => array( 'id' ),
+				'per_page' => 100,
+			)
+		);
+
+		$this->assertIsArray( $result, 'A CSV roles filter should execute.' );
+		$ids = wp_list_pluck( $result['users'], 'id' );
+		$this->assertContains( self::$fixture_ids['editor'], $ids, 'The roles filter should include editors.' );
+		$this->assertNotContains( $this->subscriber_id, $ids, 'A CSV roles value must filter by role rather than being silently dropped.' );
+
+		$result = $ability->execute(
+			array(
+				'include' => (string) $this->subscriber_id,
+				'fields'  => 'id,email',
+			)
+		);
+
+		$this->assertIsArray( $result, 'A CSV include filter should execute.' );
+		$this->assertSame( array( $this->subscriber_id ), wp_list_pluck( $result['users'], 'id' ), 'A string include value must limit the query to the included IDs.' );
+		$this->assertSame( 'users-ability-subscriber@example.com', $result['users'][0]['email'], 'A CSV fields value must select the requested fields.' );
+	}
+
+	/**
 	 * An unknown requested field name fails schema validation.
 	 *
 	 * Unlike inaccessible fields, which are omitted per user, a field name that is
@@ -930,14 +1032,15 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Requesting an unavailable field fails schema validation.
+	 * Requesting an unavailable field omits it instead of failing.
 	 *
-	 * When avatars are disabled, avatar_urls is not part of the supported set, so
-	 * requesting it is rejected before the ability executes.
+	 * When avatars are disabled, avatar_urls stays requestable (the schema is a
+	 * registration-time snapshot) and is omitted per user, matching how
+	 * permission-restricted fields behave.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_unavailable_requested_field_fails_schema_validation(): void {
+	public function test_unavailable_requested_field_is_omitted(): void {
 		update_option( 'show_avatars', 0 );
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
@@ -949,8 +1052,8 @@ class UsersTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertWPError( $result, 'Requesting avatar_urls while avatars are disabled should fail the request.' );
-		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Unavailable fields should use the invalid input error.' );
+		$this->assertIsArray( $result, 'Requesting avatar_urls while avatars are disabled should still succeed.' );
+		$this->assertSame( array( 'id' ), array_keys( $result ), 'The avatar_urls field should be omitted while avatars are disabled.' );
 	}
 
 	/**

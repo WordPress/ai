@@ -157,7 +157,7 @@ final class Users {
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
 	public function check_permission( $input = array() ): bool {
-		$input = is_array( $input ) ? $input : array();
+		$input = $this->sanitize_input( $input );
 
 		if ( ! is_user_logged_in() ) {
 			return false;
@@ -172,12 +172,7 @@ final class Users {
 			return true;
 		}
 
-		$user = $this->find_user( $input );
-		if ( ! $user instanceof WP_User || ! $this->is_user_member_of_site( $user ) ) {
-			return false;
-		}
-
-		return $this->can_read_user_for_lookup( $user, $lookup_type );
+		return $this->resolve_readable_user( $input, $lookup_type ) instanceof WP_User;
 	}
 
 	/**
@@ -186,19 +181,16 @@ final class Users {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\WP_Error User data, paginated collection data, or a WP_Error on failure.
+	 * @return array<string, mixed>|\stdClass|\WP_Error User data, paginated collection data, or a WP_Error on failure.
 	 */
 	public function execute_get_users( $input = array() ) {
-		$input  = is_array( $input ) ? $input : array();
+		$input  = $this->sanitize_input( $input );
 		$fields = $this->normalize_fields( $input );
 
 		$lookup_type = $this->get_lookup_type( $input );
 		if ( self::LOOKUP_COLLECTION !== $lookup_type ) {
-			$user = $this->find_user( $input );
-			if ( ! $user instanceof WP_User
-				|| ! $this->is_user_member_of_site( $user )
-				|| ! $this->can_read_user_for_lookup( $user, $lookup_type )
-			) {
+			$user = $this->resolve_readable_user( $input, $lookup_type );
+			if ( ! $user instanceof WP_User ) {
 				return new WP_Error(
 					'ability_invalid_permissions',
 					__( 'The requested user cannot be read.', 'ai' )
@@ -279,6 +271,36 @@ final class Users {
 	}
 
 	/**
+	 * Sanitizes raw ability input against the input schema.
+	 *
+	 * The Abilities API validates input against the schema but does not coerce
+	 * it, and REST `GET` requests (the only method for read-only abilities)
+	 * deliver every scalar as a string. Sanitizing applies the coercions that
+	 * validation already accepted (`'true'` to `true`, CSV strings to arrays,
+	 * numeric strings to integers) before the values reach the strict
+	 * normalizers.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input The raw ability input.
+	 * @return array<mixed> The sanitized input.
+	 */
+	private function sanitize_input( $input ): array {
+		if ( ! is_array( $input ) ) {
+			return array();
+		}
+
+		$sanitized = rest_sanitize_value_from_schema( $input, $this->get_users_input_schema(), 'input' );
+		if ( is_wp_error( $sanitized ) || ! is_array( $sanitized ) ) {
+			// Input that does not match the schema is left as-is; it has either
+			// already passed validation or will be rejected by it.
+			return $input;
+		}
+
+		return $sanitized;
+	}
+
+	/**
 	 * Casts a raw input value to a non-negative integer.
 	 *
 	 * @since x.x.x
@@ -306,6 +328,27 @@ final class Users {
 		}
 
 		return self::LOOKUP_COLLECTION;
+	}
+
+	/**
+	 * Resolves the target of a single-user lookup when the current user may read it.
+	 *
+	 * Shared by the permission and execute callbacks so the single-user
+	 * authorization decision has exactly one implementation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input       The ability input.
+	 * @param string       $lookup_type The single-user lookup type.
+	 * @return \WP_User|null The readable user, or null when not found or not readable.
+	 */
+	private function resolve_readable_user( array $input, string $lookup_type ): ?WP_User {
+		$user = $this->find_user( $input );
+		if ( ! $user instanceof WP_User || ! $this->is_user_member_of_site( $user ) ) {
+			return null;
+		}
+
+		return $this->can_read_user_for_lookup( $user, $lookup_type ) ? $user : null;
 	}
 
 	/**
@@ -467,17 +510,20 @@ final class Users {
 	 *
 	 * This is the single source of truth for the ability's user fields: the output
 	 * schema uses the definitions directly, while the input schema and field
-	 * normalization use the keys. The `avatar_urls` field is dropped when the
-	 * `show_avatars` option is disabled. Deliberately resolved on every call rather
-	 * than cached, since the option and the registered roles can change between the
-	 * ability being registered and the ability being used.
+	 * normalization use the keys. The field set is deliberately unconditional:
+	 * the registered schemas are a registration-time snapshot, so conditional
+	 * availability (such as `avatar_urls` honoring the `show_avatars` option) is
+	 * enforced per call in {@see self::format_user()} instead of here, where the
+	 * option could change between registration and use. Deliberately resolved on
+	 * every call rather than cached, since the registered roles can change at
+	 * runtime.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> User field definitions.
 	 */
 	private function get_user_properties(): array {
-		$user_properties = array(
+		return array(
 			'id'              => array(
 				'type'        => 'integer',
 				'description' => __( 'The user ID.', 'ai' ),
@@ -504,7 +550,7 @@ final class Users {
 			),
 			'avatar_urls'     => array(
 				'type'                 => 'object',
-				'description'          => __( 'Avatar URLs for the user at various sizes.', 'ai' ),
+				'description'          => __( 'Avatar URLs for the user at various sizes. Present when the show_avatars option is enabled.', 'ai' ),
 				'additionalProperties' => array(
 					'type' => 'string',
 				),
@@ -548,18 +594,10 @@ final class Users {
 				),
 			),
 		);
-
-		if ( ! get_option( 'show_avatars' ) ) {
-			unset( $user_properties['avatar_urls'] );
-		}
-
-		return $user_properties;
 	}
 
 	/**
 	 * Returns the default field list in output order.
-	 *
-	 * Unavailable fields are dropped through {@see self::get_user_properties()}.
 	 *
 	 * @since x.x.x
 	 *
@@ -870,9 +908,12 @@ final class Users {
 	 *
 	 * @param \WP_User $user   The user object.
 	 * @param string[] $fields The requested field names.
-	 * @return array<string, mixed> The formatted user data.
+	 * @return array<string, mixed>|\stdClass The formatted user data. A fully
+	 *                                        redacted user is returned as an
+	 *                                        object so it serializes as `{}`
+	 *                                        rather than `[]`.
 	 */
-	private function format_user( WP_User $user, array $fields ): array {
+	private function format_user( WP_User $user, array $fields ) {
 		$fields_requested = static function ( string $field ) use ( $fields ): bool {
 			return in_array( $field, $fields, true );
 		};
@@ -901,7 +942,9 @@ final class Users {
 		if ( $fields_requested( 'slug' ) ) {
 			$data['slug'] = (string) $user->user_nicename;
 		}
-		if ( $fields_requested( 'avatar_urls' ) ) {
+		// The schemas always declare avatar_urls; availability is enforced here,
+		// since the option can change after the schemas are registered.
+		if ( $fields_requested( 'avatar_urls' ) && get_option( 'show_avatars' ) ) {
 			$data['avatar_urls'] = rest_get_avatar_urls( $user );
 		}
 
@@ -936,6 +979,7 @@ final class Users {
 			$data['roles'] = $this->normalize_string_list( $user->roles );
 		}
 
-		return $data;
+		// An empty result must serialize as a JSON object, not an empty array.
+		return array() === $data ? (object) $data : $data;
 	}
 }
