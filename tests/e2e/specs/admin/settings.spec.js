@@ -215,7 +215,7 @@ test.describe( 'Plugin settings', () => {
 		await expect( saveButton ).toBeVisible();
 
 		// Cleanup: disable Advanced Settings.
-		await disableAdvancedSettings( page );	
+		await disableAdvancedSettings( page );
 	} );
 
 	test( 'Can turn on all experiments in a group', async ( {
@@ -507,6 +507,29 @@ test.describe( 'Plugin settings', () => {
 
 		// Disable the Excerpt Generation Experiment.
 		await disableExperiment( admin, page, 'Excerpt Generation' );
+	} );
+
+	test( 'Can use advanced settings', async ( { admin, page } ) => {
+		// Globally turn on experiments and enable Content Classification
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Enable Advanced Settings and verify fields become visible.
+		await enableAdvancedSettings( page );
+		await expect( page.getByLabel( 'Taxonomy strategy' ) ).toBeVisible();
+		await expect( page.getByLabel( 'Maximum suggestions' ) ).toBeVisible();
+
+		// Disable Advanced Settings and verify fields are hidden again.
+		await disableAdvancedSettings( page );
+		await expect(
+			page.getByLabel( 'Taxonomy strategy' )
+		).not.toBeVisible();
+		await expect(
+			page.getByLabel( 'Maximum suggestions' )
+		).not.toBeVisible();
+
+		// Cleanup.
+		await disableExperiment( admin, page, 'Content Classification' );
 	} );
 
 	test( 'Developer settings save button appears, values persist after save, and reset does not requires explicit save', async ( {
