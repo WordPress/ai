@@ -1275,20 +1275,27 @@ final class Content {
 		$GLOBALS['post'] = $post;
 		setup_postdata( $post );
 
-		/** This filter is documented in wp-includes/post-template.php. */
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
-		$content = apply_filters( 'the_content', $post->post_content );
+		/*
+		 * The global post context is restored in a finally block so a throw from a
+		 * content filter cannot leave it pointing at the rendered post for the rest
+		 * of the request.
+		 */
+		try {
+			/** This filter is documented in wp-includes/post-template.php. */
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
+			$content = apply_filters( 'the_content', $post->post_content );
 
-		if ( $previous_post instanceof WP_Post ) {
-			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
-			$GLOBALS['post'] = $previous_post;
-			setup_postdata( $previous_post );
-		} else {
-			unset( $GLOBALS['post'] );
-			wp_reset_postdata();
+			return is_string( $content ) ? $content : '';
+		} finally {
+			if ( $previous_post instanceof WP_Post ) {
+				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
+				$GLOBALS['post'] = $previous_post;
+				setup_postdata( $previous_post );
+			} else {
+				unset( $GLOBALS['post'] );
+				wp_reset_postdata();
+			}
 		}
-
-		return is_string( $content ) ? $content : '';
 	}
 
 	/**
