@@ -79,7 +79,7 @@ final class Users {
 	 * @since x.x.x
 	 * @var string[]
 	 */
-	private const DEFAULT_FIELDS = array(
+	private const DEFAULT_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		'id',
 		'name',
 		'link',
