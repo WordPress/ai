@@ -132,8 +132,14 @@ final class Main {
 				( new Dashboard_Widgets( $registry ) )->init();
 			}
 
-			// Register Site Health integration (always, not just in admin).
-			( new Site_Health() )->init();
+			// Register Site Health integration. The `debug_information` and
+			// `site_status_tests` filters are only ever consumed from admin
+			// screens, the Site Health REST endpoints (which power the async
+			// status checks in wp-admin/site-health.php), and the weekly
+			// WP-Cron health-check email — never on the public front end.
+			if ( is_admin() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+				( new Site_Health() )->init();
+			}
 
 			// Register our post-related WordPress Abilities.
 			( new Posts() )->register();
