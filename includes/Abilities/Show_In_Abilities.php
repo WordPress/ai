@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 
 declare( strict_types=1 );
@@ -25,26 +25,28 @@ defined( 'ABSPATH' ) || exit;
  * It is intentionally object-type-agnostic: today it marks settings and post types; meta
  * can be marked here the same way when those abilities land.
  *
- * Timing: the `core/settings` ability snapshots the exposed settings when it registers
- * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
- * before that hook fires — i.e. its `register_setting()` call must run before abilities
- * init — for the ability to pick it up.
- *
  * Timing: the `core/read-settings` ability snapshots the exposed settings when it registers
  * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
  * before that hook fires — i.e. its `register_setting()` call must run before abilities
  * init — for the ability to pick it up.
  *
+ * Timing: the `core/read-content` ability re-resolves the exposed post types on every call,
+ * but its input schema snapshots them when it registers on `wp_abilities_api_init`. A post
+ * type therefore has to be flagged with `show_in_abilities` before that hook fires for
+ * schema validation to accept it as input.
+ *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since x.x.x
+ * @since 1.1.0
+ * @since x.x.x Also marks curated post types.
  */
 final class Show_In_Abilities {
 
 	/**
 	 * Registers the hooks that mark core objects as exposed to abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
+	 * @since x.x.x Also marks curated post types.
 	 */
 	public function register(): void {
 		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
@@ -67,7 +69,7 @@ final class Show_In_Abilities {
 	 * flag: it picks the default and each setting opts in through `register_setting()`, the
 	 * way `show_in_rest` already works.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed $defaults The default registration arguments.
 	 * @return bool True when core declares `show_in_abilities` as a setting argument.
@@ -181,7 +183,7 @@ final class Show_In_Abilities {
 	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
 	 * Keep the two in sync when adding or removing entries.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
