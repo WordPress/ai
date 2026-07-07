@@ -39,10 +39,10 @@ import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
 import {
-	AdvancedExperimentSettingsContext,
-	useAdvancedExperimentSettings,
-	useAdvancedExperimentSettingsContext,
-} from './hooks/use-advanced-experiment-settings';
+	AdvancedSettingsContext,
+	useAdvancedSettings,
+	useAdvancedSettingsContext,
+} from './hooks/use-advanced-settings';
 import {
 	DeveloperModeContext,
 	useDeveloperMode,
@@ -614,8 +614,7 @@ function FeatureToggleWithSettings( {
 	const feature = FEATURES_BY_SETTING.get( field.id );
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
-	const { isAdvancedExperimentSettingsEnabled } =
-		useAdvancedExperimentSettingsContext();
+	const { isAdvancedSettingsEnabled } = useAdvancedSettingsContext();
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
@@ -627,7 +626,7 @@ function FeatureToggleWithSettings( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
-			{ checked && isAdvancedExperimentSettingsEnabled && feature && (
+			{ checked && isAdvancedSettingsEnabled && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
 			{ checked && isDeveloperMode && feature && (
@@ -707,7 +706,7 @@ function AISettingsPage() {
 		useDispatch( noticesStore );
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
-	const advancedExperimentSettings = useAdvancedExperimentSettings();
+	const advancedSettings = useAdvancedSettings();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		// Return the stable module-level reference when page data is available so
@@ -980,9 +979,7 @@ function AISettingsPage() {
 	}, [ featureDefinitions, featureGroups ] );
 
 	return (
-		<AdvancedExperimentSettingsContext.Provider
-			value={ advancedExperimentSettings }
-		>
+		<AdvancedSettingsContext.Provider value={ advancedSettings }>
 			<DeveloperModeContext.Provider value={ isDeveloperMode }>
 				<Page
 					visual={ <AIIcon /> }
@@ -1047,20 +1044,20 @@ function AISettingsPage() {
 										<MenuItem
 											role="menuitemcheckbox"
 											isSelected={
-												advancedExperimentSettings.isAdvancedExperimentSettingsEnabled
+												advancedSettings.isAdvancedSettingsEnabled
 											}
 											info={ __(
 												'Show advanced configuration options for features.',
 												'ai'
 											) }
 											icon={
-												advancedExperimentSettings.isAdvancedExperimentSettingsEnabled
+												advancedSettings.isAdvancedSettingsEnabled
 													? checkIcon
 													: null
 											}
 											onClick={ () => {
-												advancedExperimentSettings.setAdvancedExperimentSettingsEnabled(
-													! advancedExperimentSettings.isAdvancedExperimentSettingsEnabled
+												advancedSettings.setAdvancedSettingsEnabled(
+													! advancedSettings.isAdvancedSettingsEnabled
 												);
 											} }
 										>
@@ -1120,7 +1117,7 @@ function AISettingsPage() {
 					</Stack>
 				</Page>
 			</DeveloperModeContext.Provider>
-		</AdvancedExperimentSettingsContext.Provider>
+		</AdvancedSettingsContext.Provider>
 	);
 }
 export const stage = AISettingsPage;
