@@ -381,7 +381,8 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertArrayNotHasKey( 'required', $user_schema, 'Single-user fields should remain optional.' );
 		$this->assertSame( array( 'users', 'total', 'total_pages' ), $collection_schema['required'], 'Collection responses should require the wrapper fields.' );
 		$this->assertSame( 'date-time', $user_properties['registered_date']['format'], 'The registered_date output schema should use date-time format.' );
-		$this->assertEqualSets( array_keys( wp_roles()->roles ), $user_properties['roles']['items']['enum'], 'The roles output enum should expose registered role names.' );
+		$this->assertSame( 'string', $user_properties['roles']['items']['type'], 'The roles output schema should describe role name strings.' );
+		$this->assertArrayNotHasKey( 'enum', $user_properties['roles']['items'], 'The roles output schema must not pin an enum, so a role registered after the schema snapshot still validates.' );
 	}
 
 	/**
@@ -920,6 +921,40 @@ class UsersTest extends WP_UnitTestCase {
 		} finally {
 			wp_delete_user( $lister_id );
 			remove_role( 'users_ability_list_only' );
+		}
+	}
+
+	/**
+	 * A role registered after the ability's schema snapshot does not fail output
+	 * validation when a returned user holds it.
+	 *
+	 * The output schema is a registration-time snapshot; a role added afterwards
+	 * still appears on a user, so the roles output must not be pinned to a frozen
+	 * enum that would reject the value and fail the whole call.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_roles_registered_after_registration_do_not_fail_output_validation(): void {
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		// Register the role only after the ability (and its output schema) exist.
+		add_role( 'users_ability_late_role', 'Late Role', array( 'read' => true ) ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- Registering a throwaway role in an integration test.
+		$user_id = self::factory()->user->create( array( 'role' => 'users_ability_late_role' ) );
+
+		try {
+			$result = wp_get_ability( 'core/read-users' )->execute(
+				array(
+					'id'     => $user_id,
+					'fields' => array( 'id', 'roles' ),
+				)
+			);
+
+			$this->assertIsArray( $result, 'Reading a user with a role added after registration should not fail output validation.' );
+			$this->assertContains( 'users_ability_late_role', $result['roles'], 'The late-registered role should be returned.' );
+		} finally {
+			wp_delete_user( $user_id );
+			remove_role( 'users_ability_late_role' );
 		}
 	}
 

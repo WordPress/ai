@@ -531,9 +531,9 @@ final class Users {
 	 * the registered schemas are a registration-time snapshot, so conditional
 	 * availability (such as `avatar_urls` honoring the `show_avatars` option) is
 	 * enforced per call in {@see self::format_user()} instead of here, where the
-	 * option could change between registration and use. Deliberately resolved on
-	 * every call rather than cached, since the registered roles can change at
-	 * runtime.
+	 * option could change between registration and use. Resolved on every call
+	 * rather than cached: it is the single source of truth for the field set and
+	 * inexpensive to rebuild.
 	 *
 	 * @since x.x.x
 	 *
@@ -605,9 +605,14 @@ final class Users {
 			'roles'           => array(
 				'type'        => 'array',
 				'description' => __( 'Roles assigned to the user. Present when the current user can view them.', 'ai' ),
+				// Output roles are not pinned to an enum. The schema is a
+				// registration-time snapshot, but a role can be registered after
+				// registration and still be held by a returned user; a snapshot enum
+				// would reject that legitimate value during output validation and
+				// fail the whole call. This also matches the REST users controller,
+				// whose `roles` output items are plain strings.
 				'items'       => array(
 					'type' => 'string',
-					'enum' => $this->get_role_names(),
 				),
 			),
 		);
