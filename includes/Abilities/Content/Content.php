@@ -543,6 +543,20 @@ final class Content {
 
 		$query = new WP_Query( $query_args );
 
+		/*
+		 * Prime the author caches with a single query instead of one user lookup
+		 * per post, mirroring the REST posts controller.
+		 */
+		if ( in_array( 'author', $fields, true ) && post_type_supports( $post_type, 'author' ) ) {
+			$query_posts = array_filter(
+				$query->posts,
+				static function ( $queried_post ): bool {
+					return $queried_post instanceof WP_Post;
+				}
+			);
+			update_post_author_caches( $query_posts );
+		}
+
 		$posts = array();
 		foreach ( $query->posts as $post ) {
 			if ( ! $post instanceof WP_Post ) {
