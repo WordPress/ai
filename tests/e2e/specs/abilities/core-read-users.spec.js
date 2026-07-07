@@ -144,10 +144,7 @@ test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result.users.length ).toBeGreaterThan( 0 );
 		for ( const user of outcome.result.users ) {
-			expect( Object.keys( user ).sort() ).toEqual( [
-				'id',
-				'name',
-			] );
+			expect( Object.keys( user ).sort() ).toEqual( [ 'id', 'name' ] );
 		}
 	} );
 
