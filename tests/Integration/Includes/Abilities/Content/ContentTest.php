@@ -1903,6 +1903,26 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A single post whose requested fields project to nothing is returned as an empty object.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_single_post_returns_empty_object_for_empty_field_projection(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		// `parent` never applies to the non-hierarchical `post` type, so the projection is empty.
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => self::$post_ids['published'],
+				'fields' => array( 'parent' ),
+			)
+		);
+
+		$this->assertEquals( (object) array(), $result, 'An empty single-post field projection should be returned as an empty object so it serializes as `{}`.' );
+	}
+
+	/**
 	 * A single post fetched by ID is returned directly without query totals.
 	 *
 	 * @since x.x.x

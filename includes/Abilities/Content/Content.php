@@ -449,7 +449,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\WP_Error A post object in single-post mode, a map with a `posts` list in query mode, or a WP_Error on failure.
+	 * @return array<string, mixed>|\stdClass|\WP_Error A post object in single-post mode (cast to `stdClass` when the projection is empty so it serializes as `{}`), a map with a `posts` list in query mode, or a WP_Error on failure.
 	 */
 	public function execute_get_content( $input = array() ) {
 		$input         = is_array( $input ) ? $input : array();
@@ -468,7 +468,10 @@ final class Content {
 				return $this->not_found_error();
 			}
 
-			return $this->format_post( $post, $fields );
+			$formatted = $this->format_post( $post, $fields );
+
+			// Cast so an empty field projection serializes as `{}` rather than `[]`, matching query mode.
+			return array() === $formatted ? (object) array() : $formatted;
 		}
 
 		// Single-post mode (by slug) and query mode.
@@ -484,7 +487,10 @@ final class Content {
 				return $this->not_found_error();
 			}
 
-			return $this->format_post( $post, $fields );
+			$formatted = $this->format_post( $post, $fields );
+
+			// Cast so an empty field projection serializes as `{}` rather than `[]`, matching query mode.
+			return array() === $formatted ? (object) array() : $formatted;
 		}
 
 		/*
