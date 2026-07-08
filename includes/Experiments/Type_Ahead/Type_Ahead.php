@@ -119,6 +119,10 @@ class Type_Ahead extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function enqueue_block_assets(): void {
+		if ( ! is_admin() ) {
+			return;
+		}
+
 		Asset_Loader::enqueue_style( 'type_ahead', 'experiments/type-ahead' );
 	}
 
