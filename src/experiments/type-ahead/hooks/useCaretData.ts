@@ -33,7 +33,19 @@ export const useCaretData = (
 		const win = doc.defaultView || window;
 		const viewport = win?.visualViewport;
 
-		const update = () => {
+		const update = ( event?: Event ) => {
+			// Escape is handled on keydown to dismiss suggestions and should not change
+			// caret data; ignore its keyup so dismissing does not immediately restart the
+			// caret-driven suggestion flow.
+			if (
+				event &&
+				event.type === 'keyup' &&
+				'key' in event &&
+				event.key === 'Escape'
+			) {
+				return;
+			}
+
 			const selection = doc.getSelection();
 			if ( ! selection || selection.rangeCount === 0 ) {
 				setCaret( null );
