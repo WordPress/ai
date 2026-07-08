@@ -74,4 +74,7 @@ constants();
 // Load the autoloader.
 require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
 
+// Temporary: load unmerged upstream embedding-support dependencies for the embedding PoC.
+require_once WPAI_PLUGIN_DIR . 'includes/embedding-poc-dependencies.php';
+
 \WordPress\AI\Main::get_instance();
