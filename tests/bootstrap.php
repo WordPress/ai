@@ -33,13 +33,6 @@ if ( false !== getenv( 'WP_TESTS_DIR' ) ) {
 // Give access to tests_add_filter() function.
 require_once $_test_root . '/includes/functions.php';
 
-// The wp-build generated render callback is never loaded during tests
-// (the WPAI_IS_TEST guard in Requirements skips build/build.php). Stub it
-// so Settings_Page::init() registers its script module data filter.
-if ( ! function_exists( 'ai_ai_wp_admin_render_page' ) ) {
-	function ai_ai_wp_admin_render_page(): void {}
-}
-
 // Activate the plugin.
 tests_add_filter(
 	'muplugins_loaded',

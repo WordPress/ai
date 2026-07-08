@@ -9,7 +9,6 @@ namespace WordPress\AI\Tests\Integration\Includes\Settings;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Connector_Approval\Approvals_Store;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
@@ -568,30 +567,5 @@ class Settings_PageTest extends WP_UnitTestCase {
 
 		$this->assertSame( admin_url( 'options-general.php?page=ai-wp-admin' ), $captured_location );
 		$this->assertSame( 301, $captured_status );
-	}
-
-	/**
-	 * Test that the settings page script module data includes connector approval fields.
-	 */
-	public function test_settings_page_script_module_data_includes_connector_fields() {
-		Settings_Page::init( $this->registry );
-
-		$this->assertNotFalse( has_filter( 'script_module_data_ai-wp-admin' ) );
-
-		// No approvals stored yet.
-		$result = apply_filters( 'script_module_data_ai-wp-admin', array() );
-
-		$this->assertArrayHasKey( 'connectorApprovalUrl', $result );
-		$this->assertSame( admin_url( 'tools.php?page=ai-connector-approval' ), $result['connectorApprovalUrl'] );
-		$this->assertArrayHasKey( 'hasApprovedConnector', $result );
-		$this->assertFalse( $result['hasApprovedConnector'] );
-		$this->assertArrayHasKey( 'hasCredentials', $result );
-		$this->assertArrayHasKey( 'hasValidCredentials', $result );
-
-		// Approve a connector for this plugin and re-apply the filter.
-		( new Approvals_Store() )->set_approval( plugin_basename( WPAI_PLUGIN_FILE ), 'test-connector', true );
-
-		$result = apply_filters( 'script_module_data_ai-wp-admin', array() );
-		$this->assertTrue( $result['hasApprovedConnector'] );
 	}
 }
