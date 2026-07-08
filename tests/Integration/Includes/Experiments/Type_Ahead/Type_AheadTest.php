@@ -48,6 +48,10 @@ class Type_AheadTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		wp_dequeue_style( 'ai_type_ahead' );
+		wp_deregister_style( 'ai_type_ahead' );
+		wp_dequeue_script( 'ai_type_ahead' );
+		wp_deregister_script( 'ai_type_ahead' );
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_type-ahead_enabled' );
 		delete_option( 'wpai_feature_type-ahead_field_mode' );
@@ -124,14 +128,34 @@ class Type_AheadTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests enqueue_block_assets() enqueues styles.
+	 * Tests enqueue_block_assets() enqueues styles in the admin, where the block
+	 * editor iframe's stylesheet is assembled from.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_enqueue_block_assets_enqueues_styles() {
+	public function test_enqueue_block_assets_enqueues_styles_in_admin() {
+		set_current_screen( 'post' );
+
 		$experiment = new Type_Ahead();
 		$experiment->enqueue_block_assets();
 
+		set_current_screen( 'front' );
+
 		$this->assertTrue( wp_style_is( 'ai_type_ahead', 'enqueued' ) );
+	}
+
+	/**
+	 * Tests enqueue_block_assets() skips styles on the front end, since type-ahead
+	 * has no front-end output.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_block_assets_skips_styles_on_front_end() {
+		set_current_screen( 'front' );
+
+		$experiment = new Type_Ahead();
+		$experiment->enqueue_block_assets();
+
+		$this->assertFalse( wp_style_is( 'ai_type_ahead', 'enqueued' ) );
 	}
 }
