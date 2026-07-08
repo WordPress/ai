@@ -3,9 +3,31 @@
 	"description": "AI features, experiments and capabilities for WordPress.",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",
+	"repositories": [
+		{
+			"type": "vcs",
+			"url": "https://github.com/chubes4/php-ai-client.git"
+		},
+		{
+			"type": "vcs",
+			"url": "https://github.com/chubes4/ai-provider-for-openai.git"
+		},
+		{
+			"type": "vcs",
+			"url": "https://github.com/WordPress/ai-provider-for-google.git"
+		},
+		{
+			"type": "vcs",
+			"url": "https://github.com/Fueled/ai-provider-for-ollama.git"
+		}
+	],
 	"require": {
 		"ext-json": "*",
-		"php": ">=7.4"
+		"php": ">=7.4",
+		"wordpress/php-ai-client": "dev-issue/242-embedding-generation",
+		"wordpress/ai-provider-for-openai": "dev-feature/issue-32-openai-embeddings",
+		"wordpress/ai-provider-for-google": "dev-feature/embeddings",
+		"fueled/ai-provider-for-ollama": "dev-feature/embeddings"
 	},
 	"require-dev": {
 		"automattic/vipwpcs": "^3.0",
@@ -39,6 +61,30 @@
 	},
 	"minimum-stability": "dev",
 	"prefer-stable": true,
+	"extra": {
+		"strauss": {
+			"target_directory": "third-party",
+			"namespace_prefix": "WordPress\\AiClientDependencies\\",
+			"classmap_prefix": "WPAI_EmbeddingPoc_",
+			"packages": [
+				"nyholm/psr7",
+				"php-http/discovery",
+				"php-http/httplug",
+				"php-http/promise",
+				"psr/event-dispatcher",
+				"psr/http-client",
+				"psr/http-factory",
+				"psr/http-message",
+				"psr/simple-cache"
+			],
+			"update_call_sites": [
+				"vendor/wordpress/php-ai-client",
+				"vendor/wordpress/ai-provider-for-openai",
+				"vendor/wordpress/ai-provider-for-google",
+				"vendor/fueled/ai-provider-for-ollama"
+			]
+		}
+	},
 	"config": {
 		"allow-plugins": {
 			"composer/installers": true,
@@ -53,12 +99,23 @@
 		"format": "phpcbf --standard=phpcs.xml.dist",
 		"lint": "phpcs --standard=phpcs.xml.dist",
 		"phpstan": "phpstan analyse --memory-limit=1G",
-		"test": "phpunit --strict-coverage"
+		"test": "phpunit --strict-coverage",
+		"prefix-namespaces": [
+			"sh -c 'test -f ./bin/strauss.phar || curl -o bin/strauss.phar -L -C - https://github.com/BrianHenryIE/strauss/releases/download/0.28.0/strauss.phar'",
+			"@php bin/strauss.phar"
+		],
+		"post-install-cmd": [
+			"@prefix-namespaces"
+		],
+		"post-update-cmd": [
+			"@prefix-namespaces"
+		]
 	},
 	"scripts-descriptions": {
 		"format": "Automatically fix coding standards issues",
 		"lint": "Check coding standards compliance",
 		"phpstan": "Run static analysis with PHPStan",
-		"test": "Run PHPUnit tests"
+		"test": "Run PHPUnit tests",
+		"prefix-namespaces": "Embedding PoC only: download (if needed) and run the pinned Strauss phar to prefix the dev-branch embedding dependencies' PSR/HTTP types to match WP core's bundled convention"
 	}
 }
