@@ -32,6 +32,8 @@
 
 declare( strict_types=1 );
 
+use WordPress\AI\CLI\Embeddings_Command;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -79,3 +81,9 @@ add_action(
 	},
 	PHP_INT_MAX
 );
+
+if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+	return;
+}
+
+\WP_CLI::add_command( 'ai embeddings', Embeddings_Command::class );
