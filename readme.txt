@@ -140,19 +140,32 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 == Screenshots ==
 
-1. Post editor showing Generate button above the post title field and title recommendations in a modal.
-2. Post editor sidebar showing Generate Excerpt button and generated excerpt.
-3. Post editor sidebar showing Generate AI Summary button and the generated content summary within a Content Summary block.
-4. Post editor sidebar showing Generate featured image button and the generated featured image preview with Alt Text, Title, and Description.
-5. Post editor showing Generate Image flows.
-6. Media Library showing Generate Image flows.
-7. Image block settings showing Generate Alt Text button and the generated alt text.
-8. Post editor sidebar showing Generate Editorial Notes flows.
-9. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
-10. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
-11. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
-12. AI settings screen showing toggles to enable specific experiments.
-#. Comments admin screen showing AI-powered comment moderation features, including color-coded badges for toxicity scoring and comment sentiment.
+1. Feature: Image Generation and Editing. Post editor sidebar showing Generate featured image button and the generated featured image preview with Alt Text, Title, and Description.
+2. Feature: Image Generation and Editing. Post editor showing Generate Image flows.
+3. Feature: Image Generation and Editing. Media Library showing Generate Image flows.
+4. Editor Experiment: Alt Text Generation. Image block settings showing Generate Alt Text button and the generated alt text.
+5. Editor Experiment: Alt Text Generation. Bulk alt text generation from within the Media Library.
+6. Editor Experiment: Comment Moderation. Comments admin screen showing AI-powered comment moderation features, including color-coded badges for toxicity scoring and comment sentiment.
+7. Editor Experiment: Comment Moderation. Recent Comments section of the Activity widget showing Sentiment and Toxicity scores.
+8. Editor Experiment: Content Classification. AI-powered suggestions for post tags and categories based on content analysis.
+9. Editor Experiment: Content Resizing. Shorten, expand, or rephrase selected block content.
+10. Editor Experiment: Content Summarization. Post editor sidebar showing Generate AI Summary button and the generated content summary within a Content Summary block.
+11. Editor Experiment: Editorial Notes. Post editor sidebar showing Generate Editorial Notes flows.
+12. Editor Experiment: Editorial Updates. Applies pending Editorial Notes to your content automatically.
+13. Editor Experiment: Excerpt Generation. Post editor sidebar showing Generate Excerpt button and generated excerpt.
+14. Editor Experiment: Meta Description Generation. Generates meta description suggestions and integrates those with various SEO plugins.
+15. Editor Experiment: Title Generation. Post editor showing Generate button above the post title field and title recommendations in a modal.
+16. Editor Experiment: Type-ahead Text. Ghost text suggestions while writing paragraphs in the block editor.
+17. Dashboard Widgets. AI Capabilities widget showing Abilities Explorer summary and connected AI providers and model capabilities.
+18. Dashboard Widgets. AI Status widget showing three step configuration process.
+19. Dashboard Widgets. AI Status widget showing connected AI providers and enabled Features and Experiments.
+20. Admin Experiment: Abilities Explorer. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
+21. Admin Experiment: Abilities Explorer. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
+22. Admin Experiment: Abilities Explorer. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
+23. Admin Experiment: AI Request Logging. Logs AI requests for observability and debugging. View detailed logs under Tools.
+24. Admin Experiment: Connector Approvals. Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
+25. Admin Experiment: Key Generation. Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
+26. AI Settings. AI settings screen showing toggles to enable specific experiments.
 
 == Changelog ==
 
