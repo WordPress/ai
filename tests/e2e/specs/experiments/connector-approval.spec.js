@@ -39,9 +39,10 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's a page under Tools.
 		await expect(
-			page
-				.locator( '#adminmenu' )
-				.getByRole( 'link', { name: 'Connector Approvals', exact: true } )
+			page.locator( '#adminmenu' ).getByRole( 'link', {
+				name: 'Connector Approvals',
+				exact: true,
+			} )
 		).toBeVisible();
 
 		// Visit the Connector Approval page.
@@ -49,7 +50,10 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure the Connector Approval page is visible.
 		await expect(
-			page.getByRole( 'heading', { name: 'Connector Approvals', exact: true } )
+			page.getByRole( 'heading', {
+				name: 'Connector Approvals',
+				exact: true,
+			} )
 		).toBeVisible();
 
 		// Ensure the Approval matrix table is visible.
@@ -147,9 +151,10 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's not a page under Tools.
 		await expect(
-			page
-				.locator( '#adminmenu' )
-				.getByRole( 'link', { name: 'Connector Approvals', exact: true } )
+			page.locator( '#adminmenu' ).getByRole( 'link', {
+				name: 'Connector Approvals',
+				exact: true,
+			} )
 		).not.toBeVisible();
 	} );
 
@@ -167,9 +172,10 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's not a page under Tools.
 		await expect(
-			page
-				.locator( '#adminmenu' )
-				.getByRole( 'link', { name: 'Connector Approvals', exact: true } )
+			page.locator( '#adminmenu' ).getByRole( 'link', {
+				name: 'Connector Approvals',
+				exact: true,
+			} )
 		).not.toBeVisible();
 	} );
 } );
