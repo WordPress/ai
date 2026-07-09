@@ -73,4 +73,5 @@ jobs:
             build
             docs
             tests
+            third-party
           ignore-warnings: true

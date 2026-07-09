@@ -11,9 +11,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\CLI;
 
-use WordPress\AiClient\AiClient;
 use WP_CLI;
 use WP_CLI\Utils;
+use WordPress\AiClient\AiClient;
 
 use function WordPress\AI\has_valid_ai_credentials;
 use function WordPress\AI\normalize_content;
@@ -53,7 +53,7 @@ class Embeddings_Command {
 	 *
 	 * @var list<string>
 	 */
-	private const ALLOWED_PROVIDERS = array( 'openai', 'google', 'ollama' );
+	private const ALLOWED_PROVIDERS = array( 'openai', 'google', 'ollama' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition
 
 	/**
 	 * Generates embeddings for text.
