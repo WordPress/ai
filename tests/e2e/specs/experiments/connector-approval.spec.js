@@ -39,9 +39,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's a page under Tools.
 		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
-			} )
+			page
+				.locator( '#adminmenu' )
+				.getByRole( 'link', { name: 'Connector Approvals', exact: true } )
 		).toBeVisible();
 
 		// Visit the Connector Approval page.
@@ -49,12 +49,14 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure the Connector Approval page is visible.
 		await expect(
-			page.locator( '#ai-connector-approval-root' )
+			page.getByRole( 'heading', { name: 'Connector Approvals', exact: true } )
 		).toBeVisible();
 
 		// Ensure the Approval matrix table is visible.
 		await expect(
-			page.locator( '.ai-connector-approval__matrix table' )
+			page
+				.locator( '.ai-connector-approval__matrix' )
+				.getByRole( 'table' )
 		).toBeVisible();
 
 		// Remove any previous approvals.
@@ -86,7 +88,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Trigger a fresh request if no pending row exists yet.
 		const pendingRow = page
-			.locator( 'table.widefat.striped tbody tr' )
+			.locator( '.ai-connector-approval' )
+			.first()
+			.locator( 'tbody tr' )
 			.filter( {
 				has: page.locator( 'code', { hasText: 'ai/ai.php' } ),
 			} )
@@ -111,7 +115,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure we can approve the pending request.
 		await expect( pendingRow ).toHaveCount( 1 );
-		await pendingRow.getByRole( 'button', { name: 'Approve' } ).click();
+		await pendingRow
+			.getByRole( 'button', { name: 'Approve', exact: true } )
+			.click();
 
 		await expect(
 			page
@@ -123,11 +129,7 @@ test.describe( 'Connector Approval Experiment', () => {
 		).toHaveCount( 0 );
 
 		await expect(
-			aiMatrixRow.locator(
-				`td:nth-child(${
-					openAiColumnIndex + 1
-				}) input.components-form-toggle__input`
-			)
+			page.getByLabel( 'Allow AI to use OpenAI', { exact: true } )
 		).toBeChecked();
 	} );
 
@@ -145,9 +147,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's not a page under Tools.
 		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
-			} )
+			page
+				.locator( '#adminmenu' )
+				.getByRole( 'link', { name: 'Connector Approvals', exact: true } )
 		).not.toBeVisible();
 	} );
 
@@ -165,9 +167,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's not a page under Tools.
 		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
-			} )
+			page
+				.locator( '#adminmenu' )
+				.getByRole( 'link', { name: 'Connector Approvals', exact: true } )
 		).not.toBeVisible();
 	} );
 } );
