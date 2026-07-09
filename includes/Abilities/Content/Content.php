@@ -677,11 +677,15 @@ final class Content {
 			}
 			$formatted = $this->format_post( $post, $fields );
 
-			// Keep rows whose field projection is empty so `posts` stays in sync with
-			// `total`; cast so an empty projection serializes as `{}` rather than `[]`.
+			// Keep rows whose field projection is empty; cast so an empty projection
+			// serializes as `{}` rather than `[]`.
 			$posts[] = array() === $formatted ? (object) array() : $formatted;
 		}
 
+		/*
+		 * Mirror the REST posts controller: totals come from the underlying WP_Query,
+		 * while row-level permission checks above may withhold individual returned rows.
+		 */
 		return array(
 			'posts'       => $posts,
 			'total'       => (int) $query->found_posts,
@@ -1110,11 +1114,11 @@ final class Content {
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of posts matching the query, across all pages, after applying the permission filter to the query. May exceed the number of returned posts when row-level permission checks withhold some of them.', 'ai' ),
+					'description' => __( 'Total number of posts matching the underlying query, across all pages. May exceed the number of returned posts when row-level permission checks withhold some of them.', 'ai' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of query result pages available after applying the permission filter to the query.', 'ai' ),
+					'description' => __( 'Total number of query result pages available for the underlying query. May include pages whose rows are withheld by row-level permission checks.', 'ai' ),
 				),
 			),
 		);

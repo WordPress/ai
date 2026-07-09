@@ -1441,6 +1441,51 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Query totals mirror WP_Query even when row-level permissions withhold rows.
+	 *
+	 * This matches the REST posts controller: `posts` only contains rows the current
+	 * user can read, while `total` and `total_pages` describe the underlying query.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_totals_may_include_rows_withheld_by_row_level_permissions(): void {
+		$author_a = self::$user_ids['author'];
+		$author_b = self::$user_ids['author_secondary'];
+
+		$draft_a = self::factory()->post->create(
+			array(
+				'post_author' => $author_a,
+				'post_status' => 'draft',
+				'post_date'   => '2026-01-01 10:00:00',
+			)
+		);
+		$draft_b = self::factory()->post->create(
+			array(
+				'post_author' => $author_b,
+				'post_status' => 'draft',
+				'post_date'   => '2026-01-02 10:00:00',
+			)
+		);
+
+		wp_set_current_user( $author_b );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'status'    => array( 'draft' ),
+				'per_page'  => 1,
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertSame( array( $draft_b ), wp_list_pluck( $result['posts'], 'id' ), 'Authors should receive only drafts they can read.' );
+		$this->assertNotContains( $draft_a, wp_list_pluck( $result['posts'], 'id' ), 'Rows withheld by row-level permissions should not be returned.' );
+		$this->assertGreaterThan( count( $result['posts'] ), $result['total'], 'Totals may include rows withheld by row-level permission checks.' );
+		$this->assertSame( 2, $result['total_pages'], 'Page counts should be based on the underlying query total, matching REST behavior.' );
+	}
+
+	/**
 	 * The parent filter is rejected for non-hierarchical post types, mirroring REST.
 	 *
 	 * @since x.x.x
