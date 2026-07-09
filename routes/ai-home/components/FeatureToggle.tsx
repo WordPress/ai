@@ -25,11 +25,13 @@ type FeatureToggleProps = DataFormControlProps< AISettings > & {
 };
 
 interface ConnectorApprovalState {
-	approvals: unknown[];
+	connectors: { id: string; name: string }[];
+	approvals: Record< string, Record< string, boolean > >;
 }
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 const CONNECTOR_APPROVAL_FEATURE_ID = 'connector-approval';
+const AI_PLUGIN = 'ai/ai.php';
 
 /**
  * FeatureToggle component.
@@ -61,6 +63,16 @@ export function FeatureToggle( {
 		featureId ??
 		FEATURE_SETTING_PATTERN.exec( field.id )?.[ 1 ] ??
 		field.id;
+
+	const hasApprovedConnector =
+		approvalState?.approvals[ AI_PLUGIN ] &&
+		Object.entries( approvalState.approvals[ AI_PLUGIN ] ).some(
+			( [ connectorId, approved ] ) =>
+				approved &&
+				approvalState.connectors.some(
+					( connector ) => connector.id === connectorId
+				)
+		);
 
 	const checkConnectorApprovals = useCallback( () => {
 		setIsCheckingApprovals( true );
@@ -130,7 +142,7 @@ export function FeatureToggle( {
 								{ isCheckingApprovals && <Spinner /> }
 								{ ! isCheckingApprovals &&
 									approvalState &&
-									approvalState.approvals.length === 0 && (
+									! hasApprovedConnector && (
 										<ConnectorApprovalNotice />
 									) }
 							</Stack>
