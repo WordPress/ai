@@ -170,9 +170,29 @@ final class Content {
 		}
 
 		/*
-		 * The schema enum reflects the post types exposed at registration time; the
-		 * permission/execute callbacks re-resolve the set at call time, since post
-		 * types can be (un)registered in between.
+		 * The input schema's `post_type` enum is frozen from the post types exposed at
+		 * registration time. Abilities register on `wp_abilities_api_init`, so a post
+		 * type is only listed if it was registered with `show_in_abilities => true`
+		 * before that hook fires (register it on `init` at the default priority, as core
+		 * post types are). The enum is enforcing, not merely advertising: WP_Ability
+		 * validates input against this schema before the permission/execute callbacks
+		 * run, so a request naming a post type absent from the enum is rejected as
+		 * invalid input and never reaches the callbacks.
+		 *
+		 * The callbacks still re-resolve the exposed set on every request via
+		 * get_exposed_post_types() (post types can be (un)registered between
+		 * registration and use), but that only covers two cases: a single-post lookup by
+		 * `id`, which does not name a `post_type` and so is not enum-constrained (so it
+		 * reaches even a late-registered type), and failing closed when a still-advertised
+		 * post type has since been unregistered. It does NOT let slug or query mode reach
+		 * a post type missing from the enum — those require `post_type`.
+		 *
+		 * So a post type registered after `wp_abilities_api_init` is reachable by `id`
+		 * but not by post_type/slug/query unless the enum itself is amended. The
+		 * `wp_register_ability_args` filter (WP_Abilities_Registry::register()) receives
+		 * this ability's already-built args and can add a post type to the `post_type`
+		 * enum, but it runs at registration time, so the post type's name must be known
+		 * by then (added speculatively).
 		 */
 		$post_types = array_keys( $this->get_exposed_post_types() );
 
