@@ -86,7 +86,7 @@ test.describe( 'Connector Approval Experiment', () => {
 		);
 
 		if ( await aiOpenAiToggle.isChecked() ) {
-			await aiOpenAiToggle.uncheck();
+			await aiOpenAiToggle.click( { force: true } );
 			await expect( aiOpenAiToggle ).not.toBeChecked();
 		}
 
