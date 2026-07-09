@@ -244,7 +244,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 
 		$this->assertIsString( $system_instruction );
 		$this->assertNotEmpty( $system_instruction );
-		$this->assertStringContainsString( 'WordPress site moderator', $system_instruction );
+		$this->assertStringContainsString( 'helpful assistant that helps manage comments', $system_instruction );
 		$this->assertStringContainsString( 'tone', $system_instruction );
 		$this->assertStringContainsString( 'reply', $system_instruction );
 	}
