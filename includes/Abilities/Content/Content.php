@@ -148,7 +148,7 @@ final class Content {
 	 * @since x.x.x
 	 */
 	public function register(): void {
-		$this->register_get_content();
+		$this->register_read_content();
 
 		/*
 		 * A future write-oriented ability can be registered here, reusing the shared
@@ -163,7 +163,7 @@ final class Content {
 	 *
 	 * @since x.x.x
 	 */
-	private function register_get_content(): void {
+	private function register_read_content(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
 		if ( wp_has_ability( 'core/read-content' ) ) {
 			wp_unregister_ability( 'core/read-content' );
@@ -211,7 +211,7 @@ final class Content {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_input_schema( $post_types, $statuses ),
 				'output_schema'       => $this->get_content_output_schema(),
-				'execute_callback'    => array( $this, 'execute_get_content' ),
+				'execute_callback'    => array( $this, 'execute_read_content' ),
 				'permission_callback' => array( $this, 'check_permission' ),
 				'meta'                => array(
 					'annotations'  => array(
@@ -234,7 +234,7 @@ final class Content {
 	 * This gate is the authoritative permission decision for single-post modes: it
 	 * resolves the requested post and denies missing, mismatched, or unreadable posts
 	 * before execution. Query mode is only gated coarsely here (collection status
-	 * capabilities); {@see self::execute_get_content()} enforces row-level read/edit
+	 * capabilities); {@see self::execute_read_content()} enforces row-level read/edit
 	 * permissions, since individual rows are unknown until the query runs. Requests
 	 * that explicitly ask for edit-context fields require edit access before execution.
 	 *
@@ -517,7 +517,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\stdClass|\WP_Error A post object in single-post mode (cast to `stdClass` when the projection is empty so it serializes as `{}`), a map with a `posts` list in query mode, or a WP_Error on failure.
 	 */
-	public function execute_get_content( $input = array() ) {
+	public function execute_read_content( $input = array() ) {
 		$input         = is_array( $input ) ? $input : array();
 		$exposed       = $this->get_exposed_post_types();
 		$fields        = $this->normalize_fields( $input );

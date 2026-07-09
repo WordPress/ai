@@ -2022,11 +2022,11 @@ class ContentTest extends WP_UnitTestCase {
 
 		$ability = new Content();
 
-		$missing = $ability->execute_get_content( array( 'id' => 999999 ) );
+		$missing = $ability->execute_read_content( array( 'id' => 999999 ) );
 		$this->assertWPError( $missing, 'A nonexistent post ID should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $missing->get_error_code(), 'Missing posts should map to the uniform not-found error.' );
 
-		$mismatched = $ability->execute_get_content(
+		$mismatched = $ability->execute_read_content(
 			array(
 				'id'        => self::$post_ids['published'],
 				'post_type' => 'page',
@@ -2035,7 +2035,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertWPError( $mismatched, 'A post type mismatch should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $mismatched->get_error_code(), 'Mismatched post types should map to the uniform not-found error.' );
 
-		$missing_slug = $ability->execute_get_content(
+		$missing_slug = $ability->execute_read_content(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'no-such-slug',
@@ -2058,7 +2058,7 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_execute_callback_rejects_non_integer_author_filter(): void {
 		$this->login_as( 'administrator' );
 
-		$result = ( new Content() )->execute_get_content(
+		$result = ( new Content() )->execute_read_content(
 			array(
 				'post_type' => 'post',
 				'author'    => 'not-a-number',
@@ -2082,7 +2082,7 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_execute_callback_rejects_non_integer_parent_filter(): void {
 		$this->login_as( 'administrator' );
 
-		$result = ( new Content() )->execute_get_content(
+		$result = ( new Content() )->execute_read_content(
 			array(
 				'post_type' => 'page',
 				'parent'    => 'not-a-number',
@@ -2108,7 +2108,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		$result = ( new Content() )->execute_get_content(
+		$result = ( new Content() )->execute_read_content(
 			array(
 				'post_type' => 'post',
 				'include'   => array( 0 ),
@@ -2147,7 +2147,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->login_as( 'administrator' );
 
-		$result = ( new Content() )->execute_get_content(
+		$result = ( new Content() )->execute_read_content(
 			array(
 				'post_type' => 'post',
 				'author'    => (string) $author_a,
