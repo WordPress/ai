@@ -1335,10 +1335,10 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * A stored email that is_email() rejects is reported as null.
 	 *
-	 * WordPress runs sanitize_email() when saving, and that can repair an address
-	 * into a shape is_email() refuses. Saving `a@@b.c` stores `a@b.c`, which is one
-	 * character too short for is_email(). The declared `email` format only holds
-	 * because such values become null.
+	 * WordPress runs sanitize_email() when saving. Depending on the WordPress
+	 * version, saving `a@@b.c` either stores an empty string or repairs it to
+	 * `a@b.c`, which is one character too short for is_email(). The declared
+	 * `email` format only holds because such values become null.
 	 *
 	 * @since x.x.x
 	 */
@@ -1353,8 +1353,10 @@ class UsersTest extends WP_UnitTestCase {
 		);
 		clean_user_cache( $user_id );
 
-		$this->assertSame( 'a@b.c', get_userdata( $user_id )->user_email, 'WordPress should store the repaired address.' );
-		$this->assertFalse( is_email( 'a@b.c' ), 'The repaired address should still be rejected by is_email().' );
+		$stored_email = get_userdata( $user_id )->user_email;
+
+		$this->assertContains( $stored_email, array( '', 'a@b.c' ), 'WordPress should either discard or repair the invalid address.' );
+		$this->assertFalse( is_email( $stored_email ), 'The stored address should still be rejected by is_email().' );
 
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
