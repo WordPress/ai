@@ -43,7 +43,7 @@ class Suggest_Reply extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Suggest Reply', 'ai' ),
-			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate reply suggestions.', 'ai' ),
+			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
@@ -69,7 +69,7 @@ class Suggest_Reply extends Abstract_Feature {
 			'ai/suggest-reply',
 			array(
 				'label'         => __( 'Reply Suggestion', 'ai' ),
-				'description'   => __( 'Generates reply suggestions for a comment.', 'ai' ),
+				'description'   => __( 'Generates reply suggestions to a comment.', 'ai' ),
 				'ability_class' => Suggest_Reply_Ability::class,
 			)
 		);
@@ -96,7 +96,7 @@ class Suggest_Reply extends Abstract_Feature {
 		$actions['wpai_suggest_reply'] = sprintf(
 			'<a href="#" class="wpai-suggest-reply" data-comment-id="%d" aria-label="%s">%s</a>',
 			absint( $comment->comment_ID ),
-			esc_attr__( 'Suggest a reply for this comment', 'ai' ),
+			esc_attr__( 'Suggest a reply to this comment', 'ai' ),
 			esc_html__( 'Suggest reply', 'ai' )
 		);
 

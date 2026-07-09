@@ -1,6 +1,6 @@
 <?php
 /**
- * Reply suggestion ability implementation.
+ * Suggest reply ability implementation.
  *
  * @package WordPress\AI
  */
@@ -17,7 +17,7 @@ use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply as Suggest_Reply_Experi
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Ability that generates reply suggestions for a comment.
+ * Ability that suggests a reply to a comment.
  *
  * @since x.x.x
  */
@@ -43,13 +43,13 @@ class Suggest_Reply extends Abstract_Ability {
 			'properties' => array(
 				'comment_id' => array(
 					'type'        => 'integer',
-					'description' => esc_html__( 'The ID of the comment to generate a reply for.', 'ai' ),
+					'description' => esc_html__( 'The ID of the comment to generate a reply suggestion for.', 'ai' ),
 				),
 				'tone'       => array(
 					'type'        => 'string',
 					'enum'        => array( 'professional', 'friendly', 'casual' ),
 					'default'     => 'friendly',
-					'description' => esc_html__( 'The tone for the reply.', 'ai' ),
+					'description' => esc_html__( 'The tone for the reply suggestion.', 'ai' ),
 				),
 			),
 			'required'   => array( 'comment_id' ),
