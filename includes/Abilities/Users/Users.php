@@ -461,12 +461,20 @@ final class Users {
 	}
 
 	/**
-	 * Checks whether a user has published posts in publicly viewable post types.
+	 * Checks whether the current user can see a post by this user in a publicly
+	 * viewable post type.
+	 *
+	 * Published posts always count. Private posts also count for a caller who holds
+	 * `read_private_posts` for the post type, because `count_user_posts()` defaults to
+	 * `$public_only = false`. This matches how the REST users controller resolves a
+	 * single user. Collection mode is filtered by `WP_User_Query`'s
+	 * `has_published_posts`, which matches published posts only, so the two modes
+	 * disagree about an author whose posts are all private.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_User $user User object.
-	 * @return bool Whether the user is publicly visible as an author.
+	 * @return bool Whether the user is visible as an author to the current user.
 	 */
 	private function is_public_author( WP_User $user ): bool {
 		$post_types = $this->get_public_post_types();

@@ -531,6 +531,79 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A single-user lookup resolves an author whose posts are all private, while
+	 * collection mode does not.
+	 *
+	 * The two modes enforce access differently. A single-user lookup calls
+	 * count_user_posts(), which counts private posts for a caller holding
+	 * read_private_posts, matching the REST users controller. Collection mode is
+	 * filtered by WP_User_Query's has_published_posts, which matches published posts
+	 * only, so it never returns such an author.
+	 *
+	 * This exposes nothing new. An editor who can read the private post already sees
+	 * its author through the post itself.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_private_only_author_resolves_by_lookup_but_not_in_a_collection(): void {
+		$author_id = self::factory()->user->create(
+			array(
+				'role'          => 'author',
+				'user_nicename' => 'users-ability-private-author',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => 'private',
+				'post_type'   => 'post',
+			)
+		);
+
+		wp_set_current_user( self::$fixture_ids['editor'] );
+		$this->register_ability();
+
+		$this->assertFalse( current_user_can( 'list_users' ), 'An editor should not be able to list users.' );
+		$this->assertFalse( current_user_can( 'edit_user', $author_id ), 'An editor should not be able to edit the author.' );
+		$this->assertTrue( current_user_can( 'read_private_posts' ), 'An editor should be able to read private posts.' );
+
+		$ability = wp_get_ability( 'core/read-users' );
+
+		$result = $ability->execute(
+			array(
+				'slug'   => 'users-ability-private-author',
+				'fields' => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'An editor should resolve an author whose posts are all private.' );
+		$this->assertSame( $author_id, $result['id'], 'The slug lookup should return the private-only author.' );
+
+		$result = $ability->execute(
+			array(
+				'include'  => array( $author_id ),
+				'fields'   => array( 'id' ),
+				'per_page' => 100,
+			)
+		);
+
+		$this->assertIsArray( $result, 'The collection request should succeed.' );
+		$this->assertSame( array(), $result['users'], 'Collection mode should omit an author whose posts are all private.' );
+
+		// The lookup is gated on the capability, not merely on being logged in.
+		wp_set_current_user( $this->subscriber_id );
+
+		$result = $ability->execute(
+			array(
+				'slug'   => 'users-ability-private-author',
+				'fields' => array( 'id' ),
+			)
+		);
+
+		$this->assertWPError( $result, 'A subscriber should not resolve an author whose posts are all private.' );
+	}
+
+	/**
 	 * Email and username lookups for another user require list or edit permissions across roles.
 	 *
 	 * @since x.x.x
