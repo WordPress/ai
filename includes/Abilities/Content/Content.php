@@ -179,20 +179,20 @@ final class Content {
 		 * run, so a request naming a post type absent from the enum is rejected as
 		 * invalid input and never reaches the callbacks.
 		 *
-		 * The callbacks still re-resolve the exposed set on every request via
-		 * get_exposed_post_types() (post types can be (un)registered between
-		 * registration and use), but that only covers two cases: a single-post lookup by
-		 * `id`, which does not name a `post_type` and so is not enum-constrained (so it
-		 * reaches even a late-registered type), and failing closed when a still-advertised
-		 * post type has since been unregistered. It does NOT let slug or query mode reach
-		 * a post type missing from the enum — those require `post_type`.
+		 * The permission/execute callbacks still re-resolve the exposed set on every
+		 * request via get_exposed_post_types(), since a post type can be unregistered
+		 * between registration and use; this lets them fail closed for a post type that
+		 * is still advertised in the enum but no longer exposed.
 		 *
-		 * So a post type registered after `wp_abilities_api_init` is reachable by `id`
-		 * but not by post_type/slug/query unless the enum itself is amended. The
-		 * `wp_register_ability_args` filter (WP_Abilities_Registry::register()) receives
-		 * this ability's already-built args and can add a post type to the `post_type`
-		 * enum, but it runs at registration time, so the post type's name must be known
-		 * by then (added speculatively).
+		 * A post type registered after `wp_abilities_api_init` is therefore not part of
+		 * the ability's contract: it is absent from the input enum, so callers cannot
+		 * name it, and any data returned for it would describe a post type outside the
+		 * advertised schema that clients validating ability output do not expect. To make
+		 * such a post type usable it must reach the enum — register it before
+		 * `wp_abilities_api_init` (on `init`, as core post types are), or amend the enum
+		 * at registration time with the `wp_register_ability_args` filter
+		 * (WP_Abilities_Registry::register()), which receives this ability's already-built
+		 * args (the post type's name must be known by then).
 		 */
 		$post_types = array_keys( $this->get_exposed_post_types() );
 
