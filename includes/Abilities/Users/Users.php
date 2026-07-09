@@ -570,9 +570,9 @@ final class Users {
 			),
 			'avatar_urls'     => array(
 				'type'                 => 'object',
-				'description'          => __( 'Avatar URLs for the user at various sizes. Present when the show_avatars option is enabled.', 'ai' ),
+				'description'          => __( 'Avatar URLs for the user, keyed by image size in pixels. A size is null when no avatar URL can be resolved for it. Present when the show_avatars option is enabled.', 'ai' ),
 				'additionalProperties' => array(
-					'type' => 'string',
+					'type' => array( 'string', 'null' ),
 				),
 			),
 			'username'        => array(
@@ -580,9 +580,9 @@ final class Users {
 				'description' => __( 'Login name for the user. Present when the current user can view it.', 'ai' ),
 			),
 			'email'           => array(
-				'type'        => 'string',
+				'type'        => array( 'string', 'null' ),
 				'format'      => 'email',
-				'description' => __( 'The email address for the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'The email address for the user. Null when the user has no stored address, or when the stored address is not a valid email. Present when the current user can view it.', 'ai' ),
 			),
 			'first_name'      => array(
 				'type'        => 'string',
@@ -994,7 +994,12 @@ final class Users {
 		// The schemas always declare avatar_urls; availability is enforced here,
 		// since the option can change after the schemas are registered.
 		if ( $fields_requested( 'avatar_urls' ) && get_option( 'show_avatars' ) ) {
-			$data['avatar_urls'] = rest_get_avatar_urls( $user );
+			$data['avatar_urls'] = array_map(
+				static function ( $url ) {
+					return is_string( $url ) ? $url : null;
+				},
+				rest_get_avatar_urls( $user )
+			);
 		}
 
 		if ( $can_view_sensitive ) {
@@ -1002,7 +1007,7 @@ final class Users {
 				$data['username'] = (string) $user->user_login;
 			}
 			if ( $fields_requested( 'email' ) ) {
-				$data['email'] = (string) $user->user_email;
+				$data['email'] = is_email( $user->user_email ) ? (string) $user->user_email : null;
 			}
 			if ( $fields_requested( 'first_name' ) ) {
 				$data['first_name'] = (string) $user->first_name;

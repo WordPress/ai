@@ -1206,6 +1206,200 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Creates a user whose stored email is empty.
+	 *
+	 * WordPress allows this: wp_insert_user() rejects an empty login and an empty
+	 * nicename, but never an empty email. Imports and single sign-on plugins can
+	 * leave such rows behind.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The new user ID.
+	 */
+	private function create_user_without_email(): int {
+		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+
+		wp_update_user(
+			array(
+				'ID'         => $user_id,
+				'user_email' => '',
+			)
+		);
+		clean_user_cache( $user_id );
+
+		$this->assertSame( '', get_userdata( $user_id )->user_email, 'The fixture user should have an empty stored email.' );
+
+		return $user_id;
+	}
+
+	/**
+	 * A user with an empty stored email is still readable.
+	 *
+	 * WP_Ability::execute() validates the result against the output schema, so an
+	 * email the schema cannot describe must be reported as null rather than passed
+	 * through, which would fail the whole lookup.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_empty_stored_email_does_not_fail_single_user_output(): void {
+		$user_id = $this->create_user_without_email();
+
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'id'     => $user_id,
+				'fields' => array( 'id', 'email' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'A user with an empty stored email should still be readable.' );
+		$this->assertArrayHasKey( 'email', $result, 'A viewable email field should be present even when there is no address.' );
+		$this->assertNull( $result['email'], 'An empty stored email should be reported as null.' );
+	}
+
+	/**
+	 * A stored email that is_email() rejects is reported as null.
+	 *
+	 * WordPress runs sanitize_email() when saving, and that can repair an address
+	 * into a shape is_email() refuses. Saving `a@@b.c` stores `a@b.c`, which is one
+	 * character too short for is_email(). The declared `email` format only holds
+	 * because such values become null.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_invalid_stored_email_is_reported_as_null(): void {
+		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+
+		wp_update_user(
+			array(
+				'ID'         => $user_id,
+				'user_email' => 'a@@b.c',
+			)
+		);
+		clean_user_cache( $user_id );
+
+		$this->assertSame( 'a@b.c', get_userdata( $user_id )->user_email, 'WordPress should store the repaired address.' );
+		$this->assertFalse( is_email( 'a@b.c' ), 'The repaired address should still be rejected by is_email().' );
+
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'id'     => $user_id,
+				'fields' => array( 'id', 'email' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'A user with an unusable stored email should still be readable.' );
+		$this->assertNull( $result['email'], 'An email that is_email() rejects should be reported as null.' );
+	}
+
+	/**
+	 * One user with an empty stored email does not break a whole collection page.
+	 *
+	 * Collection output is validated as a single value, so an invalid field on one
+	 * row rejects every row on the page, not just the offending user.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_empty_stored_email_does_not_fail_collection_output(): void {
+		$user_id = $this->create_user_without_email();
+
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'fields'   => array( 'id', 'email' ),
+				'per_page' => 100,
+			)
+		);
+
+		$this->assertIsArray( $result, 'One user with an empty stored email should not fail the whole collection.' );
+
+		$ids = wp_list_pluck( $result['users'], 'id' );
+		$this->assertContains( $this->admin_id, $ids, 'Users with valid emails should still be returned.' );
+		$this->assertContains( $user_id, $ids, 'The user with an empty stored email should still be returned.' );
+	}
+
+	/**
+	 * A suppressed avatar URL does not break the default field set.
+	 *
+	 * get_avatar_url() documents `string|false` as its return type, and plugins that
+	 * disable Gravatar short-circuit the avatar data. Since avatar_urls is part of the
+	 * default field set, a false URL would fail every call rather than only the ones
+	 * that opt in.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_suppressed_avatar_url_does_not_fail_output(): void {
+		update_option( 'show_avatars', 1 );
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		add_filter(
+			'pre_get_avatar_data',
+			static function ( $args ) {
+				$args['url'] = false;
+
+				return $args;
+			}
+		);
+
+		$result = wp_get_ability( 'core/read-users' )->execute( array( 'id' => $this->admin_id ) );
+
+		$this->assertIsArray( $result, 'A suppressed avatar URL should not fail a default-fields lookup.' );
+		$this->assertSame( $this->admin_id, $result['id'], 'The lookup should still resolve the requested user.' );
+		$this->assertSame(
+			array(
+				24 => null,
+				48 => null,
+				96 => null,
+			),
+			$result['avatar_urls'],
+			'Every avatar size should be reported as null when no URL can be resolved.'
+		);
+	}
+
+	/**
+	 * Avatar sizes that resolve to a URL survive when other sizes do not.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_partially_suppressed_avatar_urls_keep_the_resolved_sizes(): void {
+		update_option( 'show_avatars', 1 );
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		add_filter(
+			'pre_get_avatar_data',
+			static function ( $args ) {
+				if ( 24 === $args['size'] ) {
+					$args['url'] = false;
+				}
+
+				return $args;
+			}
+		);
+
+		$result = wp_get_ability( 'core/read-users' )->execute(
+			array(
+				'id'     => $this->admin_id,
+				'fields' => array( 'id', 'avatar_urls' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'A partially suppressed avatar set should not fail the lookup.' );
+		$this->assertSame( array( 24, 48, 96 ), array_keys( $result['avatar_urls'] ), 'Every avatar size should still be reported.' );
+		$this->assertNull( $result['avatar_urls'][24], 'A size with no resolvable URL should be null.' );
+		$this->assertIsString( $result['avatar_urls'][48], 'A size that resolves should keep its URL.' );
+		$this->assertIsString( $result['avatar_urls'][96], 'A size that resolves should keep its URL.' );
+	}
+
+	/**
 	 * Missing or inaccessible single-user lookups fail closed.
 	 *
 	 * @since x.x.x
