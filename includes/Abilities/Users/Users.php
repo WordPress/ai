@@ -773,9 +773,9 @@ final class Users {
 	 */
 	private function get_users_input_schema(): array {
 		/*
-		 * The schema enums reflect the roles and post types available at registration
-		 * time; the permission/execute callbacks re-resolve these sets at call time,
-		 * since both can change in between.
+		 * Input enums intentionally reflect roles and post types available at
+		 * ability registration time. This makes the schema a stable contract that
+		 * developers can filter when registering the ability.
 		 */
 		$role_names        = $this->get_role_names();
 		$public_post_types = $this->get_public_post_types();
