@@ -101,7 +101,7 @@ export function FeatureToggle( {
 					// can reach the server before the feature is enabled.
 					const saved = onChange( { [ field.id ]: value } );
 
-					if ( resolvedFeatureId === CONNECTOR_APPROVAL_FEATURE_ID) {
+					if ( resolvedFeatureId === CONNECTOR_APPROVAL_FEATURE_ID ) {
 						if ( value ) {
 							Promise.resolve( saved ).then(
 								checkConnectorApprovals
@@ -130,8 +130,8 @@ export function FeatureToggle( {
 								{ isCheckingApprovals && <Spinner /> }
 								{ ! isCheckingApprovals &&
 									approvalState &&
-									approvalState.approvals.length === 0 && (										
-										<ConnectorApprovalNotice />											
+									approvalState.approvals.length === 0 && (
+										<ConnectorApprovalNotice />
 									) }
 							</Stack>
 						</Stack>
