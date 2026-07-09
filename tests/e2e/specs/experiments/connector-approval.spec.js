@@ -92,9 +92,7 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Trigger a fresh request if no pending row exists yet.
 		const pendingRow = page
-			.locator( '.ai-connector-approval' )
-			.first()
-			.locator( 'tbody tr' )
+			.locator( 'table.widefat.striped tbody tr' )
 			.filter( {
 				has: page.locator( 'code', { hasText: 'ai/ai.php' } ),
 			} )
@@ -119,9 +117,7 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure we can approve the pending request.
 		await expect( pendingRow ).toHaveCount( 1 );
-		await pendingRow
-			.getByRole( 'button', { name: 'Approve', exact: true } )
-			.click();
+		await pendingRow.getByRole( 'button', { name: 'Approve' } ).click();
 
 		await expect(
 			page
