@@ -47,6 +47,15 @@ class Embeddings_Command {
 	private const CHUNK_OVERLAP = 125;
 
 	/**
+	 * Allowed providers.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const ALLOWED_PROVIDERS = array( 'openai', 'google', 'ollama' );
+
+	/**
 	 * Generates embeddings for text.
 	 *
 	 * ## OPTIONS
@@ -63,6 +72,9 @@ class Embeddings_Command {
 	 * [--chunk]
 	 * : Split content into overlapping chunks and embed each chunk.
 	 *
+	 * [--provider=<provider>]
+	 * : AI provider to use. One of: openai, google, ollama.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     # Generate embeddings for specific text
@@ -77,15 +89,19 @@ class Embeddings_Command {
 	 *     # Chunk post content and generate embeddings for the chunks
 	 *     $ wp ai embeddings generate --post-id=42 --chunk --dry-run=false
 	 *
+	 *     # Force a specific provider
+	 *     $ wp ai embeddings generate 'This is some text' --provider=openai --dry-run=false
+	 *
 	 * @when after_wp_load
 	 *
 	 * @param array<int, string>   $args       Positional arguments.
 	 * @param array<string, mixed> $assoc_args Associative arguments.
 	 */
 	public function generate( $args, $assoc_args ): void {
-		$text    = $this->resolve_text( $args, $assoc_args );
-		$dry_run = filter_var( Utils\get_flag_value( $assoc_args, 'dry-run', true ), FILTER_VALIDATE_BOOLEAN );
-		$chunk   = (bool) Utils\get_flag_value( $assoc_args, 'chunk', false );
+		$text     = $this->resolve_text( $args, $assoc_args );
+		$dry_run  = filter_var( Utils\get_flag_value( $assoc_args, 'dry-run', true ), FILTER_VALIDATE_BOOLEAN );
+		$chunk    = (bool) Utils\get_flag_value( $assoc_args, 'chunk', false );
+		$provider = $this->resolve_provider( $assoc_args );
 
 		if ( ! $dry_run && ! has_valid_ai_credentials() ) {
 			WP_CLI::error( 'No valid AI credentials found. Configure a provider in Settings > Connectors.' );
@@ -100,6 +116,10 @@ class Embeddings_Command {
 		}
 
 		if ( $dry_run ) {
+			if ( null !== $provider ) {
+				WP_CLI::log( sprintf( 'Dry run: would use provider "%s".', $provider ) );
+			}
+
 			if ( $chunk ) {
 				WP_CLI::log( sprintf( 'Dry run: would embed %d chunk(s).', count( $pieces ) ) );
 
@@ -124,10 +144,18 @@ class Embeddings_Command {
 
 		try {
 			if ( $chunk ) {
-				$result     = AiClient::prompt()->withInputs( $pieces )->generateEmbeddingResult();
+				$builder = AiClient::prompt()->withInputs( $pieces );
+				if ( null !== $provider ) {
+					$builder->usingProvider( $provider );
+				}
+				$result     = $builder->generateEmbeddingResult();
 				$embeddings = $result->getEmbeddings();
 			} else {
-				$result     = AiClient::prompt( $pieces[0] )->generateEmbeddingResult();
+				$builder = AiClient::prompt( $pieces[0] );
+				if ( null !== $provider ) {
+					$builder->usingProvider( $provider );
+				}
+				$result     = $builder->generateEmbeddingResult();
 				$embeddings = array( $result->getEmbedding() );
 			}
 		} catch ( \Throwable $e ) {
@@ -153,6 +181,36 @@ class Embeddings_Command {
 				? sprintf( 'Embeddings generated successfully for %d chunk(s).', $total )
 				: 'Embeddings generated successfully.'
 		);
+	}
+
+	/**
+	 * Resolves and validates an optional --provider flag.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $assoc_args Associative arguments.
+	 * @return string|null Provider ID, or null when not specified.
+	 */
+	private function resolve_provider( array $assoc_args ): ?string {
+		$provider = (string) Utils\get_flag_value( $assoc_args, 'provider', '' );
+		$provider = strtolower( trim( $provider ) );
+
+		if ( '' === $provider ) {
+			return null;
+		}
+
+		if ( ! in_array( $provider, self::ALLOWED_PROVIDERS, true ) ) {
+			WP_CLI::error(
+				sprintf(
+					'Invalid --provider "%s". Allowed values: %s.',
+					$provider,
+					implode( ', ', self::ALLOWED_PROVIDERS )
+				)
+			);
+			return null; // WP_CLI::error() exits, but this satisfies static analysis.
+		}
+
+		return $provider;
 	}
 
 	/**
