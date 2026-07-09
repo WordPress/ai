@@ -221,24 +221,29 @@ final class Users {
 			$query_args['role__in'] = $this->normalize_string_list( $input['roles'] );
 		}
 
-		if ( current_user_can( 'list_users' ) ) {
-			$has_published_posts = $this->normalize_has_published_posts( $input );
-			if ( null !== $has_published_posts ) {
-				$query_args['has_published_posts'] = $has_published_posts;
-			}
-		} else {
-			// Callers who cannot list users only see public authors in a collection,
-			// matching core. This intentionally excludes the caller's own account when
-			// they have no published posts. Self is read through a single-user lookup
-			// (like the REST `/users/me` endpoint) instead.
-			$public_post_types   = $this->get_public_post_types();
-			$has_published_posts = $this->normalize_has_published_posts( $input );
+		$has_published_posts = $this->normalize_has_published_posts( $input );
 
-			if ( is_array( $has_published_posts ) ) {
-				$public_post_types = array_values( array_intersect( $public_post_types, $has_published_posts ) );
-			}
+		// Callers who cannot list users only see public authors in a collection,
+		// matching core, so the filter is always applied for them. This intentionally
+		// excludes the caller's own account when they have no published posts. Self is
+		// read through a single-user lookup (like the REST `/users/me` endpoint) instead.
+		$requires_published_posts = ! current_user_can( 'list_users' );
 
-			if ( array() === $public_post_types ) {
+		if ( null !== $has_published_posts || $requires_published_posts ) {
+			/*
+			 * The post types are always resolved here rather than passed as `true`.
+			 * WP_User_Query reads `true` as `get_post_types( array( 'public' => true ) )`,
+			 * which is not the same as the publicly viewable set the rest of the ability
+			 * uses. Resolving here also picks up post types registered or unregistered
+			 * after the input schema was built.
+			 */
+			$public_post_types = $this->get_public_post_types();
+
+			$has_published_posts = is_array( $has_published_posts )
+				? array_values( array_intersect( $public_post_types, $has_published_posts ) )
+				: $public_post_types;
+
+			if ( array() === $has_published_posts ) {
 				return array(
 					'users'       => array(),
 					'total'       => 0,
@@ -246,7 +251,7 @@ final class Users {
 				);
 			}
 
-			$query_args['has_published_posts'] = $public_post_types;
+			$query_args['has_published_posts'] = $has_published_posts;
 		}
 
 		$query = new WP_User_Query( $query_args );
@@ -884,7 +889,7 @@ final class Users {
 									),
 								),
 							),
-							'description' => __( 'Limit results to users with published posts. Use true for all post types, or provide post type names.', 'ai' ),
+							'description' => __( 'Limit results to users with published posts. Use true for all publicly viewable post types, or provide post type names.', 'ai' ),
 						),
 						'include'             => $include,
 						'fields'              => $fields,

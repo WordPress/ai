@@ -763,6 +763,84 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A post type that is public but not publicly viewable never makes a user visible.
+	 *
+	 * `public => true` does not mean a post type can be viewed on the front end, so the
+	 * ability uses is_post_type_viewable() everywhere. A boolean has_published_posts
+	 * must not fall back to WP_User_Query's own reading of `true`, which resolves to
+	 * get_post_types( array( 'public' => true ) ) and would match such an author.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_public_but_not_viewable_post_type_never_exposes_an_author(): void {
+		register_post_type(
+			'wpai_not_viewable_pt',
+			array(
+				'public'             => true,
+				'publicly_queryable' => false,
+			)
+		);
+
+		$this->assertContains( 'wpai_not_viewable_pt', get_post_types( array( 'public' => true ) ), 'The post type should be in the public set.' );
+		$this->assertFalse( is_post_type_viewable( 'wpai_not_viewable_pt' ), 'The post type should not be publicly viewable.' );
+
+		$author_id = self::factory()->user->create(
+			array(
+				'role'          => 'author',
+				'user_nicename' => 'users-ability-hidden-author',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => 'publish',
+				'post_type'   => 'wpai_not_viewable_pt',
+			)
+		);
+
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$ability = wp_get_ability( 'core/read-users' );
+
+		$schema = $ability->get_input_schema();
+		$this->assertNotContains(
+			'wpai_not_viewable_pt',
+			$schema['oneOf'][4]['properties']['has_published_posts']['oneOf'][1]['items']['enum'],
+			'The post type should not be offered in the has_published_posts enum.'
+		);
+
+		$result = $ability->execute(
+			array(
+				'has_published_posts' => true,
+				'fields'              => array( 'id' ),
+				'per_page'            => 100,
+			)
+		);
+
+		$this->assertIsArray( $result, 'A boolean published-posts filter should execute.' );
+		$this->assertNotContains(
+			$author_id,
+			wp_list_pluck( $result['users'], 'id' ),
+			'A boolean published-posts filter should not match an author whose only post type is not publicly viewable.'
+		);
+
+		// The same author stays hidden from the single-user lookup used for public authors.
+		wp_set_current_user( $this->subscriber_id );
+
+		$result = $ability->execute(
+			array(
+				'slug'   => 'users-ability-hidden-author',
+				'fields' => array( 'id' ),
+			)
+		);
+
+		$this->assertWPError( $result, 'A non-viewable post type should not make its author publicly readable.' );
+
+		unregister_post_type( 'wpai_not_viewable_pt' );
+	}
+
+	/**
 	 * Collection mode excludes a caller with no published posts, even via include,
 	 * while single-user mode still lets them read themselves.
 	 *
