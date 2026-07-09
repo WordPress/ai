@@ -212,8 +212,8 @@ final class Users {
 
 		$include = $this->normalize_include( $input );
 		if ( array() !== $include ) {
-			// Default ordering is kept so queries with the same include set can
-			// share the WP_User_Query cache regardless of the requested order.
+			// The include order is not applied as `orderby`. Keeping the default
+			// ordering lets WP_User_Query share cached results with other queries.
 			$query_args['include'] = $include;
 		}
 
