@@ -12,7 +12,7 @@ const {
 } = require( '../../utils/helpers' );
 
 /**
- * Runs the `core/settings` ability through the client-side Abilities API, exactly
+ * Runs the `core/read-settings` ability through the client-side Abilities API, exactly
  * as a consumer would in the browser.
  *
  * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
@@ -28,7 +28,7 @@ const {
  * @param {Object}                          input The ability input.
  * @return {Promise<Object>} `{ ok: true, result }` or `{ ok: false, code }`.
  */
-async function runCoreSettings( page, input ) {
+async function runCoreReadSettings( page, input ) {
 	return page.evaluate( async ( abilityInput ) => {
 		const { ready } = await import( '@wordpress/core-abilities' );
 		if ( ready ) {
@@ -39,7 +39,7 @@ async function runCoreSettings( page, input ) {
 
 		try {
 			const result = await executeAbility(
-				'core/settings',
+				'core/read-settings',
 				abilityInput
 			);
 			return { ok: true, result };
@@ -49,7 +49,7 @@ async function runCoreSettings( page, input ) {
 	}, input );
 }
 
-test.describe( 'core/settings ability (client-side Abilities API)', () => {
+test.describe( 'core/read-settings ability (client-side Abilities API)', () => {
 	test.beforeEach( async ( { admin, page } ) => {
 		// Enabling an experiment loads its block-editor script, which declares the
 		// `@wordpress/abilities` + `@wordpress/core-abilities` modules as dependencies
@@ -60,14 +60,14 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 		// Run from the block editor, where the abilities client modules are available.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'core/settings ability test',
+			title: 'core/read-settings ability test',
 		} );
 	} );
 
 	test( 'returns a flat, correctly typed map of settings', async ( {
 		page,
 	} ) => {
-		const outcome = await runCoreSettings( page, {} );
+		const outcome = await runCoreReadSettings( page, {} );
 
 		expect( outcome.ok ).toBe( true );
 		// Flat map keyed by setting name (not grouped/nested).
@@ -77,7 +77,7 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'filters by group', async ( { page } ) => {
-		const outcome = await runCoreSettings( page, { group: 'reading' } );
+		const outcome = await runCoreReadSettings( page, { group: 'reading' } );
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result ).toHaveProperty( 'posts_per_page' );
@@ -87,7 +87,7 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'filters by fields', async ( { page } ) => {
-		const outcome = await runCoreSettings( page, {
+		const outcome = await runCoreReadSettings( page, {
 			fields: [ 'blogname', 'posts_per_page' ],
 		} );
 
@@ -103,7 +103,7 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 	} ) => {
 		// `blogname` is in the `general` group and `posts_per_page` in `reading`; only the
 		// latter satisfies both filters.
-		const outcome = await runCoreSettings( page, {
+		const outcome = await runCoreReadSettings( page, {
 			group: 'reading',
 			fields: [ 'blogname', 'posts_per_page' ],
 		} );
@@ -117,7 +117,7 @@ test.describe( 'core/settings ability (client-side Abilities API)', () => {
 	} ) => {
 		// Registered by the `e2e-testing` plugin (mapped in .wp-env.test.json)
 		// with `show_in_abilities` and a default of `sample-default`.
-		const outcome = await runCoreSettings( page, {
+		const outcome = await runCoreReadSettings( page, {
 			fields: [ 'ai_e2e_sample_setting' ],
 		} );
 

@@ -39,7 +39,9 @@ final class Experiments {
 		\WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
+		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
+		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
 	);
 
 	/**

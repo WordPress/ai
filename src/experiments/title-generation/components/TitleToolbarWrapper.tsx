@@ -9,6 +9,7 @@
  * WordPress dependencies
  */
 import { createRoot, useEffect } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -309,6 +310,11 @@ function TitleToolbarWrapper(): React.JSX.Element {
 			// Create a container for our toolbar
 			toolbarContainer = editorDoc.createElement( 'div' );
 			toolbarContainer.className = 'ai-title-toolbar-container';
+			toolbarContainer.setAttribute( 'role', 'toolbar' );
+			toolbarContainer.setAttribute(
+				'aria-label',
+				__( 'Generate title toolbar', 'ai' )
+			);
 			toolbarContainer.style.cssText =
 				'display: none; position: absolute; z-index: 1000; top: -60px;';
 

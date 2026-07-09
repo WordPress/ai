@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose an idea for a feature or an enhancement
+labels: ['[Type] Enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest an improvement! Please fill out the fields below to help us understand your idea.
+  - type: textarea
+    attributes:
+      label: What problem does this address?
+      description: Describe the problem or pain point this feature would solve.
+      placeholder: It is currently difficult to...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: What is your proposed solution?
+      description: Outline the feature or enhancement you'd like and how it addresses the problem above.
+      placeholder: I'd like a way to...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Why is this important to you?
+      description: Help us understand the impact — who benefits, how often does this come up, and is there a workaround you're using today?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: existing
+    attributes:
+      label: I have searched existing issues and this is not a duplicate.
+      description: Search the [issue tracker](https://github.com/WordPress/ai/issues) before submitting.
+      options:
+        - label: Yes
+          required: true

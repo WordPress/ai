@@ -16,9 +16,9 @@ import {
 
 const EXPERIMENT_LABEL = 'Content Resizing';
 
-// Long enough to satisfy the 5-word minimum for the Shorten action.
+// Long enough to satisfy the 25-character minimum for the Shorten action.
 const SAMPLE_PARAGRAPH =
-	'This paragraph contains enough words for the resize toolbar to work against.';
+	'This paragraph contains enough characters for the resize toolbar to work against.';
 
 // The mocked OpenAI response returns this string for the generic completions fixture
 // (see tests/e2e-testing/responses/OpenAI/completions.json).
@@ -172,7 +172,7 @@ test.describe( 'Content Resizing Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Shorten action with too few words shows an error notice without opening the modal', async ( {
+	test( 'Shorten action with too few characters shows an error notice without opening the modal', async ( {
 		admin,
 		editor,
 		page,
@@ -181,10 +181,10 @@ test.describe( 'Content Resizing Experiment', () => {
 			title: 'Content Resizing Shorten Error Test',
 		} );
 
-		// Fewer than 5 words so the client-side validation fires.
+		// Fewer than 25 characters so the client-side validation fires.
 		await editor.insertBlock( {
 			name: 'core/paragraph',
-			attributes: { content: 'Too few words.' },
+			attributes: { content: 'Too few characters.' },
 		} );
 
 		await selectFirstParagraph( editor );
@@ -219,7 +219,7 @@ test.describe( 'Content Resizing Experiment', () => {
 			title: 'Content Resizing Minimum Length Test',
 		} );
 
-		// SAMPLE_PARAGRAPH has more than the 5-word minimum, so Shorten is allowed.
+		// SAMPLE_PARAGRAPH has more than the 25-character minimum, so Shorten is allowed.
 		await editor.insertBlock( {
 			name: 'core/paragraph',
 			attributes: { content: SAMPLE_PARAGRAPH },

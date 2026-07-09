@@ -5,9 +5,10 @@
 /**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
+import { Button, Notice } from '@wordpress/components';
 import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
+import { Stack } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -46,7 +47,13 @@ export default function ExcerptGeneration(): React.JSX.Element | null {
 	}
 
 	return (
-		<div>
+		<Stack direction="column" gap="md">
+			{ isContentTooShort && (
+				<Notice status="warning" isDismissible={ false }>
+					{ tooShortLabel }
+				</Notice>
+			) }
+
 			<Button
 				icon={ update }
 				variant="secondary"
@@ -56,18 +63,10 @@ export default function ExcerptGeneration(): React.JSX.Element | null {
 				accessibleWhenDisabled
 				isBusy={ isGenerating }
 				__next40pxDefaultSize
+				style={ { alignSelf: 'flex-start' } }
 			>
 				{ buttonLabel }
 			</Button>
-
-			{ isContentTooShort && (
-				<p
-					className="ai-excerpt-generation__hint components-base-control__help"
-					style={ { color: '#757575' } }
-				>
-					{ tooShortLabel }
-				</p>
-			) }
-		</div>
+		</Stack>
 	);
 }
