@@ -88,6 +88,17 @@ final class Content {
 	private ?array $post_properties = null;
 
 	/**
+	 * Post types that were exposed when the ability registered, keyed by name.
+	 *
+	 * Requests only accept post types that are present in this registration-time
+	 * contract and still exposed when the ability runs. Empty until registration.
+	 *
+	 * @since x.x.x
+	 * @var array<string, \WP_Post_Type>
+	 */
+	private array $registered_post_types = array();
+
+	/**
 	 * Default fields returned when the caller does not request a field subset.
 	 *
 	 * @since x.x.x
@@ -164,11 +175,6 @@ final class Content {
 	 * @since x.x.x
 	 */
 	private function register_read_content(): void {
-		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/read-content' ) ) {
-			wp_unregister_ability( 'core/read-content' );
-		}
-
 		/*
 		 * The input schema's `post_type` enum is frozen from the post types exposed at
 		 * registration time. Abilities register on `wp_abilities_api_init`, so a post
@@ -179,22 +185,36 @@ final class Content {
 		 * run, so a request naming a post type absent from the enum is rejected as
 		 * invalid input and never reaches the callbacks.
 		 *
-		 * The permission/execute callbacks still re-resolve the exposed set on every
-		 * request via get_exposed_post_types(), since a post type can be unregistered
-		 * between registration and use; this lets them fail closed for a post type that
-		 * is still advertised in the enum but no longer exposed.
+		 * The permission/execute callbacks still re-resolve the exposed set on every request
+		 * and intersect it with this registration-time snapshot. This lets them fail closed
+		 * for a post type that is still advertised in the enum but no longer exposed, and
+		 * also keeps ID lookups from exposing a post type registered after the schema was
+		 * built.
 		 *
 		 * A post type registered after `wp_abilities_api_init` is therefore not part of
-		 * the ability's contract: it is absent from the input enum, so callers cannot
-		 * name it, and any data returned for it would describe a post type outside the
-		 * advertised schema that clients validating ability output do not expect. To make
+		 * the ability's contract: it is absent from the input enum and from the runtime
+		 * post type allowlist, so callers cannot name it or fetch its posts by ID. To make
 		 * such a post type usable it must reach the enum — register it before
 		 * `wp_abilities_api_init` (on `init`, as core post types are), or amend the enum
 		 * at registration time with the `wp_register_ability_args` filter
 		 * (WP_Abilities_Registry::register()), which receives this ability's already-built
 		 * args (the post type's name must be known by then).
+		 *
+		 * If nothing is exposed at registration time, there is no usable content contract:
+		 * ID lookups fail the runtime allowlist, while slug and query modes cannot accept
+		 * any post type. In that case, skip registering the plugin-provided ability.
 		 */
-		$post_types = array_keys( $this->get_exposed_post_types() );
+		$this->registered_post_types = $this->get_exposed_post_types();
+		if ( empty( $this->registered_post_types ) ) {
+			return;
+		}
+
+		// Plugin: unregister any core-provided copy first so the plugin's version wins.
+		if ( wp_has_ability( 'core/read-content' ) ) {
+			wp_unregister_ability( 'core/read-content' );
+		}
+
+		$post_types = array_keys( $this->registered_post_types );
 
 		/*
 		 * Internal statuses (e.g. `inherit`) are excluded, so post types that rely on
@@ -245,7 +265,7 @@ final class Content {
 	 */
 	public function check_permission( $input = array() ): bool {
 		$input   = is_array( $input ) ? $input : array();
-		$exposed = $this->get_exposed_post_types();
+		$exposed = $this->get_available_post_types();
 
 		if ( ! is_user_logged_in() ) {
 			return false;
@@ -519,7 +539,7 @@ final class Content {
 	 */
 	public function execute_read_content( $input = array() ) {
 		$input         = is_array( $input ) ? $input : array();
-		$exposed       = $this->get_exposed_post_types();
+		$exposed       = $this->get_available_post_types();
 		$fields        = $this->normalize_fields( $input );
 		$requires_edit = $this->has_explicit_edit_fields( $input );
 
@@ -790,6 +810,25 @@ final class Content {
 		}
 
 		return $exposed_post_types;
+	}
+
+	/**
+	 * Returns post types currently available through this registered ability.
+	 *
+	 * The registration-time snapshot defines the ability contract. The current exposed
+	 * set is intersected with that snapshot so post types registered too late are denied,
+	 * and post types that were later unregistered or opted out fail closed. An empty
+	 * registration-time snapshot exposes no post types.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, \WP_Post_Type> Currently available post type objects keyed by name.
+	 */
+	private function get_available_post_types(): array {
+		return array_intersect_key(
+			$this->get_exposed_post_types(),
+			$this->registered_post_types
+		);
 	}
 
 	/**

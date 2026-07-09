@@ -208,12 +208,15 @@ class ContentTest extends WP_UnitTestCase {
 	 * Registers the plugin's core/read-content ability inside a faked init action.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param Content|null $content Optional. Content ability implementation to register.
 	 */
-	private function register_ability(): void {
+	private function register_ability( ?Content $content = null ): void {
 		global $wp_current_filter;
+		$content           ??= new Content();
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Content() )->register();
+			$content->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -270,6 +273,24 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertFalse( $annotations['destructive'], 'The ability should be marked non-destructive.' );
 		$this->assertTrue( $annotations['idempotent'], 'The ability should be marked idempotent.' );
 		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only reads the local database.' );
+	}
+
+	/**
+	 * The content ability is not registered when no post types are exposed to it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_does_not_register_core_read_content_ability_without_exposed_post_types(): void {
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			$this->assertNotFalse( $object, "Precondition: the {$post_type} post type should exist." );
+
+			$object->show_in_abilities = false;
+		}
+
+		$this->register_ability();
+
+		$this->assertFalse( wp_has_ability( 'core/read-content' ), 'The content ability should not register without any exposed post types.' );
 	}
 
 	/**
@@ -493,6 +514,48 @@ class ContentTest extends WP_UnitTestCase {
 			$this->assertContains( $post_id, $ids, 'The custom post type should be queryable through the content ability.' );
 		} finally {
 			unregister_post_type( 'wpai_content_cpt' );
+		}
+	}
+
+	/**
+	 * A post type registered after the ability schema is built is outside the contract.
+	 *
+	 * Query and slug modes cannot name late post types because they are absent from the
+	 * schema enum. ID mode must follow the same registration-time contract rather than
+	 * exposing late post types when the caller happens to know a post ID.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_id_mode_denies_post_type_registered_after_schema_snapshot(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
+		$this->assertNotContains( 'wpai_late_cpt', $enum, 'Precondition: late post types should be absent from the frozen schema enum.' );
+
+		register_post_type(
+			'wpai_late_cpt',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title', 'editor' ),
+			)
+		);
+
+		try {
+			$post_id = self::factory()->post->create(
+				array(
+					'post_type'   => 'wpai_late_cpt',
+					'post_status' => 'publish',
+				)
+			);
+
+			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+
+			$this->assertWPError( $result, 'By-ID lookups should not expose post types absent from the ability schema snapshot.' );
+			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Late post types should fail closed as a permission error.' );
+		} finally {
+			unregister_post_type( 'wpai_late_cpt' );
 		}
 	}
 
@@ -2057,21 +2120,22 @@ class ContentTest extends WP_UnitTestCase {
 	 * The execute callback re-validates the lookup structurally when invoked directly.
 	 *
 	 * Gated transports never reach these branches: check_permission() resolves and
-	 * denies the same lookups first. The callback still fails closed on structural
-	 * lookup errors so it stays self-contained when invoked directly.
+	 * denies the same lookups first. The registered callback still fails closed on
+	 * structural lookup errors when invoked directly.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_execute_callback_returns_not_found_for_structural_lookup_failures(): void {
 		$this->login_as( 'administrator' );
 
-		$ability = new Content();
+		$content = new Content();
+		$this->register_ability( $content );
 
-		$missing = $ability->execute_read_content( array( 'id' => 999999 ) );
+		$missing = $content->execute_read_content( array( 'id' => 999999 ) );
 		$this->assertWPError( $missing, 'A nonexistent post ID should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $missing->get_error_code(), 'Missing posts should map to the uniform not-found error.' );
 
-		$mismatched = $ability->execute_read_content(
+		$mismatched = $content->execute_read_content(
 			array(
 				'id'        => self::$post_ids['published'],
 				'post_type' => 'page',
@@ -2080,7 +2144,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertWPError( $mismatched, 'A post type mismatch should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $mismatched->get_error_code(), 'Mismatched post types should map to the uniform not-found error.' );
 
-		$missing_slug = $ability->execute_read_content(
+		$missing_slug = $content->execute_read_content(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'no-such-slug',
@@ -2102,8 +2166,10 @@ class ContentTest extends WP_UnitTestCase {
 	 */
 	public function test_execute_callback_rejects_non_integer_author_filter(): void {
 		$this->login_as( 'administrator' );
+		$content = new Content();
+		$this->register_ability( $content );
 
-		$result = ( new Content() )->execute_read_content(
+		$result = $content->execute_read_content(
 			array(
 				'post_type' => 'post',
 				'author'    => 'not-a-number',
@@ -2126,8 +2192,10 @@ class ContentTest extends WP_UnitTestCase {
 	 */
 	public function test_execute_callback_rejects_non_integer_parent_filter(): void {
 		$this->login_as( 'administrator' );
+		$content = new Content();
+		$this->register_ability( $content );
 
-		$result = ( new Content() )->execute_read_content(
+		$result = $content->execute_read_content(
 			array(
 				'post_type' => 'page',
 				'parent'    => 'not-a-number',
@@ -2152,8 +2220,10 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 
 		self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$content = new Content();
+		$this->register_ability( $content );
 
-		$result = ( new Content() )->execute_read_content(
+		$result = $content->execute_read_content(
 			array(
 				'post_type' => 'post',
 				'include'   => array( 0 ),
@@ -2191,8 +2261,10 @@ class ContentTest extends WP_UnitTestCase {
 		);
 
 		$this->login_as( 'administrator' );
+		$content = new Content();
+		$this->register_ability( $content );
 
-		$result = ( new Content() )->execute_read_content(
+		$result = $content->execute_read_content(
 			array(
 				'post_type' => 'post',
 				'author'    => (string) $author_a,
