@@ -669,6 +669,21 @@ final class Content {
 		}
 
 		$query = new WP_Query( $query_args );
+		$total = $this->get_query_total( $query, $query_args, $page );
+		$total_pages = $total > 0 ? (int) ceil( $total / $per_page ) : 0;
+
+		/*
+		 * Paging past the last page is a caller error rather than an empty collection, so
+		 * report it instead of returning a bare empty list. A genuinely empty result set
+		 * still returns zero totals and no error.
+		 */
+		if ( $total > 0 && $page > $total_pages ) {
+			return new WP_Error(
+				'content_invalid_page_number',
+				__( 'The page number requested is larger than the number of pages available.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
 
 		/*
 		 * Prime the author caches with a single query instead of one user lookup
@@ -708,8 +723,8 @@ final class Content {
 		 */
 		return array(
 			'posts'       => $posts,
-			'total'       => (int) $query->found_posts,
-			'total_pages' => (int) $query->max_num_pages,
+			'total'       => $total,
+			'total_pages' => $total_pages,
 		);
 	}
 
@@ -725,6 +740,39 @@ final class Content {
 		$per_page = isset( $input['per_page'] ) ? $this->input_int( $input['per_page'] ) : self::DEFAULT_PER_PAGE;
 
 		return max( 1, min( self::MAX_PER_PAGE, $per_page ) );
+	}
+
+	/**
+	 * Returns the query total, recovering it when WP_Query skipped the count.
+	 *
+	 * WP_Query leaves `found_posts` at 0 when a requested page has no rows. Re-run a
+	 * minimal unpaged query so the caller can distinguish an out-of-range page from
+	 * an empty result set, matching the REST posts controller behavior.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Query    $query      The executed query.
+	 * @param array<mixed> $query_args The arguments used for the executed query.
+	 * @param int          $page       The requested page.
+	 * @return int Total matching rows across all pages.
+	 */
+	private function get_query_total( WP_Query $query, array $query_args, int $page ): int {
+		$total = (int) $query->found_posts;
+
+		if ( $total > 0 || $page <= 1 ) {
+			return $total;
+		}
+
+		$count_args                           = $query_args;
+		$count_args['fields']                 = 'ids';
+		$count_args['posts_per_page']         = 1;
+		$count_args['update_post_meta_cache'] = false;
+		$count_args['update_post_term_cache'] = false;
+		unset( $count_args['paged'] );
+
+		$count_query = new WP_Query( $count_args );
+
+		return (int) $count_query->found_posts;
 	}
 
 	/**
@@ -1109,7 +1157,7 @@ final class Content {
 						'page'      => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
-							'description' => __( 'Page of results to return.', 'ai' ),
+							'description' => __( 'Page of results to return. Requesting a page beyond the last one is an error. Check `total_pages` before requesting later pages.', 'ai' ),
 						),
 						'per_page'  => array(
 							'type'        => 'integer',

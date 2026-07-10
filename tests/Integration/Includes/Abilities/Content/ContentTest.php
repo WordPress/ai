@@ -1984,6 +1984,92 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The last page still reports the totals of the underlying query.
+	 *
+	 * Guards the boundary next to the out-of-range page error: the final page must not be
+	 * mistaken for an overshoot.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_last_page_reports_totals(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$ids = self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => $ids,
+				'per_page'  => 2,
+				'page'      => 2,
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertCount( 1, $result['posts'], 'The last page should return the remaining post.' );
+		$this->assertSame( 3, $result['total'], 'The last page should report the full total.' );
+		$this->assertSame( 2, $result['total_pages'], 'The last page should report the full page count.' );
+	}
+
+	/**
+	 * Paging past the last page reports an error rather than an empty collection.
+	 *
+	 * `WP_Query::set_found_posts()` skips the count when a page yields no rows, so without
+	 * recovering the total an out-of-range page would report `total: 0, total_pages: 0`,
+	 * which is indistinguishable from an empty collection. Match the REST posts controller
+	 * by reporting this as a caller error instead.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_out_of_range_page_is_rejected_rather_than_reported_as_empty(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$ids = self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => $ids,
+				'per_page'  => 2,
+				'page'      => 99,
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertWPError( $result, 'A page beyond the last one should fail rather than return an empty list.' );
+		$this->assertSame( 'content_invalid_page_number', $result->get_error_code(), 'Out-of-range pages should report a dedicated error code.' );
+		$this->assertSame( 400, $result->get_error_data()['status'], 'An out-of-range page is a caller error.' );
+	}
+
+	/**
+	 * A genuinely empty result set beyond the first page reports zero totals, not an error.
+	 *
+	 * The out-of-range guard only fires when the underlying query actually matched rows.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_empty_result_beyond_first_page_reports_zero_totals(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => array( 999999 ),
+				'page'      => 2,
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'An empty result set should not be treated as an out-of-range page.' );
+		$this->assertSame( array(), $result['posts'], 'No posts match the query.' );
+		$this->assertSame( 0, $result['total'], 'An empty result set reports a zero total.' );
+		$this->assertSame( 0, $result['total_pages'], 'An empty result set reports zero pages.' );
+	}
+
+	/**
 	 * Query rows are kept, not dropped, when the requested fields project to nothing.
 	 *
 	 * @since x.x.x
