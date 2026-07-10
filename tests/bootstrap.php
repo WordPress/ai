@@ -53,14 +53,27 @@ tests_add_filter(
  * Put the categories back for tests only. This runs after the suite has unhooked core, and
  * before the plugin registers the categories it owns.
  *
+ * Core owns `site` and `user`. The plugin owns the categories it registers itself, and those
+ * arrive through the plugin's own callbacks on this hook, so they need nothing here.
+ *
  * @see _unhook_core_ability_categories_registration() in the WordPress test suite.
  */
 tests_add_filter(
 	'wp_abilities_api_categories_init',
 	static function (): void {
-		if ( function_exists( 'wp_register_core_ability_categories' ) ) {
-			wp_register_core_ability_categories();
+		if ( ! function_exists( 'wp_register_core_ability_categories' ) ) {
+			return;
 		}
+
+		/*
+		 * Should the suite ever stop unhooking core, its callback still runs at priority 10.
+		 * Standing down keeps this from registering the same categories twice.
+		 */
+		if ( has_action( 'wp_abilities_api_categories_init', 'wp_register_core_ability_categories' ) ) {
+			return;
+		}
+
+		wp_register_core_ability_categories();
 	},
 	5
 );
