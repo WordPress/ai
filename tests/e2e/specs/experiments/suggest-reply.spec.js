@@ -4,7 +4,7 @@
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 /**
- * Internal dependencies
+ * Internal dependencie
  */
 const {
 	disableExperiment,
