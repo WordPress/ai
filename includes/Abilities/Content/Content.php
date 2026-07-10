@@ -659,6 +659,8 @@ final class Content {
 
 		$prime_post_caches = $this->should_prime_post_caches( $fields );
 
+		// `orderby` is left unset, which orders by `post_date` descending, matching the
+		// default of the REST posts controller.
 		$query_args = array(
 			'post_type'              => $post_type,
 			'post_status'            => $this->normalize_statuses( $input ),
@@ -1114,7 +1116,7 @@ final class Content {
 				'type'    => 'integer',
 				'minimum' => 1,
 			),
-			'description' => __( 'Limit the query to these post IDs. If `per_page` is omitted, the page size defaults to the number of included IDs, capped at the maximum.', 'ai' ),
+			'description' => __( 'Limit the query to these post IDs. The order of the IDs does not affect the order of the results. If `per_page` is omitted, the page size defaults to the number of included IDs, capped at the maximum.', 'ai' ),
 		);
 
 		return array(
@@ -1232,7 +1234,7 @@ final class Content {
 			'properties'           => array(
 				'posts'       => array(
 					'type'        => 'array',
-					'description' => __( 'The readable posts matching the query.', 'ai' ),
+					'description' => __( 'The readable posts matching the query, ordered by post date, newest first.', 'ai' ),
 					'items'       => $post_schema,
 				),
 				'total'       => array(

@@ -865,6 +865,39 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Query results are ordered by post date, newest first, whatever order `include` uses.
+	 *
+	 * Pins both halves of what the schema advertises. The ability leaves `orderby` at the
+	 * WP_Query default, matching the REST posts controller, and `include` only filters the
+	 * query, so an agent that passes IDs in a chosen order must not expect them back in it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_orders_posts_newest_first_regardless_of_include_order(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$oldest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-01-01 10:00:00' ) );
+		$middle = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-02-01 10:00:00' ) );
+		$newest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-03-01 10:00:00' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				// Deliberately neither date order nor ID order.
+				'include'   => array( $middle, $newest, $oldest ),
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertSame(
+			array( $newest, $middle, $oldest ),
+			wp_list_pluck( $result['posts'], 'id' ),
+			'Results should be ordered by post date, newest first, not by the order of the include list.'
+		);
+	}
+
+	/**
 	 * Query include still respects the requested post type.
 	 *
 	 * @since x.x.x
