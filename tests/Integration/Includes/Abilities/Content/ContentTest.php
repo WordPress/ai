@@ -869,7 +869,7 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * Pins both halves of what the schema advertises. The ability leaves `orderby` at the
 	 * WP_Query default, matching the REST posts controller, and `include` only filters the
-	 * query, so an agent that passes IDs in a chosen order must not expect them back in it.
+	 * query, so a caller that passes IDs in a chosen order must not expect them back in it.
 	 *
 	 * @since x.x.x
 	 */
@@ -2337,7 +2337,7 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * GMT date fields report the correct UTC instant and offset on non-UTC sites.
+	 * Local and GMT date fields report the correct instant and offset on non-UTC sites.
 	 *
 	 * @since x.x.x
 	 */
@@ -2354,15 +2354,30 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
+		/*
+		 * On insert, `wp_insert_post()` copies the post date onto the modified columns. Give
+		 * the modified columns their own instant, so a field that read the post date where it
+		 * meant the modified date cannot pass.
+		 */
+		$this->replace_cached_post_date_columns(
+			$post_id,
+			array(
+				'post_modified'     => '2026-01-16 11:00:00',
+				'post_modified_gmt' => '2026-01-16 16:00:00',
+			)
+		);
+
 		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
-				'fields' => array( 'id', 'date', 'date_gmt' ),
+				'fields' => array( 'id', 'date', 'date_gmt', 'modified', 'modified_gmt' ),
 			)
 		);
 
 		$this->assertSame( '2026-01-15T10:00:00-05:00', $result['date'], 'The local date should carry the site timezone offset.' );
 		$this->assertSame( '2026-01-15T15:00:00+00:00', $result['date_gmt'], 'The GMT date should be the UTC instant with a UTC offset.' );
+		$this->assertSame( '2026-01-16T11:00:00-05:00', $result['modified'], 'The local modified date should carry the site timezone offset.' );
+		$this->assertSame( '2026-01-16T16:00:00+00:00', $result['modified_gmt'], 'The GMT modified date should be the UTC instant with a UTC offset.' );
 	}
 
 	/**
@@ -2404,32 +2419,59 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Replaces cached post columns so the ability sees a post object with null dates.
+	 * Replaces cached post columns so the ability sees a post object with custom dates.
 	 *
 	 * Core's schema keeps the date columns `NOT NULL`, but a post object can still reach
-	 * the ability from a filter or an in-memory row where a date is null.
+	 * the ability from a filter or an in-memory row where a date is null or otherwise
+	 * differs from the database row.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param int      $post_id The post ID.
-	 * @param string[] $columns The post columns to null out.
+	 * @param array<string, mixed> $columns Post column values keyed by column name.
 	 */
-	private function null_out_post_date_columns( int $post_id, array $columns ): void {
+	private function replace_cached_post_date_columns( int $post_id, array $columns ): void {
 		get_post( $post_id );
 
 		$cached = wp_cache_get( $post_id, 'posts' );
 		$this->assertInstanceOf( \stdClass::class, $cached, 'Precondition: the raw post row should be cached.' );
 		$this->assertSame( 'raw', $cached->filter, 'Precondition: the cached row should be unsanitized.' );
 
-		foreach ( $columns as $column ) {
-			$cached->$column = null;
+		foreach ( $columns as $column => $value ) {
+			$cached->$column = $value;
 		}
 
 		wp_cache_set( $post_id, $cached, 'posts' );
 
-		foreach ( $columns as $column ) {
-			$this->assertNull( get_post( $post_id )->$column, "Precondition: {$column} should be null." );
+		foreach ( $columns as $column => $value ) {
+			$this->assertSame( $value, get_post( $post_id )->$column, "Precondition: {$column} should have the test value." );
 		}
+	}
+
+	/**
+	 * Data provider for GMT date fields.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{field: string, gmt_column: string, local_column: string, local_date: string, expected: string}>
+	 */
+	public function data_gmt_date_fields(): array {
+		return array(
+			'date_gmt'     => array(
+				'field'        => 'date_gmt',
+				'gmt_column'   => 'post_date_gmt',
+				'local_column' => 'post_date',
+				'local_date'   => '2026-01-15 10:00:00',
+				'expected'     => '2026-01-15T15:00:00+00:00',
+			),
+			'modified_gmt' => array(
+				'field'        => 'modified_gmt',
+				'gmt_column'   => 'post_modified_gmt',
+				'local_column' => 'post_modified',
+				'local_date'   => '2026-01-16 11:00:00',
+				'expected'     => '2026-01-16T16:00:00+00:00',
+			),
+		);
 	}
 
 	/**
@@ -2439,8 +2481,16 @@ class ContentTest extends WP_UnitTestCase {
 	 * report a fabricated "now" as the publication date.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_gmt_date_fields
+	 *
+	 * @param string $field        The ability output field to request.
+	 * @param string $gmt_column   The cached GMT post column to null out.
+	 * @param string $local_column The cached local post column to derive the GMT date from.
+	 * @param string $local_date   The local date column value.
+	 * @param string $expected     The expected GMT output.
 	 */
-	public function test_gmt_date_recovers_from_a_null_stored_gmt_date(): void {
+	public function test_gmt_date_recovers_from_a_null_stored_gmt_date( string $field, string $gmt_column, string $local_column, string $local_date, string $expected ): void {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
@@ -2453,18 +2503,24 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->null_out_post_date_columns( $post_id, array( 'post_date_gmt' ) );
+		$this->replace_cached_post_date_columns(
+			$post_id,
+			array(
+				$gmt_column   => null,
+				$local_column => $local_date,
+			)
+		);
 
 		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
-				'fields' => array( 'id', 'date_gmt' ),
+				'fields' => array( 'id', $field ),
 			)
 		);
 
 		$this->assertSame(
-			'2026-01-15T15:00:00+00:00',
-			$result['date_gmt'],
+			$expected,
+			$result[ $field ],
 			'A null stored GMT date should be derived from the local date, not resolved to the current time.'
 		);
 	}
@@ -2473,23 +2529,37 @@ class ContentTest extends WP_UnitTestCase {
 	 * A post with no usable date at all reports the documented empty-string sentinel.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_gmt_date_fields
+	 *
+	 * @param string $field        The ability output field to request.
+	 * @param string $gmt_column   The cached GMT post column to null out.
+	 * @param string $local_column The cached local post column to null out.
+	 * @param string $local_date   Unused. Present to match the shared data provider shape.
+	 * @param string $expected     Unused. Present to match the shared data provider shape.
 	 */
-	public function test_gmt_date_is_empty_when_no_usable_date_exists(): void {
+	public function test_gmt_date_is_empty_when_no_usable_date_exists( string $field, string $gmt_column, string $local_column, string $local_date, string $expected ): void {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		$this->null_out_post_date_columns( $post_id, array( 'post_date_gmt', 'post_date' ) );
+		$this->replace_cached_post_date_columns(
+			$post_id,
+			array(
+				$gmt_column   => null,
+				$local_column => null,
+			)
+		);
 
 		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
 				'id'     => $post_id,
-				'fields' => array( 'id', 'date_gmt' ),
+				'fields' => array( 'id', $field ),
 			)
 		);
 
-		$this->assertSame( '', $result['date_gmt'], 'An unresolvable GMT date should be the empty-string sentinel.' );
+		$this->assertSame( '', $result[ $field ], 'An unresolvable GMT date should be the empty-string sentinel.' );
 	}
 
 	/**
