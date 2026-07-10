@@ -170,4 +170,84 @@ test.describe( 'Connector Approval Experiment', () => {
 			} )
 		).not.toBeVisible();
 	} );
+
+	test( 'Context-aware error message appears when connector is unapproved', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable both experiments.
+		await enableExperiment( admin, page, 'Connector Approval' );
+		await enableExperiment( admin, page, 'Title Generation' );
+
+		// Visit the Connector Approval page.
+		await admin.visitAdminPage( 'tools.php?page=ai-connector-approval' );
+
+		// Remove approval for OpenAI for the AI plugin.
+		const aiMatrixRow = page
+			.locator( '.ai-connector-approval__matrix tbody tr' )
+			.filter( {
+				has: page.locator( 'code', { hasText: 'ai/ai.php' } ),
+			} );
+
+		const openAiColumnIndex = await page
+			.locator( '.ai-connector-approval__matrix thead th', {
+				hasText: 'OpenAI',
+			} )
+			.first()
+			.evaluate( ( cell ) =>
+				Array.from( cell.parentElement.children ).indexOf( cell )
+			);
+
+		const aiOpenAiToggle = aiMatrixRow.locator(
+			`td:nth-child(${
+				openAiColumnIndex + 1
+			}) input.components-form-toggle__input`
+		);
+
+		if ( await aiOpenAiToggle.isChecked() ) {
+			await aiOpenAiToggle.uncheck();
+			await expect( aiOpenAiToggle ).not.toBeChecked();
+		}
+
+		// Create a new post.
+		const LONG_CONTENT = 'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough characters for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.';
+		await admin.createNewPost( {
+			postType: 'post',
+			title: '',
+			content: LONG_CONTENT,
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Click into the title field.
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add Title' } )
+			.click();
+
+		const generateTitleToolbar = editor.canvas.getByRole( 'toolbar', {
+			name: 'Generate title toolbar',
+		} );
+
+		// Ensure the title toolbar is visible.
+		await expect(
+			generateTitleToolbar.filter( { hasText: 'Generate' } )
+		).toBeVisible();
+
+		// Click the Generate button.
+		await generateTitleToolbar
+			.getByRole( 'button', { name: 'Generate' } )
+			.click();
+
+		// Ensure the context-aware error message snackbar appears.
+		const snackbar = page.locator( '.components-snackbar' );
+		await expect( snackbar ).toBeVisible();
+		await expect( snackbar ).toHaveText(
+			/Title Generation failed. The AI connector is currently pending authorization. Please approve the request under Tools > Connector Approvals./i
+		);
+	} );
 } );

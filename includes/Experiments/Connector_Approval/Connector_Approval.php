@@ -19,6 +19,8 @@ use WordPress\AI\Connector_Approval\Http_Guard;
 use WordPress\AI\Connector_Approval\REST_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_ai_connectors;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -99,7 +101,7 @@ class Connector_Approval extends Abstract_Feature {
 	/**
 	 * Filters the REST response to customize the error message when a request is blocked by Connector Approval.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param mixed            $response The REST response (WP_REST_Response, WP_HTTP_Response, or WP_Error).
 	 * @param \WP_REST_Server   $server   The REST server.
@@ -107,29 +109,81 @@ class Connector_Approval extends Abstract_Feature {
 	 * @return mixed The modified REST response.
 	 */
 	public function customize_rest_error( $response, $server, $request ) {
+		// Fast exit if not an abilities run endpoint
+		$route = $request->get_route();
+		if ( ! str_contains( $route, '/abilities/' ) || ! str_ends_with( $route, '/run' ) ) {
+			return $response;
+		}
+
 		if ( ! $response instanceof WP_REST_Response || ! $response->is_error() ) {
 			return $response;
 		}
 
 		$data = $response->get_data();
-		if ( ! is_array( $data ) || ! isset( $data['code'] ) || 'wpai_connector_not_approved' !== $data['code'] ) {
+		if ( ! is_array( $data ) || ! isset( $data['code'] ) ) {
+			return $response;
+		}
+
+		$code = $data['code'];
+
+		// We only care about connector approval errors or unsupported model errors
+		if ( 'wpai_connector_not_approved' !== $code && 'unsupported_model' !== $code ) {
 			return $response;
 		}
 
 		// Resolve the running ability ID from the request route path.
-		// Route is typically /wp-abilities/v1/abilities/{id}/run
-		$route = $request->get_route();
 		$path  = trim( $route, '/' );
 		$parts = explode( '/', $path );
 
 		$abilities_index = array_search( 'abilities', $parts, true );
 		$run_index       = array_search( 'run', $parts, true );
-		if ( false !== $abilities_index && false !== $run_index && $run_index > $abilities_index + 1 ) {
-			$ability_id = implode( '/', array_slice( $parts, $abilities_index + 1, $run_index - $abilities_index - 1 ) );
-			$message    = $this->get_context_aware_error_message( $ability_id );
-			if ( $message ) {
-				$data['message'] = $message;
-				$response->set_data( $data );
+		if ( false === $abilities_index || false === $run_index || $run_index <= $abilities_index + 1 ) {
+			return $response;
+		}
+
+		// If it's unsupported_model, check if there's actually an unapproved connector
+		if ( 'unsupported_model' === $code ) {
+			$store      = new Approvals_Store();
+			$identifier = new Caller_Identifier();
+			$caller     = $identifier->identify();
+
+			if ( ! $caller ) {
+				return $response;
+			}
+
+			$unapproved_connector_id = null;
+			$connectors              = get_ai_connectors();
+			
+			foreach ( array_keys( $connectors ) as $connector_id ) {
+				if ( ! $store->is_approved( $caller['basename'], $connector_id ) ) {
+					$unapproved_connector_id = $connector_id;
+					break;
+				}
+			}
+
+			if ( null === $unapproved_connector_id ) {
+				return $response;
+			}
+
+			// Change the code so the UI handles it as pending authorization
+			$data['code'] = 'wpai_connector_not_approved';
+			if ( ! isset( $data['data'] ) || ! is_array( $data['data'] ) ) {
+				$data['data'] = array();
+			}
+			$data['data']['status']       = 403;
+			$data['data']['connector_id'] = $unapproved_connector_id;
+			$data['data']['caller']       = $caller;
+		}
+
+		$ability_id = implode( '/', array_slice( $parts, $abilities_index + 1, $run_index - $abilities_index - 1 ) );
+		$message    = $this->get_context_aware_error_message( $ability_id );
+		if ( $message ) {
+			$data['message'] = $message;
+			$response->set_data( $data );
+
+			// Also update the HTTP status code of the response itself if we changed it
+			if ( 'unsupported_model' === $code ) {
+				$response->set_status( 403 );
 			}
 		}
 
@@ -139,49 +193,22 @@ class Connector_Approval extends Abstract_Feature {
 	/**
 	 * Gets a context-aware error message for the given ability.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param string $ability_id The ability ID.
 	 * @return string The context-aware error message.
 	 */
 	private function get_context_aware_error_message( string $ability_id ): string {
-		switch ( $ability_id ) {
-			case 'ai/title-generation':
-				$prefix = __( 'Title generation failed.', 'ai' );
-				break;
-			case 'ai/excerpt-generation':
-				$prefix = __( 'Excerpt generation failed.', 'ai' );
-				break;
-			case 'ai/image-generation':
-				$prefix = __( 'Image generation failed.', 'ai' );
-				break;
-			case 'ai/alt-text-generation':
-				$prefix = __( 'Alt text generation failed.', 'ai' );
-				break;
-			case 'ai/meta-description':
-				$prefix = __( 'Meta description generation failed.', 'ai' );
-				break;
-			case 'ai/editorial-notes':
-				$prefix = __( 'Editorial notes generation failed.', 'ai' );
-				break;
-			case 'ai/editorial-updates':
-				$prefix = __( 'Editorial updates generation failed.', 'ai' );
-				break;
-			case 'ai/content-resizing':
-				$prefix = __( 'Content resizing failed.', 'ai' );
-				break;
-			case 'ai/content-classification':
-				$prefix = __( 'Content classification failed.', 'ai' );
-				break;
-			case 'ai/summarization':
-				$prefix = __( 'Summarization failed.', 'ai' );
-				break;
-			case 'ai/comment-analysis':
-				$prefix = __( 'Comment analysis failed.', 'ai' );
-				break;
-			default:
-				$prefix = __( 'Request failed.', 'ai' );
-				break;
+		$ability = wp_get_ability( $ability_id );
+		
+		if ( $ability ) {
+			$prefix = sprintf(
+				/* translators: %s: The ability label. */
+				__( '%s failed.', 'ai' ),
+				$ability->get_label()
+			);
+		} else {
+			$prefix = __( 'Request failed.', 'ai' );
 		}
 
 		return sprintf(
