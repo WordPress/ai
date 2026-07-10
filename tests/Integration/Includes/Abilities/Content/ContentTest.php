@@ -120,12 +120,17 @@ class ContentTest extends WP_UnitTestCase {
 		// Mark the curated core post types (post, page) as exposed to abilities.
 		( new Show_In_Abilities() )->register();
 
-		$this->ensure_content_category();
+		$this->ensure_ability_category( 'content' );
 
-		// The plugin also registers the `core/settings` ability (into the `site` category)
-		// on the same abilities-init hook, so make sure that category exists too; otherwise
-		// its registration emits an "incorrect usage" notice that fails this test.
-		$this->ensure_site_category();
+		/*
+		 * The plugin registers its other abilities on the same abilities-init hook, so
+		 * booting the registry here also registers `core/read-settings` (the `site`
+		 * category) and `core/read-users` (the `user` category). Make sure those
+		 * categories exist too; otherwise their registration emits an "incorrect usage"
+		 * notice that fails these tests.
+		 */
+		$this->ensure_ability_category( 'site' );
+		$this->ensure_ability_category( 'user' );
 	}
 
 	/**
@@ -154,12 +159,14 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Ensures the `content` ability category exists for the ability to attach to.
+	 * Ensures an ability category exists for an ability to attach to.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param string $slug The ability category slug.
 	 */
-	private function ensure_content_category(): void {
-		if ( wp_has_ability_category( 'content' ) ) {
+	private function ensure_ability_category( string $slug ): void {
+		if ( wp_has_ability_category( $slug ) ) {
 			return;
 		}
 
@@ -167,36 +174,10 @@ class ContentTest extends WP_UnitTestCase {
 		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			wp_register_ability_category(
-				'content',
+				$slug,
 				array(
-					'label'       => 'Content',
-					'description' => 'Content.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
-	}
-
-	/**
-	 * Ensures the `site` ability category exists, used by the plugin's `core/settings`
-	 * ability which registers on the same hook as `core/read-content`.
-	 *
-	 * @since x.x.x
-	 */
-	private function ensure_site_category(): void {
-		if ( wp_has_ability_category( 'site' ) ) {
-			return;
-		}
-
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				'site',
-				array(
-					'label'       => 'Site',
-					'description' => 'Site.',
+					'label'       => ucfirst( $slug ),
+					'description' => ucfirst( $slug ) . '.',
 				)
 			);
 		} finally {
