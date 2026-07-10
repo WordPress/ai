@@ -278,8 +278,7 @@ function InfoTip( { content }: InfoTipProps ) {
 				<Icon icon={ infoIcon } size={ 20 } />
 			</Popover.Trigger>
 			<Popover.Popup
-				side="bottom"
-				align="end"
+				positioner={ <Popover.Positioner side="bottom" align="end" /> }
 				className="ai-settings-page__infotip-popover"
 			>
 				<Popover.Arrow />
