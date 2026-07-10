@@ -284,7 +284,7 @@ class Comment_Analysis extends Abstract_Ability {
 		$post_context = $this->get_post_context( $post_id );
 
 		$prompt = sprintf(
-			"Comment by %s:\n\"\"\"%s\"\"\"\nContext:\n\"\"\"%s\"\"\"",
+			"<comment>\n<author>%s</author>\n<content>%s</content>\n</comment>\n<post_context>%s</post_context>",
 			$author,
 			$content,
 			$post_context
