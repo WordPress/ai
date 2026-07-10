@@ -69,7 +69,7 @@ final class Show_In_Abilities {
 	 * flag: it picks the default and each setting opts in through `register_setting()`, the
 	 * way `show_in_rest` already works.
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $defaults The default registration arguments.
 	 * @return bool True when core declares `show_in_abilities` as a setting argument.
