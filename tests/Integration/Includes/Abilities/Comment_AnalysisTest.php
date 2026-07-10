@@ -91,6 +91,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		remove_all_filters( 'wpai_comment_analysis_result' );
 		parent::tearDown();
 	}
 
@@ -154,6 +155,13 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 			array( 'positive', 'neutral', 'negative' ),
 			$schema['properties']['sentiment']['enum']
 		);
+
+		// value_score field.
+		$this->assertArrayHasKey( 'value_score', $schema['properties'] );
+		$this->assertSame( 'number', $schema['properties']['value_score']['type'] );
+		$this->assertSame( 0, $schema['properties']['value_score']['minimum'] );
+		$this->assertSame( 1, $schema['properties']['value_score']['maximum'] );
+
 	}
 
 	/**
@@ -276,7 +284,8 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 		$this->assertSame( 'object', $schema['type'] );
 		$this->assertArrayHasKey( 'toxicity_score', $schema['properties'] );
 		$this->assertArrayHasKey( 'sentiment', $schema['properties'] );
-		$this->assertSame( array( 'toxicity_score', 'sentiment' ), $schema['required'] );
+		$this->assertArrayHasKey( 'value_score', $schema['properties'] );
+		$this->assertSame( array( 'toxicity_score', 'sentiment', 'value_score' ), $schema['required'] );
 		$this->assertFalse( $schema['additionalProperties'] );
 	}
 
@@ -293,5 +302,313 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'comment moderation assistant', $system_instruction );
 		$this->assertStringContainsString( 'toxicity_score', $system_instruction );
 		$this->assertStringContainsString( 'sentiment', $system_instruction );
+		$this->assertStringContainsString( 'value_score', $system_instruction );
+	}
+
+
+	/**
+	 * Test that execute_callback() stores the value_score in comment meta.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_stores_value_score_meta() {
+		$post_id    = self::factory()->post->create();
+		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => $post_id ) );
+
+		add_filter(
+			'wpai_comment_analysis_result',
+			function ( $pre_result, $content, $author, $post_id_arg ) {
+				return array(
+					'toxicity_score' => 0.1,
+					'sentiment'      => 'positive',
+					'value_score'    => 0.85,
+				);
+			},
+			10,
+			4
+		);
+
+		$result = $this->invoke_ability_method( 'execute_callback', array( array( 'comment_id' => $comment_id ) ) );
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'value_score', $result );
+		$this->assertSame( 0.85, $result['value_score'] );
+		$this->assertSame( 0.85, (float) get_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, true ) );
+	}
+
+	/**
+	 * Test that get_post_context() returns null for a nonexistent post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_returns_null_for_nonexistent_post() {
+		$result = $this->invoke_ability_method( 'get_post_context', array( 999999 ) );
+
+		$this->assertNull( $result );
+	}
+
+	/**
+	 * Test that get_post_context() returns the post excerpt when available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_uses_excerpt_when_available() {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_excerpt' => 'A human-written excerpt.',
+				'post_content' => 'Full post content that should not be used.',
+			)
+		);
+		update_post_meta( $post_id, '_ai_post_summary', 'An AI summary that should not be used either.' );
+
+		$result = $this->invoke_ability_method( 'get_post_context', array( $post_id ) );
+
+		$this->assertSame( 'A human-written excerpt.', $result );
+	}
+
+	/**
+	 * Test that get_post_context() falls back to the AI-generated summary when no excerpt is available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_falls_back_to_ai_summary_when_no_excerpt() {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_excerpt' => '',
+				'post_content' => 'Full post content that should not be used.',
+			)
+		);
+		update_post_meta( $post_id, '_ai_post_summary', 'An AI-generated summary.' );
+
+		$result = $this->invoke_ability_method( 'get_post_context', array( $post_id ) );
+
+		$this->assertSame( 'An AI-generated summary.', $result );
+	}
+
+	/**
+	 * Test that get_post_context() falls back to trimmed post content when no excerpt or AI summary is available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_falls_back_to_trimmed_content() {
+		$long_content = '<p>' . str_repeat( 'Lorem ipsum dolor sit amet. ', 40 ) . '</p>';
+		$post_id      = self::factory()->post->create(
+			array(
+				'post_excerpt' => '',
+				'post_content' => $long_content,
+			)
+		);
+
+		$result = $this->invoke_ability_method( 'get_post_context', array( $post_id ) );
+
+		$this->assertIsString( $result );
+		$this->assertLessThanOrEqual( 650, mb_strlen( $result ) );
+		$this->assertStringNotContainsString( '<p>', $result, 'Tags should be stripped.' );
+	}
+
+	/**
+	 * Test that get_post_context() returns null when no post context is available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_returns_null_when_no_content_available() {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_excerpt' => '',
+				'post_content' => '',
+			)
+		);
+
+		$result = $this->invoke_ability_method( 'get_post_context', array( $post_id ) );
+
+		$this->assertNull( $result );
+	}
+
+	/**
+	 * Test that sanitize_analysis_result() clamps value_score values above 1.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_analysis_result_clamps_value_score_above_one() {
+		$result = $this->invoke_ability_method(
+			'sanitize_analysis_result',
+			array(
+				array(
+					'toxicity_score' => 0.2,
+					'sentiment'      => 'neutral',
+					'value_score'    => 1.5,
+				),
+			)
+		);
+
+		$this->assertSame( 1.0, $result['value_score'] );
+	}
+
+	/**
+	 * Test that sanitize_analysis_result() clamps value_score values below 0.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_analysis_result_clamps_value_score_below_zero() {
+		$result = $this->invoke_ability_method(
+			'sanitize_analysis_result',
+			array(
+				array(
+					'toxicity_score' => 0.2,
+					'sentiment'      => 'neutral',
+					'value_score'    => -0.4,
+				),
+			)
+		);
+
+		$this->assertSame( 0.0, $result['value_score'] );
+	}
+
+	/**
+	 * Test that sanitize_analysis_result() defaults a missing value_score to 0.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_analysis_result_defaults_missing_value_score_to_zero() {
+		$result = $this->invoke_ability_method(
+			'sanitize_analysis_result',
+			array(
+				array(
+					'toxicity_score' => 0.2,
+					'sentiment'      => 'neutral',
+				),
+			)
+		);
+
+		$this->assertArrayHasKey( 'value_score', $result );
+		$this->assertSame( 0.0, $result['value_score'] );
+	}
+
+	/**
+	 * Test that sanitize_analysis_result() preserves a valid value_score.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_analysis_result_preserves_valid_value_score() {
+		$result = $this->invoke_ability_method(
+			'sanitize_analysis_result',
+			array(
+				array(
+					'toxicity_score' => 0.2,
+					'sentiment'      => 'neutral',
+					'value_score'    => 0.42,
+				),
+			)
+		);
+
+		$this->assertSame( 0.42, $result['value_score'] );
+	}
+
+	/**
+	 * Test that analyze_comment() passes the post ID through the wpai_comment_analysis_result filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_analyze_comment_passes_post_id_through_filter() {
+		$post_id = self::factory()->post->create();
+
+		$captured_args = array();
+
+		add_filter(
+			'wpai_comment_analysis_result',
+			function ( $pre_result, $content, $author, $post_id_arg ) use ( &$captured_args ) {
+				$captured_args = array( $content, $author, $post_id_arg );
+
+				return array(
+					'toxicity_score' => 0.0,
+					'sentiment'      => 'neutral',
+					'value_score'    => 0.5,
+				);
+			},
+			10,
+			4
+		);
+
+		$result = $this->invoke_ability_method(
+			'analyze_comment',
+			array( 'Great write-up, thanks!', 'Jane Doe', $post_id )
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'Great write-up, thanks!', $captured_args[0] );
+		$this->assertSame( 'Jane Doe', $captured_args[1] );
+		$this->assertSame( $post_id, $captured_args[2] );
+	}
+
+	/**
+	 * Test that analyze_comment() returns a sanitized value_score.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_analyze_comment_returns_sanitized_value_score() {
+		$post_id = self::factory()->post->create();
+
+		add_filter(
+			'wpai_comment_analysis_result',
+			function () {
+				return array(
+					'toxicity_score' => 0.1,
+					'sentiment'      => 'positive',
+					'value_score'    => 2, // Deliberately out of range.
+				);
+			},
+			10,
+			4
+		);
+
+		$result = $this->invoke_ability_method(
+			'analyze_comment',
+			array( 'Some comment content.', 'Jane Doe', $post_id )
+		);
+
+		$this->assertSame( 1.0, $result['value_score'] );
+	}
+
+	/**
+	 * Test that analyze_comment_by_id() stores the value_score in comment meta.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_analyze_comment_by_id_stores_value_score_meta() {
+		$post_id    = self::factory()->post->create();
+		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => $post_id ) );
+
+		add_filter(
+			'wpai_comment_analysis_result',
+			function () {
+				return array(
+					'toxicity_score' => 0.05,
+					'sentiment'      => 'positive',
+					'value_score'    => 0.9,
+				);
+			},
+			10,
+			4
+		);
+
+		$result = $this->ability->analyze_comment_by_id( $comment_id );
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 0.9, $result['value_score'] );
+		$this->assertSame(
+			Comment_Moderation::STATUS_COMPLETE,
+			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true )
+		);
+		$this->assertSame(
+			0.9,
+			(float) get_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, true )
+		);
+	}
+
+	private function invoke_ability_method( string $method_name, array $args = array() ) {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( $method_name );
+		$method->setAccessible( true );
+		return $method->invokeArgs( $this->ability, $args );
 	}
 }
