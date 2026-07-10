@@ -360,10 +360,6 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	public function test_invoke_ability_accepts_scalar_input() {
 		global $wp_current_filter;
 
-		// Built-in plugin abilities registered during init use the "site"
-		// category; ensure it exists so triggering init stays quiet.
-		$this->ensure_site_category();
-
 		$slug = 'ai/scalar-input-ability';
 
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
@@ -397,35 +393,6 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $result['success'] );
 		$this->assertSame( 42, $result['data'] );
-	}
-
-	/**
-	 * Ensures the "site" ability category is registered.
-	 *
-	 * Built-in plugin abilities declare the "site" category. When a test
-	 * triggers the abilities API init those abilities register, so the
-	 * category must exist first to avoid an incorrect-usage notice.
-	 *
-	 * @since 1.1.0
-	 */
-	private function ensure_site_category(): void {
-		if ( wp_has_ability_category( 'site' ) ) {
-			return;
-		}
-
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				'site',
-				array(
-					'label'       => 'Site',
-					'description' => 'Site.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
 	}
 
 	/**

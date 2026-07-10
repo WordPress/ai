@@ -35,7 +35,8 @@ The experiment has three parts:
 `WordPress\AI\Experiments\Type_Ahead\Type_Ahead::register()` wires:
 
 - `wp_abilities_api_init` -> registers `ai/type-ahead`.
-- `enqueue_block_assets` -> enqueues `experiments/type-ahead` JS and `experiments/type-ahead` CSS.
+- `enqueue_block_editor_assets` -> enqueues `experiments/type-ahead` JS.
+- `enqueue_block_assets` -> enqueues `experiments/type-ahead` CSS.
 
 Editor bootstrap:
 
