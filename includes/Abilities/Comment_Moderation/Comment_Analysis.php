@@ -222,6 +222,10 @@ class Comment_Analysis extends Abstract_Ability {
 	private function get_post_context( int $post_id ): ?string {
 		$post = get_post( $post_id );
 
+		if ( ! $post instanceof WP_Post ) {
+			return null;
+		}
+
 		// 1. Use excerpt if available (human-written, most reliable)
 		$excerpt = trim( $post->post_excerpt );
 		if ( ! empty( $excerpt ) ) {
