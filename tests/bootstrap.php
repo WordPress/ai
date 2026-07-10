@@ -66,10 +66,13 @@ tests_add_filter(
 		}
 
 		/*
-		 * Should the suite ever stop unhooking core, its callback still runs at priority 10.
-		 * Standing down keeps this from registering the same categories twice.
+		 * Should the suite ever stop unhooking core, its callback still runs later on this
+		 * hook. Standing down keeps this from registering the same categories twice.
+		 *
+		 * `has_action()` returns the priority, so a callback hooked at priority 0 is falsy.
+		 * Compare against `false` rather than testing for truth.
 		 */
-		if ( has_action( 'wp_abilities_api_categories_init', 'wp_register_core_ability_categories' ) ) {
+		if ( false !== has_action( 'wp_abilities_api_categories_init', 'wp_register_core_ability_categories' ) ) {
 			return;
 		}
 
