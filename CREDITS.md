@@ -18,4 +18,5 @@ Thank you to all the people who have already contributed to this repository via 
 
 The following software libraries are utilized in this repository.
 
-[Displace Secrets Manager](https://github.com/ericmann/displace-secrets-manager) by Eric Mann. Used if the Key Encryption experiment is enabled.
+* [Displace Secrets Manager](https://github.com/ericmann/displace-secrets-manager) by Eric Mann. Used if the Key Encryption experiment is enabled.
+* [HTML to MD](https://github.com/dmsnell/html-to-md) by David Snell. Used to convert HTML to Markdown.
