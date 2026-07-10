@@ -1480,9 +1480,10 @@ final class Content {
 	/**
 	 * Returns the post excerpt transformed for display.
 	 *
-	 * Mirrors the REST posts controller by applying the `get_the_excerpt` and
-	 * `the_excerpt` filter chains, so the result carries the same markup as the
-	 * REST API's rendered excerpt (paragraph wrapping, texturization, and so on).
+	 * Mirrors the REST posts controller by preparing post globals before applying
+	 * the `get_the_excerpt` and `the_excerpt` filter chains, then restoring the
+	 * previous global post context. This ensures filters that rely on loop globals
+	 * render against the requested post.
 	 *
 	 * @since x.x.x
 	 *
@@ -1490,15 +1491,37 @@ final class Content {
 	 * @return string Rendered post excerpt.
 	 */
 	private function get_rendered_excerpt( WP_Post $post ): string {
-		/** This filter is documented in wp-includes/post-template.php. */
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
-		$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post );
+		$previous_post = $GLOBALS['post'] ?? null;
 
-		/** This filter is documented in wp-includes/post-template.php. */
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
-		$excerpt = apply_filters( 'the_excerpt', $excerpt );
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Temporarily mirrors REST post context for excerpt rendering.
+		$GLOBALS['post'] = $post;
+		setup_postdata( $post );
 
-		return is_string( $excerpt ) ? $excerpt : '';
+		/*
+		 * The global post context is restored in a finally block so a throw from an
+		 * excerpt filter cannot leave it pointing at the rendered post for the rest
+		 * of the request.
+		 */
+		try {
+			/** This filter is documented in wp-includes/post-template.php. */
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
+			$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post );
+
+			/** This filter is documented in wp-includes/post-template.php. */
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
+			$excerpt = apply_filters( 'the_excerpt', $excerpt );
+
+			return is_string( $excerpt ) ? $excerpt : '';
+		} finally {
+			if ( $previous_post instanceof WP_Post ) {
+				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
+				$GLOBALS['post'] = $previous_post;
+				setup_postdata( $previous_post );
+			} else {
+				unset( $GLOBALS['post'] );
+				wp_reset_postdata();
+			}
+		}
 	}
 
 	/**

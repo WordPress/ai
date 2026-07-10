@@ -1903,6 +1903,64 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Rendered excerpt filters run with the requested post as the global context and restore
+	 * the context that was active before the ability executed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_excerpt_rendered_uses_and_restores_requested_post_context(): void {
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$target_id     = self::$post_ids['limited_role_content'];
+		$surrounding   = get_post( self::$post_ids['published'] );
+		$previous_post = $GLOBALS['post'] ?? null;
+
+		$this->assertInstanceOf( \WP_Post::class, $surrounding, 'The surrounding post fixture should exist.' );
+
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Establishes a distinct context to verify the ability restores it.
+		$GLOBALS['post'] = $surrounding;
+		setup_postdata( $surrounding );
+
+		$append_context_id = static function ( $excerpt ): string {
+			return (string) $excerpt . '<!-- excerpt-context:' . get_the_ID() . ' -->';
+		};
+		add_filter( 'the_excerpt', $append_context_id, 20 );
+
+		try {
+			$result              = wp_get_ability( 'core/read-content' )->execute(
+				array(
+					'id'     => $target_id,
+					'fields' => array( 'id', 'excerpt_rendered' ),
+				)
+			);
+			$restored_context_id = get_the_ID();
+		} finally {
+			remove_filter( 'the_excerpt', $append_context_id, 20 );
+
+			if ( $previous_post instanceof \WP_Post ) {
+				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the context that preceded the test.
+				$GLOBALS['post'] = $previous_post;
+				setup_postdata( $previous_post );
+			} else {
+				unset( $GLOBALS['post'] );
+				wp_reset_postdata();
+			}
+		}
+
+		$this->assertStringContainsString(
+			'<!-- excerpt-context:' . $target_id . ' -->',
+			$result['excerpt_rendered'],
+			'Excerpt filters should see the requested post as the current post.'
+		);
+		$this->assertSame(
+			$surrounding->ID,
+			$restored_context_id,
+			'The surrounding post context should be restored after rendering.'
+		);
+	}
+
+	/**
 	 * The password gate is suspended only for posts the current user can edit.
 	 *
 	 * @since x.x.x
