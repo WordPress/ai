@@ -715,19 +715,24 @@ class Comment_Moderation extends Abstract_Feature {
 			$this->render_value_score_column( (int) $comment_id, $status );
 		}
 	}
-
-	/**
-	 * Renders the sentiment column content.
+/**
+	 * Renders a comment analysis score/status column using the appropriate badge.
 	 *
-	 * @since 0.9.0
+	 * Shared by the sentiment, toxicity, and value score columns to avoid
+	 * duplicating the status-based branching logic in each one.
 	 *
-	 * @param int    $comment_id The comment ID.
-	 * @param string $status     The analysis status.
+	 * @since x.x.x
+	 *
+	 * @param int      $comment_id     The comment ID.
+	 * @param string   $status         The analysis status.
+	 * @param string   $meta_key       The comment meta key storing the analysis value.
+	 * @param callable $render_badge   Callback that renders the "complete" state badge.
+	 *                                 Receives the raw meta value as its only argument.
 	 */
-	private function render_sentiment_column( int $comment_id, string $status ): void {
+	private function render_analysis_column( int $comment_id, string $status, string $meta_key, callable $render_badge ): void {
 		if ( self::STATUS_COMPLETE === $status ) {
-			$sentiment = get_comment_meta( $comment_id, self::META_SENTIMENT, true );
-			$this->render_sentiment_badge( $sentiment );
+			$value = get_comment_meta( $comment_id, $meta_key, true );
+			call_user_func( $render_badge, $value );
 		} elseif ( self::STATUS_PENDING === $status ) {
 			$this->render_pending_badge( $comment_id );
 		} elseif ( self::STATUS_PROCESSING === $status ) {
@@ -738,6 +743,25 @@ class Comment_Moderation extends Abstract_Feature {
 			// Empty or not analyzed - show dash.
 			echo '<span class="ai-badge ai-badge--empty">—</span>';
 		}
+	}
+
+	/**
+	 * Renders the sentiment column content.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param int    $comment_id The comment ID.
+	 * @param string $status     The analysis status.
+	 */
+	private function render_sentiment_column( int $comment_id, string $status ): void {
+		$this->render_analysis_column(
+			$comment_id,
+			$status,
+			self::META_SENTIMENT,
+			function ( $sentiment ) {
+				$this->render_sentiment_badge( $sentiment );
+			}
+		);
 	}
 
 	/**
@@ -749,19 +773,14 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @param string $status     The analysis status.
 	 */
 	private function render_toxicity_column( int $comment_id, string $status ): void {
-		if ( self::STATUS_COMPLETE === $status ) {
-			$score = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
-			$this->render_toxicity_badge( $score );
-		} elseif ( self::STATUS_PENDING === $status ) {
-			$this->render_pending_badge( $comment_id );
-		} elseif ( self::STATUS_PROCESSING === $status ) {
-			$this->render_processing_badge( $comment_id );
-		} elseif ( self::STATUS_FAILED === $status ) {
-			$this->render_failed_badge();
-		} else {
-			// Empty or not analyzed - show dash.
-			echo '<span class="ai-badge ai-badge--empty">—</span>';
-		}
+		$this->render_analysis_column(
+			$comment_id,
+			$status,
+			self::META_TOXICITY_SCORE,
+			function ( $score ) {
+				$this->render_toxicity_badge( (float) $score );
+			}
+		);
 	}
 
 	/**
@@ -773,21 +792,15 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @param string $status     The analysis status.
 	 */
 	private function render_value_score_column( int $comment_id, string $status ): void {
-		if ( self::STATUS_COMPLETE === $status ) {
-			$score = (float) get_comment_meta( $comment_id, self::META_VALUE_SCORE, true );
-			$this->render_value_score_badge( $score );
-		} elseif ( self::STATUS_PENDING === $status ) {
-			$this->render_pending_badge( $comment_id );
-		} elseif ( self::STATUS_PROCESSING === $status ) {
-			$this->render_processing_badge( $comment_id );
-		} elseif ( self::STATUS_FAILED === $status ) {
-			$this->render_failed_badge();
-		} else {
-			// Empty or not analyzed - show dash.
-			echo '<span class="ai-badge ai-badge--empty">—</span>';
-		}
+		$this->render_analysis_column(
+			$comment_id,
+			$status,
+			self::META_VALUE_SCORE,
+			function ( $score ) {
+				$this->render_value_score_badge( (float) $score );
+			}
+		);
 	}
-
 	/**
 	 * Renders a sentiment badge.
 	 *
