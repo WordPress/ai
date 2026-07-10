@@ -541,15 +541,18 @@ final class Content {
 	/**
 	 * Executes the `core/read-content` ability.
 	 *
-	 * Permissions are enforced by {@see self::check_permission()}, which every
-	 * transport runs before execution. Single-post modes therefore only re-validate
-	 * the lookup itself (existence, exposure, post type match); query mode filters
-	 * result rows by read/edit permission because the gate cannot resolve them.
+	 * {@see WP_Ability::execute()} always runs {@see self::check_permission()} first, so the
+	 * single-post modes only re-validate the lookup itself: existence, exposure, and a
+	 * matching post type. Query mode still filters every row by read or edit permission,
+	 * because the gate cannot resolve rows before the query runs.
+	 *
+	 * A post is returned as an empty object when its field projection is empty, so callers
+	 * must not assume array access on a post. See {@see self::to_output_post()}.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\stdClass|\WP_Error A post object in single-post mode (cast to `stdClass` when the projection is empty so it serializes as `{}`), a map with a `posts` list in query mode, or a WP_Error on failure.
+	 * @return array<string, mixed>|\stdClass|\WP_Error A single post, a `posts` list with totals in query mode, or a WP_Error.
 	 */
 	public function execute_read_content( $input = array() ) {
 		$input         = is_array( $input ) ? $input : array();
@@ -1587,8 +1590,14 @@ final class Content {
 	 * Builds the uniform not-found error.
 	 *
 	 * Unreachable through gated transports, which run {@see self::check_permission()}
-	 * first and deny the same lookups; kept so the execute callback stays
-	 * self-contained when invoked directly.
+	 * first and deny the same lookups. It is kept so that a direct call to the execute
+	 * callback still fails closed on a structural lookup failure: a missing post, a post
+	 * type that is not exposed, or a post type that does not match the requested one.
+	 *
+	 * This is not a permission check. The execute callback deliberately does not repeat
+	 * the read/edit checks that {@see self::check_permission()} already performed, so a
+	 * direct call bypasses them. Only invoke the callback through
+	 * {@see WP_Ability::execute()}, which always runs the permission callback first.
 	 *
 	 * @since x.x.x
 	 *
