@@ -44,17 +44,13 @@ tests_add_filter(
 /*
  * Register the core ability categories that the WordPress test suite removes.
  *
- * The suite unhooks `wp_register_core_ability_categories()` at priority 1, so that core
- * abilities do not register during tests. The categories go with them. The plugin's own
- * abilities still declare core categories such as `site` and `user`, and
- * `wp_register_ability()` refuses a category that is not registered, so every plugin
- * ability would emit an "incorrect usage" notice as soon as the registry boots.
+ * The suite unhooks `wp_register_core_ability_categories()`, so `site` and `user` do not
+ * exist during tests. Booting the abilities registry registers every plugin ability at once,
+ * and `wp_register_ability()` refuses a category that is not registered. A single missing
+ * category therefore breaks any test that touches abilities, whichever test that happens to
+ * be. Without this, every new ability test class had to register the categories again.
  *
- * Put the categories back for tests only. This runs after the suite has unhooked core, and
- * before the plugin registers the categories it owns.
- *
- * Core owns `site` and `user`. The plugin owns the categories it registers itself, and those
- * arrive through the plugin's own callbacks on this hook, so they need nothing here.
+ * Categories the plugin owns arrive through its own callbacks on this hook.
  *
  * @see _unhook_core_ability_categories_registration() in the WordPress test suite.
  */
@@ -66,11 +62,8 @@ tests_add_filter(
 		}
 
 		/*
-		 * Should the suite ever stop unhooking core, its callback still runs later on this
-		 * hook. Standing down keeps this from registering the same categories twice.
-		 *
-		 * `has_action()` returns the priority, so a callback hooked at priority 0 is falsy.
-		 * Compare against `false` rather than testing for truth.
+		 * Stand down once core registers them itself. `has_action()` returns the priority,
+		 * which is falsy at priority 0, so compare against `false`.
 		 */
 		if ( false !== has_action( 'wp_abilities_api_categories_init', 'wp_register_core_ability_categories' ) ) {
 			return;
