@@ -159,7 +159,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Gets the configuration for Value_Score levels.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string}> The Value_Score configuration.
 	 */
@@ -767,7 +767,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders the value score column content.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 *
 	 * @param int    $comment_id The comment ID.
 	 * @param string $status     The analysis status.
