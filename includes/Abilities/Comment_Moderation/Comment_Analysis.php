@@ -135,7 +135,7 @@ class Comment_Analysis extends Abstract_Ability {
 		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_PROCESSING );
 
 		// Analyze the comment.
-		$result = $this->analyze_comment( $comment->comment_content, $comment->comment_author, $comment->comment_post_ID );
+		$result = $this->analyze_comment( $comment->comment_content, $comment->comment_author, absint( $comment->comment_post_ID ) );
 
 		if ( is_wp_error( $result ) ) {
 			// Mark as failed.
