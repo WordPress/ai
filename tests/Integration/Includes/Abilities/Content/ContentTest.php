@@ -189,15 +189,12 @@ class ContentTest extends WP_UnitTestCase {
 	 * Registers the plugin's core/read-content ability inside a faked init action.
 	 *
 	 * @since x.x.x
-	 *
-	 * @param Content|null $content Optional. Content ability implementation to register.
 	 */
-	private function register_ability( ?Content $content = null ): void {
+	private function register_ability(): void {
 		global $wp_current_filter;
-		$content           ??= new Content();
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			$content->register();
+			( new Content() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -499,20 +496,34 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A post type registered after the ability schema is built is outside the contract.
-	 *
-	 * Query and slug modes cannot name late post types because they are absent from the
-	 * schema enum. ID mode must follow the same registration-time contract rather than
-	 * exposing late post types when the caller happens to know a post ID.
+	 * A schema filter can expose a post type that is registered after the ability.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_id_mode_denies_post_type_registered_after_schema_snapshot(): void {
+	public function test_schema_filter_exposes_late_registered_post_type(): void {
 		$this->login_as( 'administrator' );
-		$this->register_ability();
+
+		$amend_schema = static function ( array $args, string $name ): array {
+			if ( 'core/read-content' !== $name ) {
+				return $args;
+			}
+
+			foreach ( $args['input_schema']['oneOf'] as $index => $mode ) {
+				$args['input_schema']['oneOf'][ $index ]['properties']['post_type']['enum'][] = 'wpai_late_cpt';
+			}
+
+			return $args;
+		};
+		add_filter( 'wp_register_ability_args', $amend_schema, 10, 2 );
+
+		try {
+			$this->register_ability();
+		} finally {
+			remove_filter( 'wp_register_ability_args', $amend_schema, 10 );
+		}
 
 		$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
-		$this->assertNotContains( 'wpai_late_cpt', $enum, 'Precondition: late post types should be absent from the frozen schema enum.' );
+		$this->assertContains( 'wpai_late_cpt', $enum, 'The ability args filter should amend the frozen schema enum.' );
 
 		register_post_type(
 			'wpai_late_cpt',
@@ -531,10 +542,14 @@ class ContentTest extends WP_UnitTestCase {
 				)
 			);
 
-			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+			$result = wp_get_ability( 'core/read-content' )->execute(
+				array(
+					'post_type' => 'wpai_late_cpt',
+					'fields'    => array( 'id' ),
+				)
+			);
 
-			$this->assertWPError( $result, 'By-ID lookups should not expose post types absent from the ability schema snapshot.' );
-			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Late post types should fail closed as a permission error.' );
+			$this->assertSame( array( $post_id ), wp_list_pluck( $result['posts'], 'id' ), 'The late post type should be queryable after it becomes exposed.' );
 		} finally {
 			unregister_post_type( 'wpai_late_cpt' );
 		}
@@ -2717,7 +2732,6 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 
 		$content = new Content();
-		$this->register_ability( $content );
 
 		$missing = $content->execute_read_content( array( 'id' => 999999 ) );
 		$this->assertWPError( $missing, 'A nonexistent post ID should fail the lookup.' );
@@ -2755,7 +2769,6 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_execute_callback_rejects_non_integer_author_filter(): void {
 		$this->login_as( 'administrator' );
 		$content = new Content();
-		$this->register_ability( $content );
 
 		$result = $content->execute_read_content(
 			array(
@@ -2781,7 +2794,6 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_execute_callback_rejects_non_integer_parent_filter(): void {
 		$this->login_as( 'administrator' );
 		$content = new Content();
-		$this->register_ability( $content );
 
 		$result = $content->execute_read_content(
 			array(
@@ -2809,7 +2821,6 @@ class ContentTest extends WP_UnitTestCase {
 
 		self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$content = new Content();
-		$this->register_ability( $content );
 
 		$result = $content->execute_read_content(
 			array(
@@ -2850,7 +2861,6 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->login_as( 'administrator' );
 		$content = new Content();
-		$this->register_ability( $content );
 
 		$result = $content->execute_read_content(
 			array(

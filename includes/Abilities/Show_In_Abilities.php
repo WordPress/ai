@@ -30,10 +30,8 @@ defined( 'ABSPATH' ) || exit;
  * before that hook fires — i.e. its `register_setting()` call must run before abilities
  * init — for the ability to pick it up.
  *
- * Timing: the `core/read-content` ability re-resolves the exposed post types on every call,
- * but its input schema snapshots them when it registers on `wp_abilities_api_init`. A post
- * type therefore has to be flagged with `show_in_abilities` before that hook fires for
- * schema validation to accept it as input.
+ * Post types must be registered with `show_in_abilities` before `core/read-content` is
+ * registered so they are included in the ability's input schema.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
