@@ -216,6 +216,7 @@ class Comment_Analysis extends Abstract_Ability {
 
 	/**
 	 * Function to return context from the post for comment analysis.
+	 *
 	 * @param int $post_id The ID of the post.
 	 * @return string The content of the post.
 	 */

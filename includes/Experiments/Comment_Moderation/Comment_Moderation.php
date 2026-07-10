@@ -715,7 +715,8 @@ class Comment_Moderation extends Abstract_Feature {
 			$this->render_value_score_column( (int) $comment_id, $status );
 		}
 	}
-/**
+
+	/**
 	 * Renders a comment analysis score/status column using the appropriate badge.
 	 *
 	 * Shared by the sentiment, toxicity, and value score columns to avoid
