@@ -1,13 +1,12 @@
 /**
  * WordPress dependencies
  */
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useState,
-} from '@wordpress/element';
+import { createContext, useContext, useMemo } from '@wordpress/element';
+
+/**
+ * Internal dependencies
+ */
+import { useLocalStoragePreference } from './use-local-storage-preference';
 
 const STORAGE_KEY = 'ai_advanced_settings';
 
@@ -46,32 +45,13 @@ export function useAdvancedSettingsContext(): AdvancedSettingsContextValue {
  * @return {AdvancedSettingsContextValue} The context value with state and setter.
  */
 export function useAdvancedSettings(): AdvancedSettingsContextValue {
-	const [ isAdvancedSettingsEnabled, setEnabled ] = useState< boolean >(
-		() => {
-			try {
-				return localStorage.getItem( STORAGE_KEY ) === 'true';
-			} catch {
-				return false;
-			}
-		}
+	const { enabled, toggle } = useLocalStoragePreference( STORAGE_KEY );
+
+	return useMemo(
+		() => ( {
+			isAdvancedSettingsEnabled: enabled,
+			toggleAdvancedSettings: toggle,
+		} ),
+		[ enabled, toggle ]
 	);
-
-	useEffect( () => {
-		try {
-			if ( isAdvancedSettingsEnabled ) {
-				localStorage.setItem( STORAGE_KEY, 'true' );
-			} else {
-				localStorage.removeItem( STORAGE_KEY );
-			}
-		} catch {}
-	}, [ isAdvancedSettingsEnabled ] );
-
-	const toggleAdvancedSettings = useCallback( () => {
-		setEnabled( ( prev ) => ! prev );
-	}, [] );
-
-	return {
-		isAdvancedSettingsEnabled,
-		toggleAdvancedSettings,
-	};
 }

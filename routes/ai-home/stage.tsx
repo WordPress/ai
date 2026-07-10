@@ -1051,7 +1051,7 @@ function AISettingsPage() {
 												advancedSettings.isAdvancedSettingsEnabled
 											}
 											info={ __(
-												'Show advanced configuration options for features.',
+												'Show advanced feature configuration options',
 												'ai'
 											) }
 											icon={

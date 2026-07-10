@@ -524,7 +524,7 @@ export const enableAdvancedSettings = async ( page: Page ) => {
 		page.getByRole( 'menuitemcheckbox', { name: /Advanced settings/ } )
 	).toBeVisible();
 	await expect(
-		page.getByText( 'Show advanced configuration options for features.' )
+		page.getByText( 'Show advanced feature configuration options' )
 	).toBeVisible();
 
 	const advancedSettings = page.getByRole( 'menuitemcheckbox', {
