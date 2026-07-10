@@ -88,10 +88,8 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
 		// Run from the block editor, where the abilities client modules are available.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'core/read-content ability test',
-		} );
+		// Open a seeded post rather than creating one, so no auto-draft is left behind.
+		await admin.editPost( seededPostIds[ 0 ] );
 	} );
 
 	test( 'returns a posts list of the requested post type', async ( {

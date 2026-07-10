@@ -1076,6 +1076,61 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A published post is not hidden behind more same-slug drafts than a page holds.
+	 *
+	 * The slug lookup is a singular WP_Query, so it returns every matching row and no page
+	 * size applies. Bounding it with `post_name__in` and a page size would page straight past
+	 * an older published post, because the query is ordered newest first.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_slug_lookup_is_not_bounded_by_a_page_size(): void {
+		global $wpdb;
+
+		// Author every post as the administrator, so the subscriber who reads them below can
+		// only see the published one.
+		$this->login_as( 'administrator' );
+
+		// The published post owns the slug and is the oldest of the group.
+		$published = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_name'   => 'wpai-slug-not-bounded',
+				'post_date'   => '2026-01-01 10:00:00',
+			)
+		);
+
+		// Drafts skip slug uniqueness, so they can all share the slug. Create more of them
+		// than the largest page the ability will ever return.
+		for ( $i = 0; $i < 110; $i++ ) {
+			self::factory()->post->create(
+				array(
+					'post_status' => 'draft',
+					'post_name'   => 'wpai-slug-not-bounded',
+					'post_date'   => '2026-03-01 10:00:00',
+				)
+			);
+		}
+
+		$sharing = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_name = %s", 'wpai-slug-not-bounded' ) ); // phpcs:ignore WordPress.DB
+		$this->assertGreaterThan( 100, $sharing, 'Precondition: more posts share the slug than a single page holds.' );
+
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'slug'      => 'wpai-slug-not-bounded',
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The published post should resolve even though the drafts fill more than a page.' );
+		$this->assertSame( $published, $result['id'], 'The readable published post should still resolve.' );
+	}
+
+	/**
 	 * A post whose slug is the literal string "0" is fetched in single-post slug mode.
 	 *
 	 * @since x.x.x

@@ -71,7 +71,7 @@ final class Content {
 	 * Requests that explicitly include any of these fields require edit access.
 	 *
 	 * @since x.x.x
-	 * @var string[]
+	 * @var list<string>
 	 */
 	private array $edit_fields = array(
 		'title_raw',
@@ -86,7 +86,7 @@ final class Content {
 	 * page. Other rendered fields, such as the title, do not need that cache priming.
 	 *
 	 * @since x.x.x
-	 * @var string[]
+	 * @var list<string>
 	 */
 	private array $cache_priming_fields = array(
 		'excerpt_rendered',
@@ -116,7 +116,7 @@ final class Content {
 	 * Default fields returned when the caller does not request a field subset.
 	 *
 	 * @since x.x.x
-	 * @var string[]
+	 * @var list<string>
 	 */
 	private array $default_fields = array(
 		'id',
@@ -243,8 +243,8 @@ final class Content {
 				'label'               => __( 'Read Content', 'ai' ),
 				'description'         => __( 'Reads content from post types exposed to abilities. Single-post lookups by ID or by post type and slug return the post object directly. Query mode returns readable posts filtered by post type, status, author, parent, or included IDs. Requires an authenticated user. Lookups and filters are exact-match only; the ability does not perform full-text search.', 'ai' ),
 				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_content_input_schema( $post_types, $statuses ),
-				'output_schema'       => $this->get_content_output_schema(),
+				'input_schema'        => $this->get_read_content_input_schema( $post_types, $statuses ),
+				'output_schema'       => $this->get_read_content_output_schema(),
 				'execute_callback'    => array( $this, 'execute_read_content' ),
 				'permission_callback' => array( $this, 'check_permission' ),
 				'meta'                => array(
@@ -395,7 +395,7 @@ final class Content {
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @param string       $key   The input key holding the list.
-	 * @return string[] The parsed string values; empty when absent or unparseable.
+	 * @return list<string> The parsed string values; empty when absent or unparseable.
 	 */
 	private function parse_list_input( array $input, string $key ): array {
 		$value = $input[ $key ] ?? null;
@@ -752,7 +752,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input       The ability input.
-	 * @param int[]        $include_ids Normalized included post IDs; empty when not requested.
+	 * @param list<int>    $include_ids Normalized included post IDs; empty when not requested.
 	 * @return int The clamped per-page value.
 	 */
 	private function normalize_per_page( array $input, array $include_ids = array() ): int {
@@ -805,7 +805,7 @@ final class Content {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string[] $fields The requested field names.
+	 * @param list<string> $fields The requested field names.
 	 * @return bool True when post meta and term caches should be primed.
 	 */
 	private function should_prime_post_caches( array $fields ): bool {
@@ -840,8 +840,6 @@ final class Content {
 				'post_type'              => $post_type,
 				'name'                   => $name,
 				'post_status'            => array_values( get_post_stati( array( 'internal' => false ) ) ),
-				// Exact-match slug collisions are inherently few; the cap is defensive.
-				'posts_per_page'         => self::MAX_PER_PAGE,
 				'no_found_rows'          => true,
 				'ignore_sticky_posts'    => true,
 				'update_post_meta_cache' => false,
@@ -922,7 +920,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return string[] Normalized list of post status slugs.
+	 * @return list<string> Normalized list of post status slugs.
 	 */
 	private function normalize_statuses( array $input ): array {
 		$statuses = $this->parse_list_input( $input, 'status' );
@@ -936,7 +934,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return int[] Unique positive post IDs.
+	 * @return list<int> Unique positive post IDs.
 	 */
 	private function normalize_include( array $input ): array {
 		$include = $input['include'] ?? null;
@@ -959,7 +957,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return string[] List of requested field names.
+	 * @return list<string> List of requested field names.
 	 */
 	private function normalize_fields( array $input ): array {
 		$fields = $this->parse_list_input( $input, 'fields' );
@@ -1093,11 +1091,11 @@ final class Content {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string[] $post_types Exposed post type names.
-	 * @param string[] $statuses   Requestable post status slugs.
+	 * @param list<string> $post_types Exposed post type names.
+	 * @param list<string> $statuses   Requestable post status slugs.
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
-	private function get_content_input_schema( array $post_types, array $statuses ): array {
+	private function get_read_content_input_schema( array $post_types, array $statuses ): array {
 		$fields  = array(
 			'type'        => 'array',
 			'uniqueItems' => true,
@@ -1220,7 +1218,7 @@ final class Content {
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
-	private function get_content_output_schema(): array {
+	private function get_read_content_output_schema(): array {
 		$post_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
@@ -1289,7 +1287,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post   The post object.
-	 * @param string[] $fields The requested field names.
+	 * @param list<string> $fields The requested field names.
 	 * @return array<string, mixed> The formatted post data.
 	 */
 	private function format_post( WP_Post $post, array $fields ): array {
@@ -1330,7 +1328,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post         The post object.
-	 * @param string[] $fields       The requested field names.
+	 * @param list<string> $fields       The requested field names.
 	 * @param bool     $can_edit     Whether the current user can edit the post.
 	 * @param bool     $is_protected Whether rendered fields must be withheld as password-protected.
 	 * @return array<string, mixed> The formatted post data.
