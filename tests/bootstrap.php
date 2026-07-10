@@ -41,5 +41,29 @@ tests_add_filter(
 	}
 );
 
+/*
+ * Register the core ability categories that the WordPress test suite removes.
+ *
+ * The suite unhooks `wp_register_core_ability_categories()` at priority 1, so that core
+ * abilities do not register during tests. The categories go with them. The plugin's own
+ * abilities still declare core categories such as `site` and `user`, and
+ * `wp_register_ability()` refuses a category that is not registered, so every plugin
+ * ability would emit an "incorrect usage" notice as soon as the registry boots.
+ *
+ * Put the categories back for tests only. This runs after the suite has unhooked core, and
+ * before the plugin registers the categories it owns.
+ *
+ * @see _unhook_core_ability_categories_registration() in the WordPress test suite.
+ */
+tests_add_filter(
+	'wp_abilities_api_categories_init',
+	static function (): void {
+		if ( function_exists( 'wp_register_core_ability_categories' ) ) {
+			wp_register_core_ability_categories();
+		}
+	},
+	5
+);
+
 // Start up the WP testing environment.
 require $_test_root . '/includes/bootstrap.php';
