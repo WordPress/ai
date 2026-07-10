@@ -39,8 +39,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's a page under Tools.
 		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
+			page.locator( '#adminmenu' ).getByRole( 'link', {
+				name: 'Connector Approvals',
+				exact: true,
 			} )
 		).toBeVisible();
 
@@ -49,12 +50,17 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure the Connector Approval page is visible.
 		await expect(
-			page.locator( '#ai-connector-approval-root' )
+			page.getByRole( 'heading', {
+				name: 'Connector Approvals',
+				exact: true,
+			} )
 		).toBeVisible();
 
 		// Ensure the Approval matrix table is visible.
 		await expect(
-			page.locator( '.ai-connector-approval__matrix table' )
+			page
+				.locator( '.ai-connector-approval__matrix' )
+				.getByRole( 'table' )
 		).toBeVisible();
 
 		// Remove any previous approvals.
@@ -80,7 +86,7 @@ test.describe( 'Connector Approval Experiment', () => {
 		);
 
 		if ( await aiOpenAiToggle.isChecked() ) {
-			await aiOpenAiToggle.uncheck();
+			await aiOpenAiToggle.click( { force: true } );
 			await expect( aiOpenAiToggle ).not.toBeChecked();
 		}
 
@@ -123,11 +129,7 @@ test.describe( 'Connector Approval Experiment', () => {
 		).toHaveCount( 0 );
 
 		await expect(
-			aiMatrixRow.locator(
-				`td:nth-child(${
-					openAiColumnIndex + 1
-				}) input.components-form-toggle__input`
-			)
+			page.getByLabel( 'Allow AI to use OpenAI', { exact: true } )
 		).toBeChecked();
 	} );
 
@@ -145,8 +147,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's not a page under Tools.
 		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
+			page.locator( '#adminmenu' ).getByRole( 'link', {
+				name: 'Connector Approvals',
+				exact: true,
 			} )
 		).not.toBeVisible();
 	} );
@@ -165,8 +168,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's not a page under Tools.
 		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
+			page.locator( '#adminmenu' ).getByRole( 'link', {
+				name: 'Connector Approvals',
+				exact: true,
 			} )
 		).not.toBeVisible();
 	} );
