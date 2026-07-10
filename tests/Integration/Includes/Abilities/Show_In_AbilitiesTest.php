@@ -337,4 +337,21 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 
 		$this->assertFalse( get_post_type_object( 'page' )->show_in_abilities );
 	}
+
+	/**
+	 * Core does not declare the post type flag yet, so the polyfill is still needed.
+	 *
+	 * This is a tripwire. When core declares `show_in_abilities` on `WP_Post_Type`, both
+	 * polyfill paths stand down and core owns the flag. If that lands, the curated post
+	 * types are only exposed when core exposes them, so review `Show_In_Abilities` and the
+	 * `core/read-content` registration before deleting this test.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_does_not_yet_declare_the_post_type_flag(): void {
+		$this->assertFalse(
+			property_exists( \WP_Post_Type::class, 'show_in_abilities' ),
+			'Core now declares show_in_abilities on WP_Post_Type; the polyfill must step aside.'
+		);
+	}
 }

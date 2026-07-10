@@ -110,11 +110,31 @@ final class Show_In_Abilities {
 	}
 
 	/**
+	 * Checks whether WordPress core declares the post type flag natively.
+	 *
+	 * Passing a class name to {@see property_exists()} reports only properties declared by
+	 * the class. Passing an object also reports dynamic properties, which is what
+	 * {@see self::mark_registered_post_types()} sets, so the two forms answer different
+	 * questions and must not be interchanged.
+	 *
+	 * Once core declares the property, core owns the flag: it decides the default and honors
+	 * `register_post_type()` arguments itself, and this polyfill must step aside rather than
+	 * try to distinguish "core defaulted it to false" from "a site opted out".
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when core declares `show_in_abilities` on {@see WP_Post_Type}.
+	 */
+	private function core_declares_post_type_flag(): bool {
+		return property_exists( \WP_Post_Type::class, 'show_in_abilities' );
+	}
+
+	/**
 	 * Adds the `show_in_abilities` flag to curated core post types as they are registered.
 	 *
-	 * Respects an explicit `show_in_abilities` value already present on the post type —
-	 * including an explicit `false` opt-out (for example once core ships it natively) —
-	 * only filling it in when the key is absent entirely.
+	 * Respects an explicit `show_in_abilities` value already present in the registration
+	 * arguments — including an explicit `false` opt-out — only filling it in when the key is
+	 * absent entirely. Does nothing once core declares the flag natively.
 	 *
 	 * @since x.x.x
 	 *
@@ -123,6 +143,10 @@ final class Show_In_Abilities {
 	 * @return array<string, mixed> The (possibly amended) registration arguments.
 	 */
 	public function mark_post_type( array $args, string $post_type ): array {
+		if ( $this->core_declares_post_type_flag() ) {
+			return $args;
+		}
+
 		$post_types = $this->post_types_map();
 
 		if ( isset( $post_types[ $post_type ] ) && ! array_key_exists( 'show_in_abilities', $args ) ) {
@@ -139,19 +163,28 @@ final class Show_In_Abilities {
 	 * added, but core post types are registered during bootstrap. This patches the existing
 	 * post type objects directly so the polyfill works regardless of when it runs.
 	 * {@see WP_Post_Type} allows dynamic properties, so this is safe on stock WordPress.
-	 * An existing `show_in_abilities` property — including an explicit `false` opt-out —
-	 * is left untouched.
+	 * A `show_in_abilities` property already set on the object — including an explicit
+	 * `false` opt-out — is left untouched.
+	 *
+	 * Both this method and {@see self::mark_post_type()} stand down once core declares the
+	 * flag, so the two exposure paths cannot disagree.
 	 *
 	 * @since x.x.x
 	 */
 	public function mark_registered_post_types(): void {
+		if ( $this->core_declares_post_type_flag() ) {
+			return;
+		}
+
 		foreach ( $this->post_types_map() as $post_type => $show ) {
 			$object = get_post_type_object( $post_type );
+
+			// The class does not declare the property, so this only matches a value already set.
 			if ( ! ( $object instanceof \WP_Post_Type ) || property_exists( $object, 'show_in_abilities' ) ) {
 				continue;
 			}
 
-			$object->show_in_abilities = $show; // @phpstan-ignore property.notFound (WP_Post_Type permits dynamic properties; core adds show_in_abilities in 7.1.)
+			$object->show_in_abilities = $show; // @phpstan-ignore property.notFound (WP_Post_Type permits dynamic properties; core is expected to declare this one.)
 		}
 	}
 
