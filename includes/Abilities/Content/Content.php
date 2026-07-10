@@ -1576,14 +1576,34 @@ final class Content {
 		$field = 'modified' === $field ? 'modified' : 'date';
 		$gmt   = 'modified' === $field ? $post->post_modified_gmt : $post->post_date_gmt;
 
-		if ( '' === $gmt || '0000-00-00 00:00:00' === $gmt ) {
+		if ( ! $this->is_usable_date( $gmt ) ) {
 			$local = 'modified' === $field ? $post->post_modified : $post->post_date;
-			$gmt   = '' === $local || '0000-00-00 00:00:00' === $local ? '' : get_gmt_from_date( $local );
+			$gmt   = $this->is_usable_date( $local ) ? get_gmt_from_date( $local ) : '';
 		}
 
+		/*
+		 * Guard the empty string before `strtotime()`: `strtotime( ' UTC' )` resolves to the
+		 * current time, which would report a fabricated date instead of the documented
+		 * empty-string sentinel.
+		 */
 		$timestamp = '' === $gmt ? false : strtotime( $gmt . ' UTC' );
 
 		return false === $timestamp ? '' : gmdate( 'c', $timestamp );
+	}
+
+	/**
+	 * Checks whether a raw post date column holds a usable date.
+	 *
+	 * The columns are `NOT NULL` in core's schema, but a post object can reach this class
+	 * from a filter or an in-memory row where a date is null or a zero date.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $date The raw date column value.
+	 * @return bool True when the value is a non-empty, non-zero date string.
+	 */
+	private function is_usable_date( $date ): bool {
+		return is_string( $date ) && '' !== $date && '0000-00-00 00:00:00' !== $date;
 	}
 
 	/**

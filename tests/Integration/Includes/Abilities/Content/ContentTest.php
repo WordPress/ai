@@ -2371,6 +2371,95 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Replaces cached post columns so the ability sees a post object with null dates.
+	 *
+	 * Core's schema keeps the date columns `NOT NULL`, but a post object can still reach
+	 * the ability from a filter or an in-memory row where a date is null.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int      $post_id The post ID.
+	 * @param string[] $columns The post columns to null out.
+	 */
+	private function null_out_post_date_columns( int $post_id, array $columns ): void {
+		get_post( $post_id );
+
+		$cached = wp_cache_get( $post_id, 'posts' );
+		$this->assertInstanceOf( \stdClass::class, $cached, 'Precondition: the raw post row should be cached.' );
+		$this->assertSame( 'raw', $cached->filter, 'Precondition: the cached row should be unsanitized.' );
+
+		foreach ( $columns as $column ) {
+			$cached->$column = null;
+		}
+
+		wp_cache_set( $post_id, $cached, 'posts' );
+
+		foreach ( $columns as $column ) {
+			$this->assertNull( get_post( $post_id )->$column, "Precondition: {$column} should be null." );
+		}
+	}
+
+	/**
+	 * A null stored GMT date falls back to the local date instead of the current time.
+	 *
+	 * `strtotime( ' UTC' )` resolves to the current time, so an unguarded null would
+	 * report a fabricated "now" as the publication date.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_gmt_date_recovers_from_a_null_stored_gmt_date(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		update_option( 'timezone_string', 'America/New_York' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2026-01-15 10:00:00',
+			)
+		);
+
+		$this->null_out_post_date_columns( $post_id, array( 'post_date_gmt' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'date_gmt' ),
+			)
+		);
+
+		$this->assertSame(
+			'2026-01-15T15:00:00+00:00',
+			$result['date_gmt'],
+			'A null stored GMT date should be derived from the local date, not resolved to the current time.'
+		);
+	}
+
+	/**
+	 * A post with no usable date at all reports the documented empty-string sentinel.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_gmt_date_is_empty_when_no_usable_date_exists(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$this->null_out_post_date_columns( $post_id, array( 'post_date_gmt', 'post_date' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'date_gmt' ),
+			)
+		);
+
+		$this->assertSame( '', $result['date_gmt'], 'An unresolvable GMT date should be the empty-string sentinel.' );
+	}
+
+	/**
 	 * The execute callback re-validates the lookup structurally when invoked directly.
 	 *
 	 * Gated transports never reach these branches: check_permission() resolves and
