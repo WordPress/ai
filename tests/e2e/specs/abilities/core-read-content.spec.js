@@ -103,6 +103,13 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		expect( Array.isArray( outcome.result.posts ) ).toBe( true );
 		expect( typeof outcome.result.total ).toBe( 'number' );
 		expect( typeof outcome.result.total_pages ).toBe( 'number' );
+
+		// Without this the per-post assertions below pass vacuously on an empty list.
+		expect( outcome.result.posts.length ).toBeGreaterThan( 0 );
+		expect( outcome.result.total ).toBeGreaterThanOrEqual(
+			seededPostIds.length
+		);
+
 		for ( const post of outcome.result.posts ) {
 			expect( post.post_type ).toBe( 'post' );
 			expect( post.status ).toBe( 'publish' );
@@ -118,14 +125,43 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'paginates with page and per_page', async ( { page } ) => {
-		const outcome = await runCoreReadContent( page, {
+		const first = await runCoreReadContent( page, {
 			post_type: 'post',
 			per_page: 1,
 			page: 1,
 		} );
 
-		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.posts.length ).toBeLessThanOrEqual( 1 );
+		expect( first.ok ).toBe( true );
+		expect( first.result.posts ).toHaveLength( 1 );
+		expect( first.result.total ).toBeGreaterThanOrEqual(
+			seededPostIds.length
+		);
+		// One post per page, so there are as many pages as there are posts.
+		expect( first.result.total_pages ).toBe( first.result.total );
+
+		const second = await runCoreReadContent( page, {
+			post_type: 'post',
+			per_page: 1,
+			page: 2,
+		} );
+
+		expect( second.ok ).toBe( true );
+		expect( second.result.posts ).toHaveLength( 1 );
+		expect( second.result.total ).toBe( first.result.total );
+		expect( second.result.posts[ 0 ].id ).not.toBe(
+			first.result.posts[ 0 ].id
+		);
+	} );
+
+	test( 'rejects a page beyond the last one', async ( { page } ) => {
+		const outcome = await runCoreReadContent( page, {
+			post_type: 'post',
+			per_page: 1,
+			page: 999,
+		} );
+
+		expect( outcome.ok ).toBe( false );
+		expect( outcome.code ).toBe( 'content_invalid_page_number' );
 	} );
 
 	test( 'limits each post to the requested fields', async ( { page } ) => {
