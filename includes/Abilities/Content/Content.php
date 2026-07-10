@@ -628,9 +628,7 @@ final class Content {
 			}
 		}
 
-		$per_page = $this->normalize_per_page( $input );
-		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
-		$include  = $this->normalize_include( $input );
+		$include = $this->normalize_include( $input );
 
 		/*
 		 * An include filter that was supplied but parsed to no valid IDs must not fall
@@ -644,6 +642,9 @@ final class Content {
 				array( 'status' => 400 )
 			);
 		}
+
+		$per_page = $this->normalize_per_page( $input, $include );
+		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
 		$query_args = array(
 			'post_type'              => $post_type,
@@ -731,15 +732,27 @@ final class Content {
 	/**
 	 * Normalizes the requested per-page value to the supported bounds.
 	 *
+	 * An explicit `per_page` always wins. Otherwise an `include` request pages to the
+	 * number of requested IDs, so a caller loading a known set of posts receives all of
+	 * them in one call rather than silently losing the ones past the default page size.
+	 * The input schema caps `include` at {@see self::MAX_PER_PAGE} so it always fits.
+	 *
 	 * @since x.x.x
 	 *
-	 * @param array<mixed> $input The ability input.
+	 * @param array<mixed> $input       The ability input.
+	 * @param int[]        $include_ids Normalized included post IDs; empty when not requested.
 	 * @return int The clamped per-page value.
 	 */
-	private function normalize_per_page( array $input ): int {
-		$per_page = isset( $input['per_page'] ) ? $this->input_int( $input['per_page'] ) : self::DEFAULT_PER_PAGE;
+	private function normalize_per_page( array $input, array $include_ids = array() ): int {
+		if ( isset( $input['per_page'] ) ) {
+			return max( 1, min( self::MAX_PER_PAGE, $this->input_int( $input['per_page'] ) ) );
+		}
 
-		return max( 1, min( self::MAX_PER_PAGE, $per_page ) );
+		if ( array() !== $include_ids ) {
+			return max( 1, min( self::MAX_PER_PAGE, count( $include_ids ) ) );
+		}
+
+		return self::DEFAULT_PER_PAGE;
 	}
 
 	/**
@@ -1073,12 +1086,13 @@ final class Content {
 		$include = array(
 			'type'        => 'array',
 			'minItems'    => 1,
+			'maxItems'    => self::MAX_PER_PAGE,
 			'uniqueItems' => true,
 			'items'       => array(
 				'type'    => 'integer',
 				'minimum' => 1,
 			),
-			'description' => __( 'Limit the query to these post IDs. Results still respect post type, read permissions, and the query ordering.', 'ai' ),
+			'description' => __( 'Limit the query to these post IDs. If `per_page` is omitted, the page size defaults to the number of included IDs, capped at the maximum.', 'ai' ),
 		);
 
 		return array(

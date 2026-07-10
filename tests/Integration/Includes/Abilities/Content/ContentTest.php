@@ -2070,6 +2070,88 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Include returns every requested post when `per_page` is omitted.
+	 *
+	 * Without this the default page size silently truncates a batch load: a caller asking
+	 * for a known set of IDs would receive only the first `per_page` of them.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_include_returns_every_requested_post_without_per_page(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		// More than DEFAULT_PER_PAGE (10) so truncation would be visible.
+		$ids = self::factory()->post->create_many( 15, array( 'post_status' => 'publish' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => $ids,
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$returned = wp_list_pluck( $result['posts'], 'id' );
+		sort( $returned );
+		sort( $ids );
+
+		$this->assertSame( $ids, $returned, 'Every requested post ID should be returned on a single page.' );
+		$this->assertSame( 15, $result['total'], 'The total should cover every requested post.' );
+		$this->assertSame( 1, $result['total_pages'], 'Included posts should fit on a single page by default.' );
+	}
+
+	/**
+	 * An explicit `per_page` still paginates an include request.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_include_honors_an_explicit_per_page(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$ids = self::factory()->post->create_many( 5, array( 'post_status' => 'publish' ) );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => $ids,
+				'per_page'  => 2,
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertCount( 2, $result['posts'], 'An explicit per_page should paginate included posts.' );
+		$this->assertSame( 5, $result['total'], 'The total should still cover every requested post.' );
+		$this->assertSame( 3, $result['total_pages'], 'Page counts should follow the explicit per_page.' );
+	}
+
+	/**
+	 * The include list is capped at the maximum page size.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_include_is_capped_at_the_maximum_page_size(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$schema = wp_get_ability( 'core/read-content' )->get_input_schema();
+		$query  = $schema['oneOf'][2];
+
+		$this->assertSame( $query['properties']['per_page']['maximum'], $query['properties']['include']['maxItems'], 'The include list should be capped at the maximum page size.' );
+
+		$result = wp_get_ability( 'core/read-content' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => range( 1, $query['properties']['include']['maxItems'] + 1 ),
+			)
+		);
+
+		$this->assertWPError( $result, 'An include list beyond the cap should be rejected as invalid input.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'The cap should be enforced by schema validation.' );
+	}
+
+	/**
 	 * Query rows are kept, not dropped, when the requested fields project to nothing.
 	 *
 	 * @since x.x.x
