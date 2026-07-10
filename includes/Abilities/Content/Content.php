@@ -278,7 +278,7 @@ final class Content {
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
 	public function check_permission( $input = array() ): bool {
-		$input   = is_array( $input ) ? $input : array();
+		$input   = rest_sanitize_object( $input );
 		$exposed = $this->get_available_post_types();
 
 		if ( ! is_user_logged_in() ) {
@@ -555,7 +555,7 @@ final class Content {
 	 * @return array<string, mixed>|\stdClass|\WP_Error A single post, a `posts` list with totals in query mode, or a WP_Error.
 	 */
 	public function execute_read_content( $input = array() ) {
-		$input         = is_array( $input ) ? $input : array();
+		$input         = rest_sanitize_object( $input );
 		$exposed       = $this->get_available_post_types();
 		$fields        = $this->normalize_fields( $input );
 		$requires_edit = $this->has_explicit_edit_fields( $input );

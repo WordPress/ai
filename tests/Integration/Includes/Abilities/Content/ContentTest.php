@@ -565,6 +565,35 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Schema-valid object input behaves like its array form.
+	 *
+	 * WP_Ability validates `stdClass` as object input but does not coerce the value before
+	 * passing it to the permission and execute callbacks, so both must preserve its fields.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_single_published_post_by_id_accepts_object_input(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::$post_ids['published_content'];
+		$ability = wp_get_ability( 'core/read-content' );
+		$input   = (object) array(
+			'id'     => $post_id,
+			'fields' => array( 'id', 'title_rendered' ),
+		);
+
+		$this->assertTrue( $ability->validate_input( $input ), 'Object input should pass the registered schema.' );
+
+		$result = $ability->execute( $input );
+
+		$this->assertIsArray( $result, 'Object input should execute the by-ID lookup.' );
+		$this->assertSame( $post_id, $result['id'], 'Object input should preserve the requested post ID.' );
+		$this->assertSame( 'Hello Content', $result['title_rendered'], 'Object input should preserve the requested fields.' );
+		$this->assertSame( array( 'id', 'title_rendered' ), array_keys( $result ), 'Object input should use the requested field projection.' );
+	}
+
+	/**
 	 * A single post fetched by ID can return explicitly requested rendered and raw content.
 	 *
 	 * @since x.x.x
