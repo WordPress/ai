@@ -114,14 +114,28 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
+	 * Sends an HTTP header when headers have not already been sent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $header  Header line to send.
+	 * @param bool   $replace Whether to replace a previously sent header of the same name.
+	 */
+	protected function send_header( string $header, bool $replace = true ): void {
+		if ( headers_sent() ) {
+			return;
+		}
+
+		header( $header, $replace );
+	}
+
+	/**
 	 * Renders the markdown feed for the current feed query.
 	 *
 	 * @since x.x.x
 	 */
 	public function do_feed_markdown(): void {
-		if ( ! headers_sent() ) {
-			header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
-		}
+		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
 
 		$renderer = new Markdown_Feed_Renderer();
 
@@ -155,8 +169,8 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function handle_template_redirect(): void {
-		if ( is_singular() && $this->is_accept_negotiation_enabled() && ! headers_sent() ) {
-			header( 'Vary: Accept', false );
+		if ( is_singular() && $this->is_accept_negotiation_enabled() ) {
+			$this->send_header( 'Vary: Accept', false );
 		}
 
 		$markdown = $this->get_singular_markdown();
@@ -165,10 +179,8 @@ class Markdown_Feeds extends Abstract_Feature {
 			return;
 		}
 
-		if ( ! headers_sent() ) {
-			header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
-			header( 'X-Robots-Tag: noindex' );
-		}
+		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
+		$this->send_header( 'X-Robots-Tag: noindex' );
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
 		echo $markdown;
@@ -229,7 +241,13 @@ class Markdown_Feeds extends Abstract_Feature {
 			return;
 		}
 
-		$permalink = get_permalink();
+		$post = get_queried_object();
+
+		if ( ! $post instanceof WP_Post || ! is_post_publicly_viewable( $post ) || post_password_required( $post ) ) {
+			return;
+		}
+
+		$permalink = get_permalink( $post );
 
 		if ( ! $permalink ) {
 			return;

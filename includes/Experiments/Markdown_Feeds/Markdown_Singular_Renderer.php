@@ -95,7 +95,14 @@ class Markdown_Singular_Renderer {
 		 */
 		$sections = apply_filters( 'wpai_markdown_singular_sections', $sections, $post );
 
-		return implode( "\n\n", array_filter( array_map( 'strval', $sections ) ) ) . "\n";
+		$sections = array_filter(
+			array_map( 'strval', $sections ),
+			static function ( string $section ): bool {
+				return '' !== $section;
+			}
+		);
+
+		return implode( "\n\n", $sections ) . "\n";
 	}
 
 	/**

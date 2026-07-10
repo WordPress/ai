@@ -200,4 +200,74 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 
 		$this->assertNotFalse( get_option( Markdown_Feeds::FLUSH_FLAG_OPTION ) );
 	}
+
+	/**
+	 * Tests that nothing is registered while the experiment is disabled.
+	 */
+	public function test_disabled_experiment_registers_nothing(): void {
+		$this->assertFalse( $this->experiment->is_enabled() );
+		$this->assertFalse( has_action( 'do_feed_markdown' ) );
+		$this->assertFalse( has_filter( 'feed_content_type', array( $this->experiment, 'filter_feed_content_type' ) ) );
+		$this->assertFalse( has_action( 'template_redirect', array( $this->experiment, 'handle_template_redirect' ) ) );
+		$this->assertFalse( has_action( 'wp_head', array( $this->experiment, 'add_discovery_links' ) ) );
+	}
+
+	/**
+	 * Tests that the Vary: Accept header is emitted (appended) on singular
+	 * views exactly when Accept negotiation is enabled.
+	 */
+	public function test_vary_accept_header_emitted_when_negotiation_enabled(): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$this->go_to( get_permalink( $post_id ) );
+
+		$recorder = new class() extends Markdown_Feeds {
+			/**
+			 * Recorded header calls.
+			 *
+			 * @var array<int, array{0: string, 1: bool}>
+			 */
+			public $sent = array();
+
+			/**
+			 * Records instead of sending.
+			 *
+			 * @param string $header  Header line.
+			 * @param bool   $replace Replace flag.
+			 */
+			protected function send_header( string $header, bool $replace = true ): void {
+				$this->sent[] = array( $header, $replace );
+			}
+		};
+
+		// Toggle off (default): no Vary header.
+		$recorder->handle_template_redirect();
+		$this->assertSame( array(), $recorder->sent );
+
+		// Toggle on: Vary: Accept appended (replace = false). No ?format=md is
+		// set, so the handler returns before its exit path.
+		update_option( Markdown_Feeds::get_field_option_name( 'accept_header' ), true );
+		$recorder->handle_template_redirect();
+		$this->assertContains( array( 'Vary: Accept', false ), $recorder->sent );
+	}
+
+	/**
+	 * Tests that the singular discovery link is suppressed for
+	 * password-protected posts while the feed link remains.
+	 */
+	public function test_discovery_link_suppressed_for_password_protected_post(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_password' => 'secret',
+				'post_status'   => 'publish',
+			)
+		);
+		$this->go_to( get_permalink( $post_id ) );
+
+		ob_start();
+		$this->experiment->add_discovery_links();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'feed=markdown', $output );
+		$this->assertStringNotContainsString( 'format=md', $output );
+	}
 }

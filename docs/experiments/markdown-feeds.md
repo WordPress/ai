@@ -111,7 +111,7 @@ The same pattern works for `wpai_markdown_singular_sections` to customize the si
 
 Post HTML is converted to Markdown by a vendored, namespaced copy of the WordPress HTML API-based renderer from [dmsnell/html-to-md](https://github.com/dmsnell/html-to-md). Only the runtime renderer library is bundled; the upstream plugin bootstrap and global helper function are deliberately omitted to avoid redeclaration collisions if a site also installs the upstream plugin. See `includes/Vendor/Html_To_Markdown/README.md` for the exact vendored commit, the list of copied files, and the modifications applied (namespace change, `ABSPATH` guards, PSR-4 file renames, and a PHP 7.4 constructor patch).
 
-If conversion produces empty output or throws, the converter falls back to a stripped-tags plain-text rendering of the HTML.
+If conversion produces empty output or throws, the converter falls back to a stripped-tags plain-text rendering of the HTML. Note that the vendored renderer uses PHP's `intl` extension (via `IntlBreakIterator`) to wrap paragraphs, so if `intl` is not installed every conversion trips this fallback and returns plain text with no Markdown structure.
 
 ## Known limitations
 
@@ -120,6 +120,10 @@ Conversion inherits the upstream renderer's acknowledged limitations:
 - **No GFM table output** — HTML tables degrade to flowed text rather than Markdown table syntax.
 - **Incomplete Markdown character escaping** — certain characters that are significant in Markdown may not be escaped in the output.
 - **Occasional alt-text / link-title duplication** — an upstream-acknowledged quirk where image alt text or link titles can be repeated.
+
+The conversion also depends on a PHP extension:
+
+- **Requires the PHP `intl` extension.** The vendored renderer calls `IntlBreakIterator` to wrap each paragraph. `intl` is recommended by WordPress but not guaranteed to be present on every host; without it, output silently falls back to plain text (`wp_strip_all_tags()`) with no Markdown structure.
 
 The experiment also has intentional scope boundaries:
 

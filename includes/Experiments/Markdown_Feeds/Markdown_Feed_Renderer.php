@@ -81,7 +81,14 @@ class Markdown_Feed_Renderer {
 
 		wp_reset_postdata();
 
-		return implode( "\n\n", array_filter( $blocks ) ) . "\n";
+		$blocks = array_filter(
+			$blocks,
+			static function ( string $block ): bool {
+				return '' !== $block;
+			}
+		);
+
+		return implode( "\n\n", $blocks ) . "\n";
 	}
 
 	/**
@@ -142,6 +149,13 @@ class Markdown_Feed_Renderer {
 		 */
 		$sections = apply_filters( 'wpai_markdown_feed_item_sections', $sections, $post );
 
-		return implode( "\n\n", array_filter( array_map( 'strval', $sections ) ) );
+		$sections = array_filter(
+			array_map( 'strval', $sections ),
+			static function ( string $section ): bool {
+				return '' !== $section;
+			}
+		);
+
+		return implode( "\n\n", $sections );
 	}
 }
