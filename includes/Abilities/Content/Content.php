@@ -568,10 +568,7 @@ final class Content {
 				return $this->not_found_error();
 			}
 
-			$formatted = $this->format_post( $post, $fields );
-
-			// Cast so an empty field projection serializes as `{}` rather than `[]`, matching query mode.
-			return array() === $formatted ? (object) array() : $formatted;
+			return $this->to_output_post( $this->format_post( $post, $fields ) );
 		}
 
 		// Single-post mode (by slug) and query mode.
@@ -587,10 +584,7 @@ final class Content {
 				return $this->not_found_error();
 			}
 
-			$formatted = $this->format_post( $post, $fields );
-
-			// Cast so an empty field projection serializes as `{}` rather than `[]`, matching query mode.
-			return array() === $formatted ? (object) array() : $formatted;
+			return $this->to_output_post( $this->format_post( $post, $fields ) );
 		}
 
 		/*
@@ -727,11 +721,8 @@ final class Content {
 			if ( ! $requires_edit && ! $this->check_read_permission( $post ) ) {
 				continue;
 			}
-			$formatted = $this->format_post( $post, $fields );
-
-			// Keep rows whose field projection is empty; cast so an empty projection
-			// serializes as `{}` rather than `[]`.
-			$posts[] = array() === $formatted ? (object) array() : $formatted;
+			// Keep rows whose field projection is empty so a caller can still count them.
+			$posts[] = $this->to_output_post( $this->format_post( $post, $fields ) );
 		}
 
 		/*
@@ -1259,6 +1250,27 @@ final class Content {
 				$query_schema,
 			),
 		);
+	}
+
+	/**
+	 * Prepares a formatted post for output.
+	 *
+	 * A field projection can legitimately be empty, for example when the only requested
+	 * field is one the post type does not support. An empty PHP array encodes as `[]`,
+	 * which would break the `object` output schema, so return an empty object instead.
+	 *
+	 * Plugin: this is a deliberate improvement over the REST posts controller, which
+	 * encodes the same case as `[]` even though it types the response as an object
+	 * (`GET /wp/v2/posts/<id>?_fields=parent` on a non-hierarchical post type). Keep the
+	 * cast when syncing this class with core.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $formatted The formatted post data.
+	 * @return array<string, mixed>|\stdClass The post data, or an empty object when the projection is empty.
+	 */
+	private function to_output_post( array $formatted ) {
+		return array() === $formatted ? (object) array() : $formatted;
 	}
 
 	/**
