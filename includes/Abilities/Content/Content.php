@@ -80,6 +80,20 @@ final class Content {
 	);
 
 	/**
+	 * Fields whose rendering may read post meta or terms.
+	 *
+	 * Requests that include any of these prime the post meta and term caches for the
+	 * page. Other rendered fields, such as the title, do not need that cache priming.
+	 *
+	 * @since x.x.x
+	 * @var string[]
+	 */
+	private array $cache_priming_fields = array(
+		'excerpt_rendered',
+		'content_rendered',
+	);
+
+	/**
 	 * Cached post field definitions, keyed by field name in output order.
 	 *
 	 * @since x.x.x
@@ -646,6 +660,8 @@ final class Content {
 		$per_page = $this->normalize_per_page( $input, $include );
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
+		$prime_post_caches = $this->should_prime_post_caches( $fields );
+
 		$query_args = array(
 			'post_type'              => $post_type,
 			'post_status'            => $this->normalize_statuses( $input ),
@@ -653,8 +669,8 @@ final class Content {
 			'paged'                  => $page,
 			'perm'                   => $requires_edit ? 'editable' : 'readable',
 			'ignore_sticky_posts'    => true,
-			'update_post_meta_cache' => false,
-			'update_post_term_cache' => false,
+			'update_post_meta_cache' => $prime_post_caches,
+			'update_post_term_cache' => $prime_post_caches,
 		);
 
 		if ( array() !== $include ) {
@@ -669,8 +685,8 @@ final class Content {
 			$query_args['post_parent'] = $parent;
 		}
 
-		$query = new WP_Query( $query_args );
-		$total = $this->get_query_total( $query, $query_args, $page );
+		$query       = new WP_Query( $query_args );
+		$total       = $this->get_query_total( $query, $query_args, $page );
 		$total_pages = $total > 0 ? (int) ceil( $total / $per_page ) : 0;
 
 		/*
@@ -786,6 +802,18 @@ final class Content {
 		$count_query = new WP_Query( $count_args );
 
 		return (int) $count_query->found_posts;
+	}
+
+	/**
+	 * Checks whether requested fields benefit from page-level cache priming.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string[] $fields The requested field names.
+	 * @return bool True when post meta and term caches should be primed.
+	 */
+	private function should_prime_post_caches( array $fields ): bool {
+		return array() !== array_intersect( $this->cache_priming_fields, $fields );
 	}
 
 	/**

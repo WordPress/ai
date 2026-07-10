@@ -2152,6 +2152,111 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Requesting rendered fields primes the post meta cache for the whole page.
+	 *
+	 * The rendered filter chains may read post meta, so priming avoids one lazy meta
+	 * query per returned row.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_rendered_fields_prime_the_post_meta_cache(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$ids = self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
+
+		$postmeta_queries = $this->count_post_meta_queries(
+			static function () use ( $ids ) {
+				return wp_get_ability( 'core/read-content' )->execute(
+					array(
+						'post_type' => 'post',
+						'include'   => $ids,
+						'fields'    => array( 'id', 'content_rendered' ),
+					)
+				);
+			},
+			$result
+		);
+
+		$this->assertCount( 3, $result['posts'], 'Precondition: the query should return the seeded posts.' );
+
+		/*
+		 * The rendered filter chains can read post meta per post. Without priming, each
+		 * row lazily primes its own meta, which is one query per returned post.
+		 */
+		$this->assertSame( 1, $postmeta_queries, 'Rendered field requests should prime post meta with a single batched query, not one per returned post.' );
+	}
+
+	/**
+	 * A lean projection keeps skipping the post meta cache priming.
+	 *
+	 * Nothing in the default field set renders a post, so the extra lookup stays skipped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_lean_projection_does_not_prime_the_post_meta_cache(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$ids = self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
+
+		$postmeta_queries = $this->count_post_meta_queries(
+			static function () use ( $ids ) {
+				return wp_get_ability( 'core/read-content' )->execute(
+					array(
+						'post_type' => 'post',
+						'include'   => $ids,
+						'fields'    => array( 'id' ),
+					)
+				);
+			},
+			$result
+		);
+
+		$this->assertCount( 3, $result['posts'], 'Precondition: the query should return the seeded posts.' );
+		$this->assertSame( 0, $postmeta_queries, 'A lean projection should not read post meta at all.' );
+
+		foreach ( $ids as $id ) {
+			$this->assertFalse( wp_cache_get( $id, 'post_meta' ), 'A lean projection should not prime the post meta cache.' );
+		}
+	}
+
+	/**
+	 * Counts the post meta queries issued while running the given callback.
+	 *
+	 * Counts during the call rather than checking the cache afterwards: the rendered
+	 * filter chains prime meta lazily, so an after-the-fact cache check passes either way.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param callable $callback Callback to run.
+	 * @param mixed    $result   Set to the callback's return value.
+	 * @return int Number of post meta queries issued.
+	 */
+	private function count_post_meta_queries( callable $callback, &$result ): int {
+		global $wpdb;
+
+		$postmeta_queries = 0;
+		$spy              = static function ( $query ) use ( &$postmeta_queries, $wpdb ) {
+			if ( is_string( $query ) && preg_match( '/FROM\s+`?' . preg_quote( $wpdb->postmeta, '/' ) . '`?/i', $query ) ) {
+				++$postmeta_queries;
+			}
+
+			return $query;
+		};
+
+		wp_cache_flush();
+		add_filter( 'query', $spy );
+		try {
+			$result = $callback();
+		} finally {
+			remove_filter( 'query', $spy );
+		}
+
+		return $postmeta_queries;
+	}
+
+	/**
 	 * Query rows are kept, not dropped, when the requested fields project to nothing.
 	 *
 	 * @since x.x.x
