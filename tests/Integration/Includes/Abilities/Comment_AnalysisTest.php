@@ -161,7 +161,6 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 		$this->assertSame( 'number', $schema['properties']['value_score']['type'] );
 		$this->assertSame( 0, $schema['properties']['value_score']['minimum'] );
 		$this->assertSame( 1, $schema['properties']['value_score']['maximum'] );
-
 	}
 
 	/**
@@ -605,6 +604,15 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 		);
 	}
 
+	/**
+	 * Invoke a non-public ability method using reflection.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $method_name Name of the method to invoke.
+	 * @param array  $args        Arguments to pass to the method.
+	 * @return mixed The value returned by the invoked method.
+	 */
 	private function invoke_ability_method( string $method_name, array $args = array() ) {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( $method_name );
