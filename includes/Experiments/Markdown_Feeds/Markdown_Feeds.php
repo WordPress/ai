@@ -75,6 +75,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_feed( self::FEED_NAME, array( $this, 'do_feed_markdown' ) );
+		add_filter( 'feed_content_type', array( $this, 'filter_feed_content_type' ), 10, 2 );
 		add_action( 'template_redirect', array( $this, 'handle_template_redirect' ) );
 		add_action( 'wp_head', array( $this, 'add_discovery_links' ) );
 	}
@@ -129,13 +130,33 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
+	 * Filters the content type reported for the markdown feed.
+	 *
+	 * Core's feed_content_type() defaults unknown feed formats to
+	 * application/octet-stream.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $content_type Content type being sent for the feed.
+	 * @param string $type         Type of feed being requested.
+	 * @return string Content type, mapped to text/markdown for the markdown feed.
+	 */
+	public function filter_feed_content_type( string $content_type, string $type ): string {
+		if ( self::FEED_NAME === $type ) {
+			return 'text/markdown';
+		}
+
+		return $content_type;
+	}
+
+	/**
 	 * Serves singular content as Markdown when requested.
 	 *
 	 * @since x.x.x
 	 */
 	public function handle_template_redirect(): void {
 		if ( is_singular() && $this->is_accept_negotiation_enabled() && ! headers_sent() ) {
-			header( 'Vary: Accept' );
+			header( 'Vary: Accept', false );
 		}
 
 		$markdown = $this->get_singular_markdown();

@@ -71,6 +71,18 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$this->assertNotFalse( has_action( 'do_feed_markdown', array( $this->experiment, 'do_feed_markdown' ) ) );
 		$this->assertNotFalse( has_action( 'template_redirect', array( $this->experiment, 'handle_template_redirect' ) ) );
 		$this->assertNotFalse( has_action( 'wp_head', array( $this->experiment, 'add_discovery_links' ) ) );
+		$this->assertNotFalse( has_filter( 'feed_content_type', array( $this->experiment, 'filter_feed_content_type' ) ) );
+	}
+
+	/**
+	 * Tests that the feed content type is mapped to text/markdown for the
+	 * markdown feed and left untouched for other feeds.
+	 */
+	public function test_feed_content_type_filtered(): void {
+		$this->experiment->register();
+
+		$this->assertSame( 'text/markdown', feed_content_type( Markdown_Feeds::FEED_NAME ) );
+		$this->assertSame( 'application/rss+xml', feed_content_type( 'rss2' ) );
 	}
 
 	/**
