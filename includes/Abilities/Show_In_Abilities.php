@@ -46,12 +46,33 @@ final class Show_In_Abilities {
 	}
 
 	/**
+	 * Checks whether WordPress core declares the setting flag natively.
+	 *
+	 * `register_setting()` applies the `register_setting_args` filter before merging the
+	 * caller's arguments over its defaults, so the defaults array is core's own statement of
+	 * which arguments it understands. Once `show_in_abilities` appears there, core owns the
+	 * flag: it picks the default and each setting opts in through `register_setting()`, the
+	 * way `show_in_rest` already works.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $defaults The default registration arguments.
+	 * @return bool True when core declares `show_in_abilities` as a setting argument.
+	 */
+	private function core_declares_setting_flag( $defaults ): bool {
+		return is_array( $defaults ) && array_key_exists( 'show_in_abilities', $defaults );
+	}
+
+	/**
 	 * Adds the `show_in_abilities` flag to curated core settings as they are registered.
 	 *
-	 * Respects an explicit `show_in_abilities` value already present on the setting (for
-	 * example once core ships it natively), only filling it in when absent.
+	 * Respects an explicit `show_in_abilities` value already present in the registration
+	 * arguments, including an explicit `false` opt-out, only filling it in when the key is
+	 * absent entirely. Does nothing once core declares the flag natively, so the polyfill
+	 * never overrides a default core chose.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Respects an explicit falsy value, and stands down once core declares the flag.
 	 *
 	 * @param mixed                $args         The setting registration arguments.
 	 * @param array<string, mixed> $defaults     The default registration arguments.
@@ -60,13 +81,13 @@ final class Show_In_Abilities {
 	 * @return mixed The (possibly amended) registration arguments.
 	 */
 	public function mark_setting( $args, $defaults, $option_group, $option_name ) {
-		if ( ! is_array( $args ) ) {
+		if ( ! is_array( $args ) || $this->core_declares_setting_flag( $defaults ) ) {
 			return $args;
 		}
 
 		$settings = $this->settings_map();
 
-		if ( isset( $settings[ $option_name ] ) && empty( $args['show_in_abilities'] ) ) {
+		if ( isset( $settings[ $option_name ] ) && ! array_key_exists( 'show_in_abilities', $args ) ) {
 			$args['show_in_abilities'] = $settings[ $option_name ];
 		}
 

@@ -173,4 +173,82 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 
 		$this->assertSame( array( 'name' => 'custom_title' ), $settings['blogname']['show_in_abilities'] );
 	}
+
+	/**
+	 * An explicit `show_in_abilities => false` opt-out is preserved.
+	 *
+	 * A falsy value is still a value. The polyfill fills the flag in only when the key is
+	 * absent, so a site that deliberately opts a curated setting out keeps that choice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_respects_explicit_false_setting_value(): void {
+		$args = $this->show_in_abilities->mark_setting(
+			array( 'show_in_abilities' => false ),
+			array(),
+			'general',
+			'blogname'
+		);
+
+		$this->assertFalse(
+			$args['show_in_abilities'],
+			'An explicit opt-out must not be treated as an absent value.'
+		);
+	}
+
+	/**
+	 * The polyfill stands down once core declares the flag among its defaults.
+	 *
+	 * `register_setting()` filters the caller's arguments before merging them over its
+	 * defaults, so the defaults array says which arguments core understands. Once
+	 * `show_in_abilities` is one of them, core picks the default and each setting opts in,
+	 * and the polyfill must not force a curated setting back on.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_stands_down_once_core_declares_the_flag(): void {
+		$args = $this->show_in_abilities->mark_setting(
+			array( 'type' => 'string' ),
+			array( 'show_in_abilities' => false ),
+			'general',
+			'blogname'
+		);
+
+		$this->assertArrayNotHasKey(
+			'show_in_abilities',
+			$args,
+			'Once core declares the flag it owns the default; the polyfill must not fill it in.'
+		);
+	}
+
+	/**
+	 * Core does not declare the setting flag yet, so the polyfill is still needed.
+	 *
+	 * A tripwire. It reads the defaults core actually passes to the `register_setting_args`
+	 * filter, so it fails when core starts shipping the argument.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_does_not_yet_declare_the_setting_flag(): void {
+		$captured = null;
+		$spy      = static function ( $args, $defaults ) use ( &$captured ) {
+			$captured = $defaults;
+			return $args;
+		};
+
+		add_filter( 'register_setting_args', $spy, 1, 2 );
+		try {
+			register_setting( 'wpai_probe_group', 'wpai_probe_setting', array( 'type' => 'string' ) );
+		} finally {
+			remove_filter( 'register_setting_args', $spy, 1 );
+			unregister_setting( 'wpai_probe_group', 'wpai_probe_setting' );
+		}
+
+		$this->assertIsArray( $captured, 'Precondition: the filter should receive the defaults from core.' );
+		$this->assertArrayNotHasKey(
+			'show_in_abilities',
+			$captured,
+			'Core now declares show_in_abilities as a setting argument; the polyfill must step aside.'
+		);
+	}
 }

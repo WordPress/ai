@@ -20,6 +20,8 @@ const {
 	getExperimentTogglesInGroup,
 	getEnableAllButton,
 	getDisableAllButton,
+	enableAdvancedSettings,
+	disableAdvancedSettings,
 	enableModelSelection,
 	disableModelSelection,
 } = require( '../../utils/helpers' );
@@ -178,6 +180,9 @@ test.describe( 'Plugin settings', () => {
 		// Visit settings page fresh to ensure no stale snackbars.
 		await visitSettingsPage( admin );
 
+		// Enable Advanced Settings.
+		await enableAdvancedSettings( page );
+
 		// Wait for Content Classification inline settings to render.
 		const strategySelect = page.getByLabel( 'Taxonomy strategy' );
 		await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
@@ -208,6 +213,9 @@ test.describe( 'Plugin settings', () => {
 		// Assert: inline settings must still show the pending edit (not reset).
 		await expect( strategySelect ).toHaveValue( newValue );
 		await expect( saveButton ).toBeVisible();
+
+		// Cleanup: disable Advanced Settings.
+		await disableAdvancedSettings( page );
 	} );
 
 	test( 'Can turn on all experiments in a group', async ( {
@@ -499,6 +507,29 @@ test.describe( 'Plugin settings', () => {
 
 		// Disable the Excerpt Generation Experiment.
 		await disableExperiment( admin, page, 'Excerpt Generation' );
+	} );
+
+	test( 'Can use advanced settings', async ( { admin, page } ) => {
+		// Globally turn on experiments and enable Content Classification
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Enable Advanced Settings and verify fields become visible.
+		await enableAdvancedSettings( page );
+		await expect( page.getByLabel( 'Taxonomy strategy' ) ).toBeVisible();
+		await expect( page.getByLabel( 'Maximum suggestions' ) ).toBeVisible();
+
+		// Disable Advanced Settings and verify fields are hidden again.
+		await disableAdvancedSettings( page );
+		await expect(
+			page.getByLabel( 'Taxonomy strategy' )
+		).not.toBeVisible();
+		await expect(
+			page.getByLabel( 'Maximum suggestions' )
+		).not.toBeVisible();
+
+		// Cleanup.
+		await disableExperiment( admin, page, 'Content Classification' );
 	} );
 
 	test( 'Developer settings save button appears, values persist after save, and reset does not requires explicit save', async ( {

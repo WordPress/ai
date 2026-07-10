@@ -7,8 +7,10 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
  * Internal dependencies
  */
 import {
+	disableAdvancedSettings,
 	disableExperiment,
 	disableExperiments,
+	enableAdvancedSettings,
 	enableExperiments,
 	enableExperiment,
 } from '../../utils/helpers';
@@ -74,6 +76,8 @@ async function openTaxonomyPanel( editor, page, panelLabel ) {
 async function setStrategy( admin, page, strategy ) {
 	await admin.visitAdminPage( 'options-general.php?page=ai-wp-admin' );
 
+	await enableAdvancedSettings( page );
+
 	const strategySelect = page.getByLabel( 'Taxonomy strategy' );
 	await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
 
@@ -103,6 +107,12 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// Enable the Content Classification Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	test.afterEach( async ( { admin, page } ) => {
+		// Disable Advanced Settings to restore the default state for the next test.
+		await admin.visitAdminPage( 'options-general.php?page=ai-wp-admin' );
+		await disableAdvancedSettings( page );
 	} );
 
 	test( 'Shows the "Suggest Tags" button in the Tags panel', async ( {
