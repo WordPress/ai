@@ -223,7 +223,7 @@ class Comment_Analysis extends Abstract_Ability {
 	private function get_post_context( int $post_id ): ?string {
 		$post = get_post( $post_id );
 
-		if ( ! $post instanceof WP_Post ) {
+		if ( ! $post instanceof \WP_Post ) {
 			return null;
 		}
 
@@ -356,8 +356,8 @@ class Comment_Analysis extends Abstract_Ability {
 			: Comment_Moderation::SENTIMENT_NEUTRAL;
 
 		$value_score = isset( $result['value_score'] )
-			? max( 0, min( 1, (float) $result['value_score'] ) )
-			: 0;
+			? max( 0.0, min( 1.0, (float) $result['value_score'] ) )
+			: 0.0;
 
 		return array(
 			'toxicity_score' => $toxicity_score,
