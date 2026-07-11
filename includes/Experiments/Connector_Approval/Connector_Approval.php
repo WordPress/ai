@@ -153,7 +153,7 @@ class Connector_Approval extends Abstract_Feature {
 
 			$unapproved_connector_id = null;
 			$connectors              = get_ai_connectors();
-			
+
 			foreach ( array_keys( $connectors ) as $connector_id ) {
 				if ( ! $store->is_approved( $caller['basename'], $connector_id ) ) {
 					$unapproved_connector_id = $connector_id;
@@ -200,7 +200,7 @@ class Connector_Approval extends Abstract_Feature {
 	 */
 	private function get_context_aware_error_message( string $ability_id ): string {
 		$ability = wp_get_ability( $ability_id );
-		
+
 		if ( $ability ) {
 			$prefix = sprintf(
 				/* translators: %s: The ability label. */

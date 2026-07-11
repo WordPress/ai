@@ -29,6 +29,15 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	private Connector_Approval $experiment;
 
 	/**
+	 * Ability IDs stubbed by this test case, tracked for cleanup.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string[]
+	 */
+	private array $stubbed_abilities = array();
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since 1.0.0
@@ -66,7 +75,70 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_connector-approval_enabled' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'wpai_feature_connector-approval_enabled' );
+
+		foreach ( $this->stubbed_abilities as $ability_id ) {
+			wp_unregister_ability( $ability_id );
+		}
+		$this->stubbed_abilities = array();
+
 		parent::tearDown();
+	}
+
+	/**
+	 * Registers a minimal ability under the given ID and label, so that
+	 * wp_get_ability() (used by Connector_Approval::get_context_aware_error_message())
+	 * resolves a real label instead of falling back to the generic message.
+	 *
+	 * Mirrors the label each ability is actually registered with in production
+	 * (see the corresponding Experiments directory's register_abilities() methods),
+	 * so assertions in this test reflect real runtime output.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ability_id The ability ID, e.g. 'ai/title-generation'.
+	 * @param string $label      The ability label to register it with.
+	 */
+	private function register_stub_ability( string $ability_id, string $label ): void {
+		if ( wp_get_ability( $ability_id ) ) {
+			return;
+		}
+
+		global $wp_current_filter;
+
+		if ( ! wp_has_ability_category( WPAI_DEFAULT_ABILITY_CATEGORY ) ) {
+			$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+			try {
+				wp_register_ability_category(
+					WPAI_DEFAULT_ABILITY_CATEGORY,
+					array(
+						'label'       => 'AI',
+						'description' => 'Various AI features and experiments.',
+					)
+				);
+			} finally {
+				array_pop( $wp_current_filter );
+			}
+		}
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			wp_register_ability(
+				$ability_id,
+				array(
+					'label'               => $label,
+					'description'         => 'Stub ability registered for testing.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'input_schema'        => array( 'type' => 'object' ),
+					'output_schema'       => array( 'type' => 'object' ),
+					'execute_callback'    => '__return_true',
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$this->stubbed_abilities[] = $ability_id;
 	}
 
 	/**
@@ -138,9 +210,11 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	 * @since 1.1.0
 	 */
 	public function test_customize_rest_error() {
+		$this->register_stub_ability( 'ai/title-generation', 'Title Generation' );
+
 		$this->experiment->register();
 
-		$request = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/title-generation/run' );
+		$request  = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/title-generation/run' );
 		$response = new \WP_REST_Response(
 			array(
 				'code'    => 'wpai_connector_not_approved',
@@ -151,9 +225,9 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		);
 
 		$filtered_response = apply_filters( 'rest_post_dispatch', $response, rest_get_server(), $request );
-		$data = $filtered_response->get_data();
+		$data              = $filtered_response->get_data();
 
-		$this->assertStringContainsString( 'Title generation failed.', $data['message'] );
+		$this->assertStringContainsString( 'Title Generation failed.', $data['message'] );
 		$this->assertStringContainsString( 'The AI connector is currently pending authorization.', $data['message'] );
 		$this->assertStringContainsString( 'Please approve the request under Tools > Connector Approvals.', $data['message'] );
 	}
@@ -164,10 +238,12 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	 * @since 1.1.0
 	 */
 	public function test_customize_rest_error_different_abilities() {
+		$this->register_stub_ability( 'ai/excerpt-generation', 'Excerpt Generation' );
+
 		$this->experiment->register();
 
 		// Test excerpt generation.
-		$request1 = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/excerpt-generation/run' );
+		$request1  = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/excerpt-generation/run' );
 		$response1 = new \WP_REST_Response(
 			array(
 				'code'    => 'wpai_connector_not_approved',
@@ -178,11 +254,11 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		);
 
 		$filtered1 = apply_filters( 'rest_post_dispatch', $response1, rest_get_server(), $request1 );
-		$data1 = $filtered1->get_data();
-		$this->assertStringContainsString( 'Excerpt generation failed.', $data1['message'] );
+		$data1     = $filtered1->get_data();
+		$this->assertStringContainsString( 'Excerpt Generation failed.', $data1['message'] );
 
 		// Test fallback.
-		$request2 = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/unknown-ability/run' );
+		$request2  = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/unknown-ability/run' );
 		$response2 = new \WP_REST_Response(
 			array(
 				'code'    => 'wpai_connector_not_approved',
@@ -193,11 +269,11 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		);
 
 		$filtered2 = apply_filters( 'rest_post_dispatch', $response2, rest_get_server(), $request2 );
-		$data2 = $filtered2->get_data();
+		$data2     = $filtered2->get_data();
 		$this->assertStringContainsString( 'Request failed.', $data2['message'] );
 
 		// Test non-matching error code.
-		$request3 = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/title-generation/run' );
+		$request3  = new \WP_REST_Request( 'POST', '/wp-abilities/v1/abilities/ai/title-generation/run' );
 		$response3 = new \WP_REST_Response(
 			array(
 				'code'    => 'some_other_error',
@@ -208,7 +284,7 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 		);
 
 		$filtered3 = apply_filters( 'rest_post_dispatch', $response3, rest_get_server(), $request3 );
-		$data3 = $filtered3->get_data();
+		$data3     = $filtered3->get_data();
 		$this->assertSame( 'Some other message.', $data3['message'] );
 	}
 
@@ -256,22 +332,40 @@ class Connector_ApprovalTest extends WP_UnitTestCase {
 	 * @since 1.1.0
 	 */
 	public function test_customize_rest_error_all_abilities() {
+		// Labels mirror what each ability is actually registered with in production
+		// (see the corresponding Experiments/*/*.php::register_abilities() methods).
+		$ability_labels = array(
+			'ai/image-generation'       => 'Image Generation and Editing',
+			'ai/alt-text-generation'    => 'Alt Text Generation',
+			'ai/meta-description'       => 'Meta Description Generation',
+			'ai/editorial-notes'        => 'Editorial Notes',
+			'ai/editorial-updates'      => 'Editorial Updates',
+			'ai/content-resizing'       => 'Content Resizing',
+			'ai/content-classification' => 'Content Classification',
+			'ai/summarization'          => 'Content Summarization',
+			'ai/comment-analysis'       => 'Comment Analysis',
+		);
+
+		foreach ( $ability_labels as $ability_id => $label ) {
+			$this->register_stub_ability( $ability_id, $label );
+		}
+
 		$this->experiment->register();
 
 		$abilities = array(
-			'ai/image-generation'         => 'Image generation failed.',
-			'ai/alt-text-generation'       => 'Alt text generation failed.',
-			'ai/meta-description'         => 'Meta description generation failed.',
-			'ai/editorial-notes'           => 'Editorial notes generation failed.',
-			'ai/editorial-updates'         => 'Editorial updates generation failed.',
-			'ai/content-resizing'          => 'Content resizing failed.',
-			'ai/content-classification'    => 'Content classification failed.',
-			'ai/summarization'             => 'Summarization failed.',
-			'ai/comment-analysis'          => 'Comment analysis failed.',
+			'ai/image-generation'       => 'Image Generation and Editing failed.',
+			'ai/alt-text-generation'    => 'Alt Text Generation failed.',
+			'ai/meta-description'       => 'Meta Description Generation failed.',
+			'ai/editorial-notes'        => 'Editorial Notes failed.',
+			'ai/editorial-updates'      => 'Editorial Updates failed.',
+			'ai/content-resizing'       => 'Content Resizing failed.',
+			'ai/content-classification' => 'Content Classification failed.',
+			'ai/summarization'          => 'Content Summarization failed.',
+			'ai/comment-analysis'       => 'Comment Analysis failed.',
 		);
 
 		foreach ( $abilities as $ability_id => $expected_substring ) {
-			$request = new \WP_REST_Request( 'POST', "/wp-abilities/v1/abilities/{$ability_id}/run" );
+			$request  = new \WP_REST_Request( 'POST', "/wp-abilities/v1/abilities/{$ability_id}/run" );
 			$response = new \WP_REST_Response(
 				array(
 					'code'    => 'wpai_connector_not_approved',

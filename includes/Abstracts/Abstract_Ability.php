@@ -16,7 +16,6 @@ use WP_Error;
 use WordPress\AiClient\AiClient;
 
 use function WordPress\AI\format_guidelines_for_prompt;
-use function WordPress\AI\get_ai_connectors;
 use function WordPress\AI\get_feature_developer_model_config;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 

@@ -190,6 +190,15 @@ test.describe( 'Connector Approval Experiment', () => {
 		// Visit the Connector Approval page.
 		await admin.visitAdminPage( 'tools.php?page=ai-connector-approval' );
 
+		// Ensure the Connector Approval page has finished mounting and hydrating
+		// its state from the REST API before interacting with the matrix below.
+		await expect(
+			page.locator( '#ai-connector-approval-root' )
+		).toBeVisible();
+		await expect(
+			page.locator( '.ai-connector-approval__matrix table' )
+		).toBeVisible();
+
 		// Remove approval for OpenAI for the AI plugin.
 		const aiMatrixRow = page
 			.locator( '.ai-connector-approval__matrix tbody tr' )
@@ -218,7 +227,8 @@ test.describe( 'Connector Approval Experiment', () => {
 		}
 
 		// Create a new post.
-		const LONG_CONTENT = 'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough characters for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.';
+		const LONG_CONTENT =
+			'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough characters for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.';
 		await admin.createNewPost( {
 			postType: 'post',
 			title: '',
