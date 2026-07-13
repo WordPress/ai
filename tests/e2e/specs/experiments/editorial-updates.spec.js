@@ -220,6 +220,38 @@ test.describe( 'Editorial Updates Experiment', () => {
 			return blocks[ 0 ]?.attributes?.content ?? '';
 		} );
 		expect( blockContent ).toContain( 'refined block content' );
+
+		// Verify the success snackbar has a "Review in Revisions" action using
+		// the correct path: visual revisions (onClick) when available, classic
+		// revisions URL when visual revisions are disabled.
+		const hasRevisionAction = await page.evaluate( () => {
+			const notices = window.wp.data
+				.select( 'core/notices' )
+				.getNotices();
+			const successNotice = notices.find(
+				( n ) =>
+					typeof n.content === 'string' &&
+					n.content.includes( 'refined' )
+			);
+			if ( ! successNotice?.actions?.[ 0 ] ) {
+				return false;
+			}
+			const action = successNotice.actions[ 0 ];
+			if ( action.label !== 'Review in Revisions' ) {
+				return false;
+			}
+			const disableVisualRevisions = !! window.wp.data
+				.select( 'core/editor' )
+				.getEditorSettings()?.disableVisualRevisions;
+			if ( disableVisualRevisions ) {
+				return (
+					typeof action.url === 'string' &&
+					action.url.includes( 'revision.php' )
+				);
+			}
+			return typeof action.onClick === 'function' && ! action.url;
+		} );
+		expect( hasRevisionAction ).toBe( true );
 	} );
 
 	test( 'Keeps Editorial Notes and Updates grouped with Content Summarization enabled', async ( {

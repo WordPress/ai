@@ -66,6 +66,136 @@ async function resolveNote( noteId: number ): Promise< void > {
 }
 
 /**
+ * Finds a button-like element by its accessible name (aria-label or
+ * trimmed text content), optionally scoped to a container.
+ */
+function findButtonByAccessibleName(
+	name: string,
+	root: ParentNode = document
+): HTMLElement | null {
+	const candidates = root.querySelectorAll< HTMLElement >(
+		'button, [role="button"]'
+	);
+	for ( const candidate of candidates ) {
+		const accessibleName =
+			candidate.getAttribute( 'aria-label' ) ??
+			candidate.textContent?.trim() ??
+			'';
+		if ( accessibleName === name ) {
+			return candidate;
+		}
+	}
+	return null;
+}
+
+/**
+ * Navigates to the classic revisions screen.
+ */
+function navigateToClassicRevisions(
+	adminUrl: string | undefined,
+	lastRevisionId: number
+): void {
+	if ( adminUrl ) {
+		window.location.href = `${ adminUrl }revision.php?revision=${ lastRevisionId }`;
+	}
+}
+
+/**
+ * Opens WordPress's in-editor visual revisions UI by clicking the
+ * "Revisions" button Core already renders in the Document Settings
+ * sidebar (`PrivatePostLastRevision` in @wordpress/editor).
+ *
+ * There is no public JS API for this in WP 7.0 — the underlying store
+ * action (`setCurrentRevisionId`) is registered as a private action and
+ * is gated behind @wordpress/private-apis, which only allows a hardcoded
+ * list of core module names to opt in. Calling it directly from a plugin
+ * throws, since the action is never attached to the public dispatch
+ * object. Simulating a real click on Core's own rendered button is the
+ * supported workaround — WordPress's own e2e test utilities do the same
+ * thing (openDocumentSettingsSidebar clicks the "Settings" button by
+ * accessible name rather than dispatching a store action).
+ *
+ * Falls back to the classic revisions screen if the button can't be
+ * found within a short polling window (e.g. markup changes upstream, or
+ * the post genuinely has fewer than two revisions so Core doesn't render
+ * the button at all).
+ */
+function openVisualRevisions( {
+	adminUrl,
+	lastRevisionId,
+}: {
+	adminUrl: string | undefined;
+	lastRevisionId: number;
+} ): void {
+	const MAX_ATTEMPTS = 20;
+	const INTERVAL_MS = 100;
+
+	// The revisions button only exists in the DOM once the Document
+	// Settings sidebar is mounted, so open it first if it's collapsed.
+	const settingsToggle = findButtonByAccessibleName( 'Settings' );
+	if ( settingsToggle?.getAttribute( 'aria-expanded' ) === 'false' ) {
+		settingsToggle.click();
+	}
+
+	let attempts = 0;
+	const tryClick = () => {
+		const revisionsButton = document.querySelector< HTMLButtonElement >(
+			'.editor-private-post-last-revision__button, .editor-post-last-revision__title'
+		);
+		if ( revisionsButton ) {
+			revisionsButton.click();
+			return;
+		}
+		attempts++;
+		if ( attempts >= MAX_ATTEMPTS ) {
+			navigateToClassicRevisions( adminUrl, lastRevisionId );
+			return;
+		}
+		setTimeout( tryClick, INTERVAL_MS );
+	};
+	tryClick();
+}
+
+/**
+ * Builds the snackbar action for reviewing changes in the revisions UI.
+ *
+ * Uses the in-editor visual revisions path (WP 7.0+ default) via
+ * openVisualRevisions(). Falls back to the classic revisions screen when
+ * visual revisions are disabled, e.g. when classic metaboxes are active
+ * on the post.
+ */
+function getRevisionReviewAction( {
+	lastRevisionId,
+	adminUrl,
+	disableVisualRevisions,
+}: {
+	lastRevisionId: number;
+	adminUrl: string | undefined;
+	disableVisualRevisions: boolean;
+} ): Array< { label: string; url?: string; onClick?: () => void } > {
+	if ( ! disableVisualRevisions ) {
+		return [
+			{
+				label: __( 'Review in Revisions', 'ai' ),
+				onClick: () =>
+					openVisualRevisions( { adminUrl, lastRevisionId } ),
+			},
+		];
+	}
+
+	if ( adminUrl ) {
+		return [
+			{
+				label: __( 'Review in Revisions', 'ai' ),
+				url: `${ adminUrl }revision.php?revision=${ lastRevisionId }`,
+			},
+		];
+	}
+
+	return [];
+}
+
+/**
  * Hook for refining blocks based on existing notes with AI.
  *
  * @return {Object}   Object with refining state and functions.
@@ -351,16 +481,17 @@ export function useEditorialUpdates(): {
 				const adminUrl = aiEditorialUpdatesData?.admin_url as
 					| string
 					| undefined;
+				const disableVisualRevisions = !! (
+					select( editorStore ) as any
+				 ).getEditorSettings()?.disableVisualRevisions;
 
-				const noticeActions =
-					lastRevisionId && adminUrl
-						? [
-								{
-									label: __( 'Review in Revisions', 'ai' ),
-									url: `${ adminUrl }revision.php?revision=${ lastRevisionId }`,
-								},
-						  ]
-						: [];
+				const noticeActions = lastRevisionId
+					? getRevisionReviewAction( {
+							lastRevisionId,
+							adminUrl,
+							disableVisualRevisions,
+					  } )
+					: [];
 
 				( dispatch( noticesStore ) as any ).createSuccessNotice(
 					sprintf(
