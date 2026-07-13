@@ -110,6 +110,60 @@ test.describe( 'Bulk Content Summarization', () => {
 		expect( page.url() ).not.toContain( 'wpai_post_ids' );
 	} );
 
+	test( 'Bulk action skips posts whose content is shorter than the minimum length', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// Create one post with enough content, and one with content shorter
+		// than the minimum length required for summarization.
+		await requestUtils.createPost( {
+			title: 'Bulk Summary Sufficient Content Post',
+			content: LONG_CONTENT,
+			status: 'publish',
+		} );
+		const shortPost = await requestUtils.createPost( {
+			title: 'Bulk Summary Too Short Post',
+			content: 'Too short.',
+			status: 'publish',
+		} );
+
+		// Navigate to the posts list.
+		await admin.visitAdminPage( 'edit.php' );
+
+		// Select all items via the header checkbox.
+		await page.locator( '#cb-select-all-1' ).check();
+
+		// Choose the bulk action.
+		await page
+			.locator( '#bulk-action-selector-top' )
+			.selectOption( 'wpai_generate_summary' );
+
+		// Click Apply.
+		await page.locator( '#doaction' ).click();
+
+		// Wait for the completion message, which should call out the skipped post.
+		await expect(
+			page.locator( '.notice p', {
+				hasText: /skipped because its content is too short/,
+			} )
+		).toBeVisible( { timeout: 60000 } );
+
+		// Verify the short post's content was left untouched (no summary block added).
+		const shortPostContent = await requestUtils.rest( {
+			path: `/wp/v2/posts/${ shortPost.id }?context=edit`,
+		} );
+		expect( shortPostContent.content.raw ).not.toContain(
+			'ai-summarization-summary'
+		);
+	} );
+
 	test( 'Bulk action shows an error notice when no provider is configured', async ( {
 		admin,
 		requestUtils,

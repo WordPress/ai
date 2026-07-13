@@ -127,6 +127,24 @@ class Summarization extends Abstract_Feature {
 
 		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization', array( 'include_core_abilities' => true ) );
 
+		Asset_Loader::localize_script(
+			'summarization',
+			'SummarizationData',
+			array(
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => $this->get_min_content_length(),
+			)
+		);
+	}
+
+	/**
+	 * Gets the minimum content length required to enable summarization.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The minimum number of characters required.
+	 */
+	protected function get_min_content_length(): int {
 		/**
 		 * Filters the minimum content length required to enable summarization.
 		 *
@@ -135,20 +153,11 @@ class Summarization extends Abstract_Feature {
 		 *
 		 * @param int $min_content_length The minimum number of characters required. Default 250.
 		 */
-		$min_content_length = (int) apply_filters_deprecated(
+		return (int) apply_filters_deprecated(
 			'wpai_summarization_min_content_length',
 			array( get_min_content_length( 'summarization', 250 ) ),
 			'1.1.0',
 			'wpai_min_content_length'
-		);
-
-		Asset_Loader::localize_script(
-			'summarization',
-			'SummarizationData',
-			array(
-				'enabled'          => $this->is_enabled(),
-				'minContentLength' => $min_content_length,
-			)
 		);
 	}
 
@@ -242,8 +251,9 @@ class Summarization extends Abstract_Feature {
 			'summarization_bulk',
 			'SummarizationBulkData',
 			array(
-				'postIds'  => $ids,
-				'restBase' => $rest_base,
+				'postIds'          => $ids,
+				'restBase'         => $rest_base,
+				'minContentLength' => $this->get_min_content_length(),
 			)
 		);
 	}

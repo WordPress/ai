@@ -13,6 +13,7 @@ import apiFetch from '@wordpress/api-fetch';
  */
 import { runAbility } from '../../utils/run-ability';
 import { isProviderAvailable } from '../../utils/provider-status';
+import { hasMinimumContent } from '../../utils/character-count';
 import {
 	createSummaryBlock,
 	createSummaryInnerBlocks,
@@ -25,6 +26,7 @@ import { parse, serialize } from '@wordpress/blocks';
 type BulkData = {
 	postIds: number[];
 	restBase: string;
+	minContentLength: number;
 };
 
 type PostResponse = {
@@ -102,10 +104,11 @@ async function processBulkSummary(): Promise< void > {
 	registerSummaryBlockAttribute();
 	registerCoreBlocks();
 
-	const { postIds, restBase } = data;
+	const { postIds, restBase, minContentLength } = data;
 	const total = postIds.length;
 	let processed = 0;
 	const failedIds: number[] = [];
+	const skippedIds: number[] = [];
 
 	const statusParagraph = createNotice(
 		sprintf(
@@ -118,6 +121,21 @@ async function processBulkSummary(): Promise< void > {
 
 	for ( const id of postIds ) {
 		try {
+			// Fetch the current raw post content so we can update the summary block within it.
+			const post = await apiFetch< PostResponse >( {
+				path: `/wp/v2/${ restBase }/${ id }?context=edit`,
+				method: 'GET',
+			} );
+
+			const existingContent = post?.content?.raw ?? '';
+
+			// Match individual generation, which disables the summarize button
+			// until the post content meets the minimum length requirement.
+			if ( ! hasMinimumContent( existingContent, minContentLength ) ) {
+				skippedIds.push( id );
+				continue;
+			}
+
 			// The summarization ability fetches the post content from the DB
 			// using the post ID, so we only need to pass the context.
 			const summary = await runAbility< string >( 'ai/summarization', {
@@ -128,13 +146,6 @@ async function processBulkSummary(): Promise< void > {
 				throw new Error( __( 'Invalid response from API.', 'ai' ) );
 			}
 
-			// Fetch the current raw post content so we can update the summary block within it.
-			const post = await apiFetch< PostResponse >( {
-				path: `/wp/v2/${ restBase }/${ id }?context=edit`,
-				method: 'GET',
-			} );
-
-			const existingContent = post?.content?.raw ?? '';
 			const blocks = parse( existingContent );
 			const existingSummaryBlock = findSummaryBlock( blocks );
 
@@ -161,21 +172,21 @@ async function processBulkSummary(): Promise< void > {
 			} );
 		} catch {
 			failedIds.push( id );
+		} finally {
+			processed++;
+
+			statusParagraph.textContent = sprintf(
+				// translators: 1: number processed so far, 2: total number of posts
+				__( 'Generating summaries: %1$d / %2$d\u2026', 'ai' ),
+				processed,
+				total
+			);
 		}
-
-		processed++;
-
-		statusParagraph.textContent = sprintf(
-			// translators: 1: number processed so far, 2: total number of posts
-			__( 'Generating summaries: %1$d / %2$d\u2026', 'ai' ),
-			processed,
-			total
-		);
 	}
 
-	const successCount = processed - failedIds.length;
+	const successCount = processed - failedIds.length - skippedIds.length;
 
-	if ( failedIds.length === 0 ) {
+	if ( failedIds.length === 0 && skippedIds.length === 0 ) {
 		statusParagraph.textContent = sprintf(
 			// translators: %d: number of posts
 			_n(
@@ -186,18 +197,42 @@ async function processBulkSummary(): Promise< void > {
 			),
 			successCount
 		);
-	} else {
-		statusParagraph.textContent = sprintf(
-			// translators: 1: number successfully processed, 2: total posts, 3: comma-separated list of failed post IDs
-			__(
-				'Summary generated for %1$d of %2$d posts. Failed post IDs: %3$s.',
-				'ai'
-			),
-			successCount,
-			total,
-			failedIds.join( ', ' )
-		);
+		return;
 	}
+
+	let message: string = sprintf(
+		// translators: 1: number successfully processed, 2: total number of posts
+		__( 'Summary generated for %1$d of %2$d posts.', 'ai' ),
+		successCount,
+		total
+	);
+
+	if ( skippedIds.length > 0 ) {
+		message +=
+			' ' +
+			sprintf(
+				// translators: %d: number of posts skipped
+				_n(
+					'%d post was skipped because its content is too short to summarize.',
+					'%d posts were skipped because their content is too short to summarize.',
+					skippedIds.length,
+					'ai'
+				),
+				skippedIds.length
+			);
+	}
+
+	if ( failedIds.length > 0 ) {
+		message +=
+			' ' +
+			sprintf(
+				// translators: %s: comma-separated list of failed post IDs
+				__( 'Failed post IDs: %s.', 'ai' ),
+				failedIds.join( ', ' )
+			);
+	}
+
+	statusParagraph.textContent = message;
 }
 
 document.addEventListener( 'DOMContentLoaded', () => {

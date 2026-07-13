@@ -12,6 +12,11 @@ import { type Block, createBlock } from '@wordpress/blocks';
 import { addFilter } from '@wordpress/hooks';
 
 /**
+ * Internal dependencies
+ */
+import { flattenBlocks } from '../../utils/blocks';
+
+/**
  * Registers the `aiGeneratedSummary` attribute on `core/group`.
  *
  * Must run before `core/group` itself is registered (i.e. before
@@ -61,7 +66,8 @@ export function createSummaryInnerBlocks( summary: string ): Block[] {
 }
 
 /**
- * Finds the AI-generated summary group block within a list of blocks.
+ * Finds the AI-generated summary group block within a list of blocks,
+ * including blocks nested inside other blocks (e.g. columns, groups).
  *
  * @since x.x.x
  *
@@ -71,7 +77,7 @@ export function createSummaryInnerBlocks( summary: string ): Block[] {
 export function findSummaryBlock(
 	blocks: Block< Record< string, unknown > >[]
 ): Block< Record< string, unknown > > | undefined {
-	return blocks.find(
+	return flattenBlocks( blocks ).find(
 		( block ) =>
 			block.name === 'core/group' &&
 			block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
