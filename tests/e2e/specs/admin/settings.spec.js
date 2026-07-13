@@ -148,7 +148,7 @@ test.describe( 'Plugin settings', () => {
 		await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
 		await globalToggle.click();
 
-		const snackbar = page.locator( '.components-snackbar' ).first();
+		const snackbar = page.getByTestId( 'snackbar' ).first();
 		await expect( snackbar ).toBeVisible();
 
 		// The snackbar must sit to the inline-start of the centered settings
@@ -205,7 +205,7 @@ test.describe( 'Plugin settings', () => {
 
 		// Wait for the auto-save snackbar to confirm siteSettings changed.
 		await expect(
-			page.locator( '.components-snackbar__content', {
+			page.getByTestId( 'snackbar' ).filter( {
 				hasText: 'Title Generation enabled.',
 			} )
 		).toBeVisible();
@@ -254,7 +254,7 @@ test.describe( 'Plugin settings', () => {
 		const count = experimentToggles.length;
 
 		await expect(
-			page.locator( '.components-snackbar__content', {
+			page.getByTestId( 'snackbar' ).filter( {
 				hasText: `${ count } experiments enabled`,
 			} )
 		).toBeVisible();
@@ -301,7 +301,7 @@ test.describe( 'Plugin settings', () => {
 		const count = experimentToggles.length;
 
 		await expect(
-			page.locator( '.components-snackbar__content', {
+			page.getByTestId( 'snackbar' ).filter( {
 				hasText: `${ count } experiments disabled`,
 			} )
 		).toBeVisible();
