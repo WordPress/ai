@@ -151,7 +151,7 @@ test.describe( 'Bulk Content Summarization', () => {
 		// Wait for the completion message, which should call out the skipped post.
 		await expect(
 			page.locator( '.notice p', {
-				hasText: /skipped because its content is too short/,
+				hasText: /too short to summarize/,
 			} )
 		).toBeVisible( { timeout: 60000 } );
 
