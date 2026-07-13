@@ -54,8 +54,6 @@ class SettingsTest extends WP_UnitTestCase {
 				'default'           => 42,
 			)
 		);
-
-		$this->ensure_site_category();
 	}
 
 	/**
@@ -73,31 +71,6 @@ class SettingsTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
-	}
-
-	/**
-	 * Ensures the `site` ability category exists for the ability to attach to.
-	 *
-	 * @since 1.1.0
-	 */
-	private function ensure_site_category(): void {
-		if ( wp_has_ability_category( 'site' ) ) {
-			return;
-		}
-
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				'site',
-				array(
-					'label'       => 'Site',
-					'description' => 'Site.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
 	}
 
 	/**
