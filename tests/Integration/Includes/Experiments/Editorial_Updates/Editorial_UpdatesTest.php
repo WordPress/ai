@@ -147,7 +147,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	public function test_enqueue_assets_localizes_expected_data() {
 		$this->experiment->enqueue_assets();
 
-		$data = wp_scripts()->get_data( 'ai-editorial_updates', 'data' );
+		$data = wp_scripts()->get_data( 'ai_editorial_updates', 'data' );
 		$this->assertNotEmpty( $data, 'Localized script data should not be empty.' );
 
 		$this->assertStringContainsString( 'aiEditorialUpdatesData', $data, 'Localized object name should be aiEditorialUpdatesData.' );
