@@ -380,4 +380,110 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'show_in_rest', $meta, 'Meta should have show_in_rest' );
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
+
+	/**
+	 * Test that the request timeout defaults to 90 seconds.
+	 *
+	 * @since 0.8.1
+	 */
+	public function test_request_timeout_defaults_to_90() {
+		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
+			$this->markTestSkipped( 'wp_ai_client_prompt is not defined' );
+		}
+
+		$reflection = new \ReflectionClass( Generate_Image::class );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$testable_ability = new Testable_Generate_Image(
+			'ai/image-generation',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+
+		$result = $method->invoke( $testable_ability, 'A beautiful sunset' );
+
+		$this->assertNotInstanceOf( WP_Error::class, $result, 'Should not return WP_Error' );
+
+		// Retrieve underlying SDK builder and check its requestOptions timeout
+		$wrapper_reflection = new \ReflectionClass( $result );
+		$builder_property   = $wrapper_reflection->getProperty( 'builder' );
+		$builder_property->setAccessible( true );
+		$sdk_builder        = $builder_property->getValue( $result );
+
+		$sdk_reflection     = new \ReflectionClass( $sdk_builder );
+		$options_property   = $sdk_reflection->getProperty( 'requestOptions' );
+		$options_property->setAccessible( true );
+		$request_options    = $options_property->getValue( $sdk_builder );
+
+		$this->assertNotNull( $request_options, 'Request options should be set.' );
+		$this->assertEquals( 90.0, $request_options->getTimeout(), 'The default timeout should be 90.' );
+	}
+
+	/**
+	 * Test that the request timeout can be overridden using the filter.
+	 *
+	 * @since 0.8.1
+	 */
+	public function test_request_timeout_can_be_filtered() {
+		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
+			$this->markTestSkipped( 'wp_ai_client_prompt is not defined' );
+		}
+
+		$filter_callback = function() {
+			return 120.0;
+		};
+
+		add_filter( 'wp_ai_client_default_request_timeout', $filter_callback );
+
+		$reflection = new \ReflectionClass( Generate_Image::class );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$testable_ability = new Testable_Generate_Image(
+			'ai/image-generation',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+
+		$result = $method->invoke( $testable_ability, 'A beautiful sunset' );
+
+		remove_filter( 'wp_ai_client_default_request_timeout', $filter_callback );
+
+		$this->assertNotInstanceOf( WP_Error::class, $result, 'Should not return WP_Error' );
+
+		// Retrieve underlying SDK builder and check its requestOptions timeout
+		$wrapper_reflection = new \ReflectionClass( $result );
+		$builder_property   = $wrapper_reflection->getProperty( 'builder' );
+		$builder_property->setAccessible( true );
+		$sdk_builder        = $builder_property->getValue( $result );
+
+		$sdk_reflection     = new \ReflectionClass( $sdk_builder );
+		$options_property   = $sdk_reflection->getProperty( 'requestOptions' );
+		$options_property->setAccessible( true );
+		$request_options    = $options_property->getValue( $sdk_builder );
+
+		$this->assertNotNull( $request_options, 'Request options should be set.' );
+		$this->assertEquals( 120.0, $request_options->getTimeout(), 'The filtered timeout should be 120.' );
+	}
+}
+
+/**
+ * Testable subclass of Generate_Image that bypasses support checks.
+ *
+ * @since 0.8.1
+ */
+class Testable_Generate_Image extends Generate_Image {
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since 0.8.1
+	 */
+	protected function ensure_image_generation_supported( $prompt_builder, string $message ) {
+		return $prompt_builder;
+	}
 }

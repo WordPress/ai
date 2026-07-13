@@ -247,7 +247,8 @@ class Generate_Image extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
 		$request_options = new RequestOptions();
-		$request_options->setTimeout( 90 );
+		$timeout         = apply_filters( 'wp_ai_client_default_request_timeout', 90 );
+		$request_options->setTimeout( $timeout );
 
 		// Inject guidelines into the prompt. Unlike the other features, we don't
 		// use system instructions here because most image gen models don't support them.
