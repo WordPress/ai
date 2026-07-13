@@ -7,8 +7,10 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
  * Internal dependencies
  */
 import {
+	disableAdvancedSettings,
 	disableExperiment,
 	disableExperiments,
+	enableAdvancedSettings,
 	enableExperiments,
 	enableExperiment,
 } from '../../utils/helpers';
@@ -50,8 +52,9 @@ async function openTaxonomyPanel( editor, page, panelLabel ) {
 	}
 
 	// Expand the taxonomy panel if it is collapsed.
-	const panelToggle = page.locator( '.components-panel__body-toggle', {
-		hasText: panelLabel,
+	const panelToggle = page.getByRole( 'button', {
+		name: panelLabel,
+		exact: true,
 	} );
 
 	if ( ( await panelToggle.count() ) > 0 ) {
@@ -74,6 +77,8 @@ async function openTaxonomyPanel( editor, page, panelLabel ) {
 async function setStrategy( admin, page, strategy ) {
 	await admin.visitAdminPage( 'options-general.php?page=ai-wp-admin' );
 
+	await enableAdvancedSettings( page );
+
 	const strategySelect = page.getByLabel( 'Taxonomy strategy' );
 	await expect( strategySelect ).toBeVisible( { timeout: 10000 } );
 
@@ -84,14 +89,14 @@ async function setStrategy( admin, page, strategy ) {
 
 	await strategySelect.selectOption( strategy );
 
-	const saveButton = page
-		.locator( '.ai-feature-settings-form' )
-		.getByRole( 'button', { name: 'Save' } );
+	const saveButton = page.getByRole( 'button', {
+		name: /Save Content Classification/,
+	} );
 	await saveButton.click();
 
 	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'Content Classification settings saved.',
+		page.getByTestId( 'snackbar' ).filter( {
+			hasText: /Content Classification settings saved\./,
 		} )
 	).toBeVisible();
 }
@@ -103,6 +108,12 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// Enable the Content Classification Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	test.afterEach( async ( { admin, page } ) => {
+		// Disable Advanced Settings to restore the default state for the next test.
+		await admin.visitAdminPage( 'options-general.php?page=ai-wp-admin' );
+		await disableAdvancedSettings( page );
 	} );
 
 	test( 'Shows the "Suggest Tags" button in the Tags panel', async ( {
@@ -123,9 +134,7 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// The suggest button should be visible within the Tags panel.
 		await expect(
-			page.locator( '.ai-content-classification button', {
-				hasText: 'Suggest Tags',
-			} )
+			page.getByRole( 'button', { name: 'Suggest Tags' } )
 		).toBeVisible();
 	} );
 
@@ -149,9 +158,7 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// The suggest button should be visible within the Categories panel.
 		await expect(
-			page.locator( '.ai-content-classification button', {
-				hasText: 'Suggest Categories',
-			} )
+			page.getByRole( 'button', { name: 'Suggest Categories' } )
 		).toBeVisible();
 	} );
 
@@ -173,20 +180,17 @@ test.describe( 'Content Classification Experiment', () => {
 		// Open the Tags panel.
 		await openTaxonomyPanel( editor, page, 'Tags' );
 
+		const suggestButton = page.getByRole( 'button', {
+			name: 'Suggest Tags',
+		} );
+
 		// The hint should be visible.
-		await expect(
-			page.locator( '.ai-content-classification__hint', {
-				hasText:
-					'Content Classification will be available when the post content has at least 250 characters.',
-			} )
-		).toBeVisible();
+		await expect( suggestButton ).toHaveAccessibleDescription(
+			/Content Classification will be available when the post content has at least 250 characters/
+		);
 
 		// The suggest button should be disabled.
-		await expect(
-			page
-				.locator( '.ai-content-classification__generate-button' )
-				.first()
-		).toBeDisabled();
+		await expect( suggestButton ).toBeDisabled();
 	} );
 
 	test( 'Enables suggestions once content reaches the minimum length', async ( {
@@ -207,18 +211,16 @@ test.describe( 'Content Classification Experiment', () => {
 		// Open the Tags panel.
 		await openTaxonomyPanel( editor, page, 'Tags' );
 
+		const suggestButton = page.getByRole( 'button', {
+			name: 'Suggest Tags',
+		} );
+
 		// The hint surfaces the configured minimum content length, and the
 		// suggest button is disabled.
-		await expect(
-			page.locator( '.ai-content-classification__hint' ).first()
-		).toHaveText(
-			'Content Classification will be available when the post content has at least 250 characters.'
+		await expect( suggestButton ).toHaveAccessibleDescription(
+			/Content Classification will be available when the post content has at least 250 characters/
 		);
-		await expect(
-			page
-				.locator( '.ai-content-classification__generate-button' )
-				.first()
-		).toBeDisabled();
+		await expect( suggestButton ).toBeDisabled();
 
 		// Add enough content to cross the minimum threshold.
 		await editor.insertBlock( {
@@ -227,14 +229,10 @@ test.describe( 'Content Classification Experiment', () => {
 		} );
 
 		// The hint disappears and the suggest button becomes enabled.
-		await expect(
-			page.locator( '.ai-content-classification__hint' )
-		).toHaveCount( 0 );
-		await expect(
-			page
-				.locator( '.ai-content-classification__generate-button' )
-				.first()
-		).toBeEnabled();
+		await expect( suggestButton ).not.toHaveAccessibleDescription(
+			/Content Classification will be available when the post content has at least 250 characters/
+		);
+		await expect( suggestButton ).toBeEnabled();
 	} );
 
 	test( 'Generates and displays suggestion pills', async ( {
@@ -262,37 +260,25 @@ test.describe( 'Content Classification Experiment', () => {
 		await openTaxonomyPanel( editor, page, 'Tags' );
 
 		// Click the Suggest Tags button.
-		await page
-			.locator( '.ai-content-classification button', {
-				hasText: 'Suggest Tags',
-			} )
-			.first()
-			.click();
-
-		// Wait for suggestions to appear.
-		await expect(
-			page.locator( '.ai-content-classification__suggestions' ).first()
-		).toBeVisible();
+		await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
 
 		// Verify suggestion pills are rendered.
-		await expect(
-			page.locator( '.ai-content-classification__pill' ).first()
-		).toBeVisible();
+		const suggestions = page
+			.getByRole( 'list', { name: 'Suggested Tags' } )
+			.getByRole( 'listitem' );
+
+		await expect( suggestions ).not.toHaveCount( 0 );
 
 		// Verify the "Suggest again" and "Dismiss all" actions are visible.
 		await expect(
 			page
-				.locator( '.ai-content-classification__actions button', {
-					hasText: 'Suggest again',
-				} )
+				.getByRole( 'button', { name: 'Suggest again', exact: true } )
 				.first()
 		).toBeVisible();
 
 		await expect(
 			page
-				.locator( '.ai-content-classification__actions button', {
-					hasText: 'Dismiss all',
-				} )
+				.getByRole( 'button', { name: 'Dismiss all', exact: true } )
 				.first()
 		).toBeVisible();
 	} );
@@ -322,37 +308,27 @@ test.describe( 'Content Classification Experiment', () => {
 		await openTaxonomyPanel( editor, page, 'Tags' );
 
 		// Generate suggestions.
-		await page
-			.locator( '.ai-content-classification button', {
-				hasText: 'Suggest Tags',
-			} )
-			.first()
-			.click();
+		await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
 
 		// Wait for suggestions to appear.
-		await expect(
-			page.locator( '.ai-content-classification__suggestions' ).first()
-		).toBeVisible();
+		const suggestions = page
+			.getByRole( 'list', { name: 'Suggested Tags' } )
+			.getByRole( 'listitem' );
+
+		await expect( suggestions ).not.toHaveCount( 0 );
 
 		// Click "Dismiss all".
 		await page
-			.locator( '.ai-content-classification__actions button', {
-				hasText: 'Dismiss all',
-			} )
-			.first()
+			.getByRole( 'button', { name: 'Dismiss all', exact: true } )
 			.click();
 
 		// Suggestions should be cleared and the generate button should reappear.
 		await expect(
-			page.locator( '.ai-content-classification__suggestions' ).first()
-		).not.toBeVisible();
+			page.getByRole( 'list', { name: 'Suggested Tags' } )
+		).toHaveCount( 0 );
 
 		await expect(
-			page
-				.locator( '.ai-content-classification button', {
-					hasText: 'Suggest Tags',
-				} )
-				.first()
+			page.getByRole( 'button', { name: 'Suggest Tags' } )
 		).toBeVisible();
 	} );
 
@@ -379,7 +355,7 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// The content classification UI should not be present.
 		await expect(
-			page.locator( '.ai-content-classification' )
+			page.getByRole( 'button', { name: 'Suggest Tags' } )
 		).toHaveCount( 0 );
 	} );
 
@@ -406,7 +382,7 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// The content classification UI should not be present.
 		await expect(
-			page.locator( '.ai-content-classification' )
+			page.getByRole( 'button', { name: 'Suggest Tags' } )
 		).toHaveCount( 0 );
 	} );
 
@@ -431,22 +407,14 @@ test.describe( 'Content Classification Experiment', () => {
 		await openTaxonomyPanel( editor, page, 'Tags' );
 
 		// Click the Suggest Tags button.
-		await page
-			.locator( '.ai-content-classification button', {
-				hasText: 'Suggest Tags',
-			} )
-			.first()
-			.click();
-
-		// Wait for suggestions to appear.
-		await expect(
-			page.locator( '.ai-content-classification__suggestions' ).first()
-		).toBeVisible();
+		await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
 
 		// Verify suggestion pills are rendered.
-		await expect(
-			page.locator( '.ai-content-classification__pill' ).first()
-		).toBeVisible();
+		const suggestions = page
+			.getByRole( 'list', { name: 'Suggested Tags' } )
+			.getByRole( 'listitem' );
+
+		await expect( suggestions ).not.toHaveCount( 0 );
 
 		// Switch to the Block tab.
 		const blockTab = page.getByRole( 'tab', { name: 'Block' } );
@@ -456,9 +424,7 @@ test.describe( 'Content Classification Experiment', () => {
 		await openTaxonomyPanel( editor, page, 'Tags' );
 
 		// Verify suggestion pills are STILL rendered and visible.
-		await expect(
-			page.locator( '.ai-content-classification__pill' ).first()
-		).toBeVisible();
+		await expect( suggestions ).not.toHaveCount( 0 );
 	} );
 
 	test( 'Restores suggestion pill to original position if tag addition fails', async ( {
@@ -479,15 +445,13 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// Open the Tags panel and suggest.
 		await openTaxonomyPanel( editor, page, 'Tags' );
-		await page
-			.locator( '.ai-content-classification button', {
-				hasText: 'Suggest Tags',
-			} )
-			.first()
-			.click();
+		await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
 
 		await expect(
-			page.locator( '.ai-content-classification__pill' ).first()
+			page
+				.getByRole( 'list', { name: 'Suggested Tags' } )
+				.getByRole( 'listitem' )
+				.first()
 		).toBeVisible();
 
 		let resolveRoute;
@@ -509,20 +473,19 @@ test.describe( 'Content Classification Experiment', () => {
 		} );
 
 		const firstPill = page
-			.locator( '.ai-content-classification__pill' )
+			.getByRole( 'list', { name: 'Suggested Tags' } )
+			.getByRole( 'listitem' )
 			.first();
 		const pillText = await firstPill
-			.locator( '.ai-content-classification__pill-accept' )
+			.getByRole( 'button', { name: /^Add ".+"$/ } )
 			.textContent();
 
 		// Click to accept a term.
-		await firstPill
-			.locator( '.ai-content-classification__pill-accept' )
-			.click();
+		await firstPill.getByRole( 'button', { name: /^Add ".+"$/ } ).click();
 
 		// Pill should disappear immediately.
 		await expect(
-			page.locator( '.ai-content-classification__pill-accept' ).first()
+			firstPill.getByRole( 'button', { name: /^Add ".+"$/ } )
 		).not.toHaveText( pillText );
 
 		// Resolve the promise to return the failure response.
@@ -530,7 +493,7 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// Since request fails, the pill should be restored to its original (first) position.
 		await expect(
-			page.locator( '.ai-content-classification__pill-accept' ).first()
+			firstPill.getByRole( 'button', { name: /^Add ".+"$/ } )
 		).toHaveText( pillText );
 	} );
 
@@ -552,15 +515,13 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// Open the Tags panel and suggest.
 		await openTaxonomyPanel( editor, page, 'Tags' );
-		await page
-			.locator( '.ai-content-classification button', {
-				hasText: 'Suggest Tags',
-			} )
-			.first()
-			.click();
+		await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
 
 		await expect(
-			page.locator( '.ai-content-classification__pill' ).first()
+			page
+				.getByRole( 'list', { name: 'Suggested Tags' } )
+				.getByRole( 'listitem' )
+				.first()
 		).toBeVisible();
 
 		let resolveRoute;
@@ -582,28 +543,24 @@ test.describe( 'Content Classification Experiment', () => {
 		} );
 
 		const firstPill = page
-			.locator( '.ai-content-classification__pill' )
+			.getByRole( 'list', { name: 'Suggested Tags' } )
+			.getByRole( 'listitem' )
 			.first();
 		const pillText = await firstPill
-			.locator( '.ai-content-classification__pill-accept' )
+			.getByRole( 'button', { name: /^Add ".+"$/ } )
 			.textContent();
 
 		// Click to accept a term.
-		await firstPill
-			.locator( '.ai-content-classification__pill-accept' )
-			.click();
+		await firstPill.getByRole( 'button', { name: /^Add ".+"$/ } ).click();
 
 		// Pill should disappear immediately.
 		await expect(
-			page.locator( '.ai-content-classification__pill-accept' ).first()
+			firstPill.getByRole( 'button', { name: /^Add ".+"$/ } )
 		).not.toHaveText( pillText );
 
 		// While API call is pending, click "Dismiss all" to clear suggestions and increment session count.
 		await page
-			.locator( '.ai-content-classification__actions button', {
-				hasText: 'Dismiss all',
-			} )
-			.first()
+			.getByRole( 'button', { name: 'Dismiss all', exact: true } )
 			.click();
 
 		// Resolve the promise to return the failure response.
@@ -611,7 +568,7 @@ test.describe( 'Content Classification Experiment', () => {
 
 		// Since the session is now stale, the suggestions UI should remain cleared/empty.
 		await expect(
-			page.locator( '.ai-content-classification__suggestions' ).first()
-		).not.toBeVisible();
+			page.getByRole( 'list', { name: 'Suggested Tags' } )
+		).toHaveCount( 0 );
 	} );
 } );
