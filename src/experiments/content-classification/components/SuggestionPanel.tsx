@@ -31,9 +31,9 @@ interface SuggestionPanelProps {
  * @param props.taxonomy The taxonomy to generate suggestions for.
  * @return The suggestion panel component.
  */
-export default function SuggestionPanel({
+export default function SuggestionPanel( {
 	taxonomy,
-}: SuggestionPanelProps): React.JSX.Element | null {
+}: SuggestionPanelProps ): React.JSX.Element | null {
 	const {
 		isGenerating,
 		suggestions,
@@ -42,140 +42,126 @@ export default function SuggestionPanel({
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
-	} = useContentClassification(taxonomy);
+	} = useContentClassification( taxonomy );
 
 	const taxonomyObject: any = useSelect(
-		(selectFn) => selectFn(coreStore).getTaxonomy(taxonomy),
-		[taxonomy]
+		( selectFn ) => selectFn( coreStore ).getTaxonomy( taxonomy ),
+		[ taxonomy ]
 	);
 	const taxonomyLabel: string = taxonomyObject?.name ?? taxonomy;
 
 	const hasSuggestions = suggestions.length > 0;
 
-	console.log(
-		'SuggestionPanel render',
-		{
-			hasSuggestions,
-			isGenerating,
-			suggestionCount: suggestions.length,
-		}
-	);
-
 	return (
 		<div className="ai-content-classification">
-			{!hasSuggestions && (
+			{ ! hasSuggestions && (
 				<Button
 					accessibleWhenDisabled
-					icon={update}
+					icon={ update }
 					variant="secondary"
-					onClick={handleGenerate}
-					disabled={isGenerating || !hasEnoughContent}
-					isBusy={isGenerating}
+					onClick={ handleGenerate }
+					disabled={ isGenerating || ! hasEnoughContent }
+					isBusy={ isGenerating }
 					className="ai-content-classification__generate-button"
 					__next40pxDefaultSize
 				>
-					{isGenerating
-						? __('Generating…', 'ai')
+					{ isGenerating
+						? __( 'Generating…', 'ai' )
 						: sprintf(
-							/* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
-							__('Suggest %s', 'ai'),
-							taxonomyLabel
-						)}
+								/* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
+								__( 'Suggest %s', 'ai' ),
+								taxonomyLabel
+						  ) }
 				</Button>
-			)}
+			) }
 
-			{!hasEnoughContent && !hasSuggestions && (
+			{ ! hasEnoughContent && ! hasSuggestions && (
 				<p className="ai-content-classification__hint components-base-control__help">
-					{__(
+					{ __(
 						'Add more content to enable AI suggestions (approximately 150 words).',
 						'ai'
-					)}
+					) }
 				</p>
-			)}
+			) }
 
-			{hasSuggestions && (
+			{ hasSuggestions && (
 				<div className="ai-content-classification__suggestions">
 					<h3 className="ai-content-classification__suggestions-title">
-						{sprintf(
+						{ sprintf(
 							/* translators: %s: Taxonomy label (e.g., "Tags" or "Categories"). */
-							__('Suggested %s', 'ai'),
+							__( 'Suggested %s', 'ai' ),
 							taxonomyLabel
-						)}
+						) }
 					</h3>
 					<div className="ai-content-classification__pills">
-						{suggestions.map((suggestion: TagSuggestion) => (
+						{ suggestions.map( ( suggestion: TagSuggestion ) => (
 							<span
-								key={suggestion.term}
-								className={`ai-content-classification__pill${suggestion.is_new
-									? ' ai-content-classification__pill--new'
-									: ''
-									}`}
+								key={ suggestion.term }
+								className={ `ai-content-classification__pill${
+									suggestion.is_new
+										? ' ai-content-classification__pill--new'
+										: ''
+								}` }
 							>
 								<Button
 									className="ai-content-classification__pill-accept"
-									onClick={() => handleAccept(suggestion)}
-									label={sprintf(
+									onClick={ () => handleAccept( suggestion ) }
+									label={ sprintf(
 										/* translators: %s: Term name. */
-										__('Add "%s"', 'ai'),
+										__( 'Add "%s"', 'ai' ),
 										suggestion.term
-									)}
+									) }
 								>
-									{suggestion.parent && (
+									{ suggestion.parent && (
 										<span className="ai-content-classification__pill-parent">
-											{suggestion.parent +
-												(isRTL() ? ' ‹ ' : ' › ')}
+											{ suggestion.parent +
+												( isRTL() ? ' ‹ ' : ' › ' ) }
 										</span>
-									)}
-									{suggestion.term}
-									{suggestion.is_new && (
+									) }
+									{ suggestion.term }
+									{ suggestion.is_new && (
 										<span className="ai-content-classification__pill-badge">
-											{__('new', 'ai')}
+											{ __( 'new', 'ai' ) }
 										</span>
-									)}
+									) }
 								</Button>
 								<Button
 									className="ai-content-classification__pill-dismiss"
-									icon={closeIcon}
-									iconSize={16}
-									onClick={() =>
-										handleDismiss(suggestion)
+									icon={ closeIcon }
+									iconSize={ 16 }
+									onClick={ () =>
+										handleDismiss( suggestion )
 									}
-									label={sprintf(
+									label={ sprintf(
 										/* translators: %s: Term name. */
-										__('Dismiss "%s"', 'ai'),
+										__( 'Dismiss "%s"', 'ai' ),
 										suggestion.term
-									)}
+									) }
 								/>
 							</span>
-						))}
+						) ) }
 					</div>
 					<Flex
-						gap={3}
+						gap={ 3 }
 						className="ai-content-classification__actions"
 					>
 						<FlexItem>
-							<Button
-								variant="link"
-								onClick={() => {
-									console.log(document.activeElement);
-									handleGenerate();
-								}}
-							>
-								{__('Suggest again', 'ai')}
+							<Button variant="link" onClick={ handleGenerate }>
+								{ __( 'Suggest again', 'ai' ) }
 							</Button>
 						</FlexItem>
 						<FlexItem>
 							<Button
 								variant="link"
-								onClick={handleDismissAll}
+								onClick={ handleDismissAll }
 								isDestructive
 							>
-								{__('Dismiss all', 'ai')}
+								{ __( 'Dismiss all', 'ai' ) }
 							</Button>
 						</FlexItem>
 					</Flex>
 				</div>
-			)}
+			) }
 		</div>
 	);
 }
