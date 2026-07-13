@@ -406,20 +406,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $testable_ability, 'A beautiful sunset' );
 
 		$this->assertNotInstanceOf( WP_Error::class, $result, 'Should not return WP_Error' );
-
-		// Retrieve underlying SDK builder and check its requestOptions timeout
-		$wrapper_reflection = new \ReflectionClass( $result );
-		$builder_property   = $wrapper_reflection->getProperty( 'builder' );
-		$builder_property->setAccessible( true );
-		$sdk_builder        = $builder_property->getValue( $result );
-
-		$sdk_reflection     = new \ReflectionClass( $sdk_builder );
-		$options_property   = $sdk_reflection->getProperty( 'requestOptions' );
-		$options_property->setAccessible( true );
-		$request_options    = $options_property->getValue( $sdk_builder );
-
-		$this->assertNotNull( $request_options, 'Request options should be set.' );
-		$this->assertEquals( 90.0, $request_options->getTimeout(), 'The default timeout should be 90.' );
+		$this->assertSame( 90.0, $this->get_timeout_from_prompt_builder( $result ), 'The default timeout should be 90.' );
 	}
 
 	/**
@@ -455,20 +442,29 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		remove_filter( 'wp_ai_client_default_request_timeout', $filter_callback );
 
 		$this->assertNotInstanceOf( WP_Error::class, $result, 'Should not return WP_Error' );
+		$this->assertSame( 120.0, $this->get_timeout_from_prompt_builder( $result ), 'The filtered timeout should be 120.' );
+	}
 
-		// Retrieve underlying SDK builder and check its requestOptions timeout
-		$wrapper_reflection = new \ReflectionClass( $result );
+	/**
+	 * Helper method to extract the request options timeout value from a WP_AI_Client_Prompt_Builder.
+	 *
+	 * @since 0.8.1
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
+	 * @return float|null The timeout value, or null.
+	 */
+	private function get_timeout_from_prompt_builder( $builder ): ?float {
+		$wrapper_reflection = new \ReflectionClass( $builder );
 		$builder_property   = $wrapper_reflection->getProperty( 'builder' );
 		$builder_property->setAccessible( true );
-		$sdk_builder        = $builder_property->getValue( $result );
+		$sdk_builder        = $builder_property->getValue( $builder );
 
 		$sdk_reflection     = new \ReflectionClass( $sdk_builder );
 		$options_property   = $sdk_reflection->getProperty( 'requestOptions' );
 		$options_property->setAccessible( true );
 		$request_options    = $options_property->getValue( $sdk_builder );
 
-		$this->assertNotNull( $request_options, 'Request options should be set.' );
-		$this->assertEquals( 120.0, $request_options->getTimeout(), 'The filtered timeout should be 120.' );
+		return $request_options ? $request_options->getTimeout() : null;
 	}
 }
 
