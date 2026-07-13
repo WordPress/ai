@@ -423,7 +423,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 			return 120.0;
 		};
 
-		add_filter( 'wp_ai_client_default_request_timeout', $filter_callback );
+		add_filter( 'wpai_default_request_timeout', $filter_callback );
 
 		$reflection = new \ReflectionClass( Generate_Image::class );
 		$method     = $reflection->getMethod( 'get_prompt_builder' );
@@ -439,7 +439,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $testable_ability, 'A beautiful sunset' );
 
-		remove_filter( 'wp_ai_client_default_request_timeout', $filter_callback );
+		remove_filter( 'wpai_default_request_timeout', $filter_callback );
 
 		$this->assertNotInstanceOf( WP_Error::class, $result, 'Should not return WP_Error' );
 		$this->assertSame( 120.0, $this->get_timeout_from_prompt_builder( $result ), 'The filtered timeout should be 120.' );
