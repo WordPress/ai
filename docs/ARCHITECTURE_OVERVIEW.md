@@ -32,9 +32,10 @@ ai/
 │   ├── admin/                        # Admin-specific assets
 │   ├── experiments/                  # Experiment-specific assets
 │   └── index.js                      # Main entry point
-└── tests/                            # Tests
-    ├── Integration/                  # Integration tests for WordPress + Plugin
-    ├── e2e/                          # Playwright end-to-end tests
-    ├── e2e-testing/                  # Support plugin for e2e tests (API mocking, fixtures)
-    └── bootstrap.php                 # PHPUnit bootstrap
+├── tests/                            # Tests
+│   ├── Integration/                  # Integration tests for WordPress + Plugin
+│   ├── e2e/                          # Playwright end-to-end tests
+│   ├── e2e-testing/                  # Support plugin for e2e tests (API mocking, │fixtures)
+│   └── bootstrap.php                 # PHPUnit bootstrap
+├── uninstall.php                     # Uninstall script
 ```
