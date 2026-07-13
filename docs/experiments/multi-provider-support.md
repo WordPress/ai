@@ -2,17 +2,18 @@
 
 ## Summary
 
-The plugin supports multiple AI providers through the WordPress AI Client and connector system. Features and experiments can run against a prioritized provider/model list, automatically fall back when a preferred model is unavailable, and validate capability support before execution.
+The plugin supports multiple AI providers through the WordPress AI Client and connector system. Provider access is supplied by separate AI Connector plugins. Features and experiments can run against a prioritized provider/model list, automatically fall back when a preferred model is unavailable, and validate capability support before execution.
 
 ## Overview
 
 ### For End Users
 
-You can configure one or more AI connectors (for example OpenAI, Google, Anthropic) in WordPress settings. Once configured:
+Install and activate one or more AI Connector plugins, such as OpenAI, Google, or Anthropic, then configure their credentials in `Settings -> Connectors`. Once configured:
 
 - Experiments can use any compatible connected provider.
 - Capability checks prevent running requests on unsupported connectors.
 - If a preferred model is unavailable, another configured model/provider can be used.
+- Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
 
 This allows flexibility in cost, performance, and reliability across provider ecosystems.
 
@@ -36,6 +37,8 @@ Credential detection is connector-aware:
 - `has_ai_credentials()` inspects `wp_get_connectors()` for `ai_provider` connectors with configured authentication.
 - `wpai_has_ai_credentials` filter allows custom connector implementations to report configured status.
 - `has_valid_ai_credentials()` performs a runtime support probe using AI client prompt checks.
+
+The AI plugin depends on registered `ai_provider` connectors. It does not ship provider credentials or provider implementations directly.
 
 ### Model Selection and Fallback
 
@@ -93,6 +96,7 @@ add_filter( 'wpai_has_ai_credentials', function( $has_credentials, $connectors )
 ## Operational Notes
 
 - Configure at least one connector that supports the feature's required capability.
+- If a feature is unavailable, confirm that a provider connector plugin is active, authenticated, and listed under `Settings -> Connectors`.
 - Multi-provider setups can improve resilience when individual providers are unavailable.
 - Keep model preference filters aligned with currently available provider model IDs.
 - If no provider supports the requested capability, abilities should return explicit `WP_Error` responses.

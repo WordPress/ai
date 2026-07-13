@@ -59,7 +59,12 @@ export default function EditorialUpdatesPlugin() {
 						isBusy={ isRefining }
 						disabled={ isRefining }
 						onClick={ () => void runRefinement() }
-						style={ { width: '100%', justifyContent: 'center' } }
+						style={ {
+							width: '100%',
+							justifyContent: 'center',
+						} }
+						__next40pxDefaultSize
+						accessibleWhenDisabled
 					>
 						{ buttonLabel }
 					</Button>

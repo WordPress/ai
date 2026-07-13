@@ -80,6 +80,7 @@ export interface LogsQuery {
 	userId: string;
 	orderby: string;
 	order: 'asc' | 'desc';
+	fields: string[];
 }
 
 export interface LocalizedSettings {

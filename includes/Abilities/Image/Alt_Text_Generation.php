@@ -67,9 +67,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 					'description'       => esc_html__( 'The attachment ID of the image to generate alt text for.', 'ai' ),
 				),
 				'image_url'     => array(
-					'type'              => 'string',
-					'sanitize_callback' => array( $this, 'sanitize_image_reference_input' ),
-					'description'       => esc_html__( 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.', 'ai' ),
 				),
 				'context'       => array(
 					'type'              => 'string',
@@ -122,6 +121,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 			),
 		);
 
+		if ( isset( $args['image_url'] ) ) {
+			$args['image_url'] = $this->sanitize_image_reference_input( $args['image_url'] );
+		}
+
 		// Get the image reference.
 		$image_reference = $this->get_image_reference( $args );
 
@@ -150,7 +153,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		// Return the alt text in the format the Ability expects.
 		return array(
-			'alt_text' => sanitize_text_field( $result ),
+			'alt_text'      => sanitize_text_field( $result ),
+			'is_decorative' => false,
 		);
 	}
 

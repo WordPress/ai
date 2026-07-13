@@ -224,6 +224,69 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		).not.toBeVisible();
 	} );
 
+	test( 'Validate Input enforces schema constraints', async ( {
+		admin,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Abilities Explorer and Content Classification experiments.
+		await enableExperiment( admin, page, 'Abilities Explorer' );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		await admin.visitAdminPage(
+			'tools.php?page=ai-abilities-explorer&action=test&ability=ai/content-classification'
+		);
+
+		const payload = page.locator( '#ability-test-payload' );
+		const validateButton = page.locator( '#ability-test-validate' );
+		const validation = page.locator( '#ability-test-validation' );
+
+		await payload.fill(
+			JSON.stringify(
+				{
+					content:
+						'This is enough content to classify for validation testing.',
+					post_id: 1,
+					taxonomy: 'post_tag',
+					strategy: 'existing_only',
+					max_suggestions: 11,
+				},
+				null,
+				2
+			)
+		);
+
+		await validateButton.click();
+
+		await expect( validation ).toBeVisible();
+		await expect( validation ).toContainText(
+			'Field "max_suggestions" must be at most 10'
+		);
+
+		await payload.fill(
+			JSON.stringify(
+				{
+					content:
+						'This is enough content to classify for validation testing.',
+					post_id: 1,
+					taxonomy: 'post_tag',
+					strategy: 'existing_only',
+					max_suggestions: 5,
+				},
+				null,
+				2
+			)
+		);
+
+		await validateButton.click();
+
+		await expect( validation ).toContainText(
+			'Input is valid according to the schema'
+		);
+	} );
+
 	test( 'Ensure the Abilities Explorer Experiment UI is not visible when Experiments are globally disabled', async ( {
 		admin,
 		page,

@@ -312,6 +312,7 @@ const App: React.FC = () => {
 
 	return (
 		<Page
+			className="ai-request-logs__page"
 			visual={ <AiIcon /> }
 			title={ __( 'AI Request Logs', 'ai' ) }
 			subTitle={ __(
@@ -347,6 +348,10 @@ const App: React.FC = () => {
 						setQuery={ setLogsQuery }
 						providerMetadata={ providerMetadata }
 						connectorsUrl={ connectorsUrl }
+						onRefresh={ () => {
+							fetchLogs();
+							fetchSummary( summaryPeriod );
+						} }
 					/>
 
 					<SettingsPanel
