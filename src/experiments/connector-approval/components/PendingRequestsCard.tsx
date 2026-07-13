@@ -93,6 +93,7 @@ const PendingRequestsCard = ( {
 															entry.connector_id
 														)
 													}
+													__next40pxDefaultSize
 												>
 													{ __( 'Approve', 'ai' ) }
 												</Button>
@@ -105,6 +106,7 @@ const PendingRequestsCard = ( {
 													onClick={ () =>
 														onDismiss( entry.key )
 													}
+													__next40pxDefaultSize
 												>
 													{ __( 'Dismiss', 'ai' ) }
 												</Button>

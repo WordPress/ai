@@ -129,6 +129,9 @@ export function GenerateImageStandalone() {
 					onPromptChange={ setPrompt }
 					onGenerate={ () => safeGenerate( prompt.trim() ) }
 					error={ error }
+					hasImageGenerationSupport={ Boolean(
+						aiImageGenerationData?.hasImageGenerationSupport
+					) }
 				/>
 			) }
 
@@ -164,6 +167,7 @@ export function GenerateImageStandalone() {
 							onClick={ handleSaveImage }
 							disabled={ savedHistoryIndices.has( historyIndex ) }
 							accessibleWhenDisabled
+							__next40pxDefaultSize
 						>
 							{ __( 'Save to Media Library', 'ai' ) }
 						</Button>
@@ -173,6 +177,7 @@ export function GenerateImageStandalone() {
 								setRefinePrompt( '' );
 								setState( 'refining' );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
@@ -186,6 +191,7 @@ export function GenerateImageStandalone() {
 									activeEntry?.referenceHistoryIndex
 								)
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
 						</Button>
@@ -196,6 +202,7 @@ export function GenerateImageStandalone() {
 								setState( 'idle' );
 								setError( null );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Edit Prompt', 'ai' ) }
 						</Button>
@@ -211,6 +218,7 @@ export function GenerateImageStandalone() {
 								setError( null );
 							} }
 							style={ { marginInlineStart: 'auto' } }
+							__next40pxDefaultSize
 						>
 							{ __( 'Cancel', 'ai' ) }
 						</Button>

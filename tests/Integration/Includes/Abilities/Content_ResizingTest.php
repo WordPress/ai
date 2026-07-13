@@ -242,7 +242,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		$result = $method->invoke(
 			$this->ability,
 			array(
-				'content' => 'Too few words.',
+				'content' => 'Too few characters.',
 				'action'  => 'shorten',
 			)
 		);
@@ -401,6 +401,42 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that permission_callback() returns false for post type without show_in_rest.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_permission_callback_with_post_type_without_show_in_rest() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		register_post_type(
+			'test_no_rest',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+			)
+		);
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_type'    => 'test_no_rest',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertFalse( $result, 'Permission should be denied for post type without show_in_rest' );
+
+		unregister_post_type( 'test_no_rest' );
+	}
+
+	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
 	 * @since 0.9.0
@@ -435,11 +471,11 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the shorten word count validation strips HTML tags before counting.
+	 * Test that the shorten character count validation strips HTML tags before counting.
 	 *
-	 * @since 0.9.0
+	 * @since 1.1.0
 	 */
-	public function test_execute_callback_shorten_word_count_ignores_html_tags() {
+	public function test_execute_callback_shorten_character_count_ignores_html_tags() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
@@ -452,7 +488,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error when HTML-wrapped content has fewer than 5 words' );
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error when HTML-wrapped content has fewer than 25 characters' );
 		$this->assertEquals( 'content_too_short', $result->get_error_code(), 'Error code should be content_too_short' );
 	}
 }

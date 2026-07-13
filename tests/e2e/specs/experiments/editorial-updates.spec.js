@@ -232,8 +232,14 @@ test.describe( 'Editorial Updates Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Grouped Editorial Controls Test',
-			content:
-				'This post has enough content to meet the minimum character requirement for the summarization feature and show the editor sidebar controls.',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This post has enough content to meet the minimum character requirement for the summarization feature and show the editor sidebar controls.',
+			},
 		} );
 		await editor.saveDraft();
 
@@ -295,6 +301,19 @@ test.describe( 'Editorial Updates Experiment', () => {
 
 		await page.reload();
 		await editor.openDocumentSettingsSidebar();
+
+		// Re-inject noteId after reload.
+		await page.evaluate( ( id ) => {
+			const blocks = window.wp.data
+				.select( 'core/block-editor' )
+				.getBlocks();
+
+			window.wp.data
+				.dispatch( 'core/block-editor' )
+				.updateBlockAttributes( blocks[ 0 ].clientId, {
+					metadata: { noteId: id },
+				} );
+		}, noteId );
 
 		const notesButton = page.getByRole( 'button', {
 			name: 'Generate Editorial Notes',

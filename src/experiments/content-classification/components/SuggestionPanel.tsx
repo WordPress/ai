@@ -42,6 +42,7 @@ export default function SuggestionPanel( {
 		handleAccept,
 		handleDismiss,
 		handleDismissAll,
+		minContentLength,
 	} = useContentClassification( taxonomy );
 
 	const taxonomyObject: any = useSelect(
@@ -76,10 +77,17 @@ export default function SuggestionPanel( {
 			) }
 
 			{ ! hasEnoughContent && ! hasSuggestions && (
-				<p className="ai-content-classification__hint components-base-control__help">
-					{ __(
-						'Add more content to enable AI suggestions (approximately 150 words).',
-						'ai'
+				<p
+					className="ai-content-classification__hint components-base-control__help"
+					style={ { color: '#757575' } }
+				>
+					{ sprintf(
+						/* translators: %d: Minimum content length in characters. */
+						__(
+							'Content Classification will be available when the post content has at least %d characters.',
+							'ai'
+						),
+						minContentLength
 					) }
 				</p>
 			) }
@@ -111,6 +119,7 @@ export default function SuggestionPanel( {
 										__( 'Add "%s"', 'ai' ),
 										suggestion.term
 									) }
+									size="small"
 								>
 									{ suggestion.parent && (
 										<span className="ai-content-classification__pill-parent">
@@ -137,6 +146,7 @@ export default function SuggestionPanel( {
 										__( 'Dismiss "%s"', 'ai' ),
 										suggestion.term
 									) }
+									size="small"
 								/>
 							</span>
 						) ) }
