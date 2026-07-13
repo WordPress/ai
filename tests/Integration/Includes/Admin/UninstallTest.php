@@ -74,21 +74,23 @@ class UninstallTest extends WP_UnitTestCase {
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_test_foo' );
 		delete_option( 'not_a_wpai_option' );
-		delete_option( Uninstall::OPTION_REMOVE_DATA );
 		delete_transient( 'wpai_test_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
+
+		remove_all_filters( 'wpai_remove_data_on_uninstall' );
 
 		parent::tearDown();
 	}
 
 	/**
-	 * Tests that opted-in uninstall removes the plugin's data.
+	 * Tests that uninstall removes the plugin's data by default.
+	 *
+	 * The filter defaults to true, so no callback is registered here.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_uninstall_removes_data_when_opted_in(): void {
+	public function test_uninstall_removes_data_by_default(): void {
 		$this->seed_data();
-		update_option( Uninstall::OPTION_REMOVE_DATA, true );
 
 		$this->assertTrue( $this->table_exists(), 'Table should exist before uninstall.' );
 
@@ -111,21 +113,21 @@ class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that data is preserved when the site has not opted in.
+	 * Tests that data is preserved when a developer opts out via the filter.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_uninstall_preserves_data_when_not_opted_in(): void {
+	public function test_uninstall_preserves_data_when_filtered_out(): void {
 		$this->seed_data();
-		update_option( Uninstall::OPTION_REMOVE_DATA, false );
+		add_filter( 'wpai_remove_data_on_uninstall', '__return_false' );
 
 		Uninstall::run();
 
 		wp_cache_flush();
 
-		$this->assertTrue( $this->table_exists(), 'Table should be preserved when not opted in.' );
-		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'Options should be preserved when not opted in.' );
-		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when not opted in.' );
-		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when not opted in.' );
+		$this->assertTrue( $this->table_exists(), 'Table should be preserved when filtered out.' );
+		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'Options should be preserved when filtered out.' );
+		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
+		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 	}
 }

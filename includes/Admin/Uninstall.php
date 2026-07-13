@@ -18,23 +18,15 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Uninstall.
  *
- * Removes the plugin's custom table, options and scheduled events
- * when the site has opted in via the "remove all data on uninstall" setting.
+ * Removes the plugin's custom table, options and scheduled events by default.
+ * Developers can opt out by returning false from the
+ * "wpai_remove_data_on_uninstall" filter to preserve the plugin's data.
  *
  * @internal
  *
  * @since x.x.x
  */
 final class Uninstall {
-
-	/**
-	 * Option that opts a site in to full data removal on uninstall.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	public const OPTION_REMOVE_DATA = 'wpai_remove_data_on_uninstall';
 
 	/**
 	 * Scheduled cron hook used by the request log manager.
@@ -48,9 +40,9 @@ final class Uninstall {
 	/**
 	 * Runs the uninstall routine.
 	 *
-	 * Cleanup only happens for sites that have explicitly opted in. On
-	 * multisite the opt-in is evaluated per site so each site keeps control of
-	 * its own data.
+	 * Cleanup happens by default unless a developer opts out via the
+	 * "wpai_remove_data_on_uninstall" filter. On multisite the filter is
+	 * evaluated per site so each site keeps control of its own data.
 	 *
 	 * @since x.x.x
 	 *
@@ -85,7 +77,18 @@ final class Uninstall {
 	 * @return void
 	 */
 	private static function maybe_clean_current_site(): void {
-		if ( ! (bool) get_option( self::OPTION_REMOVE_DATA, false ) ) {
+		/**
+		 * Filters whether the plugin should remove all of its data on uninstall.
+		 *
+		 * Removal is enabled by default. Return false to keep the plugin's
+		 * custom table, options, transients and scheduled events for the current
+		 * site. On multisite this filter runs once per site.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool $remove_data Whether to remove all plugin data. Default true.
+		 */
+		if ( ! (bool) apply_filters( 'wpai_remove_data_on_uninstall', true ) ) {
 			return;
 		}
 
