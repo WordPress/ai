@@ -229,6 +229,26 @@ export function useEditorialUpdates(): {
 			if ( ! postId ) {
 				return false;
 			}
+
+			// Collect Note IDs linked from block metadata, then check whether any are
+			// still pending. This avoids showing the action for stale Notes left behind
+			// after refreshing before the generated Note metadata was explicitly saved.
+			const allBlocks = sel( blockEditorStore ).getBlocks() as Block[];
+			const linkedNoteIds = Array.from(
+				new Set(
+					flattenBlocks( allBlocks )
+						.filter( ( block ) =>
+							REVIEWABLE_BLOCK_TYPES.includes( block.name )
+						)
+						.map( ( block ) => block.attributes.metadata?.noteId )
+						.filter( ( id ) => typeof id === 'number' )
+				)
+			);
+
+			if ( linkedNoteIds.length === 0 ) {
+				return false;
+			}
+
 			const notes = ( sel( coreStore ) as any ).getEntityRecords(
 				'root',
 				'comment',
@@ -236,6 +256,7 @@ export function useEditorialUpdates(): {
 					type: 'note',
 					status: 'hold',
 					post: postId,
+					include: Array.from( linkedNoteIds ),
 					per_page: 1,
 					_fields: 'id',
 				}
@@ -255,7 +276,7 @@ export function useEditorialUpdates(): {
 		setProgress( 0 );
 		setTotal( 0 );
 
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const content = (
@@ -272,7 +293,7 @@ export function useEditorialUpdates(): {
 			const pendingNotes = await fetchAllNotesByStatus( postId, 'hold' );
 
 			if ( pendingNotes.length === 0 ) {
-				( dispatch( noticesStore ) as any ).createNotice(
+				dispatch( noticesStore ).createNotice(
 					'info',
 					__( 'No pending Notes found to refine.', 'ai' ),
 					{ type: 'snackbar' }
@@ -304,7 +325,7 @@ export function useEditorialUpdates(): {
 			} );
 
 			if ( refineableBlocks.length === 0 ) {
-				( dispatch( noticesStore ) as any ).createNotice(
+				dispatch( noticesStore ).createNotice(
 					'info',
 					__( 'No blocks found matching the existing Notes.', 'ai' ),
 					{ type: 'snackbar' }
@@ -442,7 +463,7 @@ export function useEditorialUpdates(): {
 
 			// If every block failed, surface an error notice.
 			if ( failedBlocksCount > 0 && refinedBlocksCount === 0 ) {
-				( dispatch( noticesStore ) as any ).createErrorNotice(
+				dispatch( noticesStore ).createErrorNotice(
 					firstErrorMessage ??
 						__( 'Refinement failed for all blocks.', 'ai' ),
 					{
@@ -493,7 +514,7 @@ export function useEditorialUpdates(): {
 					  } )
 					: [];
 
-				( dispatch( noticesStore ) as any ).createSuccessNotice(
+				dispatch( noticesStore ).createSuccessNotice(
 					sprintf(
 						/* translators: %d: number of blocks refined. */
 						_n(
@@ -510,7 +531,7 @@ export function useEditorialUpdates(): {
 					}
 				);
 			} else {
-				( dispatch( noticesStore ) as any ).createNotice(
+				dispatch( noticesStore ).createNotice(
 					'info',
 					__(
 						'No content changes were needed based on the existing Notes.',
@@ -520,7 +541,7 @@ export function useEditorialUpdates(): {
 				);
 			}
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice(
+			dispatch( noticesStore ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
 					id: NOTICE_ID,

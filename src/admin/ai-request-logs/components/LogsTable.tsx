@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Popover } from '@wordpress/components';
+import { Button, Popover } from '@wordpress/components';
 import {
 	DataViews,
 	type View,
@@ -12,11 +12,13 @@ import {
 import { dateI18n, getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 import { useCallback, useMemo, useState } from '@wordpress/element';
+import { rotateRight } from '@wordpress/icons';
 
 /**
  * Internal dependencies
  */
 import type { ProviderMetadata } from '../../types/providers';
+import { DEFAULT_VIEW_FIELDS } from '../query';
 import type { FilterOptions, LogEntry, LogsQuery } from '../types';
 
 interface LogsTableProps {
@@ -30,6 +32,7 @@ interface LogsTableProps {
 	setQuery: React.Dispatch< React.SetStateAction< LogsQuery > >;
 	providerMetadata: Record< string, ProviderMetadata >;
 	connectorsUrl: string;
+	onRefresh: () => void;
 }
 
 /**
@@ -41,26 +44,6 @@ interface ViewConfig {
 	fields: string[];
 	layout: NonNullable< ViewTable[ 'layout' ] >;
 }
-
-const DEFAULT_VIEW_FIELDS = [
-	'timestamp',
-	'operation',
-	'provider',
-	'tokens_total',
-	'duration_ms',
-	'status',
-];
-
-const FIELD_ORDER = new Map(
-	DEFAULT_VIEW_FIELDS.map( ( id, index ) => [ id, index ] )
-);
-
-const sortFieldsByCanonicalOrder = ( ids: string[] ): string[] =>
-	[ ...ids ].sort( ( a, b ) => {
-		const ai = FIELD_ORDER.get( a ) ?? Infinity;
-		const bi = FIELD_ORDER.get( b ) ?? Infinity;
-		return ai - bi;
-	} );
 
 const formatTimestamp = ( timestamp: string ): string => {
 	const { formats } = getSettings();
@@ -252,6 +235,7 @@ const viewToQuery = ( view: View ): LogsQuery => {
 		userId: extractStringFilter( filters, 'user_id' ),
 		orderby: typeof sortField === 'string' ? sortField : 'timestamp',
 		order: sortDir,
+		fields: view.fields ?? [ ...DEFAULT_VIEW_FIELDS ],
 	};
 };
 
@@ -273,7 +257,7 @@ const queryToView = ( query: LogsQuery, viewConfig: ViewConfig ): View => {
 			field: query.orderby,
 			direction: query.order,
 		},
-		fields: viewConfig.fields,
+		fields: query.fields,
 		layout: viewConfig.layout,
 	};
 };
@@ -418,6 +402,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	setQuery,
 	providerMetadata,
 	connectorsUrl,
+	onRefresh,
 } ) => {
 	const [ viewConfig, setViewConfig ] = useState< ViewConfig >( () => ( {
 		filters: buildFiltersFromQuery( query ),
@@ -437,9 +422,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 
 			setViewConfig( {
 				filters: nextView.filters ?? [],
-				fields: sortFieldsByCanonicalOrder(
-					nextView.fields ?? [ ...DEFAULT_VIEW_FIELDS ]
-				),
+				fields: nextView.fields ?? [ ...DEFAULT_VIEW_FIELDS ],
 				layout: nextLayout,
 			} );
 
@@ -708,6 +691,17 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				view={ view }
 				onChangeView={ onChangeView }
 				actions={ actions }
+				header={
+					<Button
+						className="ai-request-logs__refresh-button"
+						icon={ rotateRight }
+						label={ __( 'Refresh', 'ai' ) }
+						showTooltip
+						size="compact"
+						onClick={ onRefresh }
+						disabled={ loading }
+					/>
+				}
 				paginationInfo={ paginationInfo }
 				getItemId={ ( item: LogEntry ) => item.id }
 				isLoading={ loading }
