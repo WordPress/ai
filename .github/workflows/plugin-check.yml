@@ -26,6 +26,7 @@ jobs:
   plugin-check:
     name: Run Plugin Check
     runs-on: 'ubuntu-24.04'
+    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     permissions:
       contents: read
       pull-requests: write

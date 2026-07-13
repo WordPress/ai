@@ -9,6 +9,7 @@
  * WordPress dependencies
  */
 import { createRoot, useEffect } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -309,6 +310,11 @@ function TitleToolbarWrapper(): React.JSX.Element {
 			// Create a container for our toolbar
 			toolbarContainer = editorDoc.createElement( 'div' );
 			toolbarContainer.className = 'ai-title-toolbar-container';
+			toolbarContainer.setAttribute( 'role', 'toolbar' );
+			toolbarContainer.setAttribute(
+				'aria-label',
+				__( 'Generate title toolbar', 'ai' )
+			);
 			toolbarContainer.style.cssText =
 				'display: none; position: absolute; z-index: 1000; top: -60px;';
 
@@ -363,35 +369,58 @@ function TitleToolbarWrapper(): React.JSX.Element {
 		// The observer stays connected for the editor's lifetime so the toolbar
 		// can be re-attached if the editor recreates the title input (e.g. when
 		// toggling "Show template" on and then off).
+		let observerRetryTimeout: NodeJS.Timeout | null = null;
+		let observerRetryCount = 0;
+		const MAX_OBSERVER_RETRIES = 20;
+
 		const setupObserver = () => {
-			const editorDoc = getEditorDocument();
-			if ( editorDoc && ! observer ) {
-				observer = new MutationObserver( () => {
-					const wrapperExists = !! editorDoc.querySelector(
-						'.ai-title-toolbar-wrapper'
-					);
-
-					// Our injected toolbar was removed from the DOM, but we
-					// still think it is attached. Reset so we can re-attach to
-					// the new title input.
-					if ( isAttached && ! wrapperExists ) {
-						resetAttachmentState();
-					}
-
-					if ( ! isAttached && ! wrapperExists ) {
-						findAndAttachToolbar();
-					}
-				} );
-
-				observer.observe( editorDoc.body, {
-					childList: true,
-					subtree: true,
-				} );
+			if ( observer ) {
+				return;
 			}
+
+			const editorDoc = getEditorDocument();
+
+			// The iframe (and its document) can exist before the document's
+			// body has been created, so keep retrying instead of assuming
+			// a fixed delay is enough for the canvas to be ready.
+			if ( ! editorDoc || ! editorDoc.body ) {
+				if ( observerRetryCount < MAX_OBSERVER_RETRIES ) {
+					observerRetryCount++;
+					observerRetryTimeout = setTimeout( setupObserver, 200 );
+				}
+				return;
+			}
+
+			const newObserver = new MutationObserver( () => {
+				const wrapperExists = !! editorDoc.querySelector(
+					'.ai-title-toolbar-wrapper'
+				);
+
+				// Our injected toolbar was removed from the DOM, but we
+				// still think it is attached. Reset so we can re-attach to
+				// the new title input.
+				if ( isAttached && ! wrapperExists ) {
+					resetAttachmentState();
+				}
+
+				if ( ! isAttached && ! wrapperExists ) {
+					findAndAttachToolbar();
+				}
+			} );
+
+			newObserver.observe( editorDoc.body, {
+				childList: true,
+				subtree: true,
+			} );
+
+			// Only assign once observe() has succeeded so a retry remains
+			// possible if this ever throws.
+			observer = newObserver;
 		};
 
-		// Try to set up observer after a delay to ensure iframe is loaded
-		const observerTimeout = setTimeout( setupObserver, 500 );
+		// Start trying to set up the observer; setupObserver retries on its
+		// own until the iframe's document body is ready.
+		const observerTimeout = setTimeout( setupObserver, 100 );
 
 		// Cleanup function
 		return () => {
@@ -400,6 +429,9 @@ function TitleToolbarWrapper(): React.JSX.Element {
 			}
 			clearTimeout( initialTimeout );
 			clearTimeout( observerTimeout );
+			if ( observerRetryTimeout ) {
+				clearTimeout( observerRetryTimeout );
+			}
 
 			// Remove event listeners
 			if ( removeTitleListeners ) {

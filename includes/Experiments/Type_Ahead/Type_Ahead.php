@@ -21,14 +21,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Type Ahead experiment.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 class Type_Ahead extends Abstract_Feature {
 
 	/**
 	 * Default settings.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @var array<string, mixed>
 	 */
@@ -43,7 +43,7 @@ class Type_Ahead extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get_id(): string {
 		return 'type-ahead';
@@ -52,7 +52,7 @@ class Type_Ahead extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -65,17 +65,18 @@ class Type_Ahead extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'enqueue_block_assets', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 	}
 
 	/**
 	 * Registers the type-ahead ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -91,11 +92,10 @@ class Type_Ahead extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the editor assets.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'type_ahead', 'experiments/type-ahead' );
-		Asset_Loader::enqueue_style( 'type_ahead', 'experiments/type-ahead' );
 
 		$settings = $this->get_settings();
 
@@ -114,9 +114,22 @@ class Type_Ahead extends Abstract_Feature {
 	}
 
 	/**
-	 * Returns the saved settings merged with defaults.
+	 * Enqueues the block stylesheet for the editor iframe and the front end.
 	 *
 	 * @since x.x.x
+	 */
+	public function enqueue_block_assets(): void {
+		if ( ! is_admin() ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_style( 'type_ahead', 'experiments/type-ahead' );
+	}
+
+	/**
+	 * Returns the saved settings merged with defaults.
+	 *
+	 * @since 1.1.0
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -130,7 +143,7 @@ class Type_Ahead extends Abstract_Feature {
 		/**
 		 * Filters the type-ahead settings.
 		 *
-		 * @since x.x.x
+		 * @since 1.1.0
 		 *
 		 * @param array<string, mixed> $settings The type-ahead settings.
 		 */

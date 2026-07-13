@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 
 declare( strict_types=1 );
@@ -18,51 +18,76 @@ defined( 'ABSPATH' ) || exit;
  * Class - Show_In_Abilities
  *
  * WordPress core does not yet ship the `show_in_abilities` flag consumed by the
- * `core/settings` ability (and, in the future, post type and meta abilities). This
+ * `core/read-settings` ability (and, in the future, post type and meta abilities). This
  * component polyfills that flag onto a curated set of core objects so the abilities
  * return data on a stock site, before/without the equivalent core change.
  *
  * It is intentionally object-type-agnostic: today it marks settings; post types and
  * meta can be marked here the same way when those abilities land.
  *
- * Timing: the `core/settings` ability snapshots the exposed settings when it registers
+ * Timing: the `core/read-settings` ability snapshots the exposed settings when it registers
  * on `wp_abilities_api_init`. A setting therefore has to be flagged with `show_in_abilities`
  * before that hook fires — i.e. its `register_setting()` call must run before abilities
  * init — for the ability to pick it up.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class Show_In_Abilities {
 
 	/**
 	 * Registers the hooks that mark core objects as exposed to abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function register(): void {
 		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
 	}
 
 	/**
-	 * Adds the `show_in_abilities` flag to curated core settings as they are registered.
+	 * Checks whether WordPress core declares the setting flag natively.
 	 *
-	 * Respects an explicit `show_in_abilities` value already present on the setting (for
-	 * example once core ships it natively), only filling it in when absent.
+	 * `register_setting()` applies the `register_setting_args` filter before merging the
+	 * caller's arguments over its defaults, so the defaults array is core's own statement of
+	 * which arguments it understands. Once `show_in_abilities` appears there, core owns the
+	 * flag: it picks the default and each setting opts in through `register_setting()`, the
+	 * way `show_in_rest` already works.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $args         The setting registration arguments.
+	 * @param mixed $defaults The default registration arguments.
+	 * @return bool True when core declares `show_in_abilities` as a setting argument.
+	 */
+	private function core_declares_setting_flag( $defaults ): bool {
+		return is_array( $defaults ) && array_key_exists( 'show_in_abilities', $defaults );
+	}
+
+	/**
+	 * Adds the `show_in_abilities` flag to curated core settings as they are registered.
+	 *
+	 * Respects an explicit `show_in_abilities` value already present in the registration
+	 * arguments, including an explicit `false` opt-out, only filling it in when the key is
+	 * absent entirely. Does nothing once core declares the flag natively, so the polyfill
+	 * never overrides a default core chose.
+	 *
+	 * @since 1.1.0
+	 * @since x.x.x Respects an explicit falsy value, and stands down once core declares the flag.
+	 *
+	 * @param mixed                $args         The setting registration arguments.
 	 * @param array<string, mixed> $defaults     The default registration arguments.
 	 * @param string               $option_group The settings group.
 	 * @param string               $option_name  The option name.
-	 * @return array<string, mixed> The (possibly amended) registration arguments.
+	 * @return mixed The (possibly amended) registration arguments.
 	 */
-	public function mark_setting( array $args, array $defaults, string $option_group, string $option_name ): array {
+	public function mark_setting( $args, $defaults, $option_group, $option_name ) {
+		if ( ! is_array( $args ) || $this->core_declares_setting_flag( $defaults ) ) {
+			return $args;
+		}
+
 		$settings = $this->settings_map();
 
-		if ( isset( $settings[ $option_name ] ) && empty( $args['show_in_abilities'] ) ) {
+		if ( isset( $settings[ $option_name ] ) && ! array_key_exists( 'show_in_abilities', $args ) ) {
 			$args['show_in_abilities'] = $settings[ $option_name ];
 		}
 
@@ -79,7 +104,7 @@ final class Show_In_Abilities {
 	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
 	 * Keep the two in sync when adding or removing entries.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */

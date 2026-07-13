@@ -117,6 +117,11 @@ export const useTypeAheadSuggestion = (
 	}, [] );
 
 	const cancelPendingRequest = useCallback( () => {
+		// `runAbility()` defers to `executeAbility()` when available, which does not accept
+		// AbortSignal options at the moment. Increment the token so stale results from in-flight
+		// responses that settle later are invalidated.
+		requestRef.current += 1;
+
 		if ( debounceTimerRef.current !== null ) {
 			window.clearTimeout( debounceTimerRef.current );
 			debounceTimerRef.current = null;

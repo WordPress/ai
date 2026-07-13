@@ -53,30 +53,27 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		} );
 
 		// Click into the block.
-		await editor.canvas.locator( '.wp-block-paragraph' ).click();
+		await editor.canvas
+			.getByRole( 'document', { name: 'Block: Paragraph' } )
+			.last()
+			.click();
 
 		// Ensure the type-ahead text is visible and has the correct text.
-		await expect(
-			editor.canvas.locator( '.ai-type-ahead-overlay' )
-		).toBeVisible();
-		await expect(
-			editor.canvas.locator( '.ai-type-ahead-overlay' )
-		).toHaveText( 'This is a test suggestion.' );
+		await expect( editor.canvas.getByRole( 'status' ) ).toHaveText(
+			'This is a test suggestion.'
+		);
 
 		// Accept the type-ahead text.
 		await page.keyboard.press( 'Tab' );
 
 		// Ensure the type-ahead text is removed.
-		await expect(
-			editor.canvas.locator( '.ai-type-ahead-overlay' )
-		).toBeHidden();
-		await expect(
-			editor.canvas.locator( '.ai-type-ahead-inline-ghost' )
-		).toBeHidden();
+		await expect( editor.canvas.getByRole( 'status' ) ).toHaveText( '' );
 
 		// Ensure the block content is updated.
 		await expect(
-			editor.canvas.locator( '.wp-block-paragraph' )
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Paragraph' } )
+				.last()
 		).toHaveText(
 			'This paragraph needs more text. This is a test suggestion.'
 		);
@@ -116,15 +113,13 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		} );
 
 		// Click into the block.
-		await editor.canvas.locator( '.wp-block-paragraph' ).click();
+		await editor.canvas
+			.getByRole( 'document', { name: 'Block: Paragraph' } )
+			.last()
+			.click();
 
 		// Ensure the type-ahead text is not visible.
-		await expect(
-			editor.canvas.locator( '.ai-type-ahead-overlay' )
-		).toBeHidden();
-		await expect(
-			editor.canvas.locator( '.ai-type-ahead-inline-ghost' )
-		).toBeHidden();
+		await expect( editor.canvas.getByRole( 'status' ) ).toBeHidden();
 	} );
 
 	test( 'Ensure the Type-ahead Text Experiment UI is not visible when the experiment is disabled', async ( {
@@ -158,14 +153,12 @@ test.describe( 'Type-ahead Text Experiment', () => {
 		} );
 
 		// Click into the block.
-		await editor.canvas.locator( '.wp-block-paragraph' ).click();
+		await editor.canvas
+			.getByRole( 'document', { name: 'Block: Paragraph' } )
+			.last()
+			.click();
 
 		// Ensure the type-ahead text is not visible.
-		await expect(
-			editor.canvas.locator( '.ai-type-ahead-overlay' )
-		).toBeHidden();
-		await expect(
-			editor.canvas.locator( '.ai-type-ahead-inline-ghost' )
-		).toBeHidden();
+		await expect( editor.canvas.getByRole( 'status' ) ).toBeHidden();
 	} );
 } );
