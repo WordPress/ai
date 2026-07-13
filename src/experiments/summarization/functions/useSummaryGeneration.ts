@@ -5,8 +5,6 @@
 /**
  * WordPress dependencies
  */
-import { createBlock } from '@wordpress/blocks';
-import type { Block } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
@@ -20,8 +18,12 @@ import { store as noticesStore } from '@wordpress/notices';
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
-import { flattenBlocks } from '../../../utils/blocks';
 import type { SummarizationData } from '../types';
+import {
+	createSummaryBlock,
+	createSummaryInnerBlocks,
+	findSummaryBlock,
+} from '../utils';
 
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 const NOTICE_ID = 'ai_summarization_error';
@@ -35,22 +37,6 @@ const getSettings = (): SummarizationData => {
 			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
 	};
 };
-
-/**
- * Searches a flattened list of blocks to find the Summary block.
- *
- * @param {Block[]} blocks List of blocks to search.
- * @return {Block|null} The found block or null.
- */
-function findSummaryBlock( blocks: Block[] ): Block | null {
-	return (
-		flattenBlocks( blocks ).find(
-			( block ) =>
-				block.name === 'core/group' &&
-				block.attributes[ 'aiGeneratedSummary' ] === true // eslint-disable-line dot-notation
-		) ?? null
-	);
-}
 
 /**
  * Summary generation hook.
@@ -100,18 +86,12 @@ export function useSummaryGeneration() {
 				},
 			} );
 
-			// Split the response into paragraphs and create inner blocks.
-			const paragraphs = generatedSummary
-				.split( /\n\n+/ )
-				.filter( ( p ) => p.trim() );
-			const innerBlocks = paragraphs.map( ( text ) =>
-				createBlock( 'core/paragraph', { content: text.trim() } )
-			);
-
 			// Check if an existing Content Summary group block exists.
 			const existingSummaryBlock = findSummaryBlock( allBlocks );
 
 			if ( existingSummaryBlock ) {
+				const innerBlocks =
+					createSummaryInnerBlocks( generatedSummary );
 				// Replace inner blocks of the existing group to preserve its attributes.
 				// eslint-disable-next-line dot-notation
 				( dispatch( blockEditorStore ) as any )[ 'replaceInnerBlocks' ](
@@ -121,14 +101,7 @@ export function useSummaryGeneration() {
 				);
 			} else {
 				// Insert a new summary group block at the top.
-				const summaryBlock = createBlock(
-					'core/group',
-					{
-						className: 'ai-summarization-summary',
-						aiGeneratedSummary: true,
-					},
-					innerBlocks
-				);
+				const summaryBlock = createSummaryBlock( generatedSummary );
 				// eslint-disable-next-line dot-notation
 				( dispatch( blockEditorStore ) as any )[ 'insertBlock' ](
 					summaryBlock,

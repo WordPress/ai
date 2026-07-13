@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use Throwable;
+use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
@@ -713,4 +714,29 @@ function get_min_content_length( string $feature_id, int $content_length = 250 )
 	 * @param string $feature_id     The feature identifier.
 	 */
 	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
+}
+
+/**
+ * Determines whether a post type supports bulk AI actions for a given feature.
+ *
+ * @since x.x.x
+ *
+ * @param string $post_type  The post type slug to check.
+ * @param string $feature_id The feature identifier (e.g. 'summarization').
+ * @return bool True if the post type supports bulk AI actions for the feature.
+ */
+function post_type_supports_bulk_action( string $post_type, string $feature_id ): bool {
+	$post_type_obj = get_post_type_object( $post_type );
+
+	// Check if the post type is registered and supports REST API and UI.
+	$base_supported = $post_type_obj
+		&& ! empty( $post_type_obj->show_in_rest )
+		&& ! empty( $post_type_obj->show_ui );
+
+	switch ( $feature_id ) {
+		case Summarization::get_id():
+			return $base_supported && 'attachment' !== $post_type;
+		default:
+			return $base_supported;
+	}
 }
