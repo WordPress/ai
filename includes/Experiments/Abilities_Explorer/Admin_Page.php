@@ -491,7 +491,7 @@ class Admin_Page {
 	}
 
 	/**
-	 * AJAX handler for AI-assisted payload generation.
+	 * AJAX handler that generates a test payload from the ability's input schema via AI.
 	 *
 	 * @since x.x.x
 	 */
@@ -510,20 +510,11 @@ class Admin_Page {
 
 		// Get parameters.
 		$ability_slug = isset( $_POST['ability'] ) ? sanitize_text_field( wp_unslash( $_POST['ability'] ) ) : '';
-		$command      = isset( $_POST['command'] ) ? sanitize_textarea_field( wp_unslash( $_POST['command'] ) ) : '';
 
 		if ( empty( $ability_slug ) ) {
 			wp_send_json_error(
 				array(
 					'message' => __( 'Ability slug is required.', 'ai' ),
-				)
-			);
-		}
-
-		if ( empty( $command ) ) {
-			wp_send_json_error(
-				array(
-					'message' => __( 'A command is required.', 'ai' ),
 				)
 			);
 		}
@@ -539,13 +530,18 @@ class Admin_Page {
 			);
 		}
 
-		$user_prompt = sprintf(
-			/* translators: %s: user's natural-language command. */
-			__( 'User Command: %s', 'ai' ),
-			$command
+		$prompt = sprintf(
+			"Generate a realistic example test payload for the WordPress ability \"%s\".\n" .
+			"Ability description: %s\n" .
+			"The payload must be a JSON object that conforms to the following JSON schema:\n%s\n" .
+			'Use plausible, realistic example values for every required property. ' .
+			'Include optional properties only when they help demonstrate the ability.',
+			$ability['name'],
+			$ability['description'],
+			(string) wp_json_encode( $ability['input_schema'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
 		);
 
-		$prompt_builder = wp_ai_client_prompt( $user_prompt )
+		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->as_json_response( self::normalize_schema_for_response( $ability['input_schema'] ) );
 
 		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
@@ -583,9 +579,11 @@ class Admin_Page {
 	}
 
 	/**
-	 * Recursively adds `additionalProperties: false` to all object-type nodes in a JSON schema.
+	 * Recursively adds `additionalProperties: false` and a complete `required` list
+	 * to all object-type nodes in a JSON schema.
 	 *
-	 * OpenAI's structured-output API requires this on every object in the schema tree.
+	 * OpenAI's structured-output API requires `additionalProperties: false` on every
+	 * object in the schema tree, and a `required` array listing every key in `properties`.
 	 *
 	 * @since x.x.x
 	 *
@@ -596,6 +594,7 @@ class Admin_Page {
 		if ( isset( $schema['type'] ) && 'object' === $schema['type'] ) {
 			$schema['additionalProperties'] = false;
 			if ( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+				$schema['required'] = array_keys( $schema['properties'] );
 				foreach ( $schema['properties'] as $key => $property ) {
 					if ( is_array( $property ) ) {
 						$schema['properties'][ $key ] = self::normalize_schema_for_response( $property );

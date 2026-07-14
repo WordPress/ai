@@ -5,25 +5,17 @@
 /**
  * WordPress dependencies
  */
-/**
- * WordPress dependencies
- */
 import { __ } from '@wordpress/i18n';
+
+/**
+ * Internal dependencies
+ */
+import './index.scss';
 
 /**
  * Global dependencies
  */
 const { aiAbilityExplorer, navigator } = window;
-
-/**
- * Internal dependencies
- */
-/**
- * Internal dependencies
- */
-import './index.scss';
-import { createRoot, createElement } from '@wordpress/element';
-import GeneratePayloadModal from './components/GeneratePayloadModal';
 
 ( function () {
 	'use strict';
@@ -105,7 +97,7 @@ import GeneratePayloadModal from './components/GeneratePayloadModal';
 			);
 			if ( generateAiButton ) {
 				generateAiButton.addEventListener( 'click', function () {
-					self.openGenerateModal();
+					self.generatePayload();
 				} );
 			}
 
@@ -592,9 +584,10 @@ import GeneratePayloadModal from './components/GeneratePayloadModal';
 		},
 
 		/**
-		 * Open the AI payload generation modal (rendered via wp.components.Modal).
+		 * Generate a test payload with AI from the ability's input schema.
 		 */
-		openGenerateModal() {
+		generatePayload() {
+			const self = this;
 			const invokeButton = document.getElementById(
 				'ability-test-invoke'
 			);
@@ -606,35 +599,79 @@ import GeneratePayloadModal from './components/GeneratePayloadModal';
 				return;
 			}
 
-			const container = document.createElement( 'div' );
-			document.body.appendChild( container );
-
-			const root = createRoot( container );
-
-			const close = () => {
-				root.unmount();
-				document.body.removeChild( container );
-			};
-
-			const handleSuccess = ( payload ) => {
-				const payloadTextarea = document.getElementById(
-					'ability-test-payload'
-				);
-				if ( payloadTextarea ) {
-					payloadTextarea.value = payload;
-					payloadTextarea.dispatchEvent( new Event( 'input' ) );
-				}
-			};
-
-			root.render(
-				createElement( GeneratePayloadModal, {
-					onClose: close,
-					onSuccess: handleSuccess,
-					abilitySlug,
-					ajaxUrl: aiAbilityExplorer.ajaxUrl,
-					nonce: aiAbilityExplorer.generateNonce,
-				} )
+			// Show loading state
+			const button = document.getElementById(
+				'ability-test-generate-ai'
 			);
+			if ( button ) {
+				button.disabled = true;
+				const originalText =
+					button.dataset.originalText || button.textContent;
+				if ( ! button.dataset.originalText ) {
+					button.dataset.originalText = originalText;
+				}
+				button.innerHTML =
+					__( 'Generating payload…', 'ai' ) +
+					'<span class="ability-loading"></span>';
+			}
+
+			const formData = new FormData();
+			formData.append( 'action', 'ai_ability_explorer_generate_payload' );
+			formData.append( 'nonce', aiAbilityExplorer.generateNonce );
+			formData.append( 'ability', abilitySlug );
+
+			fetch( aiAbilityExplorer.ajaxUrl, {
+				method: 'POST',
+				body: formData,
+				credentials: 'same-origin',
+			} )
+				.then( function ( response ) {
+					return response.json();
+				} )
+				.then( function ( response ) {
+					if ( response.success && response.data?.payload ) {
+						const payloadTextarea = document.getElementById(
+							'ability-test-payload'
+						);
+						if ( payloadTextarea ) {
+							payloadTextarea.value = response.data.payload;
+							payloadTextarea.dispatchEvent(
+								new Event( 'input' )
+							);
+						}
+
+						// Hide previous validation message
+						const validation = document.getElementById(
+							'ability-test-validation'
+						);
+						if ( validation ) {
+							validation.style.display = 'none';
+						}
+					} else {
+						self.showValidation( false, [
+							response.data?.message ||
+								__(
+									'An error occurred while generating the payload. Please try again.',
+									'ai'
+								),
+						] );
+					}
+				} )
+				.catch( function () {
+					self.showValidation( false, [
+						__(
+							'An error occurred while generating the payload. Please try again.',
+							'ai'
+						),
+					] );
+				} )
+				.finally( function () {
+					// Reset button
+					if ( button ) {
+						button.disabled = false;
+						button.textContent = button.dataset.originalText;
+					}
+				} );
 		},
 
 		/**
