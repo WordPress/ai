@@ -506,3 +506,77 @@ export const disableModelSelection = async ( page: Page ) => {
 	// Close the menu.
 	await page.keyboard.press( 'Escape' );
 };
+
+/**
+ * Enables the Advanced Settings feature via the Developer Tools menu.
+ *
+ * Opens the Developer Tools menu, checks whether Advanced Settings is already
+ * enabled, and clicks it only when it is not. Closes the menu afterwards.
+ *
+ * @param page The page object.
+ */
+export const enableAdvancedSettings = async ( page: Page ) => {
+	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+
+	await expect( page.getByText( 'DEVELOPER TOOLS' ) ).toBeVisible();
+
+	await expect(
+		page.getByRole( 'menuitemcheckbox', { name: /Advanced settings/ } )
+	).toBeVisible();
+	await expect(
+		page.getByText( 'Show advanced feature configuration options' )
+	).toBeVisible();
+
+	const advancedSettings = page.getByRole( 'menuitemcheckbox', {
+		name: /Advanced settings/,
+	} );
+
+	if (
+		( await advancedSettings.getAttribute( 'aria-checked' ) ) !== 'true'
+	) {
+		await advancedSettings.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', {
+				name: /Advanced settings/,
+			} )
+		).toBeVisible();
+	}
+
+	// Close the menu.
+	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Disables the Advanced Settings feature via the Developer Tools menu.
+ *
+ * Opens the Developer Tools menu and clicks the Advanced Settings item to
+ * toggle it off, then closes the menu.
+ *
+ * @param page The page object.
+ */
+export const disableAdvancedSettings = async ( page: Page ) => {
+	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+
+	const advancedSettings = page.getByRole( 'menuitemcheckbox', {
+		name: /Advanced settings/,
+	} );
+
+	// Only click if it is currently enabled.
+	if (
+		( await advancedSettings.getAttribute( 'aria-checked' ) ) === 'true'
+	) {
+		await advancedSettings.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', {
+				name: /Advanced settings/,
+			} )
+		).toBeVisible();
+	}
+
+	// Close the menu.
+	await page.keyboard.press( 'Escape' );
+};

@@ -54,8 +54,6 @@ class SettingsTest extends WP_UnitTestCase {
 				'default'           => 42,
 			)
 		);
-
-		$this->ensure_site_category();
 	}
 
 	/**
@@ -73,31 +71,6 @@ class SettingsTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
-	}
-
-	/**
-	 * Ensures the `site` ability category exists for the ability to attach to.
-	 *
-	 * @since 1.1.0
-	 */
-	private function ensure_site_category(): void {
-		if ( wp_has_ability_category( 'site' ) ) {
-			return;
-		}
-
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				'site',
-				array(
-					'label'       => 'Site',
-					'description' => 'Site.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
 	}
 
 	/**
@@ -122,6 +95,46 @@ class SettingsTest extends WP_UnitTestCase {
 	 */
 	private function become_admin(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+	}
+
+	/**
+	 * Core settings are exposed when abilities initialize before the REST API.
+	 *
+	 * Simulates cron, WP-CLI, or any request that uses the Abilities API before
+	 * `rest_api_init` registers core's initial settings.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_read_settings_registers_initial_settings_without_rest_api_init(): void {
+		global $wp_registered_settings, $wp_actions;
+
+		$registered_settings_backup = $wp_registered_settings;
+		$rest_api_init_count        = $wp_actions['rest_api_init'] ?? null;
+		$wp_registered_settings     = array(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating WordPress before its settings are registered.
+		unset( $wp_actions['rest_api_init'] );
+
+		try {
+			$this->register_ability();
+
+			$ability = wp_get_ability( 'core/read-settings' );
+			$this->assertArrayHasKey( 'blogname', $ability->get_output_schema()['properties'] );
+
+			$this->become_admin();
+			$result = $ability->execute( array( 'fields' => array( 'blogname' ) ) );
+
+			$this->assertArrayHasKey( 'blogname', $result );
+		} finally {
+			if ( wp_has_ability( 'core/read-settings' ) ) {
+				wp_unregister_ability( 'core/read-settings' );
+			}
+
+			$wp_registered_settings = $registered_settings_backup; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the WordPress test global.
+			if ( null === $rest_api_init_count ) {
+				unset( $wp_actions['rest_api_init'] );
+			} else {
+				$wp_actions['rest_api_init'] = $rest_api_init_count; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the WordPress test global.
+			}
+		}
 	}
 
 	/**

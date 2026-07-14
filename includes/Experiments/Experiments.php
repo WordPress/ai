@@ -42,6 +42,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
+		\WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply::class,
 	);
 
 	/**
