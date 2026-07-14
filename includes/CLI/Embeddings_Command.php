@@ -14,6 +14,7 @@ namespace WordPress\AI\CLI;
 use WP_CLI;
 use WP_CLI\Utils;
 use WordPress\AiClient\AiClient;
+use WordPress\AiClient\Builders\EmbeddingBuilder;
 
 use function WordPress\AI\has_valid_ai_credentials;
 use function WordPress\AI\normalize_content;
@@ -143,21 +144,19 @@ class Embeddings_Command {
 		);
 
 		try {
-			if ( $chunk ) {
-				$builder = AiClient::prompt()->withInputs( $pieces );
-				if ( null !== $provider ) {
-					$builder->usingProvider( $provider );
-				}
-				$result     = $builder->generateEmbeddingResult();
-				$embeddings = $result->getEmbeddings();
-			} else {
-				$builder = AiClient::prompt( $pieces[0] );
-				if ( null !== $provider ) {
-					$builder->usingProvider( $provider );
-				}
-				$result     = $builder->generateEmbeddingResult();
-				$embeddings = array( $result->getEmbedding() );
+			// WordPress core bundles a php-ai-client that predates embedding support and wins the
+			// autoloader race for the shared WordPress\AiClient\AiClient class, so AiClient::embed()
+			// is unavailable at runtime. Construct the plugin's bundled EmbeddingBuilder directly
+			// instead.
+			//
+			// The EmbeddingBuilder constructor accepts a single input or a list; each is embedded
+			// independently.
+			$builder = new EmbeddingBuilder( AiClient::defaultRegistry(), $chunk ? $pieces : $pieces[0] );
+			if ( null !== $provider ) {
+				$builder->usingProvider( $provider );
 			}
+			$result     = $builder->generateEmbeddingResult();
+			$embeddings = $result->getEmbeddings();
 		} catch ( \Throwable $e ) {
 			WP_CLI::error(
 				sprintf(
