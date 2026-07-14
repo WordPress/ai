@@ -7,7 +7,7 @@
  */
 import { useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { Modal, Button, TextareaControl } from '@wordpress/components';
+import { Modal, Button, TextareaControl, Notice } from '@wordpress/components';
 
 /**
  * Internal dependencies
@@ -108,6 +108,12 @@ export default function MetaDescriptionModal( {
 			focusOnMount="firstContentElement"
 		>
 			<div className="ai-meta-description-modal__content">
+				{ isContentTooShort && (
+					<Notice status="warning" isDismissible={ false }>
+						{ tooShortLabel }
+					</Notice>
+				) }
+
 				{ /* Editable textarea */ }
 				<div className="ai-meta-description-modal__editor">
 					<TextareaControl
@@ -175,15 +181,6 @@ export default function MetaDescriptionModal( {
 						{ __( 'Cancel', 'ai' ) }
 					</Button>
 				</div>
-
-				{ isContentTooShort && (
-					<p
-						className="ai-meta-description__hint components-base-control__help"
-						style={ { color: '#757575' } }
-					>
-						{ tooShortLabel }
-					</p>
-				) }
 			</div>
 		</Modal>
 	);

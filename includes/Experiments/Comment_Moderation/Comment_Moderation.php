@@ -295,7 +295,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Registers experiment-specific settings.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function register_settings(): void {
 		register_setting(
@@ -331,7 +331,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Checks whether guest comments should be automatically moderated.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return bool Whether guest comments should be automatically moderated.
 	 */
@@ -341,7 +341,7 @@ class Comment_Moderation extends Abstract_Feature {
 		/**
 		 * Filters whether to moderate guest comments.
 		 *
-		 * @since x.x.x
+		 * @since 1.1.0
 		 *
 		 * @param bool $should_moderate Whether guest comments should be moderated.
 		 */

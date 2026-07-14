@@ -219,7 +219,8 @@ class Ability_Handler {
 	 * @since 0.2.0
 	 *
 	 * @param string $slug  Ability name.
-	 * @param array<string,mixed>  $input Input data.
+	 * @param mixed  $input Input data. May be an array for object schemas or a
+	 *                      scalar for non-object input schemas.
 	 * @return array Result with success status and data/error.
 	 *
 	 * @phpstan-return array{
@@ -229,7 +230,7 @@ class Ability_Handler {
 	 *   error?: string,
 	 * }
 	 */
-	public static function invoke_ability( string $slug, array $input = array() ): array {
+	public static function invoke_ability( string $slug, $input = null ): array {
 		$ability = wp_get_ability( $slug );
 
 		if ( ! $ability ) {
@@ -269,10 +270,10 @@ class Ability_Handler {
 	 * @since 0.2.0
 	 *
 	 * @param array<string,mixed> $schema Input schema.
-	 * @param array<string,mixed> $input  Input data to validate.
+	 * @param mixed               $input  Input data to validate.
 	 * @return array<string,bool|array<string>> Validation result.
 	 */
-	public static function validate_input( array $schema, array $input ): array {
+	public static function validate_input( array $schema, $input ): array {
 		$errors = array();
 
 		if ( empty( $schema ) ) {

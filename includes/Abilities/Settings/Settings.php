@@ -1,10 +1,10 @@
 <?php
 /**
- * The `core/settings` WordPress Ability.
+ * The `core/read-settings` WordPress Ability.
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 
 declare( strict_types=1 );
@@ -17,10 +17,18 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Settings
  *
- * Registers the read-only `core/settings` ability, which returns WordPress settings as a
+ * Registers the read-only `core/read-settings` ability, which returns WordPress settings as a
  * flat map of setting name to value. Only settings flagged with `show_in_abilities` are
  * exposed. It is structured to also back a future write-oriented `core/manage-settings`
  * ability via the shared helpers (get_exposed_settings(), value_schema(), cast_value()).
+ *
+ * The exposed settings are captured when the ability registers on `wp_abilities_api_init`.
+ * That hook fires lazily on first use of the abilities registry, which is not ordered
+ * relative to `rest_api_init` (where core registers its own settings) and can happen
+ * without it entirely, e.g. on cron or WP-CLI. register() therefore ensures core's
+ * initial settings are registered before the snapshot is computed. Other plugin settings
+ * flagged with `show_in_abilities` must be registered before the abilities registry is
+ * first used in a request; registering them on `init` is reliable.
  *
  * This class is kept almost identical to the WordPress core class `WP_Settings_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
@@ -28,14 +36,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class Settings {
 
 	/**
 	 * The ability category used for settings abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 * @var string
 	 */
 	private const CATEGORY = 'site';
@@ -46,7 +54,7 @@ final class Settings {
 	 * Plugin: cached so the input/output schema and the executed result derive from the exact
 	 * same structure, and {@see get_registered_settings()} is only walked once per request.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 * @var array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}>|null
 	 */
 	private $exposed_settings = null;
@@ -59,7 +67,7 @@ final class Settings {
 	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
 	 * (priority 11) so it can override any core-provided copy.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public function init(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
@@ -70,9 +78,22 @@ final class Settings {
 	 *
 	 * Must run on the `wp_abilities_api_init` hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
+	 * @since x.x.x Ensures core's initial settings are registered before taking the snapshot.
 	 */
 	public function register(): void {
+		/*
+		 * Core's initial settings register on `rest_api_init`, which fires lazily and
+		 * independently of `wp_abilities_api_init`: on cron, WP-CLI, or any request where
+		 * abilities are used before the REST server loads, it may not have fired — or may
+		 * be mid-fire at a priority before register_initial_settings() runs. Ensure the
+		 * core settings exist before the exposed-settings snapshot below is computed;
+		 * re-registering them again later on `rest_api_init` is harmless.
+		 */
+		if ( ! did_action( 'rest_api_init' ) || doing_action( 'rest_api_init' ) ) {
+			register_initial_settings();
+		}
+
 		$this->register_get_settings();
 
 		/*
@@ -84,14 +105,14 @@ final class Settings {
 	}
 
 	/**
-	 * Registers the read-only `core/settings` ability.
+	 * Registers the read-only `core/read-settings` ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private function register_get_settings(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/settings' ) ) {
-			wp_unregister_ability( 'core/settings' );
+		if ( wp_has_ability( 'core/read-settings' ) ) {
+			wp_unregister_ability( 'core/read-settings' );
 		}
 
 		// Compute once; execute_get_settings() reuses this exact structure.
@@ -110,9 +131,9 @@ final class Settings {
 		}
 
 		wp_register_ability(
-			'core/settings',
+			'core/read-settings',
 			array(
-				'label'               => __( 'Get Settings', 'ai' ),
+				'label'               => __( 'Read Settings', 'ai' ),
 				'description'         => __( 'Returns WordPress settings as a flat map of setting name to value. By default returns all settings exposed to abilities, or optionally a subset filtered by settings group, by setting name, or both.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_settings_input_schema( $groups, $field_names ),
@@ -137,9 +158,9 @@ final class Settings {
 	}
 
 	/**
-	 * Executes the `core/settings` ability.
+	 * Executes the `core/read-settings` ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed> Map of exposed setting name to current value.
@@ -178,7 +199,7 @@ final class Settings {
 	/**
 	 * Checks whether the current user may use the settings abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return bool True if the current user can manage options.
 	 */
@@ -192,7 +213,7 @@ final class Settings {
 	 * Both `group` and `fields` are optional; supplying both narrows the response to their
 	 * intersection, and supplying neither returns every exposed setting.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param list<string> $groups      Available settings groups.
 	 * @param list<string> $field_names Available exposed setting names.
@@ -230,7 +251,7 @@ final class Settings {
 	 * underlying option name, the settings group, the registration default, and a JSON Schema
 	 * describing the value.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}> Settings keyed by exposed name.
 	 */
@@ -260,7 +281,7 @@ final class Settings {
 	/**
 	 * Builds the JSON Schema describing a single setting's value.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param array<string, mixed>      $args The setting registration arguments.
 	 * @param bool|array<string, mixed> $show The setting's `show_in_abilities` value.
@@ -288,7 +309,7 @@ final class Settings {
 	/**
 	 * Casts a stored option value to the type declared in its settings registration.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed  $value The raw option value.
 	 * @param string $type  The registered setting type.
