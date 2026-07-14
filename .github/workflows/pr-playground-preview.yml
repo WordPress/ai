@@ -85,6 +85,8 @@ jobs:
             preferredVersions: {
               wp: 'latest',
             },
+            login: true,
+            landingPage: '/wp-admin/admin.php?page=ai-wp-admin',
             steps: [
               {
                 step: 'installPlugin',

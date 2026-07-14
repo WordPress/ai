@@ -23,7 +23,7 @@ import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
 import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
 import { DataForm } from '@wordpress/dataviews';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
@@ -39,6 +39,11 @@ import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { AccessControlSettings } from './components/AccessControlSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import {
+	AdvancedSettingsContext,
+	useAdvancedSettings,
+	useAdvancedSettingsContext,
+} from './hooks/use-advanced-settings';
 import {
 	DeveloperModeContext,
 	useDeveloperMode,
@@ -279,8 +284,7 @@ function InfoTip( { content }: InfoTipProps ) {
 				<Icon icon={ infoIcon } size={ 20 } />
 			</Popover.Trigger>
 			<Popover.Popup
-				side="bottom"
-				align="end"
+				positioner={ <Popover.Positioner side="bottom" align="end" /> }
 				className="ai-settings-page__infotip-popover"
 			>
 				<Popover.Arrow />
@@ -492,6 +496,16 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
 
+	const dataFormRef = useRef< HTMLDivElement >( null );
+
+	const moveFocusToLastFormElement = () => {
+		const elements =
+			dataFormRef.current?.querySelectorAll< HTMLElement >(
+				'select, input, textarea'
+			) ?? [];
+		elements[ elements.length - 1 ]?.focus();
+	};
+
 	const data = useMemo( () => {
 		const base: Record< string, unknown > = {};
 		for ( const field of feature.settingsFields ) {
@@ -538,6 +552,8 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 				),
 				{ type: 'snackbar' }
 			);
+
+			moveFocusToLastFormElement();
 		} catch {
 			// Edits remain in the store — user can retry or adjust values.
 			createErrorNotice( __( 'Failed to save settings.', 'ai' ), {
@@ -556,12 +572,14 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 
 	return (
 		<Stack direction="column" gap="md" className="ai-feature-settings-form">
-			<DataForm< Record< string, unknown > >
-				data={ data }
-				fields={ fields }
-				form={ form }
-				onChange={ handleChange }
-			/>
+			<div ref={ dataFormRef }>
+				<DataForm< Record< string, unknown > >
+					data={ data }
+					fields={ fields }
+					form={ form }
+					onChange={ handleChange }
+				/>
+			</div>
 			{ isDirty && (
 				<Stack align="flex-end" direction="row">
 					<Button
@@ -601,6 +619,7 @@ function FeatureToggleWithSettings( {
 	const feature = FEATURES_BY_SETTING.get( field.id );
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const { isAdvancedSettingsEnabled } = useAdvancedSettingsContext();
 	const isAccessControlMode = useAccessControlModeContext();
 
 	return (
@@ -613,7 +632,7 @@ function FeatureToggleWithSettings( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
-			{ checked && feature && (
+			{ checked && isAdvancedSettingsEnabled && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
 			{ checked &&
@@ -655,7 +674,11 @@ function VisualCardToggle( {
 			}` }
 		>
 			{ feature?.image && (
-				<img alt="" loading="lazy" src={ feature.image } />
+				<img
+					alt={ feature.label }
+					loading="lazy"
+					src={ feature.image }
+				/>
 			) }
 			<Card.Content>
 				<ToggleControl
@@ -699,6 +722,7 @@ function AISettingsPage() {
 		useDispatch( noticesStore );
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
+	const advancedSettings = useAdvancedSettings();
 	const { isAccessControlMode, toggleAccessControlMode } =
 		useAccessControlMode();
 
@@ -1019,8 +1043,8 @@ function AISettingsPage() {
 	}, [ featureDefinitions, featureGroups ] );
 
 	return (
-		<DeveloperModeContext.Provider value={ isDeveloperMode }>
-			<AccessControlModeContext.Provider value={ isAccessControlMode }>
+		<AdvancedSettingsContext.Provider value={ advancedSettings }>
+			<DeveloperModeContext.Provider value={ isDeveloperMode }>
 				<Page
 					visual={ <AIIcon /> }
 					title={ __( 'AI', 'ai' ) }
@@ -1065,24 +1089,6 @@ function AISettingsPage() {
 									>
 										<MenuItem
 											role="menuitemcheckbox"
-											isSelected={ isAccessControlMode }
-											info={ __(
-												'Select roles and users that can access each feature',
-												'ai'
-											) }
-											icon={
-												isAccessControlMode
-													? checkIcon
-													: null
-											}
-											onClick={
-												handleToggleAccessControlMode
-											}
-										>
-											{ __( 'Access controls', 'ai' ) }
-										</MenuItem>
-										<MenuItem
-											role="menuitemcheckbox"
 											isSelected={ isDeveloperMode }
 											info={ __(
 												'Select a specific provider and model per feature',
@@ -1098,6 +1104,26 @@ function AISettingsPage() {
 											} }
 										>
 											{ __( 'Model selection', 'ai' ) }
+										</MenuItem>
+										<MenuItem
+											role="menuitemcheckbox"
+											isSelected={
+												advancedSettings.isAdvancedSettingsEnabled
+											}
+											info={ __(
+												'Show advanced feature configuration options',
+												'ai'
+											) }
+											icon={
+												advancedSettings.isAdvancedSettingsEnabled
+													? checkIcon
+													: null
+											}
+											onClick={
+												advancedSettings.toggleAdvancedSettings
+											}
+										>
+											{ __( 'Advanced settings', 'ai' ) }
 										</MenuItem>
 									</MenuGroup>
 								) }
@@ -1152,8 +1178,8 @@ function AISettingsPage() {
 						) }
 					</Stack>
 				</Page>
-			</AccessControlModeContext.Provider>
-		</DeveloperModeContext.Provider>
+			</DeveloperModeContext.Provider>
+		</AdvancedSettingsContext.Provider>
 	);
 }
 export const stage = AISettingsPage;

@@ -35,6 +35,6 @@ ai/
 └── tests/                            # Tests
     ├── Integration/                  # Integration tests for WordPress + Plugin
     ├── e2e/                          # Playwright end-to-end tests
-    ├── e2e-request-mocking/          # Mock API calls for e2e tests
+    ├── e2e-testing/                  # Support plugin for e2e tests (API mocking, fixtures)
     └── bootstrap.php                 # PHPUnit bootstrap
 ```

@@ -160,7 +160,7 @@ class Content_Classification extends Abstract_Feature {
 				'enabled'          => $this->is_enabled(),
 				'strategy'         => $this->get_strategy(),
 				'maxSuggestions'   => $this->get_max_suggestions(),
-				'minContentLength' => get_min_content_length( 'content-classification', 50 ),
+				'minContentLength' => get_min_content_length( 'content-classification', 250 ),
 			)
 		);
 	}

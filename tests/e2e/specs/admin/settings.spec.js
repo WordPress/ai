@@ -20,6 +20,10 @@ const {
 	getExperimentTogglesInGroup,
 	getEnableAllButton,
 	getDisableAllButton,
+	enableAdvancedSettings,
+	disableAdvancedSettings,
+	enableModelSelection,
+	disableModelSelection,
 } = require( '../../utils/helpers' );
 
 const EXPERIMENT_GROUPS = {
@@ -29,11 +33,11 @@ const EXPERIMENT_GROUPS = {
 
 test.describe( 'Plugin settings', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
-		await requestUtils.deactivatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.deactivatePlugin( 'e2e-testing' );
 	} );
 
 	test.afterAll( async ( { requestUtils } ) => {
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 		await seedCredentials( requestUtils );
 	} );
 
@@ -43,7 +47,7 @@ test.describe( 'Plugin settings', () => {
 		requestUtils,
 	} ) => {
 		// Activate the request mocking plugin.
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 
 		// Clear out any existing Connectors.
 		await clearConnectors( admin, page );
@@ -74,7 +78,7 @@ test.describe( 'Plugin settings', () => {
 		requestUtils,
 	} ) => {
 		// Activate the request mocking plugin.
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 
 		await visitConnectorsPage( admin );
 
@@ -130,6 +134,36 @@ test.describe( 'Plugin settings', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Snackbar notifications do not cover the settings content', async ( {
+		admin,
+		page,
+	} ) => {
+		// Use a fixed desktop viewport so the admin menu is at full width and
+		// snackbar placement is deterministic.
+		await page.setViewportSize( { width: 1280, height: 800 } );
+		await visitSettingsPage( admin );
+
+		// Toggle the global setting to trigger a snackbar.
+		const globalToggle = page.getByLabel( 'Enable AI' );
+		await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
+		await globalToggle.click();
+
+		const snackbar = page.getByTestId( 'snackbar' ).first();
+		await expect( snackbar ).toBeVisible();
+
+		// The snackbar must sit to the inline-start of the centered settings
+		// content, not on top of it (regression guard for #800).
+		const snackBox = await snackbar.boundingBox();
+		const contentBox = await page
+			.locator( '.ai-settings-page' )
+			.boundingBox();
+		expect( snackBox ).not.toBeNull();
+		expect( contentBox ).not.toBeNull();
+		expect( snackBox.x + snackBox.width ).toBeLessThanOrEqual(
+			contentBox.x
+		);
+	} );
+
 	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
 		admin,
 		page,
@@ -145,6 +179,9 @@ test.describe( 'Plugin settings', () => {
 
 		// Visit settings page fresh to ensure no stale snackbars.
 		await visitSettingsPage( admin );
+
+		// Enable Advanced Settings.
+		await enableAdvancedSettings( page );
 
 		// Wait for Content Classification inline settings to render.
 		const strategySelect = page.getByLabel( 'Taxonomy strategy' );
@@ -168,7 +205,7 @@ test.describe( 'Plugin settings', () => {
 
 		// Wait for the auto-save snackbar to confirm siteSettings changed.
 		await expect(
-			page.locator( '.components-snackbar__content', {
+			page.getByTestId( 'snackbar' ).filter( {
 				hasText: 'Title Generation enabled.',
 			} )
 		).toBeVisible();
@@ -176,6 +213,9 @@ test.describe( 'Plugin settings', () => {
 		// Assert: inline settings must still show the pending edit (not reset).
 		await expect( strategySelect ).toHaveValue( newValue );
 		await expect( saveButton ).toBeVisible();
+
+		// Cleanup: disable Advanced Settings.
+		await disableAdvancedSettings( page );
 	} );
 
 	test( 'Can turn on all experiments in a group', async ( {
@@ -214,7 +254,7 @@ test.describe( 'Plugin settings', () => {
 		const count = experimentToggles.length;
 
 		await expect(
-			page.locator( '.components-snackbar__content', {
+			page.getByTestId( 'snackbar' ).filter( {
 				hasText: `${ count } experiments enabled`,
 			} )
 		).toBeVisible();
@@ -261,7 +301,7 @@ test.describe( 'Plugin settings', () => {
 		const count = experimentToggles.length;
 
 		await expect(
-			page.locator( '.components-snackbar__content', {
+			page.getByTestId( 'snackbar' ).filter( {
 				hasText: `${ count } experiments disabled`,
 			} )
 		).toBeVisible();
@@ -449,42 +489,16 @@ test.describe( 'Plugin settings', () => {
 		// Enable the Excerpt Generation Experiment.
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
-		// Open the settings menu and verify model selection is described.
-		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
-		await expect( page.getByText( 'DEVELOPER TOOLS' ) ).toBeVisible();
-		await expect(
-			page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
-		).toBeVisible();
-		await expect(
-			page.getByText( 'Select a specific provider and model per feature' )
-		).toBeVisible();
-
-		// Toggle on model selection.
-		await page
-			.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
-			.click();
-
-		// Verify the menu remains open after toggling the option.
-		await expect(
-			page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
-		).toBeVisible();
+		// Enable developer mode (Model selection).
+		await enableModelSelection( page );
 
 		// Verify the Excerpt Generation Experiment has developer settings.
 		await expect(
 			page.locator( '.ai-developer-mode-fields' ).first()
 		).toBeVisible();
 
-		// Verify the selected option shows a checkmark.
-		await expect(
-			page
-				.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
-				.locator( 'svg' )
-		).toBeVisible();
-
 		// Toggle off model selection.
-		await page
-			.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
-			.click();
+		await disableModelSelection( page );
 
 		// Verify the developer settings are no longer visible.
 		await expect(
@@ -493,6 +507,189 @@ test.describe( 'Plugin settings', () => {
 
 		// Disable the Excerpt Generation Experiment.
 		await disableExperiment( admin, page, 'Excerpt Generation' );
+	} );
+
+	test( 'Can use advanced settings', async ( { admin, page } ) => {
+		// Globally turn on experiments and enable Content Classification
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Enable Advanced Settings and verify fields become visible.
+		await enableAdvancedSettings( page );
+		await expect( page.getByLabel( 'Taxonomy strategy' ) ).toBeVisible();
+		await expect( page.getByLabel( 'Maximum suggestions' ) ).toBeVisible();
+
+		// Disable Advanced Settings and verify fields are hidden again.
+		await disableAdvancedSettings( page );
+		await expect(
+			page.getByLabel( 'Taxonomy strategy' )
+		).not.toBeVisible();
+		await expect(
+			page.getByLabel( 'Maximum suggestions' )
+		).not.toBeVisible();
+
+		// Cleanup.
+		await disableExperiment( admin, page, 'Content Classification' );
+	} );
+
+	test( 'Developer settings save button appears, values persist after save, and reset does not requires explicit save', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		// Activate the request mocking plugin and seed a valid connector.
+		await requestUtils.activatePlugin( 'e2e-testing' );
+		await seedCredentials( requestUtils );
+
+		// Setup: Enable AI, disable all other experiments, then enable only Content Classification.
+		await enableExperiments( admin, page );
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Enable developer mode (Model selection).
+		await enableModelSelection( page );
+
+		// Scope all selectors to the first developer settings form (Content Classification).
+		const developerFields = page
+			.locator( '.ai-developer-mode-fields' )
+			.first();
+
+		await expect( developerFields ).toBeVisible( { timeout: 10000 } );
+
+		const providerSelect = developerFields.getByLabel( 'Provider' );
+		const saveButton = developerFields.getByRole( 'button', {
+			name: 'Save',
+		} );
+
+		// Select provider and model, verify Save button appears.
+		await providerSelect.selectOption( 'openai' );
+		const modelSelect = developerFields.getByLabel( 'Model' );
+		await expect( modelSelect ).toBeVisible( { timeout: 5000 } );
+		await modelSelect.selectOption( 'gpt-5.2' );
+
+		await expect( saveButton ).toBeVisible();
+
+		// Click Save, reload, verify values persist.
+		await saveButton.click();
+		await expect( saveButton ).not.toBeVisible( { timeout: 10000 } );
+
+		await visitSettingsPage( admin );
+
+		const developerFieldsAfterReload = page
+			.locator( '.ai-developer-mode-fields' )
+			.first();
+
+		await expect(
+			developerFieldsAfterReload.getByLabel( 'Provider' )
+		).toHaveValue( 'openai' );
+		await expect(
+			developerFieldsAfterReload.getByLabel( 'Model' )
+		).toHaveValue( 'gpt-5.2' );
+
+		// Click Reset to default
+		const resetButton = developerFieldsAfterReload.getByRole( 'button', {
+			name: 'Reset to default',
+		} );
+		await expect( resetButton ).toBeVisible();
+		await resetButton.click();
+
+		await expect(
+			developerFieldsAfterReload.getByLabel( 'Provider' )
+		).toHaveValue( '' );
+
+		await expect( resetButton ).not.toBeVisible( {
+			timeout: 10000,
+		} );
+
+		// Cleanup: Toggle off model selection.
+		await disableModelSelection( page );
+		await expect(
+			page.locator( '.ai-developer-mode-fields' )
+		).not.toBeVisible();
+
+		// Cleanup: Disable the Content Classification experiment.
+		await disableExperiment( admin, page, 'Content Classification' );
+	} );
+
+	test( 'Unsaved developer settings do not persist on page reload', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		// Activate the request mocking plugin and seed a valid connector.
+		await requestUtils.activatePlugin( 'e2e-testing' );
+		await seedCredentials( requestUtils );
+
+		// Setup: Enable AI, disable all other experiments, then enable only Content Classification.
+		await enableExperiments( admin, page );
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
+		await enableExperiment( admin, page, 'Content Classification' );
+
+		// Ensure the developer settings are cleared from a prior test.
+		await visitSettingsPage( admin );
+
+		// Enable developer mode (Model selection).
+		await enableModelSelection( page );
+
+		// Scope all selectors to the first developer settings form (Content Classification).
+		const developerFields = page
+			.locator( '.ai-developer-mode-fields' )
+			.first();
+
+		await expect( developerFields ).toBeVisible( { timeout: 10000 } );
+
+		// Select provider and model but do NOT click Save.
+		const providerSelect = developerFields.getByLabel( 'Provider' );
+		await providerSelect.selectOption( 'openai' );
+		const modelSelect = developerFields.getByLabel( 'Model' );
+		await expect( modelSelect ).toBeVisible( { timeout: 5000 } );
+		await modelSelect.selectOption( 'gpt-5.2' );
+
+		// Confirm Save button is visible (unsaved changes exist).
+		await expect(
+			developerFields.getByRole( 'button', { name: 'Save' } )
+		).toBeVisible();
+
+		// Reload the page WITHOUT saving.
+		await visitSettingsPage( admin );
+
+		const developerFieldsAfterReload = page
+			.locator( '.ai-developer-mode-fields' )
+			.first();
+
+		// Verify the provider has reverted to the default.
+		await expect(
+			developerFieldsAfterReload.getByLabel( 'Provider' )
+		).toHaveValue( '' );
+
+		// Cleanup: Toggle off model selection.
+		await disableModelSelection( page );
+		await expect(
+			page.locator( '.ai-developer-mode-fields' )
+		).not.toBeVisible();
+
+		// Cleanup: Disable the Content Classification experiment.
+		await disableExperiment( admin, page, 'Content Classification' );
 	} );
 
 	test( 'Developer mode settings are hidden for disabled visual feature cards', async ( {
@@ -506,15 +703,7 @@ test.describe( 'Plugin settings', () => {
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
 		// Turn on model selection while AI is globally enabled.
-		await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
-		const modelSelection = page.getByRole( 'menuitemcheckbox', {
-			name: /Model selection/,
-		} );
-		if (
-			( await modelSelection.getAttribute( 'aria-checked' ) ) !== 'true'
-		) {
-			await modelSelection.click();
-		}
+		await enableModelSelection( page );
 
 		// Globally disable AI. The feature card remains checked, but inactive.
 		await disableExperiments( admin, page );
@@ -535,6 +724,7 @@ test.describe( 'Plugin settings', () => {
 
 		// Restore state.
 		await enableExperiments( admin, page );
+		await disableModelSelection( page );
 		await disableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 } );

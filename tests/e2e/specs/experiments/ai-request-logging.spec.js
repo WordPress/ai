@@ -20,7 +20,7 @@ const PAGE_HEADING = 'AI Request Logs';
 
 test.describe( 'AI Request Logging Experiment', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 	} );
 
 	test( 'Can enable the experiment and reach the AI Request Logs page', async ( {

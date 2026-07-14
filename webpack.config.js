@@ -95,9 +95,19 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'experiments/type-ahead': path.resolve(
+			process.cwd(),
+			'src/experiments/type-ahead',
+			'index.tsx'
+		),
 		'experiments/comment-moderation': path.resolve(
 			process.cwd(),
 			'src/experiments/comment-moderation',
+			'index.tsx'
+		),
+		'experiments/suggest-reply': path.resolve(
+			process.cwd(),
+			'src/experiments/suggest-reply',
 			'index.tsx'
 		),
 		'experiments/alt-text-generation': path.resolve(
@@ -118,6 +128,11 @@ module.exports = {
 		'experiments/alt-text-generation-bulk': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',
+			'bulk.ts'
+		),
+		'experiments/summarization-bulk': path.resolve(
+			process.cwd(),
+			'src/experiments/summarization',
 			'bulk.ts'
 		),
 	},
