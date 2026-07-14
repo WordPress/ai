@@ -384,13 +384,9 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the request timeout defaults to 90 seconds.
 	 *
-	 * @since 0.8.1
+	 * @since x.x.x
 	 */
 	public function test_request_timeout_defaults_to_90() {
-		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
-			$this->markTestSkipped( 'wp_ai_client_prompt is not defined' );
-		}
-
 		$reflection = new \ReflectionClass( Generate_Image::class );
 		$method     = $reflection->getMethod( 'get_prompt_builder' );
 		$method->setAccessible( true );
@@ -412,18 +408,17 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the request timeout can be overridden using the filter.
 	 *
-	 * @since 0.8.1
+	 * @since x.x.x
 	 */
 	public function test_request_timeout_can_be_filtered() {
-		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
-			$this->markTestSkipped( 'wp_ai_client_prompt is not defined' );
-		}
-
-		$filter_callback = function() {
-			return 120.0;
+		$filter_callback = function( $timeout, $feature_id ) {
+			if ( 'image-generation' === $feature_id ) {
+				return 120.0;
+			}
+			return $timeout;
 		};
 
-		add_filter( 'wpai_default_request_timeout', $filter_callback );
+		add_filter( 'wpai_default_request_timeout', $filter_callback, 10, 2 );
 
 		$reflection = new \ReflectionClass( Generate_Image::class );
 		$method     = $reflection->getMethod( 'get_prompt_builder' );
@@ -448,7 +443,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Helper method to extract the request options timeout value from a WP_AI_Client_Prompt_Builder.
 	 *
-	 * @since 0.8.1
+	 * @since x.x.x
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
 	 * @return float|null The timeout value, or null.
@@ -471,13 +466,13 @@ class Image_GenerationTest extends WP_UnitTestCase {
 /**
  * Testable subclass of Generate_Image that bypasses support checks.
  *
- * @since 0.8.1
+ * @since x.x.x
  */
 class Testable_Generate_Image extends Generate_Image {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.8.1
+	 * @since x.x.x
 	 */
 	protected function ensure_image_generation_supported( $prompt_builder, string $message ) {
 		return $prompt_builder;
