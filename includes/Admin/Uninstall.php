@@ -94,6 +94,7 @@ final class Uninstall {
 
 		self::drop_request_logs_table();
 		self::delete_options();
+		self::delete_meta();
 		self::delete_transients();
 		self::clear_scheduled_events();
 	}
@@ -123,12 +124,78 @@ final class Uninstall {
 	private static function delete_options(): void {
 		global $wpdb;
 
-		$like = $wpdb->esc_like( 'wpai_' ) . '%';
+		// Option name prefixes owned by the plugin. `wpai_` covers settings,
+		// feature toggles, versions and connector approvals; `_secret_` covers
+		// the Key Encryption experiment's encrypted secret rows; `ai_experiment_`
+		// covers options left over from pre-1.0 installs.
+		$like_patterns = array(
+			$wpdb->esc_like( 'wpai_' ) . '%',
+			$wpdb->esc_like( '_secret_' ) . '%',
+			$wpdb->esc_like( 'ai_experiment_' ) . '%',
+		);
 
+		foreach ( $like_patterns as $like ) {
+			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+					$like
+				)
+			);
+		}
+
+		// Exact option names that don't share a plugin prefix: the Key Encryption
+		// master key and legacy pre-1.0 options.
+		$option_names = array(
+			'_secrets_master_key',
+			'ai_experiments_enabled',
+			'wp_ai_client_provider_credentials',
+		);
+
+		foreach ( $option_names as $option_name ) {
+			delete_option( $option_name );
+		}
+	}
+
+	/**
+	 * Deletes the plugin's metadata (post, comment and user meta).
+	 *
+	 * Only meta owned by the plugin is removed. Meta the plugin writes into but
+	 * does not own (e.g. core "_wp_attachment_image_alt" or third-party SEO
+	 * description keys) is left untouched.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	private static function delete_meta(): void {
+		global $wpdb;
+
+		// Post meta: "ai_generated" (attachments) and "ai_generated_summary"
+		// (summarization) share the "ai_generated" prefix; "wpai_meta_description"
+		// is the meta description fallback key.
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-				$like
+				"DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE %s OR meta_key LIKE %s",
+				$wpdb->esc_like( 'ai_generated' ) . '%',
+				$wpdb->esc_like( 'wpai_' ) . '%',
+			)
+		);
+
+		// Comment meta: comment moderation keys share the "_wpai_" prefix;
+		// "ai_note" is the editorial notes flag.
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->commentmeta} WHERE meta_key LIKE %s OR meta_key = %s",
+				$wpdb->esc_like( '_wpai_' ) . '%',
+				'ai_note'
+			)
+		);
+
+		// User meta: connector approval notice dismissal flag.
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->usermeta} WHERE meta_key = %s",
+				'wpai_connector_approval_notice_dismissed'
 			)
 		);
 	}
