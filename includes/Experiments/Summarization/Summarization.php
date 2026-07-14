@@ -89,7 +89,7 @@ class Summarization extends Abstract_Feature {
 	public function register_post_meta(): void {
 		register_meta(
 			'post',
-			'ai_generated_summary',
+			'wpai_generated_summary',
 			array(
 				'type'         => 'string',
 				'single'       => true,

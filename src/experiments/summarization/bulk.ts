@@ -167,7 +167,7 @@ async function processBulkSummary(): Promise< void > {
 				method: 'POST',
 				data: {
 					content: newContent,
-					meta: { ai_generated_summary: summary },
+					meta: { wpai_generated_summary: summary },
 				},
 			} );
 		} catch {

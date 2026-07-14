@@ -82,7 +82,7 @@ export function useSummaryGeneration() {
 			editPost( {
 				meta: {
 					...meta,
-					ai_generated_summary: generatedSummary,
+					wpai_generated_summary: generatedSummary,
 				},
 			} );
 
