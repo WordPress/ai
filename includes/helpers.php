@@ -717,22 +717,22 @@ function get_min_content_length( string $feature_id, int $content_length = 250 )
 }
 
 /**
- * Gets the default request timeout for a feature/Ability.
+ * Gets the default request timeout used by a feature.
  *
  * @since x.x.x
  *
- * @param string $feature_id      The ID of the feature/Ability.
+ * @param string $feature_id      The ID of the feature.
  * @param int    $default_timeout The default timeout in seconds.
  * @return int The request timeout.
  */
-function get_default_request_timeout( string $feature_id, int $default_timeout ): int {
+function get_default_request_timeout( string $feature_id, int $default_timeout = 30 ): int {
 	/**
-	 * Filters the default request timeout for a feature/Ability.
+	 * Filters the default request timeout for a feature.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param int    $default_timeout The default timeout in seconds.
-	 * @param string $feature_id      The ID of the feature/Ability.
+	 * @param string $feature_id      The ID of the feature.
 	 */
 	return (int) apply_filters( 'wpai_default_request_timeout', $default_timeout, $feature_id );
 }
