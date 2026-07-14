@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "17ac78da4ae3758674bcfeae57f2c9a9",
+    "content-hash": "415f9c50ecb090a0c2cd3e5525a6bd8a",
     "packages": [
         {
             "name": "fueled/ai-provider-for-ollama",
@@ -12,12 +12,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/Fueled/ai-provider-for-ollama.git",
-                "reference": "e5c1fcc9ebadf6fb7a1755d2224725f65459edf5"
+                "reference": "415384feba32aa2b5e58cddba0172ff4794c6b05"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Fueled/ai-provider-for-ollama/zipball/e5c1fcc9ebadf6fb7a1755d2224725f65459edf5",
-                "reference": "e5c1fcc9ebadf6fb7a1755d2224725f65459edf5",
+                "url": "https://api.github.com/repos/Fueled/ai-provider-for-ollama/zipball/415384feba32aa2b5e58cddba0172ff4794c6b05",
+                "reference": "415384feba32aa2b5e58cddba0172ff4794c6b05",
                 "shasum": ""
             },
             "require": {
@@ -83,7 +83,7 @@
                 "issues": "https://github.com/fueled/ai-provider-for-ollama/issues",
                 "source": "https://github.com/fueled/ai-provider-for-ollama"
             },
-            "time": "2026-07-07T21:06:17+00:00"
+            "time": "2026-07-14T15:51:28+00:00"
         },
         {
             "name": "nyholm/psr7",
@@ -618,12 +618,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/ai-provider-for-google.git",
-                "reference": "c964bd367887c8281e454046467ca00be6cd26e2"
+                "reference": "6529e04f28c310f4d4afeccad99b55ab87d86efb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/ai-provider-for-google/zipball/c964bd367887c8281e454046467ca00be6cd26e2",
-                "reference": "c964bd367887c8281e454046467ca00be6cd26e2",
+                "url": "https://api.github.com/repos/WordPress/ai-provider-for-google/zipball/6529e04f28c310f4d4afeccad99b55ab87d86efb",
+                "reference": "6529e04f28c310f4d4afeccad99b55ab87d86efb",
                 "shasum": ""
             },
             "require": {
@@ -692,7 +692,7 @@
                 "issues": "https://github.com/WordPress/ai-provider-for-google/issues",
                 "source": "https://github.com/WordPress/ai-provider-for-google"
             },
-            "time": "2026-07-08T14:41:50+00:00"
+            "time": "2026-07-14T15:27:20+00:00"
         },
         {
             "name": "wordpress/ai-provider-for-openai",
@@ -700,12 +700,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/chubes4/ai-provider-for-openai.git",
-                "reference": "034a73e51006f61d4b9c681e7b9fadabd05ab230"
+                "reference": "f01d2c23ed5dbfbd56896a8ef09ea990c7d9e31e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/chubes4/ai-provider-for-openai/zipball/034a73e51006f61d4b9c681e7b9fadabd05ab230",
-                "reference": "034a73e51006f61d4b9c681e7b9fadabd05ab230",
+                "url": "https://api.github.com/repos/chubes4/ai-provider-for-openai/zipball/f01d2c23ed5dbfbd56896a8ef09ea990c7d9e31e",
+                "reference": "f01d2c23ed5dbfbd56896a8ef09ea990c7d9e31e",
                 "shasum": ""
             },
             "require": {
@@ -774,7 +774,7 @@
                 "issues": "https://github.com/WordPress/ai-provider-for-openai/issues",
                 "source": "https://github.com/WordPress/ai-provider-for-openai"
             },
-            "time": "2026-07-07T19:32:39+00:00"
+            "time": "2026-07-14T03:33:27+00:00"
         },
         {
             "name": "wordpress/php-ai-client",
@@ -782,12 +782,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/chubes4/php-ai-client.git",
-                "reference": "f37a09e8b9f0f3ae488cd0b237449d567559ebe2"
+                "reference": "e08155bcb28fef5c0cc24b35f450e875204af225"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/chubes4/php-ai-client/zipball/f37a09e8b9f0f3ae488cd0b237449d567559ebe2",
-                "reference": "f37a09e8b9f0f3ae488cd0b237449d567559ebe2",
+                "url": "https://api.github.com/repos/chubes4/php-ai-client/zipball/e08155bcb28fef5c0cc24b35f450e875204af225",
+                "reference": "e08155bcb28fef5c0cc24b35f450e875204af225",
                 "shasum": ""
             },
             "require": {
@@ -883,7 +883,7 @@
                 "issues": "https://github.com/WordPress/php-ai-client/issues",
                 "source": "https://github.com/WordPress/php-ai-client"
             },
-            "time": "2026-07-08T16:19:19+00:00"
+            "time": "2026-07-14T03:28:09+00:00"
         }
     ],
     "packages-dev": [
