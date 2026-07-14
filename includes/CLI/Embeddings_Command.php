@@ -145,9 +145,9 @@ class Embeddings_Command {
 
 		try {
 			// WordPress core bundles a php-ai-client that predates embedding support and wins the
-			// autoloader race for the shared WordPress\AiClient\AiClient class, so AiClient::embed()
-			// is unavailable at runtime. Construct the plugin's bundled EmbeddingBuilder directly
-			// instead.
+			// autoloader race for the shared WordPress\AiClient\AiClient class, so the AiClient::input()
+			// embedding facade is unavailable at runtime. Construct the plugin's bundled EmbeddingBuilder
+			// directly instead.
 			//
 			// The EmbeddingBuilder constructor accepts a single input or a list; each is embedded
 			// independently.

@@ -618,12 +618,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/ai-provider-for-google.git",
-                "reference": "6529e04f28c310f4d4afeccad99b55ab87d86efb"
+                "reference": "a6cd19370c49c547cdf73b44d56a8b969edaf181"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/WordPress/ai-provider-for-google/zipball/6529e04f28c310f4d4afeccad99b55ab87d86efb",
-                "reference": "6529e04f28c310f4d4afeccad99b55ab87d86efb",
+                "url": "https://api.github.com/repos/WordPress/ai-provider-for-google/zipball/a6cd19370c49c547cdf73b44d56a8b969edaf181",
+                "reference": "a6cd19370c49c547cdf73b44d56a8b969edaf181",
                 "shasum": ""
             },
             "require": {
@@ -692,7 +692,7 @@
                 "issues": "https://github.com/WordPress/ai-provider-for-google/issues",
                 "source": "https://github.com/WordPress/ai-provider-for-google"
             },
-            "time": "2026-07-14T15:27:20+00:00"
+            "time": "2026-07-14T22:52:52+00:00"
         },
         {
             "name": "wordpress/ai-provider-for-openai",
@@ -782,12 +782,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/chubes4/php-ai-client.git",
-                "reference": "e08155bcb28fef5c0cc24b35f450e875204af225"
+                "reference": "49452a257bd1ac3d13a25eaf7cd12ef3fa19558d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/chubes4/php-ai-client/zipball/e08155bcb28fef5c0cc24b35f450e875204af225",
-                "reference": "e08155bcb28fef5c0cc24b35f450e875204af225",
+                "url": "https://api.github.com/repos/chubes4/php-ai-client/zipball/49452a257bd1ac3d13a25eaf7cd12ef3fa19558d",
+                "reference": "49452a257bd1ac3d13a25eaf7cd12ef3fa19558d",
                 "shasum": ""
             },
             "require": {
@@ -883,7 +883,7 @@
                 "issues": "https://github.com/WordPress/php-ai-client/issues",
                 "source": "https://github.com/WordPress/php-ai-client"
             },
-            "time": "2026-07-14T03:28:09+00:00"
+            "time": "2026-07-14T22:25:17+00:00"
         }
     ],
     "packages-dev": [
