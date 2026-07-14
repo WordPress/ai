@@ -15,7 +15,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 /**
  * Test experiment for Suggest_Reply Ability tests.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 class Test_Suggest_Reply_Experiment extends Abstract_Feature {
 	/**
@@ -38,7 +38,7 @@ class Test_Suggest_Reply_Experiment extends Abstract_Feature {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -48,7 +48,7 @@ class Test_Suggest_Reply_Experiment extends Abstract_Feature {
 /**
  * Suggest_Reply Ability test case.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
@@ -68,7 +68,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -86,7 +86,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -96,7 +96,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -111,7 +111,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -135,7 +135,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -151,7 +151,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when comment_id is missing.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_execute_callback_without_comment_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -167,7 +167,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error for invalid comment ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_execute_callback_with_invalid_comment_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -183,7 +183,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() allows users who can moderate comments.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_permission_callback_allows_moderate_comments_capability() {
 		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -201,7 +201,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() denies users without moderate_comments capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_permission_callback_denies_without_moderate_comments_capability() {
 		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -220,7 +220,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns expected shape.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -237,7 +237,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() returns a non-empty string with expected content.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_get_system_instruction_returns_expected_content() {
 		$system_instruction = $this->ability->get_system_instruction();
@@ -252,7 +252,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that build_context() assembles the expected prompt parts.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_build_context_includes_all_parts() {
 		$post_id = self::factory()->post->create(
@@ -295,7 +295,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that build_context() omits post sections when post data is empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_build_context_omits_empty_post_sections() {
 		$comment_id = self::factory()->comment->create(
@@ -332,7 +332,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	 * a WP_Error with code 'unsupported_model' when the prompt builder cannot find a
 	 * model capable of text generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_execute_callback_returns_error_when_no_text_generation_model_available() {
 		remove_filter( 'wpai_has_ai_credentials', '__return_true' );
@@ -373,7 +373,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns a WP_Error when the associated post is not found.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_execute_callback_returns_error_when_post_not_found() {
 		$comment_id = self::factory()->comment->create(

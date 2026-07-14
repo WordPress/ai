@@ -384,7 +384,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the request timeout defaults to 90 seconds.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_request_timeout_defaults_to_90() {
 		$reflection = new \ReflectionClass( Generate_Image::class );
@@ -408,7 +408,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the request timeout can be overridden using the filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_request_timeout_can_be_filtered() {
 		$filter_callback = function( $timeout, $feature_id ) {
@@ -443,7 +443,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Helper method to extract the request options timeout value from a WP_AI_Client_Prompt_Builder.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
 	 * @return float|null The timeout value, or null.
@@ -466,13 +466,13 @@ class Image_GenerationTest extends WP_UnitTestCase {
 /**
  * Testable subclass of Generate_Image that bypasses support checks.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 class Testable_Generate_Image extends Generate_Image {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	protected function ensure_image_generation_supported( $prompt_builder, string $message ) {
 		return $prompt_builder;
