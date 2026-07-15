@@ -24,7 +24,7 @@ use WordPress\AiClient\Results\DTO\TokenUsage;
 /**
  * Tests that generations which bypass the SDK HTTP transporter are still logged.
  *
- * @since 1.0.0
+ * @since x.x.x
  *
  * @covers \WordPress\AI\Logging\Logging_Event_Listener
  */
@@ -40,7 +40,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -65,7 +65,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	protected function tearDown(): void {
 		remove_all_actions( 'wp_ai_client_before_generate_result' );
@@ -79,7 +79,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Resets the static state on Logging_Integration so init() runs afresh.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	private function reset_integration(): void {
 		$initialized = new ReflectionProperty( Logging_Integration::class, 'initialized' );
@@ -150,7 +150,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * A generation that never touches the SDK transporter must still be logged.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	public function test_logs_generation_that_bypasses_the_transporter(): void {
 		$model  = $this->make_model( 'codex', 'codex-mini' );
@@ -177,7 +177,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	 * logs the row and flags the generation; the after-event fallback must then skip
 	 * it rather than write a duplicate.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	public function test_does_not_double_log_transporter_based_generations(): void {
 		$capability = CapabilityEnum::textGeneration();
@@ -199,7 +199,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 				'status'    => 'success',
 			)
 		);
-		\WordPress\AI\Logging\Logging_Event_Listener::mark_transporter_logged();
+		\WordPress\AI\Logging\Logging_Event_Listener::mark_generation_logged();
 
 		do_action(
 			'wp_ai_client_after_generate_result', // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook bridged from the SDK.

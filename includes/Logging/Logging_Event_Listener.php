@@ -31,22 +31,22 @@ defined( 'ABSPATH' ) || exit;
  *
  * To avoid double-logging transporter-based providers (which fire the event *and*
  * pass through the decorator), a per-generation flag is reset on the before-event and
- * set by {@see Logging_Http_Transporter::send()}; the after-event only writes a row
- * when the transporter did not already log the current generation.
+ * set via {@see Logging_Event_Listener::mark_generation_logged()}; the after-event only
+ * writes a row when the generation was not already logged.
  *
  * Known limitation: the SDK's after-event fires on success only (there is no error
  * event), so failed custom-transport generations are not captured here.
  *
- * @since 1.0.0
+ * @since x.x.x
  */
 class Logging_Event_Listener {
 
 	/**
-	 * Whether the transporter logged the current generation.
+	 * Whether another logger already recorded the current generation.
 	 *
 	 * @var bool
 	 */
-	private static bool $transporter_logged = false;
+	private static bool $generation_logged = false;
 
 	/**
 	 * The log manager instance.
@@ -65,7 +65,7 @@ class Logging_Event_Listener {
 	/**
 	 * Constructor.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 *
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager $log_manager The log manager.
 	 */
@@ -76,7 +76,7 @@ class Logging_Event_Listener {
 	/**
 	 * Registers the generation lifecycle listeners.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_ai_client_before_generate_result', array( $this, 'handle_before_generate' ) );
@@ -84,31 +84,33 @@ class Logging_Event_Listener {
 	}
 
 	/**
-	 * Marks the current generation as already logged by the HTTP transporter.
+	 * Marks the current generation as already logged by another logger.
 	 *
-	 * Called by {@see Logging_Http_Transporter::send()} so the after-event does not
-	 * write a duplicate row for transporter-based providers.
+	 * Called by {@see Logging_Http_Transporter::send()} for transporter-based
+	 * providers, and available to any provider that records a generation through its
+	 * own path (for example a custom-transport provider with its own log bridge) so
+	 * the after-event does not write a duplicate row.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
-	public static function mark_transporter_logged(): void {
-		self::$transporter_logged = true;
+	public static function mark_generation_logged(): void {
+		self::$generation_logged = true;
 	}
 
 	/**
 	 * Resets per-generation state at the start of a generation.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	public function handle_before_generate(): void {
-		self::$transporter_logged = false;
+		self::$generation_logged = false;
 		$this->timer              = $this->log_manager->start_timer();
 	}
 
 	/**
 	 * Logs the generation result unless the transporter already logged it.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 *
 	 * @param object $event The after-generate event.
 	 */
@@ -116,8 +118,8 @@ class Logging_Event_Listener {
 		$timer       = $this->timer;
 		$this->timer = null;
 
-		// The SDK transporter already captured this generation; avoid a duplicate row.
-		if ( self::$transporter_logged ) {
+		// Another logger already captured this generation; avoid a duplicate row.
+		if ( self::$generation_logged ) {
 			return;
 		}
 
