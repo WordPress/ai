@@ -15,14 +15,14 @@ use WordPress\AI\Abilities\Users\Users;
 /**
  * Users ability test case.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 class UsersTest extends WP_UnitTestCase {
 
 	/**
 	 * Shared fixture IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var array<string, int>
 	 */
 	private static $fixture_ids = array();
@@ -30,7 +30,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Administrator user ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var int
 	 */
 	private $admin_id;
@@ -38,7 +38,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Subscriber user ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var int
 	 */
 	private $subscriber_id;
@@ -46,7 +46,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Author user ID with a published post.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var int
 	 */
 	private $public_author_id;
@@ -54,7 +54,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Author post ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var int
 	 */
 	private $public_post_id;
@@ -62,7 +62,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Original show_avatars option.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var mixed
 	 */
 	private $show_avatars;
@@ -70,7 +70,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Set up shared test fixtures.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param \WP_UnitTest_Factory $factory The WordPress unit test factory.
 	 */
@@ -141,7 +141,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Tear down shared test fixtures.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function wpTearDownAfterClass(): void {
 		wp_delete_post( self::$fixture_ids['public_post'], true );
@@ -156,7 +156,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -173,7 +173,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
 		if ( wp_has_ability( 'core/read-users' ) ) {
@@ -189,7 +189,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Registers the plugin's core/read-users ability inside a faked init action.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private function register_ability(): void {
 		global $wp_current_filter;
@@ -204,7 +204,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The ability is registered in the `user` category and flagged read-only.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_core_users_ability_is_registered(): void {
 		$this->register_ability();
@@ -223,7 +223,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * When core already provides core/read-users, the plugin's version replaces it.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_override_replaces_existing_core_users(): void {
 		global $wp_current_filter;
@@ -257,7 +257,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The input schema exposes strict single-user and collection modes.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_core_users_input_schema_exposes_strict_modes(): void {
 		$this->register_ability();
@@ -338,7 +338,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * declare avatar_urls; the show_avatars option is honored per call instead,
 	 * even when it changes after the ability is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_avatar_urls_respects_show_avatars_option(): void {
 		update_option( 'show_avatars', 0 );
@@ -369,7 +369,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Omitted fields return a lean default shape.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_omitted_fields_return_lean_defaults(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -390,7 +390,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Logged-out users cannot run the ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_core_users_requires_logged_in_user(): void {
 		$this->register_ability();
@@ -404,7 +404,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The current user can read themselves by ID, email, and username.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_current_user_can_read_themselves_by_sensitive_identifiers(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -450,7 +450,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Public-author users can be read by ID or slug by logged-in users.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_public_author_can_be_read_by_id_and_slug(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -489,7 +489,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * This exposes nothing new. An editor who can read the private post already sees
 	 * its author through the post itself.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_private_only_author_resolves_by_lookup_but_not_in_a_collection(): void {
 		$author_id = self::factory()->user->create(
@@ -552,7 +552,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Email and username lookups for another user require list or edit permissions across roles.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @dataProvider data_roles_for_sensitive_identifier_lookup_permissions
 	 *
@@ -588,7 +588,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for role-based sensitive identifier lookup checks.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return array<string, array{0: string, 1: bool}>
 	 */
@@ -605,7 +605,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Empty collection mode returns only public authors for users without list_users.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_empty_collection_mode_restricts_users_without_list_users_to_public_authors(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -624,7 +624,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Collection include limits results to the requested users.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_collection_include_limits_results(): void {
 		wp_set_current_user( $this->admin_id );
@@ -654,7 +654,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * `include`, so that queries over the same users can share a WP_User_Query cache
 	 * entry. This test fails if that ordering is ever applied.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_include_order_does_not_control_the_result_order(): void {
 		wp_set_current_user( $this->admin_id );
@@ -686,7 +686,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Collection include still respects row-level read permissions.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_collection_include_respects_read_permissions(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -716,7 +716,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * must not fall back to WP_User_Query's own reading of `true`, which resolves to
 	 * get_post_types( array( 'public' => true ) ) and would match such an author.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_public_but_not_viewable_post_type_never_exposes_an_author(): void {
 		register_post_type(
@@ -794,7 +794,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * public authors in a collection, and reads their own account through a single-user
 	 * lookup (like the REST `/users/me` endpoint) rather than the collection.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_collection_mode_excludes_self_without_published_posts(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -828,7 +828,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Include is a collection-only option.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_include_cannot_be_combined_with_single_user_modes(): void {
 		wp_set_current_user( $this->admin_id );
@@ -857,7 +857,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Collection mode for users without list_users honors public post type filters.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_collection_mode_for_users_without_list_users_uses_public_post_types(): void {
 		register_post_type(
@@ -940,7 +940,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Administrators can query by role and receive roles.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_admin_can_query_by_role_and_receive_roles(): void {
 		wp_set_current_user( $this->admin_id );
@@ -964,7 +964,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Field visibility for another public author matches the current user's role.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @dataProvider data_roles_for_another_public_author_field_visibility
 	 *
@@ -1002,7 +1002,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for role-based field visibility checks.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return array<string, array{0: string, 1: bool, 2: bool}>
 	 */
@@ -1024,7 +1024,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * matching the REST users controller, which confines `roles` to users the
 	 * caller can edit.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_list_users_without_edit_does_not_expose_other_users_roles(): void {
 		add_role( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- Registering a throwaway role in an integration test.
@@ -1065,7 +1065,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * still appears on a user, so the roles output must not be pinned to a frozen
 	 * enum that would reject the value and fail the whole call.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_roles_registered_after_registration_do_not_fail_output_validation(): void {
 		wp_set_current_user( $this->admin_id );
@@ -1094,7 +1094,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Role filtering requires list_users.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_role_filter_requires_list_users(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -1109,7 +1109,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Restricted fields are omitted per user instead of failing the whole result.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_restricted_requested_fields_are_omitted_per_user(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -1136,7 +1136,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * declared output type without returning a top-level empty object, which
 	 * REST post-processing (`_fields`) cannot handle.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_fully_redacted_field_request_still_returns_id(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -1181,7 +1181,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * `default` is one), so it must not be discarded and silently turned into
 	 * an unrestricted collection query.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_object_input_behaves_like_array_input(): void {
 		wp_set_current_user( $this->subscriber_id );
@@ -1208,7 +1208,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * for the check, so the normalizers must accept the string forms instead
 	 * of silently dropping the filters they carry.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_rest_style_string_input_is_coerced(): void {
 		wp_set_current_user( $this->admin_id );
@@ -1296,7 +1296,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Unlike inaccessible fields, which are omitted per user, a field name that is
 	 * not part of the supported set is rejected before the ability executes.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_unknown_requested_field_fails_schema_validation(): void {
 		wp_set_current_user( $this->admin_id );
@@ -1320,7 +1320,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * registration-time snapshot) and is omitted per user, matching how
 	 * permission-restricted fields behave.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_unavailable_requested_field_is_omitted(): void {
 		update_option( 'show_avatars', 0 );
@@ -1345,7 +1345,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * nicename, but never an empty email. Imports and single sign-on plugins can
 	 * leave such rows behind.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return int The new user ID.
 	 */
@@ -1372,7 +1372,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * email the schema cannot describe must be reported as null rather than passed
 	 * through, which would fail the whole lookup.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_empty_stored_email_does_not_fail_single_user_output(): void {
 		$user_id = $this->create_user_without_email();
@@ -1400,7 +1400,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * `a@b.c`, which is one character too short for is_email(). The declared
 	 * `email` format only holds because such values become null.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_invalid_stored_email_is_reported_as_null(): void {
 		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -1438,7 +1438,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Collection output is validated as a single value, so an invalid field on one
 	 * row rejects every row on the page, not just the offending user.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_empty_stored_email_does_not_fail_collection_output(): void {
 		$user_id = $this->create_user_without_email();
@@ -1468,7 +1468,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * default field set, a false URL would fail every call rather than only the ones
 	 * that opt in.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_suppressed_avatar_url_does_not_fail_output(): void {
 		update_option( 'show_avatars', 1 );
@@ -1502,7 +1502,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Avatar sizes that resolve to a URL survive when other sizes do not.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_partially_suppressed_avatar_urls_keep_the_resolved_sizes(): void {
 		update_option( 'show_avatars', 1 );
@@ -1537,7 +1537,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Missing or inaccessible single-user lookups fail closed.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_missing_single_user_lookup_fails_closed(): void {
 		wp_set_current_user( $this->admin_id );
