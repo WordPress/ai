@@ -54,6 +54,23 @@ class V1_2_0Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that run() renames the ai_note comment meta key.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_run_renames_note_comment_meta(): void {
+		$comment_id = self::factory()->comment->create();
+		update_comment_meta( $comment_id, 'ai_note', true );
+
+		( new V1_2_0( '1.1.0' ) )->run();
+
+		wp_cache_flush();
+
+		$this->assertSame( '1', get_comment_meta( $comment_id, 'wpai_note', true ), 'ai_note should migrate to wpai_note.' );
+		$this->assertSame( '', get_comment_meta( $comment_id, 'ai_note', true ), 'Old ai_note comment meta should be removed.' );
+	}
+
+	/**
 	 * Tests that run() returns true on success.
 	 *
 	 * @since 1.2.0

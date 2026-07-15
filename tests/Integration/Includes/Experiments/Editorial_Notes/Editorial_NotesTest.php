@@ -122,8 +122,8 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	 */
 	public function test_ai_note_comment_meta_is_registered() {
 		$registered = get_registered_meta_keys( 'comment' );
-		$this->assertArrayHasKey( 'ai_note', $registered, 'ai_note meta should be registered for comments' );
-		$this->assertTrue( $registered['ai_note']['show_in_rest'], 'ai_note meta should have show_in_rest enabled' );
+		$this->assertArrayHasKey( 'wpai_note', $registered, 'ai_note meta should be registered for comments' );
+		$this->assertTrue( $registered['wpai_note']['show_in_rest'], 'ai_note meta should have show_in_rest enabled' );
 	}
 
 	/**
@@ -188,7 +188,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
@@ -220,7 +220,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
@@ -250,7 +250,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
@@ -292,7 +292,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => false ) );
+		$request->set_param( 'meta', array( 'wpai_note' => false ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
@@ -308,7 +308,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	public function test_maybe_set_ai_author_returns_wp_error_unchanged() {
 		$error   = new \WP_Error( 'test_error', 'Test error message' );
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $error, $request );
 
@@ -343,7 +343,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
 		$request->set_param( 'post', $post_id );
 		$request->set_param( 'content', 'This paragraph has accessibility issues and should be rewritten.' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$response = rest_get_server()->dispatch( $request );
 
@@ -371,7 +371,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		$request->set_param( 'post', $post_id );
 		$request->set_param( 'content', 'AI editorial suggestion.' );
 		$request->set_param( 'type', 'note' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$response = rest_get_server()->dispatch( $request );
 
@@ -419,10 +419,10 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		wp_set_current_user( $user_id );
 
 		$registered = get_registered_meta_keys( 'comment' );
-		$callback   = $registered['ai_note']['auth_callback'] ?? null;
+		$callback   = $registered['wpai_note']['auth_callback'] ?? null;
 
 		$this->assertIsCallable( $callback, 'auth_callback should be callable' );
-		$this->assertTrue( $callback( true, 'ai_note', $comment_id ), 'auth_callback should return true when the user can edit the comment post.' );
+		$this->assertTrue( $callback( true, 'wpai_note', $comment_id ), 'auth_callback should return true when the user can edit the comment post.' );
 	}
 
 	/**
@@ -440,9 +440,9 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		wp_set_current_user( $other_author_id );
 
 		$registered = get_registered_meta_keys( 'comment' );
-		$callback   = $registered['ai_note']['auth_callback'] ?? null;
+		$callback   = $registered['wpai_note']['auth_callback'] ?? null;
 
 		$this->assertIsCallable( $callback, 'auth_callback should be callable' );
-		$this->assertFalse( $callback( true, 'ai_note', $comment_id ), 'auth_callback should return false when the user cannot edit the comment post.' );
+		$this->assertFalse( $callback( true, 'wpai_note', $comment_id ), 'auth_callback should return false when the user cannot edit the comment post.' );
 	}
 }
