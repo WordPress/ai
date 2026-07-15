@@ -45,12 +45,7 @@ export async function uploadImage(
 			new Date().toLocaleDateString(),
 			promptHistory.join( ' | ' )
 		),
-		meta: [
-			{
-				key: 'ai_generated',
-				value: '1',
-			},
-		],
+		ai_generated: true,
 	};
 
 	// Use the prompt as alt text by default.

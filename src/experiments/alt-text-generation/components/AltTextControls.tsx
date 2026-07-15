@@ -131,7 +131,7 @@ export function AltTextControls( {
 		setIsDecorative( false );
 
 		// Clear any previous notices.
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
 			const content = select( editorStore ).getEditedPostContent();
@@ -161,13 +161,10 @@ export function AltTextControls( {
 			const errorMessage =
 				err?.message ||
 				__( 'An error occurred while generating alt text.', 'ai' );
-			( dispatch( noticesStore ) as any ).createErrorNotice(
-				errorMessage,
-				{
-					id: NOTICE_ID,
-					isDismissible: true,
-				}
-			);
+			dispatch( noticesStore ).createErrorNotice( errorMessage, {
+				id: NOTICE_ID,
+				isDismissible: true,
+			} );
 		} finally {
 			setIsGenerating( false );
 		}
@@ -223,12 +220,14 @@ export function AltTextControls( {
 								ref={ applyButtonRef }
 								variant="primary"
 								onClick={ handleApply }
+								__next40pxDefaultSize
 							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								onClick={ handleDismiss }
+								__next40pxDefaultSize
 							>
 								{ __( 'Dismiss', 'ai' ) }
 							</Button>
@@ -251,12 +250,14 @@ export function AltTextControls( {
 								ref={ applyButtonRef }
 								variant="primary"
 								onClick={ handleApply }
+								__next40pxDefaultSize
 							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								onClick={ handleDismiss }
+								__next40pxDefaultSize
 							>
 								{ __( 'Dismiss', 'ai' ) }
 							</Button>
@@ -275,6 +276,7 @@ export function AltTextControls( {
 						style={ { width: '100%', justifyContent: 'center' } }
 						isBusy={ isGenerating }
 						icon={ update }
+						__next40pxDefaultSize
 					>
 						{ getButtonLabel( !! hasExistingAlt, isGenerating ) }
 					</Button>

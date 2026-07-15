@@ -731,7 +731,7 @@ class AI_Request_Log_Repository {
 			case 'week':
 				return 'AND timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 WEEK)';
 			case 'month':
-				return 'AND timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MONTH)';
+				return 'AND timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)';
 			default:
 				return '';
 		}
