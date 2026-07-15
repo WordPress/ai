@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for V1_2_0.
+ * Integration tests for V1_3_0.
  *
  * @package WordPress\AI\Tests\Integration\Admin\Upgrades
  */
@@ -8,26 +8,26 @@
 namespace WordPress\AI\Tests\Integration\Admin\Upgrades;
 
 use WP_UnitTestCase;
-use WordPress\AI\Admin\Upgrades\V1_2_0;
+use WordPress\AI\Admin\Upgrades\V1_3_0;
 
 /**
- * V1_2_0 test case.
+ * V1_3_0 test case.
  *
- * @covers \WordPress\AI\Admin\Upgrades\V1_2_0
- * @since 1.2.0
+ * @covers \WordPress\AI\Admin\Upgrades\V1_3_0
+ * @since x.x.x
  */
-class V1_2_0Test extends WP_UnitTestCase {
+class V1_3_0Test extends WP_UnitTestCase {
 
 	/**
 	 * Tests that run() renames the ai_generated attachment meta key.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
 	public function test_run_renames_generated_meta(): void {
 		$attachment_id = self::factory()->post->create( array( 'post_type' => 'attachment' ) );
 		update_post_meta( $attachment_id, 'ai_generated', 1 );
 
-		( new V1_2_0( '1.1.0' ) )->run();
+		( new V1_3_0( '1.2.0' ) )->run();
 
 		// Direct SQL updates bypass the in-request meta cache.
 		wp_cache_flush();
@@ -39,13 +39,13 @@ class V1_2_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() renames the ai_generated_summary post meta key.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
 	public function test_run_renames_summary_meta(): void {
 		$post_id = self::factory()->post->create();
 		update_post_meta( $post_id, 'ai_generated_summary', 'A summary.' );
 
-		( new V1_2_0( '1.1.0' ) )->run();
+		( new V1_3_0( '1.2.0' ) )->run();
 
 		wp_cache_flush();
 
@@ -56,13 +56,13 @@ class V1_2_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() renames the ai_note comment meta key.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
 	public function test_run_renames_note_comment_meta(): void {
 		$comment_id = self::factory()->comment->create();
 		update_comment_meta( $comment_id, 'ai_note', true );
 
-		( new V1_2_0( '1.1.0' ) )->run();
+		( new V1_3_0( '1.2.0' ) )->run();
 
 		wp_cache_flush();
 
@@ -73,22 +73,22 @@ class V1_2_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() returns true on success.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
 	public function test_run_returns_success(): void {
-		$this->assertTrue( ( new V1_2_0( '1.1.0' ) )->run() );
+		$this->assertTrue( ( new V1_3_0( '1.2.0' ) )->run() );
 	}
 
 	/**
 	 * Tests that run() skips migration when the version is already current.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
 	public function test_run_skips_when_version_already_current(): void {
 		$post_id = self::factory()->post->create();
 		update_post_meta( $post_id, 'ai_generated_summary', 'A summary.' );
 
-		( new V1_2_0( '1.2.0' ) )->run();
+		( new V1_3_0( '1.3.0' ) )->run();
 
 		wp_cache_flush();
 

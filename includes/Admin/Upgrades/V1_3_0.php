@@ -1,9 +1,9 @@
 <?php
 /**
- * Upgrade routines for version 1.2.0.
+ * Upgrade routines for version 1.3.0.
  *
  * @package WordPress\AI\Admin\Upgrades
- * @since 1.2.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -20,17 +20,17 @@ defined( 'ABSPATH' ) || exit;
  * the `ai_note` comment meta key to their `wpai_`-prefixed equivalents so all
  * plugin-owned meta shares a consistent namespace.
  *
- * @since 1.2.0
+ * @since x.x.x
  * @internal
  */
-class V1_2_0 extends Abstract_Upgrade {
+class V1_3_0 extends Abstract_Upgrade {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
-	public static string $version = '1.2.0';
+	public static string $version = '1.3.0';
 
 	/**
 	 * {@inheritDoc}
@@ -38,7 +38,7 @@ class V1_2_0 extends Abstract_Upgrade {
 	 * Migrates post and comment meta keys from the legacy `ai_` prefix to the
 	 * `wpai_` prefix.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
 	protected function upgrade(): void {
 		$this->rename_post_meta_key( 'ai_generated', 'wpai_generated' );
@@ -49,7 +49,7 @@ class V1_2_0 extends Abstract_Upgrade {
 	/**
 	 * Renames a post meta key for every row that uses it.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 *
 	 * @param string $old_key The existing meta key.
 	 * @param string $new_key The meta key to migrate to.
@@ -67,7 +67,7 @@ class V1_2_0 extends Abstract_Upgrade {
 	/**
 	 * Renames a comment meta key for every row that uses it.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 *
 	 * @param string $old_key The existing meta key.
 	 * @param string $new_key The meta key to migrate to.
