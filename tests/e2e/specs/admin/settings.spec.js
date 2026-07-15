@@ -24,6 +24,8 @@ const {
 	disableAdvancedSettings,
 	enableModelSelection,
 	disableModelSelection,
+	enableAccessControls,
+	disableAccessControls,
 } = require( '../../utils/helpers' );
 
 const EXPERIMENT_GROUPS = {
@@ -726,5 +728,238 @@ test.describe( 'Plugin settings', () => {
 		await enableExperiments( admin, page );
 		await disableModelSelection( page );
 		await disableExperiment( admin, page, 'Image Generation and Editing' );
+	} );
+
+	test( 'Access controls: Editor role is blocked then granted access to Content Summarization', async ( {
+		admin,
+		editor,
+		page,
+		requestUtils,
+	} ) => {
+		await requestUtils.activatePlugin( 'e2e-testing' );
+		await seedCredentials( requestUtils );
+
+		// Create an editor-role user to use throughout this test.
+		const editorUsername = `ai-editor-${ Date.now() }`;
+		const editorPassword = 'password';
+
+		await requestUtils.createUser( {
+			username: editorUsername,
+			email: `${ editorUsername }@example.com`,
+			password: editorPassword,
+			roles: [ 'editor' ],
+		} );
+
+		// Enable AI + Content Summarization.
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// Enable Access Controls via Developer Tools.
+		await visitSettingsPage( admin );
+		await enableAccessControls( page );
+
+		// Scope to the Content Summarization section so we don't accidentally
+		// target another feature's (e.g. Editorial Notes) access-control row.
+		const contentSummarizationSection = page
+			.locator( '.dataforms-layouts-regular__field', {
+				has: page.getByText( 'Content Summarization', { exact: true } ),
+			} )
+			.first();
+		await expect( contentSummarizationSection ).toBeVisible( {
+			timeout: 10000,
+		} );
+
+		const contentSummarizationAccessForm =
+			contentSummarizationSection.locator(
+				'.ai-access-control-mode-fields.ai-feature-settings-form'
+			);
+
+		// The Editor checkbox must NOT be checked at the start of this test.
+		// A previous run may have left it checked, so uncheck it if needed.
+		const editorCheckboxInitial = contentSummarizationAccessForm.getByRole(
+			'checkbox',
+			{ name: 'Editor' }
+		);
+		await expect( editorCheckboxInitial ).toBeVisible( { timeout: 10000 } );
+		if ( await editorCheckboxInitial.isChecked() ) {
+			await editorCheckboxInitial.uncheck();
+			// Save the unchecked state before proceeding.
+			const resetSaveButton = contentSummarizationAccessForm.getByRole(
+				'button',
+				{ name: 'Save' }
+			);
+			await expect( resetSaveButton ).toBeVisible( { timeout: 10000 } );
+			await resetSaveButton.click();
+			await expect( resetSaveButton ).not.toBeVisible( {
+				timeout: 10000,
+			} );
+		}
+		await expect( editorCheckboxInitial ).not.toBeChecked();
+
+		// Create a post.
+		const {
+			RequestUtils: WPRequestUtils,
+		} = require( '@wordpress/e2e-test-utils-playwright' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Access Control Test Post',
+			content:
+				'This is test content for the access control test. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a substantial amount of text before it will allow the user to generate a summary of the post content. Adding more text here.',
+		} );
+		await editor.saveDraft();
+
+		// Get the post URL.
+		const postUrl = page.url();
+
+		// Switch to editor session and verify button is NOT visible.
+		const editorRequestUtils = await WPRequestUtils.setup( {
+			user: { username: editorUsername, password: editorPassword },
+		} );
+		await editorRequestUtils.login();
+		await page
+			.context()
+			.addCookies(
+				( await editorRequestUtils.request.storageState() ).cookies
+			);
+		await editorRequestUtils.request.dispose();
+
+		// Navigate to the post as the editor user.
+		await page.goto( postUrl );
+
+		// If the post-locked modal appears (another session still holds the lock),
+		// click "Take over" so the editor can access the post.
+		const takeOverLink = page.getByRole( 'link', { name: 'Take over' } );
+		if ( await takeOverLink.isVisible() ) {
+			await takeOverLink.click();
+		}
+
+		// Open the document sidebar.
+		const openSidebarButton = page.getByRole( 'button', {
+			name: 'Settings',
+			exact: true,
+		} );
+		if ( await openSidebarButton.isVisible() ) {
+			await openSidebarButton.click();
+		}
+
+		// The Generate Summary button must NOT be visible for the editor.
+		const generateSummaryButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+			exact: true,
+		} );
+		await expect( generateSummaryButton ).not.toBeVisible();
+
+		// Switch back to admin and grant the Editor role access.
+		const adminRequestUtils = await WPRequestUtils.setup( {
+			user: { username: 'admin', password: 'password' },
+		} );
+		await adminRequestUtils.login();
+		await page
+			.context()
+			.addCookies(
+				( await adminRequestUtils.request.storageState() ).cookies
+			);
+		await adminRequestUtils.request.dispose();
+
+		// Navigate to the settings page as admin.
+		await visitSettingsPage( admin );
+
+		// Re-scope to Content Summarization's access-control form after page reload.
+		const contentSummarizationSectionAgain = page
+			.locator( '.dataforms-layouts-regular__field', {
+				has: page.getByText( 'Content Summarization', { exact: true } ),
+			} )
+			.first();
+		await expect( contentSummarizationSectionAgain ).toBeVisible( {
+			timeout: 10000,
+		} );
+
+		const contentSummarizationAccessFormAgain =
+			contentSummarizationSectionAgain.locator(
+				'.ai-access-control-mode-fields.ai-feature-settings-form'
+			);
+
+		// Check the Editor checkbox to grant access.
+		const editorCheckboxAgain =
+			contentSummarizationAccessFormAgain.getByRole( 'checkbox', {
+				name: 'Editor',
+			} );
+		await expect( editorCheckboxAgain ).toBeVisible( { timeout: 10000 } );
+		await editorCheckboxAgain.check();
+		await expect( editorCheckboxAgain ).toBeChecked();
+
+		// The access control form requires an explicit Save button click.
+		const saveButton = contentSummarizationAccessFormAgain.getByRole(
+			'button',
+			{ name: 'Save' }
+		);
+		await expect( saveButton ).toBeVisible( { timeout: 10000 } );
+		await saveButton.click();
+
+		// Wait for the Save button to disappear, confirming the save completed.
+		await expect( saveButton ).not.toBeVisible( { timeout: 10000 } );
+
+		const editorRequestUtils2 = await WPRequestUtils.setup( {
+			user: { username: editorUsername, password: editorPassword },
+		} );
+		await editorRequestUtils2.login();
+		await page
+			.context()
+			.addCookies(
+				( await editorRequestUtils2.request.storageState() ).cookies
+			);
+		await editorRequestUtils2.request.dispose();
+
+		// Navigate back to the post as the editor user.
+		await page.goto( postUrl );
+
+		// Dismiss post-locked modal if present.
+		if ( await takeOverLink.isVisible() ) {
+			await takeOverLink.click();
+		}
+
+		// Open the document sidebar.
+		if ( await openSidebarButton.isVisible() ) {
+			await openSidebarButton.click();
+		}
+
+		// Dismiss the "Welcome to the editor" guide modal if it appears.
+		const welcomeModal = page.getByRole( 'dialog', {
+			name: 'Welcome to the editor',
+		} );
+		if ( await welcomeModal.isVisible() ) {
+			await page.keyboard.press( 'Escape' );
+		}
+
+		// The Generate Summary button must now be visible for the editor.
+		await expect(
+			page.getByRole( 'button', {
+				name: 'Generate Summary',
+				exact: true,
+			} )
+		).toBeVisible( { timeout: 10000 } );
+
+		// Restore admin session.
+		const adminRequestUtils2 = await WPRequestUtils.setup( {
+			user: { username: 'admin', password: 'password' },
+		} );
+		await adminRequestUtils2.login();
+		await page
+			.context()
+			.addCookies(
+				( await adminRequestUtils2.request.storageState() ).cookies
+			);
+		await adminRequestUtils2.request.dispose();
+
+		// Disable Access Controls.
+		await visitSettingsPage( admin );
+		await disableAccessControls( page );
+
+		// Disable the Content Summarization experiment.
+		await disableExperiment( admin, page, 'Content Summarization' );
+
+		// Delete the test user.
+		await requestUtils.deleteAllUsers();
 	} );
 } );
