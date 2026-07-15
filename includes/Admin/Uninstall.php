@@ -125,12 +125,10 @@ final class Uninstall {
 		global $wpdb;
 
 		// Option name prefixes owned by the plugin. `wpai_` covers settings,
-		// feature toggles, versions and connector approvals; `_secret_` covers
-		// the Key Encryption experiment's encrypted secret rows; `ai_experiment_`
+		// feature toggles, versions and connector approvals; `ai_experiment_`
 		// covers options left over from pre-1.0 installs.
 		$like_patterns = array(
 			$wpdb->esc_like( 'wpai_' ) . '%',
-			$wpdb->esc_like( '_secret_' ) . '%',
 			$wpdb->esc_like( 'ai_experiment_' ) . '%',
 		);
 
@@ -143,10 +141,9 @@ final class Uninstall {
 			);
 		}
 
-		// Exact option names that don't share a plugin prefix: the Key Encryption
-		// master key and legacy pre-1.0 options.
+		// Exact option names that don't share a plugin prefix
+		// and legacy pre-1.0 options.
 		$option_names = array(
-			'_secrets_master_key',
 			'ai_experiments_enabled',
 			'wp_ai_client_provider_credentials',
 		);
