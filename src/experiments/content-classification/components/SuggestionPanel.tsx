@@ -65,7 +65,7 @@ export default function SuggestionPanel( {
 	const shouldFocusFirstAcceptButton = useRef( false );
 	const shouldFocusGenerateButton = useRef( false );
 
-	const taxonomyLabel: string = taxonomyObject?.name ?? taxonomy;
+	const taxonomyLabel = taxonomyObject?.name ?? taxonomy;
 
 	const hasSuggestions = suggestions.length > 0;
 
