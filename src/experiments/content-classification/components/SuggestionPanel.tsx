@@ -11,6 +11,7 @@ import { store as coreStore } from '@wordpress/core-data';
 import { __, isRTL, sprintf } from '@wordpress/i18n';
 import { close as closeIcon, update } from '@wordpress/icons';
 import { useInstanceId } from '@wordpress/compose';
+import { useRef } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -46,7 +47,7 @@ export default function SuggestionPanel( {
 		minContentLength,
 	} = useContentClassification( taxonomy );
 
-	const taxonomyObject: any = useSelect(
+	const taxonomyObject = useSelect(
 		( selectFn ) => selectFn( coreStore ).getTaxonomy( taxonomy ),
 		[ taxonomy ]
 	);
@@ -61,9 +62,69 @@ export default function SuggestionPanel( {
 		'suggestion-panel-classification-suggestions'
 	);
 
+	const shouldFocusFirstAcceptButton = useRef( false );
+	const shouldFocusGenerateButton = useRef( false );
+
 	const taxonomyLabel: string = taxonomyObject?.name ?? taxonomy;
 
 	const hasSuggestions = suggestions.length > 0;
+
+	/**
+	 * Focuses the generate button when focus has been requested.
+	 *
+	 * @param node The mounted generate button element.
+	 */
+	const focusGenerateButtonOnMount = ( node: HTMLButtonElement | null ) => {
+		if ( shouldFocusGenerateButton.current && node ) {
+			node.focus();
+			shouldFocusGenerateButton.current = false;
+		}
+	};
+
+	/**
+	 * Focuses the first suggestion's accept button when requested.
+	 *
+	 * @param node The mounted accept button element.
+	 */
+	const focusFirstAcceptButtonOnMount = (
+		node: HTMLButtonElement | null
+	) => {
+		if ( shouldFocusFirstAcceptButton.current && node ) {
+			node.focus();
+			shouldFocusFirstAcceptButton.current = false;
+		}
+	};
+
+	/**
+	 * Generates suggestions and schedules the related focus transitions.
+	 *
+	 * @param focusGenerateButton Whether to focus the generate button first.
+	 */
+	const generateAndMoveFocus = ( focusGenerateButton: boolean ) => {
+		shouldFocusGenerateButton.current = focusGenerateButton;
+		shouldFocusFirstAcceptButton.current = true;
+		handleGenerate();
+	};
+
+	/**
+	 * Dismisses all suggestions and returns focus to the generate button.
+	 */
+	const dismissAllAndMoveFocus = () => {
+		shouldFocusFirstAcceptButton.current = false;
+		shouldFocusGenerateButton.current = true;
+		handleDismissAll();
+	};
+
+	/**
+	 * Schedules focus after removing a suggestion.
+	 *
+	 * @param mayRestoreSuggestion Whether the suggestion may be restored.
+	 */
+	const prepareFocusAfterRemoval = ( mayRestoreSuggestion: boolean ) => {
+		shouldFocusFirstAcceptButton.current =
+			suggestions.length > 1 || mayRestoreSuggestion;
+		shouldFocusGenerateButton.current = suggestions.length === 1;
+	};
 
 	return (
 		<div className="ai-content-classification">
@@ -72,9 +133,10 @@ export default function SuggestionPanel( {
 					accessibleWhenDisabled
 					icon={ update }
 					variant="secondary"
-					onClick={ handleGenerate }
+					onClick={ () => generateAndMoveFocus( false ) }
 					disabled={ isGenerating || ! hasEnoughContent }
 					isBusy={ isGenerating }
+					ref={ focusGenerateButtonOnMount }
 					className="ai-content-classification__generate-button"
 					__next40pxDefaultSize
 					aria-describedby={
@@ -137,7 +199,15 @@ export default function SuggestionPanel( {
 							>
 								<Button
 									className="ai-content-classification__pill-accept"
-									onClick={ () => handleAccept( suggestion ) }
+									onClick={ () => {
+										prepareFocusAfterRemoval( true );
+										handleAccept( suggestion );
+									} }
+									ref={
+										suggestion === suggestions[ 0 ]
+											? focusFirstAcceptButtonOnMount
+											: undefined
+									}
 									label={ sprintf(
 										/* translators: %s: Term name. */
 										__( 'Add "%s"', 'ai' ),
@@ -162,9 +232,10 @@ export default function SuggestionPanel( {
 									className="ai-content-classification__pill-dismiss"
 									icon={ closeIcon }
 									iconSize={ 16 }
-									onClick={ () =>
-										handleDismiss( suggestion )
-									}
+									onClick={ () => {
+										prepareFocusAfterRemoval( false );
+										handleDismiss( suggestion );
+									} }
 									label={ sprintf(
 										/* translators: %s: Term name. */
 										__( 'Dismiss "%s"', 'ai' ),
@@ -180,14 +251,17 @@ export default function SuggestionPanel( {
 						className="ai-content-classification__actions"
 					>
 						<FlexItem>
-							<Button variant="link" onClick={ handleGenerate }>
+							<Button
+								variant="link"
+								onClick={ () => generateAndMoveFocus( true ) }
+							>
 								{ __( 'Suggest again', 'ai' ) }
 							</Button>
 						</FlexItem>
 						<FlexItem>
 							<Button
 								variant="link"
-								onClick={ handleDismissAll }
+								onClick={ dismissAllAndMoveFocus }
 								isDestructive
 							>
 								{ __( 'Dismiss all', 'ai' ) }
