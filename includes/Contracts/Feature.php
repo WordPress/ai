@@ -139,7 +139,7 @@ interface Feature {
 	 *
 	 * @since 0.9.0
 	 *
-	 * @return string The capability type (e.g. 'text_generation', 'image_generation', 'vision').
+	 * @return string The capability type (e.g. 'text_generation', 'image_generation', 'vision', 'speech_generation').
 	 */
 	public function get_capability(): string;
 }
