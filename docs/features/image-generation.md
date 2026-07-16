@@ -43,7 +43,7 @@ All three abilities can be called directly via REST API, making them useful for 
 ### Key Hooks & Entry Points
 
 - `WordPress\AI\Features\Image_Generation\Image_Generation::register()` wires everything once the feature is enabled:
-  - `register_post_meta()` → registers `ai_generated` post meta for attachment post type
+  - `register_post_meta()` → registers `wpai_generated` post meta for attachment post type
   - `wp_abilities_api_init` → registers the `ai/image-generation`, `ai/image-import`, and `ai/image-prompt-generation` abilities
   - `admin_enqueue_scripts` → `enqueue_assets()` loads assets on `post.php` and `post-new.php` screens for post types that support featured images
   - `enqueue_block_editor_assets` → `enqueue_inline_assets()` loads the same assets in the block editor for inline image generation
@@ -73,7 +73,7 @@ All three abilities can be called directly via REST API, making them useful for 
      - Updates the editor store to set the imported image as featured image
      - Shows a loading state on the button and a progress message (with spinner) under the button while generating; clears both on success or error
      - Handles error notifications via the notices store
-   - `AILabel` component displays a label for AI-generated images by checking the `ai_generated` meta
+   - `AILabel` component displays a label for AI-generated images by checking the `wpai_generated` meta
 
 3. **React Side (Inline Image Generation):**
    - `inline.tsx` registers two filters for supported blocks (`core/image`, `core/cover`, `core/media-text`, `core/gallery`):
@@ -103,7 +103,7 @@ All three abilities can be called directly via REST API, making them useful for 
      - Accepts base64 image data and metadata (filename, title, description, alt_text, mime_type, meta)
      - Decodes base64 data and creates temporary file
      - Uses WordPress `media_handle_sideload()` to import into media library
-     - Sets attachment metadata and custom meta (like `ai_generated`)
+     - Sets attachment metadata and custom meta (like `wpai_generated`)
      - Returns attachment data (id, url, filename, title, description, alt_text)
 
 ### Input Schemas
@@ -837,7 +837,7 @@ npm run test:php
 
 ### Image Metadata
 
-- Imported images are marked with `ai_generated` post meta (set to `1`)
+- Imported images are marked with `wpai_generated` post meta (set to `1`)
 - This meta is registered for the `attachment` post type and is available in REST API
 - The `AILabel` component checks this meta to display the AI-generated label
 - Additional custom meta can be passed via the `meta` parameter in the import ability
