@@ -171,7 +171,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		$this->assertNotNull( $attachment );
 		$this->assertSame( 'attachment', $attachment->post_type );
 		$this->assertSame( $post_id, $attachment->post_parent );
-		$this->assertSame( 1, (int) get_post_meta( $status['audio_id'], 'ai_generated', true ) );
+		$this->assertSame( 1, (int) get_post_meta( $status['audio_id'], 'wpai_generated', true ) );
 
 		// Combined file holds every chunk's fake bytes, in order.
 		$file     = get_attached_file( $status['audio_id'] );

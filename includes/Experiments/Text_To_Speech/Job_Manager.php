@@ -371,7 +371,7 @@ class Job_Manager {
 			'post_mime_type' => $mime_type,
 			'post_author'    => (int) $job['user_id'],
 			'meta_input'     => array(
-				'ai_generated' => 1,
+				'wpai_generated' => 1,
 			),
 		);
 
