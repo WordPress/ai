@@ -44,6 +44,9 @@ class V1_3_0 extends Abstract_Upgrade {
 		$this->rename_post_meta_key( 'ai_generated', 'wpai_generated' );
 		$this->rename_post_meta_key( 'ai_generated_summary', 'wpai_generated_summary' );
 		$this->rename_comment_meta_key( 'ai_note', 'wpai_note' );
+
+		// Cache flush to update any stale data.
+		wp_cache_flush();
 	}
 
 	/**
@@ -57,9 +60,26 @@ class V1_3_0 extends Abstract_Upgrade {
 	private function rename_post_meta_key( string $old_key, string $new_key ): void {
 		global $wpdb;
 
-		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// Rename the old key to the new key, but only for posts that don't already
+		// have the new key set. This avoids creating duplicate meta if new data was
+		// written under the new key before this migration ran.
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"UPDATE {$wpdb->postmeta} AS pm
+				LEFT JOIN {$wpdb->postmeta} AS existing
+					ON existing.post_id = pm.post_id AND existing.meta_key = %s
+				SET pm.meta_key = %s
+				WHERE pm.meta_key = %s AND existing.meta_id IS NULL",
+				$new_key,
+				$new_key,
+				$old_key
+			)
+		);
+
+		// Any rows still using the old key are duplicates of a pre-existing new key.
+		// The new value is authoritative, so remove the redundant old rows.
+		$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->postmeta,
-			array( 'meta_key' => $new_key ),
 			array( 'meta_key' => $old_key )
 		);
 	}
@@ -75,9 +95,26 @@ class V1_3_0 extends Abstract_Upgrade {
 	private function rename_comment_meta_key( string $old_key, string $new_key ): void {
 		global $wpdb;
 
-		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// Rename the old key to the new key, but only for comments that don't already
+		// have the new key set. This avoids creating duplicate meta if new data was
+		// written under the new key before this migration ran.
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"UPDATE {$wpdb->commentmeta} AS cm
+				LEFT JOIN {$wpdb->commentmeta} AS existing
+					ON existing.comment_id = cm.comment_id AND existing.meta_key = %s
+				SET cm.meta_key = %s
+				WHERE cm.meta_key = %s AND existing.meta_id IS NULL",
+				$new_key,
+				$new_key,
+				$old_key
+			)
+		);
+
+		// Any rows still using the old key are duplicates of a pre-existing new key.
+		// The new value is authoritative, so remove the redundant old rows.
+		$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->commentmeta,
-			array( 'meta_key' => $new_key ),
 			array( 'meta_key' => $old_key )
 		);
 	}
