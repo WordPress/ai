@@ -1,0 +1,29 @@
+// Front-end player (rendered via the_content filter in PHP).
+.wpai-tts-player {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5em;
+	margin-bottom: 1.5em;
+
+	audio {
+		width: 100%;
+	}
+
+	&__label {
+		font-weight: 600;
+	}
+}
+
+// Editor sidebar panel.
+.ai-text-to-speech-panel {
+	&__preview {
+		width: 100%;
+		margin-bottom: 8px;
+	}
+
+	&__help {
+		margin-top: 8px;
+		color: #757575;
+		font-size: 12px;
+	}
+}

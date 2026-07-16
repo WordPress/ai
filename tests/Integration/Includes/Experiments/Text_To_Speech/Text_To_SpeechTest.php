@@ -116,4 +116,125 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 		$this->assertSame( 'voice', $fields[0]['id'] );
 		$this->assertSame( 'text', $fields[0]['type'] );
 	}
+
+	/**
+	 * Creates a post with a fake audio attachment and TTS meta.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array{0: int, 1: int} The post ID and attachment ID.
+	 */
+	private function create_post_with_audio(): array {
+		$post_id = self::factory()->post->create( array( 'post_content' => 'Hello world content.' ) );
+
+		$attachment_id = self::factory()->attachment->create_object(
+			array(
+				'file'           => 'post-audio-' . $post_id . '.mp3',
+				'post_parent'    => $post_id,
+				'post_mime_type' => 'audio/mpeg',
+			)
+		);
+
+		update_post_meta( $post_id, Job_Manager::META_AUDIO_ID, $attachment_id );
+
+		return array( $post_id, $attachment_id );
+	}
+
+	/**
+	 * Simulates the main loop on the singular view of the given post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 */
+	private function enter_singular_loop( int $post_id ): void {
+		$this->go_to( get_permalink( $post_id ) );
+
+		global $wp_query;
+		$wp_query->the_post();
+	}
+
+	/**
+	 * Test that the player is prepended on the singular view when enabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_player_renders_on_singular_view(): void {
+		list( $post_id ) = $this->create_post_with_audio();
+
+		$this->experiment->register();
+		$this->enter_singular_loop( $post_id );
+
+		$output = $this->experiment->render_audio_player( 'CONTENT' );
+
+		$this->assertStringContainsString( 'wpai-tts-player', $output );
+		$this->assertStringContainsString( '<audio controls', $output );
+		// Player comes before the content.
+		$this->assertLessThan( strpos( $output, 'CONTENT' ), strpos( $output, 'wpai-tts-player' ) );
+	}
+
+	/**
+	 * Test that the player is suppressed when the display toggle is off.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_player_hidden_when_display_toggle_off(): void {
+		list( $post_id ) = $this->create_post_with_audio();
+		update_post_meta( $post_id, Job_Manager::META_DISPLAY, false );
+
+		$this->experiment->register();
+		$this->enter_singular_loop( $post_id );
+
+		$this->assertSame( 'CONTENT', $this->experiment->render_audio_player( 'CONTENT' ) );
+	}
+
+	/**
+	 * Test that the player is not rendered without an audio attachment.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_player_hidden_without_audio(): void {
+		$post_id = self::factory()->post->create();
+
+		$this->experiment->register();
+		$this->enter_singular_loop( $post_id );
+
+		$this->assertSame( 'CONTENT', $this->experiment->render_audio_player( 'CONTENT' ) );
+	}
+
+	/**
+	 * Test that the player is not rendered outside the main loop, so REST
+	 * responses and server-side AI context never contain player markup.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_player_hidden_outside_the_loop(): void {
+		list( $post_id ) = $this->create_post_with_audio();
+
+		$this->experiment->register();
+		// No go_to()/the_post(): not a singular main-query loop.
+
+		$this->assertSame( 'CONTENT', $this->experiment->render_audio_player( 'CONTENT' ) );
+	}
+
+	/**
+	 * Test that the wpai_tts_player_markup filter can replace the markup.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_player_markup_is_filterable(): void {
+		list( $post_id ) = $this->create_post_with_audio();
+
+		add_filter(
+			'wpai_tts_player_markup',
+			static function () {
+				return '<p>CUSTOM PLAYER</p>';
+			}
+		);
+
+		$this->experiment->register();
+		$this->enter_singular_loop( $post_id );
+
+		$this->assertSame( '<p>CUSTOM PLAYER</p>CONTENT', $this->experiment->render_audio_player( 'CONTENT' ) );
+	}
 }
