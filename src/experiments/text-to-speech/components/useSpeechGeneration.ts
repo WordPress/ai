@@ -53,6 +53,7 @@ export function useSpeechGeneration(): {
 	}, [] );
 	const { editPost } = useDispatch( editorStore );
 	const [ status, setStatus ] = useState< TtsStatus | null >( null );
+	const [ isStarting, setIsStarting ] = useState< boolean >( false );
 
 	const fetchStatus = useCallback( async (): Promise< TtsStatus | null > => {
 		if ( ! postId ) {
@@ -76,7 +77,9 @@ export function useSpeechGeneration(): {
 	}, [ fetchStatus ] );
 
 	const isGenerating =
-		status?.status === 'pending' || status?.status === 'processing';
+		isStarting ||
+		status?.status === 'pending' ||
+		status?.status === 'processing';
 
 	// Poll while a background job is running. Polling also keeps WP-Cron
 	// spawning on low-traffic sites.
@@ -104,6 +107,7 @@ export function useSpeechGeneration(): {
 			return;
 		}
 
+		setIsStarting( true );
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
@@ -118,6 +122,8 @@ export function useSpeechGeneration(): {
 					__( 'Failed to start audio generation.', 'ai' ),
 				{ id: NOTICE_ID, isDismissible: true }
 			);
+		} finally {
+			setIsStarting( false );
 		}
 	};
 
