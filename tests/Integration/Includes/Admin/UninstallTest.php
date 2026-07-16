@@ -63,6 +63,7 @@ class UninstallTest extends WP_UnitTestCase {
 		add_option( 'wpai_test_foo', 'bar' );
 
 		// Options without the plugin prefix that must still be removed.
+		add_option( '_secrets_master_key', 'master' );
 		add_option( 'ai_experiment_summarization_enabled', true );
 		add_option( 'ai_experiments_enabled', true );
 		add_option( 'wp_ai_client_provider_credentials', 'creds' );
@@ -71,6 +72,7 @@ class UninstallTest extends WP_UnitTestCase {
 		// over-matching the LIKE patterns).
 		add_option( 'not_a_wpai_option', 'keep-me' );
 		add_option( 'ai_experimental', 'keep-me' );
+		add_option( '_secretsauce', 'keep-me' );
 
 		set_transient( 'wpai_test_transient', 'value', HOUR_IN_SECONDS );
 
@@ -116,10 +118,12 @@ class UninstallTest extends WP_UnitTestCase {
 
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_test_foo' );
+		delete_option( '_secrets_master_key' );
 		delete_option( 'ai_experiment_summarization_enabled' );
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		delete_option( 'not_a_wpai_option' );
+		delete_option( '_secretsauce' );
 		delete_option( 'ai_experimental' );
 		delete_transient( 'wpai_test_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
@@ -162,6 +166,7 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertFalse( $this->table_exists(), 'Table should be dropped.' );
 		$this->assertFalse( get_option( 'wpai_features_enabled' ), 'wpai_ options should be deleted.' );
 		$this->assertFalse( get_option( 'wpai_test_foo' ), 'wpai_ options should be deleted.' );
+		$this->assertFalse( get_option( '_secrets_master_key' ), 'Secrets master key should be deleted.' );
 		$this->assertFalse( get_option( 'ai_experiment_summarization_enabled' ), 'Legacy ai_experiment_ options should be deleted.' );
 		$this->assertFalse( get_option( 'ai_experiments_enabled' ), 'Legacy ai_experiments_enabled should be deleted.' );
 		$this->assertFalse( get_option( 'wp_ai_client_provider_credentials' ), 'Legacy credentials option should be deleted.' );
@@ -172,6 +177,11 @@ class UninstallTest extends WP_UnitTestCase {
 			'keep-me',
 			get_option( 'not_a_wpai_option' ),
 			'Non-plugin options should be preserved.'
+		);
+		$this->assertSame(
+			'keep-me',
+			get_option( '_secretsauce' ),
+			'Options that only resemble the _secret_ prefix should be preserved.'
 		);
 		$this->assertSame(
 			'keep-me',
@@ -210,6 +220,7 @@ class UninstallTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $this->table_exists(), 'Table should be preserved when filtered out.' );
 		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'Options should be preserved when filtered out.' );
+		$this->assertSame( 'master', get_option( '_secrets_master_key' ), 'Secrets master key should be preserved when filtered out.' );
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 

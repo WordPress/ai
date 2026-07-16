@@ -97,6 +97,9 @@ final class Uninstall {
 		self::delete_meta();
 		self::delete_transients();
 		self::clear_scheduled_events();
+
+		// Flush cache to update the stale data if any.
+		wp_cache_flush();
 	}
 
 	/**
@@ -141,9 +144,10 @@ final class Uninstall {
 			);
 		}
 
-		// Exact option names that don't share a plugin prefix
-		// and legacy pre-1.0 options.
+		// Exact option names that don't share a plugin prefix: the Key Encryption
+		// master key and legacy pre-1.0 options.
 		$option_names = array(
+			'_secrets_master_key',
 			'ai_experiments_enabled',
 			'wp_ai_client_provider_credentials',
 		);
