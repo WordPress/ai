@@ -22,6 +22,8 @@ use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 use WordPress\AI\Experiments\Summarization\Summarization;
+use function WordPress\AI\get_preferred_speech_models;
+use function WordPress\AI\has_text_to_speech_support;
 use function WordPress\AI\post_type_supports_bulk_action;
 
 /**
@@ -1884,5 +1886,55 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
 		$this->assertFalse( post_type_supports_bulk_action( 'does_not_exist', Summarization::get_id() ) );
+	}
+
+	/**
+	 * Test that get_preferred_speech_models() returns provider/model tuples.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_preferred_speech_models_returns_tuples(): void {
+		$models = get_preferred_speech_models();
+
+		$this->assertNotEmpty( $models );
+
+		foreach ( $models as $model ) {
+			$this->assertIsArray( $model );
+			$this->assertCount( 2, $model );
+			$this->assertIsString( $model[0] );
+			$this->assertIsString( $model[1] );
+		}
+	}
+
+	/**
+	 * Test that the wpai_preferred_speech_models filter overrides the list.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_preferred_speech_models_is_filterable(): void {
+		$override = array( array( 'acme', 'acme-tts-1' ) );
+
+		add_filter(
+			'wpai_preferred_speech_models',
+			static function () use ( $override ) {
+				return $override;
+			}
+		);
+
+		$this->assertSame( $override, get_preferred_speech_models() );
+	}
+
+	/**
+	 * Test that the wpai_has_text_to_speech_support filter can force support on.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_text_to_speech_support_is_filterable(): void {
+		add_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+		$this->assertTrue( has_text_to_speech_support( true ) );
+
+		remove_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+		add_filter( 'wpai_has_text_to_speech_support', '__return_false' );
+		$this->assertFalse( has_text_to_speech_support( true ) );
 	}
 }
