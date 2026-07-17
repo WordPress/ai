@@ -131,9 +131,11 @@ class Abilities_Explorer extends Abstract_Feature {
 
 			$enabled[] = $ability;
 
-			if ( $ability->requires_core_object_exposure() ) {
-				$needs_exposure = true;
+			if ( ! $ability->requires_core_object_exposure() ) {
+				continue;
 			}
+
+			$needs_exposure = true;
 		}
 
 		/*
