@@ -11,11 +11,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI;
 
-use WordPress\AI\Abilities\Content\Content as Content_Ability;
-use WordPress\AI\Abilities\Settings\Settings as Settings_Ability;
-use WordPress\AI\Abilities\Show_In_Abilities;
-use WordPress\AI\Abilities\Users\Users as Users_Ability;
-use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
@@ -132,16 +127,6 @@ final class Main {
 
 				( new Dashboard_Widgets( $registry ) )->init();
 			}
-
-			// Register our post-related WordPress Abilities.
-			( new Posts() )->register();
-
-			// Expose curated core objects to the Abilities API, then register the
-			// core abilities (overriding any core-provided copies).
-			( new Show_In_Abilities() )->register();
-			( new Settings_Ability() )->init();
-			( new Users_Ability() )->init();
-			( new Content_Ability() )->init();
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,

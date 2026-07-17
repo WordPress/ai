@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use Throwable;
+use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
@@ -124,56 +125,52 @@ function count_characters_excluding_spaces( string $text ): int {
 function get_post_context( int $post_id ): array {
 	$context = array();
 
-	// Get the post details using the get-post-details ability.
-	$details_ability = wp_get_ability( 'ai/get-post-details' );
-	if ( $details_ability ) {
-		$details = $details_ability->execute( array( 'post_id' => $post_id ) );
+	// Get the post details directly (not via the ability) so the context is
+	// available even when the get-post-details ability is gated off.
+	$details = Posts::get_post_details( $post_id );
 
-		if ( is_array( $details ) ) {
-			$context = array_merge( $context, $details );
+	if ( is_array( $details ) ) {
+		$context = array_merge( $context, $details );
 
-			if ( isset( $context['content'] ) ) {
-				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
-				$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
-			}
-
-			if ( isset( $context['type'] ) ) {
-				$context['content_type'] = $context['type'];
-				unset( $context['type'] );
-			}
-
-			// Remove any empty context values.
-			$context = array_filter( $context );
+		if ( isset( $context['content'] ) ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+			$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
 		}
+
+		if ( isset( $context['type'] ) ) {
+			$context['content_type'] = $context['type'];
+			unset( $context['type'] );
+		}
+
+		// Remove any empty context values.
+		$context = array_filter( $context );
 	}
 
-	// Get the post terms using the get-terms ability.
-	$terms_ability = wp_get_ability( 'ai/get-post-terms' );
-	if ( $terms_ability ) {
-		$terms = $terms_ability->execute( array( 'post_id' => $post_id ) );
+	// Get the post terms directly (not via the ability) so the context is
+	// available even when the get-post-terms ability is gated off.
+	$terms = Posts::get_post_terms( $post_id );
 
-		if ( $terms && ! is_wp_error( $terms ) ) {
-			$grouped_terms = array();
+	if ( $terms && ! is_wp_error( $terms ) ) {
+		$grouped_terms = array();
 
-			foreach ( $terms as $term ) {
-				$taxonomy = $term['taxonomy'] ?? '';
-				$name     = $term['name'] ?? '';
+		foreach ( $terms as $term ) {
+			$taxonomy = $term['taxonomy'] ?? '';
+			$name     = $term['name'] ?? '';
 
-				if ( '' === $taxonomy || '' === $name ) {
-					continue;
-				}
-
-				$grouped_terms[ $taxonomy ][] = $name;
+			if ( '' === $taxonomy || '' === $name ) {
+				continue;
 			}
 
-			$context = array_merge(
-				$context,
-				array_map(
-					static fn( array $term_names ): string => implode( ', ', $term_names ),
-					$grouped_terms
-				)
-			);
+			$grouped_terms[ $taxonomy ][] = $name;
 		}
+
+		$context = array_merge(
+			$context,
+			array_map(
+				static fn( array $term_names ): string => implode( ', ', $term_names ),
+				$grouped_terms
+			)
+		);
 	}
 
 	return $context;

@@ -1,0 +1,48 @@
+<?php
+/**
+ * Gated ability: read users.
+ *
+ * @package WordPress\AI\Abilities\Gated
+ */
+
+declare( strict_types=1 );
+
+namespace WordPress\AI\Abilities\Gated;
+
+use WordPress\AI\Abilities\Users\Users as Users_Ability;
+use WordPress\AI\Abstracts\Abstract_Gated_Ability;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Gates the core/read-users ability.
+ *
+ * @since x.x.x
+ */
+final class Read_Users extends Abstract_Gated_Ability {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_key(): string {
+		return 'read_users';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => __( 'Read users', 'ai' ),
+			'description' => __( 'Exposes the core/read-users ability.', 'ai' ),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register(): void {
+		( new Users_Ability() )->init();
+	}
+}

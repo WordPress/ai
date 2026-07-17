@@ -121,3 +121,12 @@ body.settings_page_ai-wp-admin {
 		}
 	}
 }
+
+/**
+ * Abilities Explorer: indent the per-ability toggles so they read as children
+ * nested under the experiment's master toggle.
+ */
+.ai-abilities-explorer-toggle__abilities {
+	margin-top: var(--wpds-dimension-padding-lg);
+	padding-inline-start: 40px;
+}
