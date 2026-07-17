@@ -16,6 +16,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation;
 
+use function WordPress\AI\has_image_generation_support;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -226,8 +228,9 @@ class Image_Generation extends Abstract_Feature {
 			'image_generation',
 			'ImageGenerationData',
 			array(
-				'enabled'        => $this->is_enabled(),
-				'altTextEnabled' => ( new Alt_Text_Generation() )->is_enabled(),
+				'enabled'                   => $this->is_enabled(),
+				'altTextEnabled'            => ( new Alt_Text_Generation() )->is_enabled(),
+				'hasImageGenerationSupport' => has_image_generation_support(),
 			)
 		);
 	}

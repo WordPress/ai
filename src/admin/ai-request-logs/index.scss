@@ -10,6 +10,11 @@
 	.ai-request-logs__page {
 		background-color: #f0f0f1;
 	}
+
+	.ai-request-logs__page > div:first-child {
+		z-index: 2;
+		top: var(--wp-admin--admin-bar--height, 0px);
+	}
 }
 
 
@@ -85,6 +90,10 @@
 	border-radius: 4px;
 	background: #fff;
 	overflow: hidden;
+
+	.ai-request-logs__refresh-button.components-button {
+		order: -1;
+	}
 }
 
 .ai-request-logs__cell--time {

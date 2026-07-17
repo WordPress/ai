@@ -15,6 +15,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -146,9 +148,10 @@ class Meta_Description extends Abstract_Feature {
 			'meta_description',
 			'MetaDescriptionData',
 			array(
-				'enabled'   => $this->is_enabled(),
-				'metaKey'   => SEO_Integration::get_meta_key( $seo_plugin ),
-				'seoPlugin' => $seo_plugin,
+				'enabled'          => $this->is_enabled(),
+				'metaKey'          => SEO_Integration::get_meta_key( $seo_plugin ),
+				'seoPlugin'        => $seo_plugin,
+				'minContentLength' => get_min_content_length( 'meta-description', 250 ),
 			)
 		);
 	}

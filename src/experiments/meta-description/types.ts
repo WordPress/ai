@@ -34,4 +34,5 @@ export interface MetaDescriptionData {
 	enabled: boolean;
 	metaKey: string;
 	seoPlugin: string | null;
+	minContentLength: number;
 }

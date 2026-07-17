@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Popover } from '@wordpress/components';
+import { Button, Popover } from '@wordpress/components';
 import {
 	DataViews,
 	type View,
@@ -12,6 +12,7 @@ import {
 import { dateI18n, getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 import { useCallback, useMemo, useState } from '@wordpress/element';
+import { rotateRight } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -31,6 +32,7 @@ interface LogsTableProps {
 	setQuery: React.Dispatch< React.SetStateAction< LogsQuery > >;
 	providerMetadata: Record< string, ProviderMetadata >;
 	connectorsUrl: string;
+	onRefresh: () => void;
 }
 
 /**
@@ -400,6 +402,7 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 	setQuery,
 	providerMetadata,
 	connectorsUrl,
+	onRefresh,
 } ) => {
 	const [ viewConfig, setViewConfig ] = useState< ViewConfig >( () => ( {
 		filters: buildFiltersFromQuery( query ),
@@ -688,6 +691,17 @@ const LogsTable: React.FC< LogsTableProps > = ( {
 				view={ view }
 				onChangeView={ onChangeView }
 				actions={ actions }
+				header={
+					<Button
+						className="ai-request-logs__refresh-button"
+						icon={ rotateRight }
+						label={ __( 'Refresh', 'ai' ) }
+						showTooltip
+						size="compact"
+						onClick={ onRefresh }
+						disabled={ loading }
+					/>
+				}
 				paginationInfo={ paginationInfo }
 				getItemId={ ( item: LogEntry ) => item.id }
 				isLoading={ loading }

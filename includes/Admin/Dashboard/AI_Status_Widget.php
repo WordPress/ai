@@ -160,9 +160,11 @@ class AI_Status_Widget {
 						<?php foreach ( $stable_features as $feature ) : ?>
 							<li class="ai-dashboard-status__list-item">
 								<?php if ( $feature->is_enabled() ) : ?>
-									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success"></span>
+									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Enabled:', 'ai' ); ?></span>
 								<?php else : ?>
-									<span class="dashicons dashicons-no ai-dashboard-status__icon--error"></span>
+									<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Disabled:', 'ai' ); ?></span>
 								<?php endif; ?>
 								<?php echo esc_html( $feature->get_label() ); ?>
 							</li>
@@ -179,9 +181,11 @@ class AI_Status_Widget {
 						<?php foreach ( $experimental_features as $feature ) : ?>
 							<li class="ai-dashboard-status__list-item">
 								<?php if ( $feature->is_enabled() ) : ?>
-									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success"></span>
+									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Enabled:', 'ai' ); ?></span>
 								<?php else : ?>
-									<span class="dashicons dashicons-no ai-dashboard-status__icon--error"></span>
+									<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Disabled:', 'ai' ); ?></span>
 								<?php endif; ?>
 								<?php echo esc_html( $feature->get_label() ); ?>
 							</li>

@@ -206,53 +206,50 @@ class Posts {
 					'required'   => array( 'post_id' ),
 				),
 				'output_schema'       => array(
-					'type'        => 'object',
+					'type'        => 'array',
 					'description' => esc_html__( 'An array of WP_Term objects assigned to the post.', 'ai' ),
-					'properties'  => array(
-						'type'  => 'array',
-						'items' => array(
-							'type'  => 'array',
-							'items' => array(
-								'term_id'          => array(
-									'type'        => 'integer',
-									'description' => esc_html__( 'The ID of the term.', 'ai' ),
-								),
-								'name'             => array(
-									'type'        => 'string',
-									'description' => esc_html__( 'The name of the term.', 'ai' ),
-								),
-								'slug'             => array(
-									'type'        => 'string',
-									'description' => esc_html__( 'The slug of the term.', 'ai' ),
-								),
-								'term_group'       => array(
-									'type'        => 'integer',
-									'description' => esc_html__( 'The group ID of the term.', 'ai' ),
-								),
-								'term_taxonomy_id' => array(
-									'type'        => 'integer',
-									'description' => esc_html__( 'The taxonomy ID of the term.', 'ai' ),
-								),
-								'taxonomy'         => array(
-									'type'        => 'string',
-									'description' => esc_html__( 'The taxonomy name of the term.', 'ai' ),
-								),
-								'description'      => array(
-									'type'        => 'string',
-									'description' => esc_html__( 'The description of the term.', 'ai' ),
-								),
-								'parent'           => array(
-									'type'        => 'integer',
-									'description' => esc_html__( 'The parent ID of the term.', 'ai' ),
-								),
-								'count'            => array(
-									'type'        => 'integer',
-									'description' => esc_html__( 'How many times the term is used.', 'ai' ),
-								),
-								'filter'           => array(
-									'type'        => 'string',
-									'description' => esc_html__( 'How the term should be filtered.', 'ai' ),
-								),
+					'items'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'term_id'          => array(
+								'type'        => 'integer',
+								'description' => esc_html__( 'The ID of the term.', 'ai' ),
+							),
+							'name'             => array(
+								'type'        => 'string',
+								'description' => esc_html__( 'The name of the term.', 'ai' ),
+							),
+							'slug'             => array(
+								'type'        => 'string',
+								'description' => esc_html__( 'The slug of the term.', 'ai' ),
+							),
+							'term_group'       => array(
+								'type'        => 'integer',
+								'description' => esc_html__( 'The group ID of the term.', 'ai' ),
+							),
+							'term_taxonomy_id' => array(
+								'type'        => 'integer',
+								'description' => esc_html__( 'The taxonomy ID of the term.', 'ai' ),
+							),
+							'taxonomy'         => array(
+								'type'        => 'string',
+								'description' => esc_html__( 'The taxonomy name of the term.', 'ai' ),
+							),
+							'description'      => array(
+								'type'        => 'string',
+								'description' => esc_html__( 'The description of the term.', 'ai' ),
+							),
+							'parent'           => array(
+								'type'        => 'integer',
+								'description' => esc_html__( 'The parent ID of the term.', 'ai' ),
+							),
+							'count'            => array(
+								'type'        => 'integer',
+								'description' => esc_html__( 'How many times the term is used.', 'ai' ),
+							),
+							'filter'           => array(
+								'type'        => 'string',
+								'description' => esc_html__( 'How the term should be filtered.', 'ai' ),
 							),
 						),
 					),
@@ -319,7 +316,16 @@ class Posts {
 					 */
 					$terms = apply_filters( 'wpai_get_post_terms', $terms, $post_id, $allowed_taxonomies );
 
-					return $terms;
+					return array_map(
+						static function ( $term ): array {
+							if ( $term instanceof \WP_Term ) {
+								return $term->to_array();
+							}
+
+							return (array) $term;
+						},
+						$terms
+					);
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(

@@ -52,7 +52,7 @@ class Test_Alt_Text_Generation_Experiment extends Abstract_Feature {
 /**
  * Testable alt text generation ability.
  *
- * @since x.x.x
+ * @since 1.0.2
  */
 class Testable_Alt_Text_Generation extends Alt_Text_Generation {
 	/**
@@ -61,6 +61,13 @@ class Testable_Alt_Text_Generation extends Alt_Text_Generation {
 	 * @var string
 	 */
 	private string $generated_alt_text;
+
+	/**
+	 * Last image reference arguments.
+	 *
+	 * @var array<string, mixed>
+	 */
+	private array $last_image_reference_args = array();
 
 	/**
 	 * Constructor.
@@ -86,6 +93,8 @@ class Testable_Alt_Text_Generation extends Alt_Text_Generation {
 	 * @return array{reference: string} Mock image reference.
 	 */
 	protected function get_image_reference( array $args ) {
+		$this->last_image_reference_args = $args;
+
 		return array( 'reference' => 'data:image/png;base64,dGVzdA==' );
 	}
 
@@ -99,6 +108,15 @@ class Testable_Alt_Text_Generation extends Alt_Text_Generation {
 	 */
 	protected function generate_alt_text( array $image_reference, string $context = '', string $image_meta = '' ) {
 		return $this->generated_alt_text;
+	}
+
+	/**
+	 * Gets the last image reference arguments.
+	 *
+	 * @return array<string, mixed> Last image reference arguments.
+	 */
+	public function get_last_image_reference_args(): array {
+		return $this->last_image_reference_args;
 	}
 }
 
@@ -206,7 +224,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'absint', $schema['properties']['attachment_id']['sanitize_callback'], 'attachment_id should use absint' );
 
 		$this->assertEquals( 'string', $schema['properties']['image_url']['type'], 'image_url should be string type' );
-		$this->assertIsArray( $schema['properties']['image_url']['sanitize_callback'], 'image_url should use callback array' );
+		$this->assertArrayNotHasKey( 'sanitize_callback', $schema['properties']['image_url'], 'image_url should not expose an object-bound sanitize callback.' );
 
 		$this->assertEquals( 'string', $schema['properties']['context']['type'], 'context should be string type' );
 		$this->assertEquals( 'sanitize_textarea_field', $schema['properties']['context']['sanitize_callback'], 'context should use sanitize_textarea_field' );
@@ -321,7 +339,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns false for non-decorative generated alt text.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_execute_callback_returns_decorative_flag_false_for_generated_alt_text() {
 		$ability    = new Testable_Alt_Text_Generation( 'A person writing in a notebook' );
@@ -340,6 +358,29 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$this->assertSame( 'A person writing in a notebook', $result['alt_text'], 'Alt text should be returned.' );
 		$this->assertArrayHasKey( 'is_decorative', $result, 'Result should include is_decorative.' );
 		$this->assertFalse( $result['is_decorative'], 'Non-decorative generated alt text should return is_decorative as false.' );
+	}
+
+	/**
+	 * Test that execute_callback() sanitizes image_url before resolving the image reference.
+	 *
+	 * @since 1.0.2
+	 */
+	public function test_execute_callback_sanitizes_image_url_before_resolving_reference(): void {
+		$ability    = new Testable_Alt_Text_Generation( 'A person writing in a notebook' );
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$method->invoke(
+			$ability,
+			array(
+				'image_url' => ' data:image/png;base64,dGVzdA== ',
+			)
+		);
+
+		$args = $ability->get_last_image_reference_args();
+
+		$this->assertSame( 'data:image/png;base64,dGVzdA==', $args['image_url'], 'image_url should be sanitized before image resolution.' );
 	}
 
 	/**

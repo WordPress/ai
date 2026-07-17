@@ -19,6 +19,7 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 
+use function WordPress\AI\get_default_request_timeout;
 use function WordPress\AI\get_preferred_image_models;
 
 /**
@@ -247,7 +248,9 @@ class Generate_Image extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
 		$request_options = new RequestOptions();
-		$request_options->setTimeout( 90 );
+		$request_options->setTimeout(
+			get_default_request_timeout( Image_Generation_Feature::get_id(), 90 )
+		);
 
 		// Inject guidelines into the prompt. Unlike the other features, we don't
 		// use system instructions here because most image gen models don't support them.
