@@ -84,7 +84,7 @@ function useEditorialNotesAvailability(): {
 } {
 	const content =
 		useSelect( ( selectStore ) => {
-			return ( selectStore( editorStore ) as any ).getEditedPostContent();
+			return selectStore( editorStore ).getEditedPostContent();
 		}, [] ) ?? '';
 	const minContentLength: number =
 		( window as any ).aiEditorialNotesData?.minContentLength ??
@@ -220,14 +220,10 @@ export function useEditorialNotes(): {
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
-			const postId = (
-				select( editorStore ) as any
-			 ).getCurrentPostId() as number;
+			const postId = select( editorStore ).getCurrentPostId() as number;
 
 			// Get all blocks and flatten the tree.
-			const allBlocks = (
-				select( blockEditorStore ) as any
-			 ).getBlocks() as Block[];
+			const allBlocks = select( blockEditorStore ).getBlocks();
 			const flatBlocks = flattenBlocks( allBlocks );
 
 			// Filter to reviewable block types.
@@ -294,9 +290,9 @@ export function useEditorialNotes(): {
 			setLastRunCount( totalSuggestions );
 
 			if ( totalSuggestions > 0 ) {
-				(
-					dispatch( coreStore ) as any
-				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+				dispatch( coreStore ).invalidateResolutionForStoreSelector(
+					'getEntityRecords'
+				);
 
 				dispatch( noticesStore ).createSuccessNotice(
 					sprintf(
@@ -364,17 +360,13 @@ export function useEditorialBlock(): {
 		dispatch( noticesStore ).removeNotice( 'ai_editorial_block_error' );
 
 		try {
-			const block = ( select( blockEditorStore ) as any ).getBlock(
-				clientId
-			) as Block | null;
+			const block = select( blockEditorStore ).getBlock( clientId );
 
 			if ( ! block ) {
 				return;
 			}
 
-			const postId = (
-				select( editorStore ) as any
-			 ).getCurrentPostId() as number;
+			const postId = select( editorStore ).getCurrentPostId() as number;
 
 			// Fetch fresh note state for this invocation.
 			const [ pendingNotes, approvedNotes ] = await Promise.all( [
@@ -400,9 +392,9 @@ export function useEditorialBlock(): {
 			);
 
 			if ( suggestionCount > 0 ) {
-				(
-					dispatch( coreStore ) as any
-				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+				dispatch( coreStore ).invalidateResolutionForStoreSelector(
+					'getEntityRecords'
+				);
 				( dispatch( editPostStore ) as any ).openGeneralSidebar?.(
 					NOTES_SIDEBAR_ID
 				);
@@ -470,7 +462,7 @@ async function createNote(
 		.map( ( s ) => `[${ s.review_type.toUpperCase() }] ${ s.text }` )
 		.join( '\n\n' );
 
-	const note = ( await ( dispatch( coreStore ) as any ).saveEntityRecord(
+	const note = ( await dispatch( coreStore ).saveEntityRecord(
 		'root',
 		'comment',
 		{
@@ -490,11 +482,8 @@ async function createNote(
 				block.clientId
 			)?.metadata ?? {};
 
-		( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
-			block.clientId,
-			{
-				metadata: { ...existingMeta, noteId: note.id },
-			}
-		);
+		dispatch( blockEditorStore ).updateBlockAttributes( block.clientId, {
+			metadata: { ...existingMeta, noteId: note.id },
+		} );
 	}
 }
