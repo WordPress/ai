@@ -187,6 +187,35 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
+	 * Gets sorted unique providers derived from the already-fetched ability list.
+	 *
+	 * Known origins (Core, Plugin, Theme) come first in their canonical order;
+	 * any custom providers (set via an ability's `meta['provider']`) follow
+	 * alphabetically.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Known provider origins followed by custom providers sorted alphabetically.
+	 */
+	public function get_unique_providers(): array {
+		$known  = array( 'Core', 'Plugin', 'Theme' );
+		$custom = array();
+
+		foreach ( $this->all_abilities as $ability ) {
+			if ( empty( $ability['provider'] ) || in_array( $ability['provider'], $known, true ) ) {
+				continue;
+			}
+
+			$custom[] = $ability['provider'];
+		}
+
+		$custom = array_unique( $custom );
+		sort( $custom );
+
+		return array_merge( $known, $custom );
+	}
+
+	/**
 	 * {@inheritDoc}
 	 *
 	 * @param array<string,mixed> $item Item data.
@@ -294,9 +323,9 @@ class Ability_Table extends \WP_List_Table {
 			<label for="filter-by-provider" class="screen-reader-text"><?php esc_html_e( 'Filter by provider', 'ai' ); ?></label>
 			<select name="provider" id="filter-by-provider">
 				<option value="all" <?php selected( $provider_filter, 'all' ); ?>><?php esc_html_e( 'All Providers', 'ai' ); ?></option>
-				<option value="Core" <?php selected( $provider_filter, 'Core' ); ?>><?php esc_html_e( 'Core', 'ai' ); ?></option>
-				<option value="Plugin" <?php selected( $provider_filter, 'Plugin' ); ?>><?php esc_html_e( 'Plugins', 'ai' ); ?></option>
-				<option value="Theme" <?php selected( $provider_filter, 'Theme' ); ?>><?php esc_html_e( 'Theme', 'ai' ); ?></option>
+				<?php foreach ( $this->get_unique_providers() as $provider ) : ?>
+					<option value="<?php echo esc_attr( $provider ); ?>" <?php selected( $provider_filter, $provider ); ?>><?php echo esc_html( Ability_Handler::get_provider_label( $provider ) ); ?></option>
+				<?php endforeach; ?>
 			</select>
 
 			<label for="filter-by-category" class="screen-reader-text"><?php esc_html_e( 'Filter by category', 'ai' ); ?></label>
