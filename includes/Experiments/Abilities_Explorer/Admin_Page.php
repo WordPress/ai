@@ -628,7 +628,7 @@ class Admin_Page {
 				'content' =>
 					'<p>' . esc_html__( 'Abilities are a standardized way for WordPress core, plugins, and themes to expose discrete units of functionality. Each ability has a name, optional input/output schemas, and can be invoked programmatically.', 'ai' ) . '</p>' .
 					'<p>' . esc_html__( 'The Abilities Explorer lets you browse every registered ability, inspect its schemas, and test it with custom input right from the admin.', 'ai' ) . '</p>',
-				)
+			)
 		);
 
 		$provider_tags = array( 'strong' => array() );
