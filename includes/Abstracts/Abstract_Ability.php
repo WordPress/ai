@@ -1,12 +1,11 @@
 <?php
-
 /**
  * Abstract Ability base class.
  *
  * @package WordPress\AI\Abstracts
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace WordPress\AI\Abstracts;
 
@@ -26,7 +25,6 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
  * @since 0.1.0
  */
 abstract class Abstract_Ability extends WP_Ability {
-
 
 	/**
 	 * Constructor.
@@ -377,6 +375,14 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return string The filtered prompt string.
 	 */
 	protected function filter_prompt( string $prompt, ...$filter_args ): string {
+		/**
+		 * Filters the assembled user prompt for the ability.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $prompt The assembled prompt string.
+		 * @param mixed  ...$filter_args Additional arguments to pass to the filter.
+		 */
 		return (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $prompt, ...$filter_args );
 	}
 
