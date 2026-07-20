@@ -122,6 +122,7 @@ class Suggest_Reply extends Abstract_Ability {
 
 		// Build the prompt context.
 		$context = $this->build_context( $comment, $post_title, $post_excerpt, $tone );
+		$context = $this->filter_prompt( $context, $comment, $post_title, $post_excerpt, $tone );
 
 		// Generate the reply.
 		$reply = $this->generate_reply( $context );
@@ -230,7 +231,7 @@ class Suggest_Reply extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $context )
 			->using_system_instruction( $this->get_system_instruction() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Suggest_Reply_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Suggest_Reply_Experiment::class, array(), $context );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
