@@ -228,17 +228,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function generate_alt_text( array $image_reference, string $context = '', string $image_meta = '' ) {
 		$prompt = $this->build_prompt( $context, $image_meta );
 
-		/**
-		 * Filters the assembled user prompt for alt text generation.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string $prompt     The assembled prompt string.
-		 * @param string $context    Optional context about the image.
-		 * @param string $image_meta Optional metadata about how the image block is used.
-		 */
-		$prompt = $this->filter_prompt( $prompt, $context, $image_meta );
-
+		$prompt         = $this->filter_prompt( $prompt, $context, $image_meta );
 		$prompt_builder = $this->get_prompt_builder( $prompt, $image_reference['reference'] );
 
 		if ( is_wp_error( $prompt_builder ) ) {

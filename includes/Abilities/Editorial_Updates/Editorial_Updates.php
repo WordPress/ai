@@ -217,17 +217,7 @@ class Editorial_Updates extends Abstract_Ability {
 	) {
 		$prompt = $this->create_prompt( $block_type, $block_content, $notes, $context );
 
-		/**
-		 * Filters the assembled user prompt for editorial updates (block refinement).
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string       $prompt     The assembled prompt string.
-		 * @param string       $block_type The block type identifier.
-		 * @param list<string> $notes      The editorial feedback notes being applied.
-		 */
-		$prompt = $this->filter_prompt( $prompt, $block_type, $notes );
-
+		$prompt         = $this->filter_prompt( $prompt, $block_type, $notes );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {

@@ -76,26 +76,3 @@ The builder filter runs after the ability applies its default model preference, 
 Always return the `WP_AI_Client_Prompt_Builder` instance. If a callback returns another value, the plugin ignores that value and continues with the original builder.
 
 Some abilities configure structured JSON responses or request options before the filter runs. Extend those builders instead of replacing them so required schemas, file attachments, and timeouts are preserved.
-
-## Hook Reference
-
-| Ability | Slug | Prompt context arguments | Builder context arguments |
-| --- | --- | --- | --- |
-| Title Generation | `title_generation` | `$context` | `$prompt` |
-| Excerpt Generation | `excerpt_generation` | `$context` | `$prompt` |
-| Summarization | `summarization` | `$length`, `$context` | `$prompt`, `$length` |
-| Content Resizing | `content_resizing` | `$action` | `$prompt`, `$action` |
-| Meta Description | `meta_description` | `$content`, `$title` | `$prompt` |
-| Editorial Updates | `editorial_updates` | `$block_type`, `$notes` | `$prompt` |
-| Editorial Notes | `editorial_notes` | `$block_type`, `$review_types` | `$prompt`, `$block_type` |
-| Alt Text Generation | `alt_text_generation` | `$context`, `$image_meta` | `$prompt`, `$reference` |
-| Image Prompt Generation | `image_prompt_generation` | `$context`, `$style` | `$prompt` |
-| Image Generation | `image_generation` | `$reference_image` | `$prompt`, `$reference_image` |
-| Comment Analysis | `comment_analysis` | `$content`, `$author` | `$prompt` |
-| Content Classification | `content_classification` | `$context`, `$taxonomy`, `$assigned_terms`, `$available_terms` | `$prompt` |
-
-## Predictability
-
-These hooks are additive. When no callback is attached, the default prompt and builder behavior is unchanged.
-
-Prompt filters run after the ability has assembled its prompt and before the prompt builder is created. Builder filters run after the ability-specific configuration and model preference are applied, and before generation support is checked.

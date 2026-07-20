@@ -301,17 +301,7 @@ class Editorial_Notes extends Abstract_Ability {
 	) {
 		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
-		/**
-		 * Filters the assembled user prompt for editorial notes (block review).
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string       $prompt       The assembled prompt string.
-		 * @param string       $block_type   The block type identifier.
-		 * @param list<string> $review_types The review types being performed.
-		 */
-		$prompt = $this->filter_prompt( $prompt, $block_type, $review_types );
-
+		$prompt         = $this->filter_prompt( $prompt, $block_type, $review_types );
 		$prompt_builder = $this->get_prompt_builder( $prompt, $block_type );
 
 		if ( is_wp_error( $prompt_builder ) ) {

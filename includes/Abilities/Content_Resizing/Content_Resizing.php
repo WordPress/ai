@@ -213,17 +213,9 @@ class Content_Resizing extends Abstract_Ability {
 	 * @return string|\WP_Error The resized content, or a WP_Error if there was an error.
 	 */
 	protected function generate_resized_content( string $prompt, string $action = self::ACTION_DEFAULT ) {
-		/**
-		 * Filters the assembled user prompt for content resizing.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string $prompt The assembled prompt string.
-		 * @param string $action The resizing action being performed.
-		 */
-		$prompt = $this->filter_prompt( $prompt, $action );
-
+		$prompt  = $this->filter_prompt( $prompt, $action );
 		$builder = $this->get_prompt_builder( $prompt, $action );
+
 		if ( is_wp_error( $builder ) ) {
 			return $builder;
 		}

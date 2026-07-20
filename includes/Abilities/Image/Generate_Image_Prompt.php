@@ -250,17 +250,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			$content .= "\n\n<style>" . $style . '</style>';
 		}
 
-		/**
-		 * Filters the assembled user prompt for image prompt generation.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string                       $content The assembled prompt string (content, context, style tags).
-		 * @param string|array<string, string> $context The additional context.
-		 * @param string                       $style   The style instructions.
-		 */
-		$content = $this->filter_prompt( $content, $context, $style );
-
+		$content        = $this->filter_prompt( $content, $context, $style );
 		$prompt_builder = $this->get_prompt_builder( $content );
 
 		if ( is_wp_error( $prompt_builder ) ) {

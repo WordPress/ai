@@ -239,17 +239,7 @@ class Comment_Analysis extends Abstract_Ability {
 			$content
 		);
 
-		/**
-		 * Filters the assembled user prompt for comment analysis.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string $prompt  The assembled prompt string.
-		 * @param string $content The comment content.
-		 * @param string $author  The comment author name.
-		 */
-		$prompt = $this->filter_prompt( $prompt, $content, $author );
-
+		$prompt         = $this->filter_prompt( $prompt, $content, $author );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {

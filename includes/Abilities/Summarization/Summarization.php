@@ -250,17 +250,7 @@ class Summarization extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
-		/**
-		 * Filters the assembled user prompt for summarization.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string                       $content The assembled prompt string (content and context tags).
-		 * @param string                       $length  The desired summary length.
-		 * @param string|array<string, string> $context The additional context.
-		 */
-		$content = $this->filter_prompt( $content, $length, $context );
-
+		$content        = $this->filter_prompt( $content, $length, $context );
 		$prompt_builder = $this->get_prompt_builder( $content, $length );
 
 		if ( is_wp_error( $prompt_builder ) ) {

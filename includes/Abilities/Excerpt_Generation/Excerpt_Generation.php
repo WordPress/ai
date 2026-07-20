@@ -233,16 +233,7 @@ class Excerpt_Generation extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
-		/**
-		 * Filters the assembled user prompt for excerpt generation.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string                       $content The assembled prompt string (content and context tags).
-		 * @param string|array<string, string> $context The additional context.
-		 */
-		$content = $this->filter_prompt( $content, $context );
-
+		$content        = $this->filter_prompt( $content, $context );
 		$prompt_builder = $this->get_prompt_builder( $content );
 
 		if ( is_wp_error( $prompt_builder ) ) {

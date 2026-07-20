@@ -185,19 +185,7 @@ class Generate_Image extends Abstract_Ability {
 	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
 	 */
 	protected function generate_image( string $prompt, ?string $reference_image = null ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
-		/**
-		 * Filters the user prompt for image generation.
-		 *
-		 * Note: this is the image generation prompt itself, not post content.
-		 * Editorial guidelines (when enabled) are appended after this filter runs.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string      $prompt          The image generation prompt.
-		 * @param string|null $reference_image Optional base64-encoded reference image for edits.
-		 */
-		$prompt = $this->filter_prompt( $prompt, $reference_image );
-
+		$prompt         = $this->filter_prompt( $prompt, $reference_image );
 		$prompt_builder = $this->get_prompt_builder( $prompt, $reference_image );
 
 		if ( is_wp_error( $prompt_builder ) ) {
