@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "62ff27823a94f74072d1e3eeeb5c46f3",
+    "content-hash": "b1dca4857cca7b0929bcbe65a2f3f0b2",
     "packages": [],
     "packages-dev": [
         {
@@ -1205,16 +1205,16 @@
         },
         {
             "name": "phpstan/phpstan-phpunit",
-            "version": "2.0.17",
+            "version": "2.0.18",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/phpstan-phpunit.git",
-                "reference": "c2f977551f0736d60467b3d754b2e0cf4e337b3f"
+                "reference": "f5dc20ff8082d02339b60cab68ec3eb0d859fb30"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan-phpunit/zipball/c2f977551f0736d60467b3d754b2e0cf4e337b3f",
-                "reference": "c2f977551f0736d60467b3d754b2e0cf4e337b3f",
+                "url": "https://api.github.com/repos/phpstan/phpstan-phpunit/zipball/f5dc20ff8082d02339b60cab68ec3eb0d859fb30",
+                "reference": "f5dc20ff8082d02339b60cab68ec3eb0d859fb30",
                 "shasum": ""
             },
             "require": {
@@ -1257,9 +1257,9 @@
             ],
             "support": {
                 "issues": "https://github.com/phpstan/phpstan-phpunit/issues",
-                "source": "https://github.com/phpstan/phpstan-phpunit/tree/2.0.17"
+                "source": "https://github.com/phpstan/phpstan-phpunit/tree/2.0.18"
             },
-            "time": "2026-06-29T05:32:23+00:00"
+            "time": "2026-07-04T12:16:09+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -3083,16 +3083,16 @@
         },
         {
             "name": "wp-phpunit/wp-phpunit",
-            "version": "7.0.0",
+            "version": "7.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wp-phpunit/wp-phpunit.git",
-                "reference": "06828a65f8276e31368fbe4c5f3d445332abc4c5"
+                "reference": "0d17335392d78b12b3e7e6b519cd53db728df52a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/wp-phpunit/wp-phpunit/zipball/06828a65f8276e31368fbe4c5f3d445332abc4c5",
-                "reference": "06828a65f8276e31368fbe4c5f3d445332abc4c5",
+                "url": "https://api.github.com/repos/wp-phpunit/wp-phpunit/zipball/0d17335392d78b12b3e7e6b519cd53db728df52a",
+                "reference": "0d17335392d78b12b3e7e6b519cd53db728df52a",
                 "shasum": ""
             },
             "type": "library",
@@ -3127,7 +3127,7 @@
                 "issues": "https://github.com/wp-phpunit/issues",
                 "source": "https://github.com/wp-phpunit/wp-phpunit"
             },
-            "time": "2026-05-21T02:56:35+00:00"
+            "time": "2026-07-10T02:38:55+00:00"
         },
         {
             "name": "yoast/phpunit-polyfills",
