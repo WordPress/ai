@@ -9,7 +9,7 @@
  * @since 0.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
@@ -91,7 +91,7 @@ class Abilities_Explorer extends Abstract_Feature {
 					'invalidJson'   => esc_html__( 'Invalid JSON input', 'ai' ),
 					'confirmInvoke' => esc_html__( 'Are you sure you want to invoke this ability?', 'ai' ),
 					'copySuccess'   => esc_html__( 'Copied!', 'ai' ),
-					'copyError'     => esc_html__( 'Failed to copy', 'ai' )
+					'copyError'     => esc_html__( 'Failed to copy', 'ai' ),
 				),
 			)
 		);
