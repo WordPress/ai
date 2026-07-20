@@ -16,6 +16,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Comment_Moderation\Comment_Analysis;
 use WordPress\AI\Abilities\Content_Classification\Content_Classification;
+use WordPress\AI\Abilities\Content_Resizing\Content_Resizing;
 use WordPress\AI\Abilities\Editorial_Notes\Editorial_Notes;
 use WordPress\AI\Abilities\Editorial_Updates\Editorial_Updates;
 use WordPress\AI\Abilities\Excerpt_Generation\Excerpt_Generation;
@@ -23,8 +24,10 @@ use WordPress\AI\Abilities\Image\Alt_Text_Generation;
 use WordPress\AI\Abilities\Image\Generate_Image;
 use WordPress\AI\Abilities\Image\Generate_Image_Prompt;
 use WordPress\AI\Abilities\Meta_Description\Meta_Description;
+use WordPress\AI\Abilities\Suggest_Reply\Suggest_Reply;
 use WordPress\AI\Abilities\Summarization\Summarization;
 use WordPress\AI\Abilities\Title_Generation\Title_Generation;
+use WordPress\AI\Abilities\Type_Ahead\Type_Ahead;
 
 /**
  * Prompt extension points test case.
@@ -451,6 +454,32 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 				'args'     => array( array( 'content' => 'SENTINEL_CLASSIFICATION body' ), 'post_tag', 'allow_new', 5, array() ),
 				'sentinel' => 'SENTINEL_CLASSIFICATION',
 			),
+			array(
+				'slug'     => 'content_resizing',
+				'ability'  => new Content_Resizing(
+					'ai/content-resizing',
+					array(
+						'label'       => 'Content Resizing',
+						'description' => 'Resizes content.',
+					)
+				),
+				'method'   => 'generate_resized_content',
+				'args'     => array( '<content>SENTINEL_RESIZE body</content>', 'rephrase' ),
+				'sentinel' => 'SENTINEL_RESIZE',
+			),
+			array(
+				'slug'     => 'type_ahead',
+				'ability'  => new Type_Ahead(
+					'ai/type-ahead',
+					array(
+						'label'       => 'Type Ahead',
+						'description' => 'Generates type-ahead suggestions.',
+					)
+				),
+				'method'   => 'generate_suggestion',
+				'args'     => array( array( 'before' => 'SENTINEL_TYPEAHEAD body' ) ),
+				'sentinel' => 'SENTINEL_TYPEAHEAD',
+			),
 		);
 
 		foreach ( $cases as $case ) {
@@ -493,5 +522,62 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 			remove_all_filters( $prompt_hook );
 			remove_all_filters( $builder_hook );
 		}
+	}
+
+	/**
+	 * Suggest Reply assembles its prompt in execute_callback (which needs a real
+	 * comment), so it is covered separately from the data-driven loop above.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_suggest_reply_prompt_and_builder_filters_fire(): void {
+		$post_id    = self::factory()->post->create( array( 'post_title' => 'A Post' ) );
+		$comment_id = self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post_id,
+				'comment_author'  => 'Jane Doe',
+				'comment_content' => 'SENTINEL_REPLY body',
+			)
+		);
+
+		$ability = new Suggest_Reply(
+			'ai/suggest-reply',
+			array(
+				'label'       => 'Suggest Reply',
+				'description' => 'Suggests replies to comments.',
+			)
+		);
+
+		$captured       = null;
+		$builder_called = false;
+
+		add_filter(
+			'wpai_suggest_reply_prompt',
+			static function ( $prompt ) use ( &$captured ) {
+				$captured = $prompt;
+				return $prompt;
+			}
+		);
+		add_filter(
+			'wpai_suggest_reply_prompt_builder',
+			static function ( $builder ) use ( &$builder_called ) {
+				$builder_called = true;
+				return $builder;
+			}
+		);
+
+		try {
+			$this->invoke( $ability, 'execute_callback', array( array( 'comment_id' => $comment_id ) ) );
+		} catch ( \Throwable $e ) {
+			$this->assertInstanceOf( \Throwable::class, $e );
+			// The provider step may fail in the test env; the filters fire first.
+		}
+
+		$this->assertNotNull( $captured, 'wpai_suggest_reply_prompt should have fired.' );
+		$this->assertStringContainsString( 'SENTINEL_REPLY', (string) $captured );
+		$this->assertTrue( $builder_called, 'wpai_suggest_reply_prompt_builder should have fired.' );
+
+		remove_all_filters( 'wpai_suggest_reply_prompt' );
+		remove_all_filters( 'wpai_suggest_reply_prompt_builder' );
 	}
 }
