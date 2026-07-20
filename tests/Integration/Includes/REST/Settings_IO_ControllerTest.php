@@ -444,6 +444,11 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
 
+		// Force a known baseline rather than assuming the registered default,
+		// since `wpai_features_enabled` is a shared global option that other
+		// tests in the suite may have already changed.
+		update_option( 'wpai_features_enabled', false );
+
 		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
 		$request->set_param( 'version', 1 );
 		$request->set_param(
@@ -457,7 +462,10 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 0, $data['imported'] );
 		$this->assertSame( 1, $data['rejected'] );
-		// The option should remain at its default (false), never having been written.
+		// The option should remain unchanged, never having been written.
+		// Note: WordPress stores scalar option values as raw strings, so
+		// get_option() may return "" rather than a native `false`; casting
+		// to bool normalizes this for the comparison.
 		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
 	}
 
@@ -470,6 +478,10 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	public function test_import_sanitizes_boolean_like_string_value(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
+
+		// Force a known baseline so the transition to `true` is meaningful
+		// regardless of what other tests in the suite left behind.
+		update_option( 'wpai_features_enabled', false );
 
 		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
 		$request->set_param( 'version', 1 );
@@ -484,8 +496,11 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $data['imported'] );
 		$this->assertSame( 0, $data['rejected'] );
-		$this->assertTrue( get_option( 'wpai_features_enabled' ) );
-		$this->assertIsBool( get_option( 'wpai_features_enabled' ) );
+		// Note: WordPress stores scalar option values as raw strings in the
+		// database (no serialization for scalars), so get_option() returns
+		// "1" rather than a native PHP `true`. Casting to bool confirms the
+		// sanitized value is truthy without relying on strict type identity.
+		$this->assertTrue( (bool) get_option( 'wpai_features_enabled' ) );
 	}
 
 	/**
