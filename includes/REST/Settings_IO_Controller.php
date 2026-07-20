@@ -196,8 +196,10 @@ final class Settings_IO_Controller {
 	 * Imports AI settings from a previously exported payload.
 	 *
 	 * Only settings that are currently registered in the plugin's option group
-	 * and are not flagged as sensitive will be written. All other keys in the
-	 * payload are silently ignored.
+	 * and are not flagged as sensitive will be written. Every value is validated
+	 * and sanitized against the option's registered schema before being saved;
+	 * values that fail validation are rejected rather than written verbatim.
+	 * All other keys in the payload are silently ignored.
 	 *
 	 * @since x.x.x
 	 *
@@ -219,6 +221,7 @@ final class Settings_IO_Controller {
 			);
 		}
 
+		$registered = get_registered_settings();
 		$exportable = array_flip( $this->get_exportable_option_names() );
 		$providers  = $request->get_param( 'providers' );
 		$settings   = $request->get_param( 'settings' );
@@ -233,6 +236,7 @@ final class Settings_IO_Controller {
 
 		$all_values = array_merge( $settings, $providers );
 		$imported   = 0;
+		$rejected   = 0;
 
 		foreach ( $all_values as $option_name => $value ) {
 			if ( ! is_string( $option_name ) ) {
@@ -244,17 +248,67 @@ final class Settings_IO_Controller {
 				continue;
 			}
 
-			update_option( $option_name, $value );
+			$schema = $this->get_option_schema( $registered[ $option_name ] ?? array() );
+
+			// Reject values that don't match the option's registered type/shape
+			// (e.g. a string passed where the setting expects a boolean or object)
+			// rather than writing them to the database unsanitized.
+			if ( is_wp_error( rest_validate_value_from_schema( $value, $schema, $option_name ) ) ) {
+				++$rejected;
+				continue;
+			}
+
+			$sanitized = rest_sanitize_value_from_schema( $value, $schema, $option_name );
+
+			if ( is_wp_error( $sanitized ) ) {
+				++$rejected;
+				continue;
+			}
+
+			update_option( $option_name, $sanitized );
 			++$imported;
 		}
+
+		$message = $rejected > 0
+			? sprintf(
+				/* translators: 1: number of imported settings, 2: number of rejected settings. */
+				__( 'Settings imported successfully. %1$d setting(s) imported, %2$d rejected due to invalid values.', 'ai' ),
+				$imported,
+				$rejected
+			)
+			: __( 'Settings imported successfully.', 'ai' );
 
 		return new \WP_REST_Response(
 			array(
 				'imported' => $imported,
-				'message'  => __( 'Settings imported successfully.', 'ai' ),
+				'rejected' => $rejected,
+				'message'  => $message,
 			),
 			200
 		);
+	}
+
+	/**
+	 * Builds a REST schema array describing an option's expected shape.
+	 *
+	 * Uses the schema declared via `show_in_rest.schema` when available (as is
+	 * the case for the developer model configuration objects), falling back to
+	 * a minimal schema derived from the option's registered `type` otherwise.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $args The option's registered arguments from
+	 *                                   {@see get_registered_settings()}.
+	 * @return array<string, mixed> A REST-compatible schema array.
+	 */
+	private function get_option_schema( array $args ): array {
+		$show_in_rest = $args['show_in_rest'] ?? false;
+
+		if ( is_array( $show_in_rest ) && isset( $show_in_rest['schema'] ) && is_array( $show_in_rest['schema'] ) ) {
+			return $show_in_rest['schema'];
+		}
+
+		return array( 'type' => $args['type'] ?? 'string' );
 	}
 
 	/**

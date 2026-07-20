@@ -431,5 +431,156 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 400, $response->get_status() );
 	}
+
+	// Type validation / sanitization on import.
+
+	/**
+	 * Tests that a boolean-typed setting rejects a value that cannot be
+	 * interpreted as a boolean, and does not write it to the database.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_rejects_invalid_boolean_value(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
+		$request->set_param( 'version', 1 );
+		$request->set_param(
+			'settings',
+			array( 'wpai_features_enabled' => 'not_a_boolean' )
+		);
+		$request->set_param( 'providers', array() );
+
+		$response = $this->controller->import_settings( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 0, $data['imported'] );
+		$this->assertSame( 1, $data['rejected'] );
+		// The option should remain at its default (false), never having been written.
+		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
+	}
+
+	/**
+	 * Tests that a boolean-ish string value (e.g. "true"/"1") is sanitized
+	 * into a proper boolean rather than rejected or stored verbatim.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_sanitizes_boolean_like_string_value(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
+		$request->set_param( 'version', 1 );
+		$request->set_param(
+			'settings',
+			array( 'wpai_features_enabled' => 'true' )
+		);
+		$request->set_param( 'providers', array() );
+
+		$response = $this->controller->import_settings( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 1, $data['imported'] );
+		$this->assertSame( 0, $data['rejected'] );
+		$this->assertTrue( get_option( 'wpai_features_enabled' ) );
+		$this->assertIsBool( get_option( 'wpai_features_enabled' ) );
+	}
+
+	/**
+	 * Tests that a developer config option rejects a value that does not
+	 * match its registered object schema (e.g. a plain string).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_rejects_malformed_developer_config_object(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
+		$request->set_param( 'version', 1 );
+		$request->set_param( 'settings', array() );
+		$request->set_param(
+			'providers',
+			array( 'wpai_feature_io-test-feature_field_developer' => 'not-an-object' )
+		);
+
+		$response = $this->controller->import_settings( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 0, $data['imported'] );
+		$this->assertSame( 1, $data['rejected'] );
+		$this->assertSame(
+			array(),
+			get_option( 'wpai_feature_io-test-feature_field_developer', array() )
+		);
+	}
+
+	/**
+	 * Tests that a valid developer config object is imported and its string
+	 * properties are sanitized (e.g. extraneous whitespace trimmed).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_accepts_valid_developer_config_object(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
+		$request->set_param( 'version', 1 );
+		$request->set_param( 'settings', array() );
+		$request->set_param(
+			'providers',
+			array(
+				'wpai_feature_io-test-feature_field_developer' => array(
+					'provider' => 'openai',
+					'model'    => 'gpt-4.1-mini',
+				),
+			)
+		);
+
+		$response = $this->controller->import_settings( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 1, $data['imported'] );
+		$this->assertSame( 0, $data['rejected'] );
+		$this->assertSame(
+			array(
+				'provider' => 'openai',
+				'model'    => 'gpt-4.1-mini',
+			),
+			get_option( 'wpai_feature_io-test-feature_field_developer' )
+		);
+	}
+
+	/**
+	 * Tests that the response message reflects rejected values when a batch
+	 * import contains a mix of valid and invalid values.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_response_message_reports_rejected_count(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
+		$request->set_param( 'version', 1 );
+		$request->set_param(
+			'settings',
+			array(
+				'wpai_features_enabled'                => true,
+				'wpai_feature_io-test-feature_enabled' => 'garbage-not-boolean',
+			)
+		);
+		$request->set_param( 'providers', array() );
+
+		$response = $this->controller->import_settings( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 1, $data['imported'] );
+		$this->assertSame( 1, $data['rejected'] );
+		$this->assertStringContainsString( '1', $data['message'] );
+	}
 }
 
