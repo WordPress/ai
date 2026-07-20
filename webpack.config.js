@@ -105,6 +105,11 @@ module.exports = {
 			'src/experiments/comment-moderation',
 			'index.tsx'
 		),
+		'experiments/suggest-reply': path.resolve(
+			process.cwd(),
+			'src/experiments/suggest-reply',
+			'index.tsx'
+		),
 		'experiments/alt-text-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',
@@ -123,6 +128,11 @@ module.exports = {
 		'experiments/alt-text-generation-bulk': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',
+			'bulk.ts'
+		),
+		'experiments/summarization-bulk': path.resolve(
+			process.cwd(),
+			'src/experiments/summarization',
 			'bulk.ts'
 		),
 	},
