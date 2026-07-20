@@ -43,6 +43,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
 		\WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply::class,
+		\WordPress\AI\Experiments\Internal_Links\Internal_Links::class,
 	);
 
 	/**
