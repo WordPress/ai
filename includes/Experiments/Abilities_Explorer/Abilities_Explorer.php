@@ -30,7 +30,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.2.0
  */
 class Abilities_Explorer extends Abstract_Feature {
-
 	/**
 	 * {@inheritDoc}
 	 */

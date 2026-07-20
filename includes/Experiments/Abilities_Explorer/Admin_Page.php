@@ -25,7 +25,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Admin_Page {
 
-
 	/**
 	 * Initialize admin functionality.
 	 *
@@ -302,12 +301,12 @@ class Admin_Page {
 					<div class="notice notice-info inline" style="margin: 10px 0;">
 						<p>
 							<strong><?php esc_html_e( 'How to test:', 'ai' ); ?></strong><br>
-						<ol>
-							<li><?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?></li>
-							<li><?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?></li>
-							<li><?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?></li>
-							<li><?php esc_html_e( 'View the results below', 'ai' ); ?></li>
-						</ol>
+							<ol>
+								<li><?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?></li>
+								<li><?php esc_html_e( 'View the results below', 'ai' ); ?></li>
+							</ol>
 						</p>
 					</div>
 				<?php endif; ?>
@@ -627,9 +626,9 @@ class Admin_Page {
 				'id'      => 'abilities-overview',
 				'title'   => __( 'Overview', 'ai' ),
 				'content' =>
-				'<p>' . esc_html__( 'Abilities are a standardized way for WordPress core, plugins, and themes to expose discrete units of functionality. Each ability has a name, optional input/output schemas, and can be invoked programmatically.', 'ai' ) . '</p>' .
-				'<p>' . esc_html__( 'The Abilities Explorer lets you browse every registered ability, inspect its schemas, and test it with custom input right from the admin.', 'ai' ) . '</p>',
-			)
+					'<p>' . esc_html__( 'Abilities are a standardized way for WordPress core, plugins, and themes to expose discrete units of functionality. Each ability has a name, optional input/output schemas, and can be invoked programmatically.', 'ai' ) . '</p>' .
+					'<p>' . esc_html__( 'The Abilities Explorer lets you browse every registered ability, inspect its schemas, and test it with custom input right from the admin.', 'ai' ) . '</p>',
+				)
 		);
 
 		$provider_tags = array( 'strong' => array() );
@@ -639,12 +638,12 @@ class Admin_Page {
 				'id'      => 'abilities-providers',
 				'title'   => esc_html__( 'Providers', 'ai' ),
 				'content' =>
-				'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
-				'<ul>' .
-					'<li>' . wp_kses( __( '<strong>Core</strong>: Built into WordPress itself.', 'ai' ), $provider_tags ) . '</li>' .
-					'<li>' . wp_kses( __( '<strong>Plugin</strong>: Registered by an active plugin.', 'ai' ), $provider_tags ) . '</li>' .
-					'<li>' . wp_kses( __( '<strong>Theme</strong>: Registered by the active theme.', 'ai' ), $provider_tags ) . '</li>' .
-				'</ul>',
+					'<p>' . esc_html__( 'Every ability is associated with a provider that indicates where it comes from:', 'ai' ) . '</p>' .
+					'<ul>' .
+						'<li>' . wp_kses( __( '<strong>Core</strong>: Built into WordPress itself.', 'ai' ), $provider_tags ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Plugin</strong>: Registered by an active plugin.', 'ai' ), $provider_tags ) . '</li>' .
+						'<li>' . wp_kses( __( '<strong>Theme</strong>: Registered by the active theme.', 'ai' ), $provider_tags ) . '</li>' .
+					'</ul>',
 			)
 		);
 
@@ -653,13 +652,13 @@ class Admin_Page {
 				'id'      => 'abilities-testing',
 				'title'   => esc_html__( 'Testing', 'ai' ),
 				'content' =>
-				'<p>' . esc_html__( 'You can test any ability directly from this screen:', 'ai' ) . '</p>' .
-				'<ol>' .
-					'<li>' . __( 'Click "Test" next to an ability in the list.', 'ai' ) . '</li>' .
-					'<li>' . __( 'Edit the pre-filled Input Data if the ability accepts JSON parameters.', 'ai' ) . '</li>' .
-					'<li>' . __( 'Use "Validate Input" to check your JSON against the schema.', 'ai' ) . '</li>' .
-					'<li>' . __( 'Click "Invoke Ability" to execute it and see the result.', 'ai' ) . '</li>' .
-				'</ol>',
+					'<p>' . esc_html__( 'You can test any ability directly from this screen:', 'ai' ) . '</p>' .
+					'<ol>' .
+						'<li>' . __( 'Click "Test" next to an ability in the list.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Edit the pre-filled Input Data if the ability accepts JSON parameters.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Use "Validate Input" to check your JSON against the schema.', 'ai' ) . '</li>' .
+						'<li>' . __( 'Click "Invoke Ability" to execute it and see the result.', 'ai' ) . '</li>' .
+					'</ol>',
 			)
 		);
 
