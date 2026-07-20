@@ -24,7 +24,7 @@ import { flattenBlocks } from '../../utils/blocks';
  * attribute is missing from the block's schema and gets stripped whenever
  * the block is parsed or serialized.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 export function registerSummaryBlockAttribute(): void {
 	addFilter(
@@ -52,7 +52,7 @@ export function registerSummaryBlockAttribute(): void {
 /**
  * Creates the inner paragraph blocks for a summary string.
  *
- * @since x.x.x
+ * @since 1.2.0
  *
  * @param summary Plain-text summary from the AI.
  * @return Array of Block objects for the summary group block.
@@ -69,7 +69,7 @@ export function createSummaryInnerBlocks( summary: string ): Block[] {
  * Finds the AI-generated summary group block within a list of blocks,
  * including blocks nested inside other blocks (e.g. columns, groups).
  *
- * @since x.x.x
+ * @since 1.2.0
  *
  * @param blocks List of blocks to search.
  * @return The AI-generated summary group block, or undefined if not found.
@@ -87,7 +87,7 @@ export function findSummaryBlock(
 /**
  * Creates a full AI-generated summary group block from a summary string.
  *
- * @since x.x.x
+ * @since 1.2.0
  *
  * @param summary Plain-text summary from the AI.
  * @return Block object of the summary.
