@@ -69,7 +69,8 @@ class Type_Ahead extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'enqueue_block_assets', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 	}
 
 	/**
@@ -95,7 +96,6 @@ class Type_Ahead extends Abstract_Feature {
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'type_ahead', 'experiments/type-ahead' );
-		Asset_Loader::enqueue_style( 'type_ahead', 'experiments/type-ahead' );
 
 		$settings = $this->get_settings();
 
@@ -111,6 +111,19 @@ class Type_Ahead extends Abstract_Feature {
 				'showHeadings'   => (bool) $settings['headings'],
 			)
 		);
+	}
+
+	/**
+	 * Enqueues the block stylesheet for the editor iframe and the front end.
+	 *
+	 * @since 1.2.0
+	 */
+	public function enqueue_block_assets(): void {
+		if ( ! is_admin() ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_style( 'type_ahead', 'experiments/type-ahead' );
 	}
 
 	/**

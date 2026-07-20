@@ -20,6 +20,25 @@ type TypeAheadOverlayProps = {
 };
 
 /**
+ * Check whether a rect is inside a container rect.
+ *
+ * @param {DOMRect} innerRect     Inner rect.
+ * @param {DOMRect} containerRect Container rect.
+ * @return {boolean} True if the inner rect is inside the container.
+ */
+const isRectInsideContainer = (
+	innerRect: DOMRect,
+	containerRect: DOMRect
+): boolean => {
+	return (
+		innerRect.top >= containerRect.top &&
+		innerRect.bottom <= containerRect.bottom &&
+		innerRect.left >= containerRect.left &&
+		innerRect.right <= containerRect.right
+	);
+};
+
+/**
  * Portal-rendered ghost text anchored to the caret line.
  *
  * @param {Object}      props               Overlay display state.
@@ -48,13 +67,21 @@ const TypeAheadOverlay = ( {
 		const scrollX = win?.scrollX ?? win?.pageXOffset ?? 0;
 		const scrollY = win?.scrollY ?? win?.pageYOffset ?? 0;
 		const containerRect = container?.getBoundingClientRect() ?? null;
-		const containerLeft = containerRect?.left ?? rect.left;
-		const indent = Math.max( 0, rect.left - containerLeft );
+
+		// If the caret rect falls outside the editable area, anchor to the container
+		// so the overlay stays aligned with the visible block bounds.
+		const anchorRect =
+			containerRect && ! isRectInsideContainer( rect, containerRect )
+				? containerRect
+				: rect;
+
+		const containerLeft = containerRect?.left ?? anchorRect.left;
+		const indent = Math.max( 0, anchorRect.left - containerLeft );
 
 		setStyle( {
 			position: 'absolute',
 			zIndex: 1,
-			top: rect.top + scrollY,
+			top: anchorRect.top + scrollY,
 			left: containerLeft + scrollX,
 			width: containerRect?.width ?? 'auto',
 			textIndent: indent ? `${ indent }px` : undefined,

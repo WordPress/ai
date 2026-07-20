@@ -35,5 +35,5 @@ body:
       label: I have searched existing issues and this is not a duplicate.
       description: Search the [issue tracker](https://github.com/WordPress/ai/issues) before submitting.
       options:
-        - label: Yes
+        - label: 'Yes'
           required: true
