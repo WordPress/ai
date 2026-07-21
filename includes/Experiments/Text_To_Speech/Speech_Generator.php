@@ -83,8 +83,7 @@ class Speech_Generator {
 
 			$prompt_builder = wp_ai_client_prompt( $text )
 				->using_request_options( $request_options )
-				->as_output_file_type( FileTypeEnum::inline() )
-				->as_output_mime_type( 'audio/mpeg' );
+				->as_output_file_type( FileTypeEnum::inline() );
 
 			if ( '' !== $voice ) {
 				$prompt_builder = $prompt_builder->as_output_speech_voice( $voice );
