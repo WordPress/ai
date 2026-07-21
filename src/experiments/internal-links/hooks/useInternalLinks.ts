@@ -16,7 +16,7 @@ import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
 
 const NOTICE_ID = 'ai_internal_links_error';
-const MINIMUM_CONTENT_COUNT_DEFAULT = 100;
+const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
 
 export interface LinkSuggestion {
 	anchor_text: string;

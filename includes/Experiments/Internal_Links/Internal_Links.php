@@ -87,7 +87,7 @@ class Internal_Links extends Abstract_Feature {
 			'InternalLinksData',
 			array(
 				'enabled'          => $this->is_enabled(),
-				'minContentLength' => get_min_content_length( 'internal-links', 100 ),
+				'minContentLength' => get_min_content_length( 'internal-links', 75 ),
 				'maxSuggestions'   => $this->get_max_suggestions(),
 			)
 		);
