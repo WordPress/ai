@@ -153,22 +153,21 @@ class Job_Manager {
 
 		// Match how other abilities read post content for AI context.
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
-		$body = (string) apply_filters( 'the_content', $post->post_content );
+		$body = normalize_content( (string) apply_filters( 'the_content', $post->post_content ) );
 
-		// Prepend the post title so the audio announces it before the body.
-		// The trailing period gives text to speech a sentence break between
-		// the title and the content.
-		$title = trim( get_the_title( $post ) );
-		$text  = '' !== $title ? $title . ".\n\n" . $body : $body;
-
-		$content = normalize_content( $text );
-
-		if ( '' === $content ) {
+		// Require actual body content: narrating a bare title is not a useful
+		// audio version of the post, and the title alone is never enough.
+		if ( '' === $body ) {
 			return new WP_Error(
 				'no_content',
 				esc_html__( 'This post has no content to generate audio from.', 'ai' )
 			);
 		}
+
+		// Prepend the post title so the audio announces it before the body.
+		// The period gives text to speech a sentence break between the two.
+		$title   = normalize_content( get_the_title( $post ) );
+		$content = '' !== $title ? $title . '. ' . $body : $body;
 
 		/**
 		 * Filters the maximum chunk length, in characters, for text to
