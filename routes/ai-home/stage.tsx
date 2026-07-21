@@ -813,7 +813,7 @@ function AISettingsPage() {
 				createSuccessNotice( message, { type: 'snackbar' } );
 			} catch {
 				// Revert only the toggled keys to their server-side values.
-				const serverRecord = ( registry as any )
+				const serverRecord = registry
 					.select( coreStore )
 					.getEntityRecord( 'root', 'site' ) as
 					| Record< string, unknown >

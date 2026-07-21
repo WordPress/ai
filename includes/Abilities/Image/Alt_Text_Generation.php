@@ -226,7 +226,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @return string|\WP_Error The generated alt text or WP_Error on failure.
 	 */
 	protected function generate_alt_text( array $image_reference, string $context = '', string $image_meta = '' ) {
-		$prompt_builder = $this->get_prompt_builder( $this->build_prompt( $context, $image_meta ), $image_reference['reference'] );
+		$prompt = $this->build_prompt( $context, $image_meta );
+
+		$prompt         = $this->filter_prompt( $prompt, $context, $image_meta );
+		$prompt_builder = $this->get_prompt_builder( $prompt, $image_reference['reference'] );
 
 		if ( is_wp_error( $prompt_builder ) ) {
 			return $prompt_builder;
@@ -412,7 +415,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
 			->using_temperature( 0.3 );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Alt_Text_Generation_Experiment::class, get_preferred_vision_models() );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Alt_Text_Generation_Experiment::class, get_preferred_vision_models(), $prompt, $reference );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

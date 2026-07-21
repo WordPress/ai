@@ -213,7 +213,9 @@ class Content_Resizing extends Abstract_Ability {
 	 * @return string|\WP_Error The resized content, or a WP_Error if there was an error.
 	 */
 	protected function generate_resized_content( string $prompt, string $action = self::ACTION_DEFAULT ) {
+		$prompt  = $this->filter_prompt( $prompt, $action );
 		$builder = $this->get_prompt_builder( $prompt, $action );
+
 		if ( is_wp_error( $builder ) ) {
 			return $builder;
 		}
@@ -237,7 +239,7 @@ class Content_Resizing extends Abstract_Ability {
 			)
 			->using_temperature( 0.7 );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Content_Resizing_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Content_Resizing_Experiment::class, array(), $prompt, $action );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
