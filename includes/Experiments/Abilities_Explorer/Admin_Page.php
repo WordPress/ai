@@ -586,8 +586,8 @@ class Admin_Page {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array $schema JSON Schema array to normalize.
-	 * @return array Normalized schema.
+	 * @param array<string, mixed> $schema JSON Schema array to normalize.
+	 * @return array<string, mixed> Normalized schema.
 	 */
 	private static function normalize_schema_for_response( array $schema ): array {
 		if ( isset( $schema['type'] ) && 'object' === $schema['type'] ) {

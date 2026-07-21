@@ -8,14 +8,14 @@
 import { __ } from '@wordpress/i18n';
 
 /**
- * Internal dependencies
- */
-import './index.scss';
-
-/**
  * Global dependencies
  */
 const { aiAbilityExplorer, navigator } = window;
+
+/**
+ * Internal dependencies
+ */
+import './index.scss';
 
 ( function () {
 	'use strict';
