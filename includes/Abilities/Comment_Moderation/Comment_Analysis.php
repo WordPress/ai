@@ -239,6 +239,7 @@ class Comment_Analysis extends Abstract_Ability {
 			$content
 		);
 
+		$prompt         = $this->filter_prompt( $prompt, $content, $author );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -275,8 +276,9 @@ class Comment_Analysis extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_model_preference( ...get_preferred_models_for_text_generation() )
 			->as_json_response( $this->response_schema() );
+
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, null, get_preferred_models_for_text_generation(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

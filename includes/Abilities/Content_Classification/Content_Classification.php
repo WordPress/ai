@@ -404,7 +404,7 @@ class Content_Classification extends Abstract_Ability {
 			->using_temperature( 0.5 )
 			->as_json_response( $this->suggestions_schema() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Content_Classification_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Content_Classification_Experiment::class, array(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
