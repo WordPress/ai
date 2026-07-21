@@ -16,17 +16,6 @@ interface Props {
 	onDismiss: ( suggestion: LinkSuggestion ) => void;
 }
 
-/**
- * SuggestionList component.
- *
- * Each suggestion shows:
- * - The anchor text (the exact phrase that will become the link).
- * - The target page title and URL (as a preview link).
- * - The surrounding context sentence.
- * - Accept (applies the link) and Dismiss (removes suggestion) buttons.
- *
- * @param props Component props.
- */
 export default function SuggestionList( {
 	suggestions,
 	onAccept,
@@ -37,55 +26,27 @@ export default function SuggestionList( {
 	}
 
 	return (
-		<ul
-			className="ai-internal-links__suggestions"
-			style={ { listStyle: 'none', margin: 0, padding: 0 } }
-		>
+		<ul className="ai-internal-links__suggestions">
 			{ suggestions.map( ( suggestion ) => (
 				<li
 					key={ suggestion.anchor_text }
 					className="ai-internal-links__suggestion"
-					style={ {
-						borderBottom: '1px solid #ddd',
-						paddingBottom: '10px',
-						marginBottom: '10px',
-					} }
 				>
-					{ /* Anchor text */ }
-					<p style={ { margin: '0 0 4px' } }>
+					<p className="ai-internal-links__suggestion-anchor">
 						<strong>{ `"${ suggestion.anchor_text }"` }</strong>
 					</p>
-
-					{ /* Target page */ }
-					<p
-						style={ {
-							margin: '0 0 4px',
-							fontSize: '12px',
-							color: '#555',
-						} }
-					>
+					<p className="ai-internal-links__suggestion-target">
 						{ __( 'Links to:', 'ai' ) }{ ' ' }
 						<ExternalLink href={ suggestion.url }>
 							{ suggestion.title }
 						</ExternalLink>
 					</p>
-
-					{ /* Context */ }
 					{ suggestion.context && (
-						<p
-							style={ {
-								margin: '0 0 8px',
-								fontSize: '11px',
-								color: '#757575',
-								fontStyle: 'italic',
-							} }
-						>
+						<p className="ai-internal-links__suggestion-context">
 							{ `"…${ suggestion.context }…"` }
 						</p>
 					) }
-
-					{ /* Actions */ }
-					<div style={ { display: 'flex', gap: '6px' } }>
+					<div className="ai-internal-links__suggestion-actions">
 						<Button
 							variant="secondary"
 							icon={ check }

@@ -81,6 +81,7 @@ class Internal_Links extends Abstract_Feature {
 	 */
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'internal_links', 'experiments/internal-links', array( 'include_core_abilities' => true ) );
+		Asset_Loader::enqueue_style( 'internal_links', 'experiments/internal-links' );
 		Asset_Loader::localize_script(
 			'internal_links',
 			'InternalLinksData',

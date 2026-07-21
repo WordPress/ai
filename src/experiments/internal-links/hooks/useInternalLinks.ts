@@ -101,10 +101,7 @@ function flattenAll( blocks: Block[] ): Block[] {
  * @param suggestion The accepted link suggestion.
  * @param blocks     All blocks in the editor.
  */
-function applyLinkToBlock(
-	suggestion: LinkSuggestion,
-	blocks: Block[]
-): void {
+function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): void {
 	const flat = flattenAll( blocks );
 	const { anchor_text: anchorText, url } = suggestion;
 
@@ -128,14 +125,15 @@ function applyLinkToBlock(
 			`<a href="${ url }">${ anchorText }</a>`
 		);
 
-		const attributeKey = 'content' in block.attributes ? 'content' : 'value';
+		const attributeKey =
+			'content' in block.attributes ? 'content' : 'value';
 
 		( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
 			block.clientId,
 			{ [ attributeKey ]: updatedHtml }
 		);
 
-		return; 
+		return;
 	}
 }
 
@@ -163,8 +161,8 @@ export function useInternalLinks(): {
 	const maxSuggestions: number =
 		( window as any ).aiInternalLinksData?.maxSuggestions ?? 5;
 
-	const { content, postId } = useSelect( ( select ) => {
-		const editor = select( editorStore ) as any;
+	const { content, postId } = useSelect( ( selectStore ) => {
+		const editor = selectStore( editorStore ) as any;
 		return {
 			content: editor.getEditedPostContent() as string,
 			postId: editor.getCurrentPostId() as number,
@@ -202,7 +200,10 @@ export function useInternalLinks(): {
 			if ( ( result?.suggestions ?? [] ).length === 0 ) {
 				dispatch( noticesStore ).createNotice(
 					'info',
-					__( 'No internal link suggestions found for this post.', 'ai' ),
+					__(
+						'No internal link suggestions found for this post.',
+						'ai'
+					),
 					{ type: 'snackbar' }
 				);
 			}
@@ -220,7 +221,9 @@ export function useInternalLinks(): {
 	};
 
 	const acceptSuggestion = ( suggestion: LinkSuggestion ) => {
-		const blocks = ( select( blockEditorStore ) as any ).getBlocks() as Block[];
+		const blocks = (
+			select( blockEditorStore ) as any
+		 ).getBlocks() as Block[];
 
 		applyLinkToBlock( suggestion, blocks );
 
@@ -230,7 +233,10 @@ export function useInternalLinks(): {
 		);
 
 		dispatch( noticesStore ).createSuccessNotice(
-			__( 'Internal link applied. Save the post to keep the change.', 'ai' ),
+			__(
+				'Internal link applied. Save the post to keep the change.',
+				'ai'
+			),
 			{ type: 'snackbar' }
 		);
 	};

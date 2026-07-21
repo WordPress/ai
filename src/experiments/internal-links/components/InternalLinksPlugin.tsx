@@ -13,13 +13,6 @@ import { link } from '@wordpress/icons';
 import { useInternalLinks } from '../hooks/useInternalLinks';
 import SuggestionList from './SuggestionList';
 
-/**
- * InternalLinksPlugin component.
- *
- * Renders a "Suggest Internal Links" button in the post status info panel.
- * Once clicked the button calls the AI ability, displays the suggestions
- * inline, and lets the editor accept or dismiss each one individually.
- */
 export default function InternalLinksPlugin() {
 	const {
 		isLoading,
@@ -61,7 +54,6 @@ export default function InternalLinksPlugin() {
 	return (
 		<PluginPostStatusInfo>
 			<Flex direction="column" gap={ 2 }>
-				{ /* Primary button */ }
 				<FlexItem>
 					<Button
 						accessibleWhenDisabled
@@ -70,10 +62,7 @@ export default function InternalLinksPlugin() {
 						onClick={ fetchSuggestions }
 						isBusy={ isLoading }
 						disabled={ isLoading || isContentTooShort }
-						style={ {
-							justifyContent: 'center',
-							width: '100%',
-						} }
+						className="ai-internal-links__plugin-button"
 						__next40pxDefaultSize
 						aria-describedby={ descriptionId }
 					>
@@ -81,31 +70,22 @@ export default function InternalLinksPlugin() {
 					</Button>
 				</FlexItem>
 
-				{ /* Description / status */ }
 				<FlexItem>
 					<span
 						id={ descriptionId }
-						className="description"
-						style={ { color: '#757575' } }
+						className="description ai-internal-links__plugin-description"
 					>
 						{ buttonDescription }
 					</span>
 				</FlexItem>
 
-				{ /* Suggestion list — shown after a successful fetch */ }
 				{ suggestions.length > 0 && (
 					<FlexItem>
-						<p
-							className="description"
-							style={ {
-								margin: '4px 0 8px',
-								fontWeight: 600,
-							} }
-						>
+						<p className="description ai-internal-links__suggestions-header">
 							{ sprintf(
 								/* translators: %d: number of suggestions found. */
 								__(
-									'%d suggestion(s) found. Review and accept or dismiss each one.',
+									'%d suggestion(s) found.',
 									'ai'
 								),
 								suggestions.length

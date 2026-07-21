@@ -7,6 +7,7 @@ import { registerPlugin } from '@wordpress/plugins';
  * Internal dependencies
  */
 import InternalLinksPlugin from './components/InternalLinksPlugin';
+import './index.scss';
 
 declare global {
 	interface Window {
