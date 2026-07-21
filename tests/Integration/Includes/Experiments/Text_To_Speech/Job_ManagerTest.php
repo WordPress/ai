@@ -249,4 +249,49 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		// Job blob cleaned up.
 		$this->assertSame( '', get_post_meta( $post_id, Job_Manager::META_JOB, true ) );
 	}
+
+	/**
+	 * Test that delete_audio() removes the attachment and all TTS meta.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_audio_removes_attachment_and_meta(): void {
+		$post_id = $this->create_post();
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
+		$this->assertGreaterThan( 0, $audio_id );
+		$this->assertNotNull( get_post( $audio_id ) );
+
+		update_post_meta( $post_id, Job_Manager::META_DISPLAY, true );
+
+		$status = $this->job_manager->delete_audio( $post_id );
+
+		// The attachment is gone.
+		$this->assertNull( get_post( $audio_id ) );
+
+		// The returned payload reflects a clean slate.
+		$this->assertSame( 'idle', $status['status'] );
+		$this->assertSame( 0, $status['audio_id'] );
+		$this->assertSame( '', $status['audio_url'] );
+
+		// Every piece of TTS meta is removed.
+		foreach (
+			array(
+				Job_Manager::META_AUDIO_ID,
+				Job_Manager::META_STATUS,
+				Job_Manager::META_ERROR,
+				Job_Manager::META_UPDATED,
+				Job_Manager::META_JOB,
+				Job_Manager::META_DISPLAY,
+			) as $meta_key
+		) {
+			$this->assertSame( '', get_post_meta( $post_id, $meta_key, true ) );
+		}
+
+		// No chunk event is left scheduled.
+		$this->assertFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
+	}
 }

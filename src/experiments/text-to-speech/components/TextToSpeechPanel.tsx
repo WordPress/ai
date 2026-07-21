@@ -6,6 +6,7 @@
  * WordPress dependencies
  */
 import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
+import { useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { audio } from '@wordpress/icons';
 
@@ -44,9 +45,12 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 		hasAudio,
 		audioUrl,
 		displayAudio,
+		isDeleting,
 		setDisplayAudio,
 		handleGenerate,
+		handleDelete,
 	} = useSpeechGeneration();
+	const [ confirmingDelete, setConfirmingDelete ] = useState( false );
 
 	if ( isGenerating ) {
 		return (
@@ -114,6 +118,52 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 					? __( 'Regenerate Audio', 'ai' )
 					: __( 'Generate Audio', 'ai' ) }
 			</Button>
+
+			{ hasAudio &&
+				( confirmingDelete ? (
+					<div className="ai-text-to-speech-panel__confirm">
+						<span>
+							{ __(
+								'Delete the generated audio? This cannot be undone.',
+								'ai'
+							) }
+						</span>
+						<div className="ai-text-to-speech-panel__confirm-actions">
+							<Button
+								__next40pxDefaultSize
+								variant="primary"
+								isDestructive
+								onClick={ async () => {
+									await handleDelete();
+									setConfirmingDelete( false );
+								} }
+								isBusy={ isDeleting }
+								disabled={ isDeleting }
+								accessibleWhenDisabled
+							>
+								{ __( 'Yes, Delete', 'ai' ) }
+							</Button>
+							<Button
+								__next40pxDefaultSize
+								variant="tertiary"
+								onClick={ () => setConfirmingDelete( false ) }
+								disabled={ isDeleting }
+								accessibleWhenDisabled
+							>
+								{ __( 'Cancel', 'ai' ) }
+							</Button>
+						</div>
+					</div>
+				) : (
+					<Button
+						__next40pxDefaultSize
+						variant="secondary"
+						isDestructive
+						onClick={ () => setConfirmingDelete( true ) }
+					>
+						{ __( 'Delete Audio', 'ai' ) }
+					</Button>
+				) ) }
 
 			{ isBlockedByUnsavedChanges && (
 				<p className="ai-text-to-speech-panel__help">

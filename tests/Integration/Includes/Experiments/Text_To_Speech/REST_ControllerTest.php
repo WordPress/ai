@@ -133,6 +133,82 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that DELETE removes generated audio and its meta.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_removes_audio(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$post_id       = self::factory()->post->create( array( 'post_content' => 'Some content to read.' ) );
+		$attachment_id = self::factory()->attachment->create_object(
+			array(
+				'file'           => 'post-audio-' . $post_id . '.mp3',
+				'post_parent'    => $post_id,
+				'post_mime_type' => 'audio/mpeg',
+			)
+		);
+		update_post_meta( $post_id, Job_Manager::META_AUDIO_ID, $attachment_id );
+		update_post_meta( $post_id, Job_Manager::META_STATUS, 'complete' );
+
+		$request  = new WP_REST_Request( 'DELETE', '/ai/v1/text-to-speech/' . $post_id );
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'idle', $response->get_data()['status'] );
+		$this->assertSame( 0, $response->get_data()['audio_id'] );
+		$this->assertNull( get_post( $attachment_id ) );
+		$this->assertSame( '', get_post_meta( $post_id, Job_Manager::META_AUDIO_ID, true ) );
+	}
+
+	/**
+	 * Test that a subscriber cannot delete audio.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_denied_for_subscriber(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$post_id = self::factory()->post->create();
+
+		$request  = new WP_REST_Request( 'DELETE', '/ai/v1/text-to-speech/' . $post_id );
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 403, $response->get_status() );
+	}
+
+	/**
+	 * Test that a user who can edit the post but cannot delete the audio
+	 * attachment (owned by another user) is denied.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_denied_without_attachment_delete_cap(): void {
+		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$other_id  = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
+		$post_id       = self::factory()->post->create( array( 'post_author' => $author_id ) );
+		$attachment_id = self::factory()->attachment->create_object(
+			array(
+				'file'           => 'post-audio-' . $post_id . '.mp3',
+				'post_parent'    => $post_id,
+				'post_author'    => $other_id,
+				'post_mime_type' => 'audio/mpeg',
+			)
+		);
+		update_post_meta( $post_id, Job_Manager::META_AUDIO_ID, $attachment_id );
+
+		// The author can edit their own post but not delete another user's
+		// attachment (authors lack delete_others_posts).
+		wp_set_current_user( $author_id );
+
+		$request  = new WP_REST_Request( 'DELETE', '/ai/v1/text-to-speech/' . $post_id );
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 403, $response->get_status() );
+		// The attachment must survive a denied request.
+		$this->assertNotNull( get_post( $attachment_id ) );
+	}
+
+	/**
 	 * Test that a missing post returns 404.
 	 *
 	 * @since x.x.x

@@ -13,6 +13,7 @@ When enabled, a "Text to Speech" panel appears in the document sidebar of the bl
 - **Generate Audio** starts background generation from the post's saved content. The button becomes **Regenerate Audio** once audio exists; regenerating deletes the current audio and creates a new version.
 - Progress is shown while generation runs ("Generating audio… (2 of 5)"). You can close the editor — generation continues on the server.
 - Once generated, an inline preview player appears, along with a **Display audio player on the front end** toggle (on by default; persisted when the post is saved).
+- **Delete Audio** removes the generated audio and clears all of the post's text to speech state, returning the post to its pre-generation state. It asks for confirmation first, since the action cannot be undone.
 - On the front end, a native audio player is rendered above the post content on the singular view.
 
 **Key Features:**
@@ -22,10 +23,11 @@ When enabled, a "Text to Speech" panel appears in the document sidebar of the bl
 - Long content is split into chunks (to respect provider request limits) and combined into a single MP3
 - Per-post front-end display toggle
 - Explicit regeneration control — audio is only replaced when you ask for it
+- Explicit deletion — remove the audio and its state without regenerating
 
 ## Architecture & Implementation
 
-- `register()` wires: `wp_abilities_api_init` (abilities), `rest_api_init` (job trigger/status routes), `enqueue_block_editor_assets` / `enqueue_block_assets` (assets), the `wpai_tts_process_chunk` cron hook (one content chunk per event), and a `the_content` filter (front-end player, guarded by `is_singular()` / `in_the_loop()` / `is_main_query()` so player markup never leaks into REST responses or AI context building).
+- `register()` wires: `wp_abilities_api_init` (abilities), `rest_api_init` (job trigger/status/delete routes), `enqueue_block_editor_assets` / `enqueue_block_assets` (assets), the `wpai_tts_process_chunk` cron hook (one content chunk per event), and a `the_content` filter (front-end player, guarded by `is_singular()` / `in_the_loop()` / `is_main_query()` so player markup never leaks into REST responses or AI context building).
 - The post title is prepended to the body so the audio announces it first, then the combined text is normalized (`normalize_content()` after `the_content`), split into ≤ 4,000-character sentence-boundary chunks, generated chunk-by-chunk as `audio/mpeg` (`Speech_Generator`, the single place the AI client is called), appended to a temp file in the uploads directory (ID3 tags stripped at joins), and finally imported via `media_handle_sideload()` as an attachment of the post (`wpai_generated` meta = 1). The previous attachment is deleted only after the new one exists.
 - Job state lives in post meta. Only the display toggle is exposed to REST; the editor reads everything else through the status endpoint, so a stale editor save can never clobber job state.
 
@@ -59,7 +61,12 @@ Poll status:
     curl --user admin:password \
       https://example.com/wp-json/ai/v1/text-to-speech/123
 
-Both return `{ "status", "done", "total", "error", "audio_id", "audio_url", "display_audio" }`.
+Delete the generated audio and clear all text to speech state for a post:
+
+    curl -X DELETE --user admin:password \
+      https://example.com/wp-json/ai/v1/text-to-speech/123
+
+All three return `{ "status", "done", "total", "error", "audio_id", "audio_url", "display_audio" }`; after a delete the payload reports the idle, no-audio state.
 
 ### Abilities (REST examples)
 

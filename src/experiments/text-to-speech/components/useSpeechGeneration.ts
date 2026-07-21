@@ -38,8 +38,10 @@ export function useSpeechGeneration(): {
 	hasAudio: boolean;
 	audioUrl: string;
 	displayAudio: boolean;
+	isDeleting: boolean;
 	setDisplayAudio: ( value: boolean ) => void;
 	handleGenerate: () => Promise< void >;
+	handleDelete: () => Promise< void >;
 } {
 	const { postId, isDirty, isSaving, meta } = useSelect( ( select ) => {
 		return {
@@ -54,6 +56,7 @@ export function useSpeechGeneration(): {
 	const { editPost } = useDispatch( editorStore );
 	const [ status, setStatus ] = useState< TtsStatus | null >( null );
 	const [ isStarting, setIsStarting ] = useState< boolean >( false );
+	const [ isDeleting, setIsDeleting ] = useState< boolean >( false );
 
 	const fetchStatus = useCallback( async (): Promise< TtsStatus | null > => {
 		if ( ! postId ) {
@@ -127,6 +130,26 @@ export function useSpeechGeneration(): {
 		}
 	};
 
+	const handleDelete = async () => {
+		setIsDeleting( true );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
+
+		try {
+			const result = await apiFetch< TtsStatus >( {
+				path: `/ai/v1/text-to-speech/${ postId }`,
+				method: 'DELETE',
+			} );
+			setStatus( result );
+		} catch ( error: any ) {
+			dispatch( noticesStore ).createErrorNotice(
+				error?.message ?? __( 'Failed to delete audio.', 'ai' ),
+				{ id: NOTICE_ID, isDismissible: true }
+			);
+		} finally {
+			setIsDeleting( false );
+		}
+	};
+
 	const displayAudio = meta?.wpai_tts_display_audio ?? true;
 
 	const setDisplayAudio = ( value: boolean ) => {
@@ -140,7 +163,9 @@ export function useSpeechGeneration(): {
 		hasAudio: Boolean( status?.audio_id ),
 		audioUrl: status?.audio_url ?? '',
 		displayAudio,
+		isDeleting,
 		setDisplayAudio,
 		handleGenerate,
+		handleDelete,
 	};
 }

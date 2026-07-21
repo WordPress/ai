@@ -40,6 +40,21 @@
 		width: 100%;
 	}
 
+	&__confirm {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	&__confirm-actions {
+		display: flex;
+		gap: 8px;
+
+		.components-button {
+			flex: 1;
+		}
+	}
+
 	&__help {
 		margin: 0;
 		color: #757575;

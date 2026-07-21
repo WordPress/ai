@@ -64,6 +64,12 @@ class REST_Controller {
 					'permission_callback' => array( $this, 'can_view_status' ),
 					'args'                => $this->get_route_args(),
 				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_audio' ),
+					'permission_callback' => array( $this, 'can_delete' ),
+					'args'                => $this->get_route_args(),
+				),
 			)
 		);
 	}
@@ -133,6 +139,44 @@ class REST_Controller {
 			return new WP_Error(
 				'rest_forbidden',
 				esc_html__( 'You do not have permission to view audio generation status for this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Checks whether the current user can delete a post's generated audio.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_REST_Request $request The request.
+	 * @return true|\WP_Error True if permitted, WP_Error otherwise.
+	 */
+	public function can_delete( WP_REST_Request $request ) {
+		$post_check = $this->check_post( $request );
+
+		if ( is_wp_error( $post_check ) ) {
+			return $post_check;
+		}
+
+		$post_id = absint( $request['id'] );
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return new WP_Error(
+				'rest_forbidden',
+				esc_html__( 'You do not have permission to delete audio for this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		$audio_id = absint( get_post_meta( $post_id, Job_Manager::META_AUDIO_ID, true ) );
+
+		if ( $audio_id && get_post( $audio_id ) && ! current_user_can( 'delete_post', $audio_id ) ) {
+			return new WP_Error(
+				'rest_forbidden',
+				esc_html__( 'You do not have permission to delete the audio file for this post.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
 		}
@@ -213,5 +257,17 @@ class REST_Controller {
 	 */
 	public function get_status( WP_REST_Request $request ) {
 		return rest_ensure_response( ( new Job_Manager() )->get_status( absint( $request['id'] ) ) );
+	}
+
+	/**
+	 * Deletes a post's generated audio and its text to speech state.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_REST_Request $request The request.
+	 * @return \WP_REST_Response The status payload after deletion.
+	 */
+	public function delete_audio( WP_REST_Request $request ) {
+		return rest_ensure_response( ( new Job_Manager() )->delete_audio( absint( $request['id'] ) ) );
 	}
 }

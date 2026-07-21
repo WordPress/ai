@@ -326,6 +326,46 @@ class Job_Manager {
 	}
 
 	/**
+	 * Deletes a post's generated audio and all of its text to speech state.
+	 *
+	 * Cancels any in-flight job (scheduled cron event and temp file), deletes
+	 * the audio attachment, and removes every piece of text to speech post
+	 * meta, returning the post to the state it was in before any audio was
+	 * generated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post whose audio should be deleted.
+	 * @return array{status: string, done: int, total: int, error: string, audio_id: int, audio_url: string, display_audio: bool} The status payload after deletion.
+	 */
+	public function delete_audio( int $post_id ): array {
+		// Stop any in-flight job before removing the state it depends on.
+		wp_clear_scheduled_hook( self::CRON_HOOK, array( $post_id ) );
+		$this->delete_temp_file( $post_id );
+
+		$audio_id = absint( get_post_meta( $post_id, self::META_AUDIO_ID, true ) );
+
+		if ( $audio_id ) {
+			wp_delete_attachment( $audio_id, true );
+		}
+
+		foreach (
+			array(
+				self::META_AUDIO_ID,
+				self::META_STATUS,
+				self::META_ERROR,
+				self::META_UPDATED,
+				self::META_JOB,
+				self::META_DISPLAY,
+			) as $meta_key
+		) {
+			delete_post_meta( $post_id, $meta_key );
+		}
+
+		return $this->get_status( $post_id );
+	}
+
+	/**
 	 * Imports the combined audio file as an attachment and completes the job.
 	 *
 	 * The previously generated attachment (if any) is deleted only after the
