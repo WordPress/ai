@@ -5,8 +5,9 @@
 /**
  * WordPress dependencies
  */
-import { Button, Notice, ToggleControl } from '@wordpress/components';
+import { Button, Notice, Spinner, ToggleControl } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
+import { audio } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -47,8 +48,31 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 		handleGenerate,
 	} = useSpeechGeneration();
 
+	if ( isGenerating ) {
+		return (
+			<div className="ai-text-to-speech-panel__content">
+				<div className="ai-text-to-speech-panel__loading">
+					<Spinner />
+					<span>
+						{ status && status.total > 0
+							? sprintf(
+									/* translators: 1: number of chunks processed, 2: total number of chunks */
+									__(
+										'Generating audio… (%1$d of %2$d)',
+										'ai'
+									),
+									status.done,
+									status.total
+							  )
+							: __( 'Generating audio…', 'ai' ) }
+					</span>
+				</div>
+			</div>
+		);
+	}
+
 	return (
-		<>
+		<div className="ai-text-to-speech-panel__content">
 			{ ! hasTtsSupport && (
 				<Notice status="warning" isDismissible={ false }>
 					{ __(
@@ -58,18 +82,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				</Notice>
 			) }
 
-			{ isGenerating && status && (
-				<p className="ai-text-to-speech-panel__progress">
-					{ sprintf(
-						/* translators: 1: number of chunks processed, 2: total number of chunks */
-						__( 'Generating audio… (%1$d of %2$d)', 'ai' ),
-						status.done,
-						status.total
-					) }
-				</p>
-			) }
-
-			{ hasAudio && ! isGenerating && audioUrl && (
+			{ hasAudio && audioUrl && (
 				<audio
 					className="ai-text-to-speech-panel__preview"
 					controls
@@ -93,10 +106,8 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				__next40pxDefaultSize
 				variant="secondary"
 				onClick={ handleGenerate }
-				isBusy={ isGenerating }
-				disabled={
-					! hasTtsSupport || isGenerating || isBlockedByUnsavedChanges
-				}
+				icon={ audio }
+				disabled={ ! hasTtsSupport || isBlockedByUnsavedChanges }
 				accessibleWhenDisabled
 			>
 				{ hasAudio
@@ -104,7 +115,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 					: __( 'Generate Audio', 'ai' ) }
 			</Button>
 
-			{ isBlockedByUnsavedChanges && ! isGenerating && (
+			{ isBlockedByUnsavedChanges && (
 				<p className="ai-text-to-speech-panel__help">
 					{ __(
 						'Save your changes first — audio is generated from the saved content.',
@@ -113,7 +124,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 				</p>
 			) }
 
-			{ hasAudio && ! isGenerating && (
+			{ hasAudio && (
 				<p className="ai-text-to-speech-panel__help">
 					{ __(
 						'Regenerating deletes the current audio and creates a new version.',
@@ -121,6 +132,6 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 					) }
 				</p>
 			) }
-		</>
+		</div>
 	);
 }

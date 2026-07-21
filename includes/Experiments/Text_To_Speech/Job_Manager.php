@@ -153,7 +153,15 @@ class Job_Manager {
 
 		// Match how other abilities read post content for AI context.
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
-		$content = normalize_content( (string) apply_filters( 'the_content', $post->post_content ) );
+		$body = (string) apply_filters( 'the_content', $post->post_content );
+
+		// Prepend the post title so the audio announces it before the body.
+		// The trailing period gives text to speech a sentence break between
+		// the title and the content.
+		$title = trim( get_the_title( $post ) );
+		$text  = '' !== $title ? $title . ".\n\n" . $body : $body;
+
+		$content = normalize_content( $text );
 
 		if ( '' === $content ) {
 			return new WP_Error(
@@ -365,7 +373,7 @@ class Job_Manager {
 		$post_data = array(
 			'post_title'     => sprintf(
 				/* translators: %s: Post title. */
-				__( 'Audio for &#8220;%s&#8221;', 'ai' ),
+				__( 'Audio for “%s”', 'ai' ),
 				get_the_title( $post_id )
 			),
 			'post_mime_type' => $mime_type,

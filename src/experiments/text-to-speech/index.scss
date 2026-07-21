@@ -16,13 +16,32 @@
 
 // Editor sidebar panel.
 .ai-text-to-speech-panel {
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+
+		.components-button {
+			justify-content: center !important;
+		}
+	}
+
+	&__loading {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+
+		.components-spinner {
+			margin: 0;
+		}
+	}
+
 	&__preview {
 		width: 100%;
-		margin-bottom: 8px;
 	}
 
 	&__help {
-		margin-top: 8px;
+		margin: 0;
 		color: #757575;
 		font-size: 12px;
 	}

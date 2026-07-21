@@ -17,7 +17,7 @@ When enabled, a "Text to Speech" panel appears in the document sidebar of the bl
 
 **Key Features:**
 
-- One-click audio generation from post content
+- One-click audio generation from a post's title and content
 - Background processing — generation survives page refreshes and closed tabs
 - Long content is split into chunks (to respect provider request limits) and combined into a single MP3
 - Per-post front-end display toggle
@@ -26,7 +26,7 @@ When enabled, a "Text to Speech" panel appears in the document sidebar of the bl
 ## Architecture & Implementation
 
 - `register()` wires: `wp_abilities_api_init` (abilities), `rest_api_init` (job trigger/status routes), `enqueue_block_editor_assets` / `enqueue_block_assets` (assets), the `wpai_tts_process_chunk` cron hook (one content chunk per event), and a `the_content` filter (front-end player, guarded by `is_singular()` / `in_the_loop()` / `is_main_query()` so player markup never leaks into REST responses or AI context building).
-- Content is normalized (`normalize_content()` after `the_content`), split into ≤ 4,000-character sentence-boundary chunks, generated chunk-by-chunk as `audio/mpeg` (`Speech_Generator`, the single place the AI client is called), appended to a temp file in the uploads directory (ID3 tags stripped at joins), and finally imported via `media_handle_sideload()` as an attachment of the post (`wpai_generated` meta = 1). The previous attachment is deleted only after the new one exists.
+- The post title is prepended to the body so the audio announces it first, then the combined text is normalized (`normalize_content()` after `the_content`), split into ≤ 4,000-character sentence-boundary chunks, generated chunk-by-chunk as `audio/mpeg` (`Speech_Generator`, the single place the AI client is called), appended to a temp file in the uploads directory (ID3 tags stripped at joins), and finally imported via `media_handle_sideload()` as an attachment of the post (`wpai_generated` meta = 1). The previous attachment is deleted only after the new one exists.
 - Job state lives in post meta. Only the display toggle is exposed to REST; the editor reads everything else through the status endpoint, so a stale editor save can never clobber job state.
 
 ### Post meta
