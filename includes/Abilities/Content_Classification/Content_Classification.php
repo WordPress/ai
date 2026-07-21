@@ -374,7 +374,9 @@ class Content_Classification extends Abstract_Ability {
 			$prompt_parts[] = '<assigned-terms>' . implode( ', ', $assigned_terms ) . '</assigned-terms>';
 		}
 
-		// If we're using the existing_only strategy, add the top 100 terms to the prompt.
+		// Surface the candidate pool: the existing terms fetched for the
+		// existing_only strategy by default, or whatever the
+		// `wpai_content_classification_available_terms` filter injected.
 		if ( ! empty( $available_terms ) ) {
 			$prompt_parts[] = '<available-terms>' . implode( ', ', $available_terms ) . '</available-terms>';
 		}
