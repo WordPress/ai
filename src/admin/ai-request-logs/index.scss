@@ -140,6 +140,19 @@
 .ai-request-logs__provider-cell {
 	position: relative;
 	cursor: pointer;
+	width: 100%;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	text-align: left;
+	color: inherit;
+	font: inherit;
+}
+
+.ai-request-logs__provider-trigger:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+	border-radius: 4px;
 }
 
 .ai-request-logs__provider-row {

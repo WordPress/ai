@@ -11,7 +11,7 @@ import {
 } from '@wordpress/dataviews';
 import { dateI18n, getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { rotateRight } from '@wordpress/icons';
 
 /**
@@ -293,6 +293,9 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 	connectorsUrl,
 } ) => {
 	const [ isPopoverVisible, setIsPopoverVisible ] = useState( false );
+	const popoverId = useRef(
+		`ai-request-logs-provider-popover-${ Math.random().toString( 36 ).slice( 2 ) }`
+	);
 
 	if ( ! provider && ! model ) {
 		return <span className="ai-request-logs__cell-muted">-</span>;
@@ -317,14 +320,20 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 
 	return (
 		<div
-			className="ai-request-logs__provider-cell"
+			className="ai-request-logs__provider-cell ai-request-logs__provider-trigger"
 			role="button"
 			tabIndex={ 0 }
 			onClick={ () => setIsPopoverVisible( ( prev ) => ! prev ) }
+			aria-haspopup="dialog"
+			aria-expanded={ isPopoverVisible }
+			aria-controls={ popoverId.current }
 			onKeyDown={ ( e ) => {
 				if ( 'Enter' === e.key || ' ' === e.key ) {
 					e.preventDefault();
 					setIsPopoverVisible( ( prev ) => ! prev );
+				} else if ( 'Escape' === e.key && isPopoverVisible ) {
+					e.preventDefault();
+					setIsPopoverVisible( false );
 				}
 			} }
 		>
@@ -347,7 +356,10 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 					className="ai-request-logs__provider-popover"
 					onClose={ () => setIsPopoverVisible( false ) }
 				>
-					<div className="ai-request-logs__popover-content">
+					<div
+						id={ popoverId.current }
+						className="ai-request-logs__popover-content"
+					>
 						<div className="ai-request-logs__popover-header">
 							<span className="ai-request-logs__popover-icon">
 								{ renderProviderLogo( metadata ) }
