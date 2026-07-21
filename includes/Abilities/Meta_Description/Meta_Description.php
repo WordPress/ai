@@ -310,7 +310,7 @@ class Meta_Description extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction() )
 			->using_temperature( $result_temperature );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Meta_Description_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Meta_Description_Experiment::class, array(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

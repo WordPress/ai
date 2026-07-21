@@ -116,7 +116,7 @@ class Type_Ahead extends Abstract_Feature {
 	/**
 	 * Enqueues the block stylesheet for the editor iframe and the front end.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function enqueue_block_assets(): void {
 		if ( ! is_admin() ) {

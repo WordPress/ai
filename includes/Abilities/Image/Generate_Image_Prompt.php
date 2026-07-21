@@ -250,6 +250,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			$content .= "\n\n<style>" . $style . '</style>';
 		}
 
+		$content        = $this->filter_prompt( $content, $context, $style );
 		$prompt_builder = $this->get_prompt_builder( $content );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -271,8 +272,9 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction( 'image-prompt-system-instruction.php' ) )
-			->using_temperature( 0.9 )
-			->using_model_preference( ...get_preferred_models_for_text_generation() );
+			->using_temperature( 0.9 );
+
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, null, get_preferred_models_for_text_generation(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

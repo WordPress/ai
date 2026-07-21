@@ -218,7 +218,7 @@ export function useEditorialUpdates(): {
 	const [ total, setTotal ] = useState< number >( 0 );
 
 	const postId = useSelect(
-		( sel ) => ( sel( editorStore ) as any ).getCurrentPostId() as number,
+		( sel ) => sel( editorStore ).getCurrentPostId() as number,
 		[]
 	);
 
@@ -250,7 +250,7 @@ export function useEditorialUpdates(): {
 				return false;
 			}
 
-			const notes = ( sel( coreStore ) as any ).getEntityRecords(
+			const notes = sel( coreStore ).getEntityRecords(
 				'root',
 				'comment',
 				{
@@ -280,14 +280,12 @@ export function useEditorialUpdates(): {
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
-			const content = (
-				select( editorStore ) as any
-			 ).getEditedPostContent() as string;
+			const content = select(
+				editorStore
+			).getEditedPostContent() as string;
 
 			// Get all blocks and flatten the tree.
-			const allBlocks = (
-				select( blockEditorStore ) as any
-			 ).getBlocks() as Block[];
+			const allBlocks = select( blockEditorStore ).getBlocks() as Block[];
 			const flatBlocks = flattenBlocks( allBlocks );
 
 			// Fetch pending Notes for this post.
@@ -415,9 +413,9 @@ export function useEditorialUpdates(): {
 										? 'alt'
 										: 'content';
 
-								(
-									dispatch( blockEditorStore ) as any
-								 ).updateBlockAttributes( block.clientId, {
+								dispatch(
+									blockEditorStore
+								).updateBlockAttributes( block.clientId, {
 									[ attributeToUpdate ]: refinedContent,
 								} );
 
@@ -457,9 +455,9 @@ export function useEditorialUpdates(): {
 					)
 				);
 
-				(
-					dispatch( coreStore ) as any
-				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+				dispatch( coreStore ).invalidateResolutionForStoreSelector(
+					'getEntityRecords'
+				);
 			}
 
 			// If every block failed, surface an error notice.
