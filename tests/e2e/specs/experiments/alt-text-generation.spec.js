@@ -53,25 +53,19 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
-		await page
-			.locator( '.media-frame-content ul.attachments li:first-child' )
-			.click();
+		await page.getByRole( 'checkbox' ).first().click();
 
 		// Ensure the alt text generation button is visible and says Generate
 		await expect(
-			page.locator( '#ai-alt-text-generate-button', {
-				hasText: 'Generate',
-			} )
+			page.getByRole( 'button', { name: 'Generate' } )
 		).toBeVisible();
 
 		// Click the alt text generation button.
-		await page.locator( '#ai-alt-text-generate-button' ).click();
+		await page.getByRole( 'button', { name: 'Generate' } ).click();
 
 		// Ensure the alt text generation button now says Regenerate
 		await expect(
-			page.locator( '#ai-alt-text-generate-button', {
-				hasText: 'Regenerate',
-			} )
+			page.getByRole( 'button', { name: 'Regenerate' } )
 		).toBeVisible();
 
 		// Ensure the alt text textarea is visible.
@@ -120,30 +114,24 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		// Click the Media Library button in the image block.
 		const imageBlock = editor.canvas.locator( '.wp-block-image' ).first();
 		const mediaLibraryButton = imageBlock
-			.locator( 'button', { hasText: 'Media Library' } )
+			.getByRole( 'button', { name: 'Media Library' } )
 			.first();
 		await mediaLibraryButton.click();
 
 		// Click on the first image in the Media Library.
-		await page
-			.locator( '.media-frame-content ul.attachments li:first-child' )
-			.click();
+		await page.getByRole( 'checkbox' ).first().click();
 
 		// Ensure the alt text generation button is visible and says Generate
 		await expect(
-			page.locator( '#ai-alt-text-generate-button', {
-				hasText: 'Generate',
-			} )
+			page.getByRole( 'button', { name: 'Generate' } )
 		).toBeVisible();
 
 		// Click the alt text generation button.
-		await page.locator( '#ai-alt-text-generate-button' ).click();
+		await page.getByRole( 'button', { name: 'Generate' } ).click();
 
 		// Ensure the alt text generation button now says Regenerate
 		await expect(
-			page.locator( '#ai-alt-text-generate-button', {
-				hasText: 'Regenerate',
-			} )
+			page.getByRole( 'button', { name: 'Regenerate' } )
 		).toBeVisible();
 
 		// Ensure the alt text textarea is visible.
@@ -159,62 +147,50 @@ test.describe( 'Alt Text Generation Experiment', () => {
 
 		// Click the Select button.
 		await page
-			.locator( '.media-frame-toolbar button', { hasText: 'Select' } )
+			.getByRole( 'button', { name: 'Select', exact: true } )
 			.click();
 
 		// Clear the alt text textarea.
-		await page
-			.locator( '.components-tools-panel textarea' )
-			.first()
-			.fill( '' );
+		await page.getByLabel( 'Alternative text' ).first().fill( '' );
 
 		// Ensure the Generate button is visible in the sidebar.
 		await expect(
-			page.locator( '.ai-alt-text-controls button', {
-				hasText: 'Generate Alt Text',
-			} )
+			page.getByRole( 'button', { name: 'Generate Alt Text' } )
 		).toBeVisible();
 
 		// Click the Generate button.
-		await page.locator( '.ai-alt-text-controls button' ).click();
+		await page.getByRole( 'button', { name: 'Generate Alt Text' } ).click();
 
 		// Ensure the generated alt text shows in the textarea.
-		await expect(
-			page.locator( '.ai-alt-text-controls textarea' )
-		).toHaveValue( /Edit or Delete Your First WordPress Post/ );
+		await expect( page.getByLabel( 'Generated Alt Text' ) ).toHaveValue(
+			/Edit or Delete Your First WordPress Post/
+		);
 
 		// Click the Apply button.
 		await page
-			.locator( '.ai-alt-text-controls button', { hasText: 'Apply' } )
+			.getByRole( 'button', { name: 'Apply', exact: true } )
 			.click();
 
 		// Ensure the generated alt text shows in the textarea.
 		await expect(
-			page.locator( '.components-tools-panel textarea' ).first()
+			page.getByLabel( 'Alternative text' ).first()
 		).toHaveValue( /Edit or Delete Your First WordPress Post/ );
 
 		// Ensure the generate button text is updated.
 		await expect(
-			page.locator( '.ai-alt-text-controls button', {
-				hasText: 'Regenerate Alt Text',
-			} )
+			page.getByRole( 'button', { name: 'Regenerate Alt Text' } )
 		).toBeVisible();
 
 		// Remove alt text.
-		await page
-			.locator( '.components-tools-panel textarea' )
-			.first()
-			.fill( '' );
+		await page.getByLabel( 'Alternative text' ).first().fill( '' );
 
 		// Ensure the generate button text is updated.
 		await expect(
-			page.locator( '.ai-alt-text-controls button', {
-				hasText: 'Generate Alt Text',
-			} )
+			page.getByRole( 'button', { name: 'Generate Alt Text' } )
 		).toBeVisible();
 
 		// Generate alt text again.
-		await page.locator( '.ai-alt-text-controls button' ).click();
+		await page.getByRole( 'button', { name: 'Generate Alt Text' } ).click();
 
 		// Click the Dismiss button.
 		await page
@@ -249,14 +225,12 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
-		await page
-			.locator( '.media-frame-content ul.attachments li:first-child' )
-			.click();
+		await page.getByRole( 'checkbox' ).first().click();
 
 		// Ensure the alt text generation button is not visible.
 		await expect(
-			page.locator( '#ai-alt-text-generate-button' )
-		).not.toBeVisible();
+			page.getByRole( 'button', { name: 'Generate' } )
+		).toBeHidden();
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -277,29 +251,27 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		// Click the Media Library button in the image block.
 		const imageBlock = editor.canvas.locator( '.wp-block-image' ).first();
 		const mediaLibraryButton = imageBlock
-			.locator( 'button', { hasText: 'Media Library' } )
+			.getByRole( 'button', { name: 'Media Library' } )
 			.first();
 		await mediaLibraryButton.click();
 
 		// Click on the first image in the Media Library.
-		await page
-			.locator( '.media-frame-content ul.attachments li:first-child' )
-			.click();
+		await page.getByRole( 'checkbox' ).first().click();
 
 		// Ensure the alt text generation button is not visible.
 		await expect(
-			page.locator( '#ai-alt-text-generate-button' )
-		).not.toBeVisible();
+			page.getByRole( 'button', { name: 'Generate' } )
+		).toBeHidden();
 
 		// Click the Select button.
 		await page
-			.locator( '.media-frame-toolbar button', { hasText: 'Select' } )
+			.getByRole( 'button', { name: 'Select', exact: true } )
 			.click();
 
 		// Ensure the Generate button is not visible in the sidebar.
 		await expect(
-			page.locator( '.ai-alt-text-controls button' )
-		).not.toBeVisible();
+			page.getByRole( 'button', { name: 'Generate Alt Text' } )
+		).toBeHidden();
 
 		await editor.saveDraft();
 	} );
@@ -323,14 +295,12 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
 
 		// Click on the first image in the Media Library.
-		await page
-			.locator( '.media-frame-content ul.attachments li:first-child' )
-			.click();
+		await page.getByRole( 'checkbox' ).first().click();
 
 		// Ensure the alt text generation button is not visible.
 		await expect(
-			page.locator( '#ai-alt-text-generate-button' )
-		).not.toBeVisible();
+			page.getByRole( 'button', { name: 'Generate' } )
+		).toBeHidden();
 
 		// Create a new post.
 		await admin.createNewPost( {
@@ -351,29 +321,27 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		// Click the Media Library button in the image block.
 		const imageBlock = editor.canvas.locator( '.wp-block-image' ).first();
 		const mediaLibraryButton = imageBlock
-			.locator( 'button', { hasText: 'Media Library' } )
+			.getByRole( 'button', { name: 'Media Library' } )
 			.first();
 		await mediaLibraryButton.click();
 
 		// Click on the first image in the Media Library.
-		await page
-			.locator( '.media-frame-content ul.attachments li:first-child' )
-			.click();
+		await page.getByRole( 'checkbox' ).first().click();
 
 		// Ensure the alt text generation button is not visible.
 		await expect(
-			page.locator( '#ai-alt-text-generate-button' )
-		).not.toBeVisible();
+			page.getByRole( 'button', { name: 'Generate' } )
+		).toBeHidden();
 
 		// Click the Select button.
 		await page
-			.locator( '.media-frame-toolbar button', { hasText: 'Select' } )
+			.getByRole( 'button', { name: 'Select', exact: true } )
 			.click();
 
 		// Ensure the Generate button is not visible in the sidebar.
 		await expect(
-			page.locator( '.ai-alt-text-controls button' )
-		).not.toBeVisible();
+			page.getByRole( 'button', { name: 'Generate Alt Text' } )
+		).toBeHidden();
 
 		await editor.saveDraft();
 	} );
@@ -396,7 +364,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await admin.visitAdminPage( 'upload.php', 'mode=list' );
 
 		// Verify the bulk actions dropdown contains the Generate Alt Text option.
-		const bulkSelect = page.locator( '#bulk-action-selector-top' );
+		const bulkSelect = page.getByLabel( 'Select bulk action' ).first();
 		await expect( bulkSelect ).toBeVisible();
 		await expect(
 			bulkSelect.locator( 'option[value="wpai_generate_alt_text"]' )
@@ -422,15 +390,19 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await admin.visitAdminPage( 'upload.php', 'mode=list' );
 
 		// Select all items via the header checkbox.
-		await page.locator( '#cb-select-all-1' ).check();
+		await page
+			.getByRole( 'checkbox', { name: 'Select All' } )
+			.first()
+			.check();
 
 		// Choose the bulk action.
 		await page
-			.locator( '#bulk-action-selector-top' )
+			.getByLabel( 'Select bulk action' )
+			.first()
 			.selectOption( 'wpai_generate_alt_text' );
 
 		// Click Apply.
-		await page.locator( '#doaction' ).click();
+		await page.getByRole( 'button', { name: 'Apply' } ).first().click();
 
 		// After redirect, the progress notice should appear.
 		await expect(
@@ -472,15 +444,19 @@ test.describe( 'Alt Text Generation Experiment', () => {
 			await admin.visitAdminPage( 'upload.php', 'mode=list' );
 
 			// Select all items via the header checkbox.
-			await page.locator( '#cb-select-all-1' ).check();
+			await page
+				.getByRole( 'checkbox', { name: 'Select All' } )
+				.first()
+				.check();
 
 			// Choose the bulk action.
 			await page
-				.locator( '#bulk-action-selector-top' )
+				.getByLabel( 'Select bulk action' )
+				.first()
 				.selectOption( 'wpai_generate_alt_text' );
 
 			// Click Apply.
-			await page.locator( '#doaction' ).click();
+			await page.getByRole( 'button', { name: 'Apply' } ).first().click();
 
 			await expect(
 				page.locator( '.notice-error p', {
@@ -515,13 +491,17 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await admin.visitAdminPage( 'upload.php', 'mode=list' );
 
 		// Select all items.
-		await page.locator( '#cb-select-all-1' ).check();
+		await page
+			.getByRole( 'checkbox', { name: 'Select All' } )
+			.first()
+			.check();
 
 		// Choose the bulk action and apply.
 		await page
-			.locator( '#bulk-action-selector-top' )
+			.getByLabel( 'Select bulk action' )
+			.first()
 			.selectOption( 'wpai_generate_alt_text' );
-		await page.locator( '#doaction' ).click();
+		await page.getByRole( 'button', { name: 'Apply' } ).first().click();
 
 		// Wait for completion.
 		await expect(
@@ -554,7 +534,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await admin.visitAdminPage( 'upload.php', 'mode=list' );
 
 		// Verify the bulk actions dropdown does NOT contain the Generate Alt Text option.
-		const bulkSelect = page.locator( '#bulk-action-selector-top' );
+		const bulkSelect = page.getByLabel( 'Select bulk action' ).first();
 		await expect( bulkSelect ).toBeVisible();
 		await expect(
 			bulkSelect.locator( 'option[value="wpai_generate_alt_text"]' )

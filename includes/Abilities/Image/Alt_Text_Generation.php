@@ -67,9 +67,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 					'description'       => esc_html__( 'The attachment ID of the image to generate alt text for.', 'ai' ),
 				),
 				'image_url'     => array(
-					'type'              => 'string',
-					'sanitize_callback' => array( $this, 'sanitize_image_reference_input' ),
-					'description'       => esc_html__( 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.', 'ai' ),
+					'type'        => 'string',
+					'description' => esc_html__( 'URL or data URI of the image to generate alt text for. Used if attachment_id is not provided.', 'ai' ),
 				),
 				'context'       => array(
 					'type'              => 'string',
@@ -122,6 +121,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 			),
 		);
 
+		if ( isset( $args['image_url'] ) ) {
+			$args['image_url'] = $this->sanitize_image_reference_input( $args['image_url'] );
+		}
+
 		// Get the image reference.
 		$image_reference = $this->get_image_reference( $args );
 
@@ -150,7 +153,8 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		// Return the alt text in the format the Ability expects.
 		return array(
-			'alt_text' => sanitize_text_field( $result ),
+			'alt_text'      => sanitize_text_field( $result ),
+			'is_decorative' => false,
 		);
 	}
 
@@ -222,7 +226,10 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @return string|\WP_Error The generated alt text or WP_Error on failure.
 	 */
 	protected function generate_alt_text( array $image_reference, string $context = '', string $image_meta = '' ) {
-		$prompt_builder = $this->get_prompt_builder( $this->build_prompt( $context, $image_meta ), $image_reference['reference'] );
+		$prompt = $this->build_prompt( $context, $image_meta );
+
+		$prompt         = $this->filter_prompt( $prompt, $context, $image_meta );
+		$prompt_builder = $this->get_prompt_builder( $prompt, $image_reference['reference'] );
 
 		if ( is_wp_error( $prompt_builder ) ) {
 			return $prompt_builder;
@@ -408,7 +415,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
 			->using_temperature( 0.3 );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Alt_Text_Generation_Experiment::class, get_preferred_vision_models() );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Alt_Text_Generation_Experiment::class, get_preferred_vision_models(), $prompt, $reference );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

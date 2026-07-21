@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { dispatch, select } from '@wordpress/data';
+import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editPostStore } from '@wordpress/edit-post';
@@ -30,12 +30,14 @@ import {
 } from '../../../utils/notes';
 import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
+import { hasMinimumContent } from '../../../utils/character-count';
 
 const BLOCK_PLACEHOLDER = '[[BLOCK_GOES_HERE]]';
 
 const BATCH_SIZE = 4;
 const NOTICE_ID = 'ai_editorial_notes_error';
 const NOTES_SIDEBAR_ID = 'edit-post/collab-sidebar';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
 
 interface BlockAttributes {
 	content?: string;
@@ -68,6 +70,31 @@ interface ReviewResult {
 interface NoteRecord {
 	id: number;
 	[ key: string ]: unknown;
+}
+
+/**
+ * Hook for determining whether Editorial Notes should be available.
+ *
+ * @return Availability state for the Editorial Notes feature.
+ */
+function useEditorialNotesAvailability(): {
+	content: string;
+	minContentLength: number;
+	isContentTooShort: boolean;
+} {
+	const content =
+		useSelect( ( selectStore ) => {
+			return selectStore( editorStore ).getEditedPostContent();
+		}, [] ) ?? '';
+	const minContentLength: number =
+		( window as any ).aiEditorialNotesData?.minContentLength ??
+		MINIMUM_CONTENT_COUNT_DEFAULT;
+
+	return {
+		content,
+		minContentLength,
+		isContentTooShort: ! hasMinimumContent( content, minContentLength ),
+	};
 }
 
 /**
@@ -165,15 +192,23 @@ export function useEditorialNotes(): {
 	progress: number;
 	total: number;
 	lastRunCount: number | null;
+	isContentTooShort: boolean;
+	minContentLength: number;
 	runReview: () => Promise< void >;
 } {
 	const [ isReviewing, setIsReviewing ] = useState< boolean >( false );
 	const [ progress, setProgress ] = useState< number >( 0 );
 	const [ total, setTotal ] = useState< number >( 0 );
 	const [ lastRunCount, setLastRunCount ] = useState< number | null >( null );
+	const { content, isContentTooShort, minContentLength } =
+		useEditorialNotesAvailability();
 
 	const runReview = async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
+			return;
+		}
+
+		if ( isContentTooShort ) {
 			return;
 		}
 
@@ -182,20 +217,13 @@ export function useEditorialNotes(): {
 		setTotal( 0 );
 		setLastRunCount( null );
 
-		( dispatch( noticesStore ) as any ).removeNotice( NOTICE_ID );
+		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
-			const postId = (
-				select( editorStore ) as any
-			 ).getCurrentPostId() as number;
-			const content = (
-				select( editorStore ) as any
-			 ).getEditedPostContent() as string;
+			const postId = select( editorStore ).getCurrentPostId() as number;
 
 			// Get all blocks and flatten the tree.
-			const allBlocks = (
-				select( blockEditorStore ) as any
-			 ).getBlocks() as Block[];
+			const allBlocks = select( blockEditorStore ).getBlocks();
 			const flatBlocks = flattenBlocks( allBlocks );
 
 			// Filter to reviewable block types.
@@ -262,12 +290,26 @@ export function useEditorialNotes(): {
 			setLastRunCount( totalSuggestions );
 
 			if ( totalSuggestions > 0 ) {
-				(
-					dispatch( coreStore ) as any
-				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+				dispatch( coreStore ).invalidateResolutionForStoreSelector(
+					'getEntityRecords'
+				);
+
+				dispatch( noticesStore ).createSuccessNotice(
+					sprintf(
+						/* translators: %d: number of suggestions added. */
+						_n(
+							'%d suggestion added. Save to keep changes.',
+							'%d suggestions added. Save to keep changes.',
+							totalSuggestions,
+							'ai'
+						),
+						totalSuggestions
+					),
+					{ type: 'snackbar' }
+				);
 			}
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice(
+			dispatch( noticesStore ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
 					id: NOTICE_ID,
@@ -279,7 +321,15 @@ export function useEditorialNotes(): {
 		}
 	};
 
-	return { isReviewing, progress, total, lastRunCount, runReview };
+	return {
+		isReviewing,
+		progress,
+		total,
+		lastRunCount,
+		isContentTooShort,
+		minContentLength,
+		runReview,
+	};
 }
 
 /**
@@ -289,32 +339,34 @@ export function useEditorialNotes(): {
  */
 export function useEditorialBlock(): {
 	isReviewing: boolean;
+	reviewingClientId: string | null;
+	isContentTooShort: boolean;
+	minContentLength: number;
 	reviewBlock: ( clientId: string ) => Promise< void >;
 } {
-	const [ isReviewing, setIsReviewing ] = useState< boolean >( false );
+	const [ reviewingClientId, setReviewingClientId ] = useState<
+		string | null
+	>( null );
+	const { content, isContentTooShort, minContentLength } =
+		useEditorialNotesAvailability();
 
 	const reviewBlock = async ( clientId: string ) => {
-		setIsReviewing( true );
+		if ( isContentTooShort ) {
+			return;
+		}
 
-		( dispatch( noticesStore ) as any ).removeNotice(
-			'ai_editorial_block_error'
-		);
+		setReviewingClientId( clientId );
+
+		dispatch( noticesStore ).removeNotice( 'ai_editorial_block_error' );
 
 		try {
-			const block = ( select( blockEditorStore ) as any ).getBlock(
-				clientId
-			) as Block | null;
+			const block = select( blockEditorStore ).getBlock( clientId );
 
 			if ( ! block ) {
 				return;
 			}
 
-			const postId = (
-				select( editorStore ) as any
-			 ).getCurrentPostId() as number;
-			const content = (
-				select( editorStore ) as any
-			 ).getEditedPostContent() as string;
+			const postId = select( editorStore ).getCurrentPostId() as number;
 
 			// Fetch fresh note state for this invocation.
 			const [ pendingNotes, approvedNotes ] = await Promise.all( [
@@ -340,18 +392,18 @@ export function useEditorialBlock(): {
 			);
 
 			if ( suggestionCount > 0 ) {
-				(
-					dispatch( coreStore ) as any
-				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+				dispatch( coreStore ).invalidateResolutionForStoreSelector(
+					'getEntityRecords'
+				);
 				( dispatch( editPostStore ) as any ).openGeneralSidebar?.(
 					NOTES_SIDEBAR_ID
 				);
-				( dispatch( noticesStore ) as any ).createSuccessNotice(
+				dispatch( noticesStore ).createSuccessNotice(
 					sprintf(
 						/* translators: %d: number of suggestions added. */
 						_n(
-							'%d suggestion added.',
-							'%d suggestions added.',
+							'%d suggestion added. Save to keep changes.',
+							'%d suggestions added. Save to keep changes.',
 							suggestionCount,
 							'ai'
 						),
@@ -360,14 +412,14 @@ export function useEditorialBlock(): {
 					{ type: 'snackbar' }
 				);
 			} else {
-				( dispatch( noticesStore ) as any ).createNotice(
+				dispatch( noticesStore ).createNotice(
 					'info',
 					__( 'No new suggestions found.', 'ai' ),
 					{ type: 'snackbar' }
 				);
 			}
 		} catch ( error: any ) {
-			( dispatch( noticesStore ) as any ).createErrorNotice(
+			dispatch( noticesStore ).createErrorNotice(
 				error?.message ?? String( error ),
 				{
 					id: 'ai_editorial_block_error',
@@ -375,11 +427,17 @@ export function useEditorialBlock(): {
 				}
 			);
 		} finally {
-			setIsReviewing( false );
+			setReviewingClientId( null );
 		}
 	};
 
-	return { isReviewing, reviewBlock };
+	return {
+		isReviewing: !! reviewingClientId,
+		reviewingClientId,
+		isContentTooShort,
+		minContentLength,
+		reviewBlock,
+	};
 }
 
 /**
@@ -404,7 +462,7 @@ async function createNote(
 		.map( ( s ) => `[${ s.review_type.toUpperCase() }] ${ s.text }` )
 		.join( '\n\n' );
 
-	const note = ( await ( dispatch( coreStore ) as any ).saveEntityRecord(
+	const note = ( await dispatch( coreStore ).saveEntityRecord(
 		'root',
 		'comment',
 		{
@@ -424,11 +482,8 @@ async function createNote(
 				block.clientId
 			)?.metadata ?? {};
 
-		( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
-			block.clientId,
-			{
-				metadata: { ...existingMeta, noteId: note.id },
-			}
-		);
+		dispatch( blockEditorStore ).updateBlockAttributes( block.clientId, {
+			metadata: { ...existingMeta, noteId: note.id },
+		} );
 	}
 }

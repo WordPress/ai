@@ -5,9 +5,10 @@
 /**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
+import { Button, Notice } from '@wordpress/components';
 import { update } from '@wordpress/icons';
 import { __ } from '@wordpress/i18n';
+import { Stack } from '@wordpress/ui';
 
 /**
  * Internal dependencies
@@ -24,7 +25,13 @@ const { aiExcerptGenerationData } = window as any;
  * @return {React.JSX.Element | null} The excerpt generation component.
  */
 export default function ExcerptGeneration(): React.JSX.Element | null {
-	const { isGenerating, hasExcerpt, handleGenerate } = useExcerptGeneration();
+	const {
+		isGenerating,
+		hasExcerpt,
+		isContentTooShort,
+		tooShortLabel,
+		handleGenerate,
+	} = useExcerptGeneration();
 
 	// Don't render if disabled.
 	if ( ! aiExcerptGenerationData?.enabled ) {
@@ -40,15 +47,26 @@ export default function ExcerptGeneration(): React.JSX.Element | null {
 	}
 
 	return (
-		<Button
-			icon={ update }
-			variant="secondary"
-			onClick={ handleGenerate }
-			disabled={ isGenerating }
-			accessibleWhenDisabled
-			isBusy={ isGenerating }
-		>
-			{ buttonLabel }
-		</Button>
+		<Stack direction="column" gap="md">
+			{ isContentTooShort && (
+				<Notice status="warning" isDismissible={ false }>
+					{ tooShortLabel }
+				</Notice>
+			) }
+
+			<Button
+				icon={ update }
+				variant="secondary"
+				label={ isContentTooShort ? tooShortLabel : buttonLabel }
+				onClick={ handleGenerate }
+				disabled={ isGenerating || isContentTooShort }
+				accessibleWhenDisabled
+				isBusy={ isGenerating }
+				__next40pxDefaultSize
+				style={ { alignSelf: 'flex-start' } }
+			>
+				{ buttonLabel }
+			</Button>
+		</Stack>
 	);
 }

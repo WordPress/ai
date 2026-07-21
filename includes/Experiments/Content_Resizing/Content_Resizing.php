@@ -14,6 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -87,7 +89,11 @@ class Content_Resizing extends Abstract_Feature {
 			'content_resizing',
 			'ContentResizingData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => get_min_content_length(
+					'content-resizing',
+					Content_Resizing_Ability::DEFAULT_MIN_CONTENT_LENGTH
+				),
 			)
 		);
 	}

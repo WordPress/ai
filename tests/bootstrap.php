@@ -41,5 +41,38 @@ tests_add_filter(
 	}
 );
 
+/*
+ * Register the core ability categories that the WordPress test suite removes.
+ *
+ * The suite unhooks `wp_register_core_ability_categories()`, so `site` and `user` do not
+ * exist during tests. Booting the abilities registry registers every plugin ability at once,
+ * and `wp_register_ability()` refuses a category that is not registered. A single missing
+ * category therefore breaks any test that touches abilities, whichever test that happens to
+ * be. Without this, every new ability test class had to register the categories again.
+ *
+ * Categories the plugin owns arrive through its own callbacks on this hook.
+ *
+ * @see _unhook_core_ability_categories_registration() in the WordPress test suite.
+ */
+tests_add_filter(
+	'wp_abilities_api_categories_init',
+	static function (): void {
+		if ( ! function_exists( 'wp_register_core_ability_categories' ) ) {
+			return;
+		}
+
+		/*
+		 * Stand down once core registers them itself. `has_action()` returns the priority,
+		 * which is falsy at priority 0, so compare against `false`.
+		 */
+		if ( false !== has_action( 'wp_abilities_api_categories_init', 'wp_register_core_ability_categories' ) ) {
+			return;
+		}
+
+		wp_register_core_ability_categories();
+	},
+	5
+);
+
 // Start up the WP testing environment.
 require $_test_root . '/includes/bootstrap.php';

@@ -16,12 +16,12 @@ import {
 
 const EXPERIMENT_LABEL = 'Content Resizing';
 
-// Long enough to satisfy the 5-word minimum for the Shorten action.
+// Long enough to satisfy the 25-character minimum for the Shorten action.
 const SAMPLE_PARAGRAPH =
-	'This paragraph contains enough words for the resize toolbar to work against.';
+	'This paragraph contains enough characters for the resize toolbar to work against.';
 
 // The mocked OpenAI response returns this string for the generic completions fixture
-// (see tests/e2e-request-mocking/responses/OpenAI/completions.json).
+// (see tests/e2e-testing/responses/OpenAI/completions.json).
 const MOCKED_RESPONSE =
 	'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure';
 
@@ -172,7 +172,7 @@ test.describe( 'Content Resizing Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Shorten action with too few words shows an error notice without opening the modal', async ( {
+	test( 'Shorten action with too few characters shows an error notice without opening the modal', async ( {
 		admin,
 		editor,
 		page,
@@ -181,10 +181,10 @@ test.describe( 'Content Resizing Experiment', () => {
 			title: 'Content Resizing Shorten Error Test',
 		} );
 
-		// Fewer than 5 words so the client-side validation fires.
+		// Fewer than 25 characters so the client-side validation fires.
 		await editor.insertBlock( {
 			name: 'core/paragraph',
-			attributes: { content: 'Too few words.' },
+			attributes: { content: 'Too few characters.' },
 		} );
 
 		await selectFirstParagraph( editor );
@@ -208,5 +208,52 @@ test.describe( 'Content Resizing Experiment', () => {
 		} );
 		expect( errorNotice ).toBeDefined();
 		expect( errorNotice.status ).toBe( 'error' );
+	} );
+
+	test( 'Shorten opens the modal when the block meets the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Content Resizing Minimum Length Test',
+		} );
+
+		// SAMPLE_PARAGRAPH has more than the 25-character minimum, so Shorten is allowed.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: { content: SAMPLE_PARAGRAPH },
+		} );
+
+		await selectFirstParagraph( editor );
+
+		await page.getByRole( 'button', { name: 'Resize Content' } ).click();
+		await page.getByRole( 'menuitem', { name: 'Shorten' } ).click();
+
+		// The minimum-length gate passes, so the modal opens.
+		const modal = page.locator( '.ai-content-resizing-modal' );
+		await expect( modal ).toBeVisible();
+
+		// The suggested panel renders the exact mocked AI response (await the
+		// async generation), and the original panel renders the exact block text.
+		await expect(
+			modal.locator(
+				'.ai-content-resizing-modal__text:not(.ai-content-resizing-modal__text--original)'
+			)
+		).toHaveText( MOCKED_RESPONSE, { timeout: 15000 } );
+		await expect(
+			modal.locator( '.ai-content-resizing-modal__text--original' )
+		).toHaveText( SAMPLE_PARAGRAPH );
+
+		// No client-side validation error notice should be registered.
+		const errorNotice = await page.evaluate( () => {
+			const notices = window.wp.data
+				.select( 'core/notices' )
+				.getNotices();
+			return notices.find(
+				( notice ) => notice.id === 'ai_content_resizing_error'
+			);
+		} );
+		expect( errorNotice ).toBeUndefined();
 	} );
 } );

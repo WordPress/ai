@@ -11,7 +11,8 @@ import {
 	CardHeader,
 	ToggleControl,
 } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
+import { useEffect, useRef } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -47,6 +48,19 @@ const ApprovalMatrixCard = ( {
 }: ApprovalMatrixCardProps ): JSX.Element => {
 	const matrixCallers = buildMatrixCallerList( plugins, themes, approvals );
 
+	const lastToggledRef = useRef< HTMLElement | null >( null );
+	const wasSavingRef = useRef< boolean >( false );
+	const tableRef = useRef< HTMLTableElement | null >( null );
+
+	useEffect( () => {
+		if ( wasSavingRef.current && ! isSaving ) {
+			lastToggledRef.current?.focus();
+			lastToggledRef.current = null;
+		}
+
+		wasSavingRef.current = isSaving;
+	}, [ isSaving ] );
+
 	return (
 		<Card className="ai-connector-approval__matrix">
 			<CardHeader>
@@ -61,7 +75,7 @@ const ApprovalMatrixCard = ( {
 						) }
 					</p>
 				) : (
-					<table className="widefat striped">
+					<table className="widefat striped" ref={ tableRef }>
 						<thead>
 							<tr>
 								<th>{ __( 'Caller', 'ai' ) }</th>
@@ -98,16 +112,29 @@ const ApprovalMatrixCard = ( {
 												<ToggleControl
 													checked={ approved }
 													disabled={ isSaving }
+													aria-label={ sprintf(
+														/* translators: %1$s: caller name (plugin or theme), %2$s: connector name */
+														__(
+															'Allow %1$s to use %2$s',
+															'ai'
+														),
+														caller.name,
+														connector.name
+													) }
 													label=""
 													onChange={ (
 														value: boolean
-													) =>
+													) => {
+														lastToggledRef.current =
+															tableRef.current
+																?.ownerDocument
+																.activeElement as HTMLElement;
 														onToggle(
 															caller.basename,
 															connector.id,
 															value
-														)
-													}
+														);
+													} }
 												/>
 											</td>
 										);

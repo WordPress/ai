@@ -14,6 +14,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_min_content_length;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -96,7 +98,8 @@ class Excerpt_Generation extends Abstract_Feature {
 			'excerpt_generation',
 			'ExcerptGenerationData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => get_min_content_length( 'excerpt-generation', 250 ),
 			)
 		);
 	}

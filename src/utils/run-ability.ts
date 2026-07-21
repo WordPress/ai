@@ -24,6 +24,7 @@ type Method = 'GET' | 'POST' | 'DELETE';
 
 type RunAbilityOptions = {
 	method?: Method;
+	signal?: AbortSignal;
 };
 
 type AbilitiesModule = {
@@ -95,30 +96,37 @@ const buildFetchOptions = (
 	input: AbilityInput,
 	method: Method
 ) => {
-	const normalizedInput = input ?? null;
-
 	if ( method === 'GET' || method === 'DELETE' ) {
 		return {
 			path:
-				normalizedInput === null
+				input === undefined || input === null
 					? `/wp-abilities/v1/abilities/${ ability }/run`
 					: addQueryArgs(
 							`/wp-abilities/v1/abilities/${ ability }/run`,
 							{
-								input: normalizedInput,
+								input,
 							}
 					  ),
 			method,
 		};
 	}
 
-	return {
+	const options: {
+		path: string;
+		method: 'POST';
+		data?: {
+			input: AbilityInput;
+		};
+	} = {
 		path: `/wp-abilities/v1/abilities/${ ability }/run`,
 		method: 'POST' as const,
-		data: {
-			input: normalizedInput,
-		},
 	};
+
+	if ( input !== undefined ) {
+		options.data = { input };
+	}
+
+	return options;
 };
 
 export async function runAbility< T = unknown >(
@@ -131,7 +139,7 @@ export async function runAbility< T = unknown >(
 		if ( typeof abilitiesModule?.executeAbility === 'function' ) {
 			return ( await abilitiesModule.executeAbility(
 				ability,
-				input ?? null
+				input
 			) ) as T;
 		}
 
@@ -149,9 +157,10 @@ export async function runAbility< T = unknown >(
 
 	const method: Method = options?.method ?? 'POST';
 
-	const response = await apiFetch(
-		buildFetchOptions( ability, input, method )
-	);
+	const response = await apiFetch( {
+		...buildFetchOptions( ability, input, method ),
+		...( options?.signal ? { signal: options.signal } : {} ),
+	} );
 
 	return response as T;
 }
