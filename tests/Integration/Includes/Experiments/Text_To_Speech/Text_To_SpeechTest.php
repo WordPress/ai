@@ -44,7 +44,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	public function test_experiment_metadata(): void {
 		$this->assertSame( 'text-to-speech', Text_To_Speech::get_id() );
 		$this->assertSame( 'experimental', $this->experiment->get_stability() );
-		$this->assertSame( 'speech_generation', $this->experiment->get_capability() );
+		$this->assertSame( 'text_to_speech_conversion', $this->experiment->get_capability() );
 		$this->assertNotEmpty( $this->experiment->get_label() );
 		$this->assertNotEmpty( $this->experiment->get_description() );
 	}

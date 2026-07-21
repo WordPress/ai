@@ -167,6 +167,12 @@ final class Models_Controller {
 					array()
 				);
 
+			case 'text_to_speech_conversion':
+				return new ModelRequirements(
+					array( CapabilityEnum::textToSpeechConversion() ),
+					array()
+				);
+
 			case 'vision':
 				return new ModelRequirements(
 					array( CapabilityEnum::textGeneration() ),

@@ -44,7 +44,7 @@ class Text_To_Speech extends Abstract_Feature {
 			'label'       => __( 'Text to Speech', 'ai' ),
 			'description' => __( 'Generates an audio version of post content so visitors can listen instead of read. Requires an AI connector that includes support for text to speech models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
-			'capability'  => 'speech_generation',
+			'capability'  => 'text_to_speech_conversion',
 		);
 	}
 
