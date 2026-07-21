@@ -66,30 +66,10 @@ async function resolveNote( noteId: number ): Promise< void > {
 }
 
 /**
- * Finds a button-like element by its accessible name (aria-label or
- * trimmed text content), optionally scoped to a container.
- */
-function findButtonByAccessibleName(
-	name: string,
-	root: ParentNode = document
-): HTMLElement | null {
-	const candidates = root.querySelectorAll< HTMLElement >(
-		'button, [role="button"]'
-	);
-	for ( const candidate of candidates ) {
-		const accessibleName =
-			candidate.getAttribute( 'aria-label' ) ??
-			candidate.textContent?.trim() ??
-			'';
-		if ( accessibleName === name ) {
-			return candidate;
-		}
-	}
-	return null;
-}
-
-/**
  * Navigates to the classic revisions screen.
+ *
+ * @param adminUrl       Site admin URL, or undefined if unavailable.
+ * @param lastRevisionId The revision ID to open.
  */
 function navigateToClassicRevisions(
 	adminUrl: string | undefined,
@@ -111,14 +91,24 @@ function navigateToClassicRevisions(
  * list of core module names to opt in. Calling it directly from a plugin
  * throws, since the action is never attached to the public dispatch
  * object. Simulating a real click on Core's own rendered button is the
- * supported workaround — WordPress's own e2e test utilities do the same
- * thing (openDocumentSettingsSidebar clicks the "Settings" button by
- * accessible name rather than dispatching a store action).
+ * supported workaround.
+ *
+ * Elements are located by stable, locale-independent attributes rather
+ * than translated accessible names: the sidebar toggle uses
+ * `aria-controls="edit-post:document"`, which comes from the
+ * complementary area identifier `edit-post/document` registered by
+ * the WordPress editor package for the Document Settings sidebar, and
+ * is the same regardless of site language.
  *
  * Falls back to the classic revisions screen if the button can't be
  * found within a short polling window (e.g. markup changes upstream, or
  * the post genuinely has fewer than two revisions so Core doesn't render
  * the button at all).
+ *
+ * @param root0                Options.
+ * @param root0.adminUrl       Site admin URL, used for the classic
+ *                             revisions fallback.
+ * @param root0.lastRevisionId The revision ID to open.
  */
 function openVisualRevisions( {
 	adminUrl,
@@ -132,7 +122,9 @@ function openVisualRevisions( {
 
 	// The revisions button only exists in the DOM once the Document
 	// Settings sidebar is mounted, so open it first if it's collapsed.
-	const settingsToggle = findButtonByAccessibleName( 'Settings' );
+	const settingsToggle = document.querySelector< HTMLButtonElement >(
+		'button[aria-controls="edit-post:document"]'
+	);
 	if ( settingsToggle?.getAttribute( 'aria-expanded' ) === 'false' ) {
 		settingsToggle.click();
 	}
@@ -163,6 +155,15 @@ function openVisualRevisions( {
  * openVisualRevisions(). Falls back to the classic revisions screen when
  * visual revisions are disabled, e.g. when classic metaboxes are active
  * on the post.
+ *
+ * @param root0                        Options.
+ * @param root0.lastRevisionId         The revision ID to open.
+ * @param root0.adminUrl               Site admin URL, used for the
+ *                                     classic revisions fallback.
+ * @param root0.disableVisualRevisions Whether Core has disabled visual
+ *                                     revisions for this post.
+ * @return Snackbar notice actions, or an empty array when neither path
+ *         is available.
  */
 function getRevisionReviewAction( {
 	lastRevisionId,
@@ -478,7 +479,7 @@ export function useEditorialUpdates(): {
 				// Save the post so refinements are persisted and a revision is
 				// created. This keeps the editor state clean — no "unsaved
 				// changes" prompt when navigating to the revisions link.
-				await ( dispatch( editorStore ) as any ).savePost();
+				await dispatch( editorStore ).savePost();
 				const { aiEditorialUpdatesData } = window as any;
 				const restBase = aiEditorialUpdatesData?.rest_base as
 					| string
@@ -494,17 +495,20 @@ export function useEditorialUpdates(): {
 					);
 					lastRevisionId = revisions[ 0 ]?.id ?? null;
 				} catch {
-					lastRevisionId = (
-						select( editorStore ) as any
-					 ).getCurrentPostLastRevisionId() as number | null;
+					lastRevisionId =
+						select( editorStore ).getCurrentPostLastRevisionId();
 				}
 
 				const adminUrl = aiEditorialUpdatesData?.admin_url as
 					| string
 					| undefined;
-				const disableVisualRevisions = !! (
-					select( editorStore ) as any
-				 ).getEditorSettings()?.disableVisualRevisions;
+				const editorSettings = select(
+					editorStore
+				).getEditorSettings() as {
+					disableVisualRevisions?: boolean;
+				};
+				const disableVisualRevisions =
+					!! editorSettings.disableVisualRevisions;
 
 				const noticeActions = lastRevisionId
 					? getRevisionReviewAction( {

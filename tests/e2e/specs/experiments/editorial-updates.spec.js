@@ -221,37 +221,21 @@ test.describe( 'Editorial Updates Experiment', () => {
 		} );
 		expect( blockContent ).toContain( 'refined block content' );
 
-		// Verify the success snackbar has a "Review in Revisions" action using
-		// the correct path: visual revisions (onClick) when available, classic
-		// revisions URL when visual revisions are disabled.
-		const hasRevisionAction = await page.evaluate( () => {
-			const notices = window.wp.data
-				.select( 'core/notices' )
-				.getNotices();
-			const successNotice = notices.find(
-				( n ) =>
-					typeof n.content === 'string' &&
-					n.content.includes( 'refined' )
-			);
-			if ( ! successNotice?.actions?.[ 0 ] ) {
-				return false;
-			}
-			const action = successNotice.actions[ 0 ];
-			if ( action.label !== 'Review in Revisions' ) {
-				return false;
-			}
-			const disableVisualRevisions = !! window.wp.data
-				.select( 'core/editor' )
-				.getEditorSettings()?.disableVisualRevisions;
-			if ( disableVisualRevisions ) {
-				return (
-					typeof action.url === 'string' &&
-					action.url.includes( 'revision.php' )
-				);
-			}
-			return typeof action.onClick === 'function' && ! action.url;
+		// Click the success snackbar's "Review in Revisions" action and
+		// verify the visual revisions view actually opens in the editor
+		// (not just that the action exists). `.editor-revisions-header`
+		// is the container Core renders only while reviewing a revision.
+		const reviewInRevisionsButton = page.getByRole( 'button', {
+			name: 'Review in Revisions',
 		} );
-		expect( hasRevisionAction ).toBe( true );
+		await expect( reviewInRevisionsButton ).toBeVisible( {
+			timeout: 10000,
+		} );
+		await reviewInRevisionsButton.click();
+
+		await expect( page.locator( '.editor-revisions-header' ) ).toBeVisible(
+			{ timeout: 10000 }
+		);
 	} );
 
 	test( 'Keeps Editorial Notes and Updates grouped with Content Summarization enabled', async ( {
