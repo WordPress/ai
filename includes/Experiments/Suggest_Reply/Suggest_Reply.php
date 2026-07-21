@@ -22,14 +22,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * Generates reply suggestions for a comment.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 class Suggest_Reply extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function get_id(): string {
 		return 'suggest-reply';
@@ -38,7 +38,7 @@ class Suggest_Reply extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -51,7 +51,7 @@ class Suggest_Reply extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -62,7 +62,7 @@ class Suggest_Reply extends Abstract_Feature {
 	/**
 	 * Registers the reply suggestion ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -78,7 +78,7 @@ class Suggest_Reply extends Abstract_Feature {
 	/**
 	 * Adds a "Suggest reply" action link to the comment row actions.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param mixed       $actions The existing comment row actions.
 	 * @param \WP_Comment $comment The comment object.
@@ -106,7 +106,7 @@ class Suggest_Reply extends Abstract_Feature {
 	/**
 	 * Enqueues assets for the Suggest Reply experiment.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */

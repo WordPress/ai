@@ -67,7 +67,7 @@ class Summarization extends Abstract_Feature {
 	 * requested post type from the query string and restricts bulk summarization
 	 * to post types exposed via the REST API.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function register_bulk_action_hooks_for_screen(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -140,7 +140,7 @@ class Summarization extends Abstract_Feature {
 	/**
 	 * Gets the minimum content length required to enable summarization.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return int The minimum number of characters required.
 	 */
@@ -164,7 +164,7 @@ class Summarization extends Abstract_Feature {
 	/**
 	 * Adds the "Generate Summary" option to the posts list bulk actions menu.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<string, string> $actions The existing bulk actions.
 	 * @return array<string, string> The modified bulk actions.
@@ -185,7 +185,7 @@ class Summarization extends Abstract_Feature {
 	 * The actual generation is performed client-side after the redirect so that slow
 	 * AI API calls do not risk hitting PHP's execution time limit.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param string    $redirect_url The current redirect URL.
 	 * @param string    $doaction     The bulk action being performed.
@@ -223,7 +223,7 @@ class Summarization extends Abstract_Feature {
 	/**
 	 * Enqueues the bulk summarization script when a bulk action redirect is detected.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */

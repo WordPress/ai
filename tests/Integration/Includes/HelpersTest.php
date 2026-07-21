@@ -1837,7 +1837,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that built-in REST-enabled post types are supported for summarization.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_true_for_rest_post_type(): void {
 		$this->assertTrue( post_type_supports_bulk_action( 'post', Summarization::get_id() ) );
@@ -1847,7 +1847,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that post types with show_in_rest disabled are not supported for summarization.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_when_not_in_rest(): void {
 		register_post_type(
@@ -1871,7 +1871,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 *
 	 * Attachment is excluded at the feature level for summarization, not at the base level.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_attachment(): void {
 		$this->assertFalse( post_type_supports_bulk_action( 'attachment', Summarization::get_id() ) );
@@ -1880,7 +1880,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a non-existent post type is not supported.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
 		$this->assertFalse( post_type_supports_bulk_action( 'does_not_exist', Summarization::get_id() ) );

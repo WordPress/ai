@@ -103,7 +103,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 * Simulates cron, WP-CLI, or any request that uses the Abilities API before
 	 * `rest_api_init` registers core's initial settings.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_core_read_settings_registers_initial_settings_without_rest_api_init(): void {
 		global $wp_registered_settings, $wp_actions;

@@ -176,7 +176,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_bulk_action() adds the Generate Summary option.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_register_bulk_action_adds_option(): void {
 		$experiment = new Summarization();
@@ -189,7 +189,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_bulk_action() does nothing when the experiment is disabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_register_bulk_action_skips_when_experiment_disabled(): void {
 		update_option( 'wpai_feature_summarization_enabled', false );
@@ -203,7 +203,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that handle_bulk_action() does nothing for users without edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_handle_bulk_action_requires_edit_posts_capability(): void {
 		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -220,7 +220,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that handle_bulk_action() appends the expected query args to the redirect URL.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_handle_bulk_action_appends_post_ids_to_redirect_url(): void {
 		$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
@@ -248,7 +248,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that handle_bulk_action() returns the original URL when no editable posts remain.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_handle_bulk_action_returns_unchanged_url_when_no_editable_posts(): void {
 		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
@@ -272,7 +272,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_enqueue_bulk_assets() does nothing on non-edit screens.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_non_edit_screens(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -296,7 +296,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_enqueue_bulk_assets() does nothing when the query param is absent.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_without_query_param(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -319,7 +319,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_enqueue_bulk_assets() enqueues the bulk script when all conditions are met.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_enqueues_script(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -344,7 +344,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register() wires register_bulk_action_hooks_for_screen() onto load-edit.php.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_register_wires_bulk_action_hooks_via_load_edit(): void {
 		$experiment = new Summarization();
@@ -367,7 +367,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_bulk_action_hooks_for_screen() registers filters for REST-enabled post types.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_register_bulk_action_hooks_for_screen_registers_for_rest_post_type(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -394,7 +394,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_bulk_action_hooks_for_screen() skips post types not exposed in REST.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_register_bulk_action_hooks_for_screen_skips_non_rest_post_types(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -426,7 +426,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_bulk_action_hooks_for_screen() skips the attachment post type for summarization.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_register_bulk_action_summarization_hooks_for_screen_skips_attachment(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended

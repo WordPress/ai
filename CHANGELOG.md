@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [1.2.0] - 2026-07-14
+### Added
+- New Experiment: Suggest Reply; gives comment moderators a quick way to generate a reply to a comment through the admin ([#724](https://github.com/WordPress/ai/pull/724)).
+- New "Advanced settings" option in Developer Tools to show/hide additional configuration options for features and experiments ([#842](https://github.com/WordPress/ai/pull/842)).
+- Bulk "Generate AI Summary" action to the posts and pages list table, enabling summary generation for multiple posts at once ([#650](https://github.com/WordPress/ai/pull/650)).
+- New `core/read-content` Ability with secure single-post and query modes (including include and opt-in fields) to enable read-only content access ([#739](https://github.com/WordPress/ai/pull/739)).
+- New `core/read-users` Ability that retrieves a single user by ID, email, login, or nicename, or a filtered and paginated users collection, with sensitive fields opt-in and permission-gated ([#774](https://github.com/WordPress/ai/pull/774)).
+- An inline admin notice when Connector Approvals are enabled and no AI connectors are yet approved, prompting admins to approve the AI plugin for use ([#830](https://github.com/WordPress/ai/pull/830)).
+- Introduce new `wp_ai_client_default_request_timeout` filter to make the default request timeout configurable. Use this for the image generation request timeout ([#862](https://github.com/WordPress/ai/pull/862)).
+
+### Changed
+- Content Summary block detection now checks within nested blocks ([#810](https://github.com/WordPress/ai/pull/810)).
+- Move all existing configuration options into a new "Advanced settings" section which is hidden by default ([#842](https://github.com/WordPress/ai/pull/842)).
+
+### Fixed
+- Focus restoration after AI setting saves ([#812](https://github.com/WordPress/ai/pull/812)).
+- Added descriptive alt text to AI Home feature card images for improved screen reader accessibility ([#819](https://github.com/WordPress/ai/pull/819)).
+- Prevent Type-Ahead assets from loading on the front end ([#820](https://github.com/WordPress/ai/pull/820)).
+- Dismissing a type-ahead suggestion with escape should not trigger a new suggestion request ([#840](https://github.com/WordPress/ai/pull/840)).
+- Type-ahead ghost text placement and stale suggestions overlapping empty-block placeholders ([#847](https://github.com/WordPress/ai/pull/847)).
+- `MutationObserver` crash when editor iframe body isn't ready when using Title Generation ([#849](https://github.com/WordPress/ai/pull/849)).
+- Respect an explicit `show_in_abilities` value on curated settings, and leave the flag to WordPress core once core declares it ([#852](https://github.com/WordPress/ai/pull/852)).
+- Register initial settings before `core/read-settings` snapshots them ([#856](https://github.com/WordPress/ai/pull/856)).
+
+### Developer
+- Increased test timeout from 20m to 30m ([#811](https://github.com/WordPress/ai/pull/811)).
+- Updated Excerpt Generation E2E selectors to use Playwright user-facing attributes ([#813](https://github.com/WordPress/ai/pull/813)).
+- Fix feature request issue template formatting ([#814](https://github.com/WordPress/ai/pull/814)).
+- Update type-ahead E2E selectors to use Playwright user-facing attributes ([#817](https://github.com/WordPress/ai/pull/817)).
+- Update Alt Text Generation E2E selectors to use Playwright user-facing attributes ([#828](https://github.com/WordPress/ai/pull/828)).
+- Pin NPM package versions and update dev-dependencies ([#831](https://github.com/WordPress/ai/pull/831)).
+- Updated and added screenshots/casts ([#838](https://github.com/WordPress/ai/pull/838)).
+- Updated Meta Description E2E selectors to use Playwright user-facing attributes ([#843](https://github.com/WordPress/ai/pull/843)).
+- Updated Connector Approvals E2E selectors to use Playwright user-facing attributes ([#850](https://github.com/WordPress/ai/pull/850)).
+- Register core ability categories once in the bootstrap test file ([#854](https://github.com/WordPress/ai/pull/854)).
+- Added docs on becoming a Maintainer ([#857](https://github.com/WordPress/ai/pull/857)).
+- Updated Content Classification E2E selectors to use Playwright user-facing attributes ([#859](https://github.com/WordPress/ai/pull/859)).
+- Standardize E2E snackbar locators to use `data-test-id` ([#860](https://github.com/WordPress/ai/pull/860)).
+- Bump `actions/cache` from 5.0.5 to 6.1.0 ([#821](https://github.com/WordPress/ai/pull/821)).
+- Bump `phpstan/phpstan-phpunit` from 2.0.16 to 2.0.17 and `phpstan/phpstan` from 2.2.2 to 2.2.5 ([#836](https://github.com/WordPress/ai/pull/836)).
+- Bump `@wordpress/admin-ui` from 2.0.0 to 2.4.0 and `@wordpress/ui` from 0.12.0 to 0.15.1 ([#837](https://github.com/WordPress/ai/pull/837)).
+
 ## [1.1.0] - 2026-06-30
 ### Added
 - New Experiment: Type Ahead; automatically suggests ghost text at the end of paragraphs, can be manually triggered within a paragraph ([#151](https://github.com/WordPress/ai/pull/151), [#776](https://github.com/WordPress/ai/pull/776)).
@@ -503,6 +545,7 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[1.2.0]: https://github.com/WordPress/ai/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/WordPress/ai/compare/1.0.2...1.1.0
 [1.0.2]: https://github.com/WordPress/ai/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/WordPress/ai/compare/1.0.0...1.0.1
