@@ -84,10 +84,7 @@ export default function InternalLinksPlugin() {
 						<p className="description ai-internal-links__suggestions-header">
 							{ sprintf(
 								/* translators: %d: number of suggestions found. */
-								__(
-									'%d suggestion(s) found.',
-									'ai'
-								),
+								__( '%d suggestion(s) found.', 'ai' ),
 								suggestions.length
 							) }
 						</p>
