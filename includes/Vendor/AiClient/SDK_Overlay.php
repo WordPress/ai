@@ -111,8 +111,6 @@ final class SDK_Overlay {
 	 * Must run at plugin bootstrap, before any AI operation could reference an SDK class.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	public static function register(): void {
 		// The overlay supplements an existing base SDK; it cannot (and need not) activate when the
@@ -219,7 +217,6 @@ final class SDK_Overlay {
 	 * @since x.x.x
 	 *
 	 * @param string $class_name Fully-qualified class name.
-	 * @return void
 	 */
 	public static function autoload( string $class_name ): void {
 		if ( isset( self::$served_classes[ $class_name ] ) ) {
@@ -289,7 +286,6 @@ final class SDK_Overlay {
 	 * @since x.x.x
 	 *
 	 * @param string $feature The feature that could not activate.
-	 * @return void
 	 */
 	private static function log_conflict( string $feature ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
