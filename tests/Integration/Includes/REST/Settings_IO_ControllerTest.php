@@ -234,6 +234,43 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that export preserves an explicitly disabled global toggle.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_export_includes_explicitly_disabled_global_toggle(): void {
+		update_option( 'wpai_features_enabled', false );
+
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$response = $this->controller->export_settings();
+		$data     = $response->get_data();
+
+		$this->assertArrayHasKey( 'wpai_features_enabled', $data['settings'] );
+		$this->assertFalse( (bool) $data['settings']['wpai_features_enabled'] );
+	}
+
+	/**
+	 * Tests that export includes registered defaults for settings that have
+	 * never been saved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_export_includes_default_for_never_saved_global_toggle(): void {
+		delete_option( 'wpai_features_enabled' );
+
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$response = $this->controller->export_settings();
+		$data     = $response->get_data();
+
+		$this->assertArrayHasKey( 'wpai_features_enabled', $data['settings'] );
+		$this->assertFalse( (bool) $data['settings']['wpai_features_enabled'] );
+	}
+
+	/**
 	 * Tests that developer config options appear in the providers section.
 	 *
 	 * @since x.x.x
@@ -596,6 +633,68 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 1, $data['imported'] );
 		$this->assertSame( 1, $data['rejected'] );
 		$this->assertStringContainsString( '1', $data['message'] );
+	}
+
+	/**
+	 * Tests that importing an exported disabled setting turns off the target
+	 * environment to match the source environment exactly.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_of_exported_disabled_setting_preserves_disabled_state(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		update_option( 'wpai_features_enabled', false );
+		$export = $this->controller->export_settings()->get_data();
+
+		// Simulate a different target environment where the feature is enabled.
+		update_option( 'wpai_features_enabled', true );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
+		$request->set_param( 'version', $export['version'] );
+		$request->set_param( 'settings', $export['settings'] );
+		$request->set_param( 'providers', $export['providers'] );
+
+		$response = $this->controller->import_settings( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 1, $data['imported'] );
+		$this->assertSame( 0, $data['rejected'] );
+		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
+	}
+
+	/**
+	 * Tests that importing an export from an environment with unset options
+	 * applies the registered default values in the target environment.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_of_exported_default_setting_restores_default_state(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		// Simulate a source environment where the option was never saved.
+		delete_option( 'wpai_features_enabled' );
+		$export = $this->controller->export_settings()->get_data();
+
+		$this->assertArrayHasKey( 'wpai_features_enabled', $export['settings'] );
+		$this->assertFalse( (bool) $export['settings']['wpai_features_enabled'] );
+
+		// Simulate a target environment whose value drifted away from default.
+		update_option( 'wpai_features_enabled', true );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
+		$request->set_param( 'version', $export['version'] );
+		$request->set_param( 'settings', $export['settings'] );
+		$request->set_param( 'providers', $export['providers'] );
+
+		$response = $this->controller->import_settings( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 1, $data['imported'] );
+		$this->assertSame( 0, $data['rejected'] );
+		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
 	}
 }
 

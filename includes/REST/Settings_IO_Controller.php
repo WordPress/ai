@@ -162,17 +162,14 @@ final class Settings_IO_Controller {
 	 * @return \WP_REST_Response The export payload.
 	 */
 	public function export_settings(): \WP_REST_Response {
+		$registered = get_registered_settings();
 		$exportable = $this->get_exportable_option_names();
 		$settings   = array();
 		$providers  = array();
 
 		foreach ( $exportable as $option_name ) {
-			$value = get_option( $option_name );
-
-			// Skip options that have never been set.
-			if ( false === $value ) {
-				continue;
-			}
+			$default = $registered[ $option_name ]['default'] ?? false;
+			$value   = get_option( $option_name, $default );
 
 			if ( $this->is_developer_config_option( $option_name ) ) {
 				$providers[ $option_name ] = $value;
