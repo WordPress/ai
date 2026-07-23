@@ -1885,4 +1885,27 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
 		$this->assertFalse( post_type_supports_bulk_action( 'does_not_exist', Summarization::get_id() ) );
 	}
+
+	/**
+	 * Embedding support is reported true once the SDK builder is loadable.
+	 */
+	public function test_supports_embedding_generation_reflects_builder_availability(): void {
+		$expected = class_exists( 'WordPress\\AiClient\\AiClient' )
+			&& class_exists( 'WordPress\\AiClient\\Builders\\EmbeddingBuilder' );
+		$this->assertSame( $expected, \WordPress\AI\supports_embedding_generation() );
+	}
+
+	/**
+	 * With no embedding-capable provider configured, the helper returns a WP_Error, not a fatal.
+	 */
+	public function test_generate_embeddings_returns_wp_error_without_provider(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_failed', $result->get_error_code() );
+	}
 }

@@ -50,3 +50,4 @@ parameters:
 				- includes/Logging/Logging_Http_Transporter.php
 			analyseAndScan:
 				- node_modules (?)
+				- includes/Vendor/AiClient/src/
