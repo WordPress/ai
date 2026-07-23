@@ -102,4 +102,105 @@ class SDK_OverlayTest extends WP_UnitTestCase {
 			'AiClient must be served by the environment, never by the overlay.'
 		);
 	}
+
+	/**
+	 * Every class listed in every feature manifest resolves to a vendored file on disk.
+	 *
+	 * Guards against manifest/disk drift (typos, renamed or un-vendored classes).
+	 */
+	public function test_every_manifest_class_is_vendored(): void {
+		$features = SDK_Overlay::features();
+		$this->assertNotEmpty( $features, 'At least one feature must be defined.' );
+
+		foreach ( $features as $feature => $config ) {
+			foreach ( $config['classes'] as $class_name ) {
+				$this->assertNotNull(
+					SDK_Overlay::class_to_file( $class_name ),
+					sprintf( 'Feature "%s": class %s must map to a vendored file.', $feature, $class_name )
+				);
+			}
+		}
+	}
+
+	/**
+	 * Each feature's sentinel is one of the classes that feature ships.
+	 *
+	 * The sentinel must be a class we actually vendor (so it is feature-specific and net-new),
+	 * never a shared/base class that would give a false capability reading.
+	 */
+	public function test_each_feature_sentinel_is_a_shipped_class(): void {
+		foreach ( SDK_Overlay::features() as $feature => $config ) {
+			$this->assertContains(
+				$config['sentinel'],
+				$config['classes'],
+				sprintf( 'Feature "%s": sentinel should be one of its shipped classes.', $feature )
+			);
+			$this->assertNotNull(
+				SDK_Overlay::class_to_file( $config['sentinel'] ),
+				sprintf( 'Feature "%s": sentinel must be vendored.', $feature )
+			);
+		}
+	}
+
+	/**
+	 * Features are gated independently: activating one and deferring another serves only the
+	 * activated feature's classes.
+	 */
+	public function test_features_are_gated_independently(): void {
+		$features = array(
+			'embeddings' => array(
+				'sentinel' => 'WordPress\\AiClient\\Builders\\EmbeddingBuilder',
+				'guards'   => array(),
+				'classes'  => array( 'WordPress\\AiClient\\Builders\\EmbeddingBuilder' ),
+			),
+			'streaming'  => array(
+				'sentinel' => 'WordPress\\AiClient\\Streaming\\Nonexistent',
+				'guards'   => array(),
+				'classes'  => array( 'WordPress\\AiClient\\Streaming\\Nonexistent' ),
+			),
+		);
+
+		// embeddings activates, streaming defers -> only the (real, vendored) embeddings class served.
+		$served = SDK_Overlay::plan_served_classes(
+			$features,
+			array(
+				'embeddings' => 'activate',
+				'streaming'  => 'defer',
+			)
+		);
+		$this->assertArrayHasKey( 'WordPress\\AiClient\\Builders\\EmbeddingBuilder', $served );
+		$this->assertArrayNotHasKey( 'WordPress\\AiClient\\Streaming\\Nonexistent', $served );
+
+		// Reverse: embeddings defers, streaming activates. Embeddings not served; streaming's class
+		// is not vendored (no file) so it is filtered out too.
+		$served_reverse = SDK_Overlay::plan_served_classes(
+			$features,
+			array(
+				'embeddings' => 'defer',
+				'streaming'  => 'activate',
+			)
+		);
+		$this->assertArrayNotHasKey( 'WordPress\\AiClient\\Builders\\EmbeddingBuilder', $served_reverse );
+		$this->assertArrayNotHasKey( 'WordPress\\AiClient\\Streaming\\Nonexistent', $served_reverse );
+	}
+
+	/**
+	 * plan_served_classes() only includes classes for features whose action is 'activate'.
+	 */
+	public function test_plan_served_classes_ignores_non_activated_features(): void {
+		$features = array(
+			'embeddings' => array(
+				'sentinel' => 'WordPress\\AiClient\\Builders\\EmbeddingBuilder',
+				'guards'   => array(),
+				'classes'  => array( 'WordPress\\AiClient\\Builders\\EmbeddingBuilder' ),
+			),
+		);
+
+		$this->assertSame( array(), SDK_Overlay::plan_served_classes( $features, array( 'embeddings' => 'defer' ) ) );
+		$this->assertSame( array(), SDK_Overlay::plan_served_classes( $features, array( 'embeddings' => 'skip' ) ) );
+		$this->assertArrayHasKey(
+			'WordPress\\AiClient\\Builders\\EmbeddingBuilder',
+			SDK_Overlay::plan_served_classes( $features, array( 'embeddings' => 'activate' ) )
+		);
+	}
 }

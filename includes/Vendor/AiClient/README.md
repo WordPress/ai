@@ -1,15 +1,25 @@
-# Vendored: PHP AI Client (embeddings SDK subset)
+# Vendored: PHP AI Client (forward-ported SDK subset)
 
-This directory contains a **minimal, verbatim copy** of the embedding-related classes from
+This directory contains a **minimal, verbatim copy** of selected classes from
 [WordPress/php-ai-client](https://github.com/WordPress/php-ai-client), so the AI plugin can use
-embedding generation before WordPress core bundles it (core support arrives in WordPress 7.2 via
+newer SDK capabilities before every environment bundles them (e.g. embedding generation lands in
+WordPress core in 7.2 via
 [wordpress-develop#12530](https://github.com/WordPress/wordpress-develop/pull/12530)).
 
+The overlay is organized into **independent features** (see `SDK_Overlay::FEATURES`). Each feature
+is gated separately: an environment may already provide one feature (so the overlay defers to it)
+while lacking another (so the overlay supplies it). Features are never gated on one another —
+embeddings and, later, streaming activate or defer on their own.
+
 - **Upstream:** [WordPress/php-ai-client](https://github.com/WordPress/php-ai-client)
-- **Vendored commit:** `593a04cd18d22670f1186fb13f715987671d330a` (merge of [PR #244](https://github.com/WordPress/php-ai-client/pull/244))
 - **License:** GPL-2.0-or-later.
 
-## What was copied
+## Features
+
+### `embeddings`
+
+- **Vendored commit:** `593a04cd18d22670f1186fb13f715987671d330a` (merge of [PR #244](https://github.com/WordPress/php-ai-client/pull/244))
+- **Sentinel:** `WordPress\AiClient\Builders\EmbeddingBuilder` (present only if the environment already ships embeddings)
 
 The new classes introduced by PR #244, plus the two existing classes it modified that lie on the
 embedding execution path:
@@ -44,14 +54,27 @@ the canonical class, not a re-namespaced copy.
 
 ## How it loads
 
-`SDK_Overlay.php` (one directory up) registers a prepended PSR-4 autoloader for the
-`WordPress\AiClient\` prefix pointing at `src/`, **only when the environment's own SDK lacks
-embeddings**. See that file for the detection and fall-through logic.
+`SDK_Overlay.php` (one directory up) decides per feature whether to `defer`, `skip`, or
+`activate`, then registers a single prepended PSR-4 autoloader that serves **only the classes of
+the features that activated**. Every other `WordPress\AiClient\…` class falls through to the
+environment's own autoloader. A shared base-SDK precondition (`WordPress\AiClient\AiClient` must be
+present) gates the whole overlay, since the vendored classes extend base-SDK classes we do not
+ship. See that file for the detection, conflict-guard, and fall-through logic.
 
-## Updating
+## Adding a feature (e.g. streaming)
 
-To pull a newer upstream slice: re-fetch the changed/new files into `src/`, bump the commit hash
-above and the file table, and (if a newer feature is added) update the sentinel class in
-`SDK_Overlay.php`. Pin to the SDK version WordPress core bundles to avoid drift with the
-environment's unchanged classes. These files are exempt from PHPCS/PHPStan (see `phpcs.xml.dist` /
-`phpstan.neon.dist`).
+1. Vendor the feature's new/modified files into `src/` at their real namespace paths.
+2. Add an entry to `SDK_Overlay::FEATURES` with:
+   - a `sentinel` — a **net-new** class the feature introduces (never a shared/base class),
+   - `guards` — any existing class the feature modifies mapped to a method only our copy defines,
+   - `classes` — the exact list of fully-qualified class names the feature overlays.
+3. Add the feature's vendored commit + file table to this README.
+
+**Disjoint sets, single snapshot.** Features should own disjoint class sets. If two features must
+modify the *same* class, vendor one file containing the union of both features' additions and list
+it under both features' `classes`; because the whole overlay is pinned to a single, internally
+consistent snapshot, a class is never needed in two incompatible versions at once. Pin to the SDK
+version the target environments bundle to avoid drift with the environment's unchanged classes.
+
+These files are exempt from PHPCS/PHPStan (`phpcs.xml.dist` excludes `includes/Vendor/`;
+`phpstan.neon.dist` excludes `includes/Vendor/AiClient/src/` from scanning).

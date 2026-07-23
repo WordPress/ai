@@ -14,9 +14,9 @@ namespace WordPress\AI\CLI;
 use WP_CLI;
 use WP_CLI\Utils;
 
+use function WordPress\AI\generate_embeddings;
 use function WordPress\AI\has_valid_ai_credentials;
 use function WordPress\AI\normalize_content;
-use function WordPress\AI\generate_embeddings;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
