@@ -14,6 +14,7 @@ use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
+use WordPress\AiClient\Builders\EmbeddingBuilder;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 /**
@@ -759,5 +760,60 @@ function post_type_supports_bulk_action( string $post_type, string $feature_id )
 			return $base_supported && 'attachment' !== $post_type;
 		default:
 			return $base_supported;
+	}
+}
+
+/**
+ * Determines whether embedding generation is available in this environment.
+ *
+ * @since x.x.x
+ *
+ * @return bool True if embeddings can be generated, false otherwise.
+ */
+function supports_embedding_generation(): bool {
+	return class_exists( AiClient::class ) && class_exists( EmbeddingBuilder::class );
+}
+
+/**
+ * Generates embeddings for one or more text inputs.
+ *
+ * @since x.x.x
+ *
+ * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
+ * @param array<string, mixed> $args {
+ *     Optional. Generation options.
+ *
+ *     @type string       $provider         Connector/provider ID to use.
+ *     @type list<string> $model_preference Ordered model preferences.
+ *     @type int          $dimensions       Requested embedding vector dimensions.
+ * }
+ * @return \WordPress\AiClient\Results\DTO\EmbeddingResult|\WP_Error The result, or WP_Error on failure.
+ */
+function generate_embeddings( $input, array $args = array() ) {
+	if ( ! supports_embedding_generation() ) {
+		return new \WP_Error(
+			'ai_embeddings_unsupported',
+			__( 'Embedding generation is not available in this environment.', 'ai' )
+		);
+	}
+
+	try {
+		$builder = new EmbeddingBuilder( AiClient::defaultRegistry(), $input );
+
+		if ( isset( $args['provider'] ) && is_string( $args['provider'] ) && '' !== $args['provider'] ) {
+			$builder->usingProvider( $args['provider'] );
+		}
+
+		if ( ! empty( $args['model_preference'] ) && is_array( $args['model_preference'] ) ) {
+			$builder->usingModelPreference( ...array_values( $args['model_preference'] ) );
+		}
+
+		if ( isset( $args['dimensions'] ) ) {
+			$builder->usingDimensions( (int) $args['dimensions'] );
+		}
+
+		return $builder->generateEmbeddingResult();
+	} catch ( Throwable $e ) {
+		return new \WP_Error( 'ai_embeddings_failed', $e->getMessage() );
 	}
 }
