@@ -316,8 +316,8 @@ class Internal_Links extends Abstract_Ability {
 		$index = array();
 
 		foreach ( $query->posts as $id ) {
-			$title = get_the_title( (int) $id );
-			$url   = get_permalink( (int) $id );
+			$title = get_the_title( $id );
+			$url   = get_permalink( $id );
 
 			if ( ! $title || ! $url ) {
 				continue;
