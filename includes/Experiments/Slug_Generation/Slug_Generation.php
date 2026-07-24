@@ -23,14 +23,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Slug generation experiment.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class Slug_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public static function get_id(): string {
 		return 'slug-generation';
@@ -39,7 +39,7 @@ class Slug_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -52,7 +52,7 @@ class Slug_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -62,7 +62,7 @@ class Slug_Generation extends Abstract_Feature {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -78,7 +78,7 @@ class Slug_Generation extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */

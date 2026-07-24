@@ -19,14 +19,14 @@ use function WordPress\AI\normalize_content;
 /**
  * Slug generation WordPress Ability.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class Slug_Generation extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	protected function guideline_categories(): array {
 		return array( 'site', 'copy' );
@@ -35,7 +35,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -69,7 +69,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -89,7 +89,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	protected function execute_callback( $input ) {
 		$args = wp_parse_args(
@@ -171,7 +171,7 @@ class Slug_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Parse output
+		// Parse output.
 		$lines = explode( "\n", $result );
 		$slugs = array();
 		foreach ( $lines as $line ) {
@@ -200,7 +200,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
@@ -245,7 +245,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	protected function meta(): array {
 		return array(
