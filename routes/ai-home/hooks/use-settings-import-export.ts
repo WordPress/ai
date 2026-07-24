@@ -3,7 +3,7 @@
  */
 import apiFetch from '@wordpress/api-fetch';
 import { store as coreStore } from '@wordpress/core-data';
-import { useDispatch } from '@wordpress/data';
+import { useDispatch, useRegistry } from '@wordpress/data';
 import { useCallback, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
@@ -16,7 +16,6 @@ export interface ExportPayload {
 	providers: Record< string, unknown >;
 	settings: Record< string, unknown >;
 }
-
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;
 }
@@ -64,10 +63,10 @@ export function useSettingsImportExport(): UseSettingsImportExportReturn {
 	const [ pendingImport, setPendingImport ] =
 		useState< ExportPayload | null >( null );
 	const [ isImporting, setIsImporting ] = useState( false );
+	const registry = useRegistry();
 
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
-	const { invalidateResolution } = useDispatch( coreStore ) as any;
 
 	const handleExport = useCallback( async () => {
 		try {
@@ -152,7 +151,9 @@ export function useSettingsImportExport(): UseSettingsImportExportReturn {
 			// Invalidate the cached site entity so the store immediately
 			// re-fetches the new values from the server, updating the UI
 			// without requiring a manual page refresh.
-			invalidateResolution( 'getEntityRecord', [ 'root', 'site' ] );
+			registry
+				.dispatch( coreStore )
+				.invalidateResolution( 'getEntityRecord', [ 'root', 'site' ] );
 			createSuccessNotice(
 				__( 'Settings imported successfully.', 'ai' ),
 				{
@@ -166,12 +167,7 @@ export function useSettingsImportExport(): UseSettingsImportExportReturn {
 		} finally {
 			setIsImporting( false );
 		}
-	}, [
-		pendingImport,
-		createSuccessNotice,
-		createErrorNotice,
-		invalidateResolution,
-	] );
+	}, [ pendingImport, createSuccessNotice, createErrorNotice, registry ] );
 
 	const handleImportCancel = useCallback( () => {
 		setPendingImport( null );
