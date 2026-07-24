@@ -131,4 +131,51 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '"minContentLength":"250"', $localized_data );
 		$this->assertStringContainsString( '"numberOfSuggestions":"3"', $localized_data );
 	}
+
+	/**
+	 * Test that enqueue_assets() returns early for attachment post type screens.
+	 */
+	public function test_enqueue_assets_returns_early_for_attachment_post_type() {
+		set_current_screen( 'attachment' );
+
+		$experiment = new Slug_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$this->assertFalse( wp_script_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue script for attachment screen' );
+		$this->assertFalse( wp_style_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue style for attachment screen' );
+	}
+
+	/**
+	 * Test that enqueue_assets() returns early for post types that do not support title.
+	 */
+	public function test_enqueue_assets_returns_early_for_post_type_without_title_support() {
+		register_post_type(
+			'no_title_cpt',
+			array(
+				'supports' => array( 'editor' ),
+			)
+		);
+		set_current_screen( 'no_title_cpt' );
+
+		$experiment = new Slug_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$this->assertFalse( wp_script_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue script for post type without title support' );
+		$this->assertFalse( wp_style_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue style for post type without title support' );
+
+		unregister_post_type( 'no_title_cpt' );
+	}
+
+	/**
+	 * Test that enqueue_assets() returns early when current screen is null.
+	 */
+	public function test_enqueue_assets_returns_early_when_no_screen() {
+		unset( $GLOBALS['current_screen'] );
+
+		$experiment = new Slug_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$this->assertFalse( wp_script_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue script when current screen is null' );
+		$this->assertFalse( wp_style_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue style when current screen is null' );
+	}
 }
