@@ -25,7 +25,12 @@ interface SlugGenerationModalProps {
 /**
  * Renders the modal dialog for inspecting, editing, and selecting generated slug suggestions.
  *
- * @param props Component props.
+ * @param props                Component props.
+ * @param props.suggestions    List of suggested slugs.
+ * @param props.onClose        Callback when modal is closed.
+ * @param props.onSelect       Callback when a slug is selected.
+ * @param props.onRegenerate   Callback when regeneration is triggered.
+ * @param props.isRegenerating Whether suggestions are currently being generated.
  * @return The modal component.
  */
 export default function SlugGenerationModal( {
