@@ -217,10 +217,13 @@ function getPageData(): PageData {
 	};
 
 	try {
-		const rawData = JSON.parse(
-			document.getElementById( 'wp-script-module-data-ai-wp-admin' )
-				?.textContent ?? '{}'
+		const script = document.querySelector(
+			'script[id="wp-script-module-data-ai-wp-admin"]'
 		);
+		if ( ! ( script instanceof HTMLScriptElement ) ) {
+			return fallback;
+		}
+		const rawData = JSON.parse( script.text );
 
 		if ( ! isRecord( rawData ) ) {
 			return fallback;
