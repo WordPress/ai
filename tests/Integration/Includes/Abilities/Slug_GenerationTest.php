@@ -413,4 +413,245 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$this->assertIsString( $system_instruction );
 		$this->assertStringContainsString( 'Output exactly 5 suggestions, one per line.', $system_instruction );
 	}
+
+	/**
+	 * Test that system-instruction.php exits when accessed directly without ABSPATH defined.
+	 */
+	public function test_system_instruction_direct_access_exits(): void {
+		$file   = TESTS_REPO_ROOT_DIR . '/includes/Abilities/Slug_Generation/system-instruction.php';
+		$output = shell_exec( sprintf( '%s %s 2>&1', escapeshellarg( PHP_BINARY ), escapeshellarg( $file ) ) );
+
+		$this->assertEmpty( trim( (string) $output ) );
+	}
+
+	/**
+	 * Test that execute_callback() overrides post title when explicit title is passed with numeric context post ID.
+	 */
+	public function test_execute_callback_overrides_title_with_valid_post_id(): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_title'   => 'Original Article Title',
+				'post_content' => 'Original article content body.',
+			)
+		);
+
+		$this->testable_ability->mock_response = 'overridden-title-slug';
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array(
+				'context' => (string) $post_id,
+				'title'   => 'Custom Overridden Title',
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( array( 'overridden-title-slug' ), $result['slugs'] );
+		$this->assertStringContainsString( '<title>Custom Overridden Title</title>', $this->testable_ability->last_prompt );
+		$this->assertStringNotContainsString( 'Original Article Title', $this->testable_ability->last_prompt );
+	}
+
+	/**
+	 * Test that execute_callback() overrides post content when explicit content is passed with numeric context post ID.
+	 */
+	public function test_execute_callback_overrides_content_with_valid_post_id(): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_title'   => 'Original Article Title',
+				'post_content' => 'Original article content body.',
+			)
+		);
+
+		$this->testable_ability->mock_response = 'overridden-content-slug';
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array(
+				'context' => (string) $post_id,
+				'content' => 'Custom Overridden Content Body',
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( array( 'overridden-content-slug' ), $result['slugs'] );
+		$this->assertStringContainsString( '<content>Custom Overridden Content Body</content>', $this->testable_ability->last_prompt );
+		$this->assertStringNotContainsString( 'Original article content body.', $this->testable_ability->last_prompt );
+	}
+
+	/**
+	 * Test that execute_callback() formats array context with newlines into additional-context tag.
+	 */
+	public function test_execute_callback_with_array_context(): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$this->testable_ability->mock_response = 'array-context-slug';
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array(
+				'title'   => 'Array Context Article',
+				'context' => array( 'Context line 1', 'Context line 2' ),
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( array( 'array-context-slug' ), $result['slugs'] );
+		$this->assertStringContainsString( "<additional-context>Context line 1\nContext line 2</additional-context>", $this->testable_ability->last_prompt );
+	}
+
+	/**
+	 * Test that execute_callback() returns no_results WP_Error when generated response produces no valid slugs after sanitization.
+	 */
+	public function test_execute_callback_returns_no_results_when_sanitization_yields_empty_slugs(): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$this->testable_ability->mock_response = "   \n  \"\"  \n   !@#$%^&*()   ";
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array(
+				'title' => 'Unsanitizable Output Test',
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'no_results', $result->get_error_code() );
+		$this->assertEquals( 'No slug suggestion was generated.', $result->get_error_message() );
+	}
+
+	/**
+	 * Test that permission_callback() returns error when post ID is provided but current user cannot edit the post.
+	 */
+	public function test_permission_callback_with_post_id_without_edit_capability(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_title'  => 'Protected Post',
+				'post_status' => 'publish',
+			)
+		);
+
+		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code() );
+		$this->assertEquals( 'You do not have permission to generate slugs for this post.', $result->get_error_message() );
+	}
+
+	/**
+	 * Test that permission_callback() returns false when get_post_type() returns false for a post ID.
+	 */
+	public function test_permission_callback_returns_false_when_post_type_is_false(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create();
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		add_filter( 'post_type', '__return_false' );
+
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
+
+		remove_filter( 'post_type', '__return_false' );
+
+		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test that permission_callback() returns false when post type has show_in_rest set to false.
+	 */
+	public function test_permission_callback_with_post_type_without_show_in_rest(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		register_post_type(
+			'test_no_rest_slug',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+			)
+		);
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_type'   => 'test_no_rest_slug',
+				'post_status' => 'publish',
+			)
+		);
+
+		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
+
+		unregister_post_type( 'test_no_rest_slug' );
+
+		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test that generate_slugs() returns WP_Error when prompt builder or provider validation fails.
+	 */
+	public function test_generate_slugs_returns_error_when_prompt_builder_fails(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_slugs' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, '<title>Test Prompt</title>', 'context', 3 );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals(
+			'Slug generation failed. Please ensure you have a connected provider that supports text generation.',
+			$result->get_error_message()
+		);
+	}
+
+	/**
+	 * Test that generate_slugs() and get_prompt_builder() invoke generate_text() on configured prompt builder.
+	 */
+	public function test_generate_slugs_and_get_prompt_builder_success(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_slugs' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->createMock( \WP_AI_Client_Prompt_Builder::class );
+		$mock_builder->expects( $this->once() )
+			->method( 'generate_text' )
+			->willReturn( "generated-slug-1\ngenerated-slug-2" );
+
+		add_filter(
+			'wpai_slug_generation_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, '<title>Test Prompt</title>', '', 2 );
+
+		remove_all_filters( 'wpai_slug_generation_prompt_builder' );
+
+		$this->assertSame( "generated-slug-1\ngenerated-slug-2", $result );
+	}
 }
+
