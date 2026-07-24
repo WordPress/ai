@@ -139,7 +139,7 @@ class Internal_Links extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input The input arguments to the ability.
-	 * @return array{suggestions: list<array{anchor_text: string, url: string, title: string, context: string}>}|WP_Error
+	 * @return array{suggestions: list<array{anchor_text: string, url: string, title: string, context: string}>}|\WP_Error
 	 */
 	protected function execute_callback( $input ) {
 		$args = wp_parse_args(
@@ -208,7 +208,7 @@ class Internal_Links extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input The input arguments to the ability.
-	 * @return bool|WP_Error True if the user has permission, WP_Error otherwise.
+	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	protected function permission_callback( $input ) {
 		$post_id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
@@ -244,11 +244,7 @@ class Internal_Links extends Abstract_Ability {
 		$post_type     = get_post_type( $post_id );
 		$post_type_obj = $post_type ? get_post_type_object( $post_type ) : null;
 
-		if ( ! $post_type_obj || empty( $post_type_obj->show_in_rest ) ) {
-			return false;
-		}
-
-		return true;
+		return $post_type_obj && ! empty( $post_type_obj->show_in_rest );
 	}
 
 	/**
@@ -366,7 +362,7 @@ class Internal_Links extends Abstract_Ability {
 	 * @since x.x.x
 	 *
 	 * @param string $prompt The assembled prompt.
-	 * @return \WP_AI_Client_Prompt_Builder|WP_Error The prompt builder, or WP_Error on failure.
+	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or WP_Error on failure.
 	 */
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
@@ -411,9 +407,9 @@ class Internal_Links extends Abstract_Ability {
 			$valid_urls[ $entry['url'] ] = true;
 		}
 
-		$suggestions    = array();
-		$seen_anchors   = array();
-		$seen_urls      = array();
+		$suggestions  = array();
+		$seen_anchors = array();
+		$seen_urls    = array();
 
 		foreach ( $decoded['suggestions'] as $item ) {
 			if ( count( $suggestions ) >= $max_suggestions ) {
