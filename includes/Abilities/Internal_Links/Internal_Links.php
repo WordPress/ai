@@ -305,7 +305,7 @@ class Internal_Links extends Abstract_Ability {
 				'post_type'              => array( 'post', 'page' ),
 				'post_status'            => 'publish',
 				'posts_per_page'         => self::SITE_INDEX_LIMIT,
-				'post__not_in'           => $exclude_post_id ? array( $exclude_post_id ) : array(), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_post__not_in
+				'post__not_in'           => $exclude_post_id ? array( $exclude_post_id ) : array(), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_post__not_in, WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
 				'no_found_rows'          => true,
 				'update_post_meta_cache' => false,
 				'update_post_term_cache' => false,
