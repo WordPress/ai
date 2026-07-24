@@ -557,7 +557,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns false when get_post_type() returns false for a post ID.
+	 * Test that permission_callback() returns false when get_post_type() returns false or empty.
 	 */
 	public function test_permission_callback_returns_false_when_post_type_is_false(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -568,11 +568,13 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
 		wp_set_current_user( $user_id );
 
-		add_filter( 'post_type', '__return_false' );
+		$this->setExpectedIncorrectUsage( 'map_meta_cap' );
+
+		global $wpdb;
+		$wpdb->update( $wpdb->posts, array( 'post_type' => '' ), array( 'ID' => $post_id ) );
+		clean_post_cache( $post_id );
 
 		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
-
-		remove_filter( 'post_type', '__return_false' );
 
 		$this->assertFalse( $result );
 	}
@@ -635,7 +637,14 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'generate_slugs' );
 		$method->setAccessible( true );
 
-		$mock_builder = $this->createMock( \WP_AI_Client_Prompt_Builder::class );
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
 		$mock_builder->expects( $this->once() )
 			->method( 'generate_text' )
 			->willReturn( "generated-slug-1\ngenerated-slug-2" );
@@ -654,4 +663,5 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$this->assertSame( "generated-slug-1\ngenerated-slug-2", $result );
 	}
 }
+
 
