@@ -1,0 +1,62 @@
+/**
+ * Styles for the Slug Generation experiment.
+ */
+.ai-slug-generation-container {
+	margin-top: 8px;
+	display: flex;
+	justify-content: flex-end;
+}
+
+// The slug panel renders inside a Dropdown popover (z-index: 1000000).
+// The Modal overlay defaults to z-index: 100000, so the popover sits on top.
+// Bump the modal above the popover so suggestions are fully visible.
+.ai-slug-generation-modal {
+	z-index: 1000001;
+}
+
+.ai-slug-prepublish-content {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 4px 0;
+}
+
+.ai-slug-prepublish-current {
+	font-size: 13px;
+	margin-bottom: 4px;
+
+	strong {
+		color: #1e1e1e;
+	}
+
+	code {
+		font-family: monospace;
+		word-break: break-all;
+		background-color: #f0f0f0;
+		padding: 2px 6px;
+		border-radius: 4px;
+		color: #2e2e2e;
+		font-size: 12px;
+	}
+}
+
+.ai-slug-prepublish-too-short-notice {
+	font-size: 12px;
+	color: #757575;
+	margin: 0;
+	line-height: 1.4;
+}
+
+.ai-slug-prepublish-suggestions {
+	margin-top: 4px;
+}
+
+.ai-slug-prepublish-spinner-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px 0;
+	color: #757575;
+	font-size: 13px;
+	gap: 8px;
+}
