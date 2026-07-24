@@ -16,8 +16,37 @@ export interface ExportPayload {
 	providers: Record< string, unknown >;
 	settings: Record< string, unknown >;
 }
+
+/** Shape of the import endpoint's success response (matches the PHP schema). */
+export interface ImportResponse {
+	imported: number;
+	rejected: number;
+	message: string;
+}
+
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;
+}
+
+/**
+ * Extracts a human-readable message from a thrown apiFetch error.
+ *
+ * @param {unknown} error    The rejected value from apiFetch.
+ * @param {string}  fallback The message to use when none is available.
+ * @return {string} The error message to display.
+ */
+function getErrorMessage( error: unknown, fallback: string ): string {
+	if (
+		isRecord( error ) &&
+		// eslint-disable-next-line dot-notation
+		typeof error[ 'message' ] === 'string' &&
+		// eslint-disable-next-line dot-notation
+		error[ 'message' ] !== ''
+	) {
+		// eslint-disable-next-line dot-notation
+		return error[ 'message' ];
+	}
+	return fallback;
 }
 
 /**
@@ -84,10 +113,14 @@ export function useSettingsImportExport(): UseSettingsImportExportReturn {
 			anchor.download = 'ai-settings-export.json';
 			anchor.click();
 			URL.revokeObjectURL( url );
-		} catch {
-			createErrorNotice( __( 'Failed to export settings.', 'ai' ), {
-				type: 'snackbar',
-			} );
+		} catch ( error ) {
+			createErrorNotice(
+				getErrorMessage(
+					error,
+					__( 'Failed to export settings.', 'ai' )
+				),
+				{ type: 'snackbar' }
+			);
 		}
 	}, [ createErrorNotice ] );
 
@@ -142,7 +175,7 @@ export function useSettingsImportExport(): UseSettingsImportExportReturn {
 
 		setIsImporting( true );
 		try {
-			await apiFetch( {
+			const response = await apiFetch< ImportResponse >( {
 				path: '/ai/v1/settings/import',
 				method: 'POST',
 				data: pendingImport,
@@ -155,15 +188,20 @@ export function useSettingsImportExport(): UseSettingsImportExportReturn {
 				.dispatch( coreStore )
 				.invalidateResolution( 'getEntityRecord', [ 'root', 'site' ] );
 			createSuccessNotice(
-				__( 'Settings imported successfully.', 'ai' ),
+				response?.message ??
+					__( 'Settings imported successfully.', 'ai' ),
 				{
 					type: 'snackbar',
 				}
 			);
-		} catch {
-			createErrorNotice( __( 'Failed to import settings.', 'ai' ), {
-				type: 'snackbar',
-			} );
+		} catch ( error ) {
+			createErrorNotice(
+				getErrorMessage(
+					error,
+					__( 'Failed to import settings.', 'ai' )
+				),
+				{ type: 'snackbar' }
+			);
 		} finally {
 			setIsImporting( false );
 		}
