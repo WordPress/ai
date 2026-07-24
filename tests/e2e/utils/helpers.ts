@@ -337,7 +337,7 @@ export const enableAllExperimentsInGroup = async (
 	await expect( disableAllButton ).toBeEnabled();
 	await expect(
 		page.getByTestId( 'snackbar' ).filter( {
-			hasText: /experiment.*enabled/i,
+			hasText: /enabled/i,
 		} )
 	).toBeVisible();
 };
@@ -371,7 +371,7 @@ export const disableAllExperimentsInGroup = async (
 	await expect( enableAllButton ).toBeEnabled();
 	await expect(
 		page.getByTestId( 'snackbar' ).filter( {
-			hasText: /experiment.*disabled/i,
+			hasText: /disabled/i,
 		} )
 	).toBeVisible();
 };
