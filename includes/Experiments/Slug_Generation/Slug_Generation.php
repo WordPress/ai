@@ -65,6 +65,7 @@ class Slug_Generation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function register_abilities(): void {
+		// Register the AI ability to generate slugs using the Abilities API.
 		wp_register_ability(
 			'ai/' . $this->get_id(),
 			array(
@@ -83,12 +84,14 @@ class Slug_Generation extends Abstract_Feature {
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
 	public function enqueue_assets( string $hook_suffix ): void {
+		// Only enqueue on post creation and edit screens.
 		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
 			return;
 		}
 
 		$screen = get_current_screen();
 
+		// Ensure the post type supports titles and isn't an attachment screen.
 		if (
 			! $screen ||
 			! post_type_supports( $screen->post_type, 'title' ) ||
@@ -97,6 +100,7 @@ class Slug_Generation extends Abstract_Feature {
 			return;
 		}
 
+		// Enqueue frontend scripts, styles, and pass localized configuration settings to window.
 		Asset_Loader::enqueue_script( 'slug_generation', 'experiments/slug-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'slug_generation', 'experiments/slug-generation' );
 		Asset_Loader::localize_script(

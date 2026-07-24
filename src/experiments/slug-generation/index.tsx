@@ -44,6 +44,14 @@ const getSettings = (): SlugGenerationData => {
 	};
 };
 
+/**
+ * Main plugin wrapper component for slug generation.
+ *
+ * Attaches the "Generate Slug" button to the permalink inspector popover,
+ * handles custom events, renders the pre-publish panel, and manages modal state.
+ *
+ * @return The plugin components.
+ */
 function SlugGenerationWrapper(): React.JSX.Element {
 	const [ modalState, setModalState ] = useState< {
 		isOpen: boolean;

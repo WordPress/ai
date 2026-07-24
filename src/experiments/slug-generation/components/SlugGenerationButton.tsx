@@ -16,6 +16,9 @@ import type { SlugGenerationData } from '../types';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 const NUMBER_OF_SUGGESTIONS_DEFAULT = 3;
 
+/**
+ * Helper to fetch localized settings passed from PHP to the global window object.
+ */
 const getSettings = (): SlugGenerationData => {
 	const settings = ( window as any ).aiSlugGenerationData ?? {};
 
@@ -28,7 +31,13 @@ const getSettings = (): SlugGenerationData => {
 	};
 };
 
+/**
+ * Renders the "Generate Slug" button inside the Block Editor permalink popover.
+ *
+ * @return The button component.
+ */
 export default function SlugGenerationButton(): React.JSX.Element {
+	// Retrieve post ID, title, and raw content from the block editor store.
 	const { postId, title, content } = useSelect( ( select ) => {
 		const editor = select( editorStore );
 		return {

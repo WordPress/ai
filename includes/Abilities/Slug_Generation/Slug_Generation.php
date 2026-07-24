@@ -115,13 +115,13 @@ class Slug_Generation extends Abstract_Ability {
 				);
 			}
 
-			// Get the post context.
+			// Fetch the post context when a numeric post ID is provided.
 			$context      = get_post_context( $post->ID );
 			$post_content = $context['content'] ?? '';
 			$post_title   = $post->post_title;
 			unset( $context['content'] );
 
-			// Default to the passed in title/content if they exist.
+			// Override with explicitly passed title or content if available.
 			if ( $args['title'] ) {
 				$post_title = sanitize_text_field( $args['title'] );
 			}
@@ -141,6 +141,7 @@ class Slug_Generation extends Abstract_Ability {
 			);
 		}
 
+		// Build the prompt input with structured XML tags for title, content, and context.
 		$prompt_input = '';
 		if ( ! empty( $post_title ) ) {
 			$prompt_input .= "<title>{$post_title}</title>\n\n";
@@ -157,7 +158,7 @@ class Slug_Generation extends Abstract_Ability {
 
 		$number_of_suggestions = (int) apply_filters( 'wpai_slug_generation_number_of_suggestions', (int) $args['number_of_suggestions'] );
 
-		// Generate the slug suggestion text.
+		// Generate the raw slug suggestion text from the AI model.
 		$result = $this->generate_slugs( $prompt_input, $context, $number_of_suggestions );
 
 		if ( is_wp_error( $result ) ) {
@@ -171,7 +172,7 @@ class Slug_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Parse output.
+		// Parse the output lines into clean, sanitized WordPress slugs.
 		$lines = explode( "\n", $result );
 		$slugs = array();
 		foreach ( $lines as $line ) {
@@ -256,6 +257,8 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * Generates slug suggestions from the prompt.
 	 *
+	 * @since x.x.x
+	 *
 	 * @param string $prompt                The prompt.
 	 * @param mixed  $context               The context.
 	 * @param int    $number_of_suggestions The number of suggestions.
@@ -274,6 +277,8 @@ class Slug_Generation extends Abstract_Ability {
 
 	/**
 	 * Gets a prompt builder for generating slugs.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param string $prompt                The prompt.
 	 * @param int    $number_of_suggestions The number of suggestions.

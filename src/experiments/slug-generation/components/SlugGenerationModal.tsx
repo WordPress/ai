@@ -22,6 +22,12 @@ interface SlugGenerationModalProps {
 	isRegenerating: boolean;
 }
 
+/**
+ * Renders the modal dialog for inspecting, editing, and selecting generated slug suggestions.
+ *
+ * @param props Component props.
+ * @return The modal component.
+ */
 export default function SlugGenerationModal( {
 	suggestions,
 	onClose,

@@ -43,6 +43,11 @@ const getSettings = (): SlugGenerationData => {
 	};
 };
 
+/**
+ * Renders the pre-publish sidebar panel for generating and applying slug suggestions.
+ *
+ * @return The panel component.
+ */
 export default function SlugPrePublishPanel(): React.JSX.Element | null {
 	const { postId, title, content, currentSlug } = useSelect( ( select ) => {
 		const editor = select( editorStore );
