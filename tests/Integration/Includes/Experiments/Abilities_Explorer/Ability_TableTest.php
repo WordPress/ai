@@ -87,4 +87,55 @@ class Ability_TableTest extends WP_UnitTestCase {
 
 		$this->assertSame( array( 'Core', 'Plugin', 'Theme', 'My Custom Plugin' ), $table->get_unique_providers() );
 	}
+
+	/**
+	 * Test the provider filter matches by origin for known providers and by label for custom ones.
+	 *
+	 * Filtering by "Plugin" must include abilities that carry a custom provider
+	 * label but originate from a plugin (consistent with the statistics), while
+	 * filtering by the custom label must return only those abilities.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_provider_filter_matches_origin_for_known_providers() {
+		global $wp_current_filter;
+
+		$slug = 'custom-provider-plugin/filter-ability';
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+
+		try {
+			wp_register_ability(
+				$slug,
+				array(
+					'label'               => 'AAA Custom Provider Filter Ability',
+					'description'         => 'Test ability with a custom provider label for filtering.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'meta'                => array( 'provider' => 'My Custom Plugin' ),
+					'execute_callback'    => '__return_true',
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		// Known origin: the custom-labeled ability still appears under "Plugin".
+		$_REQUEST['provider'] = 'Plugin';
+		$table                = new Ability_Table();
+		$table->prepare_items();
+		$plugin_slugs = wp_list_pluck( $table->items, 'slug' );
+		$this->assertContains( $slug, $plugin_slugs );
+
+		// Custom label: filtering by it returns exactly the custom-labeled ability.
+		$_REQUEST['provider'] = 'My Custom Plugin';
+		$table                = new Ability_Table();
+		$table->prepare_items();
+		$custom_slugs = wp_list_pluck( $table->items, 'slug' );
+
+		unset( $_REQUEST['provider'] );
+		wp_unregister_ability( $slug );
+
+		$this->assertSame( array( $slug ), $custom_slugs );
+	}
 }

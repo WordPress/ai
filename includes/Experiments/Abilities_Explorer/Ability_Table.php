@@ -110,9 +110,17 @@ class Ability_Table extends \WP_List_Table {
 		// Apply provider filter.
 		$provider_filter = isset( $_REQUEST['provider'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['provider'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! empty( $provider_filter ) && 'all' !== $provider_filter ) {
-			$abilities = array_filter(
+			// Known origins filter by origin, so abilities carrying a custom
+			// provider label still appear under their Core/Plugin/Theme bucket
+			// (consistent with the statistics); custom providers filter by
+			// their exact label.
+			$known_origins = array( 'Core', 'Plugin', 'Theme' );
+			$abilities     = array_filter(
 				$abilities,
-				static function ( $ability ) use ( $provider_filter ) {
+				static function ( $ability ) use ( $provider_filter, $known_origins ) {
+					if ( in_array( $provider_filter, $known_origins, true ) ) {
+						return ( $ability['origin'] ?? '' ) === $provider_filter;
+					}
 					return $ability['provider'] === $provider_filter;
 				}
 			);
@@ -265,7 +273,7 @@ class Ability_Table extends \WP_List_Table {
 	 */
 	public function column_provider( $item ): string {
 		$provider = $item['provider'];
-		$class    = 'ability-provider ability-provider-' . strtolower( $provider );
+		$class    = 'ability-provider ability-provider-' . sanitize_title( $provider );
 
 		return sprintf(
 			'<span class="%s">%s</span>',
