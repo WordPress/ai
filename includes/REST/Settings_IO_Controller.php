@@ -1,0 +1,385 @@
+<?php
+/**
+ * REST controller for AI settings import and export.
+ *
+ * @package WordPress\AI\REST
+ *
+ * @since x.x.x
+ */
+
+declare( strict_types=1 );
+
+namespace WordPress\AI\REST;
+
+use WordPress\AI\Settings\Settings_Registration;
+
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Handles the settings export (GET) and import (POST) REST endpoints.
+ *
+ * @since x.x.x
+ */
+final class Settings_IO_Controller {
+
+	/**
+	 * The REST API namespace.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const API_NAMESPACE = 'ai/v1';
+
+	/**
+	 * The export route path.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const EXPORT_ROUTE = '/settings/export';
+
+	/**
+	 * The import route path.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const IMPORT_ROUTE = '/settings/import';
+
+	/**
+	 * The current export/import schema version.
+	 *
+	 * Increment this constant when the export format changes in a
+	 * backward-incompatible way so that older files are rejected.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const SCHEMA_VERSION = 1;
+
+	/**
+	 * Option name segments that indicate a sensitive option.
+	 *
+	 * Option names in this plugin are snake_case (e.g. `wpai_openai_api_key`),
+	 * so each pattern is matched as a whole underscore-delimited segment
+	 * rather than as a raw substring. This avoids false positives such as
+	 * `auth` matching an unrelated option like `wpai_default_author`, while
+	 * still catching multi-segment names like `wpai_openai_api_key` because
+	 * `key` matches its trailing `_key` segment on its own.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const SENSITIVE_PATTERNS = array( 'key', 'token', 'secret', 'credential', 'password', 'auth' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition
+
+	/**
+	 * Initializes the REST routes.
+	 *
+	 * @since x.x.x
+	 */
+	public function init(): void {
+		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+	}
+
+	/**
+	 * Registers the export and import REST routes.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_routes(): void {
+		register_rest_route(
+			self::API_NAMESPACE,
+			self::EXPORT_ROUTE,
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'export_settings' ),
+				'permission_callback' => array( $this, 'check_permission' ),
+			)
+		);
+
+		register_rest_route(
+			self::API_NAMESPACE,
+			self::IMPORT_ROUTE,
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'import_settings' ),
+				'permission_callback' => array( $this, 'check_permission' ),
+				'args'                => array(
+					'version'        => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+					'exported_at'    => array(
+						'type'     => 'string',
+						'required' => false,
+						'default'  => '',
+					),
+					'plugin_version' => array(
+						'type'     => 'string',
+						'required' => false,
+						'default'  => '',
+					),
+					'providers'      => array(
+						'type'     => 'object',
+						'required' => false,
+						'default'  => array(),
+					),
+					'settings'       => array(
+						'type'     => 'object',
+						'required' => false,
+						'default'  => array(),
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Checks whether the current user may access these endpoints.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if the user has the required capability.
+	 */
+	public function check_permission(): bool {
+		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * Returns the non-sensitive AI configuration as a portable JSON structure.
+	 *
+	 * The response body matches the schema accepted by the import endpoint.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WP_REST_Response The export payload.
+	 */
+	public function export_settings(): \WP_REST_Response {
+		$registered = get_registered_settings();
+		$exportable = $this->get_exportable_option_names();
+		$settings   = array();
+		$providers  = array();
+
+		foreach ( $exportable as $option_name ) {
+			$default = $registered[ $option_name ]['default'] ?? false;
+			$value   = get_option( $option_name, $default );
+
+			if ( $this->is_developer_config_option( $option_name ) ) {
+				$providers[ $option_name ] = $value;
+			} else {
+				$settings[ $option_name ] = $value;
+			}
+		}
+
+		$payload = array(
+			'version'        => self::SCHEMA_VERSION,
+			'exported_at'    => gmdate( 'Y-m-d\TH:i:s\Z' ),
+			'plugin_version' => WPAI_VERSION,
+			'providers'      => $providers,
+			'settings'       => $settings,
+		);
+
+		return new \WP_REST_Response( $payload, 200 );
+	}
+
+	/**
+	 * Imports AI settings from a previously exported payload.
+	 *
+	 * Only settings that are currently registered in the plugin's option group
+	 * and are not flagged as sensitive will be written. Every value is validated
+	 * and sanitized against the option's registered schema before being saved;
+	 * values that fail validation are rejected rather than written verbatim.
+	 * All other keys in the payload are silently ignored.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return \WP_REST_Response|\WP_Error The response or an error.
+	 */
+	public function import_settings( \WP_REST_Request $request ) {
+		$version = (int) $request->get_param( 'version' );
+
+		if ( self::SCHEMA_VERSION !== $version ) {
+			return new \WP_Error(
+				'unsupported_schema_version',
+				sprintf(
+					/* translators: %d: schema version number. */
+					__( 'Unsupported schema version: %d.', 'ai' ),
+					$version
+				),
+				array( 'status' => 422 )
+			);
+		}
+
+		$registered = get_registered_settings();
+		$exportable = array_flip( $this->get_exportable_option_names() );
+		$providers  = $request->get_param( 'providers' );
+		$settings   = $request->get_param( 'settings' );
+
+		if ( ! is_array( $providers ) ) {
+			$providers = array();
+		}
+
+		if ( ! is_array( $settings ) ) {
+			$settings = array();
+		}
+
+		$all_values = array_merge( $settings, $providers );
+		$imported   = 0;
+		$rejected   = 0;
+
+		foreach ( $all_values as $option_name => $value ) {
+			if ( ! is_string( $option_name ) ) {
+				continue;
+			}
+
+			// Only import options that are registered and allowed.
+			if ( ! isset( $exportable[ $option_name ] ) ) {
+				continue;
+			}
+
+			$schema = $this->get_option_schema( $registered[ $option_name ] ?? array() );
+
+			// Reject values that don't match the option's registered type/shape
+			// (e.g. a string passed where the setting expects a boolean or object)
+			// rather than writing them to the database unsanitized.
+			if ( is_wp_error( rest_validate_value_from_schema( $value, $schema, $option_name ) ) ) {
+				++$rejected;
+				continue;
+			}
+
+			$sanitized = rest_sanitize_value_from_schema( $value, $schema, $option_name );
+
+			if ( is_wp_error( $sanitized ) ) {
+				++$rejected;
+				continue;
+			}
+
+			update_option( $option_name, $sanitized );
+			++$imported;
+		}
+
+		$message = $rejected > 0
+			? sprintf(
+				/* translators: 1: number of imported settings, 2: number of rejected settings. */
+				__( 'Settings imported successfully. %1$d setting(s) imported, %2$d rejected due to invalid values.', 'ai' ),
+				$imported,
+				$rejected
+			)
+			: __( 'Settings imported successfully.', 'ai' );
+
+		return new \WP_REST_Response(
+			array(
+				'imported' => $imported,
+				'rejected' => $rejected,
+				'message'  => $message,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Builds a REST schema array describing an option's expected shape.
+	 *
+	 * Uses the schema declared via `show_in_rest.schema` when available (as is
+	 * the case for the developer model configuration objects), falling back to
+	 * a minimal schema derived from the option's registered `type` otherwise.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $args The option's registered arguments from
+	 *                                   {@see get_registered_settings()}.
+	 * @return array<string, mixed> A REST-compatible schema array.
+	 */
+	private function get_option_schema( array $args ): array {
+		$show_in_rest = $args['show_in_rest'] ?? false;
+
+		if ( is_array( $show_in_rest ) && isset( $show_in_rest['schema'] ) && is_array( $show_in_rest['schema'] ) ) {
+			return $show_in_rest['schema'];
+		}
+
+		return array( 'type' => $args['type'] ?? 'string' );
+	}
+
+	/**
+	 * Returns the option names that are safe to export and import.
+	 *
+	 * Returns every option that belongs to the plugin's settings group
+	 * and whose name does not match any sensitive pattern.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Exportable option names.
+	 */
+	public function get_exportable_option_names(): array {
+		$registered = get_registered_settings();
+		$exportable = array();
+
+		foreach ( $registered as $option_name => $args ) {
+			// Ensure $option_name is a string
+			$option_name = (string) $option_name;
+
+			if ( ( $args['group'] ?? '' ) !== Settings_Registration::OPTION_GROUP ) {
+				continue;
+			}
+
+			if ( $this->is_sensitive_option( $option_name ) ) {
+				continue;
+			}
+
+			$exportable[] = $option_name;
+		}
+
+		return $exportable;
+	}
+
+	/**
+	 * Checks whether an option name contains a sensitive keyword.
+	 *
+	 * Each pattern in {@see self::SENSITIVE_PATTERNS} is matched as a whole
+	 * underscore-delimited segment (or sequence of segments), not as a raw
+	 * substring, so names like `wpai_default_author` are not mistakenly
+	 * flagged just because they contain the letters "auth".
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $option_name The option name to inspect.
+	 * @return bool True if the option should be excluded.
+	 */
+	private function is_sensitive_option( string $option_name ): bool {
+		$lower = strtolower( $option_name );
+
+		foreach ( self::SENSITIVE_PATTERNS as $pattern ) {
+			// Allow an optional trailing "s" so plural segments (e.g. "credentials")
+			// are also caught, without resorting to a raw substring match.
+			if ( 1 === preg_match( '/(?:^|_)' . preg_quote( $pattern, '/' ) . 's?(?:_|$)/', $lower ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Checks whether an option stores a developer model configuration.
+	 *
+	 * Developer config options hold provider and model identifier strings
+	 * (e.g. `{"provider":"openai","model":"gpt-4.1-mini"}`) and are placed
+	 * in the `providers` section of the export payload.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $option_name The option name to inspect.
+	 * @return bool True if the option is a developer model config.
+	 */
+	private function is_developer_config_option( string $option_name ): bool {
+		return false !== strpos( $option_name, '_field_developer' );
+	}
+}
