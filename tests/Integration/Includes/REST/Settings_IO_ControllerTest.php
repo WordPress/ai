@@ -646,7 +646,8 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		wp_set_current_user( $admin_id );
 
 		update_option( 'wpai_features_enabled', false );
-		$export = $this->controller->export_settings()->get_data();
+		$export          = $this->controller->export_settings()->get_data();
+		$expected_import = count( $export['settings'] ) + count( $export['providers'] );
 
 		// Simulate a different target environment where the feature is enabled.
 		update_option( 'wpai_features_enabled', true );
@@ -659,7 +660,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$response = $this->controller->import_settings( $request );
 		$data     = $response->get_data();
 
-		$this->assertSame( 1, $data['imported'] );
+		$this->assertSame( $expected_import, $data['imported'] );
 		$this->assertSame( 0, $data['rejected'] );
 		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
 	}
@@ -676,7 +677,8 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		// Simulate a source environment where the option was never saved.
 		delete_option( 'wpai_features_enabled' );
-		$export = $this->controller->export_settings()->get_data();
+		$export          = $this->controller->export_settings()->get_data();
+		$expected_import = count( $export['settings'] ) + count( $export['providers'] );
 
 		$this->assertArrayHasKey( 'wpai_features_enabled', $export['settings'] );
 		$this->assertFalse( (bool) $export['settings']['wpai_features_enabled'] );
@@ -692,7 +694,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$response = $this->controller->import_settings( $request );
 		$data     = $response->get_data();
 
-		$this->assertSame( 1, $data['imported'] );
+		$this->assertSame( $expected_import, $data['imported'] );
 		$this->assertSame( 0, $data['rejected'] );
 		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
 	}
