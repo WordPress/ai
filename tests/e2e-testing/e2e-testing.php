@@ -221,7 +221,7 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 			$title       = 'Target Post Title';
 			$target_url  = 'http://localhost:8889/target-post/';
 
-			if ( preg_match( '/- ([^\n<]+) <(https?:\/\/[^\>]+)>/', $body, $matches ) ) {
+			if ( preg_match( '/-\s+([^<]+?)\s+<(http[^>]+)>/i', $body, $matches ) ) {
 				$title      = trim( $matches[1] );
 				$target_url = trim( $matches[2] );
 			}
@@ -233,7 +233,7 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 							'anchor_text' => $anchor_text,
 							'url'         => $target_url,
 							'title'       => $title,
-							'context'     => 'Learn more about the WordPress REST API for content management.',
+							'context'     => 'Writers use automated tools to learn more about the WordPress REST API for content management.',
 						),
 					),
 				)
@@ -257,6 +257,32 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-completions.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'internal-linking assistant' ) ) {
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
+
+			$anchor_text = 'WordPress REST API';
+			$title       = 'Target Post Title';
+			$target_url  = 'http://localhost:8889/target-post/';
+
+			if ( preg_match( '/-\s+([^<]+?)\s+<(http[^>]+)>/i', $body, $matches ) ) {
+				$title      = trim( $matches[1] );
+				$target_url = trim( $matches[2] );
+			}
+
+			$json_data = wp_json_encode(
+				array(
+					'suggestions' => array(
+						array(
+							'anchor_text' => $anchor_text,
+							'url'         => $target_url,
+							'title'       => $title,
+							'context'     => 'Writers use automated tools to learn more about the WordPress REST API for content management.',
+						),
+					),
+				)
+			);
+
+			$response = str_replace( 'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure', addcslashes( $json_data, '"' ), $response );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}
