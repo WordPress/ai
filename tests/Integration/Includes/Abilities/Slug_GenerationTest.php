@@ -90,6 +90,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	public function test_guideline_categories_returns_site_and_copy(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'guideline_categories' );
+		$method->setAccessible( true );
 
 		$this->assertSame(
 			array( 'site', 'copy' ),
@@ -103,6 +104,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'input_schema' );
+		$method->setAccessible( true );
 
 		$schema = $method->invoke( $this->ability );
 
@@ -121,6 +123,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'output_schema' );
+		$method->setAccessible( true );
 
 		$schema = $method->invoke( $this->ability );
 
