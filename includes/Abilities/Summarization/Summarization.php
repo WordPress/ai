@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Summarization;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Summarization\Summarization as Summarization_Experiment;
+use WordPress\AI\Services\AI_Service;
 
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\normalize_content;
@@ -271,7 +272,7 @@ class Summarization extends Abstract_Ability {
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
 	private function get_prompt_builder( string $prompt, string $length ) {
-		$prompt_builder = wp_ai_client_prompt( $prompt )
+		$prompt_builder = AI_Service::get_instance()->create_textgen_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
 			->using_temperature( 0.9 );
 
