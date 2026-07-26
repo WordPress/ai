@@ -13,6 +13,7 @@ use Throwable;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Features\Image_Generation\Image_Generation as Image_Generation_Feature;
+use WordPress\AI\Services\AI_Service;
 use WordPress\AiClient\Files\DTO\File;
 use WordPress\AiClient\Files\Enums\FileTypeEnum;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
@@ -261,7 +262,7 @@ class Generate_Image extends Abstract_Ability {
 			$prompt .= "\n\n" . $guidelines;
 		}
 
-		$prompt_builder = wp_ai_client_prompt( $prompt )
+		$prompt_builder = AI_Service::get_instance()->create_imagegen_prompt( $prompt )
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() );
 
