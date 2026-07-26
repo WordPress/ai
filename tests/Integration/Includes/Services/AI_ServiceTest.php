@@ -107,6 +107,42 @@ class AI_Service_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test create_imagegen_prompt returns prompt builder.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_imagegen_prompt_returns_builder(): void {
+		$builder = $this->service->create_imagegen_prompt( 'Test prompt' );
+
+		$this->assertInstanceOf(
+			\WP_AI_Client_Prompt_Builder::class,
+			$builder,
+			'Should return WP_AI_Client_Prompt_Builder instance'
+		);
+	}
+
+	/**
+	 * Test create_imagegen_prompt with options applies configuration.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_imagegen_prompt_with_options(): void {
+		$builder = $this->service->create_imagegen_prompt(
+			'Test prompt',
+			array(
+				'temperature' => 0.5,
+				'max_tokens'  => 100,
+			)
+		);
+
+		$this->assertInstanceOf(
+			\WP_AI_Client_Prompt_Builder::class,
+			$builder,
+			'Should return WP_AI_Client_Prompt_Builder instance with options applied'
+		);
+	}
+
+	/**
 	 * Test ai_experiments_service_initialized action can be hooked.
 	 *
 	 * @since 0.2.1
