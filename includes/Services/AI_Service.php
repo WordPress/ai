@@ -13,6 +13,7 @@ namespace WordPress\AI\Services;
 
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 
+use function WordPress\AI\get_preferred_image_models;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 
 /**
@@ -126,6 +127,48 @@ class AI_Service {
 
 		// Apply default model preferences.
 		$models = get_preferred_models_for_text_generation();
+		if ( ! empty( $models ) ) {
+			$builder = $builder->using_model_preference( ...$models );
+		}
+
+		// Apply options via ModelConfig if any are provided.
+		if ( ! empty( $options ) ) {
+			$config_array = $this->map_options_to_config( $options );
+			if ( ! empty( $config_array ) ) {
+				$config  = ModelConfig::fromArray( $config_array );
+				$builder = $builder->using_model_config( $config );
+			}
+		}
+
+		return $builder;
+	}
+
+	/**
+	 * Creates an image generation prompt builder with default configuration applied.
+	 *
+	 * Mirrors {@see self::create_textgen_prompt()} but seeds the builder with the
+	 * plugin's preferred image generation models instead of the text generation
+	 * defaults, since the two capabilities are typically served by different models.
+	 *
+	 * Example usage:
+	 * ```php
+	 * $service = AI_Service::get_instance();
+	 *
+	 * $image_result = $service->create_imagegen_prompt( 'A watercolor mountain landscape' )->generate_image_result();
+	 * ```
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string|null          $prompt  Optional. Initial prompt content.
+	 * @param array<string, mixed> $options Optional. Configuration options. See
+	 *                                      {@see self::create_textgen_prompt()} for the supported keys.
+	 * @return \WP_AI_Client_Prompt_Builder The prompt builder instance.
+	 */
+	public function create_imagegen_prompt( ?string $prompt = null, array $options = array() ) {
+		$builder = wp_ai_client_prompt( $prompt );
+
+		// Apply default model preferences for image generation.
+		$models = get_preferred_image_models();
 		if ( ! empty( $models ) ) {
 			$builder = $builder->using_model_preference( ...$models );
 		}
