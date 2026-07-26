@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Image;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation as Alt_Text_Generation_Experiment;
+use WordPress\AI\Services\AI_Service;
 
 use function WordPress\AI\get_preferred_vision_models;
 use function WordPress\AI\normalize_content;
@@ -410,7 +411,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
 	private function get_prompt_builder( string $prompt, string $reference ) {
-		$prompt_builder = wp_ai_client_prompt( $prompt )
+		$prompt_builder = AI_Service::get_instance()->create_textgen_prompt( $prompt )
 			->with_file( $reference )
 			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
 			->using_temperature( 0.3 );
