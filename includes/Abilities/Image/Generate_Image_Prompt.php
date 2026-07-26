@@ -11,6 +11,7 @@ namespace WordPress\AI\Abilities\Image;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Services\AI_Service;
 
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\get_preferred_models_for_text_generation;
@@ -270,7 +271,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
 	private function get_prompt_builder( string $prompt ) {
-		$prompt_builder = wp_ai_client_prompt( $prompt )
+		$prompt_builder = AI_Service::get_instance()->create_textgen_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction( 'image-prompt-system-instruction.php' ) )
 			->using_temperature( 0.9 );
 
