@@ -70,7 +70,6 @@ function toPlainString( value: unknown ): string {
  * @return Plain text.
  */
 function stripTags( html: string ): string {
-	// Use the DOM to strip tags reliably in browser context.
 	const div = document.createElement( 'div' );
 	div.innerHTML = html;
 	return div.textContent ?? div.innerText ?? '';
