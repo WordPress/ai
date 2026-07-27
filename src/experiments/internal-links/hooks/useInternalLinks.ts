@@ -76,6 +76,28 @@ function stripTags( html: string ): string {
 }
 
 /**
+ * Returns the set of anchor texts already hyperlinked in the post HTML.
+ *
+ * Parses every <a> element from the raw post content so that suggestions
+ * whose anchor_text is already linked can be excluded from the results.
+ *
+ * @param html Raw HTML post content.
+ * @return Set of already-linked text strings (lowercased for comparison).
+ */
+function getLinkedAnchorTexts( html: string ): Set< string > {
+	const div = document.createElement( 'div' );
+	div.innerHTML = html;
+	const linked = new Set< string >();
+	div.querySelectorAll( 'a' ).forEach( ( anchor ) => {
+		const text = anchor.textContent?.trim();
+		if ( text ) {
+			linked.add( text.toLowerCase() );
+		}
+	} );
+	return linked;
+}
+
+/**
  * Recursively flattens a block tree.
  *
  * @param blocks Top-level blocks.
@@ -184,6 +206,9 @@ export function useInternalLinks(): {
 
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
+		const alreadyLinked = getLinkedAnchorTexts( content );
+		const excludedAnchors = [ ...alreadyLinked ];
+
 		try {
 			const result = await runAbility< SuggestionResponse >(
 				'ai/internal-links',
@@ -191,12 +216,14 @@ export function useInternalLinks(): {
 					post_content: content,
 					post_id: postId,
 					max_suggestions: maxSuggestions,
+					excluded_anchors: excludedAnchors,
 				}
 			);
 
-			setSuggestions( result?.suggestions ?? [] );
+			const suggestions = result?.suggestions ?? [];
+			setSuggestions( suggestions );
 
-			if ( ( result?.suggestions ?? [] ).length === 0 ) {
+			if ( suggestions.length === 0 ) {
 				dispatch( noticesStore ).createNotice(
 					'info',
 					__(

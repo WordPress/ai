@@ -72,21 +72,27 @@ class Internal_Links extends Abstract_Ability {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'post_content'    => array(
+				'post_content'     => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'wp_kses_post',
 					'description'       => esc_html__( 'The HTML content of the post being edited.', 'ai' ),
 				),
-				'post_id'         => array(
+				'post_id'          => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'ID of the post being edited.', 'ai' ),
 				),
-				'max_suggestions' => array(
+				'max_suggestions'  => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Maximum number of link suggestions to return (1–10).', 'ai' ),
 					'default'           => self::DEFAULT_MAX_SUGGESTIONS,
+				),
+				'excluded_anchors' => array(
+					'type'        => 'array',
+					'items'       => array( 'type' => 'string' ),
+					'description' => esc_html__( 'Anchor texts already hyperlinked in the post that should not be suggested again.', 'ai' ),
+					'default'     => array(),
 				),
 			),
 			'required'   => array( 'post_content', 'post_id' ),
@@ -145,15 +151,19 @@ class Internal_Links extends Abstract_Ability {
 		$args = wp_parse_args(
 			$input,
 			array(
-				'post_content'    => '',
-				'post_id'         => 0,
-				'max_suggestions' => self::DEFAULT_MAX_SUGGESTIONS,
+				'post_content'     => '',
+				'post_id'          => 0,
+				'max_suggestions'  => self::DEFAULT_MAX_SUGGESTIONS,
+				'excluded_anchors' => array(),
 			)
 		);
 
-		$post_content    = wp_kses_post( (string) $args['post_content'] );
-		$post_id         = absint( $args['post_id'] );
-		$max_suggestions = min( absint( $args['max_suggestions'] ), self::MAX_SUGGESTIONS_CAP );
+		$post_content     = wp_kses_post( (string) $args['post_content'] );
+		$post_id          = absint( $args['post_id'] );
+		$max_suggestions  = min( absint( $args['max_suggestions'] ), self::MAX_SUGGESTIONS_CAP );
+		$excluded_anchors = is_array( $args['excluded_anchors'] )
+			? array_filter( array_map( 'sanitize_text_field', $args['excluded_anchors'] ) )
+			: array();
 
 		if ( empty( $post_content ) ) {
 			return new WP_Error(
@@ -180,7 +190,7 @@ class Internal_Links extends Abstract_Ability {
 			return array( 'suggestions' => array() );
 		}
 
-		$prompt         = $this->create_prompt( $plain_text, $site_index, $max_suggestions );
+		$prompt         = $this->create_prompt( $plain_text, $site_index, $max_suggestions, $excluded_anchors );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -337,12 +347,13 @@ class Internal_Links extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string                             $plain_text      Plain-text post content.
-	 * @param list<array{url: string, title: string}> $site_index List of linkable posts.
-	 * @param int                                $max_suggestions Maximum number of suggestions.
+	 * @param string                                   $plain_text        Plain-text post content.
+	 * @param list<array{url: string, title: string}>  $site_index        List of linkable posts.
+	 * @param int                                      $max_suggestions   Maximum number of suggestions.
+	 * @param list<string>                             $excluded_anchors  Anchor texts already hyperlinked in the post.
 	 * @return string The assembled prompt.
 	 */
-	private function create_prompt( string $plain_text, array $site_index, int $max_suggestions ): string {
+	private function create_prompt( string $plain_text, array $site_index, int $max_suggestions, array $excluded_anchors = array() ): string {
 		$index_lines = array();
 		foreach ( $site_index as $entry ) {
 			$index_lines[] = sprintf( '- %s <%s>', $entry['title'], $entry['url'] );
@@ -352,6 +363,14 @@ class Internal_Links extends Abstract_Ability {
 		$parts[] = '<post-content>' . $plain_text . '</post-content>';
 		$parts[] = '<site-index>' . implode( "\n", $index_lines ) . '</site-index>';
 		$parts[] = '<max-suggestions>' . $max_suggestions . '</max-suggestions>';
+
+		if ( ! empty( $excluded_anchors ) ) {
+			$anchor_lines = array();
+			foreach ( $excluded_anchors as $anchor ) {
+				$anchor_lines[] = '- ' . $anchor;
+			}
+			$parts[] = '<already-linked>' . implode( "\n", $anchor_lines ) . '</already-linked>';
+		}
 
 		return implode( "\n\n", $parts );
 	}
