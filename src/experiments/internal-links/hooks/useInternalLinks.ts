@@ -220,10 +220,10 @@ export function useInternalLinks(): {
 				}
 			);
 
-			const suggestions = result?.suggestions ?? [];
-			setSuggestions( suggestions );
+			const fetchedSuggestions = result?.suggestions ?? [];
+			setSuggestions( fetchedSuggestions );
 
-			if ( suggestions.length === 0 ) {
+			if ( fetchedSuggestions.length === 0 ) {
 				dispatch( noticesStore ).createNotice(
 					'info',
 					__(

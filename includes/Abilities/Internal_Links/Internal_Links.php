@@ -162,7 +162,7 @@ class Internal_Links extends Abstract_Ability {
 		$post_id          = absint( $args['post_id'] );
 		$max_suggestions  = min( absint( $args['max_suggestions'] ), self::MAX_SUGGESTIONS_CAP );
 		$excluded_anchors = is_array( $args['excluded_anchors'] )
-			? array_filter( array_map( 'sanitize_text_field', $args['excluded_anchors'] ) )
+			? array_values( array_filter( array_map( 'sanitize_text_field', $args['excluded_anchors'] ) ) )
 			: array();
 
 		if ( empty( $post_content ) ) {
