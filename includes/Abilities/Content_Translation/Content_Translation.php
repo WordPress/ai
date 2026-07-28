@@ -138,6 +138,7 @@ class Content_Translation extends Abstract_Ability {
 			);
 		}
 
+		$prompt = $this->filter_prompt( $prompt, $language );
 		$result = $this->generate_translated_content( $prompt, $language );
 
 		if ( is_wp_error( $result ) ) {
@@ -250,10 +251,7 @@ class Content_Translation extends Abstract_Ability {
 			)
 			->using_temperature( 0.7 );
 
-		$prompt_builder = $this->set_provider_model_preference(
-			$prompt_builder,
-			Content_Translation_Experiment::class
-		);
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Content_Translation_Experiment::class, array(), $prompt, $language );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
