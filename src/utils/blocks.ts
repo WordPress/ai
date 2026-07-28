@@ -198,14 +198,17 @@ export function isHTMLSerializable(
  * @return {string} The HTML content of the block.
  */
 export function getBlockHTML( block: BlockWithContent ): string {
-	const value = block.attributes.content ?? block.attributes.value ?? '';
+	// Typed as `unknown` because newer editor versions store RichText values as
+	// `RichTextData` objects rather than the plain strings the interface declares.
+	const value: unknown =
+		block.attributes.content ?? block.attributes.value ?? '';
 
 	if ( typeof value === 'string' ) {
 		return value;
 	}
 
 	if ( isHTMLSerializable( value ) ) {
-		return ( value as HTMLSerializable ).toHTMLString();
+		return value.toHTMLString();
 	}
 
 	return '';

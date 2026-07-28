@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import { Button, Icon } from '@wordpress/components';
+import { useInstanceId } from '@wordpress/compose';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { __, sprintf } from '@wordpress/i18n';
 import { Stack, Text } from '@wordpress/ui';
@@ -24,6 +25,11 @@ export default function ContentTranslationPlugin() {
 		minContentLength,
 		translate,
 	} = useContentTranslation();
+
+	const descriptionId = useInstanceId(
+		ContentTranslationPlugin,
+		'ai-content-translation-plugin-description'
+	);
 
 	if ( ! getSettings().enabled ) {
 		return null;
@@ -65,7 +71,8 @@ export default function ContentTranslationPlugin() {
 					variant="secondary"
 					__next40pxDefaultSize
 					onClick={ () => setIsOpen( ( prev ) => ! prev ) }
-					aria-expanded={ isOpen }
+					aria-haspopup="dialog"
+					aria-describedby={ descriptionId }
 					className="ai-content-translation-plugin__trigger"
 					disabled={ isTranslating || isContentTooShort }
 					isBusy={ isTranslating }
@@ -82,7 +89,10 @@ export default function ContentTranslationPlugin() {
 					/>
 				) }
 
-				<Text className="ai-content-translation-plugin__description">
+				<Text
+					id={ descriptionId }
+					className="ai-content-translation-plugin__description"
+				>
 					{ buttonDescription }
 				</Text>
 			</Stack>

@@ -14,8 +14,8 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { ensureProvider } from '../../../utils/provider-status';
 import { flattenBlocks } from '../../../utils/blocks';
 import { hasMinimumContent } from '../../../utils/character-count';
+import { getErrorMessage } from '../../../utils/errors';
 import {
-	getErrorMessage,
 	getSettings,
 	getTranslatableBlock,
 	setTranslationLoadingClass,
@@ -49,14 +49,15 @@ const TRANSLATION_NOTICE_ID_CONTENT = `${ TRANSLATION_NOTICE_ID }_content`;
  * @return An object with the translation state and functions.
  */
 export function useContentTranslation(): UseContentTranslationReturn {
-	const [ isTitleTranslating, setIsTitleTranslating ] = useState( false );
-	const [ isContentTranslating, setIsContentTranslating ] = useState( false );
+	const [ isTranslating, setIsTranslating ] = useState( false );
 	const [ progress, setProgress ] = useState( 0 );
 	const [ total, setTotal ] = useState( 0 );
 
 	const noticeDispatch = useDispatch( noticesStore );
 	const blockEditorDispatch = useDispatch( blockEditorStore );
 	const editorDispatch = useDispatch( editorStore );
+
+	const { minContentLength } = getSettings();
 
 	const { postId, allBlocks, title, content } = useSelect( ( sel ) => {
 		return {
@@ -71,7 +72,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 
 	const isContentTooShort = ! hasMinimumContent(
 		content || '',
-		getSettings().minContentLength
+		minContentLength
 	);
 
 	/**
@@ -100,7 +101,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			return;
 		}
 
-		setIsContentTranslating( true );
+		setIsTranslating( true );
 		setTranslationLoadingClass( 'BLOCKS', true );
 
 		try {
@@ -116,7 +117,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 				id: TRANSLATION_NOTICE_ID_CONTENT,
 			} );
 		} finally {
-			setIsContentTranslating( false );
+			setIsTranslating( false );
 			setTranslationLoadingClass( 'BLOCKS', false );
 			setProgress( 0 );
 			setTotal( 0 );
@@ -141,8 +142,27 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			return;
 		}
 
+		// The ability enforces the same minimum, so check it here to warn with a
+		// clear reason instead of surfacing a generic request failure.
+		if ( ! hasMinimumContent( title, minContentLength ) ) {
+			noticeDispatch.createWarningNotice(
+				sprintf(
+					/* translators: %d: minimum number of characters required for translation. */
+					__(
+						'The post title is too short to translate. A minimum of %d characters is required.',
+						'ai'
+					),
+					minContentLength
+				),
+				{
+					id: TRANSLATION_NOTICE_ID_TITLE,
+				}
+			);
+
+			return;
+		}
+
 		try {
-			setIsTitleTranslating( true );
 			setTranslationLoadingClass( 'TITLE', true );
 
 			const translatedTitle = await translateContent(
@@ -159,7 +179,6 @@ export function useContentTranslation(): UseContentTranslationReturn {
 				id: TRANSLATION_NOTICE_ID_TITLE,
 			} );
 		} finally {
-			setIsTitleTranslating( false );
 			setTranslationLoadingClass( 'TITLE', false );
 		}
 	};
@@ -174,13 +193,33 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		setProgress( 0 );
 		setTotal( 0 );
 
-		const translatableBlocks = flattenBlocks( allBlocks )
+		const supportedBlocks = flattenBlocks( allBlocks )
 			.map( ( block ) => getTranslatableBlock( block ) )
 			.filter( ( block ) => block !== null );
 
+		// The ability rejects content below the minimum length, so filter those
+		// blocks out up front rather than spending a request to be told no. The
+		// post-level gate measures the whole post, which can pass while short
+		// individual blocks (a "FAQ" heading, say) would not.
+		const translatableBlocks = supportedBlocks.filter( ( block ) =>
+			hasMinimumContent( block.content, minContentLength )
+		);
+
+		const skippedBlocksCount =
+			supportedBlocks.length - translatableBlocks.length;
+
 		if ( translatableBlocks.length === 0 ) {
 			noticeDispatch.createErrorNotice(
-				__( 'No translatable content found in the post.', 'ai' ),
+				skippedBlocksCount > 0
+					? sprintf(
+							/* translators: %d: minimum number of characters required for translation. */
+							__(
+								'No blocks were long enough to translate. Each block needs at least %d characters.',
+								'ai'
+							),
+							minContentLength
+					  )
+					: __( 'No translatable content found in the post.', 'ai' ),
 				{
 					id: TRANSLATION_NOTICE_ID_CONTENT,
 				}
@@ -191,7 +230,8 @@ export function useContentTranslation(): UseContentTranslationReturn {
 
 		setTotal( translatableBlocks.length );
 
-		// Count the number of blocks that failed to be translated.
+		// Count the blocks that were translated and applied, and those that failed.
+		let translatedBlocksCount = 0;
 		let failedBlocksCount = 0;
 
 		// Process blocks in batches.
@@ -242,18 +282,19 @@ export function useContentTranslation(): UseContentTranslationReturn {
 				blockEditorDispatch.updateBlockAttributes( clientId, {
 					content: result.value,
 				} );
+
+				translatedBlocksCount++;
 			} );
 
-			setProgress(
-				Math.min(
-					batchStart + TRANSLATION_BATCH_SIZE,
-					translatableBlocks.length
-				)
-			);
+			// Report blocks actually translated, not blocks attempted, so the
+			// progress label never claims work that failed.
+			setProgress( translatedBlocksCount );
 		}
 
+		const warnings: string[] = [];
+
 		if ( failedBlocksCount > 0 ) {
-			noticeDispatch.createWarningNotice(
+			warnings.push(
 				sprintf(
 					/* translators: %d: number of blocks that failed to be translated. */
 					_n(
@@ -263,18 +304,39 @@ export function useContentTranslation(): UseContentTranslationReturn {
 						'ai'
 					),
 					failedBlocksCount
-				),
-				{ id: TRANSLATION_NOTICE_ID_CONTENT }
+				)
 			);
+		}
+
+		if ( skippedBlocksCount > 0 ) {
+			warnings.push(
+				sprintf(
+					/* translators: %1$d: number of blocks skipped, %2$d: minimum number of characters required for translation. */
+					_n(
+						'Skipped %1$d block shorter than the %2$d character minimum.',
+						'Skipped %1$d blocks shorter than the %2$d character minimum.',
+						skippedBlocksCount,
+						'ai'
+					),
+					skippedBlocksCount,
+					minContentLength
+				)
+			);
+		}
+
+		if ( warnings.length > 0 ) {
+			noticeDispatch.createWarningNotice( warnings.join( ' ' ), {
+				id: TRANSLATION_NOTICE_ID_CONTENT,
+			} );
 		}
 	};
 
 	return {
-		isLoading: isTitleTranslating || isContentTranslating,
+		isLoading: isTranslating,
 		isContentTooShort,
 		progress,
 		total,
-		minContentLength: getSettings().minContentLength,
+		minContentLength,
 		translate,
 	};
 }
